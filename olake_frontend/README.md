@@ -1,50 +1,109 @@
-# React + TypeScript + Vite
+# Olake Frontend UI  with React + TypeScript + Ant Design Tailwind + Vite 🌈
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Requirements ✅
 
-Currently, two official plugins are available:
+- A latest LTS version of [Node.js](https://nodejs.org/en/download/).
+- [pnpm](https://pnpm.io/installation), a fast, disk space efficient package manager for Node.js.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Running the project locally 🚀
 
-## Expanding the ESLint configuration
+- 🌐 Clone the Repo using the SSH or HTTPS
+- 🎉 Install all the required dependencies in the root directory of the project using pnpm. before that ensure that u have 'pnpm'.
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+```bash
+pnpm install
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+- 🎮 Run the project from the root directory.
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```bash
+pnpm dev
 ```
+
+### To format the code 🎭
+
+
+```bash
+pnpm format
+```
+
+## Checksum before commit && pushing to remote 🎭
+
+- 📝 To check the `EsLint` issus
+
+```bash
+pnpm lint
+```
+
+- 🎨 To fix the `EsLint` issues
+
+```bash
+pnpm lint:fix
+```
+
+## Troubleshoot Options 🚨
+
+- Run the following command to clean the `node_modules`. After that reinstall dependencies using `pnpm install`
+
+```bash
+pnpx npkill
+```
+
+## Folder Structure 📁
+
+```text
+├── public // Contains public resources. Ex favicon
+│
+├── src
+│   ├── assets // Contains all assets used in App
+│   ├── api  // AXIOS setup and mockdata 
+|       ├── services // API services for Jobs , Sources , Destinations
+│   ├── modules  // Contains all modules of App
+│   │   ├── common // Common components
+│   │   └── destinations // All destinations related  components
+|   |   ├── sources // All sources related components
+|   |   ├── jobs  // All jobs related components 
+|	|	
+│   │
+│   ├── store  // Contains all state management files
+│   │
+│   ├── types // Contains TYPES
+│   │
+│   ├── main.tsx // Root File of App which has all providers
+│   │
+│   └── App.tsx // App 
+│
+├── index.html // index file of React App
+│
+├── package.json
+│
+├── eslint.config.js // Configuration of ESLint Plugin
+│
+├── tsconfig.json // Configuration of TypeScript
+│
+├── tailwind.config.js // Configuration of Tailwind CSS
+│
+├── tsconfig.app.json // Configuration of TypeScript for Browser(App) Environment
+│
+├── tsconfig.node.json // Configuration of TypeScript for Node Environment
+│
+└── vite.config.ts // Configuration of Vite
+```
+
+## Used Packages 📦
+
+- **Tailwind CSS**: Tailwind CSS is an open-source CSS framework.
+- **zustand**: A small, fast, and scalable bearbones state management solution.
+- **Axios**: Axios is a promise based HTTP client for browser and node.js.
+- **React Router DOM**: Used for Routing.
+- **Ant Design**: Component Library.
+- **Phosphor-icons**: Icons Library for our App.
+- **Vite**: Vite is a local development server
+- **eslint/js**: ESLint Plugin is used for Linting.
+- **prettier**: Prettier Plugin is used for Prettier issues.
+
+## UX Tips
+
+### Suspense Wrapper
+
+- use `suspense` from `react` for Loading Animation.
