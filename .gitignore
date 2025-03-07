@@ -1,0 +1,11 @@
+.DS_Store
+
+# misc
+.DS_Store
+npm-debug*
+
+# node
+**/node_modules/
+
+# IDE/editor files
+.vscode/
