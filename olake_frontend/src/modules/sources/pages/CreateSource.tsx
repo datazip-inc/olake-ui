@@ -6,9 +6,13 @@ import { ArrowLeft } from "@phosphor-icons/react"
 import DestinationSuccess from "../../../assets/DestinationSuccess.png"
 interface CreateSourceProps {
 	fromJobFlow?: boolean
+	onComplete?: () => void
 }
 
-const CreateSource: React.FC<CreateSourceProps> = ({ fromJobFlow }) => {
+const CreateSource: React.FC<CreateSourceProps> = ({
+	fromJobFlow,
+	onComplete,
+}) => {
 	const navigate = useNavigate()
 	const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("MongoDB")
@@ -69,7 +73,11 @@ const CreateSource: React.FC<CreateSourceProps> = ({ fromJobFlow }) => {
 						.then(() => {
 							setShowSourceSavedModal(false)
 							if (fromJobFlow) {
-								navigate("/jobs/new")
+								if (onComplete) {
+									onComplete()
+								} else {
+									navigate("/jobs/new")
+								}
 							} else {
 								navigate("/sources")
 							}
@@ -728,7 +736,11 @@ const CreateSource: React.FC<CreateSourceProps> = ({ fromJobFlow }) => {
 							onClick={() => {
 								setShowSourceSavedModal(false)
 								if (fromJobFlow) {
-									navigate("/jobs/new")
+									if (onComplete) {
+										onComplete()
+									} else {
+										navigate("/jobs/new")
+									}
 								} else {
 									navigate("/sources")
 								}
