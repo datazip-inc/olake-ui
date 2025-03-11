@@ -284,7 +284,8 @@ export const useAppStore = create<AppState>(set => ({
 				if (i % 13 === 0) level = "error"
 
 				return {
-					timestamp: "26/02/2025 00:07:23",
+					date: "26/02/2025",
+					time: "00:07:23",
 					level,
 					message: logMessage,
 				}

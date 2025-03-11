@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message } from "antd"
+import { Table, Button, Input, Spin, message, Divider } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, Eye } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -44,13 +44,15 @@ const JobHistory: React.FC = () => {
 	const getStatusClass = (status: string) => {
 		switch (status) {
 			case "success":
-				return "text-green-500"
+				return "text-[#52C41A] bg-[#F6FFED]"
 			case "failed":
-				return "text-red-500"
+				return "text-[#F5222D] bg-[#FFF1F0]"
 			case "running":
-				return "text-blue-500"
+				return "text-[#0958D9] bg-[#E6F4FF]"
+			case "scheduled":
+				return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
 			default:
-				return "text-gray-500"
+				return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
 		}
 	}
 
@@ -70,7 +72,9 @@ const JobHistory: React.FC = () => {
 			dataIndex: "status",
 			key: "status",
 			render: (status: string) => (
-				<span className={getStatusClass(status)}>{status}</span>
+				<span className={`${getStatusClass(status)} rounded-xl px-2 py-2`}>
+					{status}
+				</span>
 			),
 		},
 		{
@@ -113,52 +117,33 @@ const JobHistory: React.FC = () => {
 
 	return (
 		<div className="p-6">
-			<div className="mb-6">
-				<Link
-					to="/jobs"
-					className="mb-4 flex items-center text-blue-600"
-				>
-					<ArrowLeft
-						size={16}
-						className="mr-1"
-					/>{" "}
-					Back to Jobs
-				</Link>
+			<div className="mb-6 flex items-center justify-between">
+				<div>
+					<div className="flex items-center gap-2">
+						<Link
+							to="/jobs"
+							className="items-cente mt-[2px] flex"
+						>
+							<ArrowLeft size={20} />
+						</Link>
 
-				<div className="mb-2 flex items-center">
-					<h1 className="text-2xl font-bold">{job?.name || "<Job_name>"}</h1>
-					<span className="ml-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600">
+						<div className="text-2xl font-bold">
+							{job?.name || "<Job_name>"}
+						</div>
+					</div>
+					<span className="ml-6 mt-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600">
 						{job?.status || "Active"}
 					</span>
 				</div>
 
-				<div className="mb-6 flex items-center justify-between">
-					<div className="flex items-center">
-						<div className="mr-8 flex items-center">
-							<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
-								S
-							</div>
-							<span>Source</span>
-						</div>
-						<div className="w-16 border-t-2 border-dashed border-gray-300"></div>
-						<div className="ml-8 flex items-center">
-							<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white">
-								D
-							</div>
-							<span>Destination</span>
-						</div>
-					</div>
-
-					<div className="flex items-center">
-						<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
-							D
-						</div>
-						<div className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-white">
-							A
-						</div>
-					</div>
+				<div className="flex items-center gap-2">
+					<Button className="rounded-full bg-green-500 text-white">S</Button>
+					<span className="text-gray-500">--------------</span>
+					<Button className="rounded-full bg-red-500 text-white">D</Button>
 				</div>
 			</div>
+
+			<Divider />
 
 			<h2 className="mb-4 text-xl font-bold">Job history</h2>
 
@@ -166,7 +151,7 @@ const JobHistory: React.FC = () => {
 				<Search
 					placeholder="Search Jobs"
 					allowClear
-					className="w-72"
+					className="w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>
@@ -189,13 +174,16 @@ const JobHistory: React.FC = () => {
 				/>
 			)}
 
+			<Divider className="m-2" />
+
 			<div className="mt-6 flex justify-end">
 				<Button
 					type="primary"
-					className="bg-blue-600"
+					className="bg-[#203FDD] font-extralight text-white"
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
-					View job configurations →
+					View job configurations
+					<ArrowRight size={16} />
 				</Button>
 			</div>
 		</div>

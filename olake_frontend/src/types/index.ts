@@ -34,7 +34,8 @@ export interface JobHistory {
 }
 
 export interface JobLog {
-	timestamp: string
+	date: string
+	time: string
 	level: "debug" | "info" | "warning" | "error"
 	message: string
 }

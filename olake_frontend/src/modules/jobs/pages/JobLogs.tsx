@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Spin, message, Button } from "antd"
+import { Input, Spin, message, Button, Divider } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -42,15 +42,26 @@ const JobLogs: React.FC = () => {
 	const getLogLevelClass = (level: string) => {
 		switch (level) {
 			case "debug":
-				return "text-blue-600"
+				return "text-blue-600 bg-[#F0F5FF]"
 			case "info":
-				return "text-blue-400"
+				return "text-[#531DAB] bg-[#F9F0FF]"
 			case "warning":
-				return "text-amber-500"
+				return "text-[#FAAD14] bg-[#FFFBE6]"
 			case "error":
-				return "text-red-500"
+				return "text-red-500 bg-[#FFF1F0]"
 			default:
 				return "text-gray-600"
+		}
+	}
+
+	const getLogTextColor = (level: string) => {
+		switch (level) {
+			case "warning":
+				return "text-[#FAAD14]"
+			case "error":
+				return "text-[#F5222D]"
+			default:
+				return "text-[#000000"
 		}
 	}
 
@@ -78,52 +89,32 @@ const JobLogs: React.FC = () => {
 
 	return (
 		<div className="p-6">
-			<div className="mb-6">
-				<Link
-					to={`/jobs/${jobId}/history`}
-					className="mb-4 flex items-center text-blue-600"
-				>
-					<ArrowLeft
-						size={16}
-						className="mr-1"
-					/>{" "}
-					Back to Job History
-				</Link>
-
-				<div className="mb-2 flex items-center">
-					<h1 className="text-2xl font-bold">
-						{job?.name || "Jobname"} [Timestamp]
-					</h1>
-					<span className="ml-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600">
+			<div className="mb-6 flex items-center justify-between">
+				<div>
+					<div className="mb-2 flex items-center">
+						<div className="flex items-center gap-2">
+							<div>
+								<Link
+									to={`/jobs/${jobId}/history`}
+									className="mt-[2px] flex items-center"
+								>
+									<ArrowLeft size={20} />
+								</Link>
+							</div>
+							<div className="text-2xl font-bold">
+								{job?.name || "Jobname"} [Timestamp]
+							</div>
+						</div>
+					</div>
+					<span className="ml-6 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 first-letter:capitalize">
 						{job?.status || "Active"}
 					</span>
 				</div>
 
-				<div className="mb-6 flex items-center justify-between">
-					<div className="flex items-center">
-						<div className="mr-8 flex items-center">
-							<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-white">
-								S
-							</div>
-							<span>Source</span>
-						</div>
-						<div className="w-16 border-t-2 border-dashed border-gray-300"></div>
-						<div className="ml-8 flex items-center">
-							<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white">
-								D
-							</div>
-							<span>Destination</span>
-						</div>
-					</div>
-
-					<div className="flex items-center">
-						<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
-							D
-						</div>
-						<div className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-amber-500 text-white">
-							A
-						</div>
-					</div>
+				<div className="flex items-center gap-2">
+					<Button className="rounded-full bg-green-500 text-white">S</Button>
+					<span className="text-gray-500">--------------</span>
+					<Button className="rounded-full bg-red-500 text-white">D</Button>
 				</div>
 			</div>
 
@@ -133,7 +124,7 @@ const JobLogs: React.FC = () => {
 				<Search
 					placeholder="Search Logs"
 					allowClear
-					className="w-72"
+					className="w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>
@@ -144,25 +135,29 @@ const JobLogs: React.FC = () => {
 					<Spin size="large" />
 				</div>
 			) : (
-				<div className="overflow-hidden rounded-lg border bg-white">
+				<div className="overflow-hidden rounded-xl border bg-white">
 					<table className="min-w-full">
 						<tbody>
 							{filteredLogs.map((log, index) => (
-								<tr
-									key={index}
-									className="border-b border-gray-100 last:border-0"
-								>
+								<tr key={index}>
 									<td className="w-32 px-4 py-3 text-sm text-gray-500">
-										{log.timestamp}
+										{log.date}
+									</td>
+									<td className="w-24 px-4 py-3 text-sm text-gray-500">
+										{log.time}
+									</td>
+									<td className="w-24 px-4 py-3 text-sm">
+										<span
+											className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
+												log.level,
+											)}`}
+										>
+											{log.level}
+										</span>
 									</td>
 									<td
-										className={`px-4 py-3 text-sm ${getLogLevelClass(
-											log.level,
-										)} w-24`}
+										className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(log.level)}`}
 									>
-										{log.level}
-									</td>
-									<td className="px-4 py-3 text-sm text-gray-700">
 										{log.message}
 									</td>
 								</tr>
@@ -172,13 +167,16 @@ const JobLogs: React.FC = () => {
 				</div>
 			)}
 
+			<Divider />
+
 			<div className="mt-6 flex justify-end">
 				<Button
 					type="primary"
-					className="bg-blue-600"
+					className="bg-[#203FDD] font-extralight text-white"
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
-					View job configurations →
+					View job configurations
+					<ArrowRight size={16} />
 				</Button>
 			</div>
 		</div>

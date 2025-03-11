@@ -190,7 +190,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							<h1 className="text-xl font-medium">{stepTitle}</h1>
 						</div>
 					)}
-					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-6">
 							<div className="mb-4 flex">
 								<Radio.Group
@@ -294,7 +294,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 						</div>
 					</div>
 
-					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-4 flex items-center">
 							<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
 								<span className="text-xs">🔌</span>

@@ -178,7 +178,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 							<h1 className="text-xl font-medium">{stepTitle}</h1>
 						</div>
 					)}
-					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
+					<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-6">
 							<div className="mb-4 flex">
 								<Radio.Group
@@ -665,21 +665,23 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				</div>
 			</div>
 
-			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-				<Button
-					danger
-					onClick={handleCancel}
-				>
-					Cancel
-				</Button>
-				<Button
-					type="primary"
-					className="bg-blue-600"
-					onClick={handleCreate}
-				>
-					Create →
-				</Button>
-			</div>
+			{!fromJobFlow && (
+				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
+					<Button
+						danger
+						onClick={handleCancel}
+					>
+						Cancel
+					</Button>
+					<Button
+						type="primary"
+						className="bg-blue-600"
+						onClick={handleCreate}
+					>
+						Create →
+					</Button>
+				</div>
+			)}
 
 			<Modal
 				open={showTestingModal}
