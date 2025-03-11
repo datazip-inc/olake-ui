@@ -1,10 +1,9 @@
 import { useState } from "react"
 import { NavLink } from "react-router-dom"
-import OlakeLogo from "../../../assets/OlakeLogo.png"
-import Olake from "../../../assets/Olake.svg"
+import OlakeLogo from "../../../assets/OlakeLogo.svg"
+import Olake from "../../../assets/OLake.svg"
 import {
 	CaretLeft,
-	CaretRight,
 	GitCommit,
 	Info,
 	LinktreeLogo,
@@ -30,7 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					collapsed ? "w-20" : "w-64"
 				} relative flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out`}
 			>
-				<div className="border-b border-gray-200 p-4">
+				<div className="p-4">
 					<div className="flex items-center gap-3">
 						<img
 							src={OlakeLogo}
@@ -51,15 +50,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					<NavLink
 						to="/jobs"
 						className={({ isActive }) =>
-							`flex items-center rounded-lg p-3 ${
+							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-blue-50 text-blue-600"
+									? "bg-[#E9EBFC] text-[#203FDD]"
 									: "text-gray-700 hover:bg-gray-100"
 							}`
 						}
 					>
 						<GitCommit
-							className="mr-3"
+							className="mr-3 flex-shrink-0"
 							size={20}
 						/>
 						{!collapsed && <span>Jobs</span>}
@@ -68,15 +67,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					<NavLink
 						to="/sources"
 						className={({ isActive }) =>
-							`flex items-center rounded-lg p-3 ${
+							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-blue-50 text-blue-600"
+									? "bg-[#E9EBFC] text-[#203FDD]"
 									: "text-gray-700 hover:bg-gray-100"
 							}`
 						}
 					>
 						<LinktreeLogo
-							className="mr-3"
+							className="mr-3 flex-shrink-0"
 							size={20}
 						/>
 						{!collapsed && <span>Sources</span>}
@@ -85,15 +84,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					<NavLink
 						to="/destinations"
 						className={({ isActive }) =>
-							`flex items-center rounded-lg p-3 ${
+							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-blue-50 text-blue-600"
+									? "bg-[#E9EBFC] text-[#203FDD]"
 									: "text-gray-700 hover:bg-gray-100"
 							}`
 						}
 					>
 						<Path
-							className="mr-3"
+							className="mr-3 flex-shrink-0"
 							size={20}
 						/>
 						{!collapsed && <span>Destinations</span>}
@@ -101,11 +100,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 				</nav>
 
 				{!collapsed && (
-					<div className="border-t border-gray-200 p-4">
-						<div className="rounded-lg bg-blue-50 p-3">
+					<div className="p-4">
+						<div className="rounded-xl border-[1px] border-[#EFEFEF] bg-[#F6F6F6] p-3">
 							<div className="flex items-center gap-2">
-								<Info size={16} />
-								<span className="text-sm font-medium">New Update</span>
+								<Info
+									weight="fill"
+									size={17}
+									color="#203FDD"
+								/>
+								<span className="text-xs font-medium text-[#193AE6]">
+									New Update
+								</span>
 							</div>
 							<p className="mt-2 text-xs text-gray-600">
 								We have made fixes to our ingestion flow & new UI is implemented
@@ -113,18 +118,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						</div>
 					</div>
 				)}
+
+				{/* Toggle button positioned on the right border of sidebar */}
+				<button
+					onClick={toggleSidebar}
+					className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-[#383838] shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
+				>
+					<div
+						className={`transition-transform duration-500 ${collapsed ? "rotate-180" : "rotate-0"}`}
+					>
+						<CaretLeft size={16} />
+					</div>
+				</button>
 			</div>
 
-			{/* Toggle button positioned at the edge of the sidebar */}
-			<button
-				onClick={toggleSidebar}
-				className="absolute bottom-8 left-0 z-10 translate-x-1/2 transform rounded-full bg-white p-2 text-gray-500 shadow-md hover:text-gray-700 focus:outline-none"
-			>
-				{collapsed ? <CaretRight size={18} /> : <CaretLeft size={18} />}
-			</button>
-
 			{/* Main content */}
-			<div className="flex-1 overflow-auto">{children}</div>
+			<div className="flex-1 overflow-auto bg-white">{children}</div>
 		</div>
 	)
 }

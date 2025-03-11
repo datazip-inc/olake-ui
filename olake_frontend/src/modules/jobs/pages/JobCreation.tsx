@@ -1,23 +1,15 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, Switch, message } from "antd"
+import { Input, Button, Radio, Select, Switch, message, Divider } from "antd"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
-import {
-	ArrowLeft,
-	CheckCircle,
-	CornersIn,
-	CornersOut,
-} from "@phosphor-icons/react"
+import { ArrowLeft, CornersIn, DownloadSimple } from "@phosphor-icons/react"
 
 type Step = "source" | "destination" | "schema" | "config"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
 	const [currentStep, setCurrentStep] = useState<Step>("source")
-	const [sourceCreated, setSourceCreated] = useState(false)
-	const [destinationCreated, setDestinationCreated] = useState(false)
-	const [schemaConfigured, setSchemaConfigured] = useState(false)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [searchText, setSearchText] = useState("")
 	const [searchSchemaText, setSearchSchemaText] = useState("")
@@ -45,13 +37,10 @@ const JobCreation: React.FC = () => {
 
 	const handleNext = () => {
 		if (currentStep === "source") {
-			setSourceCreated(true)
 			setCurrentStep("destination")
 		} else if (currentStep === "destination") {
-			setDestinationCreated(true)
 			setCurrentStep("schema")
 		} else if (currentStep === "schema") {
-			setSchemaConfigured(true)
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
 			message.success("Job created successfully!")
@@ -143,153 +132,83 @@ const JobCreation: React.FC = () => {
 	return (
 		<div className="flex h-screen flex-col">
 			{/* Header */}
-			<div className="border-b border-gray-200 p-6 pb-0">
-				<div className="mb-4 flex items-center justify-between">
+			<div className="bg-white px-6 pb-0 pt-6">
+				<div className="flex items-center justify-between">
 					<Link
 						to="/jobs"
-						className="flex items-center text-blue-600"
+						className="flex items-center gap-2"
 					>
-						<ArrowLeft
-							size={16}
-							className="mr-1"
-						/>{" "}
-						Create job
+						<ArrowLeft className="mr-1 size-6" />
+						<span className="text-2xl font-bold"> Create job</span>
 					</Link>
 
 					{/* Stepper */}
 					<div className="flex items-center">
-						<div
-							className={`flex flex-col items-center ${
-								currentStep === "source"
-									? "text-blue-600"
-									: sourceCreated
-										? "text-blue-400"
-										: "text-gray-400"
-							}`}
-						>
-							<div
-								className={`flex h-6 w-6 items-center justify-center rounded-full ${
-									currentStep === "source"
-										? "bg-blue-600 text-white"
-										: sourceCreated
-											? "bg-blue-100 text-blue-600"
-											: "bg-gray-200 text-gray-500"
-								}`}
-							>
-								{sourceCreated ? <CheckCircle size={14} /> : "1"}
+						<div className="flex flex-col items-start">
+							<div className="flex items-center">
+								<div
+									className={`rounded-full border ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+								></div>
+								<div
+									className={`h-[1px] w-16 ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
+								></div>
 							</div>
-							<span className="mt-1 text-xs">Source</span>
+							<span
+								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+							>
+								Source
+							</span>
 						</div>
-						<div
-							className={`h-1 w-8 ${
-								sourceCreated ? "bg-blue-600" : "bg-gray-200"
-							}`}
-						></div>
 
-						<div
-							className={`flex flex-col items-center ${
-								currentStep === "destination"
-									? "text-blue-600"
-									: destinationCreated
-										? "text-blue-400"
-										: "text-gray-400"
-							}`}
-						>
-							<div
-								className={`flex h-6 w-6 items-center justify-center rounded-full ${
-									currentStep === "destination"
-										? "bg-blue-600 text-white"
-										: destinationCreated
-											? "bg-blue-100 text-blue-600"
-											: "bg-gray-200 text-gray-500"
-								}`}
-							>
-								{destinationCreated ? <CheckCircle size={14} /> : "2"}
+						<div className="flex flex-col items-start">
+							<div className="flex items-center">
+								<div
+									className={`rounded-full border ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+								></div>
+								<div
+									className={`h-[1px] w-16 ${currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
+								></div>
 							</div>
-							<span className="mt-1 text-xs">Destination</span>
+							<span
+								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+							>
+								Destination
+							</span>
 						</div>
-						<div
-							className={`h-1 w-8 ${
-								destinationCreated ? "bg-blue-600" : "bg-gray-200"
-							}`}
-						></div>
 
-						<div
-							className={`flex flex-col items-center ${
-								currentStep === "schema"
-									? "text-blue-600"
-									: schemaConfigured
-										? "text-blue-400"
-										: "text-gray-400"
-							}`}
-						>
-							<div
-								className={`flex h-6 w-6 items-center justify-center rounded-full ${
-									currentStep === "schema"
-										? "bg-blue-600 text-white"
-										: schemaConfigured
-											? "bg-blue-100 text-blue-600"
-											: "bg-gray-200 text-gray-500"
-								}`}
-							>
-								{schemaConfigured ? <CheckCircle size={14} /> : "3"}
+						<div className="flex flex-col items-start">
+							<div className="flex items-center">
+								<div
+									className={`rounded-full border ${currentStep === "schema" || currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+								></div>
+								<div
+									className={`h-[1px] w-16 ${currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
+								></div>
 							</div>
-							<span className="mt-1 text-xs">Schema</span>
+							<span
+								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+							>
+								Schema
+							</span>
 						</div>
-						<div
-							className={`h-1 w-8 ${
-								schemaConfigured ? "bg-blue-600" : "bg-gray-200"
-							}`}
-						></div>
 
-						<div
-							className={`flex flex-col items-center ${
-								currentStep === "config" ? "text-blue-600" : "text-gray-400"
-							}`}
-						>
-							<div
-								className={`flex h-6 w-6 items-center justify-center rounded-full ${
-									currentStep === "config"
-										? "bg-blue-600 text-white"
-										: "bg-gray-200 text-gray-500"
-								}`}
-							>
-								4
+						<div className="flex flex-col items-start">
+							<div className="flex items-center">
+								<div
+									className={`rounded-full border ${currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+								></div>
 							</div>
-							<span className="mt-1 text-xs">Job Config</span>
+							<span
+								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+							>
+								Job Config
+							</span>
 						</div>
 					</div>
 				</div>
-
-				<div className="mb-4 flex items-center">
-					<h1 className="text-2xl font-bold">
-						{currentStep === "source" && (
-							<>
-								<span className="block text-sm text-blue-600">Step 1</span>
-								Set up your source
-							</>
-						)}
-						{currentStep === "destination" && (
-							<>
-								<span className="block text-sm text-blue-600">Step 2</span>
-								Set up your destination
-							</>
-						)}
-						{currentStep === "schema" && (
-							<>
-								<span className="block text-sm text-blue-600">Step 3</span>
-								Streams selection
-							</>
-						)}
-						{currentStep === "config" && (
-							<>
-								<span className="block text-sm text-blue-600">Step 4</span>
-								Job configuration
-							</>
-						)}
-					</h1>
-				</div>
 			</div>
+
+			<Divider />
 
 			{/* Main content */}
 			<div className="flex flex-1 overflow-hidden">
@@ -298,7 +217,7 @@ const JobCreation: React.FC = () => {
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&
 						!docsMinimized
-							? "w-3/4"
+							? "w-2/3"
 							: "w-full"
 					} overflow-auto p-6 pt-0 transition-all duration-300`}
 				>
@@ -306,8 +225,9 @@ const JobCreation: React.FC = () => {
 						<div className="w-full">
 							<CreateSource
 								fromJobFlow={true}
+								stepNumber={1}
+								stepTitle="Set up your source"
 								onComplete={() => {
-									setSourceCreated(true)
 									setCurrentStep("destination")
 								}}
 							/>
@@ -318,8 +238,9 @@ const JobCreation: React.FC = () => {
 						<div className="w-full">
 							<CreateDestination
 								fromJobFlow={true}
+								stepNumber={2}
+								stepTitle="Set up your destination"
 								onComplete={() => {
-									setDestinationCreated(true)
 									setCurrentStep("schema")
 								}}
 							/>
@@ -758,51 +679,32 @@ const JobCreation: React.FC = () => {
 				</div>
 
 				{/* Documentation panel */}
-				{(currentStep === "schema" || currentStep === "config") &&
-					!docsMinimized && (
-						<div className="h-[calc(100vh-120px)] w-1/4 overflow-hidden border-l border-gray-200 bg-white">
-							<div className="flex items-center justify-between border-b border-gray-200 p-4">
-								<div className="flex items-center">
-									<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
-										<span className="font-bold">M</span>
-									</div>
-									<span className="text-lg font-bold">MongoDB</span>
+				{(currentStep === "schema" || currentStep === "config") && (
+					<div
+						className={`${docsMinimized ? "hidden" : "w-1/3"} border-l border-gray-200 bg-white`}
+					>
+						<div className="flex items-center justify-between border-b border-gray-200 p-4">
+							<div className="flex items-center">
+								<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
+									<span className="font-bold">M</span>
 								</div>
-								<Button
-									type="text"
-									icon={<CornersIn size={16} />}
-									onClick={toggleDocsPanel}
-									className="hover:bg-gray-100"
-								/>
+								<span className="text-lg font-bold">MongoDB</span>
 							</div>
-
-							<iframe
-								src="https://olake.io/docs/category/mongodb"
-								className="h-[calc(100%-64px)] w-full"
-								title="Documentation"
+							<Button
+								type="text"
+								onClick={toggleDocsPanel}
+								className="hover:bg-gray-100"
+								icon={<CornersIn size={16} />}
 							/>
 						</div>
-					)}
 
-				{/* Minimized docs panel button */}
-				{(currentStep === "schema" || currentStep === "config") &&
-					docsMinimized && (
-						<div className="fixed bottom-6 right-6">
-							<Button
-								type="primary"
-								className="flex items-center bg-blue-600"
-								onClick={toggleDocsPanel}
-								icon={
-									<CornersOut
-										size={16}
-										className="mr-2"
-									/>
-								}
-							>
-								Show Documentation
-							</Button>
-						</div>
-					)}
+						<iframe
+							src="https://olake.io/docs/category/mongodb"
+							className="h-[calc(100%-64px)] w-full"
+							title="Documentation"
+						/>
+					</div>
+				)}
 			</div>
 
 			{/* Footer */}
@@ -814,7 +716,13 @@ const JobCreation: React.FC = () => {
 					>
 						Cancel
 					</Button>
-					<Button onClick={handleSaveJob}>Save Job</Button>
+					<Button
+						onClick={handleSaveJob}
+						className="flex items-center justify-center"
+					>
+						<DownloadSimple className="size-4" />
+						Save Job
+					</Button>
 				</div>
 				<div>
 					{currentStep !== "source" && (
@@ -827,7 +735,7 @@ const JobCreation: React.FC = () => {
 					)}
 					<Button
 						type="primary"
-						className="bg-blue-600"
+						className="bg-[#203FDD]"
 						onClick={handleNext}
 					>
 						{currentStep === "config" ? "Create Job →" : "Next →"}

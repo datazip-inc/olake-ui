@@ -3,15 +3,19 @@ import { useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select, Switch, message, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft } from "@phosphor-icons/react"
-import DestinationSuccess from "../../../assets/DestinationSuccess.png"
+import DestinationSuccess from "../../../assets/DestinationSuccess.svg"
 interface CreateSourceProps {
 	fromJobFlow?: boolean
 	onComplete?: () => void
+	stepNumber?: number
+	stepTitle?: string
 }
 
 const CreateSource: React.FC<CreateSourceProps> = ({
 	fromJobFlow,
 	onComplete,
+	stepNumber,
+	stepTitle,
 }) => {
 	const navigate = useNavigate()
 	const [setupType, setSetupType] = useState("new")
@@ -148,29 +152,33 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 
 	return (
 		<div className="flex h-screen flex-col">
-			<div className="border-b border-gray-200 p-6 pb-0">
-				<Link
-					to={fromJobFlow ? "/jobs/new" : "/sources"}
-					className="mb-4 flex items-center text-blue-600"
-				>
-					<ArrowLeft
-						size={16}
-						className="mr-1"
-					/>{" "}
-					{fromJobFlow ? "Back to Job Creation" : "Create source"}
-				</Link>
-			</div>
+			{!fromJobFlow && (
+				<div className="border-b border-gray-200 p-6 pb-0">
+					<Link
+						to={"/sources"}
+						className="mb-4 flex items-center text-blue-600"
+					>
+						<ArrowLeft
+							size={16}
+							className="mr-1"
+						/>{" "}
+						Create source
+					</Link>
+				</div>
+			)}
 
 			<div className="flex flex-1 overflow-hidden">
-				<div className="w-3/4 overflow-auto p-6 pt-0">
-					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-						<div className="mb-4 flex items-center">
-							<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
-								<span className="text-xs">📋</span>
+				<div className="w-full overflow-auto p-6 pt-0">
+					{stepNumber && stepTitle && (
+						<div className="mb-4 flex flex-col gap-2">
+							<div className="flex items-center gap-2 text-sm text-blue-600">
+								<div className="size-2 rounded-full border border-blue-600 outline outline-2 outline-blue-600"></div>
+								<span className="text-[#8A8A8A]"> Step {stepNumber}</span>
 							</div>
-							<h3 className="text-lg font-medium">Capture information</h3>
+							<h1 className="text-xl font-medium">{stepTitle}</h1>
 						</div>
-
+					)}
+					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-6">
 							<div className="mb-4 flex">
 								<Radio.Group
@@ -268,7 +276,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 						</div>
 					</div>
 
-					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-4 flex items-center">
 							<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
 								<span className="text-xs">🔌</span>
@@ -353,7 +361,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 						</div>
 					</div>
 
-					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
+					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div
 							className="flex cursor-pointer items-center justify-between"
 							onClick={toggleAdvancedConfig}

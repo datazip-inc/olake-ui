@@ -3,16 +3,20 @@ import { useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select, message, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft } from "@phosphor-icons/react"
-import DestinationSuccess from "../../../assets/DestinationSuccess.png"
+import DestinationSuccess from "../../../assets/DestinationSuccess.svg"
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
 	onComplete?: () => void
+	stepNumber?: number
+	stepTitle?: string
 }
 
 const CreateDestination: React.FC<CreateDestinationProps> = ({
 	fromJobFlow,
 	onComplete,
+	stepNumber,
+	stepTitle,
 }) => {
 	const navigate = useNavigate()
 	const [setupType, setSetupType] = useState("new")
@@ -143,7 +147,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				setAuthType("keys")
 				setAwsAccessKeyId("mock-snowflake-account")
 				setAwsSecretKey("mock-snowflake-password")
-				setRegion("us-west-2")
 			} else if (selectedDestination.type === "BigQuery") {
 				setAuthType("keys")
 				setAwsAccessKeyId("mock-bigquery-project")
@@ -159,31 +162,35 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	return (
 		<div className="flex h-screen flex-col">
 			{/* Header */}
-			<div className="border-b border-gray-200 p-6 pb-0">
-				<Link
-					to={fromJobFlow ? "/jobs/new" : "/destinations"}
-					className="mb-4 flex items-center text-blue-600"
-				>
-					<ArrowLeft
-						size={16}
-						className="mr-1"
-					/>{" "}
-					{fromJobFlow ? "Back to Job Creation" : "Create destination"}
-				</Link>
-			</div>
+			{!fromJobFlow && (
+				<div className="border-b border-gray-200 p-6 pb-0">
+					<Link
+						to={"/destinations"}
+						className="mb-4 flex items-center text-blue-600"
+					>
+						<ArrowLeft
+							size={16}
+							className="mr-1"
+						/>{" "}
+						Create destination
+					</Link>
+				</div>
+			)}
 
 			{/* Main content */}
 			<div className="flex flex-1 overflow-hidden">
 				{/* Left content */}
-				<div className="w-3/4 overflow-auto p-6 pt-0">
-					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-						<div className="mb-4 flex items-center">
-							<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
-								<span className="text-xs">📋</span>
+				<div className="w-full overflow-auto p-6 pt-0">
+					{stepNumber && stepTitle && (
+						<div className="mb-4 flex flex-col gap-2">
+							<div className="flex items-center gap-2 text-sm text-blue-600">
+								<div className="size-2 rounded-full border border-blue-600 outline outline-2 outline-blue-600"></div>
+								<span className="text-[#8A8A8A]">Step {stepNumber}</span>
 							</div>
-							<h3 className="text-lg font-medium">Capture information</h3>
+							<h1 className="text-xl font-medium">{stepTitle}</h1>
 						</div>
-
+					)}
+					<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
 						<div className="mb-6">
 							<div className="mb-4 flex">
 								<Radio.Group
