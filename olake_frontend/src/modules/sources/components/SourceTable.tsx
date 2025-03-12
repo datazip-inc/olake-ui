@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
 import { Source } from "../../../types"
-import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
+import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 
 interface SourceTableProps {
 	sources: Source[]
@@ -22,7 +22,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 
 	const columns = [
 		{
-			title: "Actions",
+			title: () => <span className="font-medium">Actions</span>,
 			key: "actions",
 			width: 80,
 
@@ -32,13 +32,13 @@ const SourceTable: React.FC<SourceTableProps> = ({
 						items: [
 							{
 								key: "edit",
-								icon: <PencilSimpleLine />,
+								icon: <PencilSimpleLine className="size-4" />,
 								label: "Edit",
 								onClick: () => onEdit(record.id),
 							},
 							{
 								key: "delete",
-								icon: <TrashSimple />,
+								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
 								onClick: () => onDelete(record.id),
@@ -46,6 +46,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 						],
 					}}
 					trigger={["click"]}
+					overlayStyle={{ minWidth: "170px" }}
 				>
 					<Button
 						type="text"
@@ -55,7 +56,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			),
 		},
 		{
-			title: "Name",
+			title: () => <span className="font-medium">Name</span>,
 			dataIndex: "name",
 			key: "name",
 			render: (text: string) => (
@@ -68,7 +69,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			),
 		},
 		{
-			title: "Connectors",
+			title: () => <span className="font-medium">Connectors</span>,
 			dataIndex: "type",
 			key: "type",
 			render: (text: string) => (
@@ -81,7 +82,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			),
 		},
 		{
-			title: "Associated jobs",
+			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "associatedJobs",
 			render: () => (
 				<div>
@@ -114,7 +115,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				<Search
 					placeholder="Search Sources"
 					allowClear
-					className="w-72"
+					className="w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>
@@ -128,10 +129,8 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				pagination={{
 					pageSize: 10,
 					showSizeChanger: false,
-					showTotal: (total, range) =>
-						`${range[0]}-${range[1]} of ${total} items`,
 				}}
-				className="overflow-hidden rounded-lg border"
+				className="overflow-hidden rounded-lg"
 			/>
 		</div>
 	)

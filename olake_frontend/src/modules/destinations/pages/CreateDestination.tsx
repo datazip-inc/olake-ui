@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, message, Modal } from "antd"
+import { Input, Button, Radio, Select } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
-import DestinationSuccess from "../../../assets/DestinationSuccess.svg"
+import { ArrowLeft, GenderNeuter, Notebook } from "@phosphor-icons/react"
+import TestConnectionModal from "../../common/components/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
+import EntitySavedModal from "../../common/components/EntitySavedModal"
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
@@ -29,13 +31,15 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	const [s3BucketPath, setS3BucketPath] = useState("")
 	const [region, setRegion] = useState("")
 	const [destinationName, setDestinationName] = useState("")
-	const [showTestingModal, setShowTestingModal] = useState(false)
-	const [showSuccessModal, setShowSuccessModal] = useState(false)
-	const [showDestinationSavedModal, setShowDestinationSavedModal] =
-		useState(false)
 	const [filteredDestinations, setFilteredDestinations] = useState<any[]>([])
 
-	const { destinations, fetchDestinations, addDestination } = useAppStore()
+	const {
+		destinations,
+		fetchDestinations,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowEntitySavedModal,
+	} = useAppStore()
 
 	useEffect(() => {
 		if (!destinations.length) {
@@ -60,49 +64,17 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	}
 
 	const handleCreate = () => {
-		setShowTestingModal(true)
-
 		setTimeout(() => {
-			setShowTestingModal(false)
-			setShowSuccessModal(true)
-
+			setShowTestingModal(true)
 			setTimeout(() => {
-				setShowSuccessModal(false)
-				setShowDestinationSavedModal(true)
-
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
 				setTimeout(() => {
-					const destinationData = {
-						name:
-							destinationName ||
-							`${connector}_destination_${Math.floor(Math.random() * 1000)}`,
-						type: connector,
-						status: "active" as const,
-					}
-
-					addDestination(destinationData)
-						.then(() => {
-							setShowDestinationSavedModal(false)
-							if (fromJobFlow) {
-								if (onComplete) {
-									onComplete()
-								} else {
-									navigate("/jobs/new")
-								}
-							} else {
-								navigate("/destinations")
-							}
-						})
-						.catch(error => {
-							message.error("Failed to create destination")
-							console.error(error)
-						})
+					setShowSuccessModal(false)
+					setShowEntitySavedModal(true)
 				}, 2000)
 			}, 2000)
 		}, 2000)
-	}
-
-	const handleCreateJob = () => {
-		navigate("/jobs/new")
 	}
 
 	const handleConnectorChange = (value: string) => {
@@ -163,17 +135,14 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		<div className="flex h-screen flex-col">
 			{/* Header */}
 			{!fromJobFlow && (
-				<div className="border-b border-gray-200 p-6 pb-0">
+				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link
 						to={"/destinations"}
-						className="mb-4 flex items-center text-blue-600"
+						className="flex items-center text-lg font-bold"
 					>
-						<ArrowLeft
-							size={16}
-							className="mr-1"
-						/>{" "}
-						Create destination
+						<ArrowLeft className="mr-1 size-6 font-bold" />
 					</Link>
+					<div className="text-xl font-bold">Create destination</div>
 				</div>
 			)}
 
@@ -190,8 +159,12 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							<h1 className="text-xl font-medium">{stepTitle}</h1>
 						</div>
 					)}
-					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-						<div className="mb-6">
+					<div className="mb-6 mt-6 rounded-xl border border-gray-200 bg-white p-6">
+						<div>
+							<div className="mb-4 flex items-center gap-1 text-base font-medium">
+								<Notebook className="size-5" />
+								Capture information
+							</div>
 							<div className="mb-4 flex">
 								<Radio.Group
 									value={setupType}
@@ -296,10 +269,10 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 
 					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-4 flex items-center">
-							<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
-								<span className="text-xs">🔌</span>
+							<div className="mb-2 flex items-center gap-1">
+								<GenderNeuter className="size-5" />
+								<div className="text-base font-medium">Endpoint config</div>
 							</div>
-							<h3 className="text-lg font-medium">Endpoint config</h3>
 						</div>
 
 						<div className="mb-6">
@@ -437,108 +410,29 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			{/* Footer */}
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<Button
-					danger
 					onClick={handleCancel}
+					className="border border-[#F5222D] text-[#F5222D]"
 				>
 					Cancel
 				</Button>
 				<Button
 					type="primary"
-					className="bg-blue-600"
+					className="font-thin"
 					onClick={handleCreate}
 				>
 					Create →
 				</Button>
 			</div>
 
-			{/* Modals */}
-			<Modal
-				open={showTestingModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center py-8">
-					<div className="mb-4 flex items-center justify-center">
-						<div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-600">
-							<div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-						</div>
-					</div>
-					<p className="mb-2 text-gray-500">Please wait...</p>
-					<h2 className="text-xl font-semibold">Testing your connection</h2>
-				</div>
-			</Modal>
+			<TestConnectionModal />
 
-			<Modal
-				open={showSuccessModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center py-8">
-					<img
-						src={DestinationSuccess}
-						className="h-12 w-12"
-					/>
-					<p className="mb-2 font-medium text-green-500">Successful</p>
-					<h2 className="mb-2 text-xl font-semibold">
-						Your test connection is successful
-					</h2>
-				</div>
-			</Modal>
+			<TestConnectionSuccessModal />
 
-			<Modal
-				open={showDestinationSavedModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center py-8">
-					<div className="mb-4">
-						<div className="h-8 w-8 text-center">✨</div>
-					</div>
-					<h2 className="mb-4 text-xl font-semibold">
-						Destination is connected and saved successfully
-					</h2>
-					<div className="mb-4 flex w-full items-center rounded-lg bg-gray-100 px-4 py-2">
-						<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">
-							<span>D</span>
-						</div>
-						<span>{destinationName || "<Destination-Name>"}</span>
-						<span className="ml-auto text-green-500">Success</span>
-					</div>
-					<div className="flex space-x-4">
-						<Button
-							onClick={() => {
-								setShowDestinationSavedModal(false)
-								if (fromJobFlow) {
-									if (onComplete) {
-										onComplete()
-									} else {
-										navigate("/jobs/new")
-									}
-								} else {
-									navigate("/destinations")
-								}
-							}}
-						>
-							{fromJobFlow ? "Continue" : "Destinations"}
-						</Button>
-						{!fromJobFlow && (
-							<Button
-								type="primary"
-								className="bg-blue-600"
-								onClick={handleCreateJob}
-							>
-								Create a job →
-							</Button>
-						)}
-					</div>
-				</div>
-			</Modal>
+			<EntitySavedModal
+				type="destination"
+				onComplete={onComplete}
+				fromJobFlow={fromJobFlow || false}
+			/>
 		</div>
 	)
 }

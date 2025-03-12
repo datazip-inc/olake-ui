@@ -1,4 +1,9 @@
-# Olake Frontend UI  with React + TypeScript + Ant Design Tailwind + Vite 🌈
+# Olake Frontend UI with React + TypeScript + Ant Design Tailwind + Vite 🌈
+
+## Design 🎨
+
+Check out our design on Figma:
+[Olake Design System](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake%2FDesign%2FCommunity?node-id=0-1&p=f&t=oOQMWCyXF6rzMzT1-0)
 
 ## Requirements ✅
 
@@ -21,7 +26,6 @@ pnpm dev
 ```
 
 ### To format the code 🎭
-
 
 ```bash
 pnpm format
@@ -56,14 +60,14 @@ pnpx npkill
 │
 ├── src
 │   ├── assets // Contains all assets used in App
-│   ├── api  // AXIOS setup and mockdata 
+│   ├── api  // AXIOS setup and mockdata
 |       ├── services // API services for Jobs , Sources , Destinations
 │   ├── modules  // Contains all modules of App
 │   │   ├── common // Common components
 │   │   └── destinations // All destinations related  components
 |   |   ├── sources // All sources related components
-|   |   ├── jobs  // All jobs related components 
-|	|	
+|   |   ├── jobs  // All jobs related components
+|	|
 │   │
 │   ├── store  // Contains all state management files
 │   │
@@ -71,7 +75,7 @@ pnpx npkill
 │   │
 │   ├── main.tsx // Root File of App which has all providers
 │   │
-│   └── App.tsx // App 
+│   └── App.tsx // App
 │
 ├── index.html // index file of React App
 │

@@ -29,6 +29,11 @@ interface AppState {
 	selectedJobId: string | null
 	selectedHistoryId: string | null
 
+	//Modals
+	showTestingModal: boolean
+	showSuccessModal: boolean
+	showEntitySavedModal: boolean
+
 	// Actions - Jobs
 	fetchJobs: () => Promise<void>
 	addJob: (job: Omit<Job, "id" | "createdAt">) => Promise<Job>
@@ -60,6 +65,10 @@ interface AppState {
 		destination: Partial<Destination>,
 	) => Promise<Destination>
 	deleteDestination: (id: string) => Promise<void>
+
+	setShowTestingModal: (show: boolean) => void
+	setShowSuccessModal: (show: boolean) => void
+	setShowEntitySavedModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -87,6 +96,11 @@ export const useAppStore = create<AppState>(set => ({
 	// Selected job
 	selectedJobId: null,
 	selectedHistoryId: null,
+
+	// Modals
+	showTestingModal: false,
+	showSuccessModal: false,
+	showEntitySavedModal: false,
 
 	// Jobs actions
 	fetchJobs: async () => {
@@ -450,4 +464,8 @@ export const useAppStore = create<AppState>(set => ({
 			throw error
 		}
 	},
+
+	setShowTestingModal: show => set({ showTestingModal: show }),
+	setShowSuccessModal: show => set({ showSuccessModal: show }),
+	setShowEntitySavedModal: show => set({ showEntitySavedModal: show }),
 }))

@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, Switch, message, Modal } from "antd"
+import { Input, Button, Radio, Select, Switch } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
-import DestinationSuccess from "../../../assets/DestinationSuccess.svg"
+import {
+	ArrowLeft,
+	Control,
+	GearFine,
+	GenderNeuter,
+	Notebook,
+} from "@phosphor-icons/react"
+import TestConnectionModal from "../../common/components/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
+import EntitySavedModal from "../../common/components/EntitySavedModal"
 interface CreateSourceProps {
 	fromJobFlow?: boolean
 	onComplete?: () => void
@@ -24,14 +32,13 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	const [connectionUri, setConnectionUri] = useState("")
 	const [sourceName, setSourceName] = useState("")
 	const [srvEnabled, setSrvEnabled] = useState(false)
+	const { setShowEntitySavedModal, setShowTestingModal, setShowSuccessModal } =
+		useAppStore()
 	const [showAdvanced, setShowAdvanced] = useState(false)
-	const [showTestingModal, setShowTestingModal] = useState(false)
-	const [showSuccessModal, setShowSuccessModal] = useState(false)
-	const [showSourceSavedModal, setShowSourceSavedModal] = useState(false)
 
 	const [filteredSources, setFilteredSources] = useState<any[]>([])
 
-	const { sources, fetchSources, addSource } = useAppStore()
+	const { sources, fetchSources } = useAppStore()
 
 	useEffect(() => {
 		if (!sources.length) {
@@ -54,42 +61,14 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	}
 
 	const handleCreate = () => {
-		setShowTestingModal(true)
-
 		setTimeout(() => {
-			setShowTestingModal(false)
-			setShowSuccessModal(true)
-
+			setShowTestingModal(true)
 			setTimeout(() => {
-				setShowSuccessModal(false)
-				setShowSourceSavedModal(true)
-
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
 				setTimeout(() => {
-					const sourceData = {
-						name:
-							sourceName ||
-							`${connector}_source_${Math.floor(Math.random() * 1000)}`,
-						type: connector,
-						status: "active" as const,
-					}
-
-					addSource(sourceData)
-						.then(() => {
-							setShowSourceSavedModal(false)
-							if (fromJobFlow) {
-								if (onComplete) {
-									onComplete()
-								} else {
-									navigate("/jobs/new")
-								}
-							} else {
-								navigate("/sources")
-							}
-						})
-						.catch(error => {
-							message.error("Failed to create source")
-							console.error(error)
-						})
+					setShowSuccessModal(false)
+					setShowEntitySavedModal(true)
 				}, 2000)
 			}, 2000)
 		}, 2000)
@@ -153,17 +132,14 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	return (
 		<div className="flex h-screen flex-col">
 			{!fromJobFlow && (
-				<div className="border-b border-gray-200 p-6 pb-0">
+				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link
 						to={"/sources"}
-						className="mb-4 flex items-center text-blue-600"
+						className="flex items-center text-lg font-bold"
 					>
-						<ArrowLeft
-							size={16}
-							className="mr-1"
-						/>{" "}
-						Create source
+						<ArrowLeft className="mr-1 size-6 font-bold" />
 					</Link>
+					<div className="text-lg font-bold">Create source</div>
 				</div>
 			)}
 
@@ -180,6 +156,11 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 					)}
 					<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-6">
+							<div className="mb-4 flex items-center gap-1 text-base font-medium">
+								<Notebook className="size-5" />
+								Capture information
+							</div>
+
 							<div className="mb-4 flex">
 								<Radio.Group
 									value={setupType}
@@ -278,10 +259,10 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 
 					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-4 flex items-center">
-							<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
-								<span className="text-xs">🔌</span>
+							<div className="mb-2 flex items-center gap-1">
+								<GenderNeuter className="size-5" />
+								<div className="text-base font-medium">Endpoint config</div>
 							</div>
-							<h3 className="text-lg font-medium">Endpoint config</h3>
 						</div>
 
 						<div className="mb-6">
@@ -361,23 +342,23 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 						</div>
 					</div>
 
-					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
+					<div className="mb-6 select-none rounded-xl border border-gray-200 bg-white p-6">
 						<div
 							className="flex cursor-pointer items-center justify-between"
 							onClick={toggleAdvancedConfig}
 						>
 							<div className="flex items-center">
-								<div className="mr-2 flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-gray-600">
-									<span className="text-xs">⚙️</span>
+								<div className="flex items-center gap-1">
+									<GearFine className="size-5" />
+									<div className="font-medium">Advanced configurations</div>
 								</div>
-								<h3 className="text-lg font-medium">Advanced configurations</h3>
 							</div>
 							<span
 								className={`transform transition-transform ${
 									showAdvanced ? "rotate-180" : ""
 								}`}
 							>
-								▼
+								<Control className="size-5" />
 							</span>
 						</div>
 
@@ -683,96 +664,15 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				</div>
 			)}
 
-			<Modal
-				open={showTestingModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center py-8">
-					<div className="mb-4 flex items-center justify-center">
-						<div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-600">
-							<div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
-						</div>
-					</div>
-					<p className="mb-2 text-gray-500">Please wait...</p>
-					<h2 className="font-semibol d text-xl">Testing your connection</h2>
-				</div>
-			</Modal>
+			<TestConnectionModal />
 
-			<Modal
-				open={showSuccessModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center py-8">
-					<img
-						src={DestinationSuccess}
-						className="h-12 w-12"
-					/>{" "}
-					<p className="mb-2 font-medium text-green-500">Successful</p>
-					<h2 className="mb-2 text-xl font-semibold">
-						Your test connection is successful
-					</h2>
-				</div>
-			</Modal>
+			<TestConnectionSuccessModal />
 
-			<Modal
-				open={showSourceSavedModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center py-8">
-					<div className="mb-4">
-						<div className="h-8 w-8 text-center">✨</div>
-					</div>
-					<h2 className="mb-4 text-xl font-semibold">
-						Source is connected and saved successfully
-					</h2>
-					<div className="mb-4 flex w-full items-center rounded-lg bg-gray-100 px-4 py-2">
-						<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">
-							<span>S</span>
-						</div>
-						<span>&lt;Source-Name&gt;</span>
-						<span className="ml-auto text-green-500">Success</span>
-					</div>
-					<div className="flex space-x-4">
-						<Button
-							onClick={() => {
-								setShowSourceSavedModal(false)
-								if (fromJobFlow) {
-									if (onComplete) {
-										onComplete()
-									} else {
-										navigate("/jobs/new")
-									}
-								} else {
-									navigate("/sources")
-								}
-							}}
-						>
-							{fromJobFlow ? "Back to Job Creation" : "Sources"}
-						</Button>
-						{!fromJobFlow && (
-							<Button
-								type="primary"
-								className="bg-blue-600"
-								onClick={() => {
-									setShowSourceSavedModal(false)
-									navigate("/jobs/new")
-								}}
-							>
-								Create a job →
-							</Button>
-						)}
-					</div>
-				</div>
-			</Modal>
+			<EntitySavedModal
+				type="source"
+				onComplete={onComplete}
+				fromJobFlow={fromJobFlow || false}
+			/>
 		</div>
 	)
 }

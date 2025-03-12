@@ -92,7 +92,6 @@ const Jobs: React.FC = () => {
 				</div>
 				<Button
 					type="primary"
-					className="bg-[#203FDD]"
 					icon={<Plus size={16} />}
 					onClick={handleCreateJob}
 				>

@@ -735,7 +735,6 @@ const JobCreation: React.FC = () => {
 					)}
 					<Button
 						type="primary"
-						className="bg-[#203FDD]"
 						onClick={handleNext}
 					>
 						{currentStep === "config" ? "Create Job →" : "Next →"}

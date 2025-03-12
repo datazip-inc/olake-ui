@@ -75,7 +75,7 @@ const Sources: React.FC = () => {
 				</div>
 				<Button
 					type="primary"
-					className="bg-[#203fDD]"
+					className="py-4"
 					icon={<Plus size={16} />}
 					onClick={handleCreateSource}
 				>

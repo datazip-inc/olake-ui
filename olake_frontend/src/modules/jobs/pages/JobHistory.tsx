@@ -179,7 +179,7 @@ const JobHistory: React.FC = () => {
 			<div className="mt-6 flex justify-end">
 				<Button
 					type="primary"
-					className="bg-[#203FDD] font-extralight text-white"
+					className="font-extralight text-white"
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
 					View job configurations

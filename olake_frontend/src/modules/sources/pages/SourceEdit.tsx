@@ -1,9 +1,18 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, Switch, message } from "antd"
-import { CornersIn, CornersOut } from "@phosphor-icons/react"
+import { Input, Button, Radio, Select, Switch, message, Table } from "antd"
+import {
+	Check,
+	CornersIn,
+	CornersOut,
+	GearFine,
+	GenderNeuter,
+	Notebook,
+} from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, CaretDown } from "@phosphor-icons/react"
+import type { ColumnsType } from "antd/es/table"
+import { SourceJob } from "../../../types"
 
 const SourceEdit: React.FC = () => {
 	const { sourceId } = useParams<{ sourceId: string }>()
@@ -129,19 +138,80 @@ const SourceEdit: React.FC = () => {
 		setDocsMinimized(!docsMinimized)
 	}
 
+	const columns: ColumnsType<SourceJob> = [
+		{
+			title: "Name",
+			dataIndex: "name",
+			key: "name",
+		},
+		{
+			title: "State",
+			dataIndex: "state",
+			key: "state",
+			render: (state: string) => (
+				<span
+					className={`rounded px-2 py-1 text-xs ${
+						state === "Inactive"
+							? "bg-[#FFF1F0] text-[#F5222D]"
+							: "bg-[#E6F4FF] text-[#0958D9]"
+					}`}
+				>
+					{state}
+				</span>
+			),
+		},
+		{
+			title: "Last runtime",
+			dataIndex: "lastRuntime",
+			key: "lastRuntime",
+		},
+		{
+			title: "Last runtime status",
+			dataIndex: "lastRuntimeStatus",
+			key: "lastRuntimeStatus",
+			render: (status: string) => (
+				<button className="flex items-center gap-2 rounded bg-[#F6FFED] px-2 text-[#389E0D]">
+					<Check className="size-4" />
+					{status}
+				</button>
+			),
+		},
+		{
+			title: "Destination",
+			dataIndex: "destination",
+			key: "destination",
+			render: (destination: string) => (
+				<div className="flex items-center">
+					<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
+						<span>D</span>
+					</div>
+					{destination}
+				</div>
+			),
+		},
+		{
+			title: "Pause job",
+			dataIndex: "id",
+			key: "pause",
+			render: (_: string, record: SourceJob) => (
+				<Switch
+					checked={record.paused}
+					onChange={checked => handlePauseJob(record.id, checked)}
+					className={record.paused ? "bg-blue-600" : "bg-gray-200"}
+				/>
+			),
+		},
+	]
+
 	return (
 		<div className="flex h-screen flex-col">
 			{/* Header */}
-			<div className="p-6 pb-0">
+			<div className="flex gap-2 px-6 pb-0 pt-6">
 				<Link
 					to="/sources"
-					className="mb-4 flex items-center text-blue-600"
+					className="mb-4 flex items-center"
 				>
-					<ArrowLeft
-						size={16}
-						className="mr-1"
-					/>{" "}
-					Back to Sources
+					<ArrowLeft className="size-5" />
 				</Link>
 
 				<div className="mb-4 flex items-center">
@@ -150,29 +220,24 @@ const SourceEdit: React.FC = () => {
 							? "Create New Source"
 							: sourceName || "MongoDB_Source_1"}
 					</h1>
-					{!isNewSource && (
-						<span className="ml-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600">
-							Active
-						</span>
-					)}
 				</div>
 			</div>
 
 			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden">
+			<div className="mt-2 flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
 				{/* Left content */}
 				<div
 					className={`${
 						docsMinimized ? "w-full" : "w-3/4"
-					} overflow-auto p-6 pt-0 transition-all duration-300`}
+					} overflow-auto p-6 pt-4 transition-all duration-300`}
 				>
 					<div className="mb-4">
-						<div className="flex border-b border-gray-200">
+						<div className="flex">
 							<button
-								className={`px-4 py-3 text-sm font-medium ${
+								className={`w-56 rounded-xl px-3 py-1.5 text-sm font-normal ${
 									activeTab === "config"
-										? "mr-1 w-48 rounded-lg bg-[#203fdd] text-center text-white"
-										: "mr-1 w-48 bg-gray-200 text-center"
+										? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+										: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 								}`}
 								onClick={() => setActiveTab("config")}
 							>
@@ -180,10 +245,10 @@ const SourceEdit: React.FC = () => {
 							</button>
 							{!isNewSource && (
 								<button
-									className={`px-4 py-3 text-sm font-medium ${
+									className={`w-56 rounded-xl px-3 py-1.5 text-sm font-normal ${
 										activeTab === "jobs"
-											? "mr-1 w-48 rounded-lg bg-[#203fdd] text-center text-white"
-											: "mr-1 w-48 bg-gray-200 text-center"
+											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 									}`}
 									onClick={() => setActiveTab("jobs")}
 								>
@@ -194,11 +259,12 @@ const SourceEdit: React.FC = () => {
 					</div>
 
 					{activeTab === "config" ? (
-						<div className="rounded-lg border border-gray-200 bg-white p-6">
-							<div className="mb-6">
-								<h3 className="mb-4 text-lg font-medium">
+						<div className="bg-white p-6">
+							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
+								<div className="mb-4 flex items-center gap-1 text-lg font-medium">
+									<Notebook className="size-5" />
 									Capture information
-								</h3>
+								</div>
 
 								<div className="grid grid-cols-2 gap-6">
 									<div>
@@ -236,8 +302,11 @@ const SourceEdit: React.FC = () => {
 								</div>
 							</div>
 
-							<div className="mb-6">
-								<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
+							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
+								<div className="mb-2 flex items-center gap-1">
+									<GenderNeuter className="size-6" />
+									<div className="text-lg font-medium">Endpoint config</div>
+								</div>
 								<div className="mb-4 flex">
 									<Radio.Group
 										value={connectionType}
@@ -261,17 +330,21 @@ const SourceEdit: React.FC = () => {
 									<Input
 										placeholder="Enter your connection URI"
 										value={connectionUri}
+										className="w-2/5"
 										onChange={e => setConnectionUri(e.target.value)}
 									/>
 								</div>
 							</div>
 
-							<div className="mb-6 rounded-lg border border-gray-200">
+							<div className="mb-6 rounded-xl border border-[#D9D9D9]">
 								<div
 									className="flex cursor-pointer items-center justify-between p-4"
 									onClick={() => setShowAdvanced(!showAdvanced)}
 								>
-									<span className="font-medium">Advanced configurations</span>
+									<div className="flex items-center gap-1">
+										<GearFine className="size-5" />
+										<div className="font-medium">Advanced configurations</div>
+									</div>
 									<CaretDown
 										className={`transform transition-transform ${
 											showAdvanced ? "rotate-180" : ""
@@ -335,89 +408,30 @@ const SourceEdit: React.FC = () => {
 							</div>
 						</div>
 					) : (
-						<div className="rounded-lg border border-gray-200 bg-white p-6">
+						<div className="rounded-lg p-6">
 							<h3 className="mb-4 text-lg font-medium">Associated jobs</h3>
 
-							<table className="min-w-full">
-								<thead>
-									<tr className="border-b border-gray-200">
-										<th className="px-4 py-3 text-left font-medium text-gray-700">
-											Name
-										</th>
-										<th className="px-4 py-3 text-left font-medium text-gray-700">
-											State
-										</th>
-										<th className="px-4 py-3 text-left font-medium text-gray-700">
-											Last runtime
-										</th>
-										<th className="px-4 py-3 text-left font-medium text-gray-700">
-											Last runtime status
-										</th>
-										<th className="px-4 py-3 text-left font-medium text-gray-700">
-											Destination
-										</th>
-										<th className="px-4 py-3 text-left font-medium text-gray-700">
-											Pause job
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{displayedJobs.map((job, index) => (
-										<tr
-											key={index}
-											className="border-b border-gray-100"
-										>
-											<td className="px-4 py-3">{job.name}</td>
-											<td className="px-4 py-3">
-												<span
-													className={`rounded px-2 py-1 text-xs ${
-														job.state === "Inactive"
-															? "bg-red-100 text-red-600"
-															: "bg-blue-100 text-blue-600"
-													}`}
-												>
-													{job.state}
-												</span>
-											</td>
-											<td className="px-4 py-3">{job.lastRuntime}</td>
-											<td className="px-4 py-3">
-												<span className="flex items-center text-green-500">
-													<span className="mr-2 h-2 w-2 rounded-full bg-green-500"></span>
-													{job.lastRuntimeStatus}
-												</span>
-											</td>
-											<td className="px-4 py-3">
-												<div className="flex items-center">
-													<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-														<span>D</span>
-													</div>
-													{job.destination}
-												</div>
-											</td>
-											<td className="px-4 py-3">
-												<Switch
-													checked={job.paused}
-													onChange={checked => handlePauseJob(job.id, checked)}
-													className={job.paused ? "bg-blue-600" : "bg-gray-200"}
-												/>
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
+							<Table
+								columns={columns}
+								dataSource={displayedJobs}
+								pagination={false}
+								rowKey={record => record.id}
+								className="min-w-full"
+							/>
 
 							{!showAllJobs && additionalJobs.length > 0 && (
 								<div className="mt-6 flex justify-center">
 									<Button
 										type="default"
 										onClick={handleViewAllJobs}
+										className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
 									>
 										View all associated jobs
 									</Button>
 								</div>
 							)}
 
-							<div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-6">
+							<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
 								<span className="font-medium">Pause all associated jobs</span>
 								<Switch
 									onChange={handlePauseAllJobs}
@@ -482,7 +496,7 @@ const SourceEdit: React.FC = () => {
 				<div>
 					{!isNewSource && (
 						<Button
-							danger
+							className="border border-[#F5222D] text-[#F5222D]"
 							onClick={handleDelete}
 						>
 							Delete
@@ -496,7 +510,7 @@ const SourceEdit: React.FC = () => {
 						className="bg-blue-600"
 						onClick={handleCreateJob}
 					>
-						Create job
+						Use source
 					</Button>
 				</div>
 			</div>

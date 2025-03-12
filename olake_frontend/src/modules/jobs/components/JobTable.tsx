@@ -10,8 +10,8 @@ import {
 	DotsThree,
 	Gear,
 	Pause,
-	PencilSimpleLine,
-	TrashSimple,
+	PencilSimple,
+	Trash,
 	XCircle,
 } from "@phosphor-icons/react"
 
@@ -67,37 +67,37 @@ const JobTable: React.FC<JobTableProps> = ({
 						items: [
 							{
 								key: "sync",
-								icon: <ArrowsClockwise className="size-3" />,
+								icon: <ArrowsClockwise className="size-4" />,
 								label: "Sync now",
 								onClick: () => onSync(record.id),
 							},
 							{
 								key: "edit",
-								icon: <PencilSimpleLine className="size-3" />,
+								icon: <PencilSimple className="size-4" />,
 								label: "Edit",
 								onClick: () => onEdit(record.id),
 							},
 							{
 								key: "pause",
-								icon: <Pause className="size-3" />,
+								icon: <Pause className="size-4" />,
 								label: "Pause job",
 								onClick: () => onPause(record.id),
 							},
 							{
 								key: "history",
-								icon: <ClockCounterClockwise className="size-3" />,
+								icon: <ClockCounterClockwise className="size-4" />,
 								label: "Job history",
 								onClick: () => handleViewHistory(record.id),
 							},
 							{
 								key: "settings",
-								icon: <Gear className="size-3" />,
+								icon: <Gear className="size-4" />,
 								label: "Job settings",
 								onClick: () => handleViewSettings(record.id),
 							},
 							{
 								key: "delete",
-								icon: <TrashSimple className="size-3" />,
+								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
 								onClick: () => onDelete(record.id),
@@ -105,6 +105,7 @@ const JobTable: React.FC<JobTableProps> = ({
 						],
 					}}
 					trigger={["click"]}
+					overlayStyle={{ minWidth: "170px" }}
 				>
 					<Button
 						type="text"
@@ -185,7 +186,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				<Search
 					placeholder="Search Jobs"
 					allowClear
-					className="w-72"
+					className="w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>
@@ -199,8 +200,6 @@ const JobTable: React.FC<JobTableProps> = ({
 				pagination={{
 					pageSize: 10,
 					showSizeChanger: false,
-					showTotal: (total, range) =>
-						`${range[0]}-${range[1]} of ${total} items`,
 				}}
 				className="overflow-hidden rounded-xl border"
 			/>

@@ -22,7 +22,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 
 	const columns = [
 		{
-			title: "Actions",
+			title: () => <span className="font-medium">Actions</span>,
 			key: "actions",
 			width: 80,
 			render: (_: any, record: Destination) => (
@@ -45,6 +45,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 						],
 					}}
 					trigger={["click"]}
+					overlayStyle={{ minWidth: "170px" }}
 				>
 					<Button
 						type="text"
@@ -54,7 +55,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			),
 		},
 		{
-			title: "Name",
+			title: () => <span className="font-medium">Name</span>,
 			dataIndex: "name",
 			key: "name",
 			render: (text: string) => (
@@ -67,7 +68,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			),
 		},
 		{
-			title: "Connectors",
+			title: () => <span className="font-medium">Connectors</span>,
 			dataIndex: "type",
 			key: "type",
 			render: (text: string) => (
@@ -80,7 +81,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			),
 		},
 		{
-			title: "Associated jobs",
+			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "associatedJobs",
 			render: () => (
 				<div>
@@ -113,7 +114,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				<Search
 					placeholder="Search Destinations"
 					allowClear
-					className="w-72"
+					className="w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>
@@ -127,8 +128,6 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				pagination={{
 					pageSize: 10,
 					showSizeChanger: false,
-					showTotal: (total, range) =>
-						`${range[0]}-${range[1]} of ${total} items`,
 				}}
 				className="overflow-hidden rounded-lg border"
 			/>

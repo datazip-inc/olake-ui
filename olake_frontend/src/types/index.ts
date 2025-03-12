@@ -39,3 +39,23 @@ export interface JobLog {
 	level: "debug" | "info" | "warning" | "error"
 	message: string
 }
+
+export interface SourceJob {
+	id: string
+	name: string
+	state: string
+	lastRuntime: string
+	lastRuntimeStatus: string
+	destination: string
+	paused: boolean
+}
+
+export interface DestinationJob {
+	id: string
+	name: string
+	state: string
+	lastRuntime: string
+	lastRuntimeStatus: string
+	source: string
+	paused: boolean
+}
