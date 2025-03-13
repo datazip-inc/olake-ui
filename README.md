@@ -7,3 +7,4 @@ Checkout - [frontend initial setup branch](https://github.com/datazip-inc/olake-
 The changes will then get merged to staging branch and then to master branch.
 
 Checkout the [Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake%2FDesign%2FCommunity?m=auto&t=3T4OEwuQNOxoE3zm-1) for OLake frontend that is being developed, for you to get better sense and contribute to the issues we have created.
+ 
