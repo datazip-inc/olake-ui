@@ -4,12 +4,26 @@ import { Input, Button, Radio, Select, Switch, message, Divider } from "antd"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, CornersIn, DownloadSimple } from "@phosphor-icons/react"
+import { useAppStore } from "../../../store"
+import EntitySavedModal from "../../common/components/EntitySavedModal"
+import TestConnectionModal from "../../common/components/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 
-type Step = "source" | "destination" | "schema" | "config"
+export type JobCreationSteps = "source" | "destination" | "schema" | "config"
 
-const JobCreation: React.FC = () => {
+interface JobCreationProps {
+	fromJobFlow?: boolean
+	onComplete?: () => void
+	stepNumber?: number
+	stepTitle?: string
+}
+
+const JobCreation: React.FC<JobCreationProps> = ({
+	fromJobFlow,
+	onComplete,
+}) => {
 	const navigate = useNavigate()
-	const [currentStep, setCurrentStep] = useState<Step>("source")
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [searchText, setSearchText] = useState("")
 	const [searchSchemaText, setSearchSchemaText] = useState("")
@@ -34,17 +48,46 @@ const JobCreation: React.FC = () => {
 	const [replicationFrequency, setReplicationFrequency] = useState("daily")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
-
+	const { setShowEntitySavedModal, setShowTestingModal, setShowSuccessModal } =
+		useAppStore()
 	const handleNext = () => {
 		if (currentStep === "source") {
-			setCurrentStep("destination")
+			dummyNetworkCalls()
 		} else if (currentStep === "destination") {
-			setCurrentStep("schema")
+			dummyNetworkCalls()
 		} else if (currentStep === "schema") {
-			setCurrentStep("config")
+			setTimeout(() => {
+				setCurrentStep("config")
+			}, 2000)
 		} else if (currentStep === "config") {
 			message.success("Job created successfully!")
 			navigate("/jobs")
+		}
+	}
+
+	const dummyNetworkCalls = () => {
+		setTimeout(() => {
+			setShowTestingModal(true)
+			setTimeout(() => {
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
+				setTimeout(() => {
+					setShowSuccessModal(false)
+					setShowEntitySavedModal(true)
+				}, 2000)
+			}, 2000)
+		}, 2000)
+	}
+
+	const nextStep = () => {
+		if (currentStep === "source") {
+			return "destination"
+		} else if (currentStep === "destination") {
+			return "schema"
+		} else if (currentStep === "schema") {
+			return "config"
+		} else {
+			return "source"
 		}
 	}
 
@@ -741,6 +784,20 @@ const JobCreation: React.FC = () => {
 					</Button>
 				</div>
 			</div>
+
+			<TestConnectionModal />
+
+			<TestConnectionSuccessModal />
+
+			<EntitySavedModal
+				type={currentStep}
+				fromJobFlow={fromJobFlow ?? true}
+				onComplete={
+					(onComplete ?? currentStep !== "config")
+						? () => setCurrentStep(nextStep())
+						: undefined
+				}
+			/>
 		</div>
 	)
 }

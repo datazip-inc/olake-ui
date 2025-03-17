@@ -2,9 +2,10 @@ import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { Check, GitCommit, Path } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
+import { JobCreationSteps } from "../../jobs/pages/JobCreation"
 
 interface EntitySavedModalProps {
-	type: string
+	type: JobCreationSteps
 	onComplete?: () => void
 	fromJobFlow: boolean
 }
@@ -33,17 +34,21 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					)}
 				</div>
 				<div className="mb-4 text-center text-xl font-medium">
-					{type === "source" ? "Source" : "Destination"} is connected and saved
-					successfully
+					{(type === "source" ? "Source" : "Destination") +
+						" is connected and saved successfully"}
 				</div>
 				<div className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-[#D9D9D9] px-4 py-2">
-					<div className="flex items-center gap-1">
+					<div className="flex items-center gap-3">
 						{type === "source" ? (
 							<GitCommit className="size-5" />
 						) : (
-							<Path className="size-5" />
+							<Path className="size-5" />                                      
 						)}
-						<span>&lt;Source-Name&gt;</span>
+						{type === "source" ? (
+							<span>&lt;Source-Name&gt;</span>
+						) : (
+							<span>&lt;Destination-Name&gt;</span>
+						)}
 					</div>
 					<div className="flex gap-1 rounded-xl bg-[#F6FFED] px-2 py-1">
 						<Check className="size-5 text-[#389E0D]" />
