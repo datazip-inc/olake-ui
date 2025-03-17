@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, Switch, message, Divider } from "antd"
+import { Input, Button, Radio, Select, Switch, message } from "antd"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
-import { ArrowLeft, CornersIn, DownloadSimple } from "@phosphor-icons/react"
+import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
 import { useAppStore } from "../../../store"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import TestConnectionModal from "../../common/components/TestConnectionModal"
@@ -251,10 +252,8 @@ const JobCreation: React.FC<JobCreationProps> = ({
 				</div>
 			</div>
 
-			<Divider />
-
 			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden">
+			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				{/* Left content */}
 				<div
 					className={`${
@@ -268,7 +267,7 @@ const JobCreation: React.FC<JobCreationProps> = ({
 						<div className="w-full">
 							<CreateSource
 								fromJobFlow={true}
-								stepNumber={1}
+								stepNumber={"I"}
 								stepTitle="Set up your source"
 								onComplete={() => {
 									setCurrentStep("destination")
@@ -636,117 +635,112 @@ const JobCreation: React.FC<JobCreationProps> = ({
 					)}
 
 					{currentStep === "config" && (
-						<div className="mb-6 rounded-lg border border-gray-200 bg-white p-6">
-							<div className="mb-6 grid grid-cols-2 gap-6">
-								<div>
-									<label className="mb-2 block text-sm font-medium text-gray-700">
-										Job name:
-									</label>
-									<Input
-										placeholder="Enter your job name"
-										value={jobName}
-										onChange={e => setJobName(e.target.value)}
-									/>
-								</div>
-
-								<div>
-									<label className="mb-2 block text-sm font-medium text-gray-700">
-										Replication frequency:
-									</label>
-									<Select
-										placeholder="Data sync will repeat in?"
-										className="w-full"
-										options={[
-											{ value: "hourly", label: "Hourly" },
-											{ value: "daily", label: "Daily" },
-											{ value: "weekly", label: "Weekly" },
-											{ value: "monthly", label: "Monthly" },
-										]}
-										value={replicationFrequency}
-										onChange={setReplicationFrequency}
-									/>
+						<>
+							<div>
+								<div className="mt-4 flex items-center gap-2 text-sm text-[#203FDD]">
+									<div className="size-2 rounded-full border border-[#203FDD] outline outline-2 outline-[#203FDD]"></div>
+									<span className="text-sm text-[#8A8A8A]"> Step 4</span>
 								</div>
 							</div>
-
-							<div className="mb-6">
-								<label className="mb-2 block text-sm font-medium text-gray-700">
-									When the source schema changes, I want to:
-								</label>
-								<div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-									<Radio.Group
-										value={schemaChangeStrategy}
-										onChange={e => setSchemaChangeStrategy(e.target.value)}
-									>
-										<div className="mb-2">
-											<Radio value="propagate">
-												<div>
-													<span className="font-medium">
-														Propagate field changes only
-													</span>
-													<p className="mt-1 text-sm text-gray-500">
-														Only column changes will be propagated. Incompatible
-														schema changes will be detected, but not propagated.
-													</p>
-												</div>
-											</Radio>
-										</div>
+							<div className="mt-2 text-lg font-medium">Job configuration</div>
+							<div className="mb-6 p-6">
+								<div className="rounded-xl border border-[#D9D9D9] p-4">
+									<div className="mb-2 grid grid-cols-2 gap-6">
 										<div>
-											<Radio value="ignore">
-												<div>
-													<span className="font-medium">
-														Ignore schema changes
-													</span>
-													<p className="mt-1 text-sm text-gray-500">
-														Schema changes will be ignored. Data will continue
-														to sync with the existing schema.
-													</p>
-												</div>
-											</Radio>
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Job name:
+											</label>
+											<Input
+												placeholder="Enter your job name"
+												value={jobName}
+												onChange={e => setJobName(e.target.value)}
+											/>
 										</div>
-									</Radio.Group>
+
+										<div>
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Replication frequency:
+											</label>
+											<Select
+												placeholder="Data sync will repeat in?"
+												className="w-full"
+												options={[
+													{ value: "hourly", label: "Hourly" },
+													{ value: "daily", label: "Daily" },
+													{ value: "weekly", label: "Weekly" },
+													{ value: "monthly", label: "Monthly" },
+												]}
+												value={replicationFrequency}
+												onChange={setReplicationFrequency}
+											/>
+										</div>
+									</div>
+								</div>
+
+								<div className="mb-6">
+									<label className="mb-2 block text-sm font-medium text-gray-700">
+										When the source schema changes, I want to:
+									</label>
+									<div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+										<Radio.Group
+											value={schemaChangeStrategy}
+											onChange={e => setSchemaChangeStrategy(e.target.value)}
+										>
+											<div className="mb-2">
+												<Radio value="propagate">
+													<div>
+														<span className="font-medium">
+															Propagate field changes only
+														</span>
+														<p className="mt-1 text-sm text-gray-500">
+															Only column changes will be propagated.
+															Incompatible schema changes will be detected, but
+															not propagated.
+														</p>
+													</div>
+												</Radio>
+											</div>
+											<div>
+												<Radio value="ignore">
+													<div>
+														<span className="font-medium">
+															Ignore schema changes
+														</span>
+														<p className="mt-1 text-sm text-gray-500">
+															Schema changes will be ignored. Data will continue
+															to sync with the existing schema.
+														</p>
+													</div>
+												</Radio>
+											</div>
+										</Radio.Group>
+									</div>
+								</div>
+
+								<div className="flex items-center justify-between border-t border-gray-200 py-3">
+									<span className="font-medium">
+										Be notified when schema changes occur
+									</span>
+									<Switch
+										checked={notifyOnSchemaChanges}
+										onChange={setNotifyOnSchemaChanges}
+										className={notifyOnSchemaChanges ? "bg-blue-600" : ""}
+									/>
 								</div>
 							</div>
-
-							<div className="flex items-center justify-between border-t border-gray-200 py-3">
-								<span className="font-medium">
-									Be notified when schema changes occur
-								</span>
-								<Switch
-									checked={notifyOnSchemaChanges}
-									onChange={setNotifyOnSchemaChanges}
-									className={notifyOnSchemaChanges ? "bg-blue-600" : ""}
-								/>
-							</div>
-						</div>
+						</>
 					)}
 				</div>
 
 				{/* Documentation panel */}
 				{(currentStep === "schema" || currentStep === "config") && (
-					<div
-						className={`${docsMinimized ? "hidden" : "w-1/3"} border-l border-gray-200 bg-white`}
-					>
-						<div className="flex items-center justify-between border-b border-gray-200 p-4">
-							<div className="flex items-center">
-								<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
-									<span className="font-bold">M</span>
-								</div>
-								<span className="text-lg font-bold">MongoDB</span>
-							</div>
-							<Button
-								type="text"
-								onClick={toggleDocsPanel}
-								className="hover:bg-gray-100"
-								icon={<CornersIn size={16} />}
-							/>
-						</div>
-
-						<iframe
-							src="https://olake.io/docs/category/mongodb"
-							className="h-[calc(100%-64px)] w-full"
-							title="Documentation"
-						/>
-					</div>
+					<DocumentationPanel
+						title="MongoDB"
+						docUrl="https://olake.io/docs/category/mongodb"
+						isMinimized={docsMinimized}
+						onToggle={toggleDocsPanel}
+						showResizer={true}
+					/>
 				)}
 			</div>
 
