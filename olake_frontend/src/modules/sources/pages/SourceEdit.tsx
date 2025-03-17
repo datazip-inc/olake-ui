@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select, Switch, message, Table } from "antd"
-import {
-	Check,
-	CornersIn,
-	CornersOut,
-	GearFine,
-	GenderNeuter,
-	Notebook,
-} from "@phosphor-icons/react"
+import { Check, GearFine, GenderNeuter, Notebook } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, CaretDown } from "@phosphor-icons/react"
 import type { ColumnsType } from "antd/es/table"
