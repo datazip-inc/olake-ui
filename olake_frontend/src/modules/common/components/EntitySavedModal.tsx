@@ -57,7 +57,8 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 				</div>
 				<div className="flex space-x-4">
 					<Button
-						className="border border-[#D9D9D9]"
+						type="primary"
+						className="bg-[#203FDD] text-white hover:bg-[#1f38b8]"
 						onClick={() => {
 							setShowEntitySavedModal(false)
 							if (fromJobFlow) {
@@ -76,7 +77,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 						}}
 					>
 						{fromJobFlow
-							? "Back to Job Creation"
+							? "Next →"
 							: type === "source"
 								? "Sources"
 								: "Destinations"}
