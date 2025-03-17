@@ -186,18 +186,18 @@ const JobCreation: React.FC<JobCreationProps> = ({
 					</Link>
 
 					{/* Stepper */}
-					<div className="flex items-center">
+					<div className="flex items-center gap-2">
 						<div className="flex flex-col items-start">
 							<div className="flex items-center">
 								<div
-									className={`rounded-full border ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+									className={`rounded-full border ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
 								></div>
 								<div
-									className={`h-[1px] w-16 ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
+									className={`-mr-2 h-[2px] w-20 ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
 								></div>
 							</div>
 							<span
-								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+								className={`mt-2 translate-x-[-40%] text-xs ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
 							>
 								Source
 							</span>
@@ -206,14 +206,14 @@ const JobCreation: React.FC<JobCreationProps> = ({
 						<div className="flex flex-col items-start">
 							<div className="flex items-center">
 								<div
-									className={`rounded-full border ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+									className={`z-10 rounded-full border ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
 								></div>
 								<div
-									className={`h-[1px] w-16 ${currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
+									className={`-mr-2 h-[2px] w-20 ${currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
 								></div>
 							</div>
 							<span
-								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+								className={`mt-2 translate-x-[-35%] text-xs ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
 							>
 								Destination
 							</span>
@@ -222,14 +222,14 @@ const JobCreation: React.FC<JobCreationProps> = ({
 						<div className="flex flex-col items-start">
 							<div className="flex items-center">
 								<div
-									className={`rounded-full border ${currentStep === "schema" || currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+									className={`z-10 rounded-full border ${currentStep === "schema" || currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
 								></div>
 								<div
-									className={`h-[1px] w-16 ${currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
+									className={`-mr-2 h-[2px] w-20 ${currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
 								></div>
 							</div>
 							<span
-								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+								className={`mt-2 translate-x-[-40%] text-xs ${currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
 							>
 								Schema
 							</span>
@@ -238,11 +238,11 @@ const JobCreation: React.FC<JobCreationProps> = ({
 						<div className="flex flex-col items-start">
 							<div className="flex items-center">
 								<div
-									className={`rounded-full border ${currentStep === "config" ? "size-2 border-blue-600 outline outline-2 outline-blue-600" : "size-3 border-gray-300 bg-white"}`}
+									className={`z-10 rounded-full border ${currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
 								></div>
 							</div>
 							<span
-								className={`mt-2 translate-x-[-50%] text-xs ${currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
+								className={`mt-2 translate-x-[-35%] text-xs ${currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
 							>
 								Job Config
 							</span>
