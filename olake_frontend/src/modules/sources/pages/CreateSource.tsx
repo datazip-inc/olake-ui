@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select, Switch } from "antd"
 import { useAppStore } from "../../../store"
@@ -12,10 +12,12 @@ import {
 import TestConnectionModal from "../../common/components/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+
 interface CreateSourceProps {
 	fromJobFlow?: boolean
 	onComplete?: () => void
-	stepNumber?: number
+	stepNumber?: string
 	stepTitle?: string
 }
 
@@ -35,6 +37,8 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	const { setShowEntitySavedModal, setShowTestingModal, setShowSuccessModal } =
 		useAppStore()
 	const [showAdvanced, setShowAdvanced] = useState(false)
+	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(false)
+	const iframeRef = useRef<HTMLIFrameElement>(null)
 
 	const [filteredSources, setFilteredSources] = useState<any[]>([])
 
@@ -94,6 +98,11 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 			setConnectionType("hosts")
 			setConnectionUri("")
 		}
+
+		// Update iframe src when connector changes
+		if (iframeRef.current) {
+			iframeRef.current.src = `https://olake.io/docs/category/${value.toLowerCase()}`
+		}
 	}
 
 	const handleExistingSourceSelect = (value: string) => {
@@ -129,6 +138,10 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		}
 	}
 
+	const toggleDocPanel = () => {
+		setIsDocPanelCollapsed(!isDocPanelCollapsed)
+	}
+
 	return (
 		<div className="flex h-screen flex-col">
 			{!fromJobFlow && (
@@ -147,9 +160,11 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				<div className="w-full overflow-auto p-6 pt-0">
 					{stepNumber && stepTitle && (
 						<div className="mb-4 flex flex-col gap-2">
-							<div className="flex items-center gap-2 text-sm text-blue-600">
-								<div className="size-2 rounded-full border border-blue-600 outline outline-2 outline-blue-600"></div>
-								<span className="text-[#8A8A8A]"> Step {stepNumber}</span>
+							<div className="mt-4 flex items-center gap-2 text-sm text-[#203FDD]">
+								<div className="size-2 rounded-full border border-[#203FDD] outline outline-2 outline-[#203FDD]"></div>
+								<span className="text-sm text-[#8A8A8A]">
+									Step {stepNumber}
+								</span>
 							</div>
 							<h1 className="text-xl font-medium">{stepTitle}</h1>
 						</div>
@@ -630,20 +645,13 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 					</div>
 				</div>
 
-				<div className="h-[calc(100vh-120px)] w-1/4 overflow-hidden border-l border-gray-200 bg-white">
-					<div className="flex items-center border-b border-gray-200 p-4">
-						<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
-							<span className="font-bold">{connector.charAt(0)}</span>
-						</div>
-						<span className="text-lg font-bold">{connector}</span>
-					</div>
-
-					<iframe
-						src="https://olake.io/docs/category/mongodb"
-						className="h-[calc(100%-64px)] w-full"
-						title="Documentation"
-					/>
-				</div>
+				<DocumentationPanel
+					title={connector}
+					docUrl={`https://olake.io/docs/category/${connector.toLowerCase()}`}
+					isMinimized={isDocPanelCollapsed}
+					onToggle={toggleDocPanel}
+					showResizer={true}
+				/>
 			</div>
 
 			{!fromJobFlow && (

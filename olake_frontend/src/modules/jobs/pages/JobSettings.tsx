@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Switch, Dropdown, message, Divider } from "antd"
-import { ArrowRight, CornersIn, CornersOut } from "@phosphor-icons/react"
+import { ArrowRight } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, CaretDown } from "@phosphor-icons/react"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -232,52 +233,13 @@ const JobSettings: React.FC = () => {
 						</div>
 
 						{/* Documentation panel with iframe */}
-						{!docsMinimized && (
-							<div className="w-1/4 overflow-hidden rounded-lg border border-gray-200 bg-white">
-								<div className="flex items-center justify-between border-b border-gray-200 p-4">
-									<div className="flex items-center">
-										<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
-											<span className="font-bold">M</span>
-										</div>
-										<span className="text-lg font-bold">MongoDB</span>
-									</div>
-									<Button
-										type="text"
-										icon={<CornersIn size={16} />}
-										onClick={toggleDocsPanel}
-										className="hover:bg-gray-100"
-									/>
-								</div>
-
-								<div className="h-[calc(100%-60px)] w-full">
-									<iframe
-										src="https://olake.io/docs/category/mongodb"
-										className="h-full w-full border-0"
-										title="MongoDB Documentation"
-										sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-									/>
-								</div>
-							</div>
-						)}
-
-						{/* Minimized docs panel button */}
-						{docsMinimized && (
-							<div className="fixed bottom-6 right-6">
-								<Button
-									type="primary"
-									className="flex items-center bg-blue-600"
-									onClick={toggleDocsPanel}
-									icon={
-										<CornersOut
-											size={16}
-											className="mr-2"
-										/>
-									}
-								>
-									Show Documentation
-								</Button>
-							</div>
-						)}
+						<DocumentationPanel
+							title="MongoDB"
+							docUrl="https://olake.io/docs/category/mongodb"
+							isMinimized={docsMinimized}
+							onToggle={toggleDocsPanel}
+							showResizer={true}
+						/>
 					</div>
 				</div>
 

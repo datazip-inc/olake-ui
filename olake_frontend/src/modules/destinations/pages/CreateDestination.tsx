@@ -6,6 +6,7 @@ import { ArrowLeft, GenderNeuter, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/components/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
@@ -151,7 +152,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				{/* Left content */}
 				<div className="w-full overflow-auto p-6 pt-0">
 					{stepNumber && stepTitle && (
-						<div className="mb-4 flex flex-col gap-2">
+						<div className="mb-4 mt-4 flex flex-col gap-2">
 							<div className="flex items-center gap-2 text-sm text-blue-600">
 								<div className="size-2 rounded-full border border-blue-600 outline outline-2 outline-blue-600"></div>
 								<span className="text-[#8A8A8A]">Step {stepNumber}</span>
@@ -389,40 +390,32 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				</div>
 
 				{/* Documentation panel */}
-				<div className="h-[calc(100vh-120px)] w-1/4 overflow-hidden border-l border-gray-200 bg-white">
-					<div className="flex items-center border-b border-gray-200 p-4">
-						<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
-							<span className="font-bold">
-								{connector === "Amazon S3" ? "S" : connector.charAt(0)}
-							</span>
-						</div>
-						<span className="text-lg font-bold">{connector}</span>
-					</div>
-
-					<iframe
-						src="https://olake.io/docs/category/mongodb"
-						className="h-[calc(100%-64px)] w-full"
-						title="Documentation"
-					/>
-				</div>
+				<DocumentationPanel
+					title={connector}
+					icon={connector === "Amazon S3" ? "S" : connector.charAt(0)}
+					docUrl="https://olake.io/docs/category/mongodb"
+					showResizer={true}
+				/>
 			</div>
 
 			{/* Footer */}
-			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-				<Button
-					onClick={handleCancel}
-					className="border border-[#F5222D] text-[#F5222D]"
-				>
-					Cancel
-				</Button>
-				<Button
-					type="primary"
-					className="font-thin"
-					onClick={handleCreate}
-				>
-					Create →
-				</Button>
-			</div>
+			{!fromJobFlow && (
+				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
+					<Button
+						onClick={handleCancel}
+						className="border border-[#F5222D] text-[#F5222D]"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="primary"
+						className="font-thin"
+						onClick={handleCreate}
+					>
+						Create →
+					</Button>
+				</div>
+			)}
 
 			<TestConnectionModal />
 

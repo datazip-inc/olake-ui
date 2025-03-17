@@ -2,16 +2,16 @@ import React, { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select, Switch, message } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, Check, CornersIn, Notebook } from "@phosphor-icons/react"
+import { ArrowLeft, Check, Notebook } from "@phosphor-icons/react"
 import { DestinationJob } from "../../../types"
 import Table, { ColumnsType } from "antd/es/table"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
 
 const DestinationEdit: React.FC = () => {
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const navigate = useNavigate()
 	const isNewDestination = destinationId === "new"
 	const [activeTab, setActiveTab] = useState("config")
-	// const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("Amazon S3")
 	const [authType, setAuthType] = useState("iam")
 	const [iamInfo, setIamInfo] = useState("")
@@ -388,27 +388,14 @@ const DestinationEdit: React.FC = () => {
 				</div>
 
 				{/* Documentation panel with iframe */}
-				{!docsMinimized && (
-					<div className="h-[calc(100vh-120px)] w-1/4 overflow-hidden border-l border-gray-200 bg-white">
-						<div className="flex items-center justify-between border-b border-gray-200 p-4">
-							<div className="flex items-center">
-								<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white">
-									<span>D</span>
-								</div>
-								<span className="font-medium">Documentation</span>
-							</div>
-							<button onClick={toggleDocsPanel}>
-								<CornersIn size={16} />
-							</button>
-						</div>
-						<iframe
-							src="https://olake.io/docs/category/mongodb"
-							className="h-full w-full border-0"
-							title="MongoDB Documentation"
-							sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-						/>
-					</div>
-				)}
+				<DocumentationPanel
+					title="Documentation"
+					icon="D"
+					docUrl="https://olake.io/docs/category/mongodb"
+					isMinimized={docsMinimized}
+					onToggle={toggleDocsPanel}
+					showResizer={true}
+				/>
 			</div>
 
 			{/* Footer with buttons */}
