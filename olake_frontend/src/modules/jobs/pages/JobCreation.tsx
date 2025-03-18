@@ -5,6 +5,7 @@ import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepProgress from "../components/StepIndicator"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -133,7 +134,7 @@ const JobCreation: React.FC = () => {
 	return (
 		<div className="flex h-screen flex-col">
 			{/* Header */}
-			<div className="bg-white px-6 pb-0 pt-6">
+			<div className="bg-white px-6 pb-3 pt-6">
 				<div className="flex items-center justify-between">
 					<Link
 						to="/jobs"
@@ -144,68 +145,7 @@ const JobCreation: React.FC = () => {
 					</Link>
 
 					{/* Stepper */}
-					<div className="flex items-center gap-2">
-						<div className="flex flex-col items-start">
-							<div className="flex items-center">
-								<div
-									className={`rounded-full border ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
-								></div>
-								<div
-									className={`-mr-2 h-[2px] w-20 ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
-								></div>
-							</div>
-							<span
-								className={`mt-2 translate-x-[-40%] text-xs ${currentStep === "source" || currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
-							>
-								Source
-							</span>
-						</div>
-
-						<div className="flex flex-col items-start">
-							<div className="flex items-center">
-								<div
-									className={`z-10 rounded-full border ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
-								></div>
-								<div
-									className={`-mr-2 h-[2px] w-20 ${currentStep === "schema" || currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
-								></div>
-							</div>
-							<span
-								className={`mt-2 translate-x-[-35%] text-xs ${currentStep === "destination" || currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
-							>
-								Destination
-							</span>
-						</div>
-
-						<div className="flex flex-col items-start">
-							<div className="flex items-center">
-								<div
-									className={`z-10 rounded-full border ${currentStep === "schema" || currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
-								></div>
-								<div
-									className={`-mr-2 h-[2px] w-20 ${currentStep === "config" ? "bg-blue-600" : "bg-gray-300"}`}
-								></div>
-							</div>
-							<span
-								className={`mt-2 translate-x-[-40%] text-xs ${currentStep === "schema" || currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
-							>
-								Schema
-							</span>
-						</div>
-
-						<div className="flex flex-col items-start">
-							<div className="flex items-center">
-								<div
-									className={`z-10 rounded-full border ${currentStep === "config" ? "size-4 border-blue-600 outline outline-2 outline-blue-600" : "size-4 border-gray-300 bg-white"}`}
-								></div>
-							</div>
-							<span
-								className={`mt-2 translate-x-[-35%] text-xs ${currentStep === "config" ? "text-blue-600" : "text-gray-500"}`}
-							>
-								Job Config
-							</span>
-						</div>
-					</div>
+					<StepProgress currentStep={currentStep} />
 				</div>
 			</div>
 
