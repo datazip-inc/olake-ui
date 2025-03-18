@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, Switch } from "antd"
+import { Input, Radio, Select, Switch } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
+	ArrowRight,
 	Control,
 	GearFine,
 	GenderNeuter,
@@ -656,19 +657,19 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 
 			{!fromJobFlow && (
 				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-					<Button
-						danger
+					<button
+						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 						onClick={handleCancel}
 					>
 						Cancel
-					</Button>
-					<Button
-						type="primary"
-						className="bg-blue-600"
+					</button>
+					<button
+						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreate}
 					>
-						Create →
-					</Button>
+						Create
+						<ArrowRight className="size-4 text-white" />
+					</button>
 				</div>
 			)}
 

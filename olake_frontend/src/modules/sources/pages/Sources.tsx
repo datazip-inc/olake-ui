@@ -73,14 +73,13 @@ const Sources: React.FC = () => {
 					<LinktreeLogo className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Sources</h1>
 				</div>
-				<Button
-					type="primary"
-					className="py-4"
-					icon={<Plus size={16} />}
+				<button
+					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 					onClick={handleCreateSource}
 				>
+					<Plus className="size-4 text-white" />
 					Create Source
-				</Button>
+				</button>
 			</div>
 
 			<p className="mb-6 text-gray-600">A list of all your sources</p>

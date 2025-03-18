@@ -75,13 +75,13 @@ const Destinations: React.FC = () => {
 					<DownloadSimple className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Destinations</h1>
 				</div>
-				<Button
-					type="primary"
-					icon={<Plus size={16} />}
+				<button
 					onClick={handleCreateDestination}
+					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 				>
+					<Plus className="size-4 text-white" />
 					Create Destination
-				</Button>
+				</button>
 			</div>
 
 			<p className="mb-6 text-gray-600">A list of all your destinations</p>

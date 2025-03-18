@@ -2,7 +2,12 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, GenderNeuter, Notebook } from "@phosphor-icons/react"
+import {
+	ArrowLeft,
+	ArrowRight,
+	GenderNeuter,
+	Notebook,
+} from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/components/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
@@ -401,19 +406,19 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			{/* Footer */}
 			{!fromJobFlow && (
 				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-					<Button
+					<button
 						onClick={handleCancel}
-						className="border border-[#F5222D] text-[#F5222D]"
+						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 					>
 						Cancel
-					</Button>
-					<Button
-						type="primary"
-						className="font-thin"
+					</button>
+					<button
+						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreate}
 					>
-						Create →
-					</Button>
+						Create
+						<ArrowRight className="size-4 text-white" />
+					</button>
 				</div>
 			)}
 

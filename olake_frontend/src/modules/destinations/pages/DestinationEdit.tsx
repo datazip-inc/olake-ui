@@ -239,7 +239,7 @@ const DestinationEdit: React.FC = () => {
 					<div className="mb-4">
 						<div className="flex">
 							<button
-								className={`w-56 rounded-xl px-3 py-1.5 text-sm font-normal ${
+								className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
 									activeTab === "config"
 										? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
 										: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
@@ -250,7 +250,7 @@ const DestinationEdit: React.FC = () => {
 							</button>
 							{!isNewDestination && (
 								<button
-									className={`w-56 rounded-xl px-3 py-1.5 text-sm font-normal ${
+									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
 										activeTab === "jobs"
 											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
 											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
@@ -402,23 +402,27 @@ const DestinationEdit: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div>
 					{!isNewDestination && (
-						<Button
-							className="border border-[#F5222D] text-[#F5222D]"
+						<button
+							className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 							onClick={handleDelete}
 						>
 							Delete
-						</Button>
+						</button>
 					)}
 				</div>
 				<div className="flex space-x-4">
-					<Button onClick={handleTestConnection}>Test connection</Button>
-					<Button
-						type="primary"
-						className="bg-blue-600"
+					<button
+						onClick={handleTestConnection}
+						className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+					>
+						Test connection
+					</button>
+					<button
+						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreateJob}
 					>
 						Create job
-					</Button>
+					</button>
 				</div>
 			</div>
 		</div>

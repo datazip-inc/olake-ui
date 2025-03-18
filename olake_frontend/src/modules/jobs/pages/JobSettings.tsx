@@ -218,12 +218,12 @@ const JobSettings: React.FC = () => {
 								<div className="border-gray-200 pt-4">
 									<div className="mb-2 flex items-center justify-between">
 										<span className="font-medium">Delete the job:</span>
-										<Button
+										<button
 											onClick={handleDeleteJob}
-											className="bg-[#F5222D] py-4 font-extralight text-white"
+											className="rounded-[6px] border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
 										>
 											Delete this job
-										</Button>
+										</button>
 									</div>
 									<p className="text-sm text-[#8A8A8A]">
 										No data will be deleted in your source and destination.

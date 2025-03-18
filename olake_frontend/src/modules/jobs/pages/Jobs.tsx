@@ -90,13 +90,13 @@ const Jobs: React.FC = () => {
 					<GitCommit className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
-				<Button
-					type="primary"
-					icon={<Plus size={16} />}
+				<button
+					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 					onClick={handleCreateJob}
 				>
+					<Plus className="size-4 text-white" />
 					Create job
-				</Button>
+				</button>
 			</div>
 
 			<p className="mb-6 text-gray-600">

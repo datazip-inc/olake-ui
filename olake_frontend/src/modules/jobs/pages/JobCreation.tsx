@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom"
 import { Input, Button, Radio, Select, Switch, message } from "antd"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
-import { ArrowLeft, DownloadSimple } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
 
@@ -644,35 +644,36 @@ const JobCreation: React.FC = () => {
 			{/* Footer */}
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
-					<Button
-						danger
+					<button
+						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 						onClick={handleCancel}
 					>
 						Cancel
-					</Button>
-					<Button
+					</button>
+					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center"
+						className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
 					>
 						<DownloadSimple className="size-4" />
 						Save Job
-					</Button>
+					</button>
 				</div>
-				<div>
+				<div className="flex items-center">
 					{currentStep !== "source" && (
-						<Button
+						<button
 							onClick={handleBack}
-							className="mr-4"
+							className="mr-4 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
 						>
 							Back
-						</Button>
+						</button>
 					)}
-					<Button
-						type="primary"
+					<button
+						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleNext}
 					>
-						{currentStep === "config" ? "Create Job →" : "Next →"}
-					</Button>
+						{currentStep === "config" ? "Create Job" : "Next"}
+						<ArrowRight className="size-4 text-white" />
+					</button>
 				</div>
 			</div>
 		</div>
