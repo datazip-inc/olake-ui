@@ -33,6 +33,7 @@ interface AppState {
 	showTestingModal: boolean
 	showSuccessModal: boolean
 	showEntitySavedModal: boolean
+	showJobSuccessModal: boolean
 
 	// Actions - Jobs
 	fetchJobs: () => Promise<void>
@@ -69,6 +70,7 @@ interface AppState {
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
 	setShowEntitySavedModal: (show: boolean) => void
+	setShowJobSuccessModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -101,6 +103,7 @@ export const useAppStore = create<AppState>(set => ({
 	showTestingModal: false,
 	showSuccessModal: false,
 	showEntitySavedModal: false,
+	showJobSuccessModal: false,
 
 	// Jobs actions
 	fetchJobs: async () => {
@@ -468,4 +471,5 @@ export const useAppStore = create<AppState>(set => ({
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
 	setShowEntitySavedModal: show => set({ showEntitySavedModal: show }),
+	setShowJobSuccessModal: show => set({ showJobSuccessModal: show }),
 }))
