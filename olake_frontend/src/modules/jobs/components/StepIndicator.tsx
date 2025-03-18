@@ -12,22 +12,26 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	currentStep,
 }) => {
 	const isActive = steps.indexOf(currentStep) >= index
+	const isNextActive = steps.indexOf(currentStep) >= index + 1
 	const isLastStep = index === steps.length - 1
 
 	return (
 		<div className="flex flex-col items-start">
 			<div className="flex items-center">
 				<div
-					className={`size-4 rounded-full border ${
+					className={`z-10 size-4 rounded-full border ${
 						isActive
 							? "border-blue-600 outline outline-2 outline-blue-600"
 							: "border-gray-300 bg-white"
 					}`}
 				></div>
 				{!isLastStep && (
-					<div
-						className={`-mr-2 h-[2px] w-20 ${isActive ? "bg-blue-600" : "bg-gray-300"}`}
-					></div>
+					<div className="relative h-[2px] w-20">
+						<div className="absolute inset-0 bg-gray-300"></div>
+						{isNextActive && (
+							<div className="absolute inset-0 bg-blue-600 transition-all duration-300" />
+						)}
+					</div>
 				)}
 			</div>
 			<span
@@ -49,7 +53,7 @@ interface StepProgressProps {
 
 const StepProgress: React.FC<StepProgressProps> = ({ currentStep }) => {
 	return (
-		<div className="flex items-center gap-2">
+		<div className="flex items-center">
 			{steps.map((step, index) => (
 				<StepIndicator
 					key={step}
