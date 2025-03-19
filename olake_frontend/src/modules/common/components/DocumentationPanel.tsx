@@ -1,15 +1,8 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "antd"
-import {
-	ArrowLeft,
-	DotsThreeVertical,
-	CornersIn,
-	CornersOut,
-} from "@phosphor-icons/react"
+import { DotsThreeVertical, CornersOut } from "@phosphor-icons/react"
 
 interface DocumentationPanelProps {
-	title: string
-	icon?: string
 	docUrl: string
 	isMinimized?: boolean
 	onToggle?: () => void
@@ -18,8 +11,6 @@ interface DocumentationPanelProps {
 }
 
 const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
-	title,
-	icon,
 	docUrl,
 	isMinimized = false,
 	onToggle,
@@ -125,7 +116,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 
 			{/* Documentation panel */}
 			<div
-				className="h-[calc(100vh-120px)] overflow-hidden border-l-4 border-gray-200 bg-white"
+				className="overflow-hidden border-l-4 border-gray-200 bg-white"
 				style={{
 					width: isDocPanelCollapsed
 						? "30px"
@@ -138,32 +129,10 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					visibility: isDocPanelCollapsed ? "hidden" : "visible",
 				}}
 			>
-				<div className="flex h-16 items-center justify-between border-b border-gray-200 p-4">
-					<div className="flex items-center">
-						<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white">
-							<span className="font-bold">{icon || title.charAt(0)}</span>
-						</div>
-						<span className="text-lg font-bold">{title}</span>
-					</div>
-					<div
-						className="cursor-pointer rounded p-1 hover:bg-gray-100"
-						onClick={toggleDocPanel}
-					>
-						{showResizer ? (
-							<ArrowLeft
-								size={16}
-								className="text-gray-500"
-							/>
-						) : (
-							<CornersIn size={16} />
-						)}
-					</div>
-				</div>
-
 				<iframe
 					ref={iframeRef}
 					src={docUrl}
-					className="h-[calc(100%-64px)] w-full border-none"
+					className="h-full w-full border-none"
 					title="Documentation"
 					sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 				/>

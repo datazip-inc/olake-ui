@@ -389,8 +389,6 @@ const DestinationEdit: React.FC = () => {
 
 				{/* Documentation panel with iframe */}
 				<DocumentationPanel
-					title="Documentation"
-					icon="D"
 					docUrl="https://olake.io/docs/category/mongodb"
 					isMinimized={docsMinimized}
 					onToggle={toggleDocsPanel}

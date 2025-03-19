@@ -41,6 +41,7 @@ const Jobs: React.FC = () => {
 
 	const handleEditJob = (id: string) => {
 		message.info(`Editing job ${id}`)
+		navigate(`/jobs/${id}/edit`)
 	}
 
 	const handlePauseJob = (id: string) => {

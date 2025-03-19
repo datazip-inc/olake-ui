@@ -14,6 +14,7 @@ const JobHistory = lazy(() => import("./modules/jobs/pages/JobHistory"))
 const JobLogs = lazy(() => import("./modules/jobs/pages/JobLogs"))
 const JobSettings = lazy(() => import("./modules/jobs/pages/JobSettings"))
 const JobCreation = lazy(() => import("./modules/jobs/pages/JobCreation"))
+const JobEdit = lazy(() => import("./modules/jobs/pages/JobEdit"))
 const Sources = lazy(() => import("./modules/sources/pages/Sources"))
 const SourceEdit = lazy(() => import("./modules/sources/pages/SourceEdit"))
 const SourceJobs = lazy(() => import("./modules/sources/pages/SourceJobs"))
@@ -60,6 +61,10 @@ function App() {
 								<Route
 									path="/jobs/new"
 									element={<JobCreation />}
+								/>
+								<Route
+									path="/jobs/:jobId/edit"
+									element={<JobEdit />}
 								/>
 								<Route
 									path="/jobs/:jobId/history"
