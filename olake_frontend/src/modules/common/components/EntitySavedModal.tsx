@@ -1,6 +1,6 @@
 import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
-import { Check, GitCommit, Path } from "@phosphor-icons/react"
+import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 
 interface EntitySavedModalProps {
@@ -26,22 +26,26 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 		>
 			<div className="flex flex-col items-center justify-center gap-4 py-4">
 				<div className="rounded-xl bg-[#F0F0F0] p-2">
-					{type === "source" || type === "job" ? (
+					{type === "source" ? (
+						<LinktreeLogo className="z-10 size-5 text-[#6E6E6E]" />
+					) : type === "job" ? (
 						<GitCommit className="z-10 size-5 text-[#6E6E6E]" />
 					) : (
 						<Path className="z-10 size-5 text-[#6E6E6E]" />
 					)}
 				</div>
 				<div className="mb-4 text-center text-xl font-medium">
-					{/* {type === "source" ? "Source" : "Destination"} is connected and saved
-					successfully */}
 					{type === "source"
-						? `${type === "source" ? "Source" : "Destination"} is connected and saved successfully`
-						: "Your job is running successfully"}
+						? "Source is connected and saved successfully"
+						: type === "destination"
+							? "Destination is connected and saved successfully"
+							: "Your job is running successfully"}
 				</div>
 				<div className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-[#D9D9D9] px-4 py-2">
 					<div className="flex items-center gap-1">
-						{type === "source" || type === "job" ? (
+						{type === "source" ? (
+							<LinktreeLogo className="size-5" />
+						) : type === "job" ? (
 							<GitCommit className="size-5" />
 						) : (
 							<Path className="size-5" />
