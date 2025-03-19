@@ -6,8 +6,8 @@ import CreateDestination from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
-import JobSuccessModal from "../components/JobSuccessModal"
 import { useAppStore } from "../../../store"
+import EntitySavedModal from "../../common/components/EntitySavedModal"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -39,7 +39,7 @@ const JobCreation: React.FC = () => {
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
-	const { setShowJobSuccessModal } = useAppStore()
+	const { setShowEntitySavedModal } = useAppStore()
 
 	const handleNext = () => {
 		if (currentStep === "source") {
@@ -49,7 +49,7 @@ const JobCreation: React.FC = () => {
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
-			setShowJobSuccessModal(true)
+			setShowEntitySavedModal(true)
 		}
 	}
 
@@ -677,7 +677,11 @@ const JobCreation: React.FC = () => {
 						{currentStep === "config" ? "Create Job" : "Next"}
 						<ArrowRight className="size-4 text-white" />
 					</button>
-					<JobSuccessModal />
+					<EntitySavedModal
+						type="job"
+						fromJobFlow={false}
+						onComplete={() => navigate("/jobs")}
+					/>
 				</div>
 			</div>
 		</div>
