@@ -438,7 +438,6 @@ const SourceEdit: React.FC = () => {
 
 				{/* Documentation panel with iframe */}
 				<DocumentationPanel
-					title="MongoDB"
 					docUrl="https://olake.io/docs/category/mongodb"
 					isMinimized={docsMinimized}
 					onToggle={toggleDocsPanel}

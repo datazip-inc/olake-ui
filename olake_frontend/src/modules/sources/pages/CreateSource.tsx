@@ -17,13 +17,17 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 
 interface CreateSourceProps {
 	fromJobFlow?: boolean
+	fromJobEditFlow?: boolean
+	existingSourceId?: string
 	onComplete?: () => void
 	stepNumber?: string
 	stepTitle?: string
 }
 
 const CreateSource: React.FC<CreateSourceProps> = ({
-	fromJobFlow,
+	fromJobFlow = false,
+	fromJobEditFlow = false,
+	existingSourceId,
 	onComplete,
 	stepNumber,
 	stepTitle,
@@ -52,13 +56,48 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	}, [sources.length, fetchSources])
 
 	useEffect(() => {
+		if (fromJobEditFlow && existingSourceId) {
+			setSetupType("existing")
+
+			const selectedSource = sources.find(s => s.id === existingSourceId)
+
+			if (selectedSource) {
+				setSourceName(selectedSource.name)
+				setConnector(selectedSource.type)
+
+				if (selectedSource.type === "MongoDB") {
+					setConnectionType("uri")
+					setConnectionUri("mongodb://username:password@hostname:port/database")
+					setSrvEnabled(true)
+				} else if (selectedSource.type === "PostgreSQL") {
+					setConnectionType("uri")
+					setConnectionUri(
+						"postgresql://username:password@hostname:port/database",
+					)
+					setSrvEnabled(false)
+				} else if (selectedSource.type === "MySQL") {
+					setConnectionType("hosts")
+					setConnectionUri("mysql://username:password@hostname:port/database")
+					setSrvEnabled(false)
+				} else if (selectedSource.type === "Kafka") {
+					setConnectionType("hosts")
+					setConnectionUri("kafka://hostname:port")
+					setSrvEnabled(false)
+				}
+			}
+		}
+	}, [fromJobEditFlow, existingSourceId, sources])
+
+	useEffect(() => {
 		if (setupType === "existing") {
 			setFilteredSources(sources.filter(source => source.type === connector))
 		}
 	}, [connector, setupType, sources])
 
 	const handleCancel = () => {
-		if (fromJobFlow) {
+		if (fromJobEditFlow) {
+			navigate("/jobs")
+		} else if (fromJobFlow) {
 			navigate("/jobs/new")
 		} else {
 			navigate("/sources")
@@ -177,23 +216,25 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 								Capture information
 							</div>
 
-							<div className="mb-4 flex">
-								<Radio.Group
-									value={setupType}
-									onChange={e => setSetupType(e.target.value)}
-									className="flex"
-								>
-									<Radio
-										value="new"
-										className="mr-8"
+							{!fromJobEditFlow && (
+								<div className="mb-4 flex">
+									<Radio.Group
+										value={setupType}
+										onChange={e => setSetupType(e.target.value)}
+										className="flex"
 									>
-										Set up a new source
-									</Radio>
-									<Radio value="existing">Use an existing source</Radio>
-								</Radio.Group>
-							</div>
+										<Radio
+											value="new"
+											className="mr-8"
+										>
+											Set up a new source
+										</Radio>
+										<Radio value="existing">Use an existing source</Radio>
+									</Radio.Group>
+								</div>
+							)}
 
-							{setupType === "new" ? (
+							{setupType === "new" && !fromJobEditFlow ? (
 								<div className="grid grid-cols-2 gap-6">
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
@@ -243,6 +284,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 												value={connector}
 												onChange={handleConnectorChange}
 												className="w-full"
+												disabled={fromJobEditFlow}
 												options={[
 													{ value: "MongoDB", label: "MongoDB" },
 													{ value: "PostgreSQL", label: "PostgreSQL" },
@@ -256,12 +298,14 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Select existing source:
+											{fromJobEditFlow ? "Source:" : "Select existing source:"}
 										</label>
 										<Select
 											placeholder="Select a source"
 											className="w-full"
 											onChange={handleExistingSourceSelect}
+											value={fromJobEditFlow ? existingSourceId : undefined}
+											disabled={fromJobEditFlow}
 											options={filteredSources.map(s => ({
 												value: s.id,
 												label: s.name,
@@ -287,6 +331,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 									value={connectionType}
 									onChange={e => setConnectionType(e.target.value)}
 									className="flex"
+									disabled={fromJobEditFlow}
 								>
 									<Radio
 										value="uri"
@@ -307,6 +352,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 										placeholder={`Enter your ${connector} connection URI`}
 										value={connectionUri}
 										onChange={e => setConnectionUri(e.target.value)}
+										disabled={fromJobEditFlow}
 									/>
 									{connector === "MongoDB" && (
 										<p className="mt-1 text-xs text-gray-500">
@@ -647,7 +693,6 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				</div>
 
 				<DocumentationPanel
-					title={connector}
 					docUrl={`https://olake.io/docs/category/${connector.toLowerCase()}`}
 					isMinimized={isDocPanelCollapsed}
 					onToggle={toggleDocPanel}
@@ -655,11 +700,12 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				/>
 			</div>
 
-			{!fromJobFlow && (
+			{/* Footer */}
+			{!fromJobFlow && !fromJobEditFlow && (
 				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 					<button
-						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 						onClick={handleCancel}
+						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 					>
 						Cancel
 					</button>
@@ -667,7 +713,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreate}
 					>
-						Create
+						Next
 						<ArrowRight className="size-4 text-white" />
 					</button>
 				</div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select } from "antd"
+import { Input, Radio, Select } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -15,6 +15,8 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
+	fromJobEditFlow?: boolean
+	existingDestinationId?: string
 	onComplete?: () => void
 	stepNumber?: number
 	stepTitle?: string
@@ -22,6 +24,8 @@ interface CreateDestinationProps {
 
 const CreateDestination: React.FC<CreateDestinationProps> = ({
 	fromJobFlow,
+	fromJobEditFlow,
+	existingDestinationId,
 	onComplete,
 	stepNumber,
 	stepTitle,
@@ -54,6 +58,37 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	}, [destinations.length, fetchDestinations])
 
 	useEffect(() => {
+		if (fromJobEditFlow && existingDestinationId) {
+			setSetupType("existing")
+
+			const selectedDestination = destinations.find(
+				d => d.id === existingDestinationId,
+			)
+
+			if (selectedDestination) {
+				setDestinationName(selectedDestination.name)
+				setConnector(selectedDestination.type)
+
+				if (selectedDestination.type === "Amazon S3") {
+					setAuthType("iam")
+					setIamInfo("arn:aws:iam::123456789012:role/example-role")
+					setS3BucketName("example-bucket")
+					setS3BucketPath("/example/path")
+					setRegion("us-west-2")
+				} else if (selectedDestination.type === "Snowflake") {
+					setAuthType("keys")
+					setAwsAccessKeyId("example-access-key")
+					setAwsSecretKey("example-secret-key")
+				} else if (selectedDestination.type === "BigQuery") {
+					setAuthType("keys")
+					setAwsAccessKeyId("example-access-key")
+					setAwsSecretKey("example-secret-key")
+				}
+			}
+		}
+	}, [fromJobEditFlow, existingDestinationId, destinations])
+
+	useEffect(() => {
 		if (setupType === "existing") {
 			setFilteredDestinations(
 				destinations.filter(destination => destination.type === connector),
@@ -62,13 +97,14 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	}, [connector, setupType, destinations])
 
 	const handleCancel = () => {
-		if (fromJobFlow) {
+		if (fromJobEditFlow) {
+			navigate("/jobs")
+		} else if (fromJobFlow) {
 			navigate("/jobs/new")
 		} else {
 			navigate("/destinations")
 		}
 	}
-
 	const handleCreate = () => {
 		setTimeout(() => {
 			setShowTestingModal(true)
@@ -171,23 +207,26 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 								<Notebook className="size-5" />
 								Capture information
 							</div>
-							<div className="mb-4 flex">
-								<Radio.Group
-									value={setupType}
-									onChange={e => setSetupType(e.target.value)}
-									className="flex"
-								>
-									<Radio
-										value="new"
-										className="mr-8"
-									>
-										Set up a new destination
-									</Radio>
-									<Radio value="existing">Use an existing destination</Radio>
-								</Radio.Group>
-							</div>
 
-							{setupType === "new" ? (
+							{!fromJobEditFlow && (
+								<div className="mb-4 flex">
+									<Radio.Group
+										value={setupType}
+										onChange={e => setSetupType(e.target.value)}
+										className="flex"
+									>
+										<Radio
+											value="new"
+											className="mr-8"
+										>
+											Set up a new destination
+										</Radio>
+										<Radio value="existing">Use an existing destination</Radio>
+									</Radio.Group>
+								</div>
+							)}
+
+							{setupType === "new" && !fromJobEditFlow ? (
 								<div className="grid grid-cols-2 gap-6">
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
@@ -244,6 +283,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 												value={connector}
 												onChange={handleConnectorChange}
 												className="w-full"
+												disabled={fromJobEditFlow}
 												options={[
 													{ value: "Amazon S3", label: "Amazon S3" },
 													{ value: "Snowflake", label: "Snowflake" },
@@ -256,12 +296,18 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Select existing destination:
+											{fromJobEditFlow
+												? "Destination:"
+												: "Select existing destination:"}
 										</label>
 										<Select
 											placeholder="Select a destination"
 											className="w-full"
 											onChange={handleExistingDestinationSelect}
+											value={
+												fromJobEditFlow ? existingDestinationId : undefined
+											}
+											disabled={fromJobEditFlow}
 											options={filteredDestinations.map(d => ({
 												value: d.id,
 												label: d.name,
@@ -289,6 +335,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 											value={authType}
 											onChange={e => setAuthType(e.target.value)}
 											className="flex"
+											disabled={fromJobEditFlow}
 										>
 											<Radio
 												value="iam"
@@ -309,6 +356,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 												placeholder="Enter your IAM info"
 												value={iamInfo}
 												onChange={e => setIamInfo(e.target.value)}
+												disabled={fromJobEditFlow}
 											/>
 										</div>
 									) : (
@@ -321,6 +369,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 													placeholder="Enter your AWS access key ID"
 													value={awsAccessKeyId}
 													onChange={e => setAwsAccessKeyId(e.target.value)}
+													disabled={fromJobEditFlow}
 												/>
 											</div>
 											<div>
@@ -331,6 +380,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 													placeholder="Enter your AWS secret key"
 													value={awsSecretKey}
 													onChange={e => setAwsSecretKey(e.target.value)}
+													disabled={fromJobEditFlow}
 												/>
 											</div>
 										</div>
@@ -396,8 +446,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 
 				{/* Documentation panel */}
 				<DocumentationPanel
-					title={connector}
-					icon={connector === "Amazon S3" ? "S" : connector.charAt(0)}
 					docUrl="https://olake.io/docs/category/mongodb"
 					showResizer={true}
 				/>
@@ -416,7 +464,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreate}
 					>
-						Create
+						Next
 						<ArrowRight className="size-4 text-white" />
 					</button>
 				</div>
