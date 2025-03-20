@@ -10,7 +10,7 @@ import { useAppStore } from "../../../store"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import SchemaConfiguration from "../components/SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
-import SourceCancelModal from "../../common/components/SourceCancelModal"
+import EntityCancelModal from "../../common/components/EntityCancelModal"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -211,7 +211,10 @@ const JobCreation: React.FC = () => {
 						fromJobFlow={false}
 						onComplete={() => navigate("/jobs")}
 					/>
-					<SourceCancelModal />
+					<EntityCancelModal
+						type="job"
+						navigateTo="jobs"
+					/>
 				</div>
 			</div>
 		</div>

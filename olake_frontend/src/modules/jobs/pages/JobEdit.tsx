@@ -9,6 +9,7 @@ import StepProgress from "../components/StepIndicator"
 import SchemaConfiguration from "../components/SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
+import EntityCancelModal from "../../common/components/EntityCancelModal"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -43,6 +44,9 @@ const JobEdit: React.FC = () => {
 	const job = jobs.find(j => j.id === jobId)
 	const sourceObj = sources.find(s => s.name === job?.source)
 	const destinationObj = destinations.find(d => d.name === job?.destination)
+
+	// Get the value cancel modal from the store
+	const { setShowSourceCancelModal } = useAppStore()
 
 	// Load job data on component mount
 	useEffect(() => {
@@ -93,8 +97,12 @@ const JobEdit: React.FC = () => {
 	}
 
 	const handleCancel = () => {
-		message.info("Job edit cancelled")
-		navigate("/jobs")
+		if (currentStep === "source") {
+			setShowSourceCancelModal(true)
+		} else {
+			message.info("Job edit cancelled")
+			navigate("/jobs")
+		}
 	}
 
 	const handleSaveJob = () => {
@@ -271,6 +279,10 @@ const JobEdit: React.FC = () => {
 					)}
 				</div>
 			</div>
+			<EntityCancelModal
+				type="job-edit"
+				navigateTo="jobs"
+			/>
 		</div>
 	)
 }

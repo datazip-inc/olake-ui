@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Input, Radio, Select, Switch } from "antd"
 import { useAppStore } from "../../../store"
 import {
@@ -14,6 +14,7 @@ import TestConnectionModal from "../../common/components/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
+import EntityCancelModal from "../../common/components/EntityCancelModal"
 
 interface CreateSourceProps {
 	fromJobFlow?: boolean
@@ -32,15 +33,18 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	stepNumber,
 	stepTitle,
 }) => {
-	const navigate = useNavigate()
 	const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("MongoDB")
 	const [connectionType, setConnectionType] = useState("uri")
 	const [connectionUri, setConnectionUri] = useState("")
 	const [sourceName, setSourceName] = useState("")
 	const [srvEnabled, setSrvEnabled] = useState(false)
-	const { setShowEntitySavedModal, setShowTestingModal, setShowSuccessModal } =
-		useAppStore()
+	const {
+		setShowEntitySavedModal,
+		setShowSourceCancelModal,
+		setShowTestingModal,
+		setShowSuccessModal,
+	} = useAppStore()
 	const [showAdvanced, setShowAdvanced] = useState(false)
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(false)
 	const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -95,13 +99,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	}, [connector, setupType, sources])
 
 	const handleCancel = () => {
-		if (fromJobEditFlow) {
-			navigate("/jobs")
-		} else if (fromJobFlow) {
-			navigate("/jobs/new")
-		} else {
-			navigate("/sources")
-		}
+		setShowSourceCancelModal(true)
 	}
 
 	const handleCreate = () => {
@@ -727,6 +725,12 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				type="source"
 				onComplete={onComplete}
 				fromJobFlow={fromJobFlow || false}
+			/>
+			<EntityCancelModal
+				type="source"
+				navigateTo={
+					fromJobEditFlow ? "jobs" : fromJobFlow ? "jobs/new" : "sources"
+				}
 			/>
 		</div>
 	)
