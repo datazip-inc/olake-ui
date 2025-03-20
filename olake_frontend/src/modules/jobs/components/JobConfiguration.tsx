@@ -30,9 +30,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 			{stepNumber && stepTitle && (
 				<div className="mb-4 flex flex-col gap-2">
 					<div className="flex items-center gap-2">
-						<div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-sm text-white">
-							{stepNumber}
-						</div>
+						<div className="size-2 rounded-full border border-[#203FDD] outline outline-2 outline-[#203FDD]"></div>
 						<span>Step {stepNumber}</span>
 					</div>
 					<h1 className="text-xl font-medium">{stepTitle}</h1>

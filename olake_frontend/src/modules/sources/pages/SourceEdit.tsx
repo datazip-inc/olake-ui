@@ -411,6 +411,7 @@ const SourceEdit: React.FC = () => {
 								pagination={false}
 								rowKey={record => record.id}
 								className="min-w-full"
+								rowClassName={() => "custom-row"}
 							/>
 
 							{!showAllJobs && additionalJobs.length > 0 && (

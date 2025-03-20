@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Divider } from "antd"
+import { Table, Button, Input, Spin, message } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
 
@@ -116,8 +116,8 @@ const JobHistory: React.FC = () => {
 	}
 
 	return (
-		<div className="p-6">
-			<div className="mb-6 flex items-center justify-between">
+		<div className="flex h-screen flex-col">
+			<div className="mb-6 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="flex items-center gap-2">
 						<Link
@@ -143,40 +143,34 @@ const JobHistory: React.FC = () => {
 				</div>
 			</div>
 
-			<Divider />
+			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
+				<h2 className="mb-4 text-xl font-bold">Job history</h2>
 
-			<h2 className="mb-4 text-xl font-bold">Job history</h2>
+				<div className="mb-4">
+					<Search
+						placeholder="Search Jobs"
+						allowClear
+						className="w-1/4"
+						value={searchText}
+						onChange={e => setSearchText(e.target.value)}
+					/>
+				</div>
 
-			<div className="mb-4">
-				<Search
-					placeholder="Search Jobs"
-					allowClear
-					className="w-1/4"
-					value={searchText}
-					onChange={e => setSearchText(e.target.value)}
-				/>
+				{isLoadingJobHistory ? (
+					<div className="flex items-center justify-center p-12">
+						<Spin size="large" />
+					</div>
+				) : (
+					<Table
+						dataSource={filteredHistory}
+						columns={columns}
+						rowKey="id"
+						className="overflow-scroll rounded-lg border"
+					/>
+				)}
 			</div>
 
-			{isLoadingJobHistory ? (
-				<div className="flex items-center justify-center p-12">
-					<Spin size="large" />
-				</div>
-			) : (
-				<Table
-					dataSource={filteredHistory}
-					columns={columns}
-					rowKey="id"
-					pagination={{
-						pageSize: 10,
-						showSizeChanger: false,
-					}}
-					className="overflow-hidden rounded-lg border"
-				/>
-			)}
-
-			<Divider className="m-2" />
-
-			<div className="mt-6 flex justify-end">
+			<div className="flex justify-end border-t border-gray-200 bg-white p-4">
 				<Button
 					type="primary"
 					className="font-extralight text-white"

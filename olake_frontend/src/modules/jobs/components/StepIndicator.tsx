@@ -19,7 +19,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 		<div className="flex flex-col items-start">
 			<div className="flex items-center">
 				<div
-					className={`z-10 size-4 rounded-full border ${
+					className={`z-10 size-3 rounded-full border ${
 						isActive
 							? "border-blue-600 outline outline-2 outline-blue-600"
 							: "border-gray-300 bg-white"

@@ -108,11 +108,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 									size={17}
 									color="#203FDD"
 								/>
-								<span className="text-xs font-medium text-[#193AE6]">
+								<span className="text-sm font-medium text-[#193AE6]">
 									New Update
 								</span>
 							</div>
-							<p className="mt-2 text-xs text-gray-600">
+							<p className="mt-2 text-xs text-[#383838]">
 								We have made fixes to our ingestion flow & new UI is implemented
 							</p>
 						</div>

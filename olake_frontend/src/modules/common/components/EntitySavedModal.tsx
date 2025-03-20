@@ -51,7 +51,13 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							<Path className="size-5" />
 						)}
 						<span>
-							&lt;{type === "source" ? "Source-Name" : "Job-Name"}&gt;
+							&lt;
+							{type === "source"
+								? "Source-Name"
+								: type === "job"
+									? "Job-Name"
+									: "Destination-Name"}
+							&gt;
 						</span>
 					</div>
 					<div className="flex gap-1 rounded-xl bg-[#F6FFED] px-2 py-1">

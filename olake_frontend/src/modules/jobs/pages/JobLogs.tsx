@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Spin, message, Button, Divider } from "antd"
+import { Input, Spin, message, Button } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
@@ -88,8 +88,8 @@ const JobLogs: React.FC = () => {
 	}
 
 	return (
-		<div className="p-6">
-			<div className="mb-6 flex items-center justify-between">
+		<div className="flex h-screen flex-col">
+			<div className="mb-6 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="mb-2 flex items-center">
 						<div className="flex items-center gap-2">
@@ -118,58 +118,58 @@ const JobLogs: React.FC = () => {
 				</div>
 			</div>
 
-			<h2 className="mb-4 text-xl font-bold">Logs</h2>
+			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
+				<h2 className="mb-4 text-xl font-bold">Logs</h2>
 
-			<div className="mb-4">
-				<Search
-					placeholder="Search Logs"
-					allowClear
-					className="w-1/4"
-					value={searchText}
-					onChange={e => setSearchText(e.target.value)}
-				/>
+				<div className="mb-4">
+					<Search
+						placeholder="Search Logs"
+						allowClear
+						className="w-1/4"
+						value={searchText}
+						onChange={e => setSearchText(e.target.value)}
+					/>
+				</div>
+
+				{isLoadingJobLogs ? (
+					<div className="flex items-center justify-center p-12">
+						<Spin size="large" />
+					</div>
+				) : (
+					<div className="overflow-scroll rounded-xl border bg-white">
+						<table className="min-w-full">
+							<tbody>
+								{filteredLogs.map((log, index) => (
+									<tr key={index}>
+										<td className="w-32 px-4 py-3 text-sm text-gray-500">
+											{log.date}
+										</td>
+										<td className="w-24 px-4 py-3 text-sm text-gray-500">
+											{log.time}
+										</td>
+										<td className="w-24 px-4 py-3 text-sm">
+											<span
+												className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
+													log.level,
+												)}`}
+											>
+												{log.level}
+											</span>
+										</td>
+										<td
+											className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(log.level)}`}
+										>
+											{log.message}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
 			</div>
 
-			{isLoadingJobLogs ? (
-				<div className="flex items-center justify-center p-12">
-					<Spin size="large" />
-				</div>
-			) : (
-				<div className="overflow-hidden rounded-xl border bg-white">
-					<table className="min-w-full">
-						<tbody>
-							{filteredLogs.map((log, index) => (
-								<tr key={index}>
-									<td className="w-32 px-4 py-3 text-sm text-gray-500">
-										{log.date}
-									</td>
-									<td className="w-24 px-4 py-3 text-sm text-gray-500">
-										{log.time}
-									</td>
-									<td className="w-24 px-4 py-3 text-sm">
-										<span
-											className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
-												log.level,
-											)}`}
-										>
-											{log.level}
-										</span>
-									</td>
-									<td
-										className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(log.level)}`}
-									>
-										{log.message}
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
-			)}
-
-			<Divider />
-
-			<div className="mt-6 flex justify-end">
+			<div className="flex justify-end border-t border-gray-200 bg-white p-4">
 				<Button
 					type="primary"
 					className="bg-[#203FDD] font-extralight text-white"

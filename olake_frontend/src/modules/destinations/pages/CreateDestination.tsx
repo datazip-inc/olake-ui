@@ -464,7 +464,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreate}
 					>
-						Next
+						Create
 						<ArrowRight className="size-4 text-white" />
 					</button>
 				</div>

@@ -1,3 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.custom-row td {
+	padding: 26px !important; /* Adjust padding as needed */
+}

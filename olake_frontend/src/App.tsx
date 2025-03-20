@@ -23,7 +23,7 @@ const Destinations = lazy(
 	() => import("./modules/destinations/pages/Destinations"),
 )
 const DestinationEdit = lazy(
-	() => import("./modules/destinations/pages/DestinationEdit"),
+	() => import("./modules/destinations/pages/DestinationEdit.tsx"),
 )
 const DestinationJobs = lazy(
 	() => import("./modules/destinations/pages/DestinationJobs"),

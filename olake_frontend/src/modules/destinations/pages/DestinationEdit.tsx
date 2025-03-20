@@ -419,7 +419,7 @@ const DestinationEdit: React.FC = () => {
 						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleCreateJob}
 					>
-						Create job
+						Use destination
 					</button>
 				</div>
 			</div>
