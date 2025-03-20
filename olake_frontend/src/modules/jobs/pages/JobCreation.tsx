@@ -10,6 +10,7 @@ import { useAppStore } from "../../../store"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import SchemaConfiguration from "../components/SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
+import EntityCancelModal from "../../common/components/EntityCancelModal"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -33,7 +34,7 @@ const JobCreation: React.FC = () => {
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
-	const { setShowEntitySavedModal } = useAppStore()
+	const { setShowEntitySavedModal, setShowSourceCancelModal } = useAppStore()
 
 	const handleNext = () => {
 		if (currentStep === "source") {
@@ -58,8 +59,12 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleCancel = () => {
-		message.info("Job creation cancelled")
-		navigate("/jobs")
+		if (currentStep === "source") {
+			setShowSourceCancelModal(true)
+		} else {
+			message.info("Job creation cancelled")
+			navigate("/jobs")
+		}
 	}
 
 	const handleSaveJob = () => {
@@ -205,6 +210,10 @@ const JobCreation: React.FC = () => {
 						type="job"
 						fromJobFlow={false}
 						onComplete={() => navigate("/jobs")}
+					/>
+					<EntityCancelModal
+						type="job"
+						navigateTo="jobs"
 					/>
 				</div>
 			</div>

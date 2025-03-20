@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Input, Radio, Select } from "antd"
 import { useAppStore } from "../../../store"
 import {
@@ -12,6 +12,7 @@ import TestConnectionModal from "../../common/components/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
+import EntityCancelModal from "../../common/components/EntityCancelModal"
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
@@ -30,7 +31,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	stepNumber,
 	stepTitle,
 }) => {
-	const navigate = useNavigate()
 	const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("Amazon S3")
 	const [authType, setAuthType] = useState("iam")
@@ -49,6 +49,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		setShowTestingModal,
 		setShowSuccessModal,
 		setShowEntitySavedModal,
+		setShowSourceCancelModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -97,13 +98,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	}, [connector, setupType, destinations])
 
 	const handleCancel = () => {
-		if (fromJobEditFlow) {
-			navigate("/jobs")
-		} else if (fromJobFlow) {
-			navigate("/jobs/new")
-		} else {
-			navigate("/destinations")
-		}
+		setShowSourceCancelModal(true)
 	}
 	const handleCreate = () => {
 		setTimeout(() => {
@@ -478,6 +473,12 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				type="destination"
 				onComplete={onComplete}
 				fromJobFlow={fromJobFlow || false}
+			/>
+			<EntityCancelModal
+				type="destination"
+				navigateTo={
+					fromJobEditFlow ? "jobs" : fromJobFlow ? "jobs/new" : "destinations"
+				}
 			/>
 		</div>
 	)
