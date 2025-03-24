@@ -2,7 +2,7 @@ import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
-import { JobCreationSteps } from "../../jobs/pages/JobCreation"
+import { JobCreationSteps } from "../../../types"
 
 interface EntitySavedModalProps {
 	type: JobCreationSteps

@@ -13,8 +13,7 @@ import JobConfiguration from "../components/JobConfiguration"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import TestConnectionModal from "../../common/components/TestConnectionModal"
-
-export type JobCreationSteps = "source" | "destination" | "schema" | "config"
+import { JobCreationSteps } from "../../../types"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
