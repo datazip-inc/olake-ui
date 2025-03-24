@@ -49,9 +49,7 @@ const JobCreation: React.FC = () => {
 		} else if (currentStep === "destination") {
 			dummyNetworkCall()
 		} else if (currentStep === "schema") {
-			setTimeout(() => {
-				setCurrentStep("config")
-			}, 1500)
+			setCurrentStep("config")
 		} else if (currentStep === "config") {
 			setTimeout(() => {
 				setShowEntitySavedModal(true)
