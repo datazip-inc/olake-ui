@@ -59,3 +59,4 @@ export interface DestinationJob {
 	source: string
 	paused: boolean
 }
+export type JobCreationSteps = "source" | "destination" | "schema" | "config"

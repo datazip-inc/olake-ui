@@ -11,12 +11,13 @@ import EntitySavedModal from "../../common/components/EntitySavedModal"
 import SchemaConfiguration from "../components/SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
-
-type Step = "source" | "destination" | "schema" | "config"
+import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
+import TestConnectionModal from "../../common/components/TestConnectionModal"
+import { JobCreationSteps } from "../../../types"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
-	const [currentStep, setCurrentStep] = useState<Step>("source")
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 
 	// Schema step states
@@ -34,18 +35,49 @@ const JobCreation: React.FC = () => {
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
-	const { setShowEntitySavedModal, setShowSourceCancelModal } = useAppStore()
+	const {
+		setShowEntitySavedModal,
+		setShowSourceCancelModal,
+		setShowTestingModal,
+		setShowSuccessModal,
+	} = useAppStore()
 
 	const handleNext = () => {
+		if (currentStep === "source") {
+			dummyNetworkCall()
+		} else if (currentStep === "destination") {
+			dummyNetworkCall()
+		} else if (currentStep === "schema") {
+			setCurrentStep("config")
+		} else if (currentStep === "config") {
+			setTimeout(() => {
+				setShowEntitySavedModal(true)
+			}, 1500)
+		}
+	}
+	const nextStep = () => {
 		if (currentStep === "source") {
 			setCurrentStep("destination")
 		} else if (currentStep === "destination") {
 			setCurrentStep("schema")
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
-		} else if (currentStep === "config") {
-			setShowEntitySavedModal(true)
+		} else {
 		}
+	}
+
+	const dummyNetworkCall = () => {
+		setTimeout(() => {
+			setShowTestingModal(true)
+			setTimeout(() => {
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
+				setTimeout(() => {
+					setShowSuccessModal(false)
+					setShowEntitySavedModal(true)
+				}, 2000)
+			}, 2000)
+		}, 1500)
 	}
 
 	const handleBack = () => {
@@ -206,10 +238,12 @@ const JobCreation: React.FC = () => {
 						{currentStep === "config" ? "Create Job" : "Next"}
 						<ArrowRight className="size-4 text-white" />
 					</button>
+					<TestConnectionModal />
+					<TestConnectionSuccessModal />
 					<EntitySavedModal
-						type="job"
-						fromJobFlow={false}
-						onComplete={() => navigate("/jobs")}
+						type={currentStep}
+						fromJobFlow={true}
+						onComplete={nextStep}
 					/>
 					<EntityCancelModal
 						type="job"
