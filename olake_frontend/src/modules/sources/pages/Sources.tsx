@@ -34,6 +34,7 @@ const Sources: React.FC = () => {
 	}
 
 	const handleDeleteSource = (id: string) => {
+		console.log("deleting souce ",id);
 		message.info(`Deleting source ${id}`)
 		deleteSource(id).catch(error => {
 			message.error("Failed to delete source")
