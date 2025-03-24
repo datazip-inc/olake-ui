@@ -54,7 +54,6 @@ const JobCreation: React.FC = () => {
 			}, 1500)
 		} else if (currentStep === "config") {
 			setTimeout(() => {
-				
 				setShowEntitySavedModal(true)
 			}, 1500)
 		}
