@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "antd"
-import { DotsThreeVertical, CornersOut,ArrowsIn, ArrowsOut } from "@phosphor-icons/react"
+import { DotsThreeVertical, CornersOut,ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
 interface DocumentationPanelProps {
 	docUrl: string
@@ -140,6 +140,17 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 							className="text-gray-500 transition-opacity duration-200 hover:opacity-75"
 						/>
 					</div> 
+					<div className="toggleButton-container">
+						{/* Button for toggling setting to minimize and maximize */}	
+					<div className="absolute bottom-2 right-2">
+					<Button
+						type="text"
+						onClick={toggleSize}
+						icon={isMaximized ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+						className="hover:bg-gray-200 rounded-full"
+					/>
+					</div>
+					</div>
 				</div>
 			)}
 
@@ -161,15 +172,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					visibility: isDocPanelCollapsed ? "hidden" : "visible",
 				}}
 			>
-				{/* Button for toggling setting to minimize and maximize */}
-				<div className="absolute top-2 right-2">
-					<Button
-						type="text"
-						onClick={toggleSize}
-						icon={isMaximized ? <ArrowsIn size={20} /> : <ArrowsOut size={20} />}
-						className="hover:bg-gray-200 rounded-full"
-					/>
-				</div>
+				
 				<iframe
 					ref={iframeRef}
 					src={docUrl}
