@@ -113,3 +113,4 @@ export type StreamHeaderProps = {
 export type StreamConfigurationProps = {
 	stream: StreamData
 }
+export type JobCreationSteps = "source" | "destination" | "schema" | "config"

@@ -2,9 +2,10 @@ import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
+import { JobCreationSteps } from "../../../types"
 
 interface EntitySavedModalProps {
-	type: string
+	type: JobCreationSteps
 	onComplete?: () => void
 	fromJobFlow: boolean
 }
@@ -28,7 +29,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 				<div className="rounded-xl bg-[#F0F0F0] p-2">
 					{type === "source" ? (
 						<LinktreeLogo className="z-10 size-5 text-[#6E6E6E]" />
-					) : type === "job" ? (
+					) : type === "config" ? (
 						<GitCommit className="z-10 size-5 text-[#6E6E6E]" />
 					) : (
 						<Path className="z-10 size-5 text-[#6E6E6E]" />
@@ -45,7 +46,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					<div className="flex items-center gap-1">
 						{type === "source" ? (
 							<LinktreeLogo className="size-5" />
-						) : type === "job" ? (
+						) : type === "config" ? (
 							<GitCommit className="size-5" />
 						) : (
 							<Path className="size-5" />
@@ -54,7 +55,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							&lt;
 							{type === "source"
 								? "Source-Name"
-								: type === "job"
+								: type === "config"
 									? "Job-Name"
 									: "Destination-Name"}
 							&gt;
@@ -66,8 +67,9 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					</div>
 				</div>
 				<div className="flex space-x-4">
-					{type !== "job" && (
+					{type !== "config" && (
 						<Button
+							type={fromJobFlow ? "primary" : "default"}
 							className="border border-[#D9D9D9]"
 							onClick={() => {
 								setShowEntitySavedModal(false)
@@ -87,7 +89,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							}}
 						>
 							{fromJobFlow
-								? "Back to Job Creation"
+								? "Next →"
 								: type === "source"
 									? "Sources"
 									: "Destinations"}
@@ -98,10 +100,21 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							type="primary"
 							onClick={() => {
 								setShowEntitySavedModal(false)
-								navigate(type === "job" ? "/jobs" : "/jobs/new")
+								navigate(type === "config" ? "/jobs" : "/jobs/new")
 							}}
 						>
-							{type === "job" ? "Jobs →" : "Create a job →"}
+							{type === "config" ? "Jobs →" : "Create a job →"}
+						</Button>
+					)}
+					{type === "config" && fromJobFlow && (
+						<Button
+							type="primary"
+							onClick={() => {
+								setShowEntitySavedModal(false)
+								navigate("/jobs")
+							}}
+						>
+							jobs →
 						</Button>
 					)}
 				</div>
