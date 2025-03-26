@@ -6,10 +6,11 @@ import CreateDestination from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
-import SchemaConfiguration from "../components/SchemaConfiguration"
+import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
+import { mockStreamData } from "../../../api/mockData"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -29,10 +30,9 @@ const JobEdit: React.FC = () => {
 	const [docsMinimized, setDocsMinimized] = useState(false)
 
 	// Schema step states
-	const [selectedStreams, setSelectedStreams] = useState<string[]>([])
-	const [syncMode, setSyncMode] = useState("full")
-	const [enableBackfill, setEnableBackfill] = useState(true)
-	const [normalisation, setNormalisation] = useState(true)
+	const [selectedStreams, setSelectedStreams] = useState<string[]>(
+		mockStreamData.map(stream => stream.stream.name),
+	)
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
@@ -64,9 +64,6 @@ const JobEdit: React.FC = () => {
 			// For demo purposes, we're using mock data for the additional fields
 			// In a real application, you would fetch these details from the API
 			setSelectedStreams(["Payments", "public_raw_stream"])
-			setSyncMode("full")
-			setEnableBackfill(true)
-			setNormalisation(true)
 			setReplicationFrequency("daily")
 			setSchemaChangeStrategy("propagate")
 			setNotifyOnSchemaChanges(true)
@@ -187,12 +184,6 @@ const JobEdit: React.FC = () => {
 							<SchemaConfiguration
 								selectedStreams={selectedStreams}
 								setSelectedStreams={setSelectedStreams}
-								syncMode={syncMode}
-								setSyncMode={setSyncMode}
-								enableBackfill={enableBackfill}
-								setEnableBackfill={setEnableBackfill}
-								normalisation={normalisation}
-								setNormalisation={setNormalisation}
 								stepNumber={3}
 								stepTitle="Schema evaluation"
 							/>

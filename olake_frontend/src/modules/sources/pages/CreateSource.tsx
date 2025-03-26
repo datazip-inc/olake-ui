@@ -15,6 +15,7 @@ import TestConnectionSuccessModal from "../../common/components/TestConnectionSu
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
+import StepTitle from "../../common/components/StepTitle"
 
 interface CreateSourceProps {
 	fromJobFlow?: boolean
@@ -197,15 +198,10 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 			<div className="flex flex-1 overflow-hidden">
 				<div className="w-full overflow-auto p-6 pt-0">
 					{stepNumber && stepTitle && (
-						<div className="mb-4 flex flex-col gap-2">
-							<div className="mt-4 flex items-center gap-2 text-sm text-[#203FDD]">
-								<div className="size-2 rounded-full border border-[#203FDD] outline outline-2 outline-[#203FDD]"></div>
-								<span className="text-sm text-[#8A8A8A]">
-									Step {stepNumber}
-								</span>
-							</div>
-							<h1 className="text-xl font-medium">{stepTitle}</h1>
-						</div>
+						<StepTitle
+							stepNumber={stepNumber}
+							stepTitle={stepTitle}
+						/>
 					)}
 					<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6">
 						<div className="mb-6">

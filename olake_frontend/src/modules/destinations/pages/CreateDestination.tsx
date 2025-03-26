@@ -13,6 +13,7 @@ import TestConnectionSuccessModal from "../../common/components/TestConnectionSu
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
+import StepTitle from "../../common/components/StepTitle"
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
@@ -186,15 +187,12 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			{/* Main content */}
 			<div className="flex flex-1 overflow-hidden">
 				{/* Left content */}
-				<div className="w-full overflow-auto p-6 pt-0">
+				<div className="w-full overflow-auto p-6 pt-6">
 					{stepNumber && stepTitle && (
-						<div className="mb-4 mt-4 flex flex-col gap-2">
-							<div className="flex items-center gap-2 text-sm text-blue-600">
-								<div className="size-2 rounded-full border border-blue-600 outline outline-2 outline-blue-600"></div>
-								<span className="text-[#8A8A8A]">Step {stepNumber}</span>
-							</div>
-							<h1 className="text-xl font-medium">{stepTitle}</h1>
-						</div>
+						<StepTitle
+							stepNumber={stepNumber}
+							stepTitle={stepTitle}
+						/>
 					)}
 					<div className="mb-6 mt-6 rounded-xl border border-gray-200 bg-white p-6">
 						<div>

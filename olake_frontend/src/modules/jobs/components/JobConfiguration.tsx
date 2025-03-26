@@ -1,4 +1,5 @@
 import { Input, Radio, Select, Switch } from "antd"
+import StepTitle from "../../common/components/StepTitle"
 
 interface JobConfigurationProps {
 	jobName: string
@@ -28,15 +29,11 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	return (
 		<div className="w-full p-6">
 			{stepNumber && stepTitle && (
-				<div className="mb-4 flex flex-col gap-2">
-					<div className="flex items-center gap-2">
-						<div className="size-2 rounded-full border border-[#203FDD] outline outline-2 outline-[#203FDD]"></div>
-						<span>Step {stepNumber}</span>
-					</div>
-					<h1 className="text-xl font-medium">{stepTitle}</h1>
-				</div>
+				<StepTitle
+					stepNumber={stepNumber}
+					stepTitle={stepTitle}
+				/>
 			)}
-
 			<div className="rounded-xl border border-[#D9D9D9] p-4">
 				<div className="mb-6 grid grid-cols-2 gap-6">
 					<div>

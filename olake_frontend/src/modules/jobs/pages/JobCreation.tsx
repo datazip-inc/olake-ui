@@ -8,9 +8,10 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
 import { useAppStore } from "../../../store"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
-import SchemaConfiguration from "../components/SchemaConfiguration"
+import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
+import { mockStreamData } from "../../../api/mockData"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -20,13 +21,9 @@ const JobCreation: React.FC = () => {
 	const [docsMinimized, setDocsMinimized] = useState(false)
 
 	// Schema step states
-	const [selectedStreams, setSelectedStreams] = useState<string[]>([
-		"Payments",
-		"public_raw_stream",
-	])
-	const [syncMode, setSyncMode] = useState("full")
-	const [enableBackfill, setEnableBackfill] = useState(true)
-	const [normalisation, setNormalisation] = useState(true)
+	const [selectedStreams, setSelectedStreams] = useState<string[]>(
+		mockStreamData.map(stream => stream.stream.name),
+	)
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
@@ -135,14 +132,8 @@ const JobCreation: React.FC = () => {
 						<SchemaConfiguration
 							selectedStreams={selectedStreams}
 							setSelectedStreams={setSelectedStreams}
-							syncMode={syncMode}
-							setSyncMode={setSyncMode}
-							enableBackfill={enableBackfill}
-							setEnableBackfill={setEnableBackfill}
-							normalisation={normalisation}
-							setNormalisation={setNormalisation}
 							stepNumber={3}
-							stepTitle="Schema evaluation"
+							stepTitle="Streams selection"
 						/>
 					)}
 
