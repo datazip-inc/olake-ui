@@ -2,12 +2,13 @@ import { useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
 import { Destination } from "../../../types"
 import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
+import DeleteModal from "../../common/components/DeleteModal"
 
 interface DestinationTableProps {
 	destinations: Destination[]
 	loading: boolean
 	onEdit: (id: string) => void
-	onDelete: (id: string) => void
+	onDelete: (Destination: Destination) => void
 }
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
@@ -40,7 +41,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 								icon: <TrashSimple />,
 								label: "Delete",
 								danger: true,
-								onClick: () => onDelete(record.id),
+								onClick: () => onDelete(record),
 							},
 						],
 					}}
@@ -131,6 +132,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				}}
 				className="overflow-hidden rounded-lg border"
 			/>
+			<DeleteModal from={"DESTINATION"} />
 		</div>
 	)
 }

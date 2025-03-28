@@ -6,6 +6,7 @@ import SourceTable from "../components/SourceTable"
 import FirstSource from "../../../assets/FirstSource.svg"
 import SourcesTutorial from "../../../assets/SourcesTutorial.svg"
 import { LinktreeLogo, PlayCircle, Plus } from "@phosphor-icons/react"
+import { Source } from "../../../types"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -15,7 +16,8 @@ const Sources: React.FC = () => {
 		isLoadingSources,
 		sourcesError,
 		fetchSources,
-		deleteSource,
+		setShowDeleteModal,
+		setSelectedSource,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -33,12 +35,11 @@ const Sources: React.FC = () => {
 		navigate(`/sources/${id}`)
 	}
 
-	const handleDeleteSource = (id: string) => {
-		message.info(`Deleting source ${id}`)
-		deleteSource(id).catch(error => {
-			message.error("Failed to delete source")
-			console.error(error)
-		})
+	const handleDeleteSource = (source: Source) => {
+		setSelectedSource(source)
+		setTimeout(() => {
+			setShowDeleteModal(true)
+		}, 1000)
 	}
 
 	const filteredSources = sources.filter(source => source.status === activeTab)

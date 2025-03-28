@@ -2,12 +2,13 @@ import { useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
 import { Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
+import DeleteModal from "../../common/components/DeleteModal"
 
 interface SourceTableProps {
 	sources: Source[]
 	loading: boolean
 	onEdit: (id: string) => void
-	onDelete: (id: string) => void
+	onDelete: (source: Source) => void
 }
 
 const SourceTable: React.FC<SourceTableProps> = ({
@@ -41,7 +42,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
-								onClick: () => onDelete(record.id),
+								onClick: () => onDelete(record),
 							},
 						],
 					}}
@@ -132,6 +133,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				}}
 				className="overflow-hidden rounded-lg"
 			/>
+			<DeleteModal from={"SOURCE"} />
 		</div>
 	)
 }

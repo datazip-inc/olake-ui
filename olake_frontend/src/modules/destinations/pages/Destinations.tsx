@@ -6,6 +6,7 @@ import DestinationTable from "../components/DestinationTable"
 import FirstDestination from "../../../assets/FirstDestination.svg"
 import DestinationTutorial from "../../../assets/DestinationTutorial.svg"
 import { DownloadSimple, PlayCircle, Plus } from "@phosphor-icons/react"
+import { Destination } from "../../../types"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -15,7 +16,8 @@ const Destinations: React.FC = () => {
 		isLoadingDestinations,
 		destinationsError,
 		fetchDestinations,
-		deleteDestination,
+		setSelectedDestination,
+		setShowDeleteModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -33,12 +35,11 @@ const Destinations: React.FC = () => {
 		navigate(`/destinations/${id}`)
 	}
 
-	const handleDeleteDestination = (id: string) => {
-		message.info(`Deleting destination ${id}`)
-		deleteDestination(id).catch(error => {
-			message.error("Failed to delete destination")
-			console.error(error)
-		})
+	const handleDeleteDestination = (destination: Destination) => {
+		setSelectedDestination(destination)
+		setTimeout(() => {
+			setShowDeleteModal(true)
+		}, 1000)
 	}
 
 	const filteredDestinations = destinations.filter(

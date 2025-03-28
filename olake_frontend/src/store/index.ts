@@ -28,12 +28,15 @@ interface AppState {
 	// Selected job
 	selectedJobId: string | null
 	selectedHistoryId: string | null
+	selectedSource: Source | null
+	selectedDestination: Destination | null
 
 	//Modals
 	showTestingModal: boolean
 	showSuccessModal: boolean
 	showEntitySavedModal: boolean
 	showSourceCancelModal: boolean
+	showDeleteModal: boolean
 
 	// Actions - Jobs
 	fetchJobs: () => Promise<void>
@@ -46,6 +49,8 @@ interface AppState {
 	// Actions - Job History
 	fetchJobHistory: (jobId: string) => Promise<void>
 	setSelectedHistoryId: (id: string | null) => void
+	setSelectedSource: (source: Source) => void
+	setSelectedDestination: (destination: Destination) => void
 
 	// Actions - Job Logs
 	fetchJobLogs: (jobId: string, historyId: string) => Promise<void>
@@ -71,6 +76,7 @@ interface AppState {
 	setShowSuccessModal: (show: boolean) => void
 	setShowEntitySavedModal: (show: boolean) => void
 	setShowSourceCancelModal: (show: boolean) => void
+	setShowDeleteModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState>(set => ({
@@ -98,12 +104,15 @@ export const useAppStore = create<AppState>(set => ({
 	// Selected job
 	selectedJobId: null,
 	selectedHistoryId: null,
+	selectedSource: null,
+	selectedDestination: null,
 
 	// Modals
 	showTestingModal: false,
 	showSuccessModal: false,
 	showEntitySavedModal: false,
 	showSourceCancelModal: false,
+	showDeleteModal: false,
 
 	// Jobs actions
 	fetchJobs: async () => {
@@ -285,6 +294,14 @@ export const useAppStore = create<AppState>(set => ({
 
 	setSelectedHistoryId: id => {
 		set({ selectedHistoryId: id })
+	},
+
+	setSelectedSource: source => {
+		set({ selectedSource: source })
+	},
+
+	setSelectedDestination: destination => {
+		set({ selectedDestination: destination })
 	},
 
 	// Job Logs actions
@@ -472,4 +489,5 @@ export const useAppStore = create<AppState>(set => ({
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
 	setShowEntitySavedModal: show => set({ showEntitySavedModal: show }),
 	setShowSourceCancelModal: show => set({ showSourceCancelModal: show }),
+	setShowDeleteModal: show => set({ showDeleteModal: show }),
 }))
