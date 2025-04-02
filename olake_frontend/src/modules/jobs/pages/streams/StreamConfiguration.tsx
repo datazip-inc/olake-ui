@@ -109,7 +109,7 @@ const StreamConfiguration = ({ stream }: StreamConfigurationProps) => {
 									onChange={e => setSyncMode(e.target.value)}
 								>
 									<Radio
-										value="full"
+										value="full_refresh"
 										className="w-1/3"
 									>
 										Full refresh
