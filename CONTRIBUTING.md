@@ -35,7 +35,7 @@ For example to contribute a new ui component, you need to create a pull request 
 
 ## Committing
 
-We prefer squash or rebase commits so that all changes from a branch are committed to master as a single commit. All pull requests are squashed when merged, but rebasing prior to merge gives you better control over the commit message. Only signed commits are accepted for contribution.
+We prefer squash or rebase commits so that all changes from a branch are committed to master as a single commit. All pull requests are squashed when merged, but rebasing prior to merge gives you better control over the commit message. Run `make pre-commit` command before commiting.
 
 ## Installing and setting up Olake-App
 

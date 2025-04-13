@@ -31,3 +31,6 @@ pre-commit:
 	chmod +x $(shell pwd)/.githooks/pre-commit
 	chmod +x $(shell pwd)/.githooks/commit-msg
 	git config core.hooksPath $(shell pwd)/.githooks
+
+trivy:
+	trivy fs  --vuln-type  os,library --severity HIGH,CRITICAL .
