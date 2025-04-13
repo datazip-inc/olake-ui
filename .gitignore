@@ -1,11 +1,44 @@
+# ----------------------------
+# OS-Specific Files
+# ----------------------------
 .DS_Store
 
-# misc
-.DS_Store
+# ----------------------------
+# Go-Related Files
+# ----------------------------
+# Build binaries and logs
+*.exe
+*.out
+*.test
+*.log
+*.a
+*.o 
+
+# Go modules and workspace files
+go.work
+go.work.sum
+vendor/
+server/server
+server/olake-server
+
+# Build directories
+/bin/
+/tmp/
+/dist/
+
+# ----------------------------
+# Node-Related Files
+# ----------------------------
+**/node_modules/
 npm-debug*
 
-# node
-**/node_modules/
+# Build directories (frontend)
+**/build/
+**/dist/
 
-# IDE/editor files
-.vscode/
+# ----------------------------
+# Environment Files
+# ----------------------------
+*.env
+*.env.*
+

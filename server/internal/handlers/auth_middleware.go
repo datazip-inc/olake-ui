@@ -1,0 +1,22 @@
+package controllers
+
+import (
+	"github.com/beego/beego/v2/server/web"
+	"github.com/beego/beego/v2/server/web/context"
+	"github.com/datazip/olake-server/internal/constants"
+	"github.com/datazip/olake-server/internal/models"
+)
+
+// middleware only works if session is enabled
+func AuthMiddleware(ctx *context.Context) {
+	if web.BConfig.WebConfig.Session.SessionOn {
+		if userID := ctx.Input.Session(constants.SessionUserID); userID == nil {
+			// Send unauthorized response
+			ctx.Output.SetStatus(401)
+			ctx.Output.JSON(models.JSONResponse{
+				Message: "Unauthorized",
+				Success: false,
+			}, false, false)
+		}
+	}
+}
