@@ -83,7 +83,7 @@ type Catalog struct {
 	Type      string `json:"type" orm:"size(50)"`
 	Name      string `json:"name" orm:"size(100)"`
 	Specs     string `json:"specs" orm:"type(jsonb)"`
-	Stable    bool   `json:"stable"`
+	Version   string `json:"version"`
 }
 
 func (c *Catalog) TableName() string {

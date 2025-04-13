@@ -22,7 +22,7 @@ func Init() {
 	}))
 
 	// Then auth middleware
-	web.InsertFilter("/api/v1/*", web.BeforeExec, controllers.AuthMiddleware)
+	web.InsertFilter("/api/v1/*", web.BeforeRouter, controllers.AuthMiddleware)
 
 	// User routes
 	web.Router("/api/v1/users", &controllers.UserController{}, "post:CreateUser")

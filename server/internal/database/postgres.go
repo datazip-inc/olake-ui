@@ -27,7 +27,6 @@ func Init(uri string) error {
 
 	// enable session by default
 	if web.BConfig.WebConfig.Session.SessionOn {
-		fmt.Println("session is enabled")
 		web.BConfig.WebConfig.Session.SessionName = "olake-session"
 		web.BConfig.WebConfig.Session.SessionProvider = "postgresql"
 		web.BConfig.WebConfig.Session.SessionProviderConfig = uri

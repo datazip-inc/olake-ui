@@ -20,7 +20,6 @@ go.work.sum
 vendor/
 server/server
 server/olake-server
-server/conf/app.conf
 
 # Build directories
 /bin/
@@ -37,10 +36,11 @@ npm-debug*
 **/build/
 **/dist/
 
+*.vite*
+
 # ----------------------------
 # Environment Files
 # ----------------------------
 *.env
 *.env.*
-
-
+server/conf/app.conf

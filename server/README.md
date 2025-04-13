@@ -1,13 +1,7 @@
 # Olake Backend
-
-A Beego-based backend service for the Olake data Ingestion platform.
-
-## Project Overview
-
 Olake Backend is a RESTful API service built with the Beego framework that manages data sources, destinations, jobs, and users for data ingestion workflows.
 
 ## Prerequisites
-
 - Go 1.23 or later
 - PostgreSQL 12 or later
 - Git
@@ -15,62 +9,39 @@ Olake Backend is a RESTful API service built with the Beego framework that manag
 ## Setup Instructions
 
 ### 1. Clone the Repository
-
-```bash
-git clone https://github.com/datazip-inc/olake-frontend.git
-cd olake_backend
-```
-
-### 2. Install Dependencies
-
-```bash
-go mod download
-```
-
-### 3. Configure PostgreSQL
-
-1. Install PostgreSQL if not already installed
-2. Create a database named `olakedb`:
-
-```bash
-createdb olakedb
-```
-
-3. Update the database connection string in `utils/db.go` if needed:
-
-```go
-connStr := "host=localhost port=5432 user=postgres password=12345678 dbname=olakedb sslmode=disable"
-```
-
-### 4. Configure Application Settings
+    ```bash
+    git clone https://github.com/datazip-inc/olake-frontend.git
+    cd olake_backend
+    ```
+### 2. Configure Application Settings (Auth only works when session enabled)
 
 Review and update the configuration in `conf/app.conf` as needed:
 
-```
+```bash
 appname = olake_backend
 httpport = 8080
 runmode = dev
 copyrequestbody = true
+postgresdb = postgres://postgres:testing@testing-postgres.postgres.database.azure.com:5432/olakedb
 
 # Session configuration
 sessionon = true
-sessionprovider = memory
-sessionname = olake_session
-sessiongcmaxlifetime = 3600
 ```
-
-### 5. Install Bee Tool
-
-The Bee tool is required to run the application. Install it using:
+#### If session enabled, then manually run following command on your postgres db
+```bash
+CREATE TABLE session (
+    session_key VARCHAR(64) PRIMARY KEY,
+    session_data BYTEA,  -- Critical for binary storage
+    session_expiry TIMESTAMP WITH TIME ZONE
+);
+```
+### 3. Run the Application
 
 ```bash
-go install github.com/beego/bee/v2@latest
-```
-
-### 6. Run the Application
-
-```bash
-bee run
+go mod tidy
+bee run 
+# or
+make run
 ```
 
 The server will start on port 8080 (or the port specified in your configuration).
@@ -78,10 +49,9 @@ The server will start on port 8080 (or the port specified in your configuration)
 ## Project Structure
 
 - **conf/** - Configuration files
-- **controllers/** - Request handlers for API endpoints
-- **middleware/** - HTTP middleware components
-- **models/** - Data models and database schema
-- **routers/** - URL routing definitions
+- **internal/handlers/** - Request handlers for API endpoints
+- **internal/models/** - Data models and database schema
+- **routes/** - URL routing definitions
 - **utils/** - Utility functions and helpers
 - **main.go** - Application entry point
 
