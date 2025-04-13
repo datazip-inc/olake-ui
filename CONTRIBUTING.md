@@ -1,181 +1,54 @@
-# Contributing to Olake Frontend
+# Contributing to Olake-App
 
-Thank you for your interest in contributing to Olake Frontend! This document provides guidelines and instructions for contributing to this project.
+Thanks for taking the time and for your help in improving this project!
 
-## Table of Contents
+## Table of contents
+- [Olake-App Contributing Agreement](#olake-app-contributor-agreement)
+- [How You Can Contribute to Olake-App](#how-you-can-contribute-to-olake)
+- [Submitting a Pull Request](#submitting-a-pull-request)
+- [Committing](#committing)
+- [Installing and Setting Up Olake-App](#installing-and-setting-up-olake)
+- [Getting Help](#getting-help)
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Setting Up the Development Environment](#setting-up-the-development-environment)
-- [Development Workflow](#development-workflow)
-  - [Branching Strategy](#branching-strategy)
-  - [Commit Guidelines](#commit-guidelines)
-  - [Pull Request Process](#pull-request-process)
-- [Coding Standards](#coding-standards)
-  - [TypeScript Guidelines](#typescript-guidelines)
-  - [React Best Practices](#react-best-practices)
-  - [Styling Guidelines](#styling-guidelines)
-- [Testing](#testing)
-- [Documentation](#documentation)
-- [Issue Reporting](#issue-reporting)
-- [Feature Requests](#feature-requests)
+## Olake-App Contributor Agreement
 
-## Code of Conduct
+To contribute to this project, we need you to sign the [**Contributor License Agreement (“CLA”)**][CLA] for the first commit you make. By agreeing to the [**CLA**][CLA]
+we can add you to list of approved contributors and review the changes proposed by you.
 
-We expect all contributors to follow our Code of Conduct. Please be respectful and considerate of others when contributing to this project.
+## How you can contribute to Olake
 
-## Getting Started
+You can contribute to open-source Olake-App project. View our [**Issues Page**](https://github.com/datazip-inc/olake-app/issues) to see all open issues. If you encounter a bug or have an improvement suggestion, you can [**submit an issue**](https://github.com/datazip-inc/olake-app/issues/new) describing your proposed change.
 
-### Prerequisites
+One way you can contribute to Olake-App is to create UI components, Server API's and Temporal Integrations.
 
-- Node.js (LTS version)
-- pnpm (for package management)
-- Git
-
-### Setting Up the Development Environment
+For more information on the different ways in which you can contribute to Olake-App, you can chat with us on our [**Slack**](https://join.slack.com/t/getolake/shared_invite/zt-2usyz3i6r-8I8c9MtfcQUINQbR7vNtCQ) channel.
 
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/datazip-inc/olake-frontend.git
-   cd olake_frontend
-   ```
+## Submitting a pull request
 
-#### Common Steps
+The type of change you make will dictate what repositories you will need to make pull requests for. You can reach out to us on our [**Slack**](https://join.slack.com/t/getolake/shared_invite/zt-2usyz3i6r-8I8c9MtfcQUINQbR7vNtCQ/) channel if you have any questions.
 
-After setting up your local repository using either method above:
+For example to contribute a new ui component, you need to create a pull request (PR). Follow these steps to ensure your PR is well-prepared:
+- Provide a clear and concise PR title.
+- Write a detailed and descriptive PR description.
+- Request a code review from the maintainers.
 
-4. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-5. Start the development server:
-   ```bash
-   pnpm dev
-   ```
+## Committing
 
-## Development Workflow
+We prefer squash or rebase commits so that all changes from a branch are committed to master as a single commit. All pull requests are squashed when merged, but rebasing prior to merge gives you better control over the commit message. Only signed commits are accepted for contribution.
 
-### Branching Strategy
+## Installing and setting up Olake-App
 
-- `master` - Production-ready code
-- Feature branches - Named as `feat/your-feature-name`
-- Bug fix branches - Named as `fix/bug-description`
+To contribute to this project, you may need to install Olak-App on your machine. You can do so by following our [**ui readme**](/olake_frontend/README.md) and [**server readme**](/server/README.md) and set up Olake in no time.
 
-### Commit Guidelines
+## Getting help
 
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+For any questions, concerns, or queries, you can start by asking a question on our [**Slack**](https://join.slack.com/t/getolake/shared_invite/zt-2usyz3i6r-8I8c9MtfcQUINQbR7vNtCQ) channel.
+<br><br>
 
-- `feat:` - A new feature
-- `fix:` - A bug fix
-- `docs:` - Documentation changes
-- `style:` - Code style changes (formatting, etc.)
-- `refactor:` - Code changes that neither fix bugs nor add features
-- `perf:` - Performance improvements
-- `test:` - Adding or fixing tests
-- `chore:` - Changes to the build process or auxiliary tools
+### We look forward to your feedback on improving this project!
 
-Example:
 
-```
-feat: add user authentication component
-```
+<!----variables---->
 
-### Pull Request Process
-
-1. Update your feature branch with the latest changes from `staging`:
-   ```bash
-   git checkout staging
-   git pull upstream staging
-   git checkout feature/your-feature-name
-   git rebase staging
-   ```
-2. Ensure your code passes all linting and formatting checks:
-   ```bash
-   pnpm lint
-   pnpm format
-   ```
-3. Push your branch to your fork:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-4. Create a pull request against the `staging` branch of the original repository
-5. Ensure your PR description clearly describes the changes and references any related issues
-6. Wait for code review and address any feedback
-
-## Coding Standards
-
-### TypeScript Guidelines
-
-- Use TypeScript for all new code
-- Define proper interfaces and types for all components, functions, and variables
-- Avoid using `any` type when possible
-- Use type inference where appropriate
-
-### React Best Practices
-
-- Use functional components with hooks
-- Keep components small and focused on a single responsibility
-- Use proper component composition
-- Follow the React hooks rules
-- Use React Router for navigation
-- Implement proper error handling
-
-### Styling Guidelines
-
-- Use Tailwind CSS for styling
-- Follow the project's design system
-- Ensure responsive design for all components
-- Use Ant Design components when appropriate
-
-## Code Quality
-
-Before submitting your code, ensure it meets our quality standards:
-
-1. Format your code:
-   ```bash
-   pnpm format
-   ```
-2. Check for linting issues:
-   ```bash
-   pnpm lint
-   ```
-3. Fix linting issues:
-   ```bash
-   pnpm lint:fix
-   ```
-
-## Testing
-
-- Write tests for new features and bug fixes
-- Ensure all tests pass before submitting a PR
-- Aim for good test coverage
-
-## Documentation
-
-- Document components, functions, and complex logic
-- Update the README.md if necessary
-- Add JSDoc comments to functions and components
-
-## Issue Reporting
-
-When reporting issues, please use the issue template and include:
-
-- A clear and descriptive title
-- Steps to reproduce the issue
-- Expected behavior
-- Actual behavior
-- Screenshots if applicable
-- Environment information (browser, OS, etc.)
-
-## Feature Requests
-
-For feature requests, please provide:
-
-- A clear and descriptive title
-- Detailed description of the feature
-- Any relevant mockups or examples
-- Rationale for why this feature would be beneficial
-
-Thank you for contributing to Olake Frontend!
+[CLA]: https://docs.google.com/forms/d/e/1FAIpQLSdze2q6gn81fmbIp2bW5cIpAXcpv7Y5OQjQyXflNvoYWiO4OQ/viewform
