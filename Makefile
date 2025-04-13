@@ -2,7 +2,7 @@ whoami=$(shell whoami)
 home=$(shell echo $$HOME)
 GIT_VERSION=$(shell git describe --tags `git rev-list --tags --max-count=1`)
 GIT_COMMITSHA=$(shell git rev-list -1 HEAD)
-LDFLAGS="-w -s -X github.com/datazip/olake-server/constants.version=${GIT_VERSION} -X github.com/datazip/dz-cloud/constants.commitsha=${GIT_COMMITSHA} -X github.com/datazip/dz-cloud/constants.releasechannel=${RELEASE_CHANNEL}"
+LDFLAGS="-w -s -X github.com/datazip/olake-server/constants.version=${GIT_VERSION} -X github.com/datazip/olake-app/constants.commitsha=${GIT_COMMITSHA} -X github.com/datazip/olake-app/constants.releasechannel=${RELEASE_CHANNEL}"
 GOPATH = $(shell go env GOPATH)
 
 

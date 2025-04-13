@@ -3,7 +3,7 @@
 ## Design 🎨
 
 Check out our design on Figma:
-[Olake Design System](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake%2FDesign%2FCommunity?node-id=0-1&p=f&t=oOQMWCyXF6rzMzT1-0)
+[Olake-App Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake%2FDesign%2FCommunity?node-id=0-1&p=f&t=oOQMWCyXF6rzMzT1-0)
 
 ## Requirements ✅
 

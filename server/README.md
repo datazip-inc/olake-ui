@@ -1,5 +1,5 @@
-# Olake Backend
-Olake Backend is a RESTful API service built with the Beego framework that manages data sources, destinations, jobs, and users for data ingestion workflows.
+# Olake Server
+Olake Server is a RESTful API service built with the Beego framework that manages data sources, destinations, jobs, and users for data ingestion workflows.
 
 ## Prerequisites
 - Go 1.23 or later
@@ -11,14 +11,13 @@ Olake Backend is a RESTful API service built with the Beego framework that manag
 ### 1. Clone the Repository
     ```bash
     git clone https://github.com/datazip-inc/olake-frontend.git
-    cd olake_backend
     ```
 ### 2. Configure Application Settings (Auth only works when session enabled)
 
 Review and update the configuration in `conf/app.conf` as needed:
 
 ```bash
-appname = olake_backend
+appname = olake-server
 httpport = 8080
 runmode = dev
 copyrequestbody = true

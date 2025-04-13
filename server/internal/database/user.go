@@ -5,9 +5,10 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/models"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // UserORM handles database operations

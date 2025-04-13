@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// init routers
-	routers.Init()
+	routes.Init()
 
 	// setup environment mode
 	if web.BConfig.RunMode == "dev" {

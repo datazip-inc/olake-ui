@@ -1,5 +1,4 @@
-// controllers/auth_controller.go
-package controllers
+package handlers
 
 import (
 	"encoding/json"
@@ -7,24 +6,25 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/server/web"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/models"
 	"github.com/datazip/olake-server/utils"
-	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthController struct {
+type AuthHandler struct {
 	web.Controller
 	userORM *database.UserORM
 }
 
-func (c *AuthController) Prepare() {
+func (c *AuthHandler) Prepare() {
 	c.userORM = database.NewUserORM()
 }
 
 // @router /login [post]
-func (c *AuthController) Login() {
+func (c *AuthHandler) Login() {
 	var req models.LoginRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -48,7 +48,7 @@ func (c *AuthController) Login() {
 
 	// check if session is enabled
 	if web.BConfig.WebConfig.Session.SessionOn {
-		c.SetSession(constants.SessionUserID, user.ID)
+		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
 	utils.SuccessResponse(&c.Controller, models.LoginResponse{
@@ -58,7 +58,7 @@ func (c *AuthController) Login() {
 }
 
 // @router /checkauth [get]
-func (c *AuthController) CheckAuth() {
+func (c *AuthHandler) CheckAuth() {
 	if userID := c.GetSession(constants.SessionUserID); userID == nil {
 		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated")
 		return
@@ -71,8 +71,8 @@ func (c *AuthController) CheckAuth() {
 }
 
 // @router /logout [post]
-func (c *AuthController) Logout() {
-	c.DestroySession()
+func (c *AuthHandler) Logout() {
+	_ = c.DestroySession()
 	utils.SuccessResponse(&c.Controller, models.LoginResponse{
 		Message: "Logged out successfully",
 		Success: true,
@@ -80,7 +80,7 @@ func (c *AuthController) Logout() {
 }
 
 // @router /signup [post]
-func (c *AuthController) Signup() {
+func (c *AuthHandler) Signup() {
 	var req models.User
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")

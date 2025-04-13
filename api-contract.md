@@ -1,4 +1,4 @@
-# Olake Backend API Contract
+# Olake Server API Contract
 
 ## Base URL
 

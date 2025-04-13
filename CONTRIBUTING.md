@@ -39,7 +39,7 @@ We prefer squash or rebase commits so that all changes from a branch are committ
 
 ## Installing and setting up Olake-App
 
-To contribute to this project, you may need to install Olak-App on your machine. You can do so by following our [**ui readme**](/olake_frontend/README.md) and [**server readme**](/server/README.md) and set up Olake in no time.
+To contribute to this project, you may need to install Olak-App on your machine. You can do so by following our [**ui readme**](/olake_frontend/README.md) and [**server readme**](/server/README.md) and set up Olake-App in no time.
 
 ## Getting help
 

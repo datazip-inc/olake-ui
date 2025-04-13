@@ -1,5 +1,4 @@
-// controllers/auth_controller.go
-package controllers
+package handlers
 
 import (
 	"encoding/json"
@@ -9,22 +8,23 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
+
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/models"
 	"github.com/datazip/olake-server/utils"
 )
 
-type UserController struct {
+type UserHandler struct {
 	web.Controller
 	userORM *database.UserORM
 }
 
-func (c *UserController) Prepare() {
+func (c *UserHandler) Prepare() {
 	c.userORM = database.NewUserORM()
 }
 
 // @router /users [post]
-func (c *UserController) CreateUser() {
+func (c *UserHandler) CreateUser() {
 	var req models.User
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -40,7 +40,7 @@ func (c *UserController) CreateUser() {
 }
 
 // @router /users [get]
-func (c *UserController) GetAllUsers() {
+func (c *UserHandler) GetAllUsers() {
 	users, err := c.userORM.GetAll()
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve users")
@@ -51,7 +51,7 @@ func (c *UserController) GetAllUsers() {
 }
 
 // @router /users/:id [put]
-func (c *UserController) UpdateUser() {
+func (c *UserHandler) UpdateUser() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -86,7 +86,7 @@ func (c *UserController) UpdateUser() {
 }
 
 // @router /users/:id [delete]
-func (c *UserController) DeleteUser() {
+func (c *UserHandler) DeleteUser() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {

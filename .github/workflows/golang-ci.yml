@@ -22,20 +22,20 @@ jobs:
       - uses: actions/setup-go@v3
         with:
           check-latest: "true"
-          go-version: "1.21.x"
+          go-version: "1.23.x"
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
           version: latest
   build-check:
-    name: Build DZ-Cloud
+    name: Build Olake-App
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
           check-latest: "true"
-          go-version: "1.21.x"
+          go-version: "1.23.x"
       - name: Run build
         run: make build

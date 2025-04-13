@@ -1,4 +1,4 @@
-name-template: "DZ-Cloud v$NEXT_PATCH_VERSION"
+name-template: "Olake-App v$NEXT_PATCH_VERSION"
 tag-template: "v$NEXT_PATCH_VERSION"
 categories:
   - title: "🚀 Features"

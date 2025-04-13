@@ -7,9 +7,10 @@ import (
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/server/web"
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
+	_ "github.com/lib/pq"                                     // required for registering driver
+
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/models"
-	_ "github.com/lib/pq" // required for registering driver
 )
 
 func Init(uri string) error {

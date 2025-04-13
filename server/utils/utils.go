@@ -1,21 +1,18 @@
 package utils
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-server/internal/models"
 	"github.com/oklog/ulid"
+
+	"github.com/datazip/olake-server/internal/models"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {
@@ -38,7 +35,7 @@ func RespondJSON(ctx *web.Controller, status int, success bool, message string, 
 		Message: message,
 		Data:    data,
 	}
-	ctx.ServeJSON()
+	_ = ctx.ServeJSON()
 }
 
 func SuccessResponse(ctx *web.Controller, data interface{}) {
@@ -98,47 +95,47 @@ func HandleErrorJS(w http.ResponseWriter, r *http.Request, err error) {
 	http.Redirect(w, r, fmt.Sprintf(`/error?msg=%q`, url.QueryEscape(err.Error())), http.StatusPermanentRedirect)
 }
 
-// Encrypt with AES encryption and returns base64 encoded string
-func encryptAES(content, key []byte) (string, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-	cipherText := make([]byte, aes.BlockSize+len(content))
-	iv := cipherText[:aes.BlockSize]
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return "", err
-	}
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(cipherText[aes.BlockSize:], content)
-	return base64.StdEncoding.EncodeToString(cipherText), err
-}
+// // Encrypt with AES encryption and returns base64 encoded string
+// func encryptAES(content, key []byte) (string, error) {
+// 	block, err := aes.NewCipher(key)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	cipherText := make([]byte, aes.BlockSize+len(content))
+// 	iv := cipherText[:aes.BlockSize]
+// 	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
+// 		return "", err
+// 	}
+// 	stream := cipher.NewCFBEncrypter(block, iv)
+// 	stream.XORKeyStream(cipherText[aes.BlockSize:], content)
+// 	return base64.StdEncoding.EncodeToString(cipherText), err
+// }
 
-// decryptAES decrypts a base64 encoded string using AES encryption
-func decryptAES(secure string, key []byte) ([]byte, error) {
-	cipherDecoded, err := base64.StdEncoding.DecodeString(secure)
-	// if DecodeString failed, exit:
-	if err != nil {
-		return nil, err
-	}
-	// create a new AES cipher with the key and encrypted message
-	block, err := aes.NewCipher(key)
-	// if NewCipher failed, exit:
-	if err != nil {
-		return nil, err
-	}
-	// if the length of the cipherDecoded is less than 16 Bytes:
-	if len(cipherDecoded) < aes.BlockSize {
-		logs.Error("cipherDecoded block size is too short!")
-		return nil, err
-	}
-	iv := cipherDecoded[:aes.BlockSize]
-	cipherDecoded = cipherDecoded[aes.BlockSize:]
-	// decrypt the message
-	stream := cipher.NewCFBDecrypter(block, iv)
-	stream.XORKeyStream(cipherDecoded, cipherDecoded)
-	return cipherDecoded, nil
-}
+// // decryptAES decrypts a base64 encoded string using AES encryption
+// func decryptAES(secure string, key []byte) ([]byte, error) {
+// 	cipherDecoded, err := base64.StdEncoding.DecodeString(secure)
+// 	// if DecodeString failed, exit:
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// create a new AES cipher with the key and encrypted message
+// 	block, err := aes.NewCipher(key)
+// 	// if NewCipher failed, exit:
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	// if the length of the cipherDecoded is less than 16 Bytes:
+// 	if len(cipherDecoded) < aes.BlockSize {
+// 		logs.Error("cipherDecoded block size is too short!")
+// 		return nil, err
+// 	}
+// 	iv := cipherDecoded[:aes.BlockSize]
+// 	cipherDecoded = cipherDecoded[aes.BlockSize:]
+// 	// decrypt the message
+// 	stream := cipher.NewCFBDecrypter(block, iv)
+// 	stream.XORKeyStream(cipherDecoded, cipherDecoded)
+// 	return cipherDecoded, nil
+// }
 
 func ExistsInArray[T comparable](arr []T, value T) bool {
 	for _, elem := range arr {

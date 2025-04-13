@@ -1,4 +1,4 @@
-package controllers
+package handlers
 
 import (
 	"github.com/beego/beego/v2/client/orm"
