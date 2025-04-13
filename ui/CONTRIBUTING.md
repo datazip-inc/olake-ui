@@ -35,11 +35,10 @@ We expect all contributors to follow our Code of Conduct. Please be respectful a
 
 ### Setting Up the Development Environment
 
-
 1. Clone the repository:
    ```bash
    git clone https://github.com/datazip-inc/olake-frontend.git
-   cd olake_frontend
+   cd ui
    ```
 
 #### Common Steps
