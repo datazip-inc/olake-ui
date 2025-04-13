@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
 import { Destination } from "../../../types"
 import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
 
 interface DestinationTableProps {
 	destinations: Destination[]
@@ -58,14 +59,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			title: () => <span className="font-medium">Name</span>,
 			dataIndex: "name",
 			key: "name",
-			render: (text: string) => (
-				<div className="flex items-center">
-					<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white">
-						<span>D</span>
-					</div>
-					{text}
-				</div>
-			),
+			render: (text: string) => <div className="flex items-center">{text}</div>,
 		},
 		{
 			title: () => <span className="font-medium">Connectors</span>,
@@ -73,9 +67,10 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			key: "type",
 			render: (text: string) => (
 				<div className="flex items-center">
-					<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-						<span>S</span>
-					</div>
+					<img
+						src={getConnectorImage(text)}
+						className="mr-2 h-4 w-4"
+					/>
 					<span>{text}</span>
 				</div>
 			),
@@ -129,7 +124,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 					pageSize: 10,
 					showSizeChanger: false,
 				}}
-				className="overflow-hidden rounded-lg border"
+				className="overflow-hidden rounded-lg"
 			/>
 		</div>
 	)

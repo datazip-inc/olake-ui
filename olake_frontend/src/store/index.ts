@@ -126,7 +126,19 @@ export const useAppStore = create<AppState>(set => ({
 
 	addJob: async jobData => {
 		try {
-			const newJob = await jobService.createJob(jobData)
+			// Create a new job with mock data
+			const newJob: Job = {
+				id: (mockJobs.length + 1).toString(),
+				...jobData,
+				createdAt: new Date(),
+				lastSync: "3 hours ago",
+				lastSyncStatus: "success",
+			}
+
+			// Add to mock data
+			mockJobs.push(newJob)
+
+			// Update store state
 			set(state => ({ jobs: [...state.jobs, newJob] }))
 			return newJob
 		} catch (error) {
@@ -326,8 +338,12 @@ export const useAppStore = create<AppState>(set => ({
 	fetchSources: async () => {
 		set({ isLoadingSources: true, sourcesError: null })
 		try {
-			// Use mock data for development
-			set({ sources: mockSources, isLoadingSources: false })
+			// Only load mock data if the sources array is empty
+			// This prevents overwriting any sources that were added to the state
+			set(state => ({
+				sources: state.sources.length > 0 ? state.sources : mockSources,
+				isLoadingSources: false,
+			}))
 
 			// Uncomment for real API call
 			// const sources = await sourceService.getSources();
@@ -392,9 +408,13 @@ export const useAppStore = create<AppState>(set => ({
 	fetchDestinations: async () => {
 		set({ isLoadingDestinations: true, destinationsError: null })
 		try {
-			// Use mock data for development
-			set({ destinations: mockDestinations, isLoadingDestinations: false })
-
+			// Only load mock data if the destinations array is empty
+			// This prevents overwriting any destinations that were added to the state
+			set(state => ({
+				destinations:
+					state.destinations.length > 0 ? state.destinations : mockDestinations,
+				isLoadingDestinations: false,
+			}))
 			// Uncomment for real API call
 			// const destinations = await destinationService.getDestinations();
 			// set({ destinations, isLoadingDestinations: false });

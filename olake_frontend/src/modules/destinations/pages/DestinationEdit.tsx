@@ -1,24 +1,112 @@
 import React, { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Select, Switch, message } from "antd"
+import { Input, Button, Select, Switch, message } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, Check, Notebook } from "@phosphor-icons/react"
-import { DestinationJob } from "../../../types"
-import Table, { ColumnsType } from "antd/es/table"
+import Table from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
+import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
+import { destinationService } from "../../../api/services/destinationService"
+import { RJSFSchema, UiSchema } from "@rjsf/utils"
+import StepTitle from "../../common/components/StepTitle"
 
-const DestinationEdit: React.FC = () => {
+interface DestinationEditProps {
+	fromJobFlow?: boolean
+	stepNumber?: string | number
+	stepTitle?: string
+	initialData?: any
+}
+
+const DestinationEdit: React.FC<DestinationEditProps> = ({
+	fromJobFlow = false,
+	stepNumber,
+	stepTitle,
+	initialData,
+}) => {
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const navigate = useNavigate()
 	const isNewDestination = destinationId === "new"
 	const [activeTab, setActiveTab] = useState("config")
-	const [connector, setConnector] = useState("Amazon S3")
-	const [authType, setAuthType] = useState("iam")
-	const [iamInfo, setIamInfo] = useState("")
-	const [connectionUrl, setConnectionUrl] = useState("")
+	const [connector, setConnector] = useState("AWS S3")
+	const [catalog, setCatalog] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
+	const [formData, setFormData] = useState<any>({})
+	const [connectorSchema, setConnectorSchema] = useState<RJSFSchema>({})
+	const [connectorUiSchema] = useState<UiSchema>({})
+	const [isLoading, setIsLoading] = useState(false)
+
+	// Mock data for each destination type
+	const mockData = {
+		"Amazon S3": {
+			type: "PARQUET",
+			writer: {
+				normalization: false,
+				s3_bucket: "my-test-bucket",
+				s3_region: "ap-south-1",
+				s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
+				s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+				s3_path: "/data/test",
+			},
+		},
+		"Apache Iceberg": {
+			type: "ICEBERG",
+			writer: {
+				catalog_type: "glue",
+				normalization: false,
+				iceberg_s3_path: "s3://my-bucket/olake_iceberg/test",
+				aws_region: "ap-south-1",
+				aws_access_key: "AKIAXXXXXXXXXXXXXXXX",
+				aws_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+				iceberg_db: "my_database",
+				grpc_port: 50051,
+				server_host: "localhost",
+			},
+		},
+		"AWS Glue Catalog": {
+			type: "ICEBERG",
+			writer: {
+				catalog_type: "glue",
+				normalization: false,
+				iceberg_s3_path: "s3://my-bucket/olake_iceberg/test",
+				aws_region: "ap-south-1",
+				aws_access_key: "AKIAXXXXXXXXXXXXXXXX",
+				aws_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+				iceberg_db: "my_database",
+				grpc_port: 50051,
+				server_host: "localhost",
+			},
+		},
+		"REST Catalog": {
+			type: "ICEBERG",
+			writer: {
+				catalog_type: "rest",
+				normalization: false,
+				rest_catalog_url: "http://localhost:8181/catalog",
+				iceberg_s3_path: "warehouse",
+				iceberg_db: "olake_iceberg",
+			},
+		},
+		"JDBC Catalog": {
+			type: "ICEBERG",
+			writer: {
+				catalog_type: "jdbc",
+				jdbc_url: "jdbc:postgresql://localhost:5432/iceberg",
+				jdbc_username: "admin",
+				jdbc_password: "password",
+				normalization: false,
+				iceberg_s3_path: "s3a://warehouse",
+				s3_endpoint: "http://localhost:9000",
+				s3_use_ssl: false,
+				s3_path_style: true,
+				aws_access_key: "minioadmin",
+				aws_region: "ap-south-1",
+				aws_secret_key: "minioadmin",
+				iceberg_db: "olake_iceberg",
+			},
+		},
+	}
 
 	const {
 		destinations,
@@ -28,6 +116,76 @@ const DestinationEdit: React.FC = () => {
 		// addDestination,
 		// updateDestination,
 	} = useAppStore()
+
+	// Fetch connector schema based on selected connector type
+	const fetchConnectorSchema = async (connectorType: string) => {
+		setIsLoading(true)
+		try {
+			let schemaData
+			if (connector === "Apache Iceberg") {
+				let connectorFromCatalog
+				if (catalog === null) {
+					connectorFromCatalog = "AWS Glue"
+				} else {
+					connectorFromCatalog = catalog
+				}
+				schemaData =
+					await destinationService.getConnectorSchema(connectorFromCatalog)
+				setConnectorSchema(schemaData as RJSFSchema)
+
+				// Set mock data for the catalog after schema is loaded
+				if (mockData[connectorFromCatalog as keyof typeof mockData]) {
+					setFormData(mockData[connectorFromCatalog as keyof typeof mockData])
+				}
+			} else {
+				schemaData = await destinationService.getConnectorSchema(connector)
+				setConnectorSchema(schemaData as RJSFSchema)
+
+				// Set mock data for the connector after schema is loaded
+				if (mockData[connector as keyof typeof mockData]) {
+					setFormData(mockData[connector as keyof typeof mockData])
+				}
+			}
+			// const schema = await destinationService.getConnectorSchema(connectorType)
+			// if (schema) {
+			// 	setConnectorSchema(schema as RJSFSchema)
+			// 	if (schema.uiSchema) {
+			// 		setConnectorUiSchema(schema.uiSchema)
+			// 	}
+			// }
+		} catch (error) {
+			console.error("Error fetching connector schema:", error)
+			message.error(`Failed to load schema for ${connectorType}`)
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
+	// Load initial data when provided (for job edit flow)
+	useEffect(() => {
+		if (initialData) {
+			setDestinationName(initialData.name || "")
+
+			if (initialData.type) {
+				setConnector(initialData.type)
+			}
+
+			if (initialData.config) {
+				setTimeout(() => {
+					setFormData(initialData.config)
+				}, 100)
+			}
+		}
+	}, [initialData])
+
+	useEffect(() => {
+		if (initialData?.config && Object.keys(initialData.config).length > 0) {
+			setFormData(initialData.config)
+		} else if (connector && mockData[connector as keyof typeof mockData]) {
+			// Fill in mock data when connector changes and there's no initialData
+			setFormData(mockData[connector as keyof typeof mockData] || {})
+		}
+	}, [connector, initialData])
 
 	useEffect(() => {
 		if (!destinations.length) {
@@ -43,7 +201,9 @@ const DestinationEdit: React.FC = () => {
 			if (destination) {
 				setDestinationName(destination.name)
 				setConnector(destination.type)
-				// Set other fields based on destination data
+				setCatalog(destination?.catalog || null)
+				// Set mock data based on connector type
+				setFormData(mockData[destination.type as keyof typeof mockData] || {})
 			}
 		}
 	}, [
@@ -55,13 +215,17 @@ const DestinationEdit: React.FC = () => {
 		fetchJobs,
 	])
 
+	useEffect(() => {
+		fetchConnectorSchema(connector)
+	}, [connector])
+
 	// Mock associated jobs for the destination
 	const associatedJobs = jobs.slice(0, 5).map(job => ({
 		...job,
 		state: Math.random() > 0.7 ? "Inactive" : "Active",
 		lastRuntime: "3 hours ago",
 		lastRuntimeStatus: "Success",
-		source: "MongoDB Source",
+		source: job.source,
 		paused: false,
 	}))
 
@@ -71,45 +235,13 @@ const DestinationEdit: React.FC = () => {
 		state: Math.random() > 0.7 ? "Inactive" : "Active",
 		lastRuntime: "3 hours ago",
 		lastRuntimeStatus: "Success",
-		source: "MongoDB Source",
+		source: job.source,
 		paused: false,
 	}))
 
 	const displayedJobs = showAllJobs
 		? [...associatedJobs, ...additionalJobs]
 		: associatedJobs
-
-	// const handleSave = () => {
-	// 	const destinationData = {
-	// 		name:
-	// 			destinationName ||
-	// 			`${connector}_destination_${Math.floor(Math.random() * 1000)}`,
-	// 		type: connector,
-	// 		status: "active" as const,
-	// 	}
-
-	// 	if (isNewDestination) {
-	// 		addDestination(destinationData)
-	// 			.then(() => {
-	// 				message.success("Destination created successfully")
-	// 				navigate("/destinations")
-	// 			})
-	// 			.catch(error => {
-	// 				message.error("Failed to create destination")
-	// 				console.error(error)
-	// 			})
-	// 	} else if (destinationId) {
-	// 		updateDestination(destinationId, destinationData)
-	// 			.then(() => {
-	// 				message.success("Destination updated successfully")
-	// 				navigate("/destinations")
-	// 			})
-	// 			.catch(error => {
-	// 				message.error("Failed to update destination")
-	// 				console.error(error)
-	// 			})
-	// 	}
-	// }
 
 	const handleDelete = () => {
 		message.success("Destination deleted successfully")
@@ -143,7 +275,7 @@ const DestinationEdit: React.FC = () => {
 		setDocsMinimized(!docsMinimized)
 	}
 
-	const columns: ColumnsType<DestinationJob> = [
+	const columns = [
 		{
 			title: "Name",
 			dataIndex: "name",
@@ -188,7 +320,7 @@ const DestinationEdit: React.FC = () => {
 			render: (source: string) => (
 				<div className="flex items-center">
 					<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-						<span>D</span>
+						<span>S</span>
 					</div>
 					{source}
 				</div>
@@ -198,7 +330,7 @@ const DestinationEdit: React.FC = () => {
 			title: "Pause job",
 			dataIndex: "id",
 			key: "pause",
-			render: (_: string, record: DestinationJob) => (
+			render: (_: string, record: any) => (
 				<Switch
 					checked={record.paused}
 					onChange={checked => handlePauseJob(record.id, checked)}
@@ -211,22 +343,24 @@ const DestinationEdit: React.FC = () => {
 	return (
 		<div className="flex h-screen flex-col">
 			{/* Header */}
-			<div className="flex gap-2 px-6 pb-0 pt-6">
-				<Link
-					to="/destinations"
-					className="mb-4 flex items-center"
-				>
-					<ArrowLeft className="size-5" />
-				</Link>
+			{!fromJobFlow && (
+				<div className="flex gap-2 px-6 pb-0 pt-6">
+					<Link
+						to="/destinations"
+						className="mb-4 flex items-center"
+					>
+						<ArrowLeft className="size-5" />
+					</Link>
 
-				<div className="mb-4 flex items-center">
-					<h1 className="text-2xl font-bold">
-						{isNewDestination
-							? "Create New Destination"
-							: destinationName || "<Destination_name>"}
-					</h1>
+					<div className="mb-4 flex items-center">
+						<h1 className="text-2xl font-bold">
+							{isNewDestination
+								? "Create New Destination"
+								: destinationName || "<Destination_name>"}
+						</h1>
+					</div>
 				</div>
-			</div>
+			)}
 
 			{/* Main content */}
 			<div className="flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
@@ -236,32 +370,43 @@ const DestinationEdit: React.FC = () => {
 						docsMinimized ? "w-full" : "w-3/4"
 					} mt-4 overflow-auto p-6 pt-0 transition-all duration-300`}
 				>
-					<div className="mb-4">
-						<div className="flex">
-							<button
-								className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-									activeTab === "config"
-										? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-										: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-								}`}
-								onClick={() => setActiveTab("config")}
-							>
-								Config
-							</button>
-							{!isNewDestination && (
+					{fromJobFlow && stepNumber && stepTitle && (
+						<div>
+							<StepTitle
+								stepNumber={stepNumber}
+								stepTitle={stepTitle}
+							/>
+						</div>
+					)}
+
+					{!fromJobFlow && (
+						<div className="mb-4">
+							<div className="flex">
 								<button
 									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-										activeTab === "jobs"
+										activeTab === "config"
 											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
 											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 									}`}
-									onClick={() => setActiveTab("jobs")}
+									onClick={() => setActiveTab("config")}
 								>
-									Associated jobs
+									Config
 								</button>
-							)}
+								{!isNewDestination && (
+									<button
+										className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
+											activeTab === "jobs"
+												? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+												: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+										}`}
+										onClick={() => setActiveTab("jobs")}
+									>
+										Associated jobs
+									</button>
+								)}
+							</div>
 						</div>
-					</div>
+					)}
 
 					{activeTab === "config" ? (
 						<div className="rounded-lg">
@@ -271,29 +416,79 @@ const DestinationEdit: React.FC = () => {
 									Capture information
 								</div>
 
-								<div className="grid grid-cols-2 gap-6">
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<div className="flex items-center">
-											<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-												<span>
-													{connector === "Amazon S3"
-														? "S"
-														: connector.charAt(0)}
-												</span>
+								<div className="flex flex-col gap-6">
+									<div className="grid grid-cols-2 gap-6">
+										<div>
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Connector:
+											</label>
+											<div className="flex items-center">
+												<Select
+													value={connector}
+													onChange={value => {
+														setConnector(value)
+														if (value === "Amazon S3") {
+															setFormData({
+																...formData,
+																type: "PARQUET",
+															})
+														} else if (
+															mockData[value as keyof typeof mockData]
+														) {
+															setFormData(
+																mockData[value as keyof typeof mockData] || {},
+															)
+														}
+													}}
+													className="w-full"
+													options={[
+														{ value: "Amazon S3", label: "Amazon S3" },
+														{
+															value: "Apache Iceberg",
+															label: "Apache Iceberg",
+														},
+													]}
+												/>
 											</div>
+										</div>
+
+										<div>
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Catalog:
+											</label>
 											<Select
-												value={connector}
-												onChange={setConnector}
 												className="w-full"
+												placeholder="Select catalog"
+												disabled={
+													connector === "Amazon S3" || connector === "AWS S3"
+												}
 												options={[
-													{ value: "Amazon S3", label: "Amazon S3" },
-													{ value: "Snowflake", label: "Snowflake" },
-													{ value: "BigQuery", label: "BigQuery" },
-													{ value: "Redshift", label: "Redshift" },
+													{
+														value: "AWS Glue",
+														label: "AWS Glue Catalog",
+													},
+													{ value: "REST Catalog", label: "REST Catalog" },
+													{ value: "JDBC Catalog", label: "JDBC Catalog" },
 												]}
+												value={
+													catalog ||
+													(connector === "Amazon S3" || connector === "AWS S3"
+														? "None"
+														: undefined)
+												}
+												onChange={value => {
+													setFormData({
+														...formData,
+														type: "	Apache Iceberg",
+														catalog: value,
+													})
+													// Also apply mock data for the selected catalog
+													if (mockData[value as keyof typeof mockData]) {
+														setFormData(
+															mockData[value as keyof typeof mockData],
+														)
+													}
+												}}
 											/>
 										</div>
 									</div>
@@ -313,43 +508,21 @@ const DestinationEdit: React.FC = () => {
 
 							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 								<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
-								<div className="mb-4 flex">
-									<Radio.Group
-										value={authType}
-										onChange={e => setAuthType(e.target.value)}
-										className="flex"
-									>
-										<Radio
-											value="iam"
-											className="mr-8"
-										>
-											IAM
-										</Radio>
-										<Radio value="keys">Access keys</Radio>
-									</Radio.Group>
-								</div>
-
-								<div className="mb-4">
-									<label className="mb-2 block text-sm font-medium text-gray-700">
-										IAM info:
-									</label>
-									<Input
-										placeholder="Enter your IAM info"
-										value={iamInfo}
-										onChange={e => setIamInfo(e.target.value)}
-									/>
-								</div>
-
-								<div className="mb-4">
-									<label className="mb-2 block text-sm font-medium text-gray-700">
-										Connection URL:
-									</label>
-									<Input
-										placeholder="Enter your connection URL"
-										value={connectionUrl}
-										onChange={e => setConnectionUrl(e.target.value)}
-									/>
-								</div>
+								{isLoading ? (
+									<div className="py-8 text-center">
+										Loading configuration...
+									</div>
+								) : (
+									Object.keys(connectorSchema).length > 0 && (
+										<DynamicSchemaForm
+											schema={connectorSchema}
+											uiSchema={connectorUiSchema}
+											formData={formData}
+											onChange={setFormData}
+											hideSubmit={true}
+										/>
+									)
+								)}
 							</div>
 						</div>
 					) : (
@@ -387,9 +560,9 @@ const DestinationEdit: React.FC = () => {
 					)}
 				</div>
 
-				{/* Documentation panel with iframe */}
+				{/* Documentation panel */}
 				<DocumentationPanel
-					docUrl="https://olake.io/docs/category/mongodb"
+					docUrl="https://olake.io/docs/category/aws-s3"
 					isMinimized={docsMinimized}
 					onToggle={toggleDocsPanel}
 					showResizer={true}
@@ -397,32 +570,34 @@ const DestinationEdit: React.FC = () => {
 			</div>
 
 			{/* Footer with buttons */}
-			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-				<div>
-					{!isNewDestination && (
+			{!fromJobFlow && (
+				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
+					<div>
+						{!isNewDestination && (
+							<button
+								className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+								onClick={handleDelete}
+							>
+								Delete
+							</button>
+						)}
+					</div>
+					<div className="flex space-x-4">
 						<button
-							className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-							onClick={handleDelete}
+							onClick={handleTestConnection}
+							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
 						>
-							Delete
+							Test connection
 						</button>
-					)}
+						<button
+							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+							onClick={handleCreateJob}
+						>
+							Use destination
+						</button>
+					</div>
 				</div>
-				<div className="flex space-x-4">
-					<button
-						onClick={handleTestConnection}
-						className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
-					>
-						Test connection
-					</button>
-					<button
-						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
-						onClick={handleCreateJob}
-					>
-						Use destination
-					</button>
-				</div>
-			</div>
+			)}
 		</div>
 	)
 }

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { NavLink } from "react-router-dom"
+import { NavLink, Link } from "react-router-dom"
 import OlakeLogo from "../../../assets/OlakeLogo.svg"
 import Olake from "../../../assets/OLake.svg"
 import {
@@ -30,7 +30,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 				} relative flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out`}
 			>
 				<div className="p-4">
-					<div className="flex items-center gap-3">
+					<Link
+						to="/jobs"
+						className="flex items-center gap-3"
+					>
 						<img
 							src={OlakeLogo}
 							alt="logo"
@@ -43,7 +46,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 								className="h-4 w-20"
 							/>
 						)}
-					</div>
+					</Link>
 				</div>
 
 				<nav className="flex-1 space-y-2 p-4">

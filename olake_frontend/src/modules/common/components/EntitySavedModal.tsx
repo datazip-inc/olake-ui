@@ -8,12 +8,14 @@ interface EntitySavedModalProps {
 	type: JobCreationSteps
 	onComplete?: () => void
 	fromJobFlow: boolean
+	entityName?: string
 }
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	type,
 	onComplete,
 	fromJobFlow,
+	entityName = "",
 }) => {
 	const { showEntitySavedModal, setShowEntitySavedModal } = useAppStore()
 	const navigate = useNavigate()
@@ -52,13 +54,12 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							<Path className="size-5" />
 						)}
 						<span>
-							&lt;
-							{type === "source"
-								? "Source-Name"
-								: type === "config"
-									? "Job-Name"
-									: "Destination-Name"}
-							&gt;
+							{entityName ||
+								(type === "source"
+									? "Source-Name"
+									: type === "config"
+										? "Job-Name"
+										: "Destination-Name")}
 						</span>
 					</div>
 					<div className="flex gap-1 rounded-xl bg-[#F6FFED] px-2 py-1">
@@ -114,7 +115,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 								navigate("/jobs")
 							}}
 						>
-							jobs →
+							Jobs →
 						</Button>
 					)}
 				</div>

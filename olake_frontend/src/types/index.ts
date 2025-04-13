@@ -17,12 +17,14 @@ export interface Source {
 	type: string
 	status: "active" | "inactive" | "saved"
 	createdAt: Date
+	config?: any // Configuration data specific to the connector type
 }
 
 export interface Destination {
 	id: string
 	name: string
 	type: string
+	catalog?: string
 	status: "active" | "inactive" | "saved"
 	createdAt: Date
 }
@@ -48,7 +50,11 @@ export interface SourceJob {
 	state: string
 	lastRuntime: string
 	lastRuntimeStatus: string
-	destination: string
+	destination: {
+		name: string
+		type: string
+		config: any
+	}
 	paused: boolean
 }
 

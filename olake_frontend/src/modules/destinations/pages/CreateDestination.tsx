@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { Input, Radio, Select } from "antd"
+import { Input, Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -8,12 +8,21 @@ import {
 	GenderNeuter,
 	Notebook,
 } from "@phosphor-icons/react"
+import AWSS3Icon from "../../../assets/AWSS3.svg"
+import ApacheIcebergIcon from "../../../assets/ApacheIceBerg.svg"
 import TestConnectionModal from "../../common/components/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/components/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import EntityCancelModal from "../../common/components/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
+import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
+import { Destination } from "../../../types"
+import { destinationService } from "../../../api/services/destinationService"
+
+interface ExtendedDestination extends Destination {
+	config?: any
+}
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
@@ -22,36 +31,94 @@ interface CreateDestinationProps {
 	onComplete?: () => void
 	stepNumber?: number
 	stepTitle?: string
+	initialConfig?: any
+	initialFormData?: any
+	onDestinationNameChange?: (name: string) => void
+	onConnectorChange?: (connector: string) => void
+	onFormDataChange?: (formData: any) => void
 }
 
 const CreateDestination: React.FC<CreateDestinationProps> = ({
-	fromJobFlow,
-	fromJobEditFlow,
+	fromJobFlow = false,
+	fromJobEditFlow = false,
 	existingDestinationId,
 	onComplete,
 	stepNumber,
 	stepTitle,
+	initialConfig,
+	initialFormData,
+	onDestinationNameChange,
+	onConnectorChange,
+	onFormDataChange,
 }) => {
 	const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("Amazon S3")
-	const [authType, setAuthType] = useState("iam")
-	const [iamInfo, setIamInfo] = useState("")
-	const [awsAccessKeyId, setAwsAccessKeyId] = useState("")
-	const [awsSecretKey, setAwsSecretKey] = useState("")
-	const [s3BucketName, setS3BucketName] = useState("")
-	const [s3BucketPath, setS3BucketPath] = useState("")
-	const [region, setRegion] = useState("")
+	const [catalog, setCatalog] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
-	const [filteredDestinations, setFilteredDestinations] = useState<any[]>([])
+	const [formData, setFormData] = useState<any>({})
+	const [schema, setSchema] = useState<any>(null)
+	const [loading, setLoading] = useState(false)
+	const [filteredDestinations, setFilteredDestinations] = useState<
+		ExtendedDestination[]
+	>([])
 
 	const {
 		destinations,
 		fetchDestinations,
+		setShowEntitySavedModal,
 		setShowTestingModal,
 		setShowSuccessModal,
-		setShowEntitySavedModal,
-		setShowSourceCancelModal,
+		addDestination,
 	} = useAppStore()
+
+	useEffect(() => {
+		const fetchSchema = async () => {
+			try {
+				setLoading(true)
+				let schemaData
+				if (connector === "Apache Iceberg") {
+					let connectorFromCatalog
+					if (catalog === null) {
+						connectorFromCatalog = "AWS Glue"
+					} else {
+						connectorFromCatalog = catalog
+					}
+					schemaData =
+						await destinationService.getConnectorSchema(connectorFromCatalog)
+					setSchema(schemaData)
+				} else {
+					schemaData = await destinationService.getConnectorSchema(connector)
+					setSchema(schemaData)
+				}
+
+				// Initialize with default values from schema
+				if (schemaData.properties) {
+					const initialData: any = {}
+
+					// Apply default values from schema properties
+					Object.entries(schemaData.properties).forEach(
+						([key, value]: [string, any]) => {
+							if (value.default !== undefined) {
+								initialData[key] = value.default
+							}
+						},
+					)
+
+					// Only set initial data if we don't have existing form data
+					if (Object.keys(formData).length === 0) {
+						setFormData(initialData)
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching schema:", error)
+			} finally {
+				setLoading(false)
+			}
+		}
+
+		// Fetch schema for both new and existing sources
+		fetchSchema()
+	}, [connector, setupType, catalog])
 
 	useEffect(() => {
 		if (!destinations.length) {
@@ -59,113 +126,142 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		}
 	}, [destinations.length, fetchDestinations])
 
+	// Initialize with initial config if provided
+	useEffect(() => {
+		if (initialConfig) {
+			setDestinationName(initialConfig.name)
+			setConnector(initialConfig.type)
+			setFormData(initialConfig.config || {})
+		}
+	}, [initialConfig])
+
+	// Update form data when initial form data changes
+	useEffect(() => {
+		if (initialFormData) {
+			setFormData(initialFormData)
+		}
+	}, [initialFormData])
+
 	useEffect(() => {
 		if (fromJobEditFlow && existingDestinationId) {
 			setSetupType("existing")
-
 			const selectedDestination = destinations.find(
 				d => d.id === existingDestinationId,
-			)
-
+			) as ExtendedDestination
 			if (selectedDestination) {
 				setDestinationName(selectedDestination.name)
 				setConnector(selectedDestination.type)
-
-				if (selectedDestination.type === "Amazon S3") {
-					setAuthType("iam")
-					setIamInfo("arn:aws:iam::123456789012:role/example-role")
-					setS3BucketName("example-bucket")
-					setS3BucketPath("/example/path")
-					setRegion("us-west-2")
-				} else if (selectedDestination.type === "Snowflake") {
-					setAuthType("keys")
-					setAwsAccessKeyId("example-access-key")
-					setAwsSecretKey("example-secret-key")
-				} else if (selectedDestination.type === "BigQuery") {
-					setAuthType("keys")
-					setAwsAccessKeyId("example-access-key")
-					setAwsSecretKey("example-secret-key")
-				}
 			}
 		}
 	}, [fromJobEditFlow, existingDestinationId, destinations])
 
+	// Make sure catalog is immediately set when connector changes
+	useEffect(() => {
+		if (connector === "Apache Iceberg") {
+			setCatalog("AWS Glue")
+		} else {
+			setCatalog(null)
+		}
+	}, [connector])
+
+	// Update useEffect for filtered destinations to remove redundant catalog check
 	useEffect(() => {
 		if (setupType === "existing") {
-			setFilteredDestinations(
-				destinations.filter(destination => destination.type === connector),
-			)
+			// Only filter by catalog if it's Apache Iceberg
+			if (connector === "Apache Iceberg") {
+				// Make sure we have a catalog value
+				const catalogValue = catalog || "AWS Glue"
+
+				// Create a safe version of the filter that checks for config existence
+				const filtered = destinations.filter(destination => {
+					// First check if it's the right connector type
+					if (destination.type !== connector) return false
+
+					// For Apache Iceberg, also check the catalog value
+					const extDestination = destination as ExtendedDestination
+					return extDestination.catalog === catalogValue
+				})
+				setFilteredDestinations(filtered as ExtendedDestination[])
+			} else {
+				const filtered = destinations.filter(
+					destination => destination.type === connector,
+				) as ExtendedDestination[]
+
+				setFilteredDestinations(filtered)
+			}
 		}
-	}, [connector, setupType, destinations])
+	}, [connector, setupType, destinations, catalog])
 
 	const handleCancel = () => {
-		setShowSourceCancelModal(true)
+		setShowEntitySavedModal(false)
 	}
+
 	const handleCreate = () => {
-		setTimeout(() => {
-			setShowTestingModal(true)
-			setTimeout(() => {
-				setShowTestingModal(false)
-				setShowSuccessModal(true)
+		// Add the new destination to the store state
+		const newDestinationData = {
+			name: destinationName,
+			type: connector,
+			status: "active" as const,
+			config: { ...formData, catalog },
+		}
+
+		addDestination(newDestinationData)
+			.then(() => {
+				// Continue with the existing flow
+				setShowTestingModal(true)
 				setTimeout(() => {
-					setShowSuccessModal(false)
-					setShowEntitySavedModal(true)
+					setShowTestingModal(false)
+					setShowSuccessModal(true)
+					setTimeout(() => {
+						setShowSuccessModal(false)
+						setShowEntitySavedModal(true)
+					}, 2000)
 				}, 2000)
-			}, 2000)
-		}, 2000)
+			})
+			.catch(error => {
+				console.error("Error adding destination:", error)
+			})
+	}
+
+	const handleDestinationNameChange = (
+		e: React.ChangeEvent<HTMLInputElement>,
+	) => {
+		const newName = e.target.value
+		setDestinationName(newName)
+		if (onDestinationNameChange) {
+			onDestinationNameChange(newName)
+		}
 	}
 
 	const handleConnectorChange = (value: string) => {
 		setConnector(value)
-
-		if (value === "Amazon S3") {
-			setAuthType("iam")
-			setIamInfo("")
-			setAwsAccessKeyId("")
-			setAwsSecretKey("")
-			setS3BucketName("")
-			setS3BucketPath("")
-			setRegion("")
-		} else if (value === "Snowflake") {
-			setAuthType("keys")
-			setAwsAccessKeyId("")
-			setAwsSecretKey("")
-		} else if (value === "BigQuery") {
-			setAuthType("keys")
-			setAwsAccessKeyId("")
-			setAwsSecretKey("")
-		} else if (value === "Redshift") {
-			setAuthType("iam")
-			setIamInfo("")
+		if (onConnectorChange) {
+			onConnectorChange(value)
 		}
 	}
 
-	const handleExistingDestinationSelect = (value: string) => {
-		const selectedDestination = destinations.find(d => d.id === value)
+	const handleCatalogChange = (value: string) => {
+		setCatalog(value)
+	}
 
+	const handleExistingDestinationSelect = (value: string) => {
+		const selectedDestination = destinations.find(
+			d => d.id === value,
+		) as ExtendedDestination
 		if (selectedDestination) {
 			setDestinationName(selectedDestination.name)
 			setConnector(selectedDestination.type)
-
-			if (selectedDestination.type === "Amazon S3") {
-				setAuthType("iam")
-				setIamInfo("mock-iam-info")
-				setS3BucketName("mock-bucket")
-				setS3BucketPath("/mock/path")
-				setRegion("us-west-2")
-			} else if (selectedDestination.type === "Snowflake") {
-				setAuthType("keys")
-				setAwsAccessKeyId("mock-snowflake-account")
-				setAwsSecretKey("mock-snowflake-password")
-			} else if (selectedDestination.type === "BigQuery") {
-				setAuthType("keys")
-				setAwsAccessKeyId("mock-bigquery-project")
-				setAwsSecretKey("mock-bigquery-key")
-			} else if (selectedDestination.type === "Redshift") {
-				setAuthType("iam")
-				setIamInfo("mock-redshift-iam")
-				setRegion("us-east-1")
+			if (selectedDestination.config?.catalog) {
+				setCatalog(selectedDestination.config.catalog)
 			}
+			setFormData(selectedDestination.config || formData)
+		}
+	}
+
+	const handleFormChange = (newFormData: any) => {
+		setFormData(newFormData)
+		if (onFormDataChange) {
+			onFormDataChange(newFormData)
 		}
 	}
 
@@ -220,71 +316,139 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							)}
 
 							{setupType === "new" && !fromJobEditFlow ? (
-								<div className="grid grid-cols-2 gap-6">
+								<div className="flex-start flex w-full gap-6">
+									<div className="w-1/3">
+										<label className="mb-2 block text-sm font-medium text-gray-700">
+											Connector:
+										</label>
+										<Select
+											value={connector}
+											onChange={handleConnectorChange}
+											className="w-full"
+											options={[
+												{
+													value: "Amazon S3",
+													label: (
+														<div className="flex items-center">
+															<img
+																src={AWSS3Icon}
+																alt="AWS S3"
+																className="mr-2 size-5"
+															/>
+															<span>Amazon S3</span>
+														</div>
+													),
+												},
+												{
+													value: "Apache Iceberg",
+													label: (
+														<div className="flex items-center">
+															<img
+																src={ApacheIcebergIcon}
+																alt="Apache Iceberg"
+																className="mr-2 size-5"
+															/>
+															<span>Apache Iceberg</span>
+														</div>
+													),
+												},
+											]}
+										/>
+									</div>
+
+									<div className="w-1/3">
+										<label className="mb-2 block text-sm font-medium text-gray-700">
+											Catalog :
+										</label>
+										{connector === "Apache Iceberg" ? (
+											<Select
+												value={catalog}
+												onChange={handleCatalogChange}
+												className="w-full"
+												options={[
+													{ value: "AWS Glue", label: "AWS Glue" },
+													{ value: "REST Catalog", label: "REST catalog" },
+													{ value: "JDBC Catalog", label: "JDBC" },
+													{ value: "HIVE Catalog", label: "HIVE catalog" },
+												]}
+											/>
+										) : (
+											<Select
+												value="None"
+												className="w-full"
+												disabled
+												options={[{ value: "None", label: "None" }]}
+											/>
+										)}
+									</div>
+								</div>
+							) : (
+								<div className="grid grid-cols-3 gap-6">
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Connector:
 										</label>
-										<div className="flex items-center">
-											<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-												<span>
-													{connector === "Amazon S3"
-														? "S"
-														: connector.charAt(0)}
-												</span>
-											</div>
-											<Select
-												value={connector}
-												onChange={handleConnectorChange}
-												className="w-full"
-												options={[
-													{ value: "Amazon S3", label: "Amazon S3" },
-													{ value: "Snowflake", label: "Snowflake" },
-													{ value: "BigQuery", label: "BigQuery" },
-													{ value: "Redshift", label: "Redshift" },
-												]}
-											/>
-										</div>
+										<Select
+											value={connector}
+											onChange={handleConnectorChange}
+											className="w-full"
+											disabled={fromJobEditFlow}
+											options={[
+												{
+													value: "Amazon S3",
+													label: (
+														<div className="flex items-center">
+															<img
+																src={AWSS3Icon}
+																alt="AWS S3"
+																className="mr-2 size-5"
+															/>
+															<span>Amazon S3</span>
+														</div>
+													),
+												},
+												{
+													value: "Apache Iceberg",
+													label: (
+														<div className="flex items-center">
+															<img
+																src={ApacheIcebergIcon}
+																alt="Apache Iceberg"
+																className="mr-2 size-5"
+															/>
+															<span>Apache Iceberg</span>
+														</div>
+													),
+												},
+											]}
+										/>
 									</div>
 
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Name of your destination:
+											Catalog:
 										</label>
-										<Input
-											placeholder="Enter the name of your destination"
-											value={destinationName}
-											onChange={e => setDestinationName(e.target.value)}
-										/>
-									</div>
-								</div>
-							) : (
-								<div className="grid grid-cols-2 gap-6">
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<div className="flex items-center">
-											<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-												<span>
-													{connector === "Amazon S3"
-														? "S"
-														: connector.charAt(0)}
-												</span>
-											</div>
+										{connector === "Apache Iceberg" ? (
 											<Select
-												value={connector}
-												onChange={handleConnectorChange}
+												value={catalog}
+												onChange={handleCatalogChange}
 												className="w-full"
 												disabled={fromJobEditFlow}
 												options={[
-													{ value: "Amazon S3", label: "Amazon S3" },
-													{ value: "Snowflake", label: "Snowflake" },
-													{ value: "BigQuery", label: "BigQuery" },
-													{ value: "Redshift", label: "Redshift" },
+													{ value: "AWS Glue", label: "AWS Glue" },
+													{ value: "REST Catalog", label: "REST catalog" },
+													{ value: "JDBC Catalog", label: "JDBC" },
+													{ value: "HIVE Catalog", label: "HIVE catalog" },
 												]}
 											/>
-										</div>
+										) : (
+											<Select
+												value="None"
+												className="w-full"
+												disabled
+												options={[{ value: "None", label: "None" }]}
+											/>
+										)}
 									</div>
 
 									<div>
@@ -309,137 +473,59 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 									</div>
 								</div>
 							)}
+
+							{setupType === "new" && !fromJobEditFlow && (
+								<div className="mt-4 w-2/3">
+									<label className="mb-2 block text-sm font-medium text-gray-700">
+										Name of your destination :
+									</label>
+									<Input
+										placeholder="Enter the name of your destination"
+										value={destinationName}
+										onChange={handleDestinationNameChange}
+									/>
+								</div>
+							)}
 						</div>
 					</div>
 
-					<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-						<div className="mb-4 flex items-center">
-							<div className="mb-2 flex items-center gap-1">
-								<GenderNeuter className="size-5" />
-								<div className="text-base font-medium">Endpoint config</div>
-							</div>
-						</div>
-
-						<div className="mb-6">
-							{connector === "Amazon S3" && (
+					{setupType === "new" && (
+						<>
+							{loading ? (
+								<div className="flex h-32 items-center justify-center">
+									<Spin tip="Loading schema..." />
+								</div>
+							) : (
 								<>
-									<div className="mb-4 flex">
-										<Radio.Group
-											value={authType}
-											onChange={e => setAuthType(e.target.value)}
-											className="flex"
-											disabled={fromJobEditFlow}
-										>
-											<Radio
-												value="iam"
-												className="mr-8"
-											>
-												IAM
-											</Radio>
-											<Radio value="keys">Access keys</Radio>
-										</Radio.Group>
-									</div>
+									{schema && (
+										<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
+											<div className="mb-4 flex items-center">
+												<div className="mb-2 flex items-center gap-1">
+													<GenderNeuter className="size-5" />
+													<div className="text-base font-medium">
+														Endpoint config
+													</div>
+												</div>
+											</div>
 
-									{authType === "iam" ? (
-										<div className="mb-4">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												IAM info:
-											</label>
-											<Input
-												placeholder="Enter your IAM info"
-												value={iamInfo}
-												onChange={e => setIamInfo(e.target.value)}
-												disabled={fromJobEditFlow}
+											<DynamicSchemaForm
+												schema={schema}
+												uiSchema={schema?.uiSchema}
+												formData={formData}
+												onChange={handleFormChange}
+												hideSubmit={true}
 											/>
-										</div>
-									) : (
-										<div className="mb-4 grid grid-cols-2 gap-6">
-											<div>
-												<label className="mb-2 block text-sm font-medium text-gray-700">
-													AWS access key ID:
-												</label>
-												<Input
-													placeholder="Enter your AWS access key ID"
-													value={awsAccessKeyId}
-													onChange={e => setAwsAccessKeyId(e.target.value)}
-													disabled={fromJobEditFlow}
-												/>
-											</div>
-											<div>
-												<label className="mb-2 block text-sm font-medium text-gray-700">
-													AWS secret key:
-												</label>
-												<Input.Password
-													placeholder="Enter your AWS secret key"
-													value={awsSecretKey}
-													onChange={e => setAwsSecretKey(e.target.value)}
-													disabled={fromJobEditFlow}
-												/>
-											</div>
 										</div>
 									)}
-
-									<div className="mb-4 grid grid-cols-2 gap-6">
-										<div>
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												S3 bucket name:
-											</label>
-											<Input
-												placeholder="Enter your S3 bucket name"
-												value={s3BucketName}
-												onChange={e => setS3BucketName(e.target.value)}
-											/>
-										</div>
-										<div>
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												S3 bucket path:
-											</label>
-											<Input
-												placeholder="Enter your S3 bucket path"
-												value={s3BucketPath}
-												onChange={e => setS3BucketPath(e.target.value)}
-											/>
-										</div>
-									</div>
-
-									<div className="mb-4">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Region:
-										</label>
-										<Select
-											placeholder="Select AWS region"
-											className="w-full"
-											value={region || undefined}
-											onChange={value => setRegion(value)}
-											options={[
-												{ value: "us-east-1", label: "US East (N. Virginia)" },
-												{ value: "us-east-2", label: "US East (Ohio)" },
-												{
-													value: "us-west-1",
-													label: "US West (N. California)",
-												},
-												{ value: "us-west-2", label: "US West (Oregon)" },
-												{ value: "eu-west-1", label: "EU (Ireland)" },
-												{ value: "eu-central-1", label: "EU (Frankfurt)" },
-												{ value: "ap-south-1", label: "Asia Pacific (Mumbai)" },
-												{
-													value: "ap-northeast-1",
-													label: "Asia Pacific (Tokyo)",
-												},
-											]}
-										/>
-									</div>
 								</>
 							)}
-
-							{/* Add other connector configurations here */}
-						</div>
-					</div>
+						</>
+					)}
 				</div>
 
 				{/* Documentation panel */}
 				<DocumentationPanel
-					docUrl="https://olake.io/docs/category/mongodb"
+					docUrl="https://olake.io/docs/category/aws-s3"
 					showResizer={true}
 				/>
 			</div>
@@ -464,13 +550,12 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			)}
 
 			<TestConnectionModal />
-
 			<TestConnectionSuccessModal />
-
 			<EntitySavedModal
 				type="destination"
 				onComplete={onComplete}
 				fromJobFlow={fromJobFlow || false}
+				entityName={destinationName}
 			/>
 			<EntityCancelModal
 				type="destination"

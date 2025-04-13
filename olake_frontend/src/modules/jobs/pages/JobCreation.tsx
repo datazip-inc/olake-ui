@@ -21,6 +21,14 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 
+	// Source and destination states
+	const [sourceName, setSourceName] = useState("")
+	const [sourceConnector, setSourceConnector] = useState("")
+	const [sourceFormData, setSourceFormData] = useState<any>({})
+	const [destinationName, setDestinationName] = useState("")
+	const [destinationConnector, setDestinationConnector] = useState("")
+	const [destinationFormData, setDestinationFormData] = useState<any>({})
+
 	// Schema step states
 	const [selectedStreams, setSelectedStreams] = useState<string[]>(
 		mockStreamData.map(stream => stream.stream.name),
@@ -37,21 +45,88 @@ const JobCreation: React.FC = () => {
 		setShowSourceCancelModal,
 		setShowTestingModal,
 		setShowSuccessModal,
+		addSource,
+		addDestination,
+		addJob,
 	} = useAppStore()
 
 	const handleNext = () => {
 		if (currentStep === "source") {
-			dummyNetworkCall()
+			// Create source
+			const newSourceData = {
+				name: sourceName,
+				type: sourceConnector,
+				status: "active" as const,
+				config: sourceFormData,
+			}
+
+			addSource(newSourceData)
+				.then(() => {
+					setShowTestingModal(true)
+					setTimeout(() => {
+						setShowTestingModal(false)
+						setShowSuccessModal(true)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setShowEntitySavedModal(true)
+						}, 2000)
+					}, 2000)
+				})
+				.catch(error => {
+					console.error("Error adding source:", error)
+					message.error("Failed to create source")
+				})
 		} else if (currentStep === "destination") {
-			dummyNetworkCall()
+			// Create destination
+			const newDestinationData = {
+				name: destinationName,
+				type: destinationConnector,
+				status: "active" as const,
+				config: destinationFormData,
+			}
+
+			addDestination(newDestinationData)
+				.then(() => {
+					setShowTestingModal(true)
+					setTimeout(() => {
+						setShowTestingModal(false)
+						setShowSuccessModal(true)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setShowEntitySavedModal(true)
+						}, 2000)
+					}, 2000)
+				})
+				.catch(error => {
+					console.error("Error adding destination:", error)
+					message.error("Failed to create destination")
+				})
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
-			setTimeout(() => {
-				setShowEntitySavedModal(true)
-			}, 1500)
+			// Create job
+			const newJobData = {
+				name: jobName,
+				source: sourceName,
+				destination: destinationName,
+				streams: selectedStreams,
+				replicationFrequency,
+				schemaChangeStrategy,
+				notifyOnSchemaChanges,
+				status: "active" as const,
+			}
+
+			addJob(newJobData)
+				.then(() => {
+					setShowEntitySavedModal(true)
+				})
+				.catch(error => {
+					console.error("Error adding job:", error)
+					message.error("Failed to create job")
+				})
 		}
 	}
+
 	const nextStep = () => {
 		if (currentStep === "source") {
 			setCurrentStep("destination")
@@ -59,22 +134,7 @@ const JobCreation: React.FC = () => {
 			setCurrentStep("schema")
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
-		} else {
 		}
-	}
-
-	const dummyNetworkCall = () => {
-		setTimeout(() => {
-			setShowTestingModal(true)
-			setTimeout(() => {
-				setShowTestingModal(false)
-				setShowSuccessModal(true)
-				setTimeout(() => {
-					setShowSuccessModal(false)
-					setShowEntitySavedModal(true)
-				}, 2000)
-			}, 2000)
-		}, 1500)
 	}
 
 	const handleBack = () => {
@@ -140,6 +200,9 @@ const JobCreation: React.FC = () => {
 								fromJobFlow={true}
 								stepNumber={"I"}
 								stepTitle="Set up your source"
+								onSourceNameChange={setSourceName}
+								onConnectorChange={setSourceConnector}
+								onFormDataChange={setSourceFormData}
 								onComplete={() => {
 									setCurrentStep("destination")
 								}}
@@ -153,6 +216,9 @@ const JobCreation: React.FC = () => {
 								fromJobFlow={true}
 								stepNumber={2}
 								stepTitle="Set up your destination"
+								onDestinationNameChange={setDestinationName}
+								onConnectorChange={setDestinationConnector}
+								onFormDataChange={setDestinationFormData}
 								onComplete={() => {
 									setCurrentStep("schema")
 								}}
@@ -233,8 +299,17 @@ const JobCreation: React.FC = () => {
 					<TestConnectionSuccessModal />
 					<EntitySavedModal
 						type={currentStep}
-						fromJobFlow={true}
 						onComplete={nextStep}
+						fromJobFlow={true}
+						entityName={
+							currentStep === "source"
+								? sourceName
+								: currentStep === "destination"
+									? destinationName
+									: currentStep === "config"
+										? jobName
+										: ""
+						}
 					/>
 					<EntityCancelModal
 						type="job"

@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
 import { Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
 
 interface SourceTableProps {
 	sources: Source[]
@@ -59,14 +60,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			title: () => <span className="font-medium">Name</span>,
 			dataIndex: "name",
 			key: "name",
-			render: (text: string) => (
-				<div className="flex items-center">
-					<div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white">
-						<span>S</span>
-					</div>
-					{text}
-				</div>
-			),
+			render: (text: string) => <div className="flex items-center">{text}</div>,
 		},
 		{
 			title: () => <span className="font-medium">Connectors</span>,
@@ -74,10 +68,11 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			key: "type",
 			render: (text: string) => (
 				<div className="flex items-center">
-					<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
-						<span>I</span>
-					</div>
-					<span>{text} Athena</span>
+					<img
+						src={getConnectorImage(text)}
+						className="mr-2 h-4 w-4"
+					/>
+					<span>{text}</span>
 				</div>
 			),
 		},

@@ -74,7 +74,7 @@ const Sources: React.FC = () => {
 					<h1 className="text-2xl font-bold">Sources</h1>
 				</div>
 				<button
-					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white hover:bg-[#132685]"
 					onClick={handleCreateSource}
 				>
 					<Plus className="size-4 text-white" />

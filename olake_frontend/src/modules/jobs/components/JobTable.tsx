@@ -14,6 +14,7 @@ import {
 	Trash,
 	XCircle,
 } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
 
 interface JobTableProps {
 	jobs: Job[]
@@ -125,7 +126,10 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "source",
 			render: (text: string) => (
 				<div className="flex items-center">
-					<span className="mr-2 inline-block h-2 w-2 rounded-full bg-blue-600"></span>
+					<img
+						src={getConnectorImage(text)}
+						className="mr-2 h-4 w-4"
+					/>
 					{text}
 				</div>
 			),
@@ -136,7 +140,10 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "destination",
 			render: (text: string) => (
 				<div className="flex items-center">
-					<span className="mr-2 inline-block h-2 w-2 rounded-full bg-red-600"></span>
+					<img
+						src={getConnectorImage(text)}
+						className="mr-2 h-4 w-4"
+					/>
 					{text}
 				</div>
 			),
@@ -151,17 +158,17 @@ const JobTable: React.FC<JobTableProps> = ({
 			dataIndex: "lastSyncStatus",
 			key: "lastSyncStatus",
 			render: (status: string) => (
-				<div className="flex items-center">
+				<div
+					className={`flex w-fit items-center justify-center rounded-[6px] px-4 py-1 ${
+						status === "success"
+							? "bg-[#f6ffed] text-[#389E0D]"
+							: status === "failed"
+								? "bg-[#fff1f0 text-[#cf1322]"
+								: ""
+					}`}
+				>
 					{getStatusIcon(status)}
-					<span
-						className={`ml-1 ${
-							status === "success"
-								? "text-green-500"
-								: status === "failed"
-									? "text-red-500"
-									: ""
-						}`}
-					>
+					<span>
 						{status === "success"
 							? "Success"
 							: status === "failed"
@@ -201,7 +208,7 @@ const JobTable: React.FC<JobTableProps> = ({
 					pageSize: 10,
 					showSizeChanger: false,
 				}}
-				className="overflow-hidden rounded-xl border"
+				className="overflow-hidden rounded-xl"
 			/>
 		</div>
 	)

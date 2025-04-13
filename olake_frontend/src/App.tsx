@@ -113,7 +113,7 @@ function App() {
 										element={<DestinationJobs />}
 									/>
 									<Route
-									path="*"
+										path="*"
 										element={
 											<Navigate
 												to="/jobs"
