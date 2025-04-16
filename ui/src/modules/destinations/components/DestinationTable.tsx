@@ -1,14 +1,15 @@
-import { useState } from "react"
+import { Fragment, useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
 import { Destination, JobBasic } from "../../../types"
 import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 interface DestinationTableProps {
 	destinations: Destination[]
 	loading: boolean
 	onEdit: (id: string) => void
-	onDelete: (id: string) => void
+	onDelete: (destination: Destination) => void
 }
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
@@ -41,7 +42,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 								icon: <TrashSimple />,
 								label: "Delete",
 								danger: true,
-								onClick: () => onDelete(record.id),
+								onClick: () => onDelete(record),
 							},
 						],
 					}}
@@ -85,10 +86,9 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				return (
 					<div className="flex-end flex w-fit flex-col items-end gap-3">
 						<div className="mb-1 flex items-center">
-							{record.associatedJobs.map((job: JobBasic) => (
-								<>
+							{record.associatedJobs.map((job: JobBasic, index: number) => (
+								<Fragment key={`job-${job.jobName}-${index}`}>
 									<img
-										key={job.source}
 										src={getConnectorImage(job.source)}
 										className="size-8"
 									/>
@@ -98,11 +98,11 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 									</div>
 									<div className="mr-2 text-[#A3A3A3]">-------</div>
 									<img
-										key={job.source}
+										key={job.destination}
 										src={getConnectorImage(job.destination)}
 										className="size-8"
 									/>
-								</>
+								</Fragment>
 							))}
 						</div>
 						<div className="items-end text-sm font-bold text-[#203FDD]">
@@ -143,6 +143,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				}}
 				className="overflow-hidden rounded-lg"
 			/>
+			<DeleteModal fromSource={false} />
 		</div>
 	)
 }

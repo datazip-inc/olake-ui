@@ -10,6 +10,7 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import type { RJSFSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -33,6 +34,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [formData, setFormData] = useState<any>({})
+	const { setShowDeleteModal, setSelectedSource } = useAppStore()
+	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
 
 	// Mock data for each connector type
 	const mockData = {
@@ -509,6 +512,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
 
 				setConnector(normalizedType)
+				setMockAssociatedJobs(source?.associatedJobs || [])
 
 				// Use the actual config data from the source when editing
 				if (source.config) {
@@ -652,8 +656,18 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	const handleDelete = () => {
-		message.success("Source deleted successfully")
-		navigate("/sources")
+		// Create source object from the current data
+		const sourceToDelete = {
+			id: sourceId || "",
+			name: sourceName || "",
+			type: connector,
+			...formData,
+			associatedJobs: mockAssociatedJobs,
+		}
+		// Set the current source as selected in the store
+		setSelectedSource(sourceToDelete as any)
+		// Show the delete modal
+		setShowDeleteModal(true)
 	}
 
 	const handleTestConnection = () => {
@@ -928,6 +942,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					showResizer={true}
 				/>
 			</div>
+
+			{/* Delete Modal */}
+			<DeleteModal fromSource={true} />
 
 			{/* Footer */}
 			{!fromJobFlow && (

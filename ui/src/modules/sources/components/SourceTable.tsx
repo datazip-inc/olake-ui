@@ -3,12 +3,14 @@ import { Table, Input, Button, Dropdown } from "antd"
 import { JobBasic, Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
+import React from "react"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 interface SourceTableProps {
 	sources: Source[]
 	loading: boolean
 	onEdit: (id: string) => void
-	onDelete: (id: string) => void
+	onDelete: (source: Source) => void
 }
 
 const SourceTable: React.FC<SourceTableProps> = ({
@@ -41,7 +43,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
-								onClick: () => onDelete(record.id),
+								onClick: () => onDelete(record),
 							},
 						],
 					}}
@@ -85,10 +87,9 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				return (
 					<div className="flex-end flex w-fit flex-col items-end gap-3">
 						<div className="mb-1 flex items-center">
-							{record.associatedJobs.map((job: JobBasic) => (
-								<>
+							{record.associatedJobs.map((job: JobBasic, index: number) => (
+								<React.Fragment key={`job-${job.jobName}-${index}`}>
 									<img
-										key={job.source}
 										src={getConnectorImage(job.source)}
 										className="size-8"
 									/>
@@ -98,11 +99,10 @@ const SourceTable: React.FC<SourceTableProps> = ({
 									</div>
 									<div className="mr-2 text-[#A3A3A3]">-------</div>
 									<img
-										key={job.source}
 										src={getConnectorImage(job.destination)}
 										className="size-8"
 									/>
-								</>
+								</React.Fragment>
 							))}
 						</div>
 						<div className="items-end text-sm font-bold text-[#203FDD]">
@@ -143,6 +143,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				}}
 				className="overflow-hidden rounded-lg"
 			/>
+			<DeleteModal fromSource={true} />
 		</div>
 	)
 }

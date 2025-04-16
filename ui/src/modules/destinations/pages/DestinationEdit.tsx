@@ -9,6 +9,7 @@ import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import { destinationService } from "../../../api/services/destinationService"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 interface DestinationEditProps {
 	fromJobFlow?: boolean
@@ -36,6 +37,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [connectorSchema, setConnectorSchema] = useState<RJSFSchema>({})
 	const [connectorUiSchema] = useState<UiSchema>({})
 	const [isLoading, setIsLoading] = useState(false)
+	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
 
 	// Mock data for each destination type
 	const mockData = {
@@ -113,6 +115,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		jobs,
 		fetchDestinations,
 		fetchJobs,
+		setSelectedDestination,
+		setShowDeleteModal,
 		// addDestination,
 		// updateDestination,
 	} = useAppStore()
@@ -201,6 +205,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			if (destination) {
 				setDestinationName(destination.name)
 				setConnector(destination.type)
+				setMockAssociatedJobs(destination?.associatedJobs || [])
 				setCatalog(destination?.catalog || null)
 				// Set mock data based on connector type
 				setFormData(mockData[destination.type as keyof typeof mockData] || {})
@@ -244,8 +249,17 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		: associatedJobs
 
 	const handleDelete = () => {
-		message.success("Destination deleted successfully")
-		navigate("/destinations")
+		// Create destination object from the current data
+		const destinationToDelete = {
+			id: destinationId || "",
+			name: destinationName || "",
+			type: connector,
+			...formData,
+			associatedJobs: mockAssociatedJobs,
+		}
+		setSelectedDestination(destinationToDelete as any)
+		// Show the delete modal
+		setShowDeleteModal(true)
 	}
 
 	const handleTestConnection = () => {
@@ -568,6 +582,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					showResizer={true}
 				/>
 			</div>
+			{/* Delete Modal */}
+			<DeleteModal fromSource={false} />
 
 			{/* Footer with buttons */}
 			{!fromJobFlow && (

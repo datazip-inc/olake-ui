@@ -8,11 +8,11 @@ import {
 	GenderNeuter,
 	Notebook,
 } from "@phosphor-icons/react"
-import TestConnectionModal from "../../common/components/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/components/TestConnectionSuccessModal"
-import EntitySavedModal from "../../common/components/EntitySavedModal"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
-import EntityCancelModal from "../../common/components/EntityCancelModal"
+import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
 import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import { sourceService } from "../../../api/services/sourceService"
