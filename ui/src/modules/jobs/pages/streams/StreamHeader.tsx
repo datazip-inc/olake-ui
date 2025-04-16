@@ -17,7 +17,7 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 	return (
 		<div
 			className={`border-heading flex items-center justify-between border-[1px] border-b-0 border-solid p-3 first:border-t-0 last:border-b-[1px] ${
-				isActiveStream ? "bg-[#e9ebfc]" : "bg-[#ffffff]"
+				isActiveStream ? "bg-[#e9ebfc]" : "bg-[#ffffff] hover:bg-[#f5f5f5]"
 			}`}
 		>
 			<div

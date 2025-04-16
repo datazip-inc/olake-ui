@@ -2,7 +2,7 @@ import { useMemo } from "react"
 import Form from "@rjsf/core"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import validator from "@rjsf/validator-ajv8"
-import { message } from "antd"
+import { message, Switch } from "antd"
 
 interface JsonSchemaFormProps {
 	schema: RJSFSchema
@@ -63,6 +63,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				errors,
 				children,
 				uiSchema: fieldUiSchema,
+				schema,
 			} = props
 
 			const labelClass =
@@ -73,8 +74,15 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 			const fieldClass =
 				fieldUiSchema?.["ui:className"] || "w-full mb-4 flex-grow"
 
-			// Skip rendering label if ui:options.label is false
-			const showLabel = fieldUiSchema?.["ui:options"]?.label !== false && label
+			// Skip rendering label for checkboxes and if ui:options.label is false
+			const isCheckbox =
+				schema?.type === "boolean" ||
+				fieldUiSchema?.["ui:widget"] === "checkbox"
+			const showLabel =
+				fieldUiSchema?.["ui:options"]?.label !== false &&
+				fieldUiSchema?.["ui:labelDisplay"] !== "left-only" &&
+				!isCheckbox &&
+				label
 
 			return (
 				<div className={fieldClass}>
@@ -84,7 +92,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 							className={labelClass}
 						>
 							{label}
-							{required && <span className="text-red-500"> *</span>}
+							{!required && <span className="text-gray-500"> (optional)</span>}
 						</label>
 					)}
 					{children}
@@ -171,6 +179,38 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				</div>
 			)
 		},
+		SwitchWidget: (props: any) => {
+			const {
+				id,
+				value,
+				disabled,
+				readonly,
+				onChange,
+				label,
+				schema,
+				uiSchema: fieldUiSchema,
+			} = props
+
+			const switchClass = fieldUiSchema?.["ui:className"] || ""
+
+			// Always show the label in the widget itself
+			const displayLabel = schema.title || label
+
+			return (
+				<div
+					className={`flex w-full items-center justify-between ${switchClass}`}
+				>
+					<span className="text-sm font-medium">{displayLabel}</span>
+					<Switch
+						id={id}
+						checked={value || false}
+						disabled={disabled || readonly}
+						onChange={checked => onChange(checked)}
+						className={value ? "bg-blue-600" : "bg-gray-200"}
+					/>
+				</div>
+			)
+		},
 		SelectWidget: (props: any) => {
 			const {
 				id,
@@ -193,7 +233,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 						value={value || ""}
 						disabled={disabled || readonly}
 						onChange={e => onChange(e.target.value)}
-						className={`${selectClass} appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+						className={`${selectClass} appearance-none rounded-[6px] border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 					>
 						{placeholder && <option value="">{placeholder}</option>}
 						{enumOptions.map(({ value, label }: any, i: number) => (
@@ -254,7 +294,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 					onChange={e => onChange(e.target.value)}
 					onBlur={onBlur && (e => onBlur(id, e.target.value))}
 					onFocus={onFocus && (e => onFocus(id, e.target.value))}
-					className={`${inputClass} rounded-md border ${required && !value ? "border-red-300" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+					className={`${inputClass} rounded-[6px] border ${required && !value ? "border-red-300" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 				/>
 			)
 		},
@@ -287,7 +327,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 						onChange={e => onChange(e.target.value)}
 						onBlur={onBlur && (e => onBlur(id, e.target.value))}
 						onFocus={onFocus && (e => onFocus(id, e.target.value))}
-						className={`${inputClass} rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+						className={`${inputClass} rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 					/>
 					<div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
 						<svg
@@ -352,7 +392,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 						(e =>
 							onFocus(id, e.target.value ? Number(e.target.value) : undefined))
 					}
-					className={`${inputClass} rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+					className={`${inputClass} rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 				/>
 			)
 		},
@@ -373,6 +413,10 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				canAdd !== false &&
 				uiSchema?.["ui:ArrayField"]?.["ui:addable"] !== false
 			const showTitle = uiSchema?.["ui:ArrayField"]?.["ui:showTitle"] !== false
+			const showRemoveButton = () => {
+				// Only show remove button if there's more than one item
+				return items.length > 1
+			}
 
 			return (
 				<div className="w-full">
@@ -381,7 +425,9 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 							{title && (
 								<label className="mb-2 block text-sm font-medium text-gray-700">
 									{title}
-									{required && <span className="text-red-500"> *</span>}
+									{!required && (
+										<span className="text-gray-500"> (optional)</span>
+									)}
 								</label>
 							)}
 							{description && (
@@ -396,11 +442,11 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 								className="flex items-start gap-2"
 							>
 								{item.children}
-								{item.hasRemove && (
+								{item.hasRemove && showRemoveButton() && (
 									<button
 										type="button"
 										onClick={item.onDropIndexClick(item.index)}
-										className="mt-2 rounded-md border border-red-300 px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+										className="mt-2 rounded-[6px] border border-red-300 px-2 py-1 text-sm text-red-600 hover:bg-red-50"
 									>
 										Remove
 									</button>
@@ -412,7 +458,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 						<button
 							type="button"
 							onClick={onAddClick}
-							className="mt-2 rounded-md border border-blue-300 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50"
+							className="mt-2 rounded-[6px] border border-blue-300 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50"
 						>
 							{addButtonText}
 						</button>
@@ -445,6 +491,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 					NumberWidget: customTemplates.NumberWidget,
 					RadioWidget: customTemplates.RadioWidget,
 					SelectWidget: customTemplates.SelectWidget,
+					CheckboxWidget: customTemplates.SwitchWidget,
 				}}
 			/>
 		</div>

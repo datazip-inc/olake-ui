@@ -19,6 +19,8 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 }) => {
 	const [docPanelWidth, setDocPanelWidth] = useState(initialWidth)
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(isMinimized)
+	const [isLoading, setIsLoading] = useState(true)
+	const [isReady, setIsReady] = useState(false)
 	const resizerRef = useRef<HTMLDivElement>(null)
 	const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -27,8 +29,30 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	}, [isMinimized])
 
 	useEffect(() => {
+		setIsLoading(true)
+		setIsReady(false)
 		if (iframeRef.current) {
 			iframeRef.current.src = docUrl
+		}
+	}, [docUrl])
+
+	useEffect(() => {
+		const iframe = iframeRef.current
+		if (!iframe) return
+
+		const handleLoad = () => {
+			iframe.contentWindow?.postMessage({ theme: "light" }, "https://olake.io")
+			setTimeout(() => {
+				setIsLoading(false)
+				setTimeout(() => {
+					setIsReady(true)
+				}, 50)
+			}, 100)
+		}
+
+		iframe.addEventListener("load", handleLoad)
+		return () => {
+			iframe.removeEventListener("load", handleLoad)
 		}
 	}, [docUrl])
 
@@ -129,13 +153,20 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					visibility: isDocPanelCollapsed ? "hidden" : "visible",
 				}}
 			>
-				<iframe
-					ref={iframeRef}
-					src={docUrl}
-					className="h-full w-full border-none"
-					title="Documentation"
-					sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-				/>
+				<div
+					className={`transition-opacity ${!isReady ? "opacity-0" : "h-full opacity-100"}`}
+					style={{ transition: "opacity 0.3s ease" }}
+				>
+					<iframe
+						ref={iframeRef}
+						src={docUrl}
+						className="h-full w-full border-none"
+						title="Documentation"
+						sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+						data-theme="light"
+						style={{ visibility: isLoading ? "hidden" : "visible" }}
+					/>
+				</div>
 			</div>
 		</>
 	)

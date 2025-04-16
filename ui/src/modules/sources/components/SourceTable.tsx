@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown } from "antd"
-import { Source } from "../../../types"
+import { JobBasic, Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 
@@ -18,7 +18,6 @@ const SourceTable: React.FC<SourceTableProps> = ({
 	onDelete,
 }) => {
 	const [searchText, setSearchText] = useState("")
-
 	const { Search } = Input
 
 	const columns = [
@@ -70,7 +69,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(text)}
-						className="mr-2 h-4 w-4"
+						className="mr-2 size-6"
 					/>
 					<span>{text}</span>
 				</div>
@@ -79,22 +78,39 @@ const SourceTable: React.FC<SourceTableProps> = ({
 		{
 			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "associatedJobs",
-			render: () => (
-				<div>
-					<div className="mb-1 flex items-center">
-						<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
-							<span>S</span>
+			render: (_: any, record: Source) => {
+				if (!record.associatedJobs || record.associatedJobs.length === 0) {
+					return <div className="text-gray-500">No associated jobs</div>
+				}
+				return (
+					<div className="flex-end flex w-fit flex-col items-end gap-3">
+						<div className="mb-1 flex items-center">
+							{record.associatedJobs.map((job: JobBasic) => (
+								<>
+									<img
+										key={job.source}
+										src={getConnectorImage(job.source)}
+										className="size-8"
+									/>
+									<div className="ml-2 text-[#A3A3A3]">-------</div>
+									<div className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-[#0958D9]">
+										{job.jobName}
+									</div>
+									<div className="mr-2 text-[#A3A3A3]">-------</div>
+									<img
+										key={job.source}
+										src={getConnectorImage(job.destination)}
+										className="size-8"
+									/>
+								</>
+							))}
 						</div>
-						<div className="mx-2 w-16 border-t-2 border-dashed border-gray-300"></div>
-						<span className="text-blue-500">Table_name_test_1</span>
-						<div className="mx-2 w-16 border-t-2 border-dashed border-gray-300"></div>
-						<div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-							<span>D</span>
+						<div className="items-end text-sm font-bold text-[#203FDD]">
+							+3 more jobs
 						</div>
 					</div>
-					<div className="ml-8 text-sm text-blue-500">+3 more jobs</div>
-				</div>
-			),
+				)
+			},
 		},
 	]
 
@@ -110,7 +126,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				<Search
 					placeholder="Search Sources"
 					allowClear
-					className="w-1/4"
+					className="custom-search-input w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>

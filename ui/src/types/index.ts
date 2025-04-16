@@ -11,6 +11,12 @@ export interface Job {
 	lastSyncStatus?: "success" | "failed" | "running"
 }
 
+export interface JobBasic {
+	source: string
+	destination: string
+	jobName: string
+}
+
 export interface Source {
 	id: string
 	name: string
@@ -18,6 +24,7 @@ export interface Source {
 	status: "active" | "inactive" | "saved"
 	createdAt: Date
 	config?: any // Configuration data specific to the connector type
+	associatedJobs?: JobBasic[]
 }
 
 export interface Destination {
@@ -27,6 +34,7 @@ export interface Destination {
 	catalog?: string
 	status: "active" | "inactive" | "saved"
 	createdAt: Date
+	associatedJobs?: JobBasic[]
 }
 
 export interface JobHistory {

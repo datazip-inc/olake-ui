@@ -32,7 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 				<div className="p-4">
 					<Link
 						to="/jobs"
-						className="flex items-center gap-3"
+						className="flex items-center"
 					>
 						<img
 							src={OlakeLogo}

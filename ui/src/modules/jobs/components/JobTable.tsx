@@ -193,7 +193,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				<Search
 					placeholder="Search Jobs"
 					allowClear
-					className="w-1/4"
+					className="custom-search-input w-1/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>
@@ -209,6 +209,7 @@ const JobTable: React.FC<JobTableProps> = ({
 					showSizeChanger: false,
 				}}
 				className="overflow-hidden rounded-xl"
+				rowClassName="no-hover"
 			/>
 		</div>
 	)

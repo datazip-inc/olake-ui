@@ -129,7 +129,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				<Search
 					placeholder="Search streams"
 					allowClear
-					className="w-2/4"
+					className="custom-search-input w-2/4"
 					value={searchText}
 					onChange={e => setSearchText(e.target.value)}
 				/>

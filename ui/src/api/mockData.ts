@@ -57,6 +57,13 @@ export const mockSources: Source[] = [
 			backoff_retry_count: 3,
 			partition_strategy: "",
 		},
+		associatedJobs: [
+			{
+				source: "MongoDB Sales DB",
+				destination: "AWS S3 Data Lake",
+				jobName: "Daily Sales Data Sync",
+			},
+		],
 	},
 	{
 		id: "2",
@@ -82,6 +89,13 @@ export const mockSources: Source[] = [
 			default_mode: "cdc",
 			max_threads: 50,
 		},
+		associatedJobs: [
+			{
+				source: "PostgreSQL Inventory",
+				destination: "AWS Glue Analytics",
+				jobName: "Inventory Sync",
+			},
+		],
 	},
 	{
 		id: "3",
@@ -103,6 +117,13 @@ export const mockSources: Source[] = [
 			backoff_retry_count: 2,
 			default_mode: "cdc",
 		},
+		associatedJobs: [
+			{
+				source: "MySQL HR",
+				destination: "REST Catalog Analytics",
+				jobName: "HR Data Backup",
+			},
+		],
 	},
 ]
 
@@ -114,6 +135,13 @@ export const mockDestinations: Destination[] = [
 		type: "Amazon S3",
 		status: "active",
 		createdAt: new Date("2025-01-15T10:30:00Z"),
+		associatedJobs: [
+			{
+				source: "MongoDB Sales DB",
+				destination: "AWS S3 Data Lake",
+				jobName: "Daily Sales Data Sync",
+			},
+		],
 	},
 	{
 		id: "2",
@@ -122,6 +150,13 @@ export const mockDestinations: Destination[] = [
 		catalog: "AWS Glue",
 		status: "active",
 		createdAt: new Date("2025-01-20T14:45:00Z"),
+		associatedJobs: [
+			{
+				source: "PostgreSQL Inventory",
+				destination: "AWS Glue Analytics",
+				jobName: "Inventory Sync",
+			},
+		],
 	},
 	{
 		id: "3",
@@ -130,6 +165,13 @@ export const mockDestinations: Destination[] = [
 		catalog: "REST Catalog",
 		status: "active",
 		createdAt: new Date("2025-01-10T09:15:00Z"),
+		associatedJobs: [
+			{
+				source: "MySQL HR",
+				destination: "REST Catalog Analytics",
+				jobName: "HR Data Backup",
+			},
+		],
 	},
 	{
 		id: "4",
@@ -138,6 +180,13 @@ export const mockDestinations: Destination[] = [
 		catalog: "JDBC Catalog",
 		status: "active",
 		createdAt: new Date("2025-01-25T11:20:00Z"),
+		associatedJobs: [
+			{
+				source: "MySQL HR",
+				destination: "REST Catalog Analytics",
+				jobName: "HR Data Backup",
+			},
+		],
 	},
 ]
 

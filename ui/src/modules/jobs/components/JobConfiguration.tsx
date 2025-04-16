@@ -80,11 +80,11 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								<span className="font-medium">
 									Propagate field changes only
 								</span>
-								<p className="mt-1 pl-2 text-sm">
-									Only column changes will be propagated. Incompatible schema
-									changes will be detected, but not propagated.
-								</p>
 							</Radio>
+							<p className="mt-1 pl-9 text-sm text-[#575757]">
+								Only column changes will be propagated. Incompatible schema
+								changes will be detected, but not propagated.
+							</p>
 						</div>
 					</Radio.Group>
 				</div>

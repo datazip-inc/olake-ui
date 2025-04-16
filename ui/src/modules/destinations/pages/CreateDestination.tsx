@@ -383,75 +383,76 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 									</div>
 								</div>
 							) : (
-								<div className="grid grid-cols-3 gap-6">
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<Select
-											value={connector}
-											onChange={handleConnectorChange}
-											className="w-full"
-											disabled={fromJobEditFlow}
-											options={[
-												{
-													value: "Amazon S3",
-													label: (
-														<div className="flex items-center">
-															<img
-																src={AWSS3Icon}
-																alt="AWS S3"
-																className="mr-2 size-5"
-															/>
-															<span>Amazon S3</span>
-														</div>
-													),
-												},
-												{
-													value: "Apache Iceberg",
-													label: (
-														<div className="flex items-center">
-															<img
-																src={ApacheIcebergIcon}
-																alt="Apache Iceberg"
-																className="mr-2 size-5"
-															/>
-															<span>Apache Iceberg</span>
-														</div>
-													),
-												},
-											]}
-										/>
-									</div>
-
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Catalog:
-										</label>
-										{connector === "Apache Iceberg" ? (
+								<div className="flex flex-col gap-6">
+									<div className="flex w-full gap-6">
+										<div className="w-1/3">
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Connector:
+											</label>
 											<Select
-												value={catalog}
-												onChange={handleCatalogChange}
+												value={connector}
+												onChange={handleConnectorChange}
 												className="w-full"
 												disabled={fromJobEditFlow}
 												options={[
-													{ value: "AWS Glue", label: "AWS Glue" },
-													{ value: "REST Catalog", label: "REST catalog" },
-													{ value: "JDBC Catalog", label: "JDBC" },
-													{ value: "HIVE Catalog", label: "HIVE catalog" },
+													{
+														value: "Amazon S3",
+														label: (
+															<div className="flex items-center">
+																<img
+																	src={AWSS3Icon}
+																	alt="AWS S3"
+																	className="mr-2 size-5"
+																/>
+																<span>Amazon S3</span>
+															</div>
+														),
+													},
+													{
+														value: "Apache Iceberg",
+														label: (
+															<div className="flex items-center">
+																<img
+																	src={ApacheIcebergIcon}
+																	alt="Apache Iceberg"
+																	className="mr-2 size-5"
+																/>
+																<span>Apache Iceberg</span>
+															</div>
+														),
+													},
 												]}
 											/>
-										) : (
-											<Select
-												value="None"
-												className="w-full"
-												disabled
-												options={[{ value: "None", label: "None" }]}
-											/>
-										)}
+										</div>
+										<div className="w-1/3">
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Catalog:
+											</label>
+											{connector === "Apache Iceberg" ? (
+												<Select
+													value={catalog}
+													onChange={handleCatalogChange}
+													className="w-full"
+													disabled={fromJobEditFlow}
+													options={[
+														{ value: "AWS Glue", label: "AWS Glue" },
+														{ value: "REST Catalog", label: "REST catalog" },
+														{ value: "JDBC Catalog", label: "JDBC" },
+														{ value: "HIVE Catalog", label: "HIVE catalog" },
+													]}
+												/>
+											) : (
+												<Select
+													value="None"
+													className="w-full"
+													disabled
+													options={[{ value: "None", label: "None" }]}
+												/>
+											)}
+										</div>
 									</div>
 
-									<div>
+									<div className="w-2/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											{fromJobEditFlow
 												? "Destination:"

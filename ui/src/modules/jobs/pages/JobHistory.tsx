@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -32,7 +33,6 @@ const JobHistory: React.FC = () => {
 	}, [jobId, fetchJobHistory, jobs.length, fetchJobs])
 
 	const job = jobs.find(j => j.id === jobId)
-
 	const handleViewLogs = (historyId: string) => {
 		if (jobId) {
 			navigate(`/jobs/${jobId}/history/${historyId}/logs`)
@@ -131,15 +131,27 @@ const JobHistory: React.FC = () => {
 							{job?.name || "<Job_name>"}
 						</div>
 					</div>
-					<span className="ml-6 mt-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600">
+					<div className="ml-6 mt-1.5 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
 						{job?.status || "Active"}
-					</span>
+					</div>
 				</div>
 
 				<div className="flex items-center gap-2">
-					<Button className="rounded-full bg-green-500 text-white">S</Button>
-					<span className="text-gray-500">--------------</span>
-					<Button className="rounded-full bg-red-500 text-white">D</Button>
+					{job?.source && (
+						<img
+							src={getConnectorImage(job.source)}
+							alt="Source"
+							className="size-7"
+						/>
+					)}
+					<span className="text-gray-500">{"--------------▶"}</span>
+					{job?.destination && (
+						<img
+							src={getConnectorImage(job.destination)}
+							alt="Destination"
+							className="size-7"
+						/>
+					)}
 				</div>
 			</div>
 
