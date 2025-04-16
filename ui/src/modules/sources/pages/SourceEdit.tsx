@@ -798,9 +798,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 					{!fromJobFlow && (
 						<div className="mb-4">
-							<div className="flex">
+							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
 								<button
-									className={`w-56 rounded-xl px-3 py-1.5 text-sm font-normal ${
+									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
 										activeTab === "config"
 											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
 											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
@@ -853,7 +853,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														setFormData(mockFormData)
 													}
 												}}
-												className="w-full"
+												className="h-8 w-full"
 												options={[
 													{ value: "MongoDB", label: "MongoDB" },
 													{ value: "PostgreSQL", label: "PostgreSQL" },
@@ -871,6 +871,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											placeholder="Enter the name of your source"
 											value={sourceName}
 											onChange={e => setSourceName(e.target.value)}
+											className="h-8"
 										/>
 									</div>
 								</div>

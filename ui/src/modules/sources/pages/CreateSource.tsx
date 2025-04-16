@@ -275,7 +275,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 											<Select
 												value={connector}
 												onChange={handleConnectorChange}
-												className="w-full"
+												className="h-8 w-full"
 												options={[
 													{
 														value: "MongoDB",
@@ -328,7 +328,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 										</label>
 										<input
 											type="text"
-											className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+											className="h-8 w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 											placeholder="Enter the name of your source"
 											value={sourceName}
 											onChange={handleSourceNameChange}

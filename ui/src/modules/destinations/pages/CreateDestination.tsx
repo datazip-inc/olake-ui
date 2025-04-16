@@ -392,7 +392,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 											<Select
 												value={connector}
 												onChange={handleConnectorChange}
-												className="w-full"
+												className="h-8 w-full"
 												disabled={fromJobEditFlow}
 												options={[
 													{
@@ -432,7 +432,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 												<Select
 													value={catalog}
 													onChange={handleCatalogChange}
-													className="w-full"
+													className="h-8 w-full"
 													disabled={fromJobEditFlow}
 													options={[
 														{ value: "AWS Glue", label: "AWS Glue" },

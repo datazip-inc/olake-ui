@@ -10,6 +10,8 @@ import { destinationService } from "../../../api/services/destinationService"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
+import AWSS3 from "../../../assets/AWSS3.svg"
+import ApacheIceberg from "../../../assets/ApacheIceberg.svg"
 
 interface DestinationEditProps {
 	fromJobFlow?: boolean
@@ -395,7 +397,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 					{!fromJobFlow && (
 						<div className="mb-4">
-							<div className="flex">
+							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
 								<button
 									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
 										activeTab === "config"
@@ -454,12 +456,33 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 															)
 														}
 													}}
-													className="w-full"
+													className="h-8 w-full"
 													options={[
-														{ value: "Amazon S3", label: "Amazon S3" },
+														{
+															value: "Amazon S3",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={AWSS3}
+																		alt="AWS S3"
+																		className="mr-2 size-5"
+																	/>
+																	<span>Amazon S3</span>
+																</div>
+															),
+														},
 														{
 															value: "Apache Iceberg",
-															label: "Apache Iceberg",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={ApacheIceberg}
+																		alt="Apache Iceberg"
+																		className="mr-2 size-5"
+																	/>
+																	<span>Apache Iceberg</span>
+																</div>
+															),
 														},
 													]}
 												/>
@@ -471,7 +494,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 												Catalog:
 											</label>
 											<Select
-												className="w-full"
+												className="h-8 w-full"
 												placeholder="Select catalog"
 												disabled={
 													connector === "Amazon S3" || connector === "AWS S3"
@@ -515,6 +538,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											placeholder="Enter the name of your destination"
 											value={destinationName}
 											onChange={e => setDestinationName(e.target.value)}
+											className="h-8 w-2/3"
 										/>
 									</div>
 								</div>
@@ -549,6 +573,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								pagination={false}
 								rowKey={record => record.id}
 								className="min-w-full"
+								rowClassName="no-hover"
 							/>
 
 							{!showAllJobs && additionalJobs.length > 0 && (

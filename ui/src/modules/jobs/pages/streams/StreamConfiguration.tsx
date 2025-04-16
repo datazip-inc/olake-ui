@@ -205,6 +205,7 @@ const StreamConfiguration = ({ stream }: StreamConfigurationProps) => {
 				dataSource={tableData}
 				columns={PARTITIONING_COLUMNS}
 				pagination={false}
+				rowClassName="no-hover"
 			/>
 			<div className="text-sm text-[#575757]">Regex preview:</div>
 		</>

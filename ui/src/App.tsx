@@ -18,16 +18,12 @@ const JobCreation = lazy(() => import("./modules/jobs/pages/JobCreation"))
 const JobEdit = lazy(() => import("./modules/jobs/pages/JobEdit"))
 const Sources = lazy(() => import("./modules/sources/pages/Sources"))
 const SourceEdit = lazy(() => import("./modules/sources/pages/SourceEdit"))
-const SourceJobs = lazy(() => import("./modules/sources/pages/SourceJobs"))
 const CreateSource = lazy(() => import("./modules/sources/pages/CreateSource"))
 const Destinations = lazy(
 	() => import("./modules/destinations/pages/Destinations"),
 )
 const DestinationEdit = lazy(
 	() => import("./modules/destinations/pages/DestinationEdit.tsx"),
-)
-const DestinationJobs = lazy(
-	() => import("./modules/destinations/pages/DestinationJobs"),
 )
 const CreateDestination = lazy(
 	() => import("./modules/destinations/pages/CreateDestination"),
@@ -93,10 +89,6 @@ function App() {
 										element={<SourceEdit />}
 									/>
 									<Route
-										path="/sources/:sourceId/jobs"
-										element={<SourceJobs />}
-									/>
-									<Route
 										path="/destinations"
 										element={<Destinations />}
 									/>
@@ -107,10 +99,6 @@ function App() {
 									<Route
 										path="/destinations/:destinationId"
 										element={<DestinationEdit />}
-									/>
-									<Route
-										path="/destinations/:destinationId/jobs"
-										element={<DestinationJobs />}
 									/>
 									<Route
 										path="*"

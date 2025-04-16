@@ -68,11 +68,10 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 
 			const labelClass =
 				fieldUiSchema?.["ui:labelClass"] ||
-				"mb-2 text-sm font-medium text-gray-700"
+				"mb-1 text-sm font-medium text-gray-700"
 
-			// Ensure fields start from the left with proper sizing
-			const fieldClass =
-				fieldUiSchema?.["ui:className"] || "w-full mb-4 flex-grow"
+			// Apply consistent field styling
+			const fieldClass = fieldUiSchema?.["ui:className"] || "w-full mb-2"
 
 			// Skip rendering label for checkboxes and if ui:options.label is false
 			const isCheckbox =
@@ -110,7 +109,16 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 			const fieldClass = fieldUiSchema?.["ui:className"] || ""
 			const TitleComponent = fieldUiSchema?.["ui:title"]
 			const CustomField = fieldUiSchema?.["ui:field"]
-			const gridClass = fieldUiSchema?.["ui:options"]?.className || ""
+
+			// Default to grid layout for all objects with multiple properties
+			// Can be overridden with ui:options.noGrid = true
+			const shouldUseGridLayout =
+				properties.length > 1 && fieldUiSchema?.["ui:options"]?.noGrid !== true
+
+			// Apply custom grid class if provided, otherwise use default grid
+			const gridClass =
+				fieldUiSchema?.["ui:options"]?.className ||
+				(shouldUseGridLayout ? "grid grid-cols-2 gap-x-6 gap-y-4" : "")
 
 			const renderTitle = () => {
 				if (!title || title === null) return null
@@ -134,7 +142,25 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 								{properties.map((prop: any) => prop.content)}
 							</CustomField>
 						) : (
-							properties.map((prop: any) => prop.content)
+							properties.map((prop: any) => {
+								// Check if the property is an object with multiple fields
+								const isNestedObject =
+									prop.content.props.schema.type === "object" &&
+									Object.keys(prop.content.props.schema.properties || {})
+										.length > 3
+
+								// Make nested objects span full width
+								const spanClass = isNestedObject ? "col-span-2" : ""
+
+								return (
+									<div
+										key={prop.name}
+										className={spanClass}
+									>
+										{prop.content}
+									</div>
+								)
+							})
 						)}
 					</div>
 				</div>
@@ -469,7 +495,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 	}
 
 	return (
-		<div className="form-container">
+		<div className="form-container w-full">
 			<Form
 				schema={schema}
 				uiSchema={uiSchema}
@@ -484,7 +510,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				}}
 				liveValidate={true}
 				showErrorList={false}
-				className="form-container"
+				className="w-full"
 				widgets={{
 					TextWidget: customTemplates.TextWidget,
 					PasswordWidget: customTemplates.PasswordWidget,

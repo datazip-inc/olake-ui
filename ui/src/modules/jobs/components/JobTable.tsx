@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown } from "antd"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { Job } from "../../../types"
 import { useNavigate } from "react-router-dom"
 import {
@@ -34,6 +34,8 @@ const JobTable: React.FC<JobTableProps> = ({
 	onDelete,
 }) => {
 	const [searchText, setSearchText] = useState("")
+	const [currentPage, setCurrentPage] = useState(1)
+	const pageSize = 8
 	const navigate = useNavigate()
 
 	const { Search } = Input
@@ -187,31 +189,60 @@ const JobTable: React.FC<JobTableProps> = ({
 			job.destination.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
+	// Calculate current page data for display
+	const startIndex = (currentPage - 1) * pageSize
+	const endIndex = Math.min(startIndex + pageSize, filteredJobs.length)
+	const currentPageData = filteredJobs.slice(startIndex, endIndex)
+
 	return (
-		<div>
-			<div className="mb-4">
-				<Search
-					placeholder="Search Jobs"
-					allowClear
-					className="custom-search-input w-1/4"
-					value={searchText}
-					onChange={e => setSearchText(e.target.value)}
+		<>
+			<div>
+				<div className="mb-4">
+					<Search
+						placeholder="Search Jobs"
+						allowClear
+						className="custom-search-input w-1/4"
+						value={searchText}
+						onChange={e => setSearchText(e.target.value)}
+					/>
+				</div>
+
+				<Table
+					dataSource={currentPageData}
+					columns={columns}
+					rowKey="id"
+					loading={loading}
+					pagination={false}
+					className="overflow-hidden rounded-xl"
+					rowClassName="no-hover"
 				/>
 			</div>
 
-			<Table
-				dataSource={filteredJobs}
-				columns={columns}
-				rowKey="id"
-				loading={loading}
-				pagination={{
-					pageSize: 10,
-					showSizeChanger: false,
+			{/* Fixed pagination at bottom right */}
+			<div
+				style={{
+					position: "fixed",
+					bottom: 60,
+					right: 40,
+					display: "flex",
+					justifyContent: "flex-end",
+					padding: "8px 0",
+					backgroundColor: "#fff",
+					zIndex: 100,
 				}}
-				className="overflow-hidden rounded-xl"
-				rowClassName="no-hover"
-			/>
-		</div>
+			>
+				<Pagination
+					current={currentPage}
+					onChange={setCurrentPage}
+					total={filteredJobs.length}
+					pageSize={pageSize}
+					showSizeChanger={false}
+				/>
+			</div>
+
+			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
+			<div style={{ height: "80px" }}></div>
+		</>
 	)
 }
 

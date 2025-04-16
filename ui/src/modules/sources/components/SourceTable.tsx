@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown } from "antd"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { JobBasic, Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
@@ -20,6 +20,8 @@ const SourceTable: React.FC<SourceTableProps> = ({
 	onDelete,
 }) => {
 	const [searchText, setSearchText] = useState("")
+	const [currentPage, setCurrentPage] = useState(1)
+	const pageSize = 5
 	const { Search } = Input
 
 	const columns = [
@@ -120,31 +122,61 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			source.type.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
+	// Calculate current page data for display
+	const startIndex = (currentPage - 1) * pageSize
+	const endIndex = Math.min(startIndex + pageSize, filteredSources.length)
+	const currentPageData = filteredSources.slice(startIndex, endIndex)
+
 	return (
-		<div>
-			<div className="mb-4">
-				<Search
-					placeholder="Search Sources"
-					allowClear
-					className="custom-search-input w-1/4"
-					value={searchText}
-					onChange={e => setSearchText(e.target.value)}
+		<>
+			<div>
+				<div className="mb-4">
+					<Search
+						placeholder="Search Sources"
+						allowClear
+						className="custom-search-input w-1/4"
+						value={searchText}
+						onChange={e => setSearchText(e.target.value)}
+					/>
+				</div>
+
+				<Table
+					dataSource={currentPageData}
+					columns={columns}
+					rowKey="id"
+					loading={loading}
+					pagination={false}
+					className="overflow-hidden rounded-xl"
+					rowClassName="no-hover"
+				/>
+				<DeleteModal fromSource={true} />
+			</div>
+
+			{/* Fixed pagination at bottom right */}
+			<div
+				style={{
+					position: "fixed",
+					bottom: 60,
+					right: 40,
+					display: "flex",
+					justifyContent: "flex-end",
+					padding: "8px 0",
+					backgroundColor: "#fff",
+					zIndex: 100,
+				}}
+			>
+				<Pagination
+					current={currentPage}
+					onChange={setCurrentPage}
+					total={filteredSources.length}
+					pageSize={pageSize}
+					showSizeChanger={false}
 				/>
 			</div>
 
-			<Table
-				dataSource={filteredSources}
-				columns={columns}
-				rowKey="id"
-				loading={loading}
-				pagination={{
-					pageSize: 10,
-					showSizeChanger: false,
-				}}
-				className="overflow-hidden rounded-lg"
-			/>
-			<DeleteModal fromSource={true} />
-		</div>
+			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
+			<div style={{ height: "80px" }}></div>
+		</>
 	)
 }
 

@@ -150,6 +150,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 					loading={loading}
 					pagination={false}
 					className="w-full overflow-hidden rounded-[6px] border"
+					rowClassName="no-hover"
 				/>
 				<div className="flex w-full justify-end space-x-2">
 					<Button

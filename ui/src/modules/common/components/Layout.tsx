@@ -29,10 +29,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					collapsed ? "w-20" : "w-64"
 				} relative flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out`}
 			>
-				<div className="p-4">
+				<div className="pl-4 pt-6">
 					<Link
 						to="/jobs"
-						className="flex items-center"
+						className="flex items-center gap-2"
 					>
 						<img
 							src={OlakeLogo}
@@ -43,7 +43,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 							<img
 								src={Olake}
 								alt="logo"
-								className="h-4 w-20"
+								className="h-[27px] w-[57px]"
 							/>
 						)}
 					</Link>
