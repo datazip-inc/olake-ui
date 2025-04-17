@@ -16,19 +16,16 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
-    "email": "string",
+    "username": "string",
     "password": "string"
   }
   ```
 - **Response**:
   ```json
   {
-    "token": "string",
-    "user": {
-      "id": "integer",
-      "email": "string",
-      "name": "string"
-    }
+    "username": "string",
+    "message": "string",
+    "success": "boolean"
   }
   ```
 
@@ -40,17 +37,18 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
-    "name": "string",
     "email": "string",
+    "username": "string",
     "password": "string"
   }
   ```
 - **Response**:
+
   ```json
   {
-    "id": "integer",
-    "name": "string",
-    "email": "string"
+    "email": "string",
+    "message": "string",
+    "success": "boolean"
   }
   ```
 
@@ -64,11 +62,7 @@ http://localhost:8080
   ```json
   {
     "authenticated": "boolean",
-    "user": {
-      "id": "integer",
-      "email": "string",
-      "name": "string"
-    }
+    "email": "string"
   }
   ```
 
@@ -85,25 +79,20 @@ http://localhost:8080
   {
     "name": "string",
     "project_id": "integer",
-    "source_type": "string",
-    "config": "object",
-    "created_by": "string",
-    "updated_by": "string"
+    "type": "string",
+    "config": "string"
   }
   ```
 - **Response**:
   ```json
   {
-    "source_id": "integer",
-    "name": "string",
-    "source_type": "string",
-    "project_id": "integer",
-    "config": "object",
-    "created_at": "timestamp",
-    "updated_at": "timestamp",
-    "created_by": "string",
-    "updated_by": "string",
-    "deleted_at": "null"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "type": "string",
+      "project_id": "integer",
+      "config": "string"
+    }
   }
   ```
 
@@ -114,21 +103,30 @@ http://localhost:8080
 - **Description**: Retrieve all sources
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
+
   ```json
-  [
-    {
-      "source_id": "integer",
-      "name": "string",
-      "project_id": "integer",
-      "source_type": "string",
-      "config": "object",
-      "created_at": "timestamp",
-      "updated_at": "timestamp",
-      "created_by": "string",
-      "updated_by": "string",
-      "deleted_at": "null"
-    }
-  ]
+  {
+    "success": "boolean",
+    "data": [
+      {
+        "id": "integer",
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string",
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
+        "created_by": {
+          "id": "integer",
+          "username": "string"
+        },
+        "updated_by": {
+          "id": "integer",
+          "username": "string"
+        }
+      }
+    ]
+  }
   ```
 
 ### Update Source
@@ -140,27 +138,22 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
-    "source_id": "integer",
     "name": "string",
-    "source_type": "string",
-    "config": "object",
-    "project_id": "integer",
-    "updated_by": "string"
+    "type": "string",
+    "config": "string",
+    "project_id": "integer"
   }
   ```
 - **Response**:
   ```json
   {
-    "source_id": "integer",
-    "name": "string",
-    "project_id": "integer",
-    "source_type": "string",
-    "config": "object",
-    "updated_at": "timestamp",
-    "created_at": "timestamp",
-    "created_by": "string",
-    "updated_by": "string",
-    "deleted_at": "null"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "type": "string",
+      "project_id": "integer",
+      "config": "string"
+    }
   }
   ```
 
@@ -170,7 +163,13 @@ http://localhost:8080
 - **Method**: DELETE
 - **Description**: Delete a source
 - **Headers**: `Authorization: Bearer <token>`
-- **Response**: HTTP 204 No Content
+- **Response**:
+
+```json
+{
+  "success": "boolean"
+}
+```
 
 ## Destinations
 
@@ -185,25 +184,21 @@ http://localhost:8080
   {
     "name": "string",
     "project_id": "integer",
-    "dest_type": "string",
-    "config": "object",
-    "created_by": "string",
-    "updated_by": "string"
+    "type": "string",
+    "config": "string"
   }
   ```
 - **Response**:
+
   ```json
   {
-    "dest_id": "integer",
-    "name": "string",
-    "project_id": "integer",
-    "dest_type": "string",
-    "config": "object",
-    "created_at": "timestamp",
-    "updated_at": "timestamp",
-    "created_by": "string",
-    "updated_by": "string",
-    "deleted_at": "null"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "type": "string",
+      "project_id": "integer",
+      "config": "string"
+    }
   }
   ```
 
@@ -215,20 +210,28 @@ http://localhost:8080
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
   ```json
-  [
-    {
-      "dest_id": "integer",
-      "name": "string",
-      "project_id": "integer",
-      "dest_type": "string",
-      "config": "object",
-      "created_at": "timestamp",
-      "updated_at": "timestamp",
-      "created_by": "string",
-      "updated_by": "string",
-      "deleted_at": "null"
-    }
-  ]
+  {
+    "success": "boolean",
+    "data": [
+      {
+        "id": "integer",
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string",
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
+        "created_by": {
+          "id": "integer",
+          "username": "string"
+        },
+        "updated_by": {
+          "id": "integer",
+          "username": "string"
+        }
+      }
+    ]
+  }
   ```
 
 ### Update Destination
@@ -240,28 +243,22 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
-    "dest_id": "integer",
     "name": "string",
-    "project_id": "integer",
-    "created_by": "string",
-    "updated_by": "string",
-    "dest_type": "string",
-    "config": "object"
+    "type": "string",
+    "config": "string",
+    "project_id": "integer"
   }
   ```
 - **Response**:
   ```json
   {
-    "dest_id": "integer",
-    "name": "string",
-    "project_id": "integer",
-    "dest_type": "string",
-    "config": "object",
-    "updated_at": "timestamp",
-    "created_at": "timestamp",
-    "created_by": "string",
-    "updated_by": "string",
-    "deleted_at": "null"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "type": "string",
+      "project_id": "integer",
+      "config": "string"
+    }
   }
   ```
 
@@ -272,6 +269,12 @@ http://localhost:8080
 - **Description**: Delete a destination
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**: HTTP 204 No Content
+
+```json
+{
+  "success": "boolean"
+}
+```
 
 ## Jobs
 
@@ -286,14 +289,21 @@ http://localhost:8080
   ```json
   {
     "name": "string",
-    "source_id": "integer",
-    "dest_id": "integer",
+    "source": {
+      "name": "string",
+      "project_id": "integer",
+      "type": "string",
+      "config": "string"
+    },
+    "destination": {
+      "name": "string",
+      "project_id": "integer",
+      "type": "string",
+      "config": "string"
+    },
     "frequency": "string",
-    "config": "object",
+    "schema": "object",
     "project_id": "integer",
-    "connected": "boolean",
-    "created_by": "string",
-    "updated_by": "string",
     "last_sync_state": {
       "last_run_time": "timestamp",
       "last_run_state": "string"
@@ -304,22 +314,28 @@ http://localhost:8080
 - **Response**:
   ```json
   {
-    "job_id": "integer",
-    "name": "string",
-    "source_id": "integer",
-    "dest_id": "integer",
-    "schedule": "string",
-    "config": "object",
-    "created_at": "timestamp",
-    "updated_at": "timestamp",
-    "created_by": "string",
-    "updated_by": "string",
-    "connected": "boolean",
-    "deleted_at": "null",
-    "frequency": "string",
-    "last_sync_state": {
-      "last_run_time": "timestamp",
-      "last_run_state": "string"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "source": {
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string"
+      },
+      "destination": {
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string"
+      },
+      "frequency": "string",
+      "schema": "object",
+      "project_id": "integer",
+      "last_sync_state": {
+        "last_run_time": "timestamp",
+        "last_run_state": "string"
+      }
     }
   }
   ```
@@ -331,28 +347,39 @@ http://localhost:8080
 - **Description**: Retrieve all jobs
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
+
   ```json
-  [
-    {
-      "job_id": "integer",
+  {
+    "name": "string",
+    "source": {
       "name": "string",
-      "source_id": "integer",
-      "dest_id": "integer",
-      "schedule": "string",
-      "config": "object",
-      "connected": "boolean",
-      "frequency": "string",
-      "updated_at": "timestamp",
-      "created_at": "timestamp",
-      "created_by": "string",
-      "updated_by": "string",
-      "last_sync_state": {
-        "last_run_time": "timestamp",
-        "last_run_state": "string"
-      },
-      "deleted_at": "null"
+      "project_id": "integer",
+      "type": "string",
+      "config": "string"
+    },
+    "destination": {
+      "name": "string",
+      "project_id": "integer",
+      "type": "string",
+      "config": "string"
+    },
+    "frequency": "string",
+    "project_id": "integer",
+    "last_sync_state": {
+      "last_run_time": "timestamp",
+      "last_run_state": "string"
+    },
+    "created_at": "timestamp",
+    "updated_at": "timestamp",
+    "created_by": {
+      "id": "integer",
+      "username": "string"
+    },
+    "updated_by": {
+      "id": "integer",
+      "username": "string"
     }
-  ]
+  }
   ```
 
 ### Update Job
@@ -362,41 +389,61 @@ http://localhost:8080
 - **Description**: Update an existing job
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
+
   ```json
   {
-    "name": "string",
-    "connected": "boolean",
-    "config": "object",
-    "dest_id": "integer",
-    "source_id": "integer",
-    "frequency": "string",
-    "updated_by": "string",
-    "last_sync_state": {
-      "last_run_time": "timestamp",
-      "last_run_state": "string"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "source": {
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string"
+      },
+      "destination": {
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string"
+      },
+      "frequency": "string",
+      "schema": "object",
+      "project_id": "integer",
+      "last_sync_state": {
+        "last_run_time": "timestamp",
+        "last_run_state": "string"
+      }
     }
   }
   ```
+
 - **Response**:
   ```json
   {
-    "job_id": "integer",
-    "name": "string",
-    "source_id": "integer",
-    "dest_id": "integer",
-    "frequency": "string",
-    "config": "object",
-    "status": "string",
-    "updated_at": "timestamp",
-    "created_at": "timestamp",
-    "connected": "boolean",
-    "last_sync_state": {
-      "last_run_time": "timestamp",
-      "last_run_state": "string"
-    },
-    "updated_by": "string",
-    "created_by": "string",
-    "deleted_at": "null"
+    "success": "boolean",
+    "data": {
+      "name": "string",
+      "source": {
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string"
+      },
+      "destination": {
+        "name": "string",
+        "project_id": "integer",
+        "type": "string",
+        "config": "string"
+      },
+      "frequency": "string",
+      "schema": "object",
+      "project_id": "integer",
+      "last_sync_state": {
+        "last_run_time": "timestamp",
+        "last_run_state": "string"
+      }
+    }
   }
   ```
 
@@ -407,6 +454,12 @@ http://localhost:8080
 - **Description**: Delete a job
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**: HTTP 204 No Content
+
+```json
+{
+  "success": "boolean"
+}
+```
 
 ### Test Connection
 
@@ -561,23 +614,35 @@ http://localhost:8080
   {
     "jobs": [
       {
-        "job_id": "integer",
         "name": "string",
-        "source_id": "integer",
-        "dest_id": "integer",
-        "schedule": "string",
-        "config": "object",
-        "connected": "boolean",
+        "source": {
+          "name": "string",
+          "project_id": "integer",
+          "type": "string",
+          "config": "string"
+        },
+        "destination": {
+          "name": "string",
+          "project_id": "integer",
+          "type": "string",
+          "config": "string"
+        },
         "frequency": "string",
-        "updated_at": "timestamp",
-        "created_at": "timestamp",
-        "created_by": "string",
-        "updated_by": "string",
+        "project_id": "integer",
         "last_sync_state": {
           "last_run_time": "timestamp",
           "last_run_state": "string"
         },
-        "deleted_at": "null"
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
+        "created_by": {
+          "id": "integer",
+          "username": "string"
+        },
+        "updated_by": {
+          "id": "integer",
+          "username": "string"
+        }
       }
     ]
   }
@@ -593,23 +658,35 @@ http://localhost:8080
   {
     "jobs": [
       {
-        "job_id": "integer",
         "name": "string",
-        "source_id": "integer",
-        "dest_id": "integer",
-        "schedule": "string",
-        "config": "object",
-        "connected": "boolean",
+        "source": {
+          "name": "string",
+          "project_id": "integer",
+          "type": "string",
+          "config": "string"
+        },
+        "destination": {
+          "name": "string",
+          "project_id": "integer",
+          "type": "string",
+          "config": "string"
+        },
         "frequency": "string",
-        "updated_at": "timestamp",
-        "created_at": "timestamp",
-        "created_by": "string",
-        "updated_by": "string",
+        "project_id": "integer",
         "last_sync_state": {
           "last_run_time": "timestamp",
           "last_run_state": "string"
         },
-        "deleted_at": "null"
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
+        "created_by": {
+          "id": "integer",
+          "username": "string"
+        },
+        "updated_by": {
+          "id": "integer",
+          "username": "string"
+        }
       }
     ]
   }
@@ -672,3 +749,7 @@ The API allows requests from:
 - Methods: GET, POST, PUT, DELETE, OPTIONS
 - Headers: Origin, Content-Type, Accept, Authorization
 - Credentials: true
+
+```
+
+```
