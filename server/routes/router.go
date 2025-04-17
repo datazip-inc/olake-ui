@@ -35,12 +35,14 @@ func Init() {
 	web.Router("/api/v1/sources", &handlers.SourceHandler{}, "post:CreateSource")
 	web.Router("/api/v1/sources/:id", &handlers.SourceHandler{}, "put:UpdateSource")
 	web.Router("/api/v1/sources/:id", &handlers.SourceHandler{}, "delete:DeleteSource")
+	web.Router("/api/v1/sources/test", &handlers.SourceHandler{}, "post:TestConnection")
 
 	// Destination routes
 	web.Router("/api/v1/destinations", &handlers.DestHandler{}, "get:GetAllDestinations")
 	web.Router("/api/v1/destinations", &handlers.DestHandler{}, "post:CreateDestination")
 	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "put:UpdateDestination")
 	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
+	web.Router("/api/v1/destinations/test", &handlers.DestHandler{}, "post:TestConnection")
 
 	// Job routes
 	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "get:GetAllJobs")

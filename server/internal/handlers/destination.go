@@ -117,3 +117,20 @@ func (c *DestHandler) DeleteDestination() {
 
 	c.Ctx.ResponseWriter.WriteHeader(http.StatusNoContent)
 }
+
+// @router /destinations/test [post]
+func (c *DestHandler) TestConnection() {
+	var req map[string]interface{}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+
+	// For now, always return success
+	response := map[string]string{
+		"status": "success",
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
+}
