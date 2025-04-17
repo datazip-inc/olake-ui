@@ -9,7 +9,7 @@ import {
 	Notebook,
 } from "@phosphor-icons/react"
 import AWSS3Icon from "../../../assets/AWSS3.svg"
-import ApacheIcebergIcon from "../../../assets/ApacheIceBerg.svg"
+import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
@@ -344,7 +344,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 													label: (
 														<div className="flex items-center">
 															<img
-																src={ApacheIcebergIcon}
+																src={ApacheIceBerg}
 																alt="Apache Iceberg"
 																className="mr-2 size-5"
 															/>
@@ -413,7 +413,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 														label: (
 															<div className="flex items-center">
 																<img
-																	src={ApacheIcebergIcon}
+																	src={ApacheIceBerg}
 																	alt="Apache Iceberg"
 																	className="mr-2 size-5"
 																/>

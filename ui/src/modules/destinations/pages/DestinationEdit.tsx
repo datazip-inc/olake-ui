@@ -11,7 +11,7 @@ import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import AWSS3 from "../../../assets/AWSS3.svg"
-import ApacheIceberg from "../../../assets/ApacheIceberg.svg"
+import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 
 interface DestinationEditProps {
 	fromJobFlow?: boolean
@@ -476,7 +476,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 															label: (
 																<div className="flex items-center">
 																	<img
-																		src={ApacheIceberg}
+																		src={ApacheIceBerg}
 																		alt="Apache Iceberg"
 																		className="mr-2 size-5"
 																	/>

@@ -88,27 +88,25 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				return (
 					<div className="flex-end flex w-fit flex-col items-end gap-3">
 						<div className="mb-1 flex items-center">
-							{record.associatedJobs.map((job: JobBasic, index: number) => (
-								<Fragment key={`job-${job.jobName}-${index}`}>
-									<img
-										src={getConnectorImage(job.source)}
-										className="size-8"
-									/>
-									<div className="ml-2 text-[#A3A3A3]">-------</div>
-									<div className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-[#0958D9]">
-										{job.jobName}
-									</div>
-									<div className="mr-2 text-[#A3A3A3]">-------</div>
-									<img
-										key={job.destination}
-										src={getConnectorImage(job.destination)}
-										className="size-8"
-									/>
-								</Fragment>
-							))}
+							<Fragment key={`job-${record.associatedJobs[0].jobName}`}>
+								<img
+									src={getConnectorImage(record.associatedJobs[0].source)}
+									className="size-8"
+								/>
+								<div className="ml-2 text-[#A3A3A3]">-------</div>
+								<div className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-[#0958D9]">
+									{record.associatedJobs[0].jobName}
+								</div>
+								<div className="mr-2 text-[#A3A3A3]">-------</div>
+								<img
+									key={record.associatedJobs[0].destination}
+									src={getConnectorImage(record.associatedJobs[0].destination)}
+									className="size-8"
+								/>
+							</Fragment>
 						</div>
 						<div className="items-end text-sm font-bold text-[#203FDD]">
-							+3 more jobs
+							+{record.associatedJobs.length - 1} more jobs
 						</div>
 					</div>
 				)
