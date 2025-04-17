@@ -41,4 +41,10 @@ func Init() {
 	web.Router("/api/v1/destinations", &handlers.DestHandler{}, "post:CreateDestination")
 	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "put:UpdateDestination")
 	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
+
+	// Job routes
+	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "get:GetAllJobs")
+	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "post:CreateJob")
+	web.Router("/api/v1/jobs/:id", &handlers.JobHandler{}, "put:UpdateJob")
+	web.Router("/api/v1/jobs/:id", &handlers.JobHandler{}, "delete:DeleteJob")
 }
