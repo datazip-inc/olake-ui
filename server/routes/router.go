@@ -36,6 +36,9 @@ func Init() {
 	web.Router("/api/v1/sources/:id", &handlers.SourceHandler{}, "put:UpdateSource")
 	web.Router("/api/v1/sources/:id", &handlers.SourceHandler{}, "delete:DeleteSource")
 	web.Router("/api/v1/sources/test", &handlers.SourceHandler{}, "post:TestConnection")
+	web.Router("/api/v1/sources/:source_type/spec", &handlers.SourceHandler{}, "get:GetSourceTypeSpec")
+	web.Router("/api/v1/sources/:id/catalog", &handlers.SourceHandler{}, "get:GetSourceCatalog")
+	web.Router("/api/v1/sources/:id/jobs", &handlers.SourceHandler{}, "get:GetSourceJobs")
 
 	// Destination routes
 	web.Router("/api/v1/destinations", &handlers.DestHandler{}, "get:GetAllDestinations")
@@ -43,6 +46,8 @@ func Init() {
 	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "put:UpdateDestination")
 	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
 	web.Router("/api/v1/destinations/test", &handlers.DestHandler{}, "post:TestConnection")
+	web.Router("/api/v1/destinations/:dest_type/spec", &handlers.DestHandler{}, "get:GetDestTypeSpec")
+	web.Router("/api/v1/destinations/:id/jobs", &handlers.DestHandler{}, "get:GetDestinationJobs")
 
 	// Job routes
 	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "get:GetAllJobs")

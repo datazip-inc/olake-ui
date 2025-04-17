@@ -134,3 +134,53 @@ func (c *DestHandler) TestConnection() {
 	c.Data["json"] = response
 	c.ServeJSON()
 }
+
+// @router /destinations/:dest_type/spec [get]
+func (c *DestHandler) GetDestTypeSpec() {
+	destType := c.Ctx.Input.Param(":dest_type")
+	if destType == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		return
+	}
+
+	// Return empty spec object for now
+	response := map[string]interface{}{
+		"spec": map[string]interface{}{},
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
+}
+
+// @router /destinations/:id/jobs [get]
+func (c *DestHandler) GetDestinationJobs() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
+		return
+	}
+
+	// Check if destination exists
+	_, err = c.destORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		return
+	}
+
+	// Create a job ORM and get jobs by destination ID
+	jobORM := database.NewJobORM()
+	jobs, err := jobORM.GetByDestinationID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		return
+	}
+
+	// Format as required by API contract
+	response := map[string]interface{}{
+		"jobs": jobs,
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
+}

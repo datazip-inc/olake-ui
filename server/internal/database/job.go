@@ -56,3 +56,27 @@ func (r *JobORM) Delete(id int) error {
 	_, err := r.ormer.Delete(job)
 	return err
 }
+
+// GetBySourceID retrieves all jobs associated with a source ID
+func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	source := &models.Source{ID: sourceID}
+
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("source_id", source).
+		All(&jobs)
+
+	return jobs, err
+}
+
+// GetByDestinationID retrieves all jobs associated with a destination ID
+func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	dest := &models.Destination{ID: destID}
+
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("dest_id", dest).
+		All(&jobs)
+
+	return jobs, err
+}

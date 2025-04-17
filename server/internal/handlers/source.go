@@ -134,3 +134,79 @@ func (c *SourceHandler) TestConnection() {
 	c.Data["json"] = response
 	c.ServeJSON()
 }
+
+// @router /sources/:source_type/spec [get]
+func (c *SourceHandler) GetSourceTypeSpec() {
+	sourceType := c.Ctx.Input.Param(":source_type")
+	if sourceType == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
+		return
+	}
+
+	// Return empty spec object for now
+	response := map[string]interface{}{
+		"spec": map[string]interface{}{},
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
+}
+
+// @router /sources/:id/catalog [get]
+func (c *SourceHandler) GetSourceCatalog() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
+		return
+	}
+
+	// Get existing source
+	_, err = c.sourceORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		return
+	}
+
+	// Return empty catalog object for now
+	// TODO: Implement actual catalog generation logic
+	response := map[string]interface{}{
+		"catalog": map[string]interface{}{},
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
+}
+
+// @router /sources/:id/jobs [get]
+func (c *SourceHandler) GetSourceJobs() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
+		return
+	}
+
+	// Check if source exists
+	_, err = c.sourceORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		return
+	}
+
+	// Create a job ORM and get jobs by source ID
+	jobORM := database.NewJobORM()
+	jobs, err := jobORM.GetBySourceID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		return
+	}
+
+	// Format as required by API contract
+	response := map[string]interface{}{
+		"jobs": jobs,
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
+}
