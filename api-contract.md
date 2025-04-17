@@ -23,7 +23,9 @@ http://localhost:8080
 - **Response**:
   ```json
   {
-    "username": "string",
+    "data": {
+      "username": "string"
+    }
     "message": "string",
     "success": "boolean"
   }
@@ -37,7 +39,9 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
-    "email": "string",
+    "data":{
+        "email": "string"
+    }
     "username": "string",
     "password": "string"
   }
@@ -46,7 +50,9 @@ http://localhost:8080
 
   ```json
   {
-    "email": "string",
+    "data":{
+    "email": "string"
+    }
     "message": "string",
     "success": "boolean"
   }
@@ -471,7 +477,6 @@ http://localhost:8080
 
   ```json
   {
-    "source_id": "integer",
     "config": "object"
   }
   ```
@@ -559,7 +564,8 @@ http://localhost:8080
       {
         "start_time": "timestamp",
         "runtime": "integer",
-        "status": "string"
+        "status": "string",
+        "history_id":"integer"
       }
     ]
   }
