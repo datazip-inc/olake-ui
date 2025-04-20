@@ -1,5 +1,5 @@
 # Olake Server API Contract
-
+### For now use olake as project id, later on it can be used to make multitenant system
 ## Base URL
 
 ```
@@ -23,11 +23,11 @@ http://localhost:8080
 - **Response**:
   ```json
   {
+    "success": "boolean",
+    "message": "string",
     "data": {
       "username": "string"
     }
-    "message": "string",
-    "success": "boolean"
   }
   ```
 
@@ -39,9 +39,7 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
-    "data":{
-        "email": "string"
-    }
+    "email":"string",
     "username": "string",
     "password": "string"
   }
@@ -50,86 +48,138 @@ http://localhost:8080
 
   ```json
   {
-    "data":{
-    "email": "string"
-    }
+    "success": "boolean",
     "message": "string",
-    "success": "boolean"
+    "data": {
+      "email":"string",
+      "username": "string",
+    }
   }
   ```
 
 ### Check Authentication
-
-- **Endpoint**: `/auth/check`
+- **Endpoint**: `/auth`
 - **Method**: GET
 - **Description**: Verify if user is authenticated
-- **Headers**: `Authorization: Bearer <token>`
+- **Headers**: `Authorization: Bearer <token>` // we are using cookie currently so frontend take care accordingly
 - **Response**:
   ```json
-  {
-    "authenticated": "boolean",
-    "email": "string"
+   {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "username": "string" // can be user id let us discuss, else let us store username in session
+    }
   }
   ```
 
 ## Sources
 
-### Create Source
+### Get Spec Of Source
+- **Endpoint**: `/api/v1/project/:projectid/sources/spec`
+- **Method**: GET
+- **Description**: Give spec based on source type
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+  ```json
+  {
+    "type":"string",
+    "version": "string",
+  }
+  ```
+- **Response**:
 
-- **Endpoint**: `/sources`
+  ```json
+   {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "type":"string",
+      "version": "string",
+      "spec": "json" 
+    }
+  }
+  ```
+
+### Source Test Connection
+- **Endpoint**: `/api/v1/project/:projectid/sources/test`
+- **Method**: POST
+- **Description**: Test configured source configuration
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+
+  ```json
+  {
+    "type":"string",
+    "version":"string",
+    "config": "json"
+  }
+  ```
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "type":"string",
+      "version":"string",
+      "config": "json"
+    }
+  }
+  ```
+
+### Create Source
+- **Endpoint**: `/api/v1/project/:projectid/sources`
 - **Method**: POST
 - **Description**: Create a new source
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
   ```json
   {
-    "name": "string",
-    "project_id": "integer",
-    "type": "string",
-    "config": "string"
+    "name": "string",  // we have to make sure in database that it must also unique according to project id (for doubt let us discuss)
+    "type": "string", 
+    "version":"string", // this field need to be shown on frontend as well, i discussed at time of design as well
+    "config": "json"
   }
   ```
 - **Response**:
   ```json
   {
     "success": "boolean",
-    "data": {
-      "name": "string",
-      "type": "string",
-      "project_id": "integer",
-      "config": "string"
-    }
+    "message": "string",
+    "data": { // whatever received send back
+        "name": "string",  
+        "type": "string", 
+        "version":"string", 
+        "config": "json"
+      }
   }
   ```
 
 ### Get All Sources
 
-- **Endpoint**: `/sources`
+- **Endpoint**: `/api/v1/project/:projectid/sources`
 - **Method**: GET
 - **Description**: Retrieve all sources
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
-
   ```json
   {
     "success": "boolean",
+    "message": "string",
     "data": [
       {
         "id": "integer",
         "name": "string",
-        "project_id": "integer",
         "type": "string",
-        "config": "string",
+        "version":"string",
+        "config": "json",
         "created_at": "timestamp",
         "updated_at": "timestamp",
-        "created_by": {
-          "id": "integer",
-          "username": "string"
-        },
-        "updated_by": {
-          "id": "integer",
-          "username": "string"
-        }
+        "created_by":  "string", // only username of user
+        "updated_by": "string" // only username of user
       }
     ]
   }
@@ -137,51 +187,109 @@ http://localhost:8080
 
 ### Update Source
 
-- **Endpoint**: `/sources/:id`
+- **Endpoint**: `/api/v1/project/:projectid/sources/:id`
 - **Method**: PUT
 - **Description**: Update an existing source
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
   ```json
   {
-    "name": "string",
-    "type": "string",
-    "config": "string",
-    "project_id": "integer"
+    "name": "string",  
+    "type": "string", 
+    "version":"string", 
+    "config": "json"
   }
   ```
 - **Response**:
   ```json
   {
     "success": "boolean",
-    "data": {
-      "name": "string",
-      "type": "string",
-      "project_id": "integer",
-      "config": "string"
+    "message": "string",
+    "data": { // send same back
+      "name": "string",  
+      "type": "string", 
+      "version":"string",
+      "config": "json"
     }
   }
   ```
 
-### Delete Source
+### Delete Source 
 
-- **Endpoint**: `/sources/:id`
+- **Endpoint**: `/api/v1/project/:projectid/sources/:id`
 - **Method**: DELETE
 - **Description**: Delete a source
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
-
 ```json
-{
-  "success": "boolean"
-}
+  {    // Note: it is soft delete not hard delete
+      "success": "boolean",
+      "message": "string",
+      "data": { 
+        "name" :"string", // name of source deleted
+      }
+  }
 ```
+
 
 ## Destinations
 
-### Create Destination
+### Destination Spec
+- **Endpoint**: `/api/v1/project/:projectid/destinations/spec`
+- **Method**: GET
+- **Description**: Give spec based on destination type
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+  ```json
+  {
+    "type":"string",
+    "version": "string",
+  }
+  ```
+- **Response**:
+  ```json
+   {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "type":"string",
+      "version": "string",
+      "spec": "json" 
+    }
+  }
+  ```
 
-- **Endpoint**: `/destinations`
+// currently this is not avaialable in olake will build this
+### Test Destination 
+- **Endpoint**: `/api/v1/project/:projectid/destinations/test`
+- **Method**: POST
+- **Description**: Test configured destination configuration
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+
+  ```json
+  {
+    "type": "string",
+    "version": "string",
+    "config": "json"
+  }
+  ```
+
+- **Response**:
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "type": "string",
+      "version": "string",
+      "config": "json"
+    }
+  }
+  ```
+
+### Create Destination
+- **Endpoint**: `/api/v1/project/:projectid/destinations`
 - **Method**: POST
 - **Description**: Create a new destination
 - **Headers**: `Authorization: Bearer <token>`
@@ -189,9 +297,9 @@ http://localhost:8080
   ```json
   {
     "name": "string",
-    "project_id": "integer",
     "type": "string",
-    "config": "string"
+    "config": "json",
+    "version":"string",
   }
   ```
 - **Response**:
@@ -199,18 +307,18 @@ http://localhost:8080
   ```json
   {
     "success": "boolean",
+    "message": "string",
     "data": {
       "name": "string",
       "type": "string",
-      "project_id": "integer",
-      "config": "string"
+      "config": "json",
+      "version":"string", // to create a job same version of destination and same version of source required
     }
   }
   ```
 
 ### Get All Destinations
-
-- **Endpoint**: `/destinations`
+- **Endpoint**: `/api/v1/project/:projectid/destinations`
 - **Method**: GET
 - **Description**: Retrieve all destinations
 - **Headers**: `Authorization: Bearer <token>`
@@ -218,31 +326,25 @@ http://localhost:8080
   ```json
   {
     "success": "boolean",
+    "message": "string",
     "data": [
       {
         "id": "integer",
         "name": "string",
-        "project_id": "integer",
         "type": "string",
-        "config": "string",
+        "config": "json",
+        "version":"string",
         "created_at": "timestamp",
         "updated_at": "timestamp",
-        "created_by": {
-          "id": "integer",
-          "username": "string"
-        },
-        "updated_by": {
-          "id": "integer",
-          "username": "string"
-        }
+        "created_by" : "string", // username only
+        "updated_by":  "string" // username only
       }
     ]
   }
   ```
 
 ### Update Destination
-
-- **Endpoint**: `/destinations/:id`
+- **Endpoint**: `/api/v1/project/:projectid/destinations/:id`
 - **Method**: PUT
 - **Description**: Update an existing destination
 - **Headers**: `Authorization: Bearer <token>`
@@ -251,69 +353,64 @@ http://localhost:8080
   {
     "name": "string",
     "type": "string",
-    "config": "string",
-    "project_id": "integer"
+    "config": "json",
+    "version":"string",
   }
   ```
 - **Response**:
   ```json
   {
     "success": "boolean",
+    "message": "string",
     "data": {
       "name": "string",
       "type": "string",
-      "project_id": "integer",
-      "config": "string"
+      "version":"string",
+      "config": "json"
     }
   }
   ```
 
 ### Delete Destination
-
-- **Endpoint**: `/destinations/:id`
+- **Endpoint**: `/api/v1/project/:projectid/destinations/:id`
 - **Method**: DELETE
 - **Description**: Delete a destination
 - **Headers**: `Authorization: Bearer <token>`
-- **Response**: HTTP 204 No Content
-
+- **Response**:
 ```json
-{
-  "success": "boolean"
-}
+  { // NOTE: this is only soft delete not hard
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "name": "string",
+    }
+  }
 ```
 
 ## Jobs
-
 ### Create Job
-
-- **Endpoint**: `/jobs`
+- **Endpoint**: `/api/v1/project/:projectid/jobs`
 - **Method**: POST
 - **Description**: Create a new job
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
-
   ```json
   {
     "name": "string",
     "source": {
       "name": "string",
-      "project_id": "integer",
       "type": "string",
-      "config": "string"
+      "config": "json",
+      "version": "string"
     },
     "destination": {
       "name": "string",
-      "project_id": "integer",
       "type": "string",
-      "config": "string"
+      "config": "string",
+      "version": "string",
     },
     "frequency": "string",
-    "schema": "object",
-    "project_id": "integer",
-    "last_sync_state": {
-      "last_run_time": "timestamp",
-      "last_run_state": "string"
-    }
+    "streams_config": "json",
   }
   ```
 
@@ -321,106 +418,77 @@ http://localhost:8080
   ```json
   {
     "success": "boolean",
+    "message": "string",
     "data": {
-      "name": "string",
-      "source": {
-        "name": "string",
-        "project_id": "integer",
-        "type": "string",
-        "config": "string"
-      },
-      "destination": {
-        "name": "string",
-        "project_id": "integer",
-        "type": "string",
-        "config": "string"
-      },
-      "frequency": "string",
-      "schema": "object",
-      "project_id": "integer",
-      "last_sync_state": {
-        "last_run_time": "timestamp",
-        "last_run_state": "string"
-      }
+      // request body as it is 
     }
   }
   ```
 
 ### Get All Jobs
-
-- **Endpoint**: `/jobs`
+- **Endpoint**: `/api/v1/project/:projectid/jobs` // also use endpoint for filter such as  /jobs/dest_id="some_id" or /jobs/source_id="some_id"
 - **Method**: GET
 - **Description**: Retrieve all jobs
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": [
+      {
+        "id": "int",
+        "name": "string",
+        "source": {
+          "name": "string",
+          "type": "string",
+          "config": "json",
+          "version": "string",
+        },
+        "destination": {
+          "name": "string",
+          "type": "string",
+          "config": "json",
+          "version": "string",
+        },
+        "streams_config":"json",
+        "frequency": "string",
+        "last_run_time": "timestamp",
+        "last_run_state": "string",
+        "created_at": "timestamp",
+        "updated_at": "timestamp",
+        "created_by":  "string", // username 
+        "updated_by":  "string", // username
+      // can also send state but if it is required
+      }
+    ]
+  }
+  ```
 
+### Update Job
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id`
+- **Method**: PUT
+- **Description**: Update an existing job
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
   ```json
   {
     "name": "string",
     "source": {
       "name": "string",
-      "project_id": "integer",
       "type": "string",
-      "config": "string"
+      "config": "json",
+      "version": "string",
     },
     "destination": {
       "name": "string",
-      "project_id": "integer",
       "type": "string",
-      "config": "string"
+      "config": "json",
+      "version": "string",
     },
     "frequency": "string",
-    "project_id": "integer",
-    "last_sync_state": {
-      "last_run_time": "timestamp",
-      "last_run_state": "string"
-    },
-    "created_at": "timestamp",
-    "updated_at": "timestamp",
-    "created_by": {
-      "id": "integer",
-      "username": "string"
-    },
-    "updated_by": {
-      "id": "integer",
-      "username": "string"
-    }
-  }
-  ```
-
-### Update Job
-
-- **Endpoint**: `/jobs/:id`
-- **Method**: PUT
-- **Description**: Update an existing job
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-
-  ```json
-  {
-    "success": "boolean",
-    "data": {
-      "name": "string",
-      "source": {
-        "name": "string",
-        "project_id": "integer",
-        "type": "string",
-        "config": "string"
-      },
-      "destination": {
-        "name": "string",
-        "project_id": "integer",
-        "type": "string",
-        "config": "string"
-      },
-      "frequency": "string",
-      "schema": "object",
-      "project_id": "integer",
-      "last_sync_state": {
-        "last_run_time": "timestamp",
-        "last_run_state": "string"
-      }
-    }
+    "streams_config": "json",
+    "activate": "boolean", // send this to activate or deactivate job
   }
   ```
 
@@ -428,130 +496,66 @@ http://localhost:8080
   ```json
   {
     "success": "boolean",
+    "message": "string",
     "data": {
       "name": "string",
       "source": {
         "name": "string",
-        "project_id": "integer",
         "type": "string",
-        "config": "string"
+        "config": "json",
+        "version": "string",
       },
       "destination": {
         "name": "string",
-        "project_id": "integer",
         "type": "string",
-        "config": "string"
+        "config": "json",
+        "version": "string",
       },
       "frequency": "string",
-      "schema": "object",
-      "project_id": "integer",
-      "last_sync_state": {
-        "last_run_time": "timestamp",
-        "last_run_state": "string"
-      }
+      "streams_config": "json",
+      "activate": "boolean",
     }
   }
   ```
 
-### Delete Job
 
-- **Endpoint**: `/jobs/:id`
+
+### Delete Job
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id`
 - **Method**: DELETE
 - **Description**: Delete a job
 - **Headers**: `Authorization: Bearer <token>`
-- **Response**: HTTP 204 No Content
+- **Response**:
 
 ```json
 {
-  "success": "boolean"
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "name": "boolean"
+    }
 }
 ```
 
-### Test Connection
-
-- **Endpoint**: `/sources/test`
-- **Method**: POST
-- **Description**: Test configured source configuration
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-
-  ```json
-  {
-    "config": "object"
-  }
-  ```
-
-- **Response**:
-
-  ```json
-  {
-    "status": "string"
-  }
-  ```
-
-- **Endpoint**: `/destinations/test`
-- **Method**: POST
-- **Description**: Test configured destination configuration
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-
-  ```json
-  {
-    "dest_id": "integer",
-    "config": "object"
-  }
-  ```
-
-- **Response**:
-
-  ```json
-  {
-    "status": "string"
-  }
-  ```
-
-- **Endpoint**: `/sources/source_type/spec`
-- **Method**: GET
-- **Description**: Give spec based on source type
-- **Headers**: `Authorization: Bearer <token>`
-
-- **Response**:
-
-  ```json
-  {
-    "spec": "object"
-  }
-  ```
-
-- **Endpoint**: `/sources/dest_type/spec`
-- **Method**: GET
-- **Description**: Give spec based on destination type
-- **Headers**: `Authorization: Bearer <token>`
-
-- **Response**:
-
-  ```json
-  {
-    "spec": "object"
-  }
-  ```
-
-- **Endpoint**: `/sources/:id/catalog`
+### Job Associated Streams (Discover Catalog) 
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/streams`   
 - **Method**: GET
 - **Description**: Give the streams details
 - **Headers**: `Authorization: Bearer <token>`
-
 - **Response**:
 
   ```json
   {
-    "catalog": {
-      "streams": "object"
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "streams_config": "json"
     }
-  }
+  } 
   ```
 
-- **Endpoint**: `/jobs/:id/history`
+### Job Tasks
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/tasks`
 - **Method**: GET
 - **Description**: Give the History of jobs
 - **Headers**: `Authorization: Bearer <token>`
@@ -560,37 +564,20 @@ http://localhost:8080
 
   ```json
   {
+    "success": "boolean",
+    "message": "string",
     "data": [
       {
-        "start_time": "timestamp",
-        "runtime": "integer",
-        "status": "string",
-        "history_id":"integer"
-      }
-    ]
-  }
-  ```
-
-- **Endpoint**: `/jobs/:id/tasks`
-- **Method**: GET
-- **Description**: Give the History of jobs
-- **Headers**: `Authorization: Bearer <token>`
-
-- **Response**:
-
-  ```json
-  {
-    "data": [
-      {
+        "id":"string",
         "start_time": "timestamp",
         "runtime": "integer",
         "status": "string"
-      }
+      },
     ]
   }
   ```
 
-- **Endpoint**: `/jobs/:id/task/:taskid`
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/task/:id/logs`
 - **Method**: GET
 - **Description**: Give the Logs of that particular Job
 - **Headers**: `Authorization: Bearer <token>`
@@ -599,104 +586,14 @@ http://localhost:8080
 
   ```json
   {
-    "data": [
-      {
-        "created_at": "timestamp",
-        "message": "integer",
-        "state": "string"
-      }
-    ]
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "task_logs":"json"
+    }
   }
   ```
 
-- **Endpoint**: `/sources/:id/jobs`
-- **Method**: GET
-- **Description**: Give the associated jobs of source
-- **Headers**: `Authorization: Bearer <token>`
-
-- **Response**:
-
-  ```json
-  {
-    "jobs": [
-      {
-        "name": "string",
-        "source": {
-          "name": "string",
-          "project_id": "integer",
-          "type": "string",
-          "config": "string"
-        },
-        "destination": {
-          "name": "string",
-          "project_id": "integer",
-          "type": "string",
-          "config": "string"
-        },
-        "frequency": "string",
-        "project_id": "integer",
-        "last_sync_state": {
-          "last_run_time": "timestamp",
-          "last_run_state": "string"
-        },
-        "created_at": "timestamp",
-        "updated_at": "timestamp",
-        "created_by": {
-          "id": "integer",
-          "username": "string"
-        },
-        "updated_by": {
-          "id": "integer",
-          "username": "string"
-        }
-      }
-    ]
-  }
-  ```
-
-- **Endpoint**: `/destinations/:id/jobs`
-- **Method**: GET
-- **Description**: Give the associated jobs of a destination
-- **Headers**: `Authorization: Bearer <token>`
-
-- **Response**:
-  ```json
-  {
-    "jobs": [
-      {
-        "name": "string",
-        "source": {
-          "name": "string",
-          "project_id": "integer",
-          "type": "string",
-          "config": "string"
-        },
-        "destination": {
-          "name": "string",
-          "project_id": "integer",
-          "type": "string",
-          "config": "string"
-        },
-        "frequency": "string",
-        "project_id": "integer",
-        "last_sync_state": {
-          "last_run_time": "timestamp",
-          "last_run_state": "string"
-        },
-        "created_at": "timestamp",
-        "updated_at": "timestamp",
-        "created_by": {
-          "id": "integer",
-          "username": "string"
-        },
-        "updated_by": {
-          "id": "integer",
-          "username": "string"
-        }
-      }
-    ]
-  }
-  ```
 
 ## Error Responses
 
@@ -706,8 +603,8 @@ All endpoints may return the following error responses:
 
 ```json
 {
-  "error": "string",
-  "message": "string"
+  "success": false,
+  "message": "Bad request"
 }
 ```
 
@@ -715,7 +612,7 @@ All endpoints may return the following error responses:
 
 ```json
 {
-  "error": "string",
+  "success": false,
   "message": "Authentication required"
 }
 ```
@@ -724,7 +621,7 @@ All endpoints may return the following error responses:
 
 ```json
 {
-  "error": "string",
+  "success": false,
   "message": "Insufficient permissions"
 }
 ```
@@ -733,7 +630,7 @@ All endpoints may return the following error responses:
 
 ```json
 {
-  "error": "string",
+  "success": false,
   "message": "Resource not found"
 }
 ```
@@ -742,7 +639,7 @@ All endpoints may return the following error responses:
 
 ```json
 {
-  "error": "string",
+  "success": false,
   "message": "Internal server error"
 }
 ```
@@ -756,6 +653,3 @@ The API allows requests from:
 - Headers: Origin, Content-Type, Accept, Authorization
 - Credentials: true
 
-```
-
-```
