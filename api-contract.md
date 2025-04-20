@@ -140,7 +140,7 @@ http://localhost:8080
   {
     "name": "string",  // we have to make sure in database that it must also unique according to project id (for doubt let us discuss)
     "type": "string", 
-    "version":"string", // this field need to be shown on frontend as well, i discussed at time of design as well
+    "version":"string", // this field need to be shown on frontend as well, we discussed at time of design as well
     "config": "json"
   }
   ```
