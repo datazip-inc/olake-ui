@@ -74,7 +74,28 @@ http://localhost:8080
   ```
 
 ## Sources
+### Get All Version Of Source 
+- **Endpoint**: `/api/v1/project/:projectid/sources/versions`
+- **Method**: GET
+- **Description**: Give spec based on source type
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+  ```json
+  {
+    "type":"string",
+  }
+  ```
+- **Response**:
 
+  ```json
+   {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+     "version":["string","string"]
+    }
+  }
+  ```
 ### Get Spec Of Source
 - **Endpoint**: `/api/v1/project/:projectid/sources/spec`
 - **Method**: GET
@@ -233,7 +254,28 @@ http://localhost:8080
 
 
 ## Destinations
+### Get All Version Of Destinations 
+- **Endpoint**: `/api/v1/project/:projectid/destinations/versions`
+- **Method**: GET
+- **Description**: Give spec based on source type
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+  ```json
+  {
+    "type":"string",
+  }
+  ```
+- **Response**:
 
+  ```json
+   {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+     "version":["string","string"]
+    }
+  }
+  ```
 ### Destination Spec
 - **Endpoint**: `/api/v1/project/:projectid/destinations/spec`
 - **Method**: GET
@@ -457,6 +499,7 @@ http://localhost:8080
         "last_run_state": "string",
         "created_at": "timestamp",
         "updated_at": "timestamp",
+        "activate": "boolean",
         "created_by":  "string", // username 
         "updated_by":  "string", // username
       // can also send state but if it is required
