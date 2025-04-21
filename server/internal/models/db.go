@@ -33,6 +33,7 @@ type Source struct {
 	Name       string `json:"name"`
 	ProjectID  uint   `json:"project_id" orm:"column(project_id)"`
 	Config     string `json:"config" orm:"type(jsonb)"`
+	Version    string `json:"version"`
 	CreatedBy  *User  `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy  *User  `json:"updated_by" orm:"rel(fk)"`
 	SourceType string `json:"source_type"`
@@ -49,6 +50,7 @@ type Destination struct {
 	Name      string `json:"name"`
 	ProjectID int    `json:"project_id" orm:"column(project_id)"`
 	DestType  string `json:"type"`
+	Version   string `json:"version"`
 	Config    string `json:"config" orm:"type(jsonb)"`
 	CreatedBy *User  `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy *User  `json:"updated_by" orm:"rel(fk)"`
