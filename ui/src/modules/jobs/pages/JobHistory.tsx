@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message } from "antd"
+import { Table, Button, Input, Spin, message, Pagination } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const navigate = useNavigate()
 	const [searchText, setSearchText] = useState("")
+	const [currentPage, setCurrentPage] = useState(1)
+	const pageSize = 8
 
 	const {
 		jobs,
@@ -32,7 +35,6 @@ const JobHistory: React.FC = () => {
 	}, [jobId, fetchJobHistory, jobs.length, fetchJobs])
 
 	const job = jobs.find(j => j.id === jobId)
-
 	const handleViewLogs = (historyId: string) => {
 		if (jobId) {
 			navigate(`/jobs/${jobId}/history/${historyId}/logs`)
@@ -99,6 +101,11 @@ const JobHistory: React.FC = () => {
 			item.status.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
+	// Calculate current page data for display
+	const startIndex = (currentPage - 1) * pageSize
+	const endIndex = Math.min(startIndex + pageSize, filteredHistory.length)
+	const currentPageData = filteredHistory.slice(startIndex, endIndex)
+
 	if (jobHistoryError) {
 		return (
 			<div className="p-6">
@@ -131,15 +138,27 @@ const JobHistory: React.FC = () => {
 							{job?.name || "<Job_name>"}
 						</div>
 					</div>
-					<span className="ml-6 mt-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600">
+					<div className="ml-6 mt-1.5 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
 						{job?.status || "Active"}
-					</span>
+					</div>
 				</div>
 
 				<div className="flex items-center gap-2">
-					<Button className="rounded-full bg-green-500 text-white">S</Button>
-					<span className="text-gray-500">--------------</span>
-					<Button className="rounded-full bg-red-500 text-white">D</Button>
+					{job?.source && (
+						<img
+							src={getConnectorImage(job.source)}
+							alt="Source"
+							className="size-7"
+						/>
+					)}
+					<span className="text-gray-500">{"--------------▶"}</span>
+					{job?.destination && (
+						<img
+							src={getConnectorImage(job.destination)}
+							alt="Destination"
+							className="size-7"
+						/>
+					)}
 				</div>
 			</div>
 
@@ -161,14 +180,42 @@ const JobHistory: React.FC = () => {
 						<Spin size="large" />
 					</div>
 				) : (
-					<Table
-						dataSource={filteredHistory}
-						columns={columns}
-						rowKey="id"
-						className="overflow-scroll rounded-lg border"
-					/>
+					<>
+						<Table
+							dataSource={currentPageData}
+							columns={columns}
+							rowKey="id"
+							pagination={false}
+							className="overflow-scroll rounded-lg border"
+						/>
+					</>
 				)}
 			</div>
+
+			{/* Fixed pagination at bottom right */}
+			<div
+				style={{
+					position: "fixed",
+					bottom: 80,
+					right: 40,
+					display: "flex",
+					justifyContent: "flex-end",
+					padding: "8px 0",
+					backgroundColor: "#fff",
+					zIndex: 100,
+				}}
+			>
+				<Pagination
+					current={currentPage}
+					onChange={setCurrentPage}
+					total={filteredHistory.length}
+					pageSize={pageSize}
+					showSizeChanger={false}
+				/>
+			</div>
+
+			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
+			<div style={{ height: "80px" }}></div>
 
 			<div className="flex justify-end border-t border-gray-200 bg-white p-4">
 				<Button

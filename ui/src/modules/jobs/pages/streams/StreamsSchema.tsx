@@ -46,9 +46,9 @@ const StreamsSchema = ({ initialData, onColumnsChange }: any) => {
 
 	return (
 		<>
-			<div className={`flex flex-col items-center gap-2 p-5`}>
+			<div className={`flex flex-col items-center gap-2`}>
 				<Input.Search
-					className="w-full flex-auto"
+					className="custom-search-input w-full"
 					placeholder="Search Schema"
 					onSearch={handleSearch}
 					onChange={handleSearchValueClear}

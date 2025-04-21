@@ -10,6 +10,7 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import type { RJSFSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -33,6 +34,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [formData, setFormData] = useState<any>({})
+	const { setShowDeleteModal, setSelectedSource } = useAppStore()
+	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
 
 	// Mock data for each connector type
 	const mockData = {
@@ -509,6 +512,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
 
 				setConnector(normalizedType)
+				setMockAssociatedJobs(source?.associatedJobs || [])
 
 				// Use the actual config data from the source when editing
 				if (source.config) {
@@ -652,8 +656,18 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	const handleDelete = () => {
-		message.success("Source deleted successfully")
-		navigate("/sources")
+		// Create source object from the current data
+		const sourceToDelete = {
+			id: sourceId || "",
+			name: sourceName || "",
+			type: connector,
+			...formData,
+			associatedJobs: mockAssociatedJobs,
+		}
+		// Set the current source as selected in the store
+		setSelectedSource(sourceToDelete as any)
+		// Show the delete modal
+		setShowDeleteModal(true)
 	}
 
 	const handleTestConnection = () => {
@@ -784,9 +798,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 					{!fromJobFlow && (
 						<div className="mb-4">
-							<div className="flex">
+							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
 								<button
-									className={`w-56 rounded-xl px-3 py-1.5 text-sm font-normal ${
+									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
 										activeTab === "config"
 											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
 											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
@@ -839,7 +853,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														setFormData(mockFormData)
 													}
 												}}
-												className="w-full"
+												className="h-8 w-full"
 												options={[
 													{ value: "MongoDB", label: "MongoDB" },
 													{ value: "PostgreSQL", label: "PostgreSQL" },
@@ -857,6 +871,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											placeholder="Enter the name of your source"
 											value={sourceName}
 											onChange={e => setSourceName(e.target.value)}
+											className="h-8"
 										/>
 									</div>
 								</div>
@@ -928,6 +943,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					showResizer={true}
 				/>
 			</div>
+
+			{/* Delete Modal */}
+			<DeleteModal fromSource={true} />
 
 			{/* Footer */}
 			{!fromJobFlow && (

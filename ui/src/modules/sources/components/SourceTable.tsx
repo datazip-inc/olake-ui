@@ -1,14 +1,16 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown } from "antd"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
+import React from "react"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 interface SourceTableProps {
 	sources: Source[]
 	loading: boolean
 	onEdit: (id: string) => void
-	onDelete: (id: string) => void
+	onDelete: (source: Source) => void
 }
 
 const SourceTable: React.FC<SourceTableProps> = ({
@@ -18,7 +20,8 @@ const SourceTable: React.FC<SourceTableProps> = ({
 	onDelete,
 }) => {
 	const [searchText, setSearchText] = useState("")
-
+	const [currentPage, setCurrentPage] = useState(1)
+	const pageSize = 5
 	const { Search } = Input
 
 	const columns = [
@@ -42,7 +45,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
-								onClick: () => onDelete(record.id),
+								onClick: () => onDelete(record),
 							},
 						],
 					}}
@@ -70,7 +73,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(text)}
-						className="mr-2 h-4 w-4"
+						className="mr-2 size-6"
 					/>
 					<span>{text}</span>
 				</div>
@@ -79,22 +82,35 @@ const SourceTable: React.FC<SourceTableProps> = ({
 		{
 			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "associatedJobs",
-			render: () => (
-				<div>
-					<div className="mb-1 flex items-center">
-						<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
-							<span>S</span>
+			render: (_: any, record: Source) => {
+				if (!record.associatedJobs || record.associatedJobs.length === 0) {
+					return <div className="text-gray-500">No associated jobs</div>
+				}
+				return (
+					<div className="flex-end flex w-fit flex-col items-end gap-3">
+						<div className="mb-1 flex items-center">
+							<React.Fragment key={`job-${record.associatedJobs[0].jobName}}`}>
+								<img
+									src={getConnectorImage(record.associatedJobs[0].source)}
+									className="size-8"
+								/>
+								<div className="ml-2 text-[#A3A3A3]">-------</div>
+								<div className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-[#0958D9]">
+									{record.associatedJobs[0].jobName}
+								</div>
+								<div className="mr-2 text-[#A3A3A3]">-------</div>
+								<img
+									src={getConnectorImage(record.associatedJobs[0].destination)}
+									className="size-8"
+								/>
+							</React.Fragment>
 						</div>
-						<div className="mx-2 w-16 border-t-2 border-dashed border-gray-300"></div>
-						<span className="text-blue-500">Table_name_test_1</span>
-						<div className="mx-2 w-16 border-t-2 border-dashed border-gray-300"></div>
-						<div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-							<span>D</span>
+						<div className="items-end text-sm font-bold text-[#203FDD]">
+							+3 more jobs
 						</div>
 					</div>
-					<div className="ml-8 text-sm text-blue-500">+3 more jobs</div>
-				</div>
-			),
+				)
+			},
 		},
 	]
 
@@ -104,30 +120,61 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			source.type.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
+	// Calculate current page data for display
+	const startIndex = (currentPage - 1) * pageSize
+	const endIndex = Math.min(startIndex + pageSize, filteredSources.length)
+	const currentPageData = filteredSources.slice(startIndex, endIndex)
+
 	return (
-		<div>
-			<div className="mb-4">
-				<Search
-					placeholder="Search Sources"
-					allowClear
-					className="w-1/4"
-					value={searchText}
-					onChange={e => setSearchText(e.target.value)}
+		<>
+			<div>
+				<div className="mb-4">
+					<Search
+						placeholder="Search Sources"
+						allowClear
+						className="custom-search-input w-1/4"
+						value={searchText}
+						onChange={e => setSearchText(e.target.value)}
+					/>
+				</div>
+
+				<Table
+					dataSource={currentPageData}
+					columns={columns}
+					rowKey="id"
+					loading={loading}
+					pagination={false}
+					className="overflow-hidden rounded-xl"
+					rowClassName="no-hover"
+				/>
+				<DeleteModal fromSource={true} />
+			</div>
+
+			{/* Fixed pagination at bottom right */}
+			<div
+				style={{
+					position: "fixed",
+					bottom: 60,
+					right: 40,
+					display: "flex",
+					justifyContent: "flex-end",
+					padding: "8px 0",
+					backgroundColor: "#fff",
+					zIndex: 100,
+				}}
+			>
+				<Pagination
+					current={currentPage}
+					onChange={setCurrentPage}
+					total={filteredSources.length}
+					pageSize={pageSize}
+					showSizeChanger={false}
 				/>
 			</div>
 
-			<Table
-				dataSource={filteredSources}
-				columns={columns}
-				rowKey="id"
-				loading={loading}
-				pagination={{
-					pageSize: 10,
-					showSizeChanger: false,
-				}}
-				className="overflow-hidden rounded-lg"
-			/>
-		</div>
+			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
+			<div style={{ height: "80px" }}></div>
+		</>
 	)
 }
 

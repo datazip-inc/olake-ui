@@ -9,6 +9,9 @@ import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import { destinationService } from "../../../api/services/destinationService"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
+import AWSS3 from "../../../assets/AWSS3.svg"
+import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 
 interface DestinationEditProps {
 	fromJobFlow?: boolean
@@ -36,6 +39,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [connectorSchema, setConnectorSchema] = useState<RJSFSchema>({})
 	const [connectorUiSchema] = useState<UiSchema>({})
 	const [isLoading, setIsLoading] = useState(false)
+	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
 
 	// Mock data for each destination type
 	const mockData = {
@@ -113,6 +117,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		jobs,
 		fetchDestinations,
 		fetchJobs,
+		setSelectedDestination,
+		setShowDeleteModal,
 		// addDestination,
 		// updateDestination,
 	} = useAppStore()
@@ -201,6 +207,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			if (destination) {
 				setDestinationName(destination.name)
 				setConnector(destination.type)
+				setMockAssociatedJobs(destination?.associatedJobs || [])
 				setCatalog(destination?.catalog || null)
 				// Set mock data based on connector type
 				setFormData(mockData[destination.type as keyof typeof mockData] || {})
@@ -244,8 +251,17 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		: associatedJobs
 
 	const handleDelete = () => {
-		message.success("Destination deleted successfully")
-		navigate("/destinations")
+		// Create destination object from the current data
+		const destinationToDelete = {
+			id: destinationId || "",
+			name: destinationName || "",
+			type: connector,
+			...formData,
+			associatedJobs: mockAssociatedJobs,
+		}
+		setSelectedDestination(destinationToDelete as any)
+		// Show the delete modal
+		setShowDeleteModal(true)
 	}
 
 	const handleTestConnection = () => {
@@ -381,7 +397,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 					{!fromJobFlow && (
 						<div className="mb-4">
-							<div className="flex">
+							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
 								<button
 									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
 										activeTab === "config"
@@ -440,12 +456,33 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 															)
 														}
 													}}
-													className="w-full"
+													className="h-8 w-full"
 													options={[
-														{ value: "Amazon S3", label: "Amazon S3" },
+														{
+															value: "Amazon S3",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={AWSS3}
+																		alt="AWS S3"
+																		className="mr-2 size-5"
+																	/>
+																	<span>Amazon S3</span>
+																</div>
+															),
+														},
 														{
 															value: "Apache Iceberg",
-															label: "Apache Iceberg",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={ApacheIceBerg}
+																		alt="Apache Iceberg"
+																		className="mr-2 size-5"
+																	/>
+																	<span>Apache Iceberg</span>
+																</div>
+															),
 														},
 													]}
 												/>
@@ -457,7 +494,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 												Catalog:
 											</label>
 											<Select
-												className="w-full"
+												className="h-8 w-full"
 												placeholder="Select catalog"
 												disabled={
 													connector === "Amazon S3" || connector === "AWS S3"
@@ -501,6 +538,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											placeholder="Enter the name of your destination"
 											value={destinationName}
 											onChange={e => setDestinationName(e.target.value)}
+											className="h-8 w-2/3"
 										/>
 									</div>
 								</div>
@@ -535,6 +573,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								pagination={false}
 								rowKey={record => record.id}
 								className="min-w-full"
+								rowClassName="no-hover"
 							/>
 
 							{!showAllJobs && additionalJobs.length > 0 && (
@@ -568,6 +607,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					showResizer={true}
 				/>
 			</div>
+			{/* Delete Modal */}
+			<DeleteModal fromSource={false} />
 
 			{/* Footer with buttons */}
 			{!fromJobFlow && (

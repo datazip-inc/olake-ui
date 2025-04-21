@@ -3,7 +3,7 @@ import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
 import AWSS3 from "../assets/AWSS3.svg"
-import ApacheIceberg from "../assets/ApacheIceBerg.svg"
+import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
@@ -25,7 +25,7 @@ export const getConnectorImage = (connector: string) => {
 		lowerConnector.includes("glue") ||
 		lowerConnector.includes("jdbc")
 	) {
-		return ApacheIceberg
+		return ApacheIceBerg
 	}
 
 	// Default placeholder

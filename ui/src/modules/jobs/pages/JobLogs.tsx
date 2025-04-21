@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Spin, message, Button } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -106,15 +107,27 @@ const JobLogs: React.FC = () => {
 							</div>
 						</div>
 					</div>
-					<span className="ml-6 rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 first-letter:capitalize">
+					<span className="ml-6 rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#203FDD]">
 						{job?.status || "Active"}
 					</span>
 				</div>
 
 				<div className="flex items-center gap-2">
-					<Button className="rounded-full bg-green-500 text-white">S</Button>
-					<span className="text-gray-500">--------------</span>
-					<Button className="rounded-full bg-red-500 text-white">D</Button>
+					{job?.source && (
+						<img
+							src={getConnectorImage(job.source)}
+							alt="Source"
+							className="size-7"
+						/>
+					)}
+					<span className="text-gray-500">{"--------------▶"}</span>
+					{job?.destination && (
+						<img
+							src={getConnectorImage(job.destination)}
+							alt="Destination"
+							className="size-7"
+						/>
+					)}
 				</div>
 			</div>
 

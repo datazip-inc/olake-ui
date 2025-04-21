@@ -49,10 +49,9 @@ const DynamicSchemaForm: React.FC<DynamicSchemaFormProps> = ({
 	const finalUiSchema: UiSchema = {
 		...(providedUiSchema || {}),
 		"ui:className": "w-full",
-		// Better default styling for all forms
 		"ui:options": {
 			...(providedUiSchema?.["ui:options"] || {}),
-			className: "grid grid-cols-2 gap-4",
+			className: "grid grid-cols-2 gap-x-12",
 		},
 	}
 

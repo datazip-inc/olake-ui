@@ -133,7 +133,7 @@ const mockSourceConnectorSchemas = {
 				"ui:ArrayField": {
 					"ui:addButtonText": "Add Host",
 					"ui:orderable": false,
-					"ui:removable": true,
+					"ui:removable": false,
 					"ui:showTitle": false,
 				},
 				items: {

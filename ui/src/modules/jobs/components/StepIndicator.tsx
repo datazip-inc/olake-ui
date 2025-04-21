@@ -21,7 +21,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 				<div
 					className={`z-10 size-3 rounded-full border ${
 						isActive
-							? "border-blue-600 outline outline-2 outline-blue-600"
+							? "border-[#203FDD] outline outline-2 outline-[#203fDD]"
 							: "border-gray-300 bg-white"
 					}`}
 				></div>
@@ -29,14 +29,14 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 					<div className="relative h-[2px] w-20">
 						<div className="absolute inset-0 bg-gray-300"></div>
 						{isNextActive && (
-							<div className="absolute inset-0 bg-blue-600 transition-all duration-300" />
+							<div className="absolute inset-0 bg-[#203FDD] transition-all duration-300" />
 						)}
 					</div>
 				)}
 			</div>
 			<span
 				className={`mt-2 translate-x-[-40%] text-xs ${
-					isActive ? "text-blue-600" : "text-gray-500"
+					isActive ? "text-[#203FDD]" : "text-gray-500"
 				}`}
 			>
 				{step === "config"

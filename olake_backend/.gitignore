@@ -1,0 +1,22 @@
+# Go-related files
+*.exe
+*.out
+*.test
+*.log
+
+# Go modules
+go.work
+go.work.sum
+vendor/
+
+# Build artifacts
+/bin/
+/tmp/
+/dist/
+*.a
+*.o
+
+
+# OS-specific files
+.DS_Store
+
