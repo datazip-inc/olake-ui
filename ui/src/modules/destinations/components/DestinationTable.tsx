@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { Destination, JobBasic } from "../../../types"
+import { Destination } from "../../../types"
 import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import DeleteModal from "../../common/Modals/DeleteModal"

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { JobBasic, Source } from "../../../types"
+import { Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import React from "react"
