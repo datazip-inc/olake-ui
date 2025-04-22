@@ -37,6 +37,7 @@ type Source struct {
 	CreatedBy  *User  `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy  *User  `json:"updated_by" orm:"rel(fk)"`
 	SourceType string `json:"source_type"`
+	Type       string `json:"type"`
 }
 
 func (s *Source) TableName() string {

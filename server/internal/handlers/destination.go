@@ -24,42 +24,85 @@ func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 }
 
-// @router /destinations [get]
+// @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
+	// Get project ID from path
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
 	destinations, err := c.destORM.GetAll()
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve destinations")
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, destinations)
+	// Filter destinations by project ID in memory
+	// In a real implementation, this would be done in the database query
+	var filteredDestinations []*models.Destination
+	for _, dest := range destinations {
+		if dest.ProjectID == projectID {
+			filteredDestinations = append(filteredDestinations, dest)
+		}
+	}
+
+	utils.SuccessResponse(&c.Controller, filteredDestinations)
 }
 
-// @router /destinations [post]
+// @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
-	var req models.Destination
+	// Get project ID from path
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
+	var req models.CreateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
+	// Convert request to Destination model
+	destination := &models.Destination{
+		Name:      req.Name,
+		DestType:  req.Type,
+		Version:   req.Version,
+		Config:    req.Config,
+		ProjectID: projectID,
+	}
+
+	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
 		user := &models.User{ID: userID.(int)}
-		req.CreatedBy = user
-		req.UpdatedBy = user
+		destination.CreatedBy = user
+		destination.UpdatedBy = user
 	}
 
-	if err := c.destORM.Create(&req); err != nil {
+	if err := c.destORM.Create(destination); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create destination: %s", err))
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, req)
+	utils.SuccessResponse(&c.Controller, models.CreateDestinationResponse{
+		Success: true,
+		Message: "Destination created successfully",
+		Data:    req,
+	})
 }
 
-// @router /destinations/:id [put]
+// @router /project/:projectid/destinations/:id [put]
 func (c *DestHandler) UpdateDestination() {
+	// Get project ID from path (for authorization check in the future)
+	_ = c.Ctx.Input.Param(":projectid")
+
+	// Get destination ID from path
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -67,7 +110,7 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
-	var req models.Destination
+	var req models.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
@@ -82,11 +125,12 @@ func (c *DestHandler) UpdateDestination() {
 
 	// Update fields
 	existingDest.Name = req.Name
-	existingDest.ProjectID = req.ProjectID
+	existingDest.DestType = req.Type
+	existingDest.Version = req.Version
 	existingDest.Config = req.Config
-	existingDest.DestType = req.DestType
 	existingDest.UpdatedAt = time.Now()
 
+	// Update user who made changes
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
 		user := &models.User{ID: userID.(int)}
@@ -98,15 +142,30 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, existingDest)
+	utils.SuccessResponse(&c.Controller, models.UpdateDestinationResponse{
+		Success: true,
+		Message: "Destination updated successfully",
+		Data:    req,
+	})
 }
 
-// @router /destinations/:id [delete]
+// @router /project/:projectid/destinations/:id [delete]
 func (c *DestHandler) DeleteDestination() {
+	// Get project ID from path (for authorization check in the future)
+	_ = c.Ctx.Input.Param(":projectid")
+
+	// Get destination ID from path
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
+		return
+	}
+
+	// Get the name for the response
+	name, err := c.destORM.GetName(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
 
@@ -115,41 +174,47 @@ func (c *DestHandler) DeleteDestination() {
 		return
 	}
 
-	c.Ctx.ResponseWriter.WriteHeader(http.StatusNoContent)
+	response := models.DeleteDestinationResponse{
+		Success: true,
+		Message: "Destination deleted successfully",
+		Data: struct {
+			Name string `json:"name"`
+		}{
+			Name: name,
+		},
+	}
+
+	utils.SuccessResponse(&c.Controller, response)
 }
 
-// @router /destinations/test [post]
+// @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
-	var req map[string]interface{}
+	// Get project ID from path (not used in current implementation)
+	_ = c.Ctx.Input.Param(":projectid")
+	// Will be used for multi-tenant filtering in the future
+
+	var req models.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	// For now, always return success
-	response := map[string]string{
-		"status": "success",
-	}
-
-	c.Data["json"] = response
-	c.ServeJSON()
-}
-
-// @router /destinations/:dest_type/spec [get]
-func (c *DestHandler) GetDestTypeSpec() {
-	destType := c.Ctx.Input.Param(":dest_type")
-	if destType == "" {
+	if req.Type == "" {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
 		return
 	}
 
-	// Return empty spec object for now
-	response := map[string]interface{}{
-		"spec": map[string]interface{}{},
+	if req.Version == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+		return
 	}
 
-	c.Data["json"] = response
-	c.ServeJSON()
+	// For now, always return success
+	utils.SuccessResponse(&c.Controller, models.DestinationTestConnectionResponse{
+		Success: true,
+		Message: "Connection successful",
+		Data:    req,
+	})
 }
 
 // @router /destinations/:id/jobs [get]
@@ -183,4 +248,71 @@ func (c *DestHandler) GetDestinationJobs() {
 
 	c.Data["json"] = response
 	c.ServeJSON()
+}
+
+// @router /project/:projectid/destinations/versions [get]
+func (c *DestHandler) GetDestinationVersions() {
+	// Get project ID from path
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	_, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
+	// Get destination type from query parameter
+	destType := c.GetString("type")
+	if destType == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		return
+	}
+
+	// In a real implementation, we would query for available versions
+	// based on the destination type and project ID
+	// For now, we'll return a mock response
+
+	// Mock available versions (this would be replaced with actual DB query)
+	versions := []string{"1.0.0", "1.1.0", "2.0.0"}
+
+	response := map[string]interface{}{
+		"version": versions,
+	}
+
+	utils.SuccessResponse(&c.Controller, response)
+}
+
+// @router /project/:projectid/destinations/spec [get]
+func (c *DestHandler) GetDestinationSpec() {
+	// Get project ID from path (not used in current implementation)
+	_ = c.Ctx.Input.Param(":projectid")
+	// Will be used for multi-tenant filtering in the future
+
+	var req models.SpecRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+
+	if req.Type == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		return
+	}
+
+	if req.Version == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+		return
+	}
+
+	// In a real implementation, we would fetch the specification
+	// based on the destination type, version and project ID
+	// For now, we'll return a mock response
+
+	// Mock specification (this would be replaced with actual data)
+	var mockSpec = `{ "auth_type": "string", "aws_access_key_id": "string", "aws_secret_key": "string", "bucket_name": "string", "bucket_path": "string", "region": "string" }`
+
+	utils.SuccessResponse(&c.Controller, models.SpecResponse{
+		Version: req.Version,
+		Type:    req.Type,
+		Spec:    mockSpec,
+	})
 }

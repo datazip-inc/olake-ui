@@ -50,3 +50,9 @@ func (r *SourceORM) Delete(id int) error {
 	_, err := r.ormer.Delete(source)
 	return err
 }
+
+func (r *SourceORM) GetName(id int) (string, error) {
+	source := &models.Source{ID: id}
+	err := r.ormer.Read(source)
+	return source.Name, err
+}

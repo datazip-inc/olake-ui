@@ -31,23 +31,23 @@ func Init() {
 	web.Router("/api/v1/users/:id", &handlers.UserHandler{}, "delete:DeleteUser")
 
 	// Source routes
-	web.Router("/api/v1/sources", &handlers.SourceHandler{}, "get:GetAllSources")
-	web.Router("/api/v1/sources", &handlers.SourceHandler{}, "post:CreateSource")
-	web.Router("/api/v1/sources/:id", &handlers.SourceHandler{}, "put:UpdateSource")
-	web.Router("/api/v1/sources/:id", &handlers.SourceHandler{}, "delete:DeleteSource")
-	web.Router("/api/v1/sources/test", &handlers.SourceHandler{}, "post:TestConnection")
-	web.Router("/api/v1/sources/:source_type/spec", &handlers.SourceHandler{}, "get:GetSourceTypeSpec")
-	web.Router("/api/v1/sources/:id/catalog", &handlers.SourceHandler{}, "get:GetSourceCatalog")
-	web.Router("/api/v1/sources/:id/jobs", &handlers.SourceHandler{}, "get:GetSourceJobs")
+	web.Router("/api/v1/project/:projectid/sources", &handlers.SourceHandler{}, "get:GetAllSources")
+	web.Router("/api/v1/project/:projectid/sources", &handlers.SourceHandler{}, "post:CreateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", &handlers.SourceHandler{}, "put:UpdateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", &handlers.SourceHandler{}, "delete:DeleteSource")
+	web.Router("/api/v1/project/:projectid/sources/test", &handlers.SourceHandler{}, "post:TestConnection")
+	web.Router("/api/v1/project/:projectid/sources/:id/catalog", &handlers.SourceHandler{}, "get:GetSourceCatalog")
+	web.Router("/api/v1/project/:projectid/sources/versions", &handlers.SourceHandler{}, "get:GetSourceVersions")
+	web.Router("/api/v1/project/:projectid/sources/spec", &handlers.SourceHandler{}, "post:GetProjectSourceSpec")
 
 	// Destination routes
-	web.Router("/api/v1/destinations", &handlers.DestHandler{}, "get:GetAllDestinations")
-	web.Router("/api/v1/destinations", &handlers.DestHandler{}, "post:CreateDestination")
-	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "put:UpdateDestination")
-	web.Router("/api/v1/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
-	web.Router("/api/v1/destinations/test", &handlers.DestHandler{}, "post:TestConnection")
-	web.Router("/api/v1/destinations/:dest_type/spec", &handlers.DestHandler{}, "get:GetDestTypeSpec")
-	web.Router("/api/v1/destinations/:id/jobs", &handlers.DestHandler{}, "get:GetDestinationJobs")
+	web.Router("/api/v1/project/:projectid/destinations", &handlers.DestHandler{}, "get:GetAllDestinations")
+	web.Router("/api/v1/project/:projectid/destinations", &handlers.DestHandler{}, "post:CreateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", &handlers.DestHandler{}, "put:UpdateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
+	web.Router("/api/v1/project/:projectid/destinations/test", &handlers.DestHandler{}, "post:TestConnection")
+	web.Router("/api/v1/project/:projectid/destinations/versions", &handlers.DestHandler{}, "get:GetDestinationVersions")
+	web.Router("/api/v1/project/:projectid/destinations/spec", &handlers.DestHandler{}, "get:GetDestinationSpec")
 
 	// Job routes
 	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "get:GetAllJobs")

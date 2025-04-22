@@ -50,3 +50,9 @@ func (r *DestinationORM) Delete(id int) error {
 	_, err := r.ormer.Delete(destination)
 	return err
 }
+
+func (r *DestinationORM) GetName(id int) (string, error) {
+	destination := &models.Destination{ID: id}
+	err := r.ormer.Read(destination)
+	return destination.Name, err
+}

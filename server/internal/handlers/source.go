@@ -24,7 +24,7 @@ func (c *SourceHandler) Prepare() {
 	c.sourceORM = database.NewSourceORM()
 }
 
-// @router /sources [get]
+// @router /project/:projectid/sources [get]
 func (c *SourceHandler) GetAllSources() {
 	sources, err := c.sourceORM.GetAll()
 	if err != nil {
@@ -35,30 +35,53 @@ func (c *SourceHandler) GetAllSources() {
 	utils.SuccessResponse(&c.Controller, sources)
 }
 
-// @router /sources [post]
+// @router /project/:projectid/sources [post]
 func (c *SourceHandler) CreateSource() {
-	var req models.Source
+	var req models.CreateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
+	// Convert request to Source model
+	source := &models.Source{
+		Name:    req.Name,
+		Type:    req.Type,
+		Version: req.Version,
+		Config:  req.Config,
+	}
+
+	// Get project ID if needed
+	projectID := c.Ctx.Input.Param(":projectid")
+	if projectID != "" && projectID != "olake" {
+		// Convert to uint if needed
+		pid, err := strconv.ParseUint(projectID, 10, 64)
+		if err == nil {
+			source.ProjectID = uint(pid)
+		}
+	}
+
+	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
 		user := &models.User{ID: userID.(int)}
-		req.CreatedBy = user
-		req.UpdatedBy = user
+		source.CreatedBy = user
+		source.UpdatedBy = user
 	}
 
-	if err := c.sourceORM.Create(&req); err != nil {
+	if err := c.sourceORM.Create(source); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create source: %s", err))
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, req)
+	utils.SuccessResponse(&c.Controller, models.CreateSourceResponse{
+		Success: true,
+		Message: "Source created successfully",
+		Data:    req,
+	})
 }
 
-// @router /sources/:id [put]
+// @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
@@ -67,7 +90,7 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 
-	var req models.Source
+	var req models.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
@@ -82,9 +105,9 @@ func (c *SourceHandler) UpdateSource() {
 
 	// Update fields
 	existingSource.Name = req.Name
-	existingSource.ProjectID = req.ProjectID
 	existingSource.Config = req.Config
-	existingSource.SourceType = req.SourceType
+	existingSource.Type = req.Type
+	existingSource.Version = req.Version
 	existingSource.UpdatedAt = time.Now()
 
 	userID := c.GetSession(constants.SessionUserID)
@@ -98,10 +121,14 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, existingSource)
+	utils.SuccessResponse(&c.Controller, models.UpdateSourceResponse{
+		Success: true,
+		Message: "Source updated successfully",
+		Data:    req,
+	})
 }
 
-// @router /sources/:id [delete]
+// @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
@@ -109,47 +136,40 @@ func (c *SourceHandler) DeleteSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
 		return
 	}
-
+	name, err := c.sourceORM.GetName(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
+		return
+	}
 	if err := c.sourceORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return
 	}
 
-	c.Ctx.ResponseWriter.WriteHeader(http.StatusNoContent)
+	utils.SuccessResponse(&c.Controller, models.DeleteSourceResponse{
+		Success: true,
+		Message: "Source deleted successfully",
+		Data: struct {
+			Name string `json:"name"`
+		}{Name: name},
+	})
 }
 
 // @router /sources/test [post]
 func (c *SourceHandler) TestConnection() {
-	var req map[string]interface{}
+	var req models.SourceTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
 	// For now, always return success
-	response := map[string]string{
-		"status": "success",
-	}
+	utils.SuccessResponse(&c.Controller, models.SourceTestConnectionResponse{
+		Success: true,
+		Message: "Connection successful",
+		Data:    req,
+	})
 
-	c.Data["json"] = response
-	c.ServeJSON()
-}
-
-// @router /sources/:source_type/spec [get]
-func (c *SourceHandler) GetSourceTypeSpec() {
-	sourceType := c.Ctx.Input.Param(":source_type")
-	if sourceType == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
-		return
-	}
-
-	// Return empty spec object for now
-	response := map[string]interface{}{
-		"spec": map[string]interface{}{},
-	}
-
-	c.Data["json"] = response
-	c.ServeJSON()
 }
 
 // @router /sources/:id/catalog [get]
@@ -209,4 +229,59 @@ func (c *SourceHandler) GetSourceJobs() {
 
 	c.Data["json"] = response
 	c.ServeJSON()
+}
+
+// @router /project/:projectid/sources/versions [get]
+func (c *SourceHandler) GetSourceVersions() {
+	// Get project ID from path
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	_, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
+	// Get source type from query parameter
+	sourceType := c.GetString("type")
+	if sourceType == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
+		return
+	}
+
+	// In a real implementation, we would query for available versions
+	// based on the source type and project ID
+	// For now, we'll return a mock response
+
+	// Mock available versions (this would be replaced with actual DB query)
+	versions := []string{"1.0.0", "1.1.0", "2.0.0"}
+
+	response := map[string]interface{}{
+		"version": versions,
+	}
+
+	utils.SuccessResponse(&c.Controller, response)
+}
+
+// @router /project/:projectid/sources/spec [get]
+func (c *SourceHandler) GetProjectSourceSpec() {
+	// Get project ID from path (not used in current implementation)
+	_ = c.Ctx.Input.Param(":projectid")
+	// Will be used for multi-tenant filtering in the future
+	var req models.SpecRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+	// In a real implementation, we would fetch the specification
+	// based on the source type, version and project ID
+	// For now, we'll return a mock response
+
+	// Mock specification (this would be replaced with actual data)
+	mockSpec := "{ \"host\": \"string\", \"port\": \"integer\", \"username\": \"string\", \"password\": \"string\", \"database\": \"string\", \"ssl\": \"boolean\", \"timeout\": \"integer\" }"
+
+	utils.SuccessResponse(&c.Controller, models.SpecResponse{
+		Version: req.Version,
+		Type:    req.Type,
+		Spec:    mockSpec,
+	})
 }
