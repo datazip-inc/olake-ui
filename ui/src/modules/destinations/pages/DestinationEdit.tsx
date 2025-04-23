@@ -363,7 +363,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				<div className="flex gap-2 px-6 pb-0 pt-6">
 					<Link
 						to="/destinations"
-						className="mb-4 flex items-center"
+						className="mb-4 flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 					>
 						<ArrowLeft className="size-5" />
 					</Link>

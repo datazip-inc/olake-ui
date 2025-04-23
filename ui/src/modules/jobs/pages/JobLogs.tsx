@@ -97,9 +97,9 @@ const JobLogs: React.FC = () => {
 							<div>
 								<Link
 									to={`/jobs/${jobId}/history`}
-									className="mt-[2px] flex items-center"
+									className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 								>
-									<ArrowLeft size={20} />
+									<ArrowLeft className="size-5" />
 								</Link>
 							</div>
 							<div className="text-2xl font-bold">

@@ -117,7 +117,7 @@ const StreamConfiguration = ({ stream }: StreamConfigurationProps) => {
 				style={{ width: "32%", fontWeight: 500 }}
 				onClick={() => setActiveTab(id)}
 			>
-				<span className="mr-2 flex items-center">{icon}</span>
+				<span className="flex items-center">{icon}</span>
 				{label}
 			</Button>
 		)

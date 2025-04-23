@@ -11,6 +11,7 @@ import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import type { RJSFSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
+import { getConnectorImage } from "../../../utils/utils"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -761,15 +762,15 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		<div className="flex h-screen flex-col">
 			{/* Header */}
 			{!fromJobFlow && (
-				<div className="flex gap-2 px-6 pb-0 pt-6">
+				<div className="flex items-center gap-2 px-6 pb-0 pt-6">
 					<Link
 						to="/sources"
-						className="mb-4 flex items-center"
+						className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 					>
 						<ArrowLeft className="size-5" />
 					</Link>
 
-					<div className="mb-4 flex items-center">
+					<div className="flex items-center">
 						<h1 className="text-2xl font-bold">
 							{isNewSource
 								? "Create New Source"
@@ -839,9 +840,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											Connector:
 										</label>
 										<div className="flex items-center">
-											<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
-												<span>M</span>
-											</div>
 											<Select
 												value={connector}
 												onChange={value => {
@@ -855,9 +853,45 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												}}
 												className="h-8 w-full"
 												options={[
-													{ value: "MongoDB", label: "MongoDB" },
-													{ value: "PostgreSQL", label: "PostgreSQL" },
-													{ value: "MySQL", label: "MySQL" },
+													{
+														value: "MongoDB",
+														label: (
+															<div className="flex items-center">
+																<img
+																	src={getConnectorImage("MongoDB")}
+																	alt="MongoDB"
+																	className="mr-2 size-5"
+																/>
+																<span>MongoDB</span>
+															</div>
+														),
+													},
+													{
+														value: "PostgreSQL",
+														label: (
+															<div className="flex items-center">
+																<img
+																	src={getConnectorImage("Postgres")}
+																	alt="PostgreSQL"
+																	className="mr-2 size-5"
+																/>
+																<span>PostgreSQL</span>
+															</div>
+														),
+													},
+													{
+														value: "MySQL",
+														label: (
+															<div className="flex items-center">
+																<img
+																	src={getConnectorImage("MySQL")}
+																	alt="MySQL"
+																	className="mr-2 size-5"
+																/>
+																<span>MySQL</span>
+															</div>
+														),
+													},
 												]}
 											/>
 										</div>

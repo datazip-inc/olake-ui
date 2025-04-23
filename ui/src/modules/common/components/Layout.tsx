@@ -55,8 +55,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						className={({ isActive }) =>
 							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-[#E9EBFC] text-[#203FDD]"
-									: "text-gray-700 hover:bg-gray-100"
+									? "bg-[#E9EBFC] text-[#203FDD] hover:text-black"
+									: "text-gray-700 hover:bg-[#f6f6f6] hover:text-black"
 							}`
 						}
 					>
@@ -72,8 +72,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						className={({ isActive }) =>
 							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-[#E9EBFC] text-[#203FDD]"
-									: "text-gray-700 hover:bg-gray-100"
+									? "bg-[#E9EBFC] text-[#203FDD] hover:text-black"
+									: "text-gray-700 hover:bg-[#f6f6f6] hover:text-black"
 							}`
 						}
 					>
@@ -89,8 +89,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						className={({ isActive }) =>
 							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-[#E9EBFC] text-[#203FDD]"
-									: "text-gray-700 hover:bg-gray-100"
+									? "bg-[#E9EBFC] text-[#203FDD] hover:text-black"
+									: "text-gray-700 hover:bg-[#f6f6f6] hover:text-black"
 							}`
 						}
 					>

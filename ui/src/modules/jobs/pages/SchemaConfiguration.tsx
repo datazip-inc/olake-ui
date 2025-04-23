@@ -125,15 +125,17 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 flex items-center justify-between">
-				<Search
-					placeholder="Search streams"
-					allowClear
-					className="custom-search-input w-2/4"
-					value={searchText}
-					onChange={e => setSearchText(e.target.value)}
-				/>
-				<div className="flex space-x-2">
+			<div className="mb-4 mr-4 flex flex-wrap justify-between gap-4">
+				<div className="w-full lg:w-[55%] xl:w-[50%]">
+					<Search
+						placeholder="Search streams"
+						allowClear
+						className="custom-search-input w-full"
+						value={searchText}
+						onChange={e => setSearchText(e.target.value)}
+					/>
+				</div>
+				<div className="flex flex-wrap gap-2">
 					{filters.map(filter => (
 						<FilterButton
 							key={filter}

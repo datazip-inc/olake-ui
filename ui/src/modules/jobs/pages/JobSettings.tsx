@@ -62,9 +62,9 @@ const JobSettings: React.FC = () => {
 								<div className="flex items-center gap-2">
 									<Link
 										to="/jobs"
-										className="items-cente mt-[2px] flex"
+										className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 									>
-										<ArrowLeft size={20} />
+										<ArrowLeft className="size-5" />
 									</Link>
 
 									<div className="text-2xl font-bold">

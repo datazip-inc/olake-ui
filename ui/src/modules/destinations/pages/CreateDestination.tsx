@@ -272,9 +272,9 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link
 						to={"/destinations"}
-						className="flex items-center text-lg font-bold"
+						className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 					>
-						<ArrowLeft className="mr-1 size-6 font-bold" />
+						<ArrowLeft className="mr-1 size-5" />
 					</Link>
 					<div className="text-xl font-bold">Create destination</div>
 				</div>
@@ -316,7 +316,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							)}
 
 							{setupType === "new" && !fromJobEditFlow ? (
-								<div className="flex-start flex w-full gap-6">
+								<div className="flex-start flex w-full gap-12">
 									<div className="w-1/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Connector:
@@ -383,7 +383,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 									</div>
 								</div>
 							) : (
-								<div className="flex flex-col gap-6">
+								<div className="flex flex-col gap-8">
 									<div className="flex w-full gap-6">
 										<div className="w-1/3">
 											<label className="mb-2 block text-sm font-medium text-gray-700">
@@ -452,7 +452,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 										</div>
 									</div>
 
-									<div className="w-2/3">
+									<div className="w-3/5">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											{fromJobEditFlow
 												? "Destination:"
@@ -476,7 +476,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							)}
 
 							{setupType === "new" && !fromJobEditFlow && (
-								<div className="mt-4 w-2/3">
+								<div className="mt-4 w-[70%]">
 									<label className="mb-2 block text-sm font-medium text-gray-700">
 										Name of your destination :
 									</label>

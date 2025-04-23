@@ -1,8 +1,9 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Form from "@rjsf/core"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import validator from "@rjsf/validator-ajv8"
 import { message, Switch } from "antd"
+import { Eye, EyeSlash } from "@phosphor-icons/react"
 
 interface JsonSchemaFormProps {
 	schema: RJSFSchema
@@ -122,12 +123,9 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 
 			const renderTitle = () => {
 				if (!title || title === null) return null
-
 				if (TitleComponent && typeof TitleComponent === "function") {
 					return <TitleComponent title={title} />
 				}
-
-				return <h3 className="mb-4 text-lg font-medium">{title}</h3>
 			}
 
 			return (
@@ -339,6 +337,11 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 			} = props
 
 			const inputClass = fieldUiSchema?.["ui:className"] || "w-full"
+			const [showPassword, setShowPassword] = useState(false)
+
+			const togglePasswordVisibility = () => {
+				setShowPassword(!showPassword)
+			}
 
 			return (
 				<div className="relative">
@@ -349,25 +352,21 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 						required={required}
 						disabled={disabled || readonly}
 						readOnly={readonly}
-						type="password"
+						type={showPassword ? "text" : "password"}
 						onChange={e => onChange(e.target.value)}
 						onBlur={onBlur && (e => onBlur(id, e.target.value))}
 						onFocus={onFocus && (e => onFocus(id, e.target.value))}
 						className={`${inputClass} rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 					/>
-					<div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							className="h-4 w-4"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
-								fillRule="evenodd"
-								d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-								clipRule="evenodd"
-							/>
-						</svg>
+					<div
+						className="absolute inset-y-0 right-0 flex cursor-pointer items-center px-3 text-gray-400 hover:text-gray-600"
+						onClick={togglePasswordVisibility}
+					>
+						{showPassword ? (
+							<EyeSlash className="h-4 w-4" />
+						) : (
+							<Eye className="h-4 w-4" />
+						)}
 					</div>
 				</div>
 			)
@@ -472,7 +471,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 									<button
 										type="button"
 										onClick={item.onDropIndexClick(item.index)}
-										className="mt-2 rounded-[6px] border border-red-300 px-2 py-1 text-sm text-red-600 hover:bg-red-50"
+										className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 									>
 										Remove
 									</button>

@@ -13,7 +13,6 @@ interface EntitySavedModalProps {
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	type,
-	onComplete,
 	fromJobFlow,
 	entityName = "",
 }) => {
@@ -68,32 +67,20 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					</div>
 				</div>
 				<div className="flex space-x-4">
-					{type !== "config" && (
+					{type !== "config" && !fromJobFlow && (
 						<Button
 							type={fromJobFlow ? "primary" : "default"}
 							className="border border-[#D9D9D9]"
 							onClick={() => {
 								setShowEntitySavedModal(false)
-								if (fromJobFlow) {
-									if (onComplete) {
-										onComplete()
-									} else {
-										navigate("/jobs/new")
-									}
+								if (type === "source") {
+									navigate("/sources")
 								} else {
-									if (type === "source") {
-										navigate("/sources")
-									} else {
-										navigate("/destinations")
-									}
+									navigate("/destinations")
 								}
 							}}
 						>
-							{fromJobFlow
-								? "Next →"
-								: type === "source"
-									? "Sources"
-									: "Destinations"}
+							{type === "source" ? "Sources" : "Destinations"}
 						</Button>
 					)}
 					{!fromJobFlow && (

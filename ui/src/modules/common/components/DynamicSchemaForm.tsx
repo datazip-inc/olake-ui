@@ -51,7 +51,7 @@ const DynamicSchemaForm: React.FC<DynamicSchemaFormProps> = ({
 		"ui:className": "w-full",
 		"ui:options": {
 			...(providedUiSchema?.["ui:options"] || {}),
-			className: "grid grid-cols-2 gap-x-12",
+			className: "grid grid-cols-2 gap-x-12 gap-y-2",
 		},
 	}
 

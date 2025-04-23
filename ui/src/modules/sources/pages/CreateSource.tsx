@@ -224,9 +224,9 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link
 						to={"/sources"}
-						className="flex items-center text-lg font-bold"
+						className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 					>
-						<ArrowLeft className="mr-1 size-6 font-bold" />
+						<ArrowLeft className="mr-1 size-5" />
 					</Link>
 					<div className="text-lg font-bold">Create source</div>
 				</div>

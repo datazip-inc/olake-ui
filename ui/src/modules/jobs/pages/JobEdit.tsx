@@ -88,7 +88,7 @@ const JobEdit: React.FC = () => {
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
-	const [replicationFrequency, setReplicationFrequency] = useState("daily")
+	const [replicationFrequency, setReplicationFrequency] = useState("seconds")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
@@ -219,14 +219,15 @@ const JobEdit: React.FC = () => {
 			{/* Header */}
 			<div className="bg-white px-6 pb-3 pt-6">
 				<div className="flex items-center justify-between">
-					<Link
-						to="/jobs"
-						className="flex items-center gap-2"
-					>
-						<ArrowLeft className="mr-1 size-6" />
-						<span className="text-2xl font-bold">{jobName}</span>
-					</Link>
-
+					<div className="flex items-center gap-2">
+						<Link
+							to="/jobs"
+							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+						>
+							<ArrowLeft className="mr-1 size-5" />
+						</Link>
+						<div className="text-2xl font-bold">{jobName}</div>
+					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
 				</div>
