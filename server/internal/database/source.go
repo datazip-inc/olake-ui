@@ -29,7 +29,7 @@ func (r *SourceORM) Create(source *models.Source) error {
 
 func (r *SourceORM) GetAll() ([]*models.Source, error) {
 	var sources []*models.Source
-	_, err := r.ormer.QueryTable(r.TableName).All(&sources)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&sources)
 	return sources, err
 }
 
@@ -49,6 +49,17 @@ func (r *SourceORM) Delete(id int) error {
 	source := &models.Source{ID: id}
 	_, err := r.ormer.Delete(source)
 	return err
+}
+
+// GetByNameAndType retrieves sources by name, type, and project ID
+func (r *SourceORM) GetByNameAndType(name, sourceType string, projectIDStr string) ([]*models.Source, error) {
+	var sources []*models.Source
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("name", name).
+		Filter("type", sourceType).
+		Filter("project_id", projectIDStr).
+		All(&sources)
+	return sources, err
 }
 
 func (r *SourceORM) GetName(id int) (string, error) {

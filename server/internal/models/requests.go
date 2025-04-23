@@ -43,3 +43,39 @@ type UpdateDestinationRequest struct {
 	Version string `json:"version"`
 	Config  string `json:"config" orm:"type(jsonb)"`
 }
+
+// Job source configuration
+type JobSourceConfig struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Config  string `json:"config"`
+	Version string `json:"version"`
+}
+
+// Job destination configuration
+type JobDestinationConfig struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Config  string `json:"config"`
+	Version string `json:"version"`
+}
+
+// CreateJobRequest represents the request body for creating a job
+type CreateJobRequest struct {
+	Name          string               `json:"name"`
+	Source        JobSourceConfig      `json:"source"`
+	Destination   JobDestinationConfig `json:"destination"`
+	Frequency     string               `json:"frequency"`
+	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)"`
+	Activate      bool                 `json:"activate,omitempty"`
+}
+
+// UpdateJobRequest represents the request body for updating a job
+type UpdateJobRequest struct {
+	Name          string               `json:"name"`
+	Source        JobSourceConfig      `json:"source"`
+	Destination   JobDestinationConfig `json:"destination"`
+	Frequency     string               `json:"frequency"`
+	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)"`
+	Activate      bool                 `json:"activate,omitempty"`
+}

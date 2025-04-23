@@ -29,7 +29,7 @@ func (r *DestinationORM) Create(destination *models.Destination) error {
 
 func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).All(&destinations)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&destinations)
 	return destinations, err
 }
 
@@ -49,6 +49,17 @@ func (r *DestinationORM) Delete(id int) error {
 	destination := &models.Destination{ID: id}
 	_, err := r.ormer.Delete(destination)
 	return err
+}
+
+// GetByNameAndType retrieves destinations by name, type, and project ID
+func (r *DestinationORM) GetByNameAndType(name, destType string, projectIDStr string) ([]*models.Destination, error) {
+	var destinations []*models.Destination
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("name", name).
+		Filter("dest_type", destType).
+		Filter("project_id", projectIDStr).
+		All(&destinations)
+	return destinations, err
 }
 
 func (r *DestinationORM) GetName(id int) (string, error) {

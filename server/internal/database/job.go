@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
@@ -33,6 +34,47 @@ func (r *JobORM) Create(job *models.Job) error {
 func (r *JobORM) GetAll() ([]*models.Job, error) {
 	var jobs []*models.Job
 	_, err := r.ormer.QueryTable(r.TableName).All(&jobs)
+	return jobs, err
+}
+
+// GetAllByProjectID retrieves all jobs for a specific project
+func (r *JobORM) GetAllByProjectID(projectID int) ([]*models.Job, error) {
+	var jobs []*models.Job
+
+	// Query sources in the project
+	sourceTable := "source" // This should match the actual table name
+	sources := []int{}
+	_, err := r.ormer.Raw(fmt.Sprintf("SELECT id FROM %s WHERE project_id = ?", sourceTable), projectID).QueryRows(&sources)
+	if err != nil {
+		return nil, err
+	}
+
+	// Query destinations in the project
+	destTable := "destination" // This should match the actual table name
+	destinations := []int{}
+	_, err = r.ormer.Raw(fmt.Sprintf("SELECT id FROM %s WHERE project_id = ?", destTable), projectID).QueryRows(&destinations)
+	if err != nil {
+		return nil, err
+	}
+
+	// If no sources or destinations in the project, return empty array
+	if len(sources) == 0 && len(destinations) == 0 {
+		return jobs, nil
+	}
+
+	// Build query
+	qs := r.ormer.QueryTable(r.TableName)
+
+	// Filter by sources or destinations from the project
+	if len(sources) > 0 {
+		qs = qs.Filter("source_id__in", sources)
+	}
+
+	if len(destinations) > 0 {
+		qs = qs.Filter("dest_id__in", destinations)
+	}
+
+	_, err = qs.All(&jobs)
 	return jobs, err
 }
 

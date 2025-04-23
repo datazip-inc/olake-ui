@@ -47,11 +47,12 @@ func Init() {
 	web.Router("/api/v1/project/:projectid/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
 	web.Router("/api/v1/project/:projectid/destinations/test", &handlers.DestHandler{}, "post:TestConnection")
 	web.Router("/api/v1/project/:projectid/destinations/versions", &handlers.DestHandler{}, "get:GetDestinationVersions")
-	web.Router("/api/v1/project/:projectid/destinations/spec", &handlers.DestHandler{}, "get:GetDestinationSpec")
+	web.Router("/api/v1/project/:projectid/destinations/spec", &handlers.DestHandler{}, "post:GetDestinationSpec")
 
 	// Job routes
-	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "get:GetAllJobs")
-	web.Router("/api/v1/jobs", &handlers.JobHandler{}, "post:CreateJob")
-	web.Router("/api/v1/jobs/:id", &handlers.JobHandler{}, "put:UpdateJob")
-	web.Router("/api/v1/jobs/:id", &handlers.JobHandler{}, "delete:DeleteJob")
+	web.Router("/api/v1/project/:projectid/jobs", &handlers.JobHandler{}, "get:GetAllJobs")
+	web.Router("/api/v1/project/:projectid/jobs", &handlers.JobHandler{}, "post:CreateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", &handlers.JobHandler{}, "put:UpdateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", &handlers.JobHandler{}, "delete:DeleteJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/streams", &handlers.JobHandler{}, "get:GetJobStreams")
 }

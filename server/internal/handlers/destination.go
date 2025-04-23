@@ -27,12 +27,8 @@ func (c *DestHandler) Prepare() {
 // @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
 	// Get project ID from path
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
+	//use olake project id when is needed
+	//projectIDStr := c.Ctx.Input.Param(":projectid")
 
 	destinations, err := c.destORM.GetAll()
 	if err != nil {
@@ -42,25 +38,52 @@ func (c *DestHandler) GetAllDestinations() {
 
 	// Filter destinations by project ID in memory
 	// In a real implementation, this would be done in the database query
-	var filteredDestinations []*models.Destination
+	// var filteredDestinations []*models.Destination
+	// for _, dest := range destinations {
+	// 	if dest.ProjectID == projectIDStr {
+	// 		filteredDestinations = append(filteredDestinations, dest)
+	// 	}
+	// }
+
+	// Format response data
+	destItems := make([]models.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
-		if dest.ProjectID == projectID {
-			filteredDestinations = append(filteredDestinations, dest)
+		item := models.DestinationDataItem{
+			ID:        dest.ID,
+			Name:      dest.Name,
+			Type:      dest.DestType,
+			Version:   dest.Version,
+			Config:    dest.Config,
+			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
+
+		// Add creator username if available
+		if dest.CreatedBy != nil {
+			item.CreatedBy = dest.CreatedBy.Username
+		}
+
+		// Add updater username if available
+		if dest.UpdatedBy != nil {
+			item.UpdatedBy = dest.UpdatedBy.Username
+		}
+
+		destItems = append(destItems, item)
 	}
 
-	utils.SuccessResponse(&c.Controller, filteredDestinations)
+	response := models.JSONResponse{
+		Success: true,
+		Message: "Destinations retrieved successfully",
+		Data:    destItems,
+	}
+
+	utils.SuccessResponse(&c.Controller, response)
 }
 
 // @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
 	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
 
 	var req models.CreateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -74,7 +97,7 @@ func (c *DestHandler) CreateDestination() {
 		DestType:  req.Type,
 		Version:   req.Version,
 		Config:    req.Config,
-		ProjectID: projectID,
+		ProjectID: projectIDStr,
 	}
 
 	// Set created by if user is logged in
@@ -99,8 +122,17 @@ func (c *DestHandler) CreateDestination() {
 
 // @router /project/:projectid/destinations/:id [put]
 func (c *DestHandler) UpdateDestination() {
-	// Get project ID from path (for authorization check in the future)
-	_ = c.Ctx.Input.Param(":projectid")
+	// Get project ID from path
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 64)
+	if err != nil {
+		fmt.Println("Error converting project ID to int:", err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
+	// Project ID will be used for permission checking in future implementations
+	_ = projectID
 
 	// Get destination ID from path
 	idStr := c.Ctx.Input.Param(":id")
@@ -151,8 +183,17 @@ func (c *DestHandler) UpdateDestination() {
 
 // @router /project/:projectid/destinations/:id [delete]
 func (c *DestHandler) DeleteDestination() {
-	// Get project ID from path (for authorization check in the future)
-	_ = c.Ctx.Input.Param(":projectid")
+	// Get project ID from path
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 64)
+	if err != nil {
+		fmt.Println("Error converting project ID to int:", err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
+	// Project ID will be used for permission checking in future implementations
+	_ = projectID
 
 	// Get destination ID from path
 	idStr := c.Ctx.Input.Param(":id")
@@ -192,7 +233,6 @@ func (c *DestHandler) TestConnection() {
 	// Get project ID from path (not used in current implementation)
 	_ = c.Ctx.Input.Param(":projectid")
 	// Will be used for multi-tenant filtering in the future
-
 	var req models.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")

@@ -18,10 +18,12 @@ import (
 type SourceHandler struct {
 	web.Controller
 	sourceORM *database.SourceORM
+	userORM   *database.UserORM
 }
 
 func (c *SourceHandler) Prepare() {
 	c.sourceORM = database.NewSourceORM()
+	c.userORM = database.NewUserORM()
 }
 
 // @router /project/:projectid/sources [get]
@@ -32,7 +34,39 @@ func (c *SourceHandler) GetAllSources() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, sources)
+	// Format response data
+	sourceItems := make([]models.SourceDataItem, 0, len(sources))
+	for _, source := range sources {
+		item := models.SourceDataItem{
+			ID:        source.ID,
+			Name:      source.Name,
+			Type:      source.Type,
+			Version:   source.Version,
+			Config:    source.Config,
+			CreatedAt: source.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
+		}
+
+		// Add creator username if available
+		if source.CreatedBy != nil {
+			item.CreatedBy = source.CreatedBy.Username
+		}
+
+		// Add updater username if available
+		if source.UpdatedBy != nil {
+			item.UpdatedBy = source.UpdatedBy.Username
+		}
+
+		sourceItems = append(sourceItems, item)
+	}
+
+	response := models.JSONResponse{
+		Success: true,
+		Message: "Sources retrieved successfully",
+		Data:    sourceItems,
+	}
+
+	utils.SuccessResponse(&c.Controller, response)
 }
 
 // @router /project/:projectid/sources [post]
@@ -52,22 +86,23 @@ func (c *SourceHandler) CreateSource() {
 	}
 
 	// Get project ID if needed
-	projectID := c.Ctx.Input.Param(":projectid")
-	if projectID != "" && projectID != "olake" {
-		// Convert to uint if needed
-		pid, err := strconv.ParseUint(projectID, 10, 64)
-		if err == nil {
-			source.ProjectID = uint(pid)
-		}
-	}
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	source.ProjectID = projectIDStr
 
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
+	fmt.Printf("userID: %+v\n", userID)
 	if userID != nil {
-		user := &models.User{ID: userID.(int)}
+		user, err := c.userORM.GetByID(userID.(int))
+		fmt.Printf("user: %+v\n", user)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user")
+			return
+		}
 		source.CreatedBy = user
 		source.UpdatedBy = user
 	}
+	fmt.Printf("source: %+v\n", source)
 
 	if err := c.sourceORM.Create(source); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create source: %s", err))
@@ -155,7 +190,7 @@ func (c *SourceHandler) DeleteSource() {
 	})
 }
 
-// @router /sources/test [post]
+// @router /project/:projectid/sources/test [post]
 func (c *SourceHandler) TestConnection() {
 	var req models.SourceTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -164,7 +199,7 @@ func (c *SourceHandler) TestConnection() {
 	}
 
 	// For now, always return success
-	utils.SuccessResponse(&c.Controller, models.SourceTestConnectionResponse{
+	utils.SuccessResponse(&c.Controller, models.JSONResponse{
 		Success: true,
 		Message: "Connection successful",
 		Data:    req,
@@ -190,9 +225,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 
 	// Return empty catalog object for now
 	// TODO: Implement actual catalog generation logic
-	response := map[string]interface{}{
-		"catalog": map[string]interface{}{},
-	}
+	response := map[string]interface{}{"catalog": map[string]interface{}{"selected_streams": map[string]interface{}{"incr": []map[string]interface{}{{"split_column": "", "partition_regex": "", "stream_name": "incr3"}, {"split_column": "", "partition_regex": "", "stream_name": "incr4"}, {"split_column": "", "partition_regex": "", "stream_name": "incr1"}, {"split_column": "", "partition_regex": "", "stream_name": "incr2"}, {"split_column": "", "partition_regex": "", "stream_name": "incr"}}}, "streams": []map[string]interface{}{{"stream": map[string]interface{}{"name": "incr3", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"integer"}}, "height": map[string]interface{}{"type": []string{"number"}}, "name": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr4", "namespace": "incr", "type_schema": map[string]interface{}{}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr1", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"string"}}, "favo": map[string]interface{}{"type": []string{"string"}}, "height": map[string]interface{}{"type": []string{"string", "integer", "boolean", "number"}}, "last_modified": map[string]interface{}{"type": []string{"object"}}, "name": map[string]interface{}{"type": []string{"string"}}, "town": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"cdc", "full_refresh"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr2", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"integer"}}, "height": map[string]interface{}{"type": []string{"number"}}, "name": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "time": map[string]interface{}{"type": []string{"integer"}}, "time_here": map[string]interface{}{"type": []string{"integer"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}}}}
 
 	c.Data["json"] = response
 	c.ServeJSON()
