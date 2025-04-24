@@ -296,8 +296,7 @@ func (c *JobHandler) DeleteJob() {
 		return
 	}
 
-	// Format response according to API contract
-	response := models.DeleteJobResponse{
+	utils.SuccessResponse(&c.Controller, models.DeleteJobResponse{
 		Success: true,
 		Message: "Job deleted successfully",
 		Data: struct {
@@ -305,10 +304,7 @@ func (c *JobHandler) DeleteJob() {
 		}{
 			Name: jobName,
 		},
-	}
-
-	c.Data["json"] = response
-	c.ServeJSON()
+	})
 }
 
 // @router /project/:projectid/jobs/:id/streams [get]
@@ -327,8 +323,7 @@ func (c *JobHandler) GetJobStreams() {
 		return
 	}
 
-	// Format response according to API contract
-	response := models.GetJobStreamsResponse{
+	utils.SuccessResponse(&c.Controller, models.GetJobStreamsResponse{
 		Success: true,
 		Message: "Job streams retrieved successfully",
 		Data: struct {
@@ -336,10 +331,8 @@ func (c *JobHandler) GetJobStreams() {
 		}{
 			StreamsConfig: job.StreamsConfig,
 		},
-	}
-
-	c.Data["json"] = response
-	c.ServeJSON()
+	},
+	)
 }
 
 // Helper methods

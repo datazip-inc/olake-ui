@@ -33,7 +33,7 @@ func (r *JobORM) Create(job *models.Job) error {
 // GetAll retrieves all jobs
 func (r *JobORM) GetAll() ([]*models.Job, error) {
 	var jobs []*models.Job
-	_, err := r.ormer.QueryTable(r.TableName).All(&jobs)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&jobs)
 	return jobs, err
 }
 
@@ -74,7 +74,8 @@ func (r *JobORM) GetAllByProjectID(projectID int) ([]*models.Job, error) {
 		qs = qs.Filter("dest_id__in", destinations)
 	}
 
-	_, err = qs.All(&jobs)
+	// Add RelatedSel to load the related Source and Destination objects
+	_, err = qs.RelatedSel().All(&jobs)
 	return jobs, err
 }
 
@@ -82,7 +83,21 @@ func (r *JobORM) GetAllByProjectID(projectID int) ([]*models.Job, error) {
 func (r *JobORM) GetByID(id int) (*models.Job, error) {
 	job := &models.Job{ID: id}
 	err := r.ormer.Read(job)
-	return job, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Load related entities (Source, Destination, etc.)
+	_, err = r.ormer.LoadRelated(job, "SourceID")
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.ormer.LoadRelated(job, "DestID")
+	if err != nil {
+		return nil, err
+	}
+
+	return job, nil
 }
 
 // Update a job
@@ -106,6 +121,7 @@ func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
 
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("source_id", source).
+		RelatedSel().
 		All(&jobs)
 
 	return jobs, err
@@ -118,6 +134,7 @@ func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
 
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("dest_id", dest).
+		RelatedSel().
 		All(&jobs)
 
 	return jobs, err
