@@ -60,13 +60,7 @@ func (c *SourceHandler) GetAllSources() {
 		sourceItems = append(sourceItems, item)
 	}
 
-	response := models.JSONResponse{
-		Success: true,
-		Message: "Sources retrieved successfully",
-		Data:    sourceItems,
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	utils.SuccessResponse(&c.Controller, sourceItems)
 }
 
 // @router /project/:projectid/sources [post]
@@ -109,11 +103,7 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.CreateSourceResponse{
-		Success: true,
-		Message: "Source created successfully",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [put]
@@ -156,11 +146,7 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.UpdateSourceResponse{
-		Success: true,
-		Message: "Source updated successfully",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [delete]
@@ -181,12 +167,8 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.DeleteSourceResponse{
-		Success: true,
-		Message: "Source deleted successfully",
-		Data: struct {
-			Name string `json:"name"`
-		}{Name: name},
+	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
+		Name: name,
 	})
 }
 
@@ -199,11 +181,7 @@ func (c *SourceHandler) TestConnection() {
 	}
 
 	// For now, always return success
-	utils.SuccessResponse(&c.Controller, models.JSONResponse{
-		Success: true,
-		Message: "Connection successful",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 
 }
 
@@ -227,8 +205,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 	// TODO: Implement actual catalog generation logic
 	response := map[string]interface{}{"catalog": map[string]interface{}{"selected_streams": map[string]interface{}{"incr": []map[string]interface{}{{"split_column": "", "partition_regex": "", "stream_name": "incr3"}, {"split_column": "", "partition_regex": "", "stream_name": "incr4"}, {"split_column": "", "partition_regex": "", "stream_name": "incr1"}, {"split_column": "", "partition_regex": "", "stream_name": "incr2"}, {"split_column": "", "partition_regex": "", "stream_name": "incr"}}}, "streams": []map[string]interface{}{{"stream": map[string]interface{}{"name": "incr3", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"integer"}}, "height": map[string]interface{}{"type": []string{"number"}}, "name": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr4", "namespace": "incr", "type_schema": map[string]interface{}{}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr1", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"string"}}, "favo": map[string]interface{}{"type": []string{"string"}}, "height": map[string]interface{}{"type": []string{"string", "integer", "boolean", "number"}}, "last_modified": map[string]interface{}{"type": []string{"object"}}, "name": map[string]interface{}{"type": []string{"string"}}, "town": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"cdc", "full_refresh"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr2", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"integer"}}, "height": map[string]interface{}{"type": []string{"number"}}, "name": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "time": map[string]interface{}{"type": []string{"integer"}}, "time_here": map[string]interface{}{"type": []string{"integer"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}}}}
 
-	c.Data["json"] = response
-	c.ServeJSON()
+	utils.SuccessResponse(&c.Controller, response)
 }
 
 // @router /sources/:id/jobs [get]
@@ -260,8 +237,7 @@ func (c *SourceHandler) GetSourceJobs() {
 		"jobs": jobs,
 	}
 
-	c.Data["json"] = response
-	c.ServeJSON()
+	utils.SuccessResponse(&c.Controller, response)
 }
 
 // @router /project/:projectid/sources/versions [get]

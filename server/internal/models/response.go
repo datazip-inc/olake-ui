@@ -32,11 +32,7 @@ type UpdateSourceResponse struct {
 	Data    UpdateSourceRequest `json:"data"`
 }
 type DeleteSourceResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Data    struct {
-		Name string `json:"name"`
-	} `json:"data"`
+	Name string `json:"name"`
 }
 type CreateDestinationResponse struct {
 	Success bool                     `json:"success"`
@@ -49,11 +45,7 @@ type UpdateDestinationResponse struct {
 	Data    UpdateDestinationRequest `json:"data"`
 }
 type DeleteDestinationResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Data    struct {
-		Name string `json:"name"`
-	} `json:"data"`
+	Name string `json:"name"`
 }
 
 // JobResponse represents a job in response format

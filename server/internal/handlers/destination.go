@@ -71,13 +71,7 @@ func (c *DestHandler) GetAllDestinations() {
 		destItems = append(destItems, item)
 	}
 
-	response := models.JSONResponse{
-		Success: true,
-		Message: "Destinations retrieved successfully",
-		Data:    destItems,
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	utils.SuccessResponse(&c.Controller, destItems)
 }
 
 // @router /project/:projectid/destinations [post]
@@ -113,11 +107,7 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.CreateDestinationResponse{
-		Success: true,
-		Message: "Destination created successfully",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/destinations/:id [put]
@@ -174,11 +164,7 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.UpdateDestinationResponse{
-		Success: true,
-		Message: "Destination updated successfully",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/destinations/:id [delete]
@@ -216,13 +202,7 @@ func (c *DestHandler) DeleteDestination() {
 	}
 
 	response := models.DeleteDestinationResponse{
-		Success: true,
-		Message: "Destination deleted successfully",
-		Data: struct {
-			Name string `json:"name"`
-		}{
-			Name: name,
-		},
+		Name: name,
 	}
 
 	utils.SuccessResponse(&c.Controller, response)
@@ -250,11 +230,7 @@ func (c *DestHandler) TestConnection() {
 	}
 
 	// For now, always return success
-	utils.SuccessResponse(&c.Controller, models.DestinationTestConnectionResponse{
-		Success: true,
-		Message: "Connection successful",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /destinations/:id/jobs [get]
