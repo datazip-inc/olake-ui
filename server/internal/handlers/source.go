@@ -11,6 +11,7 @@ import (
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
+	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/internal/models"
 	"github.com/datazip/olake-server/utils"
 )
@@ -195,17 +196,24 @@ func (c *SourceHandler) GetSourceCatalog() {
 	}
 
 	// Get existing source
-	_, err = c.sourceORM.GetByID(id)
+	source, err := c.sourceORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
 
-	// Return empty catalog object for now
-	// TODO: Implement actual catalog generation logic
-	response := map[string]interface{}{"catalog": map[string]interface{}{"selected_streams": map[string]interface{}{"incr": []map[string]interface{}{{"split_column": "", "partition_regex": "", "stream_name": "incr3"}, {"split_column": "", "partition_regex": "", "stream_name": "incr4"}, {"split_column": "", "partition_regex": "", "stream_name": "incr1"}, {"split_column": "", "partition_regex": "", "stream_name": "incr2"}, {"split_column": "", "partition_regex": "", "stream_name": "incr"}}}, "streams": []map[string]interface{}{{"stream": map[string]interface{}{"name": "incr3", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"integer"}}, "height": map[string]interface{}{"type": []string{"number"}}, "name": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr4", "namespace": "incr", "type_schema": map[string]interface{}{}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr1", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"string"}}, "favo": map[string]interface{}{"type": []string{"string"}}, "height": map[string]interface{}{"type": []string{"string", "integer", "boolean", "number"}}, "last_modified": map[string]interface{}{"type": []string{"object"}}, "name": map[string]interface{}{"type": []string{"string"}}, "town": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"cdc", "full_refresh"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr2", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "address": map[string]interface{}{"type": []string{"string"}}, "age": map[string]interface{}{"type": []string{"integer"}}, "height": map[string]interface{}{"type": []string{"number"}}, "name": map[string]interface{}{"type": []string{"string"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}, {"stream": map[string]interface{}{"name": "incr", "namespace": "incr", "type_schema": map[string]interface{}{"properties": map[string]interface{}{"_id": map[string]interface{}{"type": []string{"string"}}, "time": map[string]interface{}{"type": []string{"integer"}}, "time_here": map[string]interface{}{"type": []string{"integer"}}}}, "supported_sync_modes": []string{"full_refresh", "cdc"}, "source_defined_primary_key": []string{"_id"}, "available_cursor_fields": []string{}, "sync_mode": "cdc"}}}}}
+	// Initialize Docker runner
+	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 
-	utils.SuccessResponse(&c.Controller, response)
+	// Execute Docker command to get catalog
+	catalog, err := runner.GetCatalog(source.Type, source.Version, source.Config, source.ID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to generate catalog: %v", err))
+		return
+	}
+
+	// Return catalog data
+	utils.SuccessResponse(&c.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
