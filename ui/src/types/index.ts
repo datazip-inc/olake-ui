@@ -9,6 +9,8 @@ export interface Job {
 	createdAt: Date
 	lastSync?: string
 	lastSyncStatus?: "success" | "failed" | "running"
+	replication_frequency?: string
+	paused?: boolean
 }
 
 export interface JobBasic {

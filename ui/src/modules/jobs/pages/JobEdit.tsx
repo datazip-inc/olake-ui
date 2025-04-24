@@ -31,10 +31,7 @@ interface DestinationData {
 const JobSourceEdit = ({ sourceData }: { sourceData: SourceData }) => {
 	return (
 		<div className="flex h-full flex-col">
-			<div
-				className="flex-1 overflow-auto"
-				style={{ paddingBottom: "80px" }}
-			>
+			<div className="flex-1 overflow-auto">
 				<SourceEdit
 					fromJobFlow={true}
 					stepNumber="1"
@@ -74,7 +71,7 @@ const JobEdit: React.FC = () => {
 	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
-	const [docsMinimized, setDocsMinimized] = useState(false)
+	const [docsMinimized, setDocsMinimized] = useState(true)
 
 	// Source and destination data for job
 	const [sourceData, setSourceData] = useState<SourceData | null>(null)
@@ -128,14 +125,12 @@ const JobEdit: React.FC = () => {
 				name: job.destination || "AWS S3 Destination",
 				type: "Amazon S3",
 				config: {
-					writer: {
-						normalization: false,
-						s3_bucket: "my-test-bucket",
-						s3_region: "ap-south-1",
-						s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-						s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-						s3_path: "/data/test",
-					},
+					normalization: false,
+					s3_bucket: "my-test-bucket",
+					s3_region: "ap-south-1",
+					s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
+					s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+					s3_path: "/data/test",
 					type: "PARQUET",
 				},
 			}
@@ -164,14 +159,12 @@ const JobEdit: React.FC = () => {
 				name: "New S3 Destination",
 				type: "Amazon S3",
 				config: {
-					writer: {
-						normalization: false,
-						s3_bucket: "my-new-bucket",
-						s3_region: "us-east-1",
-						s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-						s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-						s3_path: "/data/new",
-					},
+					normalization: false,
+					s3_bucket: "my-new-bucket",
+					s3_region: "us-east-1",
+					s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
+					s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+					s3_path: "/data/new",
 					type: "PARQUET",
 				},
 			})
@@ -234,7 +227,11 @@ const JobEdit: React.FC = () => {
 			</div>
 
 			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
+			<div
+				className={`flex flex-1 overflow-hidden border-gray-200 ${
+					currentStep === "config" || currentStep === "schema" ? "border-t" : ""
+				}`}
+			>
 				{/* Left content */}
 				<div
 					className={`${
@@ -288,15 +285,11 @@ const JobEdit: React.FC = () => {
 				</div>
 
 				{/* Documentation panel */}
-				{(currentStep === "schema" || currentStep === "config") && (
+				{currentStep === "schema" && (
 					<DocumentationPanel
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
-						docUrl={
-							currentStep === "schema"
-								? "https://olake.io/docs/schema-configuration"
-								: "https://olake.io/docs/job-configuration"
-						}
+						docUrl={`https://olake.io/docs/connectors/${sourceData?.type.toLowerCase()}/config`}
 					/>
 				)}
 			</div>

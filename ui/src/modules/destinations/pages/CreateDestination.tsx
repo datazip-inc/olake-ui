@@ -19,6 +19,7 @@ import StepTitle from "../../common/components/StepTitle"
 import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
 import { Destination } from "../../../types"
 import { destinationService } from "../../../api/services/destinationService"
+import { getConnectorName } from "../../../utils/utils"
 
 interface ExtendedDestination extends Destination {
 	config?: any
@@ -369,7 +370,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 													{ value: "AWS Glue", label: "AWS Glue" },
 													{ value: "REST Catalog", label: "REST catalog" },
 													{ value: "JDBC Catalog", label: "JDBC" },
-													{ value: "HIVE Catalog", label: "HIVE catalog" },
+													{ value: "Hive Catalog", label: "Hive catalog" },
 												]}
 											/>
 										) : (
@@ -438,7 +439,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 														{ value: "AWS Glue", label: "AWS Glue" },
 														{ value: "REST Catalog", label: "REST catalog" },
 														{ value: "JDBC Catalog", label: "JDBC" },
-														{ value: "HIVE Catalog", label: "HIVE catalog" },
+														{ value: "Hive Catalog", label: "Hive catalog" },
 													]}
 												/>
 											) : (
@@ -526,7 +527,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 
 				{/* Documentation panel */}
 				<DocumentationPanel
-					docUrl="https://olake.io/docs/category/aws-s3"
+					docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
 					showResizer={true}
 				/>
 			</div>

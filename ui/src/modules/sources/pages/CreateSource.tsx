@@ -296,10 +296,10 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 															<div className="flex items-center">
 																<img
 																	src={getConnectorImage("Postgres")}
-																	alt="PostgreSQL"
+																	alt="Postgres"
 																	className="mr-2 size-5"
 																/>
-																<span>PostgreSQL</span>
+																<span>Postgres</span>
 															</div>
 														),
 													},
@@ -362,15 +362,15 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 														),
 													},
 													{
-														value: "PostgreSQL",
+														value: "Postgres",
 														label: (
 															<div className="flex items-center">
 																<img
 																	src={getConnectorImage("Postgres")}
-																	alt="PostgreSQL"
+																	alt="Postgres"
 																	className="mr-2 size-5"
 																/>
-																<span>PostgreSQL</span>
+																<span>Postgres</span>
 															</div>
 														),
 													},
@@ -441,7 +441,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				</div>
 
 				<DocumentationPanel
-					docUrl={`https://olake.io/docs/category/${connector.toLowerCase()}`}
+					docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}/config`}
 					isMinimized={isDocPanelCollapsed}
 					onToggle={toggleDocPanel}
 					showResizer={true}

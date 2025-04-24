@@ -6,6 +6,7 @@ import JobTable from "../components/JobTable"
 import FirstJob from "../../../assets/FirstJob.svg"
 import JobsTutorial from "../../../assets/JobsTutorial.svg"
 import { GitCommit, PlayCircle, Plus } from "@phosphor-icons/react"
+import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -15,9 +16,8 @@ const Jobs: React.FC = () => {
 		isLoadingJobs,
 		jobsError,
 		fetchJobs,
-		runJob,
-		updateJob,
-		deleteJob,
+		setShowDeleteJobModal,
+		setSelectedJobId,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -33,10 +33,6 @@ const Jobs: React.FC = () => {
 
 	const handleSyncJob = (id: string) => {
 		message.info(`Syncing job ${id}`)
-		runJob(id).catch(error => {
-			message.error("Failed to sync job")
-			console.error(error)
-		})
 	}
 
 	const handleEditJob = (id: string) => {
@@ -46,21 +42,19 @@ const Jobs: React.FC = () => {
 
 	const handlePauseJob = (id: string) => {
 		message.info(`Pausing job ${id}`)
-		updateJob(id, { status: "inactive" }).catch(error => {
-			message.error("Failed to pause job")
-			console.error(error)
-		})
+		// updateJob(id, { status: "inactive" }).catch(error => {
+		// 	message.error("Failed to pause job")
+		// 	console.error(error)
+		// })
 	}
 
 	const handleDeleteJob = (id: string) => {
 		message.info(`Deleting job ${id}`)
-		deleteJob(id).catch(error => {
-			message.error("Failed to delete job")
-			console.error(error)
-		})
+		setShowDeleteJobModal(true)
+		setSelectedJobId(id)
 	}
 
-	const filteredJobs = jobs.filter(job => job.status === activeTab)
+	const filteredJobs = jobs.filter(job => job?.status === activeTab)
 	const showEmpty = jobs.length === 0
 
 	const tabItems = [
@@ -171,6 +165,7 @@ const Jobs: React.FC = () => {
 						),
 				}))}
 			/>
+			<DeleteJobModal />
 		</div>
 	)
 }

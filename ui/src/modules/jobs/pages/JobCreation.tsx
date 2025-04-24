@@ -19,7 +19,7 @@ import { JobCreationSteps } from "../../../types"
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
-	const [docsMinimized, setDocsMinimized] = useState(false)
+	const [docsMinimized, setDocsMinimized] = useState(true)
 
 	// Source and destination states
 	const [sourceName, setSourceName] = useState("")
@@ -262,7 +262,7 @@ const JobCreation: React.FC = () => {
 				</div>
 
 				{/* Documentation panel */}
-				{(currentStep === "schema" || currentStep === "config") && (
+				{currentStep === "schema" && (
 					<DocumentationPanel
 						docUrl="https://olake.io/docs/category/mongodb"
 						isMinimized={docsMinimized}

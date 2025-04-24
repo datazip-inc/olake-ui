@@ -12,6 +12,7 @@ import type { RJSFSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import { getConnectorImage } from "../../../utils/utils"
+import EditSourceModal from "../../common/Modals/EditSourceModal"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -38,6 +39,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
 	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
 
+	// Add a state for tracking paused job IDs
+	const [pausedJobIds, setPausedJobIds] = useState<string[]>([])
+
 	// Mock data for each connector type
 	const mockData = {
 		MongoDB: {
@@ -56,7 +60,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			backoff_retry_count: 3,
 			partition_strategy: "",
 		},
-		PostgreSQL: {
+		Postgres: {
 			host: "localhost",
 			port: 5432,
 			database: "test_db",
@@ -199,18 +203,18 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			},
 			required: ["hosts", "username", "password", "database", "collection"],
 		},
-		PostgreSQL: {
+		Postgres: {
 			type: "object",
 			properties: {
 				host: {
 					type: "string",
 					title: "Host",
-					description: "PostgreSQL server host",
+					description: "Postgres server host",
 				},
 				port: {
 					type: "integer",
 					title: "Port",
-					description: "PostgreSQL server port",
+					description: "Postgres server port",
 					default: 5432,
 				},
 				database: {
@@ -235,33 +239,27 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					description: "Additional connection parameters",
 					default: "",
 				},
-				ssl: {
-					type: "object",
-					title: "SSL Configuration",
-					properties: {
-						mode: {
-							type: "string",
-							title: "SSL Mode",
-							description: "SSL connection mode",
-							enum: ["disable", "require", "verify-ca", "verify-full"],
-							default: "disable",
-						},
-						client_cert: {
-							type: "string",
-							title: "Client Certificate",
-							description: "Path to client certificate file",
-						},
-						client_key: {
-							type: "string",
-							title: "Client Key",
-							description: "Path to client key file",
-						},
-						server_ca: {
-							type: "string",
-							title: "Server CA",
-							description: "Path to server CA certificate",
-						},
-					},
+				mode: {
+					type: "string",
+					title: "SSL Mode",
+					description: "SSL connection mode",
+					enum: ["disable", "require", "verify-ca", "verify-full"],
+					default: "disable",
+				},
+				client_cert: {
+					type: "string",
+					title: "Client Certificate",
+					description: "Path to client certificate file",
+				},
+				client_key: {
+					type: "string",
+					title: "Client Key",
+					description: "Path to client key file",
+				},
+				server_ca: {
+					type: "string",
+					title: "Server CA",
+					description: "Path to server CA certificate",
 				},
 				schema: {
 					type: "string",
@@ -274,22 +272,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					title: "Table",
 					description: "Table to sync",
 				},
-				update_method: {
-					type: "object",
-					title: "Update Method Configuration",
-					properties: {
-						replication_slot: {
-							type: "string",
-							title: "Replication Slot",
-							description: "Name of the replication slot",
-						},
-						intial_wait_time: {
-							type: "integer",
-							title: "Initial Wait Time",
-							description: "Time to wait before starting replication (seconds)",
-							default: 10,
-						},
-					},
+				replication_slot: {
+					type: "string",
+					title: "Replication Slot",
+					description: "Name of the replication slot",
+				},
+				intial_wait_time: {
+					type: "integer",
+					title: "Initial Wait Time",
+					description: "Time to wait before starting replication (seconds)",
+					default: 10,
 				},
 				publication: {
 					type: "string",
@@ -348,17 +340,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					description: "Skip verification of TLS certificate",
 					default: true,
 				},
-				update_method: {
-					type: "object",
-					title: "Update Method Configuration",
-					properties: {
-						intial_wait_time: {
-							type: "integer",
-							title: "Initial Wait Time",
-							description: "Time to wait before starting replication (seconds)",
-							default: 10,
-						},
-					},
+				intial_wait_time: {
+					type: "integer",
+					title: "Initial Wait Time",
+					description: "Time to wait before starting replication (seconds)",
+					default: 10,
 				},
 				server_id: {
 					type: "integer",
@@ -436,6 +422,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				className: "grid grid-cols-1 gap-4",
 			},
 		},
+		intial_wait_time: {
+			"ui:options": {
+				className: "grid grid-cols-1 gap-4",
+			},
+		},
+		replication_slot: {
+			"ui:options": {
+				className: "grid grid-cols-1 gap-4",
+			},
+		},
 	}
 
 	// Connector-specific UI order
@@ -456,7 +452,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			"backoff_retry_count",
 			"partition_strategy",
 		],
-		PostgreSQL: [
+		Postgres: [
 			"host",
 			"port",
 			"database",
@@ -468,6 +464,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			"table",
 			"update_method",
 			"publication",
+			"replication_slot",
+			"intial_wait_time",
+			"mode",
+			"client_cert",
+			"client_key",
+			"server_ca",
 		],
 		MySQL: [
 			"hosts",
@@ -483,11 +485,19 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			"max_threads",
 			"backoff_retry_count",
 			"default_mode",
+			"intial_wait_time",
 		],
 	}
 
-	const { sources, jobs, fetchSources, fetchJobs, addSource, updateSource } =
-		useAppStore()
+	const {
+		sources,
+		jobs,
+		fetchSources,
+		fetchJobs,
+		addSource,
+		updateSource,
+		setShowEditSourceModal,
+	} = useAppStore()
 
 	// Load source data when editing
 	useEffect(() => {
@@ -508,8 +518,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				// This addresses case sensitivity issues
 				let normalizedType = source.type
 				if (source.type.toLowerCase() === "mongodb") normalizedType = "MongoDB"
-				if (source.type.toLowerCase() === "postgresql")
-					normalizedType = "PostgreSQL"
+				if (source.type.toLowerCase() === "postgres")
+					normalizedType = "Postgres"
 				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
 
 				setConnector(normalizedType)
@@ -583,12 +593,13 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	// Mock associated jobs for the source
 	const associatedJobs = jobs.slice(0, 5).map(job => ({
 		...job,
-		state: Math.random() > 0.7 ? "Inactive" : "Active",
+		state: "Active",
 		lastRuntime: "3 hours ago",
 		lastRuntimeStatus: "Success",
 		destination: {
-			name: "Production S3 Data Lake",
+			name: "AWS S3 Data Lake",
 			type: "Amazon S3",
+			paused: false,
 			config: {
 				s3_bucket: "prod-data-lake",
 				s3_region: "us-west-2",
@@ -601,12 +612,13 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	// Additional jobs that will be shown when "View all" is clicked
 	const additionalJobs = jobs.slice(5, 10).map(job => ({
 		...job,
-		state: Math.random() > 0.7 ? "Inactive" : "Active",
+		state: "Active",
 		lastRuntime: "3 hours ago",
 		lastRuntimeStatus: "Success",
 		destination: {
-			name: "Analytics Data Warehouse",
+			name: "AWS S3 Warehouse",
 			type: "AWS Glue Catalog",
+			paused: false,
 			config: {
 				database: "analytics_db",
 				region: "us-west-2",
@@ -620,6 +632,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		: associatedJobs
 
 	const handleSave = () => {
+		if (!isNewSource && mockAssociatedJobs.length > 0) {
+			// Show warning modal if editing an existing source with jobs
+			setShowEditSourceModal(true)
+			return
+		}
+
+		saveSource()
+	}
+
+	const saveSource = () => {
 		// Ensure we have the proper structure before saving
 		let configToSave = { ...formData }
 
@@ -680,10 +702,25 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	const handlePauseAllJobs = (checked: boolean) => {
+		if (checked) {
+			// Pause all jobs - add all job IDs to pausedJobIds
+			const allJobIds = displayedJobs.map(job => job.id)
+			setPausedJobIds(allJobIds)
+		} else {
+			// Resume all jobs - clear pausedJobIds
+			setPausedJobIds([])
+		}
 		message.info(`${checked ? "Pausing" : "Resuming"} all jobs for this source`)
 	}
 
 	const handlePauseJob = (jobId: string, checked: boolean) => {
+		// Update the pausedJobIds state to track which jobs are paused
+		if (checked) {
+			setPausedJobIds(prev => [...prev, jobId])
+		} else {
+			setPausedJobIds(prev => prev.filter(id => id !== jobId))
+		}
+
 		message.info(`${checked ? "Pausing" : "Resuming"} job ${jobId}`)
 	}
 
@@ -699,17 +736,17 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		},
 		{
 			title: "State",
-			dataIndex: "state",
+			dataIndex: "id",
 			key: "state",
-			render: (state: string) => (
+			render: (jobId: string) => (
 				<span
 					className={`rounded px-2 py-1 text-xs ${
-						state === "Inactive"
+						pausedJobIds.includes(jobId)
 							? "bg-[#FFF1F0] text-[#F5222D]"
 							: "bg-[#E6F4FF] text-[#0958D9]"
 					}`}
 				>
-					{state}
+					{pausedJobIds.includes(jobId) ? "Inactive" : "Active"}
 				</span>
 			),
 		},
@@ -735,24 +772,26 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			key: "destination",
 			render: (destination: any) => (
 				<div className="flex items-center">
-					<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-						<span>
-							{destination.type === "AWS S3" ? "S" : destination.type.charAt(0)}
-						</span>
-					</div>
+					<img
+						src={getConnectorImage(destination.type)}
+						alt={destination.type}
+						className="mr-2 size-6"
+					/>
 					{destination.name}
 				</div>
 			),
 		},
 		{
-			title: "Pause job",
+			title: "Running status",
 			dataIndex: "id",
 			key: "pause",
-			render: (_: string, record: SourceJob) => (
+			render: (jobId: string) => (
 				<Switch
-					checked={record.paused}
-					onChange={checked => handlePauseJob(record.id, checked)}
-					className={record.paused ? "bg-blue-600" : "bg-gray-200"}
+					checked={!pausedJobIds.includes(jobId)}
+					onChange={checked => handlePauseJob(jobId, !checked)}
+					className={
+						!pausedJobIds.includes(jobId) ? "bg-blue-600" : "bg-gray-200"
+					}
 				/>
 			),
 		},
@@ -867,15 +906,15 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														),
 													},
 													{
-														value: "PostgreSQL",
+														value: "Postgres",
 														label: (
 															<div className="flex items-center">
 																<img
 																	src={getConnectorImage("Postgres")}
-																	alt="PostgreSQL"
+																	alt="Postgres"
 																	className="mr-2 size-5"
 																/>
-																<span>PostgreSQL</span>
+																<span>Postgres</span>
 															</div>
 														),
 													},
@@ -971,12 +1010,14 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				</div>
 
 				<DocumentationPanel
-					docUrl="https://olake.io/docs/category/mongodb"
+					docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}/config`}
 					isMinimized={docsMinimized}
 					onToggle={toggleDocsPanel}
 					showResizer={true}
 				/>
 			</div>
+
+			<EditSourceModal mockAssociatedJobs={mockAssociatedJobs} />
 
 			{/* Delete Modal */}
 			<DeleteModal fromSource={true} />

@@ -31,3 +31,19 @@ export const getConnectorImage = (connector: string) => {
 	// Default placeholder
 	return MongoDB
 }
+
+export const getConnectorName = (connector: string, catalog: string | null) => {
+	if (connector === "Amazon S3") {
+		return "s3/config"
+	} else if (connector === "Apache Iceberg") {
+		if (catalog === "AWS Glue") {
+			return "iceberg/catalog/glue"
+		} else if (catalog === "REST Catalog") {
+			return "iceberg/catalog/rest"
+		} else if (catalog === "JDBC Catalog") {
+			return "iceberg/catalog/jdbc"
+		} else if (catalog === "Hive Catalog") {
+			return "iceberg/catalog/hive"
+		}
+	}
+}

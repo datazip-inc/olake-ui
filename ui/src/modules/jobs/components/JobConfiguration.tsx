@@ -1,5 +1,6 @@
 import { Input, Select, Switch } from "antd"
 import StepTitle from "../../common/components/StepTitle"
+import { useState } from "react"
 
 interface JobConfigurationProps {
 	jobName: string
@@ -21,11 +22,11 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	setReplicationFrequency,
 	schemaChangeStrategy,
 	setSchemaChangeStrategy,
-	notifyOnSchemaChanges,
-	setNotifyOnSchemaChanges,
 	stepNumber = 4,
 	stepTitle = "Job Configuration",
 }) => {
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
 	return (
 		<div className="w-full p-6">
 			{stepNumber && stepTitle && (
@@ -50,8 +51,9 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 						</label>
 						<div className="flex w-full items-center gap-2">
 							<Input
-								value={jobName}
-								onChange={e => setJobName(e.target.value)}
+								value={replicationFrequencyValue}
+								defaultValue={replicationFrequencyValue}
+								onChange={e => setReplicationFrequencyValue(e.target.value)}
 								className="w-2/5"
 							/>
 
@@ -97,17 +99,6 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 						/>
 					</div>
 				</div>
-			</div>
-
-			<div className="flex items-center justify-between rounded-xl border border-gray-200 p-6">
-				<span className="font-medium">
-					Be notified when schema changes occur
-				</span>
-				<Switch
-					checked={notifyOnSchemaChanges}
-					onChange={setNotifyOnSchemaChanges}
-					className={notifyOnSchemaChanges ? "bg-blue-600" : ""}
-				/>
 			</div>
 		</div>
 	)

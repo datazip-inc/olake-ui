@@ -11,16 +11,20 @@ export const mockJobs: Job[] = [
 		createdAt: new Date("2025-01-15T10:30:00Z"),
 		lastSync: "2 hours ago",
 		lastSyncStatus: "success",
+		replication_frequency: "daily",
+		paused: false,
 	},
 	{
 		id: "2",
 		name: "Inventory Sync",
 		status: "active",
-		source: "PostgreSQL Inventory",
+		source: "Postgres Inventory",
 		destination: "AWS Glue Analytics",
 		createdAt: new Date("2025-01-20T14:45:00Z"),
 		lastSync: "5 hours ago",
 		lastSyncStatus: "success",
+		replication_frequency: "daily",
+		paused: false,
 	},
 	{
 		id: "3",
@@ -31,6 +35,8 @@ export const mockJobs: Job[] = [
 		createdAt: new Date("2025-01-10T09:15:00Z"),
 		lastSync: "1 day ago",
 		lastSyncStatus: "failed",
+		replication_frequency: "daily",
+		paused: false,
 	},
 ]
 
@@ -67,8 +73,8 @@ export const mockSources: Source[] = [
 	},
 	{
 		id: "2",
-		name: "PostgreSQL Inventory",
-		type: "PostgreSQL",
+		name: "Postgres Inventory",
+		type: "Postgres",
 		status: "active",
 		createdAt: new Date("2025-01-20T14:45:00Z"),
 		config: {
@@ -91,7 +97,7 @@ export const mockSources: Source[] = [
 		},
 		associatedJobs: [
 			{
-				source: "PostgreSQL Inventory",
+				source: "Postgres Inventory",
 				destination: "AWS Glue Analytics",
 				jobName: "Inventory Sync",
 			},
@@ -152,7 +158,7 @@ export const mockDestinations: Destination[] = [
 		createdAt: new Date("2025-01-20T14:45:00Z"),
 		associatedJobs: [
 			{
-				source: "PostgreSQL Inventory",
+				source: "Postgres Inventory",
 				destination: "AWS Glue Analytics",
 				jobName: "Inventory Sync",
 			},

@@ -1,5 +1,8 @@
 import api from "../axios"
 import { Job, JobHistory, JobLog } from "../../types"
+import { mockJobs } from "../mockData"
+
+const useMockData = true
 
 export const jobService = {
 	// Get all jobs
@@ -28,8 +31,17 @@ export const jobService = {
 
 	// Delete job
 	deleteJob: async (id: string) => {
-		const response = await api.delete(`/jobs/${id}`)
-		return response.data
+		if (useMockData) {
+			const index = mockJobs.findIndex(j => j.id === id)
+			if (index === -1) throw new Error("Job not found")
+
+			mockJobs.splice(index, 1)
+			return new Promise<void>(resolve => {
+				setTimeout(() => resolve(), 300)
+			})
+		}
+		// const response = await api.delete(`/jobs/${id}`)
+		// return response.data
 	},
 
 	// Run job

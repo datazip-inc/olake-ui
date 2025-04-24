@@ -8,6 +8,7 @@ import {
 	Info,
 	LinktreeLogo,
 	Path,
+	X,
 } from "@phosphor-icons/react"
 
 interface LayoutProps {
@@ -16,6 +17,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const [collapsed, setCollapsed] = useState(false)
+	const [showUpdate, setShowUpdate] = useState(true)
 
 	const toggleSidebar = () => {
 		setCollapsed(!collapsed)
@@ -102,9 +104,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 					</NavLink>
 				</nav>
 
-				{!collapsed && (
+				{!collapsed && showUpdate && (
 					<div className="p-4">
-						<div className="rounded-xl border-[1px] border-[#EFEFEF] bg-[#F6F6F6] p-3">
+						<div className="relative rounded-xl border-[1px] border-[#EFEFEF] bg-[#F6F6F6] p-3">
+							<button
+								onClick={() => setShowUpdate(false)}
+								className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200"
+							>
+								<X
+									size={12}
+									color="#383838"
+								/>
+							</button>
 							<div className="flex items-center gap-2">
 								<Info
 									weight="fill"

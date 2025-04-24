@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { StreamConfigurationProps } from "../../../../types"
 import { Button, Input, Radio, Select, Switch, Table } from "antd"
 import StreamsSchema from "./StreamsSchema"
@@ -12,8 +12,8 @@ import { PARTITIONING_COLUMNS } from "../../../../utils/constants"
 // Constants for styling
 const TAB_STYLES = {
 	active:
-		"z-10 border border-[#203FDD] bg-white text-[#203FDD] rounded-[6px] py-2",
-	inactive: "bg-transparent text-slate-900 py-2  border-none",
+		"border border-[#203FDD] bg-white text-[#203FDD] rounded-[6px] py-1 px-2",
+	inactive: "bg-[#F5F5F5] text-slate-900 py-1 px-2",
 	hover: "hover:text-[#203FDD]",
 }
 
@@ -30,6 +30,11 @@ const StreamConfiguration = ({ stream }: StreamConfigurationProps) => {
 	const [selectedGranularity, setSelectedGranularity] = useState<string | null>(
 		null,
 	)
+
+	useEffect(() => {
+		setActiveTab("config")
+	}, [stream])
+
 	const [tableData, setTableData] = useState<
 		Array<{ name: string; granularity: string; default: string }>
 	>([])
@@ -112,14 +117,15 @@ const StreamConfiguration = ({ stream }: StreamConfigurationProps) => {
 				: `${TAB_STYLES.inactive} ${TAB_STYLES.hover}`
 
 		return (
-			<Button
-				className={`${tabStyle} flex items-center justify-center`}
-				style={{ width: "32%", fontWeight: 500 }}
+			<button
+				className={`${tabStyle} flex items-center justify-center gap-1 text-xs`}
+				style={{ fontWeight: 500, height: "28px", width: "100%" }}
 				onClick={() => setActiveTab(id)}
+				type="button"
 			>
 				<span className="flex items-center">{icon}</span>
 				{label}
-			</Button>
+			</button>
 		)
 	}
 
@@ -290,21 +296,21 @@ const StreamConfiguration = ({ stream }: StreamConfigurationProps) => {
 		<div>
 			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
 			<div className="mb-4 w-full">
-				<div className="flex w-full items-center justify-between rounded-[6px] bg-[#F5F5F5] px-1 py-1">
+				<div className="grid grid-cols-3 gap-1 rounded-[6px] bg-[#F5F5F5] p-1">
 					<TabButton
 						id="config"
 						label="Config"
-						icon={<SlidersHorizontal className="size-4" />}
+						icon={<SlidersHorizontal className="size-3.5" />}
 					/>
 					<TabButton
 						id="schema"
 						label="Schema"
-						icon={<ColumnsPlusRight className="size-4" />}
+						icon={<ColumnsPlusRight className="size-3.5" />}
 					/>
 					<TabButton
 						id="partitioning"
 						label="Partitioning"
-						icon={<GridFour className="size-4" />}
+						icon={<GridFour className="size-3.5" />}
 					/>
 				</div>
 			</div>

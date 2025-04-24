@@ -150,56 +150,6 @@ const mockSourceConnectorSchemas = {
 	Postgres: {
 		$schema: "https://json-schema.org/draft/2020-12/schema",
 		type: "object",
-		definitions: {
-			SSLConfig: {
-				properties: {
-					mode: {
-						enum: ["disable", "require", "verify-ca", "verify-full"],
-						title: "SSL Mode",
-						type: "string",
-						description: "SSL mode for database connection",
-						default: "disable",
-					},
-					client_cert: {
-						title: "Client Certificate",
-						type: "string",
-						description: "Path to client certificate file",
-					},
-					client_key: {
-						title: "Client Certificate Key",
-						type: "string",
-						description: "Path to client certificate key file",
-					},
-					server_ca: {
-						title: "CA Certificate",
-						type: "string",
-						description: "Path to server CA certificate file",
-					},
-				},
-				required: ["mode"],
-				type: "object",
-			},
-			UpdateMethod: {
-				type: "object",
-				title: "Update Method Configuration",
-				description: "Specifies the mechanism for updating data",
-				properties: {
-					replication_slot: {
-						type: "string",
-						title: "Replication Slot",
-						description: "Name of the logical replication slot",
-					},
-					intial_wait_time: {
-						type: "integer",
-						title: "Initial Wait Time",
-						description:
-							"Time to wait before starting replication (in seconds)",
-						default: 10,
-					},
-				},
-				required: ["replication_slot", "intial_wait_time"],
-			},
-		},
 		properties: {
 			host: {
 				type: "string",
@@ -239,15 +189,38 @@ const mockSourceConnectorSchemas = {
 				description:
 					"A collection of additional JDBC URL parameters to fine-tune the connection",
 			},
-			ssl: {
-				$ref: "#/definitions/SSLConfig",
-				title: "SSL Configuration",
-				description: "SSL configuration for the database connection",
+			mode: {
+				enum: ["disable", "require", "verify-ca", "verify-full"],
+				title: "SSL Mode",
+				type: "string",
+				description: "SSL mode for database connection",
+				default: "disable",
 			},
-			update_method: {
-				$ref: "#/definitions/UpdateMethod",
-				title: "Update Method",
-				description: "Specifies the mechanism for updating data",
+			client_cert: {
+				title: "Client Certificate",
+				type: "string",
+				description: "Path to client certificate file",
+			},
+			client_key: {
+				title: "Client Certificate Key",
+				type: "string",
+				description: "Path to client certificate key file",
+			},
+			server_ca: {
+				title: "CA Certificate",
+				type: "string",
+				description: "Path to server CA certificate file",
+			},
+			replication_slot: {
+				type: "string",
+				title: "Replication Slot",
+				description: "Name of the logical replication slot",
+			},
+			intial_wait_time: {
+				type: "integer",
+				title: "Initial Wait Time",
+				description: "Time to wait before starting replication (in seconds)",
+				default: 10,
 			},
 			reader_batch_size: {
 				type: "integer",
@@ -295,16 +268,15 @@ const mockSourceConnectorSchemas = {
 				"default_mode",
 				"max_threads",
 				"jdbc_url_params",
+				"mode",
+				"client_cert",
+				"client_key",
+				"server_ca",
+				"replication_slot",
+				"intial_wait_time",
 			],
 			"ui:className":
 				"mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm",
-			ssl: {
-				"ui:title": "SSL Configuration",
-				"ui:description": "Configure SSL settings for the database connection",
-				"ui:options": {
-					className: "grid grid-cols-1 gap-4",
-				},
-			},
 			update_method: {
 				"ui:title": "Update Method Configuration",
 				"ui:description": "Configure how data updates are handled",
@@ -317,24 +289,6 @@ const mockSourceConnectorSchemas = {
 	MySQL: {
 		$schema: "https://json-schema.org/draft/2020-12/schema",
 		type: "object",
-		definitions: {
-			UpdateMethod: {
-				type: "object",
-				title: "Update Method Configuration",
-				description: "Specifies the mechanism for updating data",
-				properties: {
-					intial_wait_time: {
-						type: "integer",
-						title: "Initial Wait Time",
-						description:
-							"Time to wait before starting replication (in seconds)",
-						default: 10,
-					},
-				},
-				required: ["intial_wait_time"],
-			},
-		},
-
 		properties: {
 			hosts: {
 				type: "string",
@@ -374,10 +328,11 @@ const mockSourceConnectorSchemas = {
 					"Indicates whether to skip TLS certificate verification for secure connections",
 				default: true,
 			},
-			update_method: {
-				$ref: "#/definitions/UpdateMethod",
-				title: "Update Method",
-				description: "Specifies the mechanism for updating data",
+			intial_wait_time: {
+				type: "integer",
+				title: "Initial Wait Time",
+				description: "Time to wait before starting replication (in seconds)",
+				default: 10,
 			},
 			default_mode: {
 				type: "string",
@@ -423,6 +378,7 @@ const mockSourceConnectorSchemas = {
 				"default_mode",
 				"max_threads",
 				"backoff_retry_count",
+				"intial_wait_time",
 			],
 			"ui:className":
 				"mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm",
@@ -473,8 +429,8 @@ const mockSources: Source[] = [
 	},
 	{
 		id: "2",
-		name: "PostgreSQL Source",
-		type: "PostgreSQL",
+		name: "Postgres Source",
+		type: "Postgres",
 		status: "active",
 		createdAt: new Date("2025-01-20T14:45:00Z"),
 		config: {
