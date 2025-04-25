@@ -42,17 +42,17 @@ func (r *JobORM) GetAllByProjectID(projectID int) ([]*models.Job, error) {
 	var jobs []*models.Job
 
 	// Query sources in the project
-	sourceTable := "source" // This should match the actual table name
+	sourceTable := constants.TableNameMap[constants.SourceTable]
 	sources := []int{}
-	_, err := r.ormer.Raw(fmt.Sprintf("SELECT id FROM %s WHERE project_id = ?", sourceTable), projectID).QueryRows(&sources)
+	_, err := r.ormer.Raw(fmt.Sprintf(`SELECT id FROM "%s" WHERE project_id = ?`, sourceTable), projectID).QueryRows(&sources)
 	if err != nil {
 		return nil, err
 	}
 
 	// Query destinations in the project
-	destTable := "destination" // This should match the actual table name
+	destTable := constants.TableNameMap[constants.DestinationTable]
 	destinations := []int{}
-	_, err = r.ormer.Raw(fmt.Sprintf("SELECT id FROM %s WHERE project_id = ?", destTable), projectID).QueryRows(&destinations)
+	_, err = r.ormer.Raw(fmt.Sprintf(`SELECT id FROM "%s" WHERE project_id = ?`, destTable), projectID).QueryRows(&destinations)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,6 @@ func (r *JobORM) GetAllByProjectID(projectID int) ([]*models.Job, error) {
 
 	// Build query
 	qs := r.ormer.QueryTable(r.TableName)
-
 	// Filter by sources or destinations from the project
 	if len(sources) > 0 {
 		qs = qs.Filter("source_id__in", sources)
