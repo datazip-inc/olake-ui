@@ -62,39 +62,29 @@ func (c *SourceHandler) GetAllSources() {
 
 		// Fetch associated jobs for this source
 		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		if err == nil && len(jobs) > 0 {
-			sourceJobs := make([]map[string]interface{}, 0, len(jobs))
+		sourceJobs := make([]map[string]interface{}, 0) // always initialize
+		if err == nil {
 			for _, job := range jobs {
 				jobInfo := map[string]interface{}{
 					"name":     job.Name,
 					"id":       job.ID,
 					"activate": job.Active,
 				}
-
+				jobInfo["source_type"] = source.Type
 				// Add destination name if available
 				if job.DestID != nil {
 					jobInfo["dest_name"] = job.DestID.Name
 				}
 
-				// Add last run information if available
-				// if job.State != "" {
-				// 	var state map[string]interface{}
-				// 	if err := json.Unmarshal([]byte(job.State), &state); err == nil {
-				// 		if lastRunTime, ok := state["last_run_time"].(string); ok {
-				// 			//jobInfo["last_run_time"] = lastRunTime
-				// 		}
-				// 		if lastRunState, ok := state["last_run_state"].(string); ok {
-				// 			//jobInfo["last_run_state"] = lastRunState
-				// 		}
-				// 	}
-				// }
+				// Add hardcoded last run info (or parse from job.State if needed)
 				jobInfo["last_run_time"] = "2025-04-27T15:30:00Z"
-				jobInfo["last_run_state"] = "{\"type\":\"GLOBAL\",\"global\":{\"server_id\":5000,\"state\":{\"position\":{\"Name\":\"mysql-bin.000040\",\"Pos\":12569}},\"streams\":[\"mydatabase.vbnm\",\"mydatabase.random_table\",\"mydatabase.large_rows\",\"mydatabase.items\",\"mydatabase.qwerty\",\"mydatabase.users\"]},\"streams\":[{\"stream\":\"vbnm\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"random_table\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"large_rows\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"test_data2\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[{\"min\":\"1\",\"max\":null}]}}, {\"stream\":\"items\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"test_data\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[{\"min\":\"1\",\"max\":null}]}}]}\""
+				jobInfo["last_run_state"] = "success"
 
 				sourceJobs = append(sourceJobs, jobInfo)
 			}
-			item.Jobs = sourceJobs
 		}
+		// Assign jobs even if empty
+		item.Jobs = sourceJobs
 
 		sourceItems = append(sourceItems, item)
 	}
@@ -201,6 +191,11 @@ func (c *SourceHandler) DeleteSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return
 	}
+	jobs, err := c.jobORM.GetBySourceID(id)
+	for _, job := range jobs {
+		job.Active = false
+	}
+
 	if err := c.sourceORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return

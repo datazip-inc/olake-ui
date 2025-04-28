@@ -104,7 +104,7 @@ type SourceDataItem struct {
 	UpdatedAt string                   `json:"updated_at"`
 	CreatedBy string                   `json:"created_by"` // only username of user
 	UpdatedBy string                   `json:"updated_by"` // only username of user
-	Jobs      []map[string]interface{} `json:"jobs,omitempty"`
+	Jobs      []map[string]interface{} `json:"jobs"`
 }
 
 // DestinationDataItem represents a single destination in the response data list
@@ -118,5 +118,5 @@ type DestinationDataItem struct {
 	UpdatedAt string                   `json:"updated_at"`
 	CreatedBy string                   `json:"created_by"` // only username of user
 	UpdatedBy string                   `json:"updated_by"` // only username of user
-	Jobs      []map[string]interface{} `json:"jobs,omitempty"`
+	Jobs      []map[string]interface{} `json:"jobs"`
 }

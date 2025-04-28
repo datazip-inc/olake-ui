@@ -70,14 +70,15 @@ func (c *DestHandler) GetAllDestinations() {
 			item.UpdatedBy = dest.UpdatedBy.Username
 		}
 		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		if err == nil && len(jobs) > 0 {
-			destJobs := make([]map[string]interface{}, 0, len(jobs))
+		destJobs := make([]map[string]interface{}, 0, len(jobs))
+		if err == nil {
 			for _, job := range jobs {
 				jobInfo := map[string]interface{}{
 					"name":     job.Name,
 					"id":       job.ID,
 					"activate": job.Active,
 				}
+				jobInfo["dest_type"] = dest.DestType
 
 				// Add destination name if available
 				if job.DestID != nil {
@@ -97,13 +98,13 @@ func (c *DestHandler) GetAllDestinations() {
 				// 	}
 				// }
 				jobInfo["last_run_time"] = "2025-04-27T15:30:00Z"
-				jobInfo["last_run_state"] = "{\"type\":\"GLOBAL\",\"global\":{\"server_id\":5000,\"state\":{\"position\":{\"Name\":\"mysql-bin.000040\",\"Pos\":12569}},\"streams\":[\"mydatabase.vbnm\",\"mydatabase.random_table\",\"mydatabase.large_rows\",\"mydatabase.items\",\"mydatabase.qwerty\",\"mydatabase.users\"]},\"streams\":[{\"stream\":\"vbnm\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"random_table\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"large_rows\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"test_data2\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[{\"min\":\"1\",\"max\":null}]}}, {\"stream\":\"items\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"test_data\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[{\"min\":\"1\",\"max\":null}]}}]}\""
-
+				jobInfo["last_run_state"] = "success"
 				destJobs = append(destJobs, jobInfo)
 			}
-			item.Jobs = destJobs
 
 		}
+		item.Jobs = destJobs
+
 		destItems = append(destItems, item)
 
 	}
@@ -231,7 +232,10 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
-
+	jobs, err := c.jobORM.GetBySourceID(id)
+	for _, job := range jobs {
+		job.Active = false
+	}
 	if err := c.destORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
 		return
