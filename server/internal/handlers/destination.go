@@ -18,10 +18,12 @@ import (
 type DestHandler struct {
 	web.Controller
 	destORM *database.DestinationORM
+	jobORM  *database.JobORM
 }
 
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
+	c.jobORM = database.NewJobORM()
 }
 
 // @router /project/:projectid/destinations [get]
@@ -67,10 +69,44 @@ func (c *DestHandler) GetAllDestinations() {
 		if dest.UpdatedBy != nil {
 			item.UpdatedBy = dest.UpdatedBy.Username
 		}
+		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
+		if err == nil && len(jobs) > 0 {
+			destJobs := make([]map[string]interface{}, 0, len(jobs))
+			for _, job := range jobs {
+				jobInfo := map[string]interface{}{
+					"name":     job.Name,
+					"id":       job.ID,
+					"activate": job.Active,
+				}
 
+				// Add destination name if available
+				if job.DestID != nil {
+					jobInfo["dest_name"] = job.DestID.Name
+				}
+
+				// Add last run information if available
+				// if job.State != "" {
+				// 	var state map[string]interface{}
+				// 	if err := json.Unmarshal([]byte(job.State), &state); err == nil {
+				// 		if lastRunTime, ok := state["last_run_time"].(string); ok {
+				// 			//jobInfo["last_run_time"] = lastRunTime
+				// 		}
+				// 		if lastRunState, ok := state["last_run_state"].(string); ok {
+				// 			//jobInfo["last_run_state"] = lastRunState
+				// 		}
+				// 	}
+				// }
+				jobInfo["last_run_time"] = "2025-04-27T15:30:00Z"
+				jobInfo["last_run_state"] = "{\"type\":\"GLOBAL\",\"global\":{\"server_id\":5000,\"state\":{\"position\":{\"Name\":\"mysql-bin.000040\",\"Pos\":12569}},\"streams\":[\"mydatabase.vbnm\",\"mydatabase.random_table\",\"mydatabase.large_rows\",\"mydatabase.items\",\"mydatabase.qwerty\",\"mydatabase.users\"]},\"streams\":[{\"stream\":\"vbnm\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"random_table\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"large_rows\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"test_data2\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[{\"min\":\"1\",\"max\":null}]}}, {\"stream\":\"items\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[]}}, {\"stream\":\"test_data\",\"namespace\":\"mydatabase\",\"sync_mode\":\"\",\"state\":{\"chunks\":[{\"min\":\"1\",\"max\":null}]}}]}\""
+
+				destJobs = append(destJobs, jobInfo)
+			}
+			item.Jobs = destJobs
+
+		}
 		destItems = append(destItems, item)
-	}
 
+	}
 	utils.SuccessResponse(&c.Controller, destItems)
 }
 

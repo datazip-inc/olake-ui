@@ -95,26 +95,28 @@ type GetJobStreamsResponse struct {
 
 // SourceDataItem represents a single source in the response data list
 type SourceDataItem struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Version   string `json:"version"`
-	Config    string `json:"config"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-	CreatedBy string `json:"created_by"` // only username of user
-	UpdatedBy string `json:"updated_by"` // only username of user
+	ID        int                      `json:"id"`
+	Name      string                   `json:"name"`
+	Type      string                   `json:"type"`
+	Version   string                   `json:"version"`
+	Config    string                   `json:"config"`
+	CreatedAt string                   `json:"created_at"`
+	UpdatedAt string                   `json:"updated_at"`
+	CreatedBy string                   `json:"created_by"` // only username of user
+	UpdatedBy string                   `json:"updated_by"` // only username of user
+	Jobs      []map[string]interface{} `json:"jobs,omitempty"`
 }
 
 // DestinationDataItem represents a single destination in the response data list
 type DestinationDataItem struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Type      string `json:"type"`
-	Version   string `json:"version"`
-	Config    string `json:"config"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-	CreatedBy string `json:"created_by"` // only username of user
-	UpdatedBy string `json:"updated_by"` // only username of user
+	ID        int                      `json:"id"`
+	Name      string                   `json:"name"`
+	Type      string                   `json:"type"`
+	Version   string                   `json:"version"`
+	Config    string                   `json:"config"`
+	CreatedAt string                   `json:"created_at"`
+	UpdatedAt string                   `json:"updated_at"`
+	CreatedBy string                   `json:"created_by"` // only username of user
+	UpdatedBy string                   `json:"updated_by"` // only username of user
+	Jobs      []map[string]interface{} `json:"jobs,omitempty"`
 }
