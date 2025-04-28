@@ -78,11 +78,11 @@ func (c *DestHandler) GetAllDestinations() {
 					"id":       job.ID,
 					"activate": job.Active,
 				}
-				jobInfo["dest_type"] = dest.DestType
 
 				// Add destination name if available
 				if job.DestID != nil {
-					jobInfo["dest_name"] = job.DestID.Name
+					jobInfo["source_name"] = job.SourceID.Name
+					jobInfo["source_type"] = job.SourceID.Type
 				}
 
 				// Add last run information if available

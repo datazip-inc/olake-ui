@@ -74,6 +74,7 @@ func (c *SourceHandler) GetAllSources() {
 				// Add destination name if available
 				if job.DestID != nil {
 					jobInfo["dest_name"] = job.DestID.Name
+					jobInfo["dest_type"] = job.DestID.DestType
 				}
 
 				// Add hardcoded last run info (or parse from job.State if needed)
