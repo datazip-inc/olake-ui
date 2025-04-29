@@ -12,9 +12,9 @@ type JSONResponse struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 type SpecResponse struct {
-	Version string `json:"version"`
-	Type    string `json:"type"`
-	Spec    string `json:"spec" orm:"type(jsonb)"`
+	Version string      `json:"version"`
+	Type    string      `json:"type"`
+	Spec    interface{} `json:"spec" orm:"type(jsonb)"`
 }
 type DestinationTestConnectionResponse struct {
 	Success bool                             `json:"success"`

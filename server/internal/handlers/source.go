@@ -320,15 +320,256 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 		return
 	}
 
-	var spec string
+	var spec interface{}
 
 	switch req.Type {
 	case "postgres":
-		spec = `{ "host": "string", "port": "integer", "database": "string", "username": "string", "password": "string", "jdbc_url_params": "object", "ssl": { "mode": "string" }, "update_method": { "replication_slot": "string", "intial_wait_time": "integer" }, "reader_batch_size": "integer", "default_mode": "string", "max_threads": "integer" }`
+		spec = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"host": map[string]interface{}{
+					"type":        "string",
+					"title":       "Postgres Host",
+					"description": "Hostname or IP address of the PostgreSQL server",
+				},
+				"port": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Postgres Port",
+					"description": "Port number of the PostgreSQL server",
+					"default":     5432,
+				},
+				"database": map[string]interface{}{
+					"type":        "string",
+					"title":       "Database Name",
+					"description": "Name of the PostgreSQL database",
+				},
+				"username": map[string]interface{}{
+					"type":        "string",
+					"title":       "Username",
+					"description": "Database user for authentication",
+				},
+				"password": map[string]interface{}{
+					"type":        "string",
+					"title":       "Password",
+					"description": "Password for the database user",
+					"format":      "password",
+				},
+				"jdbc_url_params": map[string]interface{}{
+					"type":        "object",
+					"title":       "JDBC URL Parameters",
+					"description": "Optional JDBC parameters as key-value pairs",
+				},
+				"ssl": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"mode": map[string]interface{}{
+							"type":        "string",
+							"title":       "SSL Mode",
+							"description": "SSL mode to connect (disable, require, verify-ca, etc.)",
+							"default":     "disable",
+						},
+					},
+				},
+				"update_method": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"replication_slot": map[string]interface{}{
+							"type":        "string",
+							"title":       "Replication Slot",
+							"description": "Slot name for CDC",
+							"default":     "postgres_slot",
+						},
+						"intial_wait_time": map[string]interface{}{
+							"type":        "integer",
+							"title":       "Initial Wait Time",
+							"description": "Seconds to wait before starting CDC",
+							"default":     10,
+						},
+					},
+				},
+				"reader_batch_size": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Reader Batch Size",
+					"description": "Number of records to read in each batch",
+					"default":     100000,
+				},
+				"default_mode": map[string]interface{}{
+					"type":        "string",
+					"title":       "Default Mode",
+					"description": "Extraction mode (e.g., full or cdc)",
+					"default":     "cdc",
+				},
+				"max_threads": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Max Threads",
+					"description": "Number of threads to use for backfill",
+					"default":     50,
+				},
+			},
+			"required": []string{"host", "port", "database", "username", "password"},
+		}
+
 	case "mysql":
-		spec = `{ "hosts": "string", "username": "string", "password": "string", "database": "string", "port": "integer", "update_method": { "intial_wait_time": "integer" }, "tls_skip_verify": "boolean", "default_mode": "string", "max_threads": "integer", "backoff_retry_count": "integer" }`
+		spec = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"hosts": map[string]interface{}{
+					"type":        "string",
+					"title":       "MySQL Host",
+					"description": "Comma-separated list of MySQL hosts",
+					"default":     "mysql-host",
+				},
+				"username": map[string]interface{}{
+					"type":        "string",
+					"title":       "Username",
+					"description": "MySQL username",
+					"default":     "mysql-user",
+				},
+				"password": map[string]interface{}{
+					"type":        "string",
+					"title":       "Password",
+					"description": "Password for the MySQL user",
+					"format":      "password",
+					"default":     "mysql-password",
+				},
+				"database": map[string]interface{}{
+					"type":        "string",
+					"title":       "Database",
+					"description": "Target MySQL database name",
+					"default":     "mysql-database",
+				},
+				"port": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Port",
+					"description": "Port number for MySQL",
+					"default":     3306,
+				},
+				"update_method": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"intial_wait_time": map[string]interface{}{
+							"type":        "integer",
+							"title":       "Initial Wait Time",
+							"description": "Wait time in seconds before retrying",
+							"default":     10,
+						},
+					},
+				},
+				"tls_skip_verify": map[string]interface{}{
+					"type":        "boolean",
+					"title":       "Skip TLS Verification",
+					"description": "Whether to skip TLS certificate verification",
+					"default":     true,
+				},
+				"default_mode": map[string]interface{}{
+					"type":        "string",
+					"title":       "Default Mode",
+					"description": "Extraction mode (e.g., full or cdc)",
+					"default":     "cdc",
+				},
+				"max_threads": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Max Threads",
+					"description": "Number of parallel threads",
+					"default":     10,
+				},
+				"backoff_retry_count": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Backoff Retry Count",
+					"description": "Retry attempts before failing",
+					"default":     2,
+				},
+			},
+			"required": []string{"hosts", "username", "password", "database", "port"},
+		}
+
 	case "mongodb":
-		spec = `{ "hosts": ["string"], "username": "string", "password": "string", "authdb": "string", "replica-set": "string", "read-preference": "string", "srv": "boolean", "server-ram": "integer", "database": "string", "max_threads": "integer", "default_mode": "string", "backoff_retry_count": "integer", "partition_strategy": "string" }`
+		spec = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"hosts": map[string]interface{}{
+					"type":        "array",
+					"title":       "Hosts",
+					"description": "List of MongoDB hosts (with port)",
+					"items":       map[string]interface{}{"type": "string"},
+					"default":     []string{"host1:27017", "host2:27017"},
+				},
+				"username": map[string]interface{}{
+					"type":        "string",
+					"title":       "Username",
+					"description": "MongoDB username",
+					"default":     "test",
+				},
+				"password": map[string]interface{}{
+					"type":        "string",
+					"title":       "Password",
+					"description": "MongoDB password",
+					"format":      "password",
+					"default":     "test",
+				},
+				"authdb": map[string]interface{}{
+					"type":        "string",
+					"title":       "Auth DB",
+					"description": "Authentication database",
+					"default":     "admin",
+				},
+				"replica-set": map[string]interface{}{
+					"type":        "string",
+					"title":       "Replica Set",
+					"description": "MongoDB replica set name",
+					"default":     "rs0",
+				},
+				"read-preference": map[string]interface{}{
+					"type":        "string",
+					"title":       "Read Preference",
+					"description": "Read preference (e.g., primary, secondaryPreferred)",
+					"default":     "secondaryPreferred",
+				},
+				"srv": map[string]interface{}{
+					"type":        "boolean",
+					"title":       "Use SRV",
+					"description": "Whether to use DNS SRV",
+					"default":     false,
+				},
+				"server-ram": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Server RAM",
+					"description": "Server memory in GB",
+					"default":     16,
+				},
+				"database": map[string]interface{}{
+					"type":        "string",
+					"title":       "Database Name",
+					"description": "MongoDB target database",
+					"default":     "database",
+				},
+				"max_threads": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Max Threads",
+					"description": "Maximum threads to use for ingestion",
+					"default":     50,
+				},
+				"default_mode": map[string]interface{}{
+					"type":        "string",
+					"title":       "Default Mode",
+					"description": "Extraction mode (e.g., full, cdc)",
+					"default":     "cdc",
+				},
+				"backoff_retry_count": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Retry Count",
+					"description": "Number of retries before failure",
+					"default":     2,
+				},
+				"partition_strategy": map[string]interface{}{
+					"type":        "string",
+					"title":       "Partition Strategy",
+					"description": "Strategy for collection partitioning",
+					"default":     "",
+				},
+			},
+			"required": []string{"hosts", "username", "password", "database"},
+		}
 	default:
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported source type")
 		return
