@@ -580,12 +580,22 @@ http://localhost:8080
 }
 ```
 
-### Job Associated Streams (Discover Catalog)
+### Source Associated Streams (Discover Catalog)
 
-- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/streams`
+- **Endpoint**: `/api/v1/project/:projectid/source/streams`
 - **Method**: GET
 - **Description**: Give the streams details
 - **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+
+  ```json
+  {
+    "type": "string",
+    "version": "string",
+    "config": "json"
+  }
+  ```
+
 - **Response**:
 
   ```json
@@ -619,6 +629,48 @@ http://localhost:8080
         "status": "string"
       }
     ]
+  }
+  ```
+
+  ### Job Sync
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/sync`
+- **Method**: POST
+- **Description**: Sync the job
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": null
+  }
+  ```
+
+  ###Activate/Inactivate Job
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/activate`
+- **Method**: POST
+- **Description**: Update the activate status of job
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+
+  ```json
+  {
+   "activate":boolean
+  }
+  ```
+
+  - **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "activate": "boolean"
+    }
   }
   ```
 
