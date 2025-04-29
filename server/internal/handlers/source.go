@@ -217,19 +217,11 @@ func (c *SourceHandler) TestConnection() {
 
 }
 
-// @router /sources/:id/catalog [get]
+// @router /sources/streams[post]
 func (c *SourceHandler) GetSourceCatalog() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-		return
-	}
-
-	// Get existing source
-	source, err := c.sourceORM.GetByID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+	var req models.CreateSourceRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
@@ -237,7 +229,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 
 	// Execute Docker command to get catalog
-	catalog, err := runner.GetCatalog(source.Type, source.Version, source.Config, source.ID)
+	catalog, err := runner.GetCatalog(req.Type, req.Version, req.Config, 0) // Using 0 as ID since this is just a test
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to generate catalog: %v", err))
 		return

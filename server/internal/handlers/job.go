@@ -11,6 +11,7 @@ import (
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
+	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/internal/models"
 	"github.com/datazip/olake-server/utils"
 )
@@ -327,6 +328,72 @@ func (c *JobHandler) GetJobStreams() {
 		},
 	},
 	)
+}
+
+// @router /project/:projectid/jobs/:id/sync [post]
+func (c *JobHandler) SyncJob() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	// Check if job exists
+	job, err := c.jobORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	// Validate source and destination exist
+	if job.SourceID == nil || job.DestID == nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Job must have both source and destination configured")
+		return
+	}
+
+	// Create Docker runner
+	configDir := docker.GetDefaultConfigDir()
+	runner := docker.NewRunner(configDir)
+
+	// Run sync operation - the RunSync method will generate the catalog automatically if needed
+	syncState, err := runner.RunSync(
+		job.SourceID.Type,
+		job.SourceID.Version,
+		job.SourceID.Config,
+		job.DestID.Config,
+		job.SourceID.ID,
+		job.DestID.ID,
+	)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Sync operation failed: %v", err))
+		return
+	}
+
+	// Update job state with sync result from state.json
+	stateMap := map[string]interface{}{
+		"last_run_time":  time.Now().Format(time.RFC3339),
+		"last_run_state": "success",
+		"sync_state":     syncState,
+	}
+	stateJSON, _ := json.Marshal(stateMap)
+	job.State = string(stateJSON)
+
+	// Update job in database
+	if err := c.jobORM.Update(job); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, struct {
+		Success bool        `json:"success"`
+		Message string      `json:"message"`
+		Data    interface{} `json:"data"`
+	}{
+		Success: true,
+		Message: "Job sync completed successfully",
+		Data:    syncState,
+	})
 }
 
 // Helper methods
