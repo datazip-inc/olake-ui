@@ -70,7 +70,6 @@ func (c *SourceHandler) GetAllSources() {
 					"id":       job.ID,
 					"activate": job.Active,
 				}
-				jobInfo["source_type"] = source.Type
 				// Add destination name if available
 				if job.DestID != nil {
 					jobInfo["dest_name"] = job.DestID.Name
@@ -115,10 +114,8 @@ func (c *SourceHandler) CreateSource() {
 
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
-	fmt.Printf("userID: %+v\n", userID)
 	if userID != nil {
 		user, err := c.userORM.GetByID(userID.(int))
-		fmt.Printf("user: %+v\n", user)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user")
 			return
