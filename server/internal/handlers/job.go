@@ -171,12 +171,11 @@ func (c *JobHandler) CreateJob() {
 		Name:          req.Name,
 		SourceID:      source,
 		DestID:        dest,
-		Active:        req.Activate,
+		Active:        true,
 		Frequency:     req.Frequency,
 		StreamsConfig: req.StreamsConfig,
 		State:         "{}",
 	}
-
 	// Set user information
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {

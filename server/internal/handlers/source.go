@@ -70,7 +70,6 @@ func (c *SourceHandler) GetAllSources() {
 					"id":       job.ID,
 					"activate": job.Active,
 				}
-				jobInfo["source_type"] = source.Type
 				// Add destination name if available
 				if job.DestID != nil {
 					jobInfo["dest_name"] = job.DestID.Name
@@ -115,10 +114,8 @@ func (c *SourceHandler) CreateSource() {
 
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
-	fmt.Printf("userID: %+v\n", userID)
 	if userID != nil {
 		user, err := c.userORM.GetByID(userID.(int))
-		fmt.Printf("user: %+v\n", user)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user")
 			return
@@ -315,24 +312,31 @@ func (c *SourceHandler) GetSourceVersions() {
 
 // @router /project/:projectid/sources/spec [get]
 func (c *SourceHandler) GetProjectSourceSpec() {
-	// Get project ID from path (not used in current implementation)
 	_ = c.Ctx.Input.Param(":projectid")
-	// Will be used for multi-tenant filtering in the future
+
 	var req models.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	// In a real implementation, we would fetch the specification
-	// based on the source type, version and project ID
-	// For now, we'll return a mock response
 
-	// Mock specification (this would be replaced with actual data)
-	mockSpec := "{ \"host\": \"string\", \"port\": \"integer\", \"username\": \"string\", \"password\": \"string\", \"database\": \"string\", \"ssl\": \"boolean\", \"timeout\": \"integer\" }"
+	var spec string
+
+	switch req.Type {
+	case "postgres":
+		spec = `{ "host": "string", "port": "integer", "database": "string", "username": "string", "password": "string", "jdbc_url_params": "object", "ssl": { "mode": "string" }, "update_method": { "replication_slot": "string", "intial_wait_time": "integer" }, "reader_batch_size": "integer", "default_mode": "string", "max_threads": "integer" }`
+	case "mysql":
+		spec = `{ "hosts": "string", "username": "string", "password": "string", "database": "string", "port": "integer", "update_method": { "intial_wait_time": "integer" }, "tls_skip_verify": "boolean", "default_mode": "string", "max_threads": "integer", "backoff_retry_count": "integer" }`
+	case "mongodb":
+		spec = `{ "hosts": ["string"], "username": "string", "password": "string", "authdb": "string", "replica-set": "string", "read-preference": "string", "srv": "boolean", "server-ram": "integer", "database": "string", "max_threads": "integer", "default_mode": "string", "backoff_retry_count": "integer", "partition_strategy": "string" }`
+	default:
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported source type")
+		return
+	}
 
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
 		Version: req.Version,
 		Type:    req.Type,
-		Spec:    mockSpec,
+		Spec:    spec,
 	})
 }
