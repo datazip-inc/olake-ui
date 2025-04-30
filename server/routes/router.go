@@ -56,4 +56,5 @@ func Init() {
 	web.Router("/api/v1/project/:projectid/jobs/:id", &handlers.JobHandler{}, "delete:DeleteJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/streams", &handlers.JobHandler{}, "get:GetJobStreams")
 	web.Router("/api/v1/project/:projectid/jobs/:id/sync", &handlers.JobHandler{}, "post:SyncJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/activate", &handlers.JobHandler{}, "post:ActivateJob")
 }

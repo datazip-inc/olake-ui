@@ -396,6 +396,59 @@ func (c *JobHandler) SyncJob() {
 	})
 }
 
+// @router /project/:projectid/jobs/:id/activate [post]
+func (c *JobHandler) ActivateJob() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		Activate bool `json:"activate"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+
+	// Get existing job
+	job, err := c.jobORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	// Update activation status
+	job.Active = req.Activate
+	job.UpdatedAt = time.Now()
+
+	// Update user information
+	userID := c.GetSession(constants.SessionUserID)
+	if userID != nil {
+		user := &models.User{ID: userID.(int)}
+		job.UpdatedBy = user
+	}
+
+	// Update job in database
+	if err := c.jobORM.Update(job); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job activation status")
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, models.JSONResponse{
+		Success: true,
+		Message: "Job activation status updated successfully",
+		Data: struct {
+			Activate bool `json:"activate"`
+		}{
+			Activate: job.Active,
+		},
+	})
+}
+
 // Helper methods
 
 // getOrCreateSource finds or creates a source based on the provided config
