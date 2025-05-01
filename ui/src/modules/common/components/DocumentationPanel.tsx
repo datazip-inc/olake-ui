@@ -191,22 +191,24 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					className={`transition-opacity ${!isReady ? "opacity-0" : "h-full opacity-100"}`}
 					style={{ transition: "opacity 0.3s ease" }}
 				>
-					{!isDocPanelCollapsed ? (
-						<iframe
-							ref={iframeRef}
-							src={docUrl}
-							className="h-full w-full border-none"
-							title="Documentation"
-							sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-							data-theme="light"
-							style={{ visibility: isLoading ? "hidden" : "visible" }}
-						/>
-					) : (
+					<iframe
+						ref={iframeRef}
+						src={docUrl}
+						className="h-full w-full border-none"
+						title="Documentation"
+						sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+						data-theme="light"
+						style={{
+							visibility:
+								isDocPanelCollapsed || isLoading ? "hidden" : "visible",
+						}}
+					/>
+					{isDocPanelCollapsed && (
 						<div className="flex h-full w-full items-start justify-center">
 							<div className="absolute right-3 top-10 z-10 rounded-xl border border-gray-200 bg-[#F0F0F0] p-2">
 								<Info
 									size={25}
-									className="text-gray-500"
+									className="text-gray-500 transition-all duration-300 ease-in-out"
 								/>
 							</div>
 						</div>
