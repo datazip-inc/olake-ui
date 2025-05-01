@@ -34,12 +34,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 				<div className="pl-4 pt-6">
 					<Link
 						to="/jobs"
-						className="flex items-center gap-2"
+						className="mb-3 flex items-center gap-2"
 					>
 						<img
 							src={OlakeLogo}
 							alt="logo"
-							className="h-6 w-6"
+							className={`transition-all duration-300 ease-in-out ${collapsed ? "h-10 w-10 pl-1" : "h-6 w-6"}`}
 						/>
 						{!collapsed && (
 							<img
