@@ -30,6 +30,8 @@ type UpdateSourceResponse struct {
 	Success bool                `json:"success"`
 	Message string              `json:"message"`
 	Data    UpdateSourceRequest `json:"data"`
+	Spec    interface{}         `json:"spec"`
+	Values  interface{}         `json:"values"`
 }
 type DeleteSourceResponse struct {
 	Name string `json:"name"`

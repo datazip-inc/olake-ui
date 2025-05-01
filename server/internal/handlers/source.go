@@ -293,7 +293,7 @@ func (c *SourceHandler) GetSourceVersions() {
 	// For now, we'll return a mock response
 
 	// Mock available versions (this would be replaced with actual DB query)
-	versions := []string{"1.0.0", "1.1.0", "2.0.0"}
+	versions := []string{"latest"}
 
 	response := map[string]interface{}{
 		"version": versions,

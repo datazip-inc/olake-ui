@@ -191,11 +191,7 @@ func (c *JobHandler) CreateJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.CreateJobResponse{
-		Success: true,
-		Message: "Job created successfully",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/jobs/:id [put]
@@ -260,11 +256,7 @@ func (c *JobHandler) UpdateJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.UpdateJobResponse{
-		Success: true,
-		Message: "Job updated successfully",
-		Data:    req,
-	})
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/jobs/:id [delete]
@@ -291,14 +283,10 @@ func (c *JobHandler) DeleteJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.DeleteJobResponse{
-		Success: true,
-		Message: "Job deleted successfully",
-		Data: struct {
-			Name string `json:"name"`
-		}{
-			Name: jobName,
-		},
+	utils.SuccessResponse(&c.Controller, struct {
+		Name string `json:"name"`
+	}{
+		Name: jobName,
 	})
 }
 
@@ -318,15 +306,12 @@ func (c *JobHandler) GetJobStreams() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.GetJobStreamsResponse{
-		Success: true,
-		Message: "Job streams retrieved successfully",
-		Data: struct {
+	utils.SuccessResponse(&c.Controller,
+		struct {
 			StreamsConfig string `json:"streams_config"`
 		}{
 			StreamsConfig: job.StreamsConfig,
 		},
-	},
 	)
 }
 
@@ -385,15 +370,7 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, struct {
-		Success bool        `json:"success"`
-		Message string      `json:"message"`
-		Data    interface{} `json:"data"`
-	}{
-		Success: true,
-		Message: "Job sync completed successfully",
-		Data:    syncState,
-	})
+	utils.SuccessResponse(&c.Controller, nil)
 }
 
 // @router /project/:projectid/jobs/:id/activate [post]
@@ -438,15 +415,13 @@ func (c *JobHandler) ActivateJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.JSONResponse{
-		Success: true,
-		Message: "Job activation status updated successfully",
-		Data: struct {
+	utils.SuccessResponse(&c.Controller,
+		struct {
 			Activate bool `json:"activate"`
 		}{
 			Activate: job.Active,
 		},
-	})
+	)
 }
 
 // Helper methods
