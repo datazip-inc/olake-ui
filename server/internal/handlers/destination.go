@@ -337,7 +337,7 @@ func (c *DestHandler) GetDestinationVersions() {
 	utils.SuccessResponse(&c.Controller, response)
 }
 
-// @router /project/:projectid/destinations/spec [get]
+// @router /project/:projectid/destinations/spec [post]
 func (c *DestHandler) GetDestinationSpec() {
 	// Get project ID from path (not used in current implementation)
 	_ = c.Ctx.Input.Param(":projectid")
@@ -359,16 +359,350 @@ func (c *DestHandler) GetDestinationSpec() {
 		return
 	}
 
-	// In a real implementation, we would fetch the specification
-	// based on the destination type, version and project ID
-	// For now, we'll return a mock response
+	var spec interface{}
 
-	// Mock specification (this would be replaced with actual data)
-	var mockSpec = `{ "auth_type": "string", "aws_access_key_id": "string", "aws_secret_key": "string", "bucket_name": "string", "bucket_path": "string", "region": "string" }`
+	switch req.Type {
+	case "s3":
+		spec = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"type": map[string]interface{}{
+					"type":        "string",
+					"title":       "File Type",
+					"description": "Type of file to write (e.g., PARQUET)",
+					"enum":        []string{"PARQUET"},
+					"default":     "PARQUET",
+				},
+				"writer": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"normalization": map[string]interface{}{
+							"type":        "boolean",
+							"title":       "Normalization",
+							"description": "Whether to normalize the data before writing",
+							"default":     false,
+						},
+						"s3_bucket": map[string]interface{}{
+							"type":        "string",
+							"title":       "S3 Bucket",
+							"description": "Name of the S3 bucket",
+						},
+						"s3_region": map[string]interface{}{
+							"type":        "string",
+							"title":       "S3 Region",
+							"description": "AWS region where the bucket is located",
+						},
+						"s3_access_key": map[string]interface{}{
+							"type":        "string",
+							"title":       "AWS Access Key",
+							"description": "AWS access key ID",
+							"format":      "password",
+						},
+						"s3_secret_key": map[string]interface{}{
+							"type":        "string",
+							"title":       "AWS Secret Key",
+							"description": "AWS secret access key",
+							"format":      "password",
+						},
+						"s3_path": map[string]interface{}{
+							"type":        "string",
+							"title":       "S3 Path",
+							"description": "Path within the S3 bucket where files will be written",
+							"default":     "/",
+						},
+					},
+					"required": []string{"s3_bucket", "s3_region", "s3_access_key", "s3_secret_key"},
+				},
+			},
+			"required": []string{"type", "writer"},
+		}
+	case "iceberg":
+		// Get catalog type from request
+
+		var catalogSpec interface{}
+		switch req.Catalog {
+		case "glue":
+			catalogSpec = map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"catalog_type": map[string]interface{}{
+						"type":        "string",
+						"title":       "Catalog Type",
+						"description": "Type of catalog to use",
+						"enum":        []string{"glue"},
+					},
+					"normalization": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Normalization",
+						"description": "Whether to normalize the data before writing",
+						"default":     false,
+					},
+					"iceberg_s3_path": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg S3 Path",
+						"description": "S3 path for Iceberg tables",
+					},
+					"aws_region": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Region",
+						"description": "AWS region for Glue catalog",
+					},
+					"aws_access_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Access Key",
+						"description": "AWS access key ID",
+						"format":      "password",
+					},
+					"aws_secret_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Secret Key",
+						"description": "AWS secret access key",
+						"format":      "password",
+					},
+					"iceberg_db": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg Database",
+						"description": "Name of the Iceberg database",
+					},
+					"grpc_port": map[string]interface{}{
+						"type":        "integer",
+						"title":       "gRPC Port",
+						"description": "Port for gRPC communication",
+						"default":     50051,
+					},
+					"server_host": map[string]interface{}{
+						"type":        "string",
+						"title":       "Server Host",
+						"description": "Host for server communication",
+						"default":     "localhost",
+					},
+				},
+				"required": []string{"catalog_type", "normalization", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
+			}
+
+		case "rest":
+			catalogSpec = map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"catalog_type": map[string]interface{}{
+						"type":        "string",
+						"title":       "Catalog Type",
+						"description": "Type of catalog to use",
+						"enum":        []string{"rest"},
+					},
+					"normalization": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Normalization",
+						"description": "Whether to normalize the data before writing",
+						"default":     false,
+					},
+					"rest_catalog_url": map[string]interface{}{
+						"type":        "string",
+						"title":       "REST Catalog URL",
+						"description": "URL for REST catalog service",
+					},
+					"iceberg_s3_path": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg S3 Path",
+						"description": "S3 path for Iceberg tables",
+					},
+					"iceberg_db": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg Database",
+						"description": "Name of the Iceberg database",
+					},
+				},
+				"required": []string{"catalog_type", "normalization", "rest_catalog_url", "iceberg_s3_path", "iceberg_db"},
+			}
+
+		case "jdbc":
+			catalogSpec = map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"catalog_type": map[string]interface{}{
+						"type":        "string",
+						"title":       "Catalog Type",
+						"description": "Type of catalog to use",
+						"enum":        []string{"jdbc"},
+					},
+					"normalization": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Normalization",
+						"description": "Whether to normalize the data before writing",
+						"default":     false,
+					},
+					"jdbc_url": map[string]interface{}{
+						"type":        "string",
+						"title":       "JDBC URL",
+						"description": "JDBC connection URL",
+					},
+					"jdbc_username": map[string]interface{}{
+						"type":        "string",
+						"title":       "JDBC Username",
+						"description": "JDBC connection username",
+					},
+					"jdbc_password": map[string]interface{}{
+						"type":        "string",
+						"title":       "JDBC Password",
+						"description": "JDBC connection password",
+						"format":      "password",
+					},
+					"iceberg_s3_path": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg S3 Path",
+						"description": "S3 path for Iceberg tables",
+					},
+					"s3_endpoint": map[string]interface{}{
+						"type":        "string",
+						"title":       "S3 Endpoint",
+						"description": "S3 endpoint URL",
+					},
+					"s3_use_ssl": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Use SSL for S3",
+						"description": "Whether to use SSL for S3 connections",
+						"default":     false,
+					},
+					"s3_path_style": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Use Path Style for S3",
+						"description": "Whether to use path style for S3 URLs",
+						"default":     true,
+					},
+					"aws_access_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Access Key",
+						"description": "AWS access key ID",
+						"format":      "password",
+					},
+					"aws_region": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Region",
+						"description": "AWS region for S3",
+					},
+					"aws_secret_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Secret Key",
+						"description": "AWS secret access key",
+						"format":      "password",
+					},
+					"iceberg_db": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg Database",
+						"description": "Name of the Iceberg database",
+					},
+				},
+				"required": []string{"catalog_type", "jdbc_url", "jdbc_username", "jdbc_password", "iceberg_s3_path", "aws_access_key", "aws_secret_key", "aws_region", "iceberg_db"},
+			}
+
+		case "hive":
+			catalogSpec = map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"catalog_type": map[string]interface{}{
+						"type":        "string",
+						"title":       "Catalog Type",
+						"description": "Type of catalog to use",
+						"enum":        []string{"hive"},
+					},
+					"normalization": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Normalization",
+						"description": "Whether to normalize the data before writing",
+						"default":     false,
+					},
+					"iceberg_s3_path": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg S3 Path",
+						"description": "S3 path for Iceberg tables",
+					},
+					"aws_region": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Region",
+						"description": "AWS region for S3",
+					},
+					"aws_access_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Access Key",
+						"description": "AWS access key ID",
+						"format":      "password",
+					},
+					"aws_secret_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Secret Key",
+						"description": "AWS secret access key",
+						"format":      "password",
+					},
+					"s3_endpoint": map[string]interface{}{
+						"type":        "string",
+						"title":       "S3 Endpoint",
+						"description": "S3 endpoint URL",
+					},
+					"hive_uri": map[string]interface{}{
+						"type":        "string",
+						"title":       "Hive URI",
+						"description": "URI for Hive metastore",
+					},
+					"s3_use_ssl": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Use SSL for S3",
+						"description": "Whether to use SSL for S3 connections",
+						"default":     false,
+					},
+					"s3_path_style": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Use Path Style for S3",
+						"description": "Whether to use path style for S3 URLs",
+						"default":     true,
+					},
+					"hive_clients": map[string]interface{}{
+						"type":        "integer",
+						"title":       "Hive Clients",
+						"description": "Number of Hive clients",
+						"default":     5,
+					},
+					"hive_sasl_enabled": map[string]interface{}{
+						"type":        "boolean",
+						"title":       "Enable SASL for Hive",
+						"description": "Whether to enable SASL for Hive connections",
+						"default":     false,
+					},
+					"iceberg_db": map[string]interface{}{
+						"type":        "string",
+						"title":       "Iceberg Database",
+						"description": "Name of the Iceberg database",
+					},
+				},
+				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
+			}
+
+		default:
+			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported catalog type")
+			return
+		}
+
+		spec = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"type": map[string]interface{}{
+					"type":        "string",
+					"title":       "File Type",
+					"description": "Type of file to write",
+					"enum":        []string{"ICEBERG"},
+					"default":     "ICEBERG",
+				},
+				"writer": catalogSpec,
+			},
+			"required": []string{"type", "writer"},
+		}
+	default:
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported destination type")
+		return
+	}
 
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
 		Version: req.Version,
 		Type:    req.Type,
-		Spec:    mockSpec,
+		Spec:    spec,
 	})
 }

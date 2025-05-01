@@ -8,6 +8,7 @@ type LoginRequest struct {
 type SpecRequest struct {
 	Type    string `json:"type"`
 	Version string `json:"version"`
+	Catalog string `json:"catalog"`
 }
 type SourceTestConnectionRequest struct {
 	Type    string `json:"type"`
