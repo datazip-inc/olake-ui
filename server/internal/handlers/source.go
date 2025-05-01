@@ -347,7 +347,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"format":      "password",
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "object",
+					"type":        "string",
 					"title":       "JDBC URL Parameters",
 					"description": "Optional JDBC parameters as key-value pairs",
 				},
