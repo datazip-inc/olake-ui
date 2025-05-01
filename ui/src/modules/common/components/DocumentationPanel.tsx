@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "antd"
-import { DotsThreeVertical, CornersOut } from "@phosphor-icons/react"
+import {
+	DotsThreeVertical,
+	CornersOut,
+	CaretRight,
+} from "@phosphor-icons/react"
 
 interface DocumentationPanelProps {
 	docUrl: string
@@ -23,6 +27,9 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	const [isReady, setIsReady] = useState(false)
 	const resizerRef = useRef<HTMLDivElement>(null)
 	const iframeRef = useRef<HTMLIFrameElement>(null)
+	const panelRef = useRef<HTMLDivElement>(null)
+	const isDragging = useRef(false)
+	const animationFrame = useRef<number>()
 
 	useEffect(() => {
 		setIsDocPanelCollapsed(isMinimized)
@@ -61,27 +68,48 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		e.stopPropagation() // Prevent click event from firing
 
 		const startX = e.clientX
-		const startWidth = docPanelWidth
+		const panel = panelRef.current
+		const startWidth = panel?.getBoundingClientRect().width || 0
+		const containerWidth = window.innerWidth
 
-		const handleMouseMove = (e: MouseEvent) => {
-			const containerWidth = window.innerWidth
-			const newWidth = Math.max(
+		isDragging.current = true
+		panel?.classList.add("resizing")
+
+		const updateWidth = (clientX: number) => {
+			if (!panel) return
+			const delta = startX - clientX
+			const newWidthPx = startWidth + delta
+			const newWidthPercent = Math.max(
 				15,
-				Math.min(
-					75,
-					startWidth - ((e.clientX - startX) / containerWidth) * 100,
-				),
+				Math.min(75, (newWidthPx / containerWidth) * 100),
 			)
-			setDocPanelWidth(newWidth)
+			panel.style.width = `${newWidthPercent}%`
 		}
 
-		const handleMouseUp = () => {
-			document.removeEventListener("mousemove", handleMouseMove)
-			document.removeEventListener("mouseup", handleMouseUp)
+		const onMouseMove = (e: MouseEvent) => {
+			if (!isDragging.current) return
+			if (animationFrame.current) cancelAnimationFrame(animationFrame.current)
+			animationFrame.current = requestAnimationFrame(() =>
+				updateWidth(e.clientX),
+			)
 		}
 
-		document.addEventListener("mousemove", handleMouseMove)
-		document.addEventListener("mouseup", handleMouseUp)
+		const onMouseUp = () => {
+			isDragging.current = false
+			if (animationFrame.current) cancelAnimationFrame(animationFrame.current)
+
+			const widthStr = panel?.style.width.replace("%", "")
+			if (widthStr) {
+				setDocPanelWidth(parseFloat(widthStr))
+			}
+
+			panel?.classList.remove("resizing")
+			document.removeEventListener("mousemove", onMouseMove)
+			document.removeEventListener("mouseup", onMouseUp)
+		}
+
+		document.addEventListener("mousemove", onMouseMove)
+		document.addEventListener("mouseup", onMouseUp)
 	}
 
 	const toggleDocPanel = () => {
@@ -117,7 +145,6 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 				<div
 					className="relative z-10"
 					style={{
-						position: "relative",
 						width: isDocPanelCollapsed ? "16px" : "0",
 					}}
 				>
@@ -135,22 +162,28 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 							className="text-gray-500"
 						/>
 					</div>
+
+					<button
+						onClick={toggleDocPanel}
+						className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-[#383838] shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
+					>
+						<div
+							className={`transition-transform duration-300 ${
+								isDocPanelCollapsed ? "rotate-180" : "rotate-0"
+							}`}
+						>
+							<CaretRight size={16} />
+						</div>
+					</button>
 				</div>
 			)}
 
 			{/* Documentation panel */}
 			<div
-				className="overflow-hidden border-l-4 border-gray-200 bg-white"
+				ref={panelRef}
+				className="overflow-hidden border-l-4 border-gray-200 bg-white transition-all duration-500 ease-in-out"
 				style={{
-					width: isDocPanelCollapsed
-						? "30px"
-						: showResizer
-							? `${docPanelWidth}%`
-							: "25%",
-					transition:
-						"width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease-in-out, visibility 0.2s ease-in-out",
-					opacity: isDocPanelCollapsed ? 0 : 1,
-					visibility: isDocPanelCollapsed ? "hidden" : "visible",
+					width: isDocPanelCollapsed ? "30px" : `${docPanelWidth}%`,
 				}}
 			>
 				<div
@@ -168,6 +201,12 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					/>
 				</div>
 			</div>
+
+			<style>{`
+				.resizing {
+					transition: none !important;
+				}
+			`}</style>
 		</>
 	)
 }
