@@ -241,7 +241,7 @@ const JobEdit: React.FC = () => {
 							: "w-full"
 					} relative flex flex-col`}
 				>
-					<div className="flex-1 overflow-auto pb-0">
+					<div className="flex-1 pb-0">
 						{currentStep === "source" && sourceData && (
 							<div className="w-full">
 								<JobSourceEdit sourceData={sourceData} />

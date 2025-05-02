@@ -202,7 +202,7 @@ const JobCreation: React.FC = () => {
 						!docsMinimized
 							? "w-2/3"
 							: "w-full"
-					} overflow-auto pt-0 transition-all duration-300`}
+					} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
 						<div className="w-full">

@@ -219,7 +219,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	}
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{!fromJobFlow && (
 				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link

@@ -267,7 +267,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	}
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{/* Header */}
 			{!fromJobFlow && (
 				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">

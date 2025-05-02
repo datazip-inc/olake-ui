@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import { Destination } from "../../../types"
-import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
+import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import DeleteModal from "../../common/Modals/DeleteModal"
 
@@ -35,13 +35,13 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 						items: [
 							{
 								key: "edit",
-								icon: <PencilSimpleLine />,
+								icon: <PencilSimpleLine className="size-4" />,
 								label: "Edit",
 								onClick: () => onEdit(record.id),
 							},
 							{
 								key: "delete",
-								icon: <TrashSimple />,
+								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
 								onClick: () => onDelete(record),

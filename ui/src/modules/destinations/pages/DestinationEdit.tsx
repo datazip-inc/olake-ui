@@ -366,7 +366,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	]
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{/* Header */}
 			{!fromJobFlow && (
 				<div className="flex gap-2 px-6 pb-0 pt-6">
