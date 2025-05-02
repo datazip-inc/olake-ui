@@ -290,7 +290,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig string, s
 
 	// Create directory for output
 	outputDir := filepath.Dir(configPath)
-	fmt.Printf("working directory path %sc\n", outputDir)
+	fmt.Printf("working directory path %s\n", outputDir)
 
 	// Define paths for required files
 	catalogPath := filepath.Join(outputDir, "catalog.json")

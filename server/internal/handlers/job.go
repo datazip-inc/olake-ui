@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
@@ -422,6 +425,174 @@ func (c *JobHandler) ActivateJob() {
 			Activate: job.Active,
 		},
 	)
+}
+
+// @router /project/:projectid/jobs/:id/tasks [get]
+func (c *JobHandler) GetJobTasks() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	// Get job to verify it exists
+	_, err = c.jobORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	// Get the latest sync folder from logs directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
+		return
+	}
+	logsDir := filepath.Join(homeDir, ".olake", "logs")
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read logs directory")
+		return
+	}
+
+	// Find the latest sync folder
+	var latestSync string
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
+			if latestSync == "" || entry.Name() > latestSync {
+				latestSync = entry.Name()
+			}
+		}
+	}
+
+	if latestSync == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync logs found")
+		return
+	}
+
+	// Read the olake.log file from the latest sync folder
+	logPath := filepath.Join(logsDir, latestSync, "olake.log")
+	logContent, err := os.ReadFile(logPath)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read log file")
+		return
+	}
+
+	// Parse log entries
+	lines := strings.Split(string(logContent), "\n")
+
+	// Track first and last timestamps
+	var firstTime, lastTime time.Time
+	var logEntries []struct {
+		Level   string    `json:"level"`
+		Time    time.Time `json:"time"`
+		Message string    `json:"message"`
+	}
+
+	// First pass: collect all valid log entries
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		var logEntry struct {
+			Level   string    `json:"level"`
+			Time    time.Time `json:"time"`
+			Message string    `json:"message"`
+		}
+
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			continue
+		}
+
+		logEntries = append(logEntries, logEntry)
+	}
+	var task []models.JobTask
+	// If we have entries, calculate runtime
+	if len(logEntries) > 0 {
+		firstTime = logEntries[0].Time
+		lastTime = logEntries[len(logEntries)-1].Time
+		runtime := lastTime.Sub(firstTime)
+		runtimeStr := fmt.Sprintf("%d secs", int(runtime.Seconds()))
+		var status string
+		if logEntries[len(logEntries)-1].Level == "info" {
+			status = "success"
+		} else {
+			status = "failed"
+		}
+
+		// Create a single task entry with the overall runtime
+		task = append(task, models.JobTask{
+			Runtime:   runtimeStr,
+			StartTime: firstTime.Format("2006-01-02_15-04-05"),
+			Status:    status,
+			FilePath:  latestSync,
+		})
+	}
+
+	utils.SuccessResponse(&c.Controller, task)
+}
+
+// @router /project/:projectid/jobs/:id/tasks/:taskid/logs [post]
+func (c *JobHandler) GetTaskLogs() {
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	// Parse request body
+	var req struct {
+		FilePath string `json:"file_path"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+
+	// Verify job exists
+	_, err = c.jobORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	// Read the log file
+	logPath := filepath.Join("/Users/datazip/.olake/logs", req.FilePath, "olake.log")
+	logContent, err := os.ReadFile(logPath)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read log file")
+		return
+	}
+
+	// Parse log entries
+	var logs []map[string]interface{}
+	lines := strings.Split(string(logContent), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		var logEntry struct {
+			Level   string    `json:"level"`
+			Time    time.Time `json:"time"`
+			Message string    `json:"message"`
+		}
+
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			continue
+		}
+
+		logs = append(logs, map[string]interface{}{
+			"level":   logEntry.Level,
+			"time":    logEntry.Time.Format(time.RFC3339),
+			"message": logEntry.Message,
+		})
+	}
+
+	utils.SuccessResponse(&c.Controller, logs)
 }
 
 // Helper methods

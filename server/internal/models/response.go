@@ -95,6 +95,19 @@ type GetJobStreamsResponse struct {
 	} `json:"data"`
 }
 
+type JobTask struct {
+	Runtime   string `json:"runtime"`
+	StartTime string `json:"start_time"`
+	Status    string `json:"status"`
+	FilePath  string `json:"file_path"`
+}
+
+type GetJobTasksResponse struct {
+	Success bool    `json:"success"`
+	Message string  `json:"message"`
+	Data    JobTask `json:"data"`
+}
+
 // SourceDataItem represents a single source in the response data list
 type SourceDataItem struct {
 	ID        int                      `json:"id"`
