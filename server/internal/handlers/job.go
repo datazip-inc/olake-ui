@@ -350,7 +350,6 @@ func (c *JobHandler) SyncJob() {
 		job.SourceID.Version,
 		job.SourceID.Config,
 		job.DestID.Config,
-		job.StreamsConfig,
 		job.SourceID.ID,
 		job.DestID.ID,
 	)
