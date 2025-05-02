@@ -350,6 +350,7 @@ func (c *JobHandler) SyncJob() {
 		job.SourceID.Version,
 		job.SourceID.Config,
 		job.DestID.Config,
+		job.StreamsConfig,
 		job.SourceID.ID,
 		job.DestID.ID,
 	)
@@ -560,7 +561,14 @@ func (c *JobHandler) GetTaskLogs() {
 	}
 
 	// Read the log file
-	logPath := filepath.Join("/Users/datazip/.olake/logs", req.FilePath, "olake.log")
+	// Get the latest sync folder from logs directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
+		return
+	}
+	logsDir := filepath.Join(homeDir, ".olake", "logs")
+	logPath := filepath.Join(logsDir, req.FilePath, "olake.log")
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read log file")
