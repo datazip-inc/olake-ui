@@ -197,7 +197,7 @@ func (r *Runner) GetCatalog(sourceType, version, config string, sourceID int) (m
 	outputDir := filepath.Dir(configPath)
 
 	// Define catalog output path
-	catalogPath := filepath.Join(outputDir, "catalog.json")
+	catalogPath := filepath.Join(outputDir, "streams.json")
 
 	// Construct Docker image name
 	dockerImage := fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
@@ -325,7 +325,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig string, s
 		dockerImage,
 		string(Sync),
 		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-		"--catalog", "/mnt/config/catalog.json",
+		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 	}
 

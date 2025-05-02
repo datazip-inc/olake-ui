@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
-import { Input, Button, Select, Switch, message } from "antd"
+import { Input, Button, Select, Switch, message, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, Check, Notebook } from "@phosphor-icons/react"
+import { ArrowLeft, Notebook } from "@phosphor-icons/react"
 import Table from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
-import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
+import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
@@ -14,6 +14,7 @@ import AWSS3 from "../../../assets/AWSS3.svg"
 import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 import { getConnectorImage, getConnectorName } from "../../../utils/utils"
 import EditDestinationModal from "../../common/Modals/EditDestinationModal"
+import { EntityJob } from "../../../types"
 
 interface DestinationEditProps {
 	fromJobFlow?: boolean
@@ -31,219 +32,145 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const isNewDestination = destinationId === "new"
 	const [activeTab, setActiveTab] = useState("config")
-	const [connector, setConnector] = useState("AWS S3")
+	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
 	const [catalogName, setCatalogName] = useState<string>("AWS Glue")
 	const [destinationName, setDestinationName] = useState("")
+	const [selectedVersion, setSelectedVersion] = useState("")
+	const [versions, setVersions] = useState<string[]>([])
+	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
+	const [schema, setSchema] = useState<any>(null)
 	const [formData, setFormData] = useState<any>({})
 	const [connectorSchema, setConnectorSchema] = useState<RJSFSchema>({})
 	const [connectorUiSchema] = useState<UiSchema>({})
 	const [isLoading, setIsLoading] = useState(false)
 	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
+	const [destination, setDestination] = useState<any>(null)
 	const [pausedJobIds, setPausedJobIds] = useState<string[]>([])
-
-	// Mock data for each destination type
-	const mockData = {
-		"Amazon S3": {
-			type: "PARQUET",
-			normalization: false,
-			s3_bucket: "my-test-bucket",
-			s3_region: "ap-south-1",
-			s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-			s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-			s3_path: "/data/test",
-		},
-		"Apache Iceberg": {
-			type: "ICEBERG",
-			catalog_type: "glue",
-			normalization: false,
-			iceberg_s3_path: "s3://my-bucket/olake_iceberg/test",
-			aws_region: "ap-south-1",
-			aws_access_key: "AKIAXXXXXXXXXXXXXXXX",
-			aws_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-			iceberg_db: "my_database",
-			grpc_port: 50051,
-			server_host: "localhost",
-		},
-		"AWS Glue Catalog": {
-			type: "ICEBERG",
-			catalog_type: "glue",
-			normalization: false,
-			iceberg_s3_path: "s3://my-bucket/olake_iceberg/test",
-			aws_region: "ap-south-1",
-			aws_access_key: "AKIAXXXXXXXXXXXXXXXX",
-			aws_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-			iceberg_db: "my_database",
-			grpc_port: 50051,
-			server_host: "localhost",
-		},
-		"REST Catalog": {
-			type: "ICEBERG",
-			catalog_type: "rest",
-			normalization: false,
-			rest_catalog_url: "http://localhost:8181/catalog",
-			iceberg_s3_path: "warehouse",
-			iceberg_db: "olake_iceberg",
-		},
-		"JDBC Catalog": {
-			type: "ICEBERG",
-			catalog_type: "jdbc",
-			jdbc_url: "jdbc:postgresql://localhost:5432/iceberg",
-			jdbc_username: "admin",
-			jdbc_password: "password",
-			normalization: false,
-			iceberg_s3_path: "s3a://warehouse",
-			s3_endpoint: "http://localhost:9000",
-			s3_use_ssl: false,
-			s3_path_style: true,
-			aws_access_key: "minioadmin",
-			aws_region: "ap-south-1",
-			aws_secret_key: "minioadmin",
-			iceberg_db: "olake_iceberg",
-		},
-	}
 
 	const {
 		destinations,
-		jobs,
 		fetchDestinations,
-		fetchJobs,
 		setSelectedDestination,
 		setShowDeleteModal,
 		setShowEditDestinationModal,
-		// addDestination,
-		// updateDestination,
 	} = useAppStore()
 
-	// Fetch connector schema based on selected connector type
-	const fetchConnectorSchema = async (connectorType: string) => {
-		setIsLoading(true)
-		try {
-			let schemaData
-			if (connector === "Apache Iceberg") {
-				if (catalog) {
-					setCatalogName(catalog)
-				} else {
-					setCatalog("AWS Glue")
-				}
-				schemaData = await destinationService.getConnectorSchema(catalogName)
-				setConnectorSchema(schemaData as RJSFSchema)
-
-				// Set mock data for the catalog after schema is loaded
-				if (mockData[catalogName as keyof typeof mockData]) {
-					setFormData(mockData[catalogName as keyof typeof mockData])
-				}
-			} else {
-				setCatalog(null)
-				schemaData = await destinationService.getConnectorSchema(connector)
-				setConnectorSchema(schemaData as RJSFSchema)
-
-				// Set mock data for the connector after schema is loaded
-				if (mockData[connector as keyof typeof mockData]) {
-					setFormData(mockData[connector as keyof typeof mockData])
-				}
-			}
-			// const schema = await destinationService.getConnectorSchema(connectorType)
-			// if (schema) {
-			// 	setConnectorSchema(schema as RJSFSchema)
-			// 	if (schema.uiSchema) {
-			// 		setConnectorUiSchema(schema.uiSchema)
-			// 	}
-			// }
-		} catch (error) {
-			console.error("Error fetching connector schema:", error)
-			message.error(`Failed to load schema for ${connectorType}`)
-		} finally {
-			setIsLoading(false)
+	const getCatalogName = (catalogType: string) => {
+		switch (catalogType) {
+			case "glue":
+				return "AWS Glue"
+			case "AWS Glue":
+				return "AWS Glue"
+			case "rest":
+				return "REST Catalog"
+			case "REST Catalog":
+				return "REST Catalog"
+			case "jdbc":
+				return "JDBC Catalog"
+			case "JDBC Catalog":
+				return "JDBC Catalog"
+			case "hive":
+				return "Hive Catalog"
+			case "Hive Catalog":
+				return "Hive Catalog"
+			default:
+				return null
 		}
 	}
-
-	// Load initial data when provided (for job edit flow)
-	useEffect(() => {
-		if (initialData) {
-			setDestinationName(initialData.name || "")
-
-			if (initialData.type) {
-				setConnector(initialData.type)
-			}
-
-			if (initialData.config) {
-				setTimeout(() => {
-					setFormData(initialData.config)
-				}, 100)
-			}
-		}
-	}, [initialData])
-
-	useEffect(() => {
-		if (initialData?.config && Object.keys(initialData.config).length > 0) {
-			setFormData(initialData.config)
-		} else if (connector && mockData[connector as keyof typeof mockData]) {
-			// Fill in mock data when connector changes and there's no initialData
-			setFormData(mockData[connector as keyof typeof mockData] || {})
-		}
-	}, [connector, initialData])
 
 	useEffect(() => {
 		if (!destinations.length) {
 			fetchDestinations()
 		}
 
-		if (!jobs.length) {
-			fetchJobs()
-		}
-
-		if (!isNewDestination && destinationId) {
-			const destination = destinations.find(d => d.id === destinationId)
+		if (destinationId) {
+			const destination = destinations.find(
+				d => d.id.toString() === destinationId,
+			)
 			if (destination) {
+				setDestination(destination)
 				setDestinationName(destination.name)
-				setConnector(destination.type)
-				setMockAssociatedJobs(destination?.associatedJobs || [])
-				setCatalog(destination?.catalog || null)
-				setFormData(mockData[destination.type as keyof typeof mockData] || {})
+				const connectorType =
+					destination.type === "iceberg" ? "Apache Iceberg" : "Amazon S3"
+				setConnector(connectorType)
+				setSelectedVersion(destination.version || "")
+				setFormData(destination.config || {})
+				// Only set catalog if it's an iceberg destination
+				if (destination.type === "iceberg") {
+					try {
+						const config =
+							typeof destination.config === "string"
+								? JSON.parse(destination.config)
+								: destination.config
+						const catalogType = config.catalog || "AWS Glue"
+						setCatalog(getCatalogName(catalogType) || null)
+					} catch (error) {
+						console.error("Error parsing config for catalog:", error)
+						setCatalog("AWS Glue")
+					}
+				}
 			}
 		}
-	}, [
-		destinationId,
-		isNewDestination,
-		destinations,
-		fetchDestinations,
-		jobs.length,
-		fetchJobs,
-	])
+	}, [destinationId, destinations, fetchDestinations, catalog])
 
 	useEffect(() => {
-		fetchConnectorSchema(connector)
-	}, [connector, catalog])
+		const fetchVersions = async () => {
+			setLoadingVersions(true)
+			try {
+				const response = await destinationService.getDestinationVersions(
+					connector?.toLowerCase() || "",
+				)
+				if (response.data && response.data.version) {
+					setVersions(response.data.version)
+				}
+			} catch (error) {
+				console.error("Error fetching versions:", error)
+			} finally {
+				setLoadingVersions(false)
+			}
+		}
 
-	// Mock associated jobs for the destination
-	const associatedJobs = jobs.slice(0, 5).map(job => ({
-		...job,
-		state: "Active",
-		lastRuntime: "3 hours ago",
-		lastRuntimeStatus: "Success",
-		source: job.source,
-		paused: false,
-	}))
+		fetchVersions()
+	}, [connector])
 
-	// Additional jobs that will be shown when "View all" is clicked
-	const additionalJobs = jobs.slice(5, 10).map(job => ({
-		...job,
-		state: "Active",
-		lastRuntime: "3 hours ago",
-		lastRuntimeStatus: "Success",
-		source: job.source,
-		paused: false,
-	}))
+	const handleVersionChange = (value: string) => {
+		setSelectedVersion(value)
+	}
 
-	const displayedJobs = showAllJobs
-		? [...associatedJobs, ...additionalJobs]
-		: associatedJobs
+	useEffect(() => {
+		const fetchSourceSpec = async () => {
+			try {
+				setIsLoading(true)
+				const response = await destinationService.getDestinationSpec(
+					connector as string,
+					selectedVersion,
+				)
+				if (response.success && response.data?.spec) {
+					setSchema(response.data.spec)
+				} else {
+					console.error("Failed to get source spec:", response.message)
+				}
+			} catch (error) {
+				console.error("Error fetching source spec:", error)
+			} finally {
+				setIsLoading(false)
+			}
+		}
+
+		if (connector) {
+			fetchSourceSpec()
+		}
+
+		return () => {
+			// Cleanup function to prevent memory leaks
+			setIsLoading(false)
+		}
+	}, [connector, selectedVersion])
 
 	const handleDelete = () => {
-		// Create destination object from the current data
 		const destinationToDelete = {
 			id: destinationId || "",
 			name: destinationName || "",
@@ -261,6 +188,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const handleSaveChanges = () => {
+		const destinationData = {
+			...destination,
+			name: destinationName,
+			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
+			version: selectedVersion,
+			config: JSON.stringify(formData),
+		}
+
+		setSelectedDestination(destinationData)
 		setShowEditDestinationModal(true)
 	}
 
@@ -270,11 +206,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const handlePauseAllJobs = (checked: boolean) => {
 		if (checked) {
-			// Pause all jobs - add all job IDs to pausedJobIds
-			const allJobIds = displayedJobs.map(job => job.id)
-			setPausedJobIds(allJobIds)
+			const pausedJobs =
+				destination?.jobs?.map((job: EntityJob) => job.activate === false) || []
+			setPausedJobIds(pausedJobs)
 		} else {
-			// Resume all jobs - clear pausedJobIds
 			setPausedJobIds([])
 		}
 		message.info(
@@ -304,48 +239,55 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		},
 		{
 			title: "State",
-			dataIndex: "id",
-			key: "state",
-			render: (jobId: string) => (
+			dataIndex: "activate",
+			key: "activate",
+			render: (activate: boolean) => (
 				<span
 					className={`rounded px-2 py-1 text-xs ${
-						pausedJobIds.includes(jobId)
+						activate
 							? "bg-[#FFF1F0] text-[#F5222D]"
 							: "bg-[#E6F4FF] text-[#0958D9]"
 					}`}
 				>
-					{pausedJobIds.includes(jobId) ? "Inactive" : "Active"}
+					{activate ? "Active" : "Inactive"}
 				</span>
 			),
 		},
 		{
 			title: "Last runtime",
-			dataIndex: "lastRuntime",
-			key: "lastRuntime",
+			dataIndex: "last_run_time",
+			key: "last_run_time",
 		},
 		{
 			title: "Last runtime status",
-			dataIndex: "lastRuntimeStatus",
-			key: "lastRuntimeStatus",
-			render: (status: string) => (
-				<button className="flex items-center gap-2 rounded bg-[#F6FFED] px-2 text-[#389E0D]">
-					<Check className="size-4" />
-					{status}
-				</button>
+			dataIndex: "last_run_state",
+			key: "last_run_state",
+			render: (last_run_state: string) => (
+				<div
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
+						last_run_state === "success"
+							? "bg-[#f6ffed] text-[#389E0D]"
+							: last_run_state === "failed"
+								? "bg-[#fff1f0] text-[#cf1322]"
+								: ""
+					}`}
+				>
+					{last_run_state}
+				</div>
 			),
 		},
 		{
 			title: "Source",
-			dataIndex: "source",
-			key: "source",
-			render: (source: string) => (
+			dataIndex: "source_name",
+			key: "source_name",
+			render: (source_name: string, record: any) => (
 				<div className="flex items-center">
 					<img
-						src={getConnectorImage(source)}
-						alt={source}
+						src={getConnectorImage(record.source_type || "")}
+						alt={record.source_type || ""}
 						className="mr-2 size-6"
 					/>
-					{source}
+					{source_name || "N/A"}
 				</div>
 			),
 		},
@@ -353,12 +295,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			title: "Running status",
 			dataIndex: "id",
 			key: "pause",
-			render: (_: string, record: any) => (
+			render: (activate: boolean, record: any) => (
 				<Switch
-					checked={!pausedJobIds.includes(record.id)}
-					onChange={checked => handlePauseJob(record.id, !checked)}
+					checked={activate}
+					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
 					className={
-						!pausedJobIds.includes(record.id) ? "bg-blue-600" : "bg-gray-200"
+						!pausedJobIds.includes(record.id.toString())
+							? "bg-blue-600"
+							: "bg-gray-200"
 					}
 				/>
 			),
@@ -442,8 +386,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								</div>
 
 								<div className="flex flex-col gap-6">
-									<div className="grid grid-cols-2 gap-6">
-										<div>
+									<div className="flex gap-12">
+										<div className="w-1/3">
 											<label className="mb-2 block text-sm font-medium text-gray-700">
 												Connector:
 											</label>
@@ -452,18 +396,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 													value={connector}
 													onChange={value => {
 														setConnector(value)
-														if (value === "Amazon S3") {
-															setFormData({
-																...formData,
-																type: "PARQUET",
-															})
-														} else if (
-															mockData[value as keyof typeof mockData]
-														) {
-															setFormData(
-																mockData[value as keyof typeof mockData] || {},
-															)
-														}
 													}}
 													className="h-8 w-full"
 													options={[
@@ -498,7 +430,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											</div>
 										</div>
 
-										<div>
+										<div className="w-1/3">
 											<label className="mb-2 block text-sm font-medium text-gray-700">
 												Catalog:
 											</label>
@@ -529,27 +461,40 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 														catalog: value,
 													})
 													setCatalog(value)
-													// Also apply mock data for the selected catalog
-													if (mockData[value as keyof typeof mockData]) {
-														setFormData(
-															mockData[value as keyof typeof mockData],
-														)
-													}
 												}}
 											/>
 										</div>
 									</div>
 
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Name of your destination:
-										</label>
-										<Input
-											placeholder="Enter the name of your destination"
-											value={destinationName}
-											onChange={e => setDestinationName(e.target.value)}
-											className="h-8 w-2/3"
-										/>
+									<div className="flex w-full gap-12">
+										<div className="w-1/3">
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Name of your destination:
+											</label>
+											<Input
+												placeholder="Enter the name of your destination"
+												value={destinationName}
+												onChange={e => setDestinationName(e.target.value)}
+												className="h-8"
+											/>
+										</div>
+
+										<div className="w-1/3">
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Version:
+											</label>
+											<Select
+												value={selectedVersion}
+												onChange={handleVersionChange}
+												className="w-full"
+												loading={loadingVersions}
+												placeholder="Select version"
+												options={versions.map(version => ({
+													value: version,
+													label: version,
+												}))}
+											/>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -557,19 +502,16 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 								<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
 								{isLoading ? (
-									<div className="py-8 text-center">
-										Loading configuration...
+									<div className="flex h-32 items-center justify-center">
+										<Spin tip="Loading schema..." />
 									</div>
 								) : (
-									Object.keys(connectorSchema).length > 0 && (
-										<DynamicSchemaForm
-											schema={connectorSchema}
-											uiSchema={connectorUiSchema}
-											formData={formData}
-											onChange={setFormData}
-											hideSubmit={true}
-										/>
-									)
+									<FixedSchemaForm
+										schema={schema}
+										formData={formData}
+										onChange={setFormData}
+										hideSubmit={true}
+									/>
 								)}
 							</div>
 						</div>
@@ -579,14 +521,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 							<Table
 								columns={columns}
-								dataSource={displayedJobs}
+								dataSource={destination?.jobs}
 								pagination={false}
 								rowKey={record => record.id}
 								className="min-w-full"
 								rowClassName="no-hover"
 							/>
 
-							{!showAllJobs && additionalJobs.length > 0 && (
+							{!showAllJobs && destination?.jobs.length > 0 && (
 								<div className="mt-6 flex justify-center">
 									<Button
 										type="default"

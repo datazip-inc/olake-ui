@@ -29,7 +29,6 @@ const ClearDataModal = () => {
 						type="primary"
 						danger
 						onClick={() => {
-							console.log("clicked")
 							setShowClearDataModal(false)
 							message.success("Clearing data")
 							navigate("/jobs")

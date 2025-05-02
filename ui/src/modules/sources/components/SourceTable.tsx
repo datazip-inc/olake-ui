@@ -1,16 +1,16 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
-import { Source } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import React from "react"
 import DeleteModal from "../../common/Modals/DeleteModal"
+import { Entity } from "../../../types"
 
 interface SourceTableProps {
-	sources: Source[]
+	sources: Entity[]
 	loading: boolean
 	onEdit: (id: string) => void
-	onDelete: (source: Source) => void
+	onDelete: (source: Entity) => void
 }
 
 const SourceTable: React.FC<SourceTableProps> = ({
@@ -21,7 +21,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
-	const pageSize = 5
+	const pageSize = 8
 	const { Search } = Input
 
 	const columns = [
@@ -30,7 +30,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			key: "actions",
 			width: 80,
 
-			render: (_: any, record: Source) => (
+			render: (_: any, record: Entity) => (
 				<Dropdown
 					menu={{
 						items: [
@@ -38,7 +38,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 								key: "edit",
 								icon: <PencilSimpleLine className="size-4" />,
 								label: "Edit",
-								onClick: () => onEdit(record.id),
+								onClick: () => onEdit(record.id.toString()),
 							},
 							{
 								key: "delete",
@@ -75,50 +75,56 @@ const SourceTable: React.FC<SourceTableProps> = ({
 						src={getConnectorImage(text)}
 						className="mr-2 size-6"
 					/>
-					<span>{text}</span>
+					<span>
+						{text === "mongodb"
+							? "MongoDB"
+							: text === "postgres"
+								? "Postgres"
+								: "MySQL"}
+					</span>
 				</div>
 			),
 		},
 		{
 			title: () => <span className="font-medium">Associated jobs</span>,
-			key: "associatedJobs",
-			render: (_: any, record: Source) => {
-				if (!record.associatedJobs || record.associatedJobs.length === 0) {
+			key: "jobs",
+			dataIndex: "jobs",
+			render: (_: any, record: Entity) => {
+				const jobs = record.jobs as any[]
+				if (jobs.length == 0) {
 					return <div className="text-gray-500">No associated jobs</div>
 				}
 				return (
 					<div className="flex-end flex w-fit flex-col items-end gap-3">
 						<div className="mb-1 flex items-center">
 							<div
-								key={`job-${record.associatedJobs[0].jobName}}`}
+								key={`job-${record.jobs[0].name}}`}
 								className="flex items-center gap-3"
 							>
 								<div className="flex items-center">
 									<img
-										src={getConnectorImage(record.associatedJobs[0].source)}
+										src={getConnectorImage(record.type)}
 										className="size-8"
 									/>
 									<div className="ml-2 text-[#A3A3A3]">-------</div>
 									<div className="w-36 truncate rounded-[6px] border border-[#D9D9D9] bg-black bg-opacity-[2%] px-2 py-1 text-center text-black">
-										{record.associatedJobs[0].jobName.length > 15 ? (
-											<Tooltip title={record.associatedJobs[0].jobName}>
-												{record.associatedJobs[0].jobName}
+										{record?.jobs[0]?.name?.length > 15 ? (
+											<Tooltip title={record.jobs[0].name}>
+												{record.jobs[0].name}
 											</Tooltip>
 										) : (
-											record.associatedJobs[0].jobName
+											record.jobs[0].name
 										)}
 									</div>
 									<div className="mr-2 text-[#A3A3A3]">-------</div>
 									<img
-										src={getConnectorImage(
-											record.associatedJobs[0].destination,
-										)}
+										src={getConnectorImage(record.jobs[0].dest_type || "")}
 										className="size-8"
 									/>
 								</div>
 								<div className="cursor-pointer items-end text-sm font-bold text-[#203FDD] underline">
-									{record.associatedJobs.length > 1
-										? `+${record.associatedJobs.length - 1} more jobs`
+									{record.jobs.length > 1
+										? `+${record.jobs.length - 1} more jobs`
 										: ""}
 								</div>
 							</div>

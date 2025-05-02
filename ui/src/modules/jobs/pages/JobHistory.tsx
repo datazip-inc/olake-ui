@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message, Pagination } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
-import { getConnectorImage } from "../../../utils/utils"
+import { getConnectorImage, getStatusClass } from "../../../utils/utils"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -14,10 +14,10 @@ const JobHistory: React.FC = () => {
 
 	const {
 		jobs,
-		jobHistory,
-		isLoadingJobHistory,
-		jobHistoryError,
-		fetchJobHistory,
+		jobTasks,
+		isLoadingJobTasks,
+		jobTasksError,
+		fetchJobTasks,
 		fetchJobs,
 	} = useAppStore()
 
@@ -27,42 +27,29 @@ const JobHistory: React.FC = () => {
 		}
 
 		if (jobId) {
-			fetchJobHistory(jobId).catch(error => {
-				message.error("Failed to fetch job history")
+			fetchJobTasks(jobId).catch(error => {
+				message.error("Failed to fetch job tasks")
 				console.error(error)
 			})
 		}
-	}, [jobId, fetchJobHistory, jobs.length, fetchJobs])
+	}, [jobId, fetchJobTasks, jobs.length, fetchJobs])
 
-	const job = jobs.find(j => j.id === jobId)
-	const handleViewLogs = (historyId: string) => {
+	const job = jobs.find(j => j.id === Number(jobId))
+	const handleViewLogs = (filePath: string) => {
 		if (jobId) {
-			navigate(`/jobs/${jobId}/history/${historyId}/logs`)
+			navigate(
+				`/jobs/${jobId}/history/1/logs?file=${encodeURIComponent(filePath)}`,
+			)
 		}
 	}
 
 	const { Search } = Input
 
-	const getStatusClass = (status: string) => {
-		switch (status) {
-			case "success":
-				return "text-[#52C41A] bg-[#F6FFED]"
-			case "failed":
-				return "text-[#F5222D] bg-[#FFF1F0]"
-			case "running":
-				return "text-[#0958D9] bg-[#E6F4FF]"
-			case "scheduled":
-				return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
-			default:
-				return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
-		}
-	}
-
 	const columns = [
 		{
-			title: "Start time (UTC)",
-			dataIndex: "startTime",
-			key: "startTime",
+			title: "Start time",
+			dataIndex: "start_time",
+			key: "start_time",
 		},
 		{
 			title: "Runtime",
@@ -82,12 +69,11 @@ const JobHistory: React.FC = () => {
 		{
 			title: "Actions",
 			key: "actions",
-
 			render: (_: any, record: any) => (
 				<Button
 					type="default"
 					icon={<Eye size={16} />}
-					onClick={() => handleViewLogs(record.id)}
+					onClick={() => handleViewLogs(record.file_path)}
 				>
 					View logs
 				</Button>
@@ -95,25 +81,25 @@ const JobHistory: React.FC = () => {
 		},
 	]
 
-	const filteredHistory = jobHistory.filter(
+	const filteredTasks = jobTasks.filter(
 		item =>
-			item.startTime.toLowerCase().includes(searchText.toLowerCase()) ||
+			item.start_time.toLowerCase().includes(searchText.toLowerCase()) ||
 			item.status.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
 	// Calculate current page data for display
 	const startIndex = (currentPage - 1) * pageSize
-	const endIndex = Math.min(startIndex + pageSize, filteredHistory.length)
-	const currentPageData = filteredHistory.slice(startIndex, endIndex)
+	const endIndex = Math.min(startIndex + pageSize, filteredTasks.length)
+	const currentPageData = filteredTasks.slice(startIndex, endIndex)
 
-	if (jobHistoryError) {
+	if (jobTasksError) {
 		return (
 			<div className="p-6">
 				<div className="text-red-500">
-					Error loading job history: {jobHistoryError}
+					Error loading job tasks: {jobTasksError}
 				</div>
 				<Button
-					onClick={() => jobId && fetchJobHistory(jobId)}
+					onClick={() => jobId && fetchJobTasks(jobId)}
 					className="mt-4"
 				>
 					Retry
@@ -139,14 +125,18 @@ const JobHistory: React.FC = () => {
 						</div>
 					</div>
 					<div className="ml-6 mt-1.5 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
-						{job?.status || "Active"}
+						{job?.last_run_state || "Active"}
 					</div>
 				</div>
 
 				<div className="flex items-center gap-2">
 					{job?.source && (
 						<img
-							src={getConnectorImage(job.source)}
+							src={
+								typeof job.source === "string"
+									? getConnectorImage(job.source)
+									: getConnectorImage(job.source.name)
+							}
 							alt="Source"
 							className="size-7"
 						/>
@@ -154,7 +144,11 @@ const JobHistory: React.FC = () => {
 					<span className="text-gray-500">{"--------------▶"}</span>
 					{job?.destination && (
 						<img
-							src={getConnectorImage(job.destination)}
+							src={
+								typeof job.destination === "string"
+									? getConnectorImage(job.destination)
+									: getConnectorImage(job.destination.name)
+							}
 							alt="Destination"
 							className="size-7"
 						/>
@@ -167,7 +161,7 @@ const JobHistory: React.FC = () => {
 
 				<div className="mb-4">
 					<Search
-						placeholder="Search Jobs"
+						placeholder="Search Tasks"
 						allowClear
 						className="w-1/4"
 						value={searchText}
@@ -175,7 +169,7 @@ const JobHistory: React.FC = () => {
 					/>
 				</div>
 
-				{isLoadingJobHistory ? (
+				{isLoadingJobTasks ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
@@ -184,7 +178,7 @@ const JobHistory: React.FC = () => {
 						<Table
 							dataSource={currentPageData}
 							columns={columns}
-							rowKey="id"
+							rowKey="file_path"
 							pagination={false}
 							className="overflow-scroll rounded-lg border"
 						/>
@@ -208,7 +202,7 @@ const JobHistory: React.FC = () => {
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
-					total={filteredHistory.length}
+					total={filteredTasks.length}
 					pageSize={pageSize}
 					showSizeChanger={false}
 				/>

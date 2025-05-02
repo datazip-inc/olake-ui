@@ -33,7 +33,6 @@ const ClearDestinationAndSyncModal = () => {
 						type="primary"
 						className="bg-[#203FDD] text-white"
 						onClick={() => {
-							console.log("clicked")
 							setShowClearDestinationAndSyncModal(false)
 							message.success("Destination cleared and sync initiated")
 							navigate("/jobs")

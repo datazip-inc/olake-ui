@@ -1,25 +1,21 @@
 import axios from "axios"
 
-// Create axios instance with default config
 const api = axios.create({
-	baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
+	baseURL: "http://localhost:8080",
 	headers: {
 		"Content-Type": "application/json",
+		Accept: "application/json",
 	},
-	timeout: 10000, // 10 seconds
+	timeout: 10000,
+	withCredentials: true,
 })
 
-// Request interceptor
 api.interceptors.request.use(
 	config => {
-		// Get token from localStorage
 		const token = localStorage.getItem("token")
-
-		// If token exists, add to headers
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`
 		}
-
 		return config
 	},
 	error => {
@@ -27,21 +23,17 @@ api.interceptors.request.use(
 	},
 )
 
-// Response interceptor
 api.interceptors.response.use(
 	response => {
 		return response
 	},
 	error => {
-		// Handle common errors
 		if (error.response) {
-			// Server responded with a status code outside of 2xx range
 			const { status } = error.response
-
 			if (status === 401) {
 				// Unauthorized - clear token and redirect to login
 				localStorage.removeItem("token")
-				// You can add redirect logic here if needed
+				console.error("Authentication required. Please log in.")
 			}
 
 			if (status === 403) {

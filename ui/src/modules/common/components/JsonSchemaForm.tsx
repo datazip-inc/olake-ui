@@ -2,8 +2,9 @@ import { useMemo, useState } from "react"
 import Form from "@rjsf/core"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import validator from "@rjsf/validator-ajv8"
-import { message, Switch } from "antd"
-import { Eye, EyeSlash } from "@phosphor-icons/react"
+import { message, Switch, Tooltip } from "antd"
+import { Eye, EyeSlash, Info } from "@phosphor-icons/react"
+import React from "react"
 
 interface JsonSchemaFormProps {
 	schema: RJSFSchema
@@ -87,18 +88,24 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 			return (
 				<div className={fieldClass}>
 					{showLabel && (
-						<label
-							htmlFor={id}
-							className={labelClass}
-						>
-							{label}
-							{!required && <span className="text-gray-500"> (optional)</span>}
-						</label>
+						<div className="flex items-center gap-1">
+							<label
+								htmlFor={id}
+								className={labelClass}
+							>
+								{label}
+								{!required && (
+									<span className="text-gray-500"> (optional)</span>
+								)}
+							</label>
+							{description && (
+								<Tooltip title={description}>
+									<Info className="size-4 text-gray-400" />
+								</Tooltip>
+							)}
+						</div>
 					)}
 					{children}
-					{description && (
-						<p className="mt-1 text-xs text-gray-500">{description}</p>
-					)}
 					{help && <p className="mt-1 text-xs text-gray-500">{help}</p>}
 					{errors && <div className="mt-1 text-sm text-red-500">{errors}</div>}
 				</div>
@@ -220,6 +227,11 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 			// Always show the label in the widget itself
 			const displayLabel = schema.title || label
 
+			// Improved change handler with typed parameter
+			const handleChange = (checked: boolean) => {
+				onChange(checked)
+			}
+
 			return (
 				<div
 					className={`flex w-full items-center justify-between ${switchClass}`}
@@ -229,7 +241,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 						id={id}
 						checked={value || false}
 						disabled={disabled || readonly}
-						onChange={checked => onChange(checked)}
+						onChange={handleChange}
 						className={value ? "bg-blue-600" : "bg-gray-200"}
 					/>
 				</div>
@@ -247,16 +259,42 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				placeholder,
 			} = props
 
+			// Create a reference to track the select element
+			const selectRef = React.useRef<HTMLSelectElement>(null)
+
+			// Track the last value to avoid updates during focus
+			const [lastValue, setLastValue] = React.useState(value)
+
+			// Update the select value when props.value changes (but not during interaction)
+			React.useEffect(() => {
+				if (
+					selectRef.current &&
+					value !== lastValue &&
+					document.activeElement !== selectRef.current
+				) {
+					selectRef.current.value = value || ""
+					setLastValue(value)
+				}
+			}, [value, lastValue])
+
 			const { enumOptions } = options
 			const selectClass = fieldUiSchema?.["ui:className"] || "w-full"
+
+			// Handle change events
+			const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+				const newValue = e.target.value
+				setLastValue(newValue)
+				onChange(newValue)
+			}
 
 			return (
 				<div className="relative">
 					<select
+						ref={selectRef}
 						id={id}
-						value={value || ""}
+						defaultValue={value || ""}
 						disabled={disabled || readonly}
-						onChange={e => onChange(e.target.value)}
+						onChange={handleChange}
 						className={`${selectClass} appearance-none rounded-[6px] border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 					>
 						{placeholder && <option value="">{placeholder}</option>}
@@ -296,6 +334,24 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				uiSchema: fieldUiSchema,
 			} = props
 
+			// Create a reference to maintain focus
+			const inputRef = React.useRef<HTMLInputElement>(null)
+
+			// We'll use this flag to track whether we should update the input's value
+			const [lastValue, setLastValue] = React.useState(value)
+
+			// Update the input value when props.value changes (but not during typing)
+			React.useEffect(() => {
+				if (
+					inputRef.current &&
+					value !== lastValue &&
+					document.activeElement !== inputRef.current
+				) {
+					inputRef.current.value = value || ""
+					setLastValue(value)
+				}
+			}, [value, lastValue])
+
 			const inputClass = fieldUiSchema?.["ui:className"] || "w-full"
 			const inputType = fieldUiSchema?.["ui:widget"] || "text"
 
@@ -306,16 +362,24 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				return `Enter ${fieldName?.toLowerCase()}${required ? " *" : ""}`
 			}
 
+			// Using onInput for better real-time update handling
+			const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
+				const newValue = e.currentTarget.value
+				setLastValue(newValue)
+				onChange(newValue)
+			}
+
 			return (
 				<input
+					ref={inputRef}
 					id={id}
 					placeholder={getPlaceholder()}
-					value={value || ""}
+					defaultValue={value || ""}
 					required={required}
 					disabled={disabled || readonly}
 					readOnly={readonly}
 					type={inputType}
-					onChange={e => onChange(e.target.value)}
+					onInput={handleInput}
 					onBlur={onBlur && (e => onBlur(id, e.target.value))}
 					onFocus={onFocus && (e => onFocus(id, e.target.value))}
 					className={`${inputClass} rounded-[6px] border ${required && !value ? "border-red-300" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
@@ -336,23 +400,36 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				uiSchema: fieldUiSchema,
 			} = props
 
-			const inputClass = fieldUiSchema?.["ui:className"] || "w-full"
+			// Create a reference to the input element
+			const inputRef = React.useRef<HTMLInputElement>(null)
 			const [showPassword, setShowPassword] = useState(false)
 
-			const togglePasswordVisibility = () => {
-				setShowPassword(!showPassword)
+			// Toggle password visibility by changing the input type
+			const toggleVisibility = () => {
+				if (!inputRef.current) return
+
+				if (inputRef.current.type === "password") {
+					inputRef.current.type = "text"
+					setShowPassword(true)
+				} else {
+					inputRef.current.type = "password"
+					setShowPassword(false)
+				}
 			}
+
+			const inputClass = fieldUiSchema?.["ui:className"] || "w-full"
 
 			return (
 				<div className="relative">
 					<input
+						ref={inputRef}
 						id={id}
 						placeholder={placeholder || "Enter password"}
-						value={value || ""}
+						defaultValue={value || ""}
 						required={required}
 						disabled={disabled || readonly}
 						readOnly={readonly}
-						type={showPassword ? "text" : "password"}
+						type="password"
 						onChange={e => onChange(e.target.value)}
 						onBlur={onBlur && (e => onBlur(id, e.target.value))}
 						onFocus={onFocus && (e => onFocus(id, e.target.value))}
@@ -360,7 +437,7 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 					/>
 					<div
 						className="absolute inset-y-0 right-0 flex cursor-pointer items-center px-3 text-gray-400 hover:text-gray-600"
-						onClick={togglePasswordVisibility}
+						onClick={toggleVisibility}
 					>
 						{showPassword ? (
 							<EyeSlash className="h-4 w-4" />
@@ -386,6 +463,24 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				uiSchema: fieldUiSchema,
 			} = props
 
+			// Create a reference to track the input element
+			const inputRef = React.useRef<HTMLInputElement>(null)
+
+			// Track the last value to avoid updates during focus
+			const [lastValue, setLastValue] = React.useState(value)
+
+			// Update the input value when props.value changes (but not during typing)
+			React.useEffect(() => {
+				if (
+					inputRef.current &&
+					value !== lastValue &&
+					document.activeElement !== inputRef.current
+				) {
+					inputRef.current.value = value !== undefined ? String(value) : ""
+					setLastValue(value)
+				}
+			}, [value, lastValue])
+
 			const inputClass = fieldUiSchema?.["ui:className"] || "w-full"
 
 			// Generate better placeholder based on field name if not provided
@@ -395,18 +490,26 @@ const JsonSchemaForm: React.FC<JsonSchemaFormProps> = ({
 				return `Enter ${fieldName?.toLowerCase()}`
 			}
 
+			// Handle input changes
+			const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
+				const newValue = e.currentTarget.value
+					? Number(e.currentTarget.value)
+					: undefined
+				setLastValue(newValue)
+				onChange(newValue)
+			}
+
 			return (
 				<input
+					ref={inputRef}
 					id={id}
 					placeholder={getPlaceholder()}
-					value={value || ""}
+					defaultValue={value !== undefined ? value : ""}
 					required={required}
 					disabled={disabled || readonly}
 					readOnly={readonly}
 					type="number"
-					onChange={e =>
-						onChange(e.target.value ? Number(e.target.value) : undefined)
-					}
+					onInput={handleInput}
 					onBlur={
 						onBlur &&
 						(e =>

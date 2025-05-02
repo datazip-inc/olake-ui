@@ -3,30 +3,38 @@ import { useAppStore } from "../../../store"
 import { getConnectorImage } from "../../../utils/utils"
 import { CheckCircle, PencilLine, Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
+import { message } from "antd"
+import { formatDistanceToNow } from "date-fns"
 
-const EditSourceModal = ({
-	mockAssociatedJobs,
-}: {
-	mockAssociatedJobs: any[]
-}) => {
+const EditSourceModal = () => {
 	const navigate = useNavigate()
 	const {
 		showEditSourceModal,
 		setShowEditSourceModal,
 		showSuccessModal,
 		setShowSuccessModal,
+		selectedSource,
+		updateSource,
 	} = useAppStore()
 
-	const handleEdit = () => {
-		setShowEditSourceModal(false)
-		// Show success modal
-		setShowSuccessModal(true)
+	const handleEdit = async () => {
+		if (!selectedSource?.id) {
+			message.error("Source ID is missing")
+			return
+		}
 
-		// Redirect after 2 seconds
-		setTimeout(() => {
-			setShowSuccessModal(false)
-			navigate("/sources")
-		}, 1000)
+		try {
+			setShowEditSourceModal(false)
+			await updateSource(selectedSource.id.toString(), selectedSource)
+			setShowSuccessModal(true)
+			setTimeout(() => {
+				setShowSuccessModal(false)
+				navigate("/sources")
+			}, 1000)
+		} catch (error) {
+			message.error("Failed to update source")
+			console.error(error)
+		}
 	}
 
 	return (
@@ -60,6 +68,7 @@ const EditSourceModal = ({
 					</Button>,
 				]}
 				centered
+				width="38%"
 			>
 				<div className="mt-4 text-center">
 					<h3 className="text-lg font-medium">
@@ -81,40 +90,44 @@ const EditSourceModal = ({
 							},
 							{
 								title: "Status",
-								dataIndex: "state",
-								key: "status",
-								render: () => <span className="text-yellow-500">warning</span>,
+								dataIndex: "activate",
+								key: "activate",
+								render: (activate: boolean) => (
+									<span
+										className={`rounded px-2 py-1 text-xs ${
+											!activate
+												? "bg-[#FFF1F0] text-[#F5222D]"
+												: "bg-[#E6F4FF] text-[#0958D9]"
+										}`}
+									>
+										{activate ? "Active" : "Inactive"}
+									</span>
+								),
 							},
 							{
 								title: "Last runtime",
-								dataIndex: "lastRuntime",
-								key: "lastRuntime",
+								dataIndex: "last_run_time",
+								key: "last_run_time",
+								render: (text: string) =>
+									formatDistanceToNow(new Date(text), { addSuffix: true }),
 							},
 							{
 								title: "Destination",
-								dataIndex: "destination",
-								key: "destination",
-								render: (destination: any) => (
+								dataIndex: "dest_name",
+								key: "dest_name",
+								render: (dest_name: string, record: any) => (
 									<div className="flex items-center">
 										<img
-											src={getConnectorImage(destination?.type || "Amazon S3")}
-											alt={destination?.type || "Amazon S3"}
+											src={getConnectorImage(record.dest_type || "")}
+											alt={record.dest_type}
 											className="mr-2 size-6"
 										/>
-										Amazon S3 destination
+										{dest_name || "N/A"}
 									</div>
 								),
 							},
 						]}
-						dataSource={mockAssociatedJobs.slice(0, 3).map((job, index) => ({
-							...job,
-							key: index,
-							name: `MongoDB_source_${index + 2}`,
-							lastRuntime: "3 hours ago",
-							destination: {
-								type: "Amazon S3",
-							},
-						}))}
+						dataSource={selectedSource?.jobs}
 						pagination={false}
 						rowKey="key"
 					/>

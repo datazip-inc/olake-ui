@@ -38,7 +38,6 @@ const DeleteJobModal = ({
 						type="primary"
 						danger
 						onClick={() => {
-							console.log("clicked")
 							setShowDeleteJobModal(false)
 							if (selectedJobId) {
 								deleteJob(selectedJobId).catch(error => {

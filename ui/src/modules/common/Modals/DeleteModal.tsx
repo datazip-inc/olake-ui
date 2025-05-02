@@ -1,12 +1,7 @@
 import { Button, message, Modal, Table } from "antd"
 import { useAppStore } from "../../../store"
-import {
-	ArrowsCounterClockwise,
-	CheckCircle,
-	Warning,
-	XCircle,
-} from "@phosphor-icons/react"
-import { Destination, Source } from "../../../types"
+import { getStatusIcon } from "../../../utils/statusIcons"
+import { Warning } from "@phosphor-icons/react"
 
 interface DeleteModalProps {
 	fromSource: boolean
@@ -53,16 +48,6 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 		setShowDeleteModal(false)
 	}
 
-	const getStatusIcon = (status: string | undefined) => {
-		if (status === "success") {
-			return <CheckCircle className="text-green-500" />
-		} else if (status === "failed") {
-			return <XCircle className="text-red-500" />
-		} else if (status === "running") {
-			return <ArrowsCounterClockwise className="text-blue-500" />
-		}
-		return null
-	}
 	const loading = false
 
 	const columns = [

@@ -610,6 +610,47 @@ http://localhost:8080
   }
   ```
 
+### Job Sync
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/sync`
+- **Method**: POST
+- **Description**: Sync the job
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string"
+  }
+  ```
+
+  ###Activate/Inactivate Job
+
+  - **Endpoint**: `/api/v1/project/:projectid/jobs/:id/activate`
+
+- **Method**: POST
+- **Description**: Update the activate status of job
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+
+  ```json
+  {
+   "activate":boolean  
+  }
+  ```
+
+- **Response**:
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      // request body as it is
+    }
+  }
+  ```
+
 ### Job Tasks
 
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/tasks`

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import {
 	BrowserRouter as Router,
 	Routes,
@@ -8,6 +8,7 @@ import {
 import { ConfigProvider, App as AntApp, Spin } from "antd"
 import Layout from "./modules/common/components/Layout"
 import { ErrorBoundary } from "./modules/common/components/ErrorBoundary"
+import { useAppStore } from "./store"
 
 // Lazy load components
 const Jobs = lazy(() => import("./modules/jobs/pages/Jobs"))
@@ -36,6 +37,101 @@ const LoadingFallback = () => (
 	</div>
 )
 
+// Auth loading component
+const AuthLoadingScreen = () => (
+	<div className="flex h-screen items-center justify-center">
+		<div className="text-center">
+			<Spin size="large" />
+			<p className="mt-4 text-gray-500">Logging in...</p>
+		</div>
+	</div>
+)
+
+// Main app content
+const AppContent = () => {
+	const { isAuthLoading, initAuth } = useAppStore()
+
+	useEffect(() => {
+		initAuth()
+	}, [initAuth])
+
+	if (isAuthLoading) {
+		return <AuthLoadingScreen />
+	}
+
+	return (
+		<Router>
+			<Layout>
+				<Suspense fallback={<LoadingFallback />}>
+					<Routes>
+						<Route
+							path="/jobs"
+							element={<Jobs />}
+						/>
+						<Route
+							path="/jobs/new"
+							element={<JobCreation />}
+						/>
+						<Route
+							path="/jobs/:jobId/edit"
+							element={<JobEdit />}
+						/>
+						<Route
+							path="/jobs/:jobId/history"
+							element={<JobHistory />}
+						/>
+						<Route
+							path="/jobs/:jobId/history/:historyId/logs"
+							element={<JobLogs />}
+						/>
+						<Route
+							path="/jobs/:jobId/tasks/:taskId/logs"
+							element={<JobLogs />}
+						/>
+						<Route
+							path="/jobs/:jobId/settings"
+							element={<JobSettings />}
+						/>
+						<Route
+							path="/sources"
+							element={<Sources />}
+						/>
+						<Route
+							path="/sources/new"
+							element={<CreateSource />}
+						/>
+						<Route
+							path="/sources/:sourceId"
+							element={<SourceEdit />}
+						/>
+						<Route
+							path="/destinations"
+							element={<Destinations />}
+						/>
+						<Route
+							path="/destinations/new"
+							element={<CreateDestination />}
+						/>
+						<Route
+							path="/destinations/:destinationId"
+							element={<DestinationEdit />}
+						/>
+						<Route
+							path="*"
+							element={
+								<Navigate
+									to="/jobs"
+									replace
+								/>
+							}
+						/>
+					</Routes>
+				</Suspense>
+			</Layout>
+		</Router>
+	)
+}
+
 function App() {
 	return (
 		<ConfigProvider
@@ -48,71 +144,7 @@ function App() {
 		>
 			<AntApp>
 				<ErrorBoundary>
-					<Router>
-						<Layout>
-							<Suspense fallback={<LoadingFallback />}>
-								<Routes>
-									<Route
-										path="/jobs"
-										element={<Jobs />}
-									/>
-									<Route
-										path="/jobs/new"
-										element={<JobCreation />}
-									/>
-									<Route
-										path="/jobs/:jobId/edit"
-										element={<JobEdit />}
-									/>
-									<Route
-										path="/jobs/:jobId/history"
-										element={<JobHistory />}
-									/>
-									<Route
-										path="/jobs/:jobId/history/:historyId/logs"
-										element={<JobLogs />}
-									/>
-									<Route
-										path="/jobs/:jobId/settings"
-										element={<JobSettings />}
-									/>
-									<Route
-										path="/sources"
-										element={<Sources />}
-									/>
-									<Route
-										path="/sources/new"
-										element={<CreateSource />}
-									/>
-									<Route
-										path="/sources/:sourceId"
-										element={<SourceEdit />}
-									/>
-									<Route
-										path="/destinations"
-										element={<Destinations />}
-									/>
-									<Route
-										path="/destinations/new"
-										element={<CreateDestination />}
-									/>
-									<Route
-										path="/destinations/:destinationId"
-										element={<DestinationEdit />}
-									/>
-									<Route
-										path="*"
-										element={
-											<Navigate
-												to="/jobs"
-												replace
-											/>
-										}
-									/>
-								</Routes>
-							</Suspense>
-						</Layout>
-					</Router>
+					<AppContent />
 				</ErrorBoundary>
 			</AntApp>
 		</ConfigProvider>

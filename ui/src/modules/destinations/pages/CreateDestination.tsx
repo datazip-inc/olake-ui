@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Input, Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
@@ -16,10 +16,14 @@ import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
-import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
-import { Destination } from "../../../types"
+import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
-import { getConnectorName } from "../../../utils/utils"
+import {
+	getCatalogInLowerCase,
+	getConnectorInLowerCase,
+	getConnectorName,
+} from "../../../utils/utils"
+import { EntityBase } from "../../../types"
 
 interface ExtendedDestination extends Destination {
 	config?: any
@@ -37,6 +41,7 @@ interface CreateDestinationProps {
 	onDestinationNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void
+	onVersionChange?: (version: string) => void
 }
 
 const CreateDestination: React.FC<CreateDestinationProps> = ({
@@ -51,17 +56,22 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	onDestinationNameChange,
 	onConnectorChange,
 	onFormDataChange,
+	onVersionChange,
 }) => {
 	const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("Amazon S3")
 	const [catalog, setCatalog] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
+	const [version, setVersion] = useState("")
+	const [versions, setVersions] = useState<string[]>([])
+	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [loading, setLoading] = useState(false)
 	const [filteredDestinations, setFilteredDestinations] = useState<
 		ExtendedDestination[]
 	>([])
+	const navigate = useNavigate()
 
 	const {
 		destinations,
@@ -72,54 +82,54 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		addDestination,
 	} = useAppStore()
 
-	useEffect(() => {
-		const fetchSchema = async () => {
-			try {
-				setLoading(true)
-				let schemaData
-				if (connector === "Apache Iceberg") {
-					let connectorFromCatalog
-					if (catalog === null) {
-						connectorFromCatalog = "AWS Glue"
-					} else {
-						connectorFromCatalog = catalog
-					}
-					schemaData =
-						await destinationService.getConnectorSchema(connectorFromCatalog)
-					setSchema(schemaData)
-				} else {
-					schemaData = await destinationService.getConnectorSchema(connector)
-					setSchema(schemaData)
-				}
+	// useEffect(() => {
+	// 	const fetchSchema = async () => {
+	// 		try {
+	// 			setLoading(true)
+	// 			let schemaData
+	// 			if (connector === "Apache Iceberg") {
+	// 				let connectorFromCatalog
+	// 				if (catalog === null) {
+	// 					connectorFromCatalog = "AWS Glue"
+	// 				} else {
+	// 					connectorFromCatalog = catalog
+	// 				}
+	// 				// schemaData =
+	// 				// 	await destinationService.getConnectorSchema(connectorFromCatalog)
+	// 				// setSchema(schemaData)
+	// 				// } else {
+	// 				// 	schemaData = await destinationService.getConnectorSchema(connector)
+	// 				// 	// setSchema(schemaData)
+	// 				// }
 
-				// Initialize with default values from schema
-				if (schemaData.properties) {
-					const initialData: any = {}
+	// 				// Initialize with default values from schema
+	// 				// if (schemaData.properties) {
+	// 				// 	const initialData: any = {}
 
-					// Apply default values from schema properties
-					Object.entries(schemaData.properties).forEach(
-						([key, value]: [string, any]) => {
-							if (value.default !== undefined) {
-								initialData[key] = value.default
-							}
-						},
-					)
+	// 				// 	// Apply default values from schema properties
+	// 				// 	Object.entries(schemaData.properties).forEach(
+	// 				// 		([key, value]: [string, any]) => {
+	// 				// 			if (value.default !== undefined) {
+	// 				// 				initialData[key] = value.default
+	// 				// 			}
+	// 				// 		},
+	// 				// 	)
 
-					// Only set initial data if we don't have existing form data
-					if (Object.keys(formData).length === 0) {
-						setFormData(initialData)
-					}
-				}
-			} catch (error) {
-				console.error("Error fetching schema:", error)
-			} finally {
-				setLoading(false)
-			}
-		}
+	// 				// 	// Only set initial data if we don't have existing form data
+	// 				// 	if (Object.keys(formData).length === 0) {
+	// 				// 		setFormData(initialData)
+	// 				// 	}
+	// 			}
+	// 		} catch (error) {
+	// 			console.error("Error fetching schema:", error)
+	// 		} finally {
+	// 			setLoading(false)
+	// 		}
+	// 	}
 
-		// Fetch schema for both new and existing sources
-		fetchSchema()
-	}, [connector, setupType, catalog])
+	// 	// Fetch schema for both new and existing sources
+	// 	fetchSchema()
+	// }, [connector, setupType, catalog])
 
 	useEffect(() => {
 		if (!destinations.length) {
@@ -156,7 +166,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		}
 	}, [fromJobEditFlow, existingDestinationId, destinations])
 
-	// Make sure catalog is immediately set when connector changes
 	useEffect(() => {
 		if (connector === "Apache Iceberg") {
 			setCatalog("AWS Glue")
@@ -165,63 +174,125 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		}
 	}, [connector])
 
-	// Update useEffect for filtered destinations to remove redundant catalog check
 	useEffect(() => {
 		if (setupType === "existing") {
-			// Only filter by catalog if it's Apache Iceberg
 			if (connector === "Apache Iceberg") {
-				// Make sure we have a catalog value
 				const catalogValue = catalog || "AWS Glue"
-
-				// Create a safe version of the filter that checks for config existence
 				const filtered = destinations.filter(destination => {
-					// First check if it's the right connector type
-					if (destination.type !== connector) return false
-
-					// For Apache Iceberg, also check the catalog value
-					const extDestination = destination as ExtendedDestination
-					return extDestination.catalog === catalogValue
+					if (destination.type !== getConnectorInLowerCase(connector))
+						return false
+					const extDestination = destination as any
+					return (
+						extDestination.config?.catalog ===
+							getCatalogInLowerCase(catalogValue) ||
+						extDestination.config?.catalog_type ===
+							getCatalogInLowerCase(catalogValue)
+					)
 				})
-				setFilteredDestinations(filtered as ExtendedDestination[])
+				setFilteredDestinations(filtered as EntityBase[])
 			} else {
 				const filtered = destinations.filter(
-					destination => destination.type === connector,
-				) as ExtendedDestination[]
+					destination =>
+						destination.type === getConnectorInLowerCase(connector),
+				) as EntityBase[]
 
 				setFilteredDestinations(filtered)
 			}
 		}
 	}, [connector, setupType, destinations, catalog])
 
+	useEffect(() => {
+		const fetchVersions = async () => {
+			setLoadingVersions(true)
+			try {
+				const response = await destinationService.getDestinationVersions(
+					connector.toLowerCase(),
+				)
+				if (response.data && response.data.version) {
+					setVersions(response.data.version)
+					const defaultVersion = response.data.version[0] || ""
+					setVersion(defaultVersion)
+
+					// Pass the version to parent component if onVersionChange is provided
+					if (onVersionChange) {
+						onVersionChange(defaultVersion)
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching versions:", error)
+			} finally {
+				setLoadingVersions(false)
+			}
+		}
+
+		fetchVersions()
+	}, [connector, onVersionChange])
+
+	useEffect(() => {
+		const fetchDestinationSpec = async () => {
+			try {
+				setLoading(true)
+				const response = await destinationService.getDestinationSpec(
+					connector,
+					catalog,
+				)
+				if (response.success && response.data?.spec) {
+					setSchema(response.data.spec)
+				} else {
+					console.error("Failed to get source spec:", response.message)
+				}
+			} catch (error) {
+				console.error("Error fetching source spec:", error)
+			} finally {
+				setLoading(false)
+			}
+		}
+
+		fetchDestinationSpec()
+	}, [connector, catalog, version])
+
 	const handleCancel = () => {
 		setShowEntitySavedModal(false)
 	}
 
-	const handleCreate = () => {
-		// Add the new destination to the store state
+	const handleCreate = async () => {
+		let catalogInLowerCase
+		if (catalog) {
+			catalogInLowerCase = getCatalogInLowerCase(catalog)
+		}
 		const newDestinationData = {
 			name: destinationName,
-			type: connector,
-			status: "active" as const,
-			config: { ...formData, catalog },
+			type: connector === "Amazon S3" ? "s3" : "iceberg",
+			version: version,
+			config: JSON.stringify({ ...formData, catalog: catalogInLowerCase }),
 		}
 
-		addDestination(newDestinationData)
-			.then(() => {
-				// Continue with the existing flow
-				setShowTestingModal(true)
+		try {
+			setShowTestingModal(true)
+			const testResult =
+				await destinationService.testDestinationConnection(newDestinationData)
+			setShowTestingModal(false)
+			if (testResult.success) {
+				setShowSuccessModal(true)
 				setTimeout(() => {
-					setShowTestingModal(false)
-					setShowSuccessModal(true)
-					setTimeout(() => {
-						setShowSuccessModal(false)
-						setShowEntitySavedModal(true)
-					}, 2000)
-				}, 2000)
-			})
-			.catch(error => {
-				console.error("Error adding destination:", error)
-			})
+					setShowSuccessModal(false)
+					addDestination(newDestinationData)
+						.then(() => {
+							setShowEntitySavedModal(true)
+						})
+						.catch(error => {
+							console.error("Error adding destination:", error)
+						})
+				}, 1000)
+			} else {
+				console.error("Connection test failed:", testResult.message)
+				navigate("/destinations")
+			}
+		} catch (error) {
+			setShowTestingModal(false)
+			console.error("Error testing connection:", error)
+			navigate("/destinations")
+		}
 	}
 
 	const handleDestinationNameChange = (
@@ -239,6 +310,11 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		if (onConnectorChange) {
 			onConnectorChange(value)
 		}
+		if (value === "Apache Iceberg") {
+			setCatalog("AWS Glue")
+		} else {
+			setCatalog(null)
+		}
 	}
 
 	const handleCatalogChange = (value: string) => {
@@ -247,13 +323,43 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 
 	const handleExistingDestinationSelect = (value: string) => {
 		const selectedDestination = destinations.find(
-			d => d.id === value,
-		) as ExtendedDestination
+			d => d.id.toString() === value.toString(),
+		)
 		if (selectedDestination) {
-			setDestinationName(selectedDestination.name)
-			setConnector(selectedDestination.type)
-			if (selectedDestination.config?.catalog) {
-				setCatalog(selectedDestination.config.catalog)
+			if (onDestinationNameChange) {
+				onDestinationNameChange(selectedDestination.name)
+			}
+			if (onConnectorChange) {
+				onConnectorChange(selectedDestination.type)
+			}
+			if (onVersionChange) {
+				onVersionChange(selectedDestination.version)
+			}
+			if (onFormDataChange) {
+				onFormDataChange(selectedDestination.config)
+			}
+			if (
+				JSON.parse(selectedDestination.config)?.catalog ||
+				JSON.parse(selectedDestination.config)?.catalog_type
+			) {
+				let catalogValue = "none"
+				if (JSON.parse(selectedDestination.config)?.catalog) {
+					catalogValue = JSON.parse(selectedDestination.config)?.catalog
+				} else if (JSON.parse(selectedDestination.config)?.catalog_type) {
+					catalogValue = JSON.parse(selectedDestination.config)?.catalog_type
+				}
+
+				if (catalogValue == "None") {
+					setCatalog(catalogValue)
+				} else if (catalogValue === "glue") {
+					setCatalog("AWS Glue")
+				} else if (catalogValue === "rest") {
+					setCatalog("REST Catalog")
+				} else if (catalogValue === "jdbc") {
+					setCatalog("JDBC Catalog")
+				} else if (catalogValue === "hive") {
+					setCatalog("Hive Catalog")
+				}
 			}
 			setFormData(selectedDestination.config || formData)
 		}
@@ -263,6 +369,14 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		setFormData(newFormData)
 		if (onFormDataChange) {
 			onFormDataChange(newFormData)
+		}
+	}
+
+	// Add a handler for version changes
+	const handleVersionChange = (value: string) => {
+		setVersion(value)
+		if (onVersionChange) {
+			onVersionChange(value)
 		}
 	}
 
@@ -477,15 +591,33 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							)}
 
 							{setupType === "new" && !fromJobEditFlow && (
-								<div className="mt-4 w-[70%]">
-									<label className="mb-2 block text-sm font-medium text-gray-700">
-										Name of your destination :
-									</label>
-									<Input
-										placeholder="Enter the name of your destination"
-										value={destinationName}
-										onChange={handleDestinationNameChange}
-									/>
+								<div className="mt-4 flex w-full gap-12">
+									<div className="w-1/3">
+										<label className="mb-2 block text-sm font-medium text-gray-700">
+											Name of your destination:
+										</label>
+										<Input
+											placeholder="Enter the name of your destination"
+											value={destinationName}
+											onChange={handleDestinationNameChange}
+										/>
+									</div>
+									<div className="w-1/3">
+										<label className="mb-2 block text-sm font-medium text-gray-700">
+											Version:
+										</label>
+										<Select
+											value={version}
+											onChange={handleVersionChange}
+											className="w-full"
+											loading={loadingVersions}
+											placeholder="Select version"
+											options={versions.map(version => ({
+												value: version,
+												label: version,
+											}))}
+										/>
+									</div>
 								</div>
 							)}
 						</div>
@@ -509,14 +641,15 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 													</div>
 												</div>
 											</div>
-
-											<DynamicSchemaForm
-												schema={schema}
-												uiSchema={schema?.uiSchema}
-												formData={formData}
-												onChange={handleFormChange}
-												hideSubmit={true}
-											/>
+											{schema && (
+												<FixedSchemaForm
+													schema={schema}
+													uiSchema={schema?.uiSchema}
+													formData={formData}
+													onChange={handleFormChange}
+													hideSubmit={true}
+												/>
+											)}
 										</div>
 									)}
 								</>

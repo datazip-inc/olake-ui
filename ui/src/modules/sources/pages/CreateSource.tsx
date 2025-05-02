@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
@@ -14,7 +14,7 @@ import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
-import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
+import FixedSchemaForm from "../../../utils/FormFix"
 import { sourceService } from "../../../api/services/sourceService"
 import { getConnectorImage } from "../../../utils/utils"
 
@@ -30,6 +30,7 @@ interface CreateSourceProps {
 	onSourceNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void
+	onVersionChange?: (version: string) => void
 }
 
 // Custom components for section titles
@@ -54,15 +55,21 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	onSourceNameChange,
 	onConnectorChange,
 	onFormDataChange,
+	onVersionChange,
 }) => {
 	const [setupType, setSetupType] = useState("new")
 	const [connector, setConnector] = useState("MongoDB")
 	const [sourceName, setSourceName] = useState("")
+	const [selectedVersion, setSelectedVersion] = useState("")
+	const [versions, setVersions] = useState<string[]>([])
+	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [loading, setLoading] = useState(false)
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(false)
 	const [filteredSources, setFilteredSources] = useState<any[]>([])
+
+	const navigate = useNavigate()
 
 	const {
 		sources,
@@ -100,87 +107,89 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		if (fromJobEditFlow && existingSourceId) {
 			setSetupType("existing")
 
-			const selectedSource = sources.find(s => s.id === existingSourceId)
+			const selectedSource = sources.find(
+				s => String(s.id) === existingSourceId,
+			)
 
 			if (selectedSource) {
 				setSourceName(selectedSource.name)
 				setConnector(selectedSource.type)
+				setSelectedVersion(selectedSource.version)
 			}
 		}
 	}, [fromJobEditFlow, existingSourceId, sources])
 
 	useEffect(() => {
 		if (setupType === "existing") {
-			setFilteredSources(sources.filter(source => source.type === connector))
+			setFilteredSources(
+				sources.filter(source => source.type === connector.toLowerCase()),
+			)
 		}
 	}, [connector, setupType, sources])
 
-	// Fetch schema when connector changes
 	useEffect(() => {
-		const fetchSchema = async () => {
+		const fetchVersions = async () => {
+			setLoadingVersions(true)
 			try {
-				setLoading(true)
-				const schemaData = await sourceService.getConnectorSchema(connector)
-				setSchema(schemaData)
-
-				// Initialize with default values from schema
-				if (schemaData.properties) {
-					const initialData: any = {}
-
-					// Apply default values from schema properties
-					Object.entries(schemaData.properties).forEach(
-						([key, value]: [string, any]) => {
-							if (value.default !== undefined) {
-								initialData[key] = value.default
-							}
-						},
-					)
-
-					// Only set initial data if we don't have existing form data
-					if (Object.keys(formData).length === 0) {
-						setFormData(initialData)
+				const response = await sourceService.getSourceVersions("mysql")
+				if (response.data && response.data.version) {
+					setVersions(response.data.version)
+					if (response.data.version.length > 0) {
+						const defaultVersion = response.data.version[0]
+						setSelectedVersion(defaultVersion)
+						// Pass version to parent component if onVersionChange is provided
+						if (onVersionChange) {
+							onVersionChange(defaultVersion)
+						}
 					}
 				}
 			} catch (error) {
-				console.error("Error fetching schema:", error)
+				console.error("Error fetching versions:", error)
 			} finally {
-				setLoading(false)
+				setLoadingVersions(false)
 			}
 		}
 
-		// Fetch schema for both new and existing sources
-		fetchSchema()
-	}, [connector, setupType])
+		fetchVersions()
+	}, [onVersionChange])
 
 	const handleCancel = () => {
 		setShowSourceCancelModal(true)
 	}
 
-	const handleCreate = () => {
-		// Add the new source to the store state
+	const handleCreate = async () => {
 		const newSourceData = {
 			name: sourceName,
-			type: connector,
-			status: "active" as const,
-			config: formData,
+			type: connector.toLowerCase(),
+			version: selectedVersion,
+			config: JSON.stringify(formData),
 		}
 
-		addSource(newSourceData)
-			.then(() => {
-				// Continue with the existing flow
-				setShowTestingModal(true)
+		try {
+			setShowTestingModal(true)
+			const testResult = await sourceService.testSourceConnection(newSourceData)
+			setShowTestingModal(false)
+			if (testResult.success) {
+				setShowSuccessModal(true)
 				setTimeout(() => {
-					setShowTestingModal(false)
-					setShowSuccessModal(true)
-					setTimeout(() => {
-						setShowSuccessModal(false)
-						setShowEntitySavedModal(true)
-					}, 2000)
-				}, 2000)
-			})
-			.catch(error => {
-				console.error("Error adding source:", error)
-			})
+					setShowSuccessModal(false)
+					addSource(newSourceData)
+						.then(() => {
+							setShowEntitySavedModal(true)
+						})
+						.catch(error => {
+							console.error("Error adding source:", error)
+						})
+				}, 1000)
+			} else {
+				console.error("Connection test failed:", testResult.message)
+				navigate("/sources")
+			}
+		} catch (error) {
+			setShowTestingModal(false)
+			console.error("Error testing connection:", error)
+			navigate("/sources")
+		}
 	}
 
 	const handleSourceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,11 +208,26 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	}
 
 	const handleExistingSourceSelect = (value: string) => {
-		const selectedSource = sources.find(s => s.id === value)
+		const selectedSource = sources.find(
+			s => s.id.toString() === value.toString(),
+		)
 
 		if (selectedSource) {
+			if (onSourceNameChange) {
+				onSourceNameChange(selectedSource.name)
+			}
+			if (onConnectorChange) {
+				onConnectorChange(selectedSource.type)
+			}
+			if (onVersionChange) {
+				onVersionChange(selectedSource.version)
+			}
+			if (onFormDataChange) {
+				onFormDataChange(selectedSource.config)
+			}
 			setSourceName(selectedSource.name)
 			setConnector(selectedSource.type)
+			setSelectedVersion(selectedSource.version)
 		}
 	}
 
@@ -214,9 +238,52 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		}
 	}
 
+	const handleVersionChange = (value: string) => {
+		setSelectedVersion(value)
+		if (onVersionChange) {
+			onVersionChange(value)
+		}
+	}
+
 	const toggleDocPanel = () => {
 		setIsDocPanelCollapsed(!isDocPanelCollapsed)
 	}
+
+	useEffect(() => {
+		const fetchSourceSpec = async () => {
+			try {
+				setLoading(true)
+				const response = await sourceService.getSourceSpec(
+					connector,
+					selectedVersion,
+				)
+				if (response.success && response.data?.spec) {
+					setSchema(response.data.spec)
+					if (response.data.spec?.properties) {
+						const initialData: any = {}
+						Object.entries(response.data.spec?.properties).forEach(
+							([key, value]: [string, any]) => {
+								if (value.default !== undefined) {
+									initialData[key] = value.default
+								}
+							},
+						)
+						if (Object.keys(formData).length === 0) {
+							setFormData(initialData)
+						}
+					}
+				} else {
+					console.error("Failed to get source spec:", response.message)
+				}
+			} catch (error) {
+				console.error("Error fetching source spec:", error)
+			} finally {
+				setLoading(false)
+			}
+		}
+
+		fetchSourceSpec()
+	}, [connector, selectedVersion])
 
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
@@ -266,63 +333,81 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 							)}
 
 							{setupType === "new" && !fromJobEditFlow ? (
-								<div className="flex-start flex w-full gap-6">
-									<div className="w-1/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<div className="flex items-center">
+								<div className="flex flex-col gap-6">
+									<div className="flex w-full gap-6">
+										<div className="w-1/3">
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Connector:
+											</label>
+											<div className="flex items-center">
+												<Select
+													value={connector}
+													onChange={handleConnectorChange}
+													className="h-8 w-full"
+													options={[
+														{
+															value: "MongoDB",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={getConnectorImage("MongoDB")}
+																		alt="MongoDB"
+																		className="mr-2 size-5"
+																	/>
+																	<span>MongoDB</span>
+																</div>
+															),
+														},
+														{
+															value: "Postgres",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={getConnectorImage("Postgres")}
+																		alt="Postgres"
+																		className="mr-2 size-5"
+																	/>
+																	<span>Postgres</span>
+																</div>
+															),
+														},
+														{
+															value: "MySQL",
+															label: (
+																<div className="flex items-center">
+																	<img
+																		src={getConnectorImage("MySQL")}
+																		alt="MySQL"
+																		className="mr-2 size-5"
+																	/>
+																	<span>MySQL</span>
+																</div>
+															),
+														},
+													]}
+												/>
+											</div>
+										</div>
+
+										<div className="w-1/3">
+											<label className="mb-2 block text-sm font-medium text-gray-700">
+												Version:
+											</label>
 											<Select
-												value={connector}
-												onChange={handleConnectorChange}
-												className="h-8 w-full"
-												options={[
-													{
-														value: "MongoDB",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("MongoDB")}
-																	alt="MongoDB"
-																	className="mr-2 size-5"
-																/>
-																<span>MongoDB</span>
-															</div>
-														),
-													},
-													{
-														value: "Postgres",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("Postgres")}
-																	alt="Postgres"
-																	className="mr-2 size-5"
-																/>
-																<span>Postgres</span>
-															</div>
-														),
-													},
-													{
-														value: "MySQL",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("MySQL")}
-																	alt="MySQL"
-																	className="mr-2 size-5"
-																/>
-																<span>MySQL</span>
-															</div>
-														),
-													},
-												]}
-												style={{ boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" }}
+												value={selectedVersion}
+												onChange={handleVersionChange}
+												className="w-full"
+												loading={loadingVersions}
+												placeholder="Select version"
+												options={versions.map(version => ({
+													value: version,
+													label: version,
+												}))}
 											/>
 										</div>
 									</div>
 
-									<div className="w-1/3">
+									<div className="w-2/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Name of your source:
 										</label>
@@ -425,9 +510,8 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 									{schema && (
 										<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 											<EndpointTitleComp title="Endpoint config" />
-											<DynamicSchemaForm
+											<FixedSchemaForm
 												schema={schema}
-												uiSchema={schema.uiSchema}
 												formData={formData}
 												onChange={handleFormChange}
 												hideSubmit={true}

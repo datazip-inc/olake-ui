@@ -1,6 +1,10 @@
 import api from "../axios"
-import { Destination } from "../../types"
-import { mockDestinations } from "../mockData"
+import {
+	APIResponse,
+	Entity,
+	EntityBase,
+	EntityTestResponse,
+} from "../../types"
 
 // Flag to use mock data instead of real API
 const useMockData = true
@@ -366,117 +370,63 @@ const mockDestinationConnectorSchemas = {
 }
 
 export const destinationService = {
-	// Get all destinations
 	getDestinations: async () => {
-		if (useMockData) {
-			// Return mock data with a small delay to simulate network request
-			return new Promise<Destination[]>(resolve => {
-				setTimeout(() => resolve(mockDestinations), 500)
-			})
-		}
-
-		const response = await api.get<Destination[]>("/destinations")
-		return response.data
-	},
-
-	// Get destination by id
-	getDestinationById: async (id: string) => {
-		if (useMockData) {
-			const destination = mockDestinations.find(
-				destination => destination.id === id,
+		try {
+			const response = await api.get<APIResponse<Entity[]>>(
+				"/api/v1/project/123/destinations",
 			)
-			if (!destination) throw new Error("Destination not found")
 
-			return new Promise<Destination>(resolve => {
-				setTimeout(() => resolve(destination), 300)
+			const destinations: Entity[] = response.data.data.map(item => {
+				const config = JSON.parse(item.config)
+
+				return {
+					...item,
+					config,
+					status: "active",
+				}
 			})
-		}
 
-		const response = await api.get<Destination>(`/destinations/${id}`)
-		return response.data
+			return destinations
+		} catch (error) {
+			console.error("Error fetching sources from API:", error)
+			throw error
+		}
 	},
 
 	// Create new destination
 	createDestination: async (
 		destination: Omit<Destination, "id" | "createdAt">,
 	) => {
-		if (useMockData) {
-			const newDestination: Destination = {
-				...destination,
-				id: Math.random().toString(36).substring(2, 9),
-				createdAt: new Date(),
-			}
-
-			// Don't add to mockDestinations to avoid duplication with store state
-			// The store will handle adding the destination to its state
-
-			return new Promise<Destination>(resolve => {
-				setTimeout(() => resolve(newDestination), 400)
-			})
-		}
-
-		const response = await api.post<Destination>("/destinations", destination)
-		return response.data
-	},
-
-	// Update destination
-	updateDestination: async (id: string, destination: Partial<Destination>) => {
-		if (useMockData) {
-			const index = mockDestinations.findIndex(d => d.id === id)
-			if (index === -1) throw new Error("Destination not found")
-
-			const updatedDestination = { ...mockDestinations[index], ...destination }
-			mockDestinations[index] = updatedDestination
-
-			return new Promise<Destination>(resolve => {
-				setTimeout(() => resolve(updatedDestination), 300)
-			})
-		}
-
-		const response = await api.put<Destination>(
-			`/destinations/${id}`,
+		const response = await api.post<EntityBase>(
+			"/api/v1/project/123/destinations",
 			destination,
 		)
 		return response.data
 	},
 
-	// Delete destination
-	deleteDestination: async (id: string) => {
-		if (useMockData) {
-			const index = mockDestinations.findIndex(d => d.id === id)
-			if (index === -1) throw new Error("Destination not found")
-
-			mockDestinations.splice(index, 1)
-
-			return new Promise<void>(resolve => {
-				setTimeout(() => resolve(), 300)
-			})
+	// Update destination
+	updateDestination: async (id: string, destination: any) => {
+		try {
+			const response = await api.put<APIResponse<any>>(
+				`/api/v1/project/123/destinations/${id}`,
+				{
+					name: destination.name,
+					type: destination.type,
+					version: destination.version,
+					config: destination.config,
+				},
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error updating destination:", error)
+			throw error
 		}
-
-		const response = await api.delete(`/destinations/${id}`)
-		return response.data
 	},
 
-	// Test destination connection
-	testConnection: async (id: string) => {
-		if (useMockData) {
-			const destination = mockDestinations.find(d => d.id === id)
-			if (!destination) throw new Error("Destination not found")
-
-			return new Promise<{ success: boolean; message: string }>(resolve => {
-				setTimeout(
-					() =>
-						resolve({
-							success: true,
-							message: "Connection successful",
-						}),
-					800,
-				)
-			})
-		}
-
-		const response = await api.post(`/destinations/${id}/test`)
-		return response.data
+	// Delete destination
+	deleteDestination: async (id: number) => {
+		await api.delete(`/api/v1/project/123/destinations/${id}`)
+		return
 	},
 
 	getConnectorSchema: async (connectorType: string) => {
@@ -501,5 +451,67 @@ export const destinationService = {
 			console.error(`Error fetching schema for ${connectorType}:`, error)
 			throw error
 		}
+	},
+
+	// Test destination connection
+	testDestinationConnection: async (destination: EntityTestResponse) => {
+		try {
+			const response = await api.post<APIResponse<EntityTestResponse>>(
+				"/api/v1/project/123/destinations/test",
+				{
+					type: destination.type.toLowerCase(),
+					version: "1.0.0",
+					config: destination.config,
+				},
+			)
+			return {
+				success: response.data.success,
+				message: response.data.message,
+			}
+		} catch (error) {
+			console.error("Error testing destination connection:", error)
+			return {
+				success: false,
+				message:
+					error instanceof Error ? error.message : "Unknown error occurred",
+			}
+		}
+	},
+
+	getDestinationVersions: async (type: string) => {
+		const response = await api.get<APIResponse<{ version: string[] }>>(
+			`/api/v1/project/123/destinations/versions/?type=${type}`,
+		)
+		return response.data
+	},
+
+	getDestinationSpec: async (type: string, catalog: string | null) => {
+		if (!catalog) {
+			catalog = "none"
+		}
+		if (type.toLowerCase() === "amazon s3") {
+			type = "s3"
+		} else if (type.toLowerCase() === "apache iceberg") {
+			type = "iceberg"
+		}
+		if (catalog.toLowerCase() === "aws glue") {
+			catalog = "glue"
+		} else if (catalog.toLowerCase() === "rest catalog") {
+			catalog = "rest"
+		} else if (catalog.toLowerCase() === "jdbc catalog") {
+			catalog = "jdbc"
+		} else if (catalog.toLowerCase() === "hive catalog") {
+			catalog = "hive"
+		}
+
+		const response = await api.post<APIResponse<any>>(
+			`/api/v1/project/123/destinations/spec`,
+			{
+				type: type.toLowerCase(),
+				version: "latest",
+				catalog: catalog,
+			},
+		)
+		return response.data
 	},
 }

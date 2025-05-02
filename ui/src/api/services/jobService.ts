@@ -1,14 +1,33 @@
 import api from "../axios"
-import { Job, JobHistory, JobLog } from "../../types"
-import { mockJobs } from "../mockData"
-
-const useMockData = true
+import {
+	APIResponse,
+	Job,
+	JobBase,
+	JobHistory,
+	JobLog,
+	JobTask,
+	TaskLog,
+} from "../../types"
 
 export const jobService = {
 	// Get all jobs
 	getJobs: async () => {
-		const response = await api.get<Job[]>("/jobs")
-		return response.data
+		try {
+			const response = await api.get<APIResponse<Job[]>>(
+				"/api/v1/project/123/jobs",
+			)
+
+			const jobs: Job[] = response.data.data.map(item => {
+				return {
+					...item,
+				}
+			})
+
+			return jobs
+		} catch (error) {
+			console.error("Error fetching jobs from API:", error)
+			throw error
+		}
 	},
 
 	// Get job by id
@@ -18,8 +37,8 @@ export const jobService = {
 	},
 
 	// Create new job
-	createJob: async (job: Omit<Job, "id" | "createdAt">) => {
-		const response = await api.post<Job>("/jobs", job)
+	createJob: async (job: JobBase) => {
+		const response = await api.post<Job>("/api/v1/project/123/jobs", job)
 		return response.data
 	},
 
@@ -30,18 +49,9 @@ export const jobService = {
 	},
 
 	// Delete job
-	deleteJob: async (id: string) => {
-		if (useMockData) {
-			const index = mockJobs.findIndex(j => j.id === id)
-			if (index === -1) throw new Error("Job not found")
-
-			mockJobs.splice(index, 1)
-			return new Promise<void>(resolve => {
-				setTimeout(() => resolve(), 300)
-			})
-		}
-		// const response = await api.delete(`/jobs/${id}`)
-		// return response.data
+	deleteJob: async (id: number) => {
+		await api.delete(`/api/v1/project/123/jobs/${id}`)
+		return
 	},
 
 	// Run job
@@ -68,5 +78,42 @@ export const jobService = {
 			`/jobs/${jobId}/history/${historyId}/logs`,
 		)
 		return response.data
+	},
+
+	// Sync job
+	syncJob: async (id: string) => {
+		const response = await api.post<APIResponse<any>>(
+			`/api/v1/project/123/jobs/${id}/sync`,
+		)
+		return response.data
+	},
+
+	// Get job tasks
+	getJobTasks: async (id: string) => {
+		try {
+			const response = await api.get<APIResponse<JobTask[]>>(
+				`/api/v1/project/123/jobs/${id}/tasks`,
+			)
+
+			return response.data
+		} catch (error) {
+			console.error("Error fetching job tasks:", error)
+			throw error
+		}
+	},
+
+	// Get task logs
+	getTaskLogs: async (jobId: string, taskId: string, filePath: string) => {
+		try {
+			const response = await api.post<APIResponse<TaskLog[]>>(
+				`/api/v1/project/123/jobs/${jobId}/tasks/${taskId}/logs`,
+				{ file_path: filePath },
+			)
+
+			return response.data
+		} catch (error) {
+			console.error("Error fetching task logs:", error)
+			throw error
+		}
 	},
 }

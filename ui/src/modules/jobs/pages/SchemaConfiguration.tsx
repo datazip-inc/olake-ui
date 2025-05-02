@@ -1,25 +1,67 @@
 import { useEffect, useState, useMemo } from "react"
-import { Input, Empty } from "antd"
+import { Input, Empty, Spin } from "antd"
 import FilterButton from "../components/FilterButton"
-import { mockStreamData } from "../../../api/mockData"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
-import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 import { StreamData } from "../../../types"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StepTitle from "../../common/components/StepTitle"
+import { sourceService } from "../../../api"
+import React from "react"
+
+// Interface for the new combined format
+interface CombinedStreamsData {
+	selected_streams: {
+		[namespace: string]: {
+			stream_name: string
+			partition_regex: string
+			split_column: string
+		}[]
+	}
+	streams: StreamData[]
+}
 
 interface SchemaConfigurationProps {
-	selectedStreams: string[]
-	setSelectedStreams: React.Dispatch<React.SetStateAction<string[]>>
+	selectedStreams:
+		| string[]
+		| {
+				[namespace: string]: {
+					stream_name: string
+					partition_regex: string
+					split_column: string
+				}[]
+		  }
+		| CombinedStreamsData
+	setSelectedStreams: React.Dispatch<
+		React.SetStateAction<
+			| string[]
+			| {
+					[namespace: string]: {
+						stream_name: string
+						partition_regex: string
+						split_column: string
+					}[]
+			  }
+			| CombinedStreamsData
+		>
+	>
 	stepNumber?: number | string
 	stepTitle?: string
+	useDirectForms?: boolean
+	sourceName: string
+	sourceConnector: string
+	sourceVersion: string
+	sourceConfig: string
 }
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
-	selectedStreams,
 	setSelectedStreams,
 	stepNumber = 3,
 	stepTitle = "Schema evaluation",
+	useDirectForms = false,
+	sourceName,
+	sourceConnector,
+	sourceVersion,
+	sourceConfig,
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
@@ -28,6 +70,246 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [activeStreamData, setActiveStreamData] = useState<StreamData | null>(
 		null,
 	)
+	const [apiResponse, setApiResponse] = useState<{
+		selected_streams: {
+			[namespace: string]: {
+				stream_name: string
+				partition_regex: string
+				split_column: string
+			}[]
+		}
+		streams: StreamData[]
+	} | null>(null)
+	const [loading, setLoading] = useState(true)
+
+	// Use ref to track if we've initialized to prevent double updates
+	const initialized = React.useRef(false)
+
+	useEffect(() => {
+		const fetchSourceStreams = async () => {
+			if (initialized.current) return // Skip if already initialized
+
+			setLoading(true)
+			try {
+				const response = await sourceService.getSourceStreams(
+					sourceName,
+					sourceConnector,
+					sourceVersion,
+					sourceConfig,
+				)
+
+				// Fix: Check and ensure default namespace exists
+				const responseData = response.data
+				if (responseData.streams && responseData.streams.length > 0) {
+					// Ensure selected_streams object is initialized properly
+					if (!responseData.selected_streams) {
+						responseData.selected_streams = {}
+					}
+
+					// Check for streams with undefined or 'default' namespace and ensure they're properly handled
+					responseData.streams.forEach((stream: StreamData) => {
+						const namespace = stream.stream.namespace || "default"
+						if (!responseData.selected_streams[namespace]) {
+							responseData.selected_streams[namespace] = []
+						}
+					})
+				}
+
+				// First update the API response
+				setApiResponse(responseData)
+
+				// Then set the selected streams for the parent component
+				setSelectedStreams(responseData)
+
+				// Mark as initialized
+				initialized.current = true
+			} catch (error) {
+				console.error("Error fetching source streams:", error)
+			} finally {
+				setLoading(false)
+			}
+		}
+		fetchSourceStreams()
+	}, [sourceName, sourceConnector, sourceVersion, sourceConfig])
+
+	// Update selected streams when sync mode changes
+	const handleStreamSyncModeChange = (
+		streamName: string,
+		namespace: string,
+		newSyncMode: "full_refresh" | "cdc",
+	) => {
+		// First update the API response
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			// Check if this is actually a change
+			const streamIndex = prev.streams.findIndex(
+				s => s.stream.name === streamName && s.stream.namespace === namespace,
+			)
+
+			if (
+				streamIndex !== -1 &&
+				prev.streams[streamIndex].stream.sync_mode === newSyncMode
+			) {
+				// No change needed, return existing state
+				return prev
+			}
+
+			// Create a new object to avoid modifying existing state
+			const updated = { ...prev }
+
+			if (streamIndex !== -1) {
+				updated.streams = [...prev.streams] // Clone the array
+				updated.streams[streamIndex] = {
+					...updated.streams[streamIndex],
+					stream: {
+						...updated.streams[streamIndex].stream,
+						sync_mode: newSyncMode,
+					},
+				}
+			}
+
+			return updated
+		})
+
+		// Then update the parent's selected streams
+		setTimeout(() => {
+			setApiResponse(current => {
+				if (!current) return current
+
+				// Create the combined data structure for the parent
+				const updatedData = {
+					selected_streams: current.selected_streams,
+					streams: current.streams,
+				}
+
+				// Update the parent component with the full structure
+				setSelectedStreams(updatedData)
+
+				return current // Return current state without modifying it
+			})
+		}, 0)
+	}
+
+	const handleStreamSelect = (
+		streamName: string,
+		checked: boolean,
+		namespace: string,
+	) => {
+		// First update the API response
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			// Create a new object to avoid modifying existing state
+			const updated = {
+				...prev,
+				selected_streams: { ...prev.selected_streams },
+			}
+
+			// Determine if we need to make a change
+			let changed = false
+
+			if (checked) {
+				// Add stream to selected_streams
+				if (!updated.selected_streams[namespace]) {
+					updated.selected_streams[namespace] = []
+					changed = true
+				}
+
+				// Check if the stream is already in the selected streams
+				if (
+					!updated.selected_streams[namespace].some(
+						s => s.stream_name === streamName,
+					)
+				) {
+					updated.selected_streams[namespace] = [
+						...updated.selected_streams[namespace],
+						{
+							stream_name: streamName,
+							partition_regex: "",
+							split_column: "",
+						},
+					]
+					changed = true
+				}
+			} else {
+				// Remove stream from selected_streams
+				if (updated.selected_streams[namespace]) {
+					const filtered = updated.selected_streams[namespace].filter(
+						s => s.stream_name !== streamName,
+					)
+
+					if (filtered.length !== updated.selected_streams[namespace].length) {
+						updated.selected_streams[namespace] = filtered
+						changed = true
+
+						if (filtered.length === 0) {
+							delete updated.selected_streams[namespace]
+						}
+					}
+				}
+			}
+
+			// Only return the updated object if something changed
+			return changed ? updated : prev
+		})
+
+		// Then update the parent's selected streams
+		setTimeout(() => {
+			setApiResponse(current => {
+				if (!current) return current
+
+				// Create the combined data structure for the parent
+				const updatedData = {
+					selected_streams: current.selected_streams,
+					streams: current.streams,
+				}
+
+				// Update the parent component with the full structure
+				setSelectedStreams(updatedData)
+
+				return current // Return current state without modifying it
+			})
+		}, 0)
+	}
+
+	// Filter streams based on search and selected filters
+	const filteredStreams = useMemo(() => {
+		if (!apiResponse?.streams) return []
+		let filtered = [...apiResponse.streams]
+
+		if (searchText) {
+			filtered = filtered.filter(stream =>
+				stream.stream.name.toLowerCase().includes(searchText.toLowerCase()),
+			)
+		}
+
+		if (selectedFilters.includes("All tables")) return filtered
+
+		return filtered.filter(stream => {
+			const isSelected = apiResponse.selected_streams[
+				stream.stream.namespace || "default"
+			]?.some(s => s.stream_name === stream.stream.name)
+			const hasSelectedFilter = selectedFilters.includes("Selected")
+			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
+
+			if (hasSelectedFilter && hasNotSelectedFilter) return true
+			if (hasSelectedFilter) return isSelected
+			if (hasNotSelectedFilter) return !isSelected
+			return true
+		})
+	}, [apiResponse, searchText, selectedFilters])
+
+	// Group filtered streams by namespace
+	const groupedFilteredStreams = useMemo(() => {
+		const grouped: { [namespace: string]: StreamData[] } = {}
+		filteredStreams.forEach(stream => {
+			const ns = stream.stream.namespace || "default"
+			if (!grouped[ns]) grouped[ns] = []
+			grouped[ns].push(stream)
+		})
+		return grouped
+	}, [filteredStreams])
 
 	const filters = [
 		"All tables",
@@ -42,77 +324,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			setSelectedFilters(["All tables"])
 		}
 	}, [selectedFilters])
-
-	const handleToggleAllStreams = (e: CheckboxChangeEvent) => {
-		const { checked } = e.target
-		const filteredStreamNames = new Set(
-			filteredStreams.map(stream => stream.stream.name),
-		)
-
-		setSelectedStreams(prev =>
-			checked
-				? [...new Set([...prev, ...filteredStreamNames])]
-				: prev.filter(name => !filteredStreamNames.has(name)),
-		)
-	}
-
-	const handleStreamSelect = (streamName: string, checked: boolean) => {
-		setSelectedStreams(prev =>
-			checked
-				? [...prev, streamName]
-				: prev.filter(name => name !== streamName),
-		)
-	}
-
-	// Filter streams based on selected filters and search text
-	const filteredStreams = useMemo(() => {
-		let filtered = [...mockStreamData]
-
-		// Apply search filter
-		if (searchText) {
-			filtered = filtered.filter(stream =>
-				stream.stream.name.toLowerCase().includes(searchText.toLowerCase()),
-			)
-		}
-
-		// Return all filtered streams if "All tables" is selected
-		if (selectedFilters.includes("All tables")) {
-			return filtered
-		}
-
-		// Helper function to check if a stream matches selection criteria
-		const matchesSelectionCriteria = (stream: StreamData) => {
-			const isSelected = selectedStreams.includes(stream.stream.name)
-			const hasSelectedFilter = selectedFilters.includes("Selected")
-			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
-
-			if (hasSelectedFilter && hasNotSelectedFilter) return true
-			if (hasSelectedFilter) return isSelected
-			if (hasNotSelectedFilter) return !isSelected
-			return true
-		}
-
-		// Filter streams based on sync mode and selection criteria
-		return filtered.filter(stream => {
-			const isCDC =
-				selectedFilters.includes("CDC") && stream.sync_mode === "cdc"
-			const isFullRefresh =
-				selectedFilters.includes("Full refresh") &&
-				stream.sync_mode === "full_refresh"
-
-			// If no sync mode filters are active, only check selection criteria
-			if (
-				!selectedFilters.some(
-					filter => filter === "CDC" || filter === "Full refresh",
-				)
-			) {
-				return matchesSelectionCriteria(stream)
-			}
-
-			// Check both sync mode and selection criteria
-			return (isCDC || isFullRefresh) && matchesSelectionCriteria(stream)
-		})
-	}, [mockStreamData, searchText, selectedFilters, selectedStreams])
 
 	const { Search } = Input
 
@@ -149,28 +360,51 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			<div className="flex">
 				<div className={`${activeStreamData ? "w-1/2" : "w-full"} `}>
-					{filteredStreams?.length ? (
+					{!loading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
-							streamsToDisplay={filteredStreams}
-							allChecked={filteredStreams.every(stream =>
-								selectedStreams.includes(stream.stream.name),
-							)}
-							handleToggleAllStreams={handleToggleAllStreams}
-							activeStreamData={activeStreamData}
+							groupedStreams={groupedFilteredStreams}
+							selectedStreams={apiResponse.selected_streams}
 							setActiveStreamData={setActiveStreamData}
-							selectedStreams={selectedStreams}
+							activeStreamData={activeStreamData}
 							onStreamSelect={handleStreamSelect}
+							setSelectedStreams={(updatedSelectedStreams: any) => {
+								if (!apiResponse) return
+
+								// Construct the full data structure
+								const fullData = {
+									selected_streams: updatedSelectedStreams,
+									streams: apiResponse.streams,
+								}
+
+								// Pass it to the parent component
+								setSelectedStreams(fullData as CombinedStreamsData)
+							}}
+							selectedStreamsFromAPI={apiResponse.selected_streams}
 						/>
+					) : loading ? (
+						<Spin size="large">Loading streams...</Spin>
 					) : (
-						<>
-							<Empty className="flex h-full flex-col items-center justify-center" />
-						</>
+						<Empty className="flex h-full flex-col items-center justify-center" />
 					)}
 				</div>
 
 				{activeStreamData && (
 					<div className="mx-4 flex h-full w-1/2 flex-col rounded-xl border bg-[#ffffff] p-4 transition-all duration-150 ease-linear">
-						<StreamConfiguration stream={activeStreamData} />
+						<StreamConfiguration
+							stream={activeStreamData}
+							onUpdate={() => {
+								// Update the stream config in the local state
+								// Implementation will be added later if needed
+							}}
+							onSyncModeChange={(
+								streamName: string,
+								namespace: string,
+								syncMode: "full_refresh" | "cdc",
+							) => {
+								handleStreamSyncModeChange(streamName, namespace, syncMode)
+							}}
+							useDirectForms={useDirectForms}
+						/>
 					</div>
 				)}
 			</div>

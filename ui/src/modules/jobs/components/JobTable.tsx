@@ -1,20 +1,19 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { Job } from "../../../types"
+import { EntityBase, Job } from "../../../types"
 import { useNavigate } from "react-router-dom"
 import {
 	ArrowsClockwise,
-	ArrowsCounterClockwise,
-	CheckCircle,
 	ClockCounterClockwise,
 	DotsThree,
 	Gear,
 	Pause,
 	PencilSimple,
 	Trash,
-	XCircle,
 } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
+import { getStatusIcon } from "../../../utils/statusIcons"
+import { formatDistanceToNow } from "date-fns"
 
 interface JobTableProps {
 	jobs: Job[]
@@ -48,17 +47,6 @@ const JobTable: React.FC<JobTableProps> = ({
 		navigate(`/jobs/${jobId}/settings`)
 	}
 
-	const getStatusIcon = (status: string | undefined) => {
-		if (status === "success") {
-			return <CheckCircle className="text-green-500" />
-		} else if (status === "failed") {
-			return <XCircle className="text-red-500" />
-		} else if (status === "running") {
-			return <ArrowsCounterClockwise className="text-blue-500" />
-		}
-		return null
-	}
-
 	const columns = [
 		{
 			title: "Actions",
@@ -72,38 +60,38 @@ const JobTable: React.FC<JobTableProps> = ({
 								key: "sync",
 								icon: <ArrowsClockwise className="size-4" />,
 								label: "Sync now",
-								onClick: () => onSync(record.id),
+								onClick: () => onSync(record.id.toString()),
 							},
 							{
 								key: "edit",
 								icon: <PencilSimple className="size-4" />,
 								label: "Edit",
-								onClick: () => onEdit(record.id),
+								onClick: () => onEdit(record.id.toString()),
 							},
 							{
 								key: "pause",
 								icon: <Pause className="size-4" />,
 								label: "Pause job",
-								onClick: () => onPause(record.id),
+								onClick: () => onPause(record.id.toString()),
 							},
 							{
 								key: "history",
 								icon: <ClockCounterClockwise className="size-4" />,
 								label: "Job history",
-								onClick: () => handleViewHistory(record.id),
+								onClick: () => handleViewHistory(record.id.toString()),
 							},
 							{
 								key: "settings",
 								icon: <Gear className="size-4" />,
 								label: "Job settings",
-								onClick: () => handleViewSettings(record.id),
+								onClick: () => handleViewSettings(record.id.toString()),
 							},
 							{
 								key: "delete",
 								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
-								onClick: () => onDelete(record.id),
+								onClick: () => onDelete(record.id.toString()),
 							},
 						],
 					}}
@@ -126,13 +114,13 @@ const JobTable: React.FC<JobTableProps> = ({
 			title: "Source",
 			dataIndex: "source",
 			key: "source",
-			render: (text: string) => (
+			render: (text: EntityBase) => (
 				<div className="flex items-center">
 					<img
-						src={getConnectorImage(text)}
+						src={getConnectorImage(text?.type)}
 						className="mr-2 h-4 w-4"
 					/>
-					{text}
+					{text?.name}
 				</div>
 			),
 		},
@@ -140,28 +128,30 @@ const JobTable: React.FC<JobTableProps> = ({
 			title: "Destination",
 			dataIndex: "destination",
 			key: "destination",
-			render: (text: string) => (
+			render: (text: EntityBase) => (
 				<div className="flex items-center">
 					<img
-						src={getConnectorImage(text)}
+						src={getConnectorImage(text?.type)}
 						className="mr-2 h-4 w-4"
 					/>
-					{text}
+					{text?.name}
 				</div>
 			),
 		},
 		{
 			title: "Last sync",
-			dataIndex: "lastSync",
-			key: "lastSync",
+			dataIndex: "last_run_time",
+			key: "last_run_time",
+			render: (text: string) =>
+				formatDistanceToNow(new Date(text), { addSuffix: true }),
 		},
 		{
 			title: "Last sync status",
-			dataIndex: "lastSyncStatus",
-			key: "lastSyncStatus",
+			dataIndex: "last_run_state",
+			key: "last_run_state",
 			render: (status: string) => (
 				<div
-					className={`flex w-fit items-center justify-center rounded-[6px] px-4 py-1 ${
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
 						status === "success"
 							? "bg-[#f6ffed] text-[#389E0D]"
 							: status === "failed"
@@ -185,8 +175,8 @@ const JobTable: React.FC<JobTableProps> = ({
 	const filteredJobs = jobs.filter(
 		job =>
 			job.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			job.source.toLowerCase().includes(searchText.toLowerCase()) ||
-			job.destination.toLowerCase().includes(searchText.toLowerCase()),
+			job.source.name.toLowerCase().includes(searchText.toLowerCase()) ||
+			job.destination.name.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
 	// Calculate current page data for display

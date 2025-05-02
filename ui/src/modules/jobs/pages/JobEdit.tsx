@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link, useParams } from "react-router-dom"
-import { message } from "antd"
+import { message, Spin } from "antd"
 import SourceEdit from "../../sources/pages/SourceEdit"
 import DestinationEdit from "../../destinations/pages/DestinationEdit"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
@@ -90,8 +90,14 @@ const JobEdit: React.FC = () => {
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
 	// Find the job from the store
-	const job = jobs.find(j => j.id === jobId)
 
+	useEffect(() => {
+		if (!jobs.length) {
+			fetchJobs()
+		}
+	}, [fetchJobs, jobs])
+
+	const job = jobs.find(j => j.id.toString() === jobId)
 	// Load job data on component mount
 	useEffect(() => {
 		// Make sure we have the jobs, sources, and destinations data
@@ -105,17 +111,17 @@ const JobEdit: React.FC = () => {
 		if (job) {
 			setJobName(job.name)
 			const sourceDataObj: SourceData = {
-				id: "mock-source-id",
-				name: job.source || "MongoDB Source",
-				type: "MongoDB",
-				config: {
-					hosts: ["localhost:27017"],
-					username: "admin",
-					password: "password",
-					authdb: "admin",
-					database: "test_db",
-					collection: "test_collection",
-				},
+				name: job.source.name,
+				type: job.source.type,
+				config: JSON.parse(job.source.config),
+				// {
+				// 	hosts: ["localhost:27017"],
+				// 	username: "admin",
+				// 	password: "password",
+				// 	authdb: "admin",
+				// 	database: "test_db",
+				// 	collection: "test_collection",
+				// },
 			}
 			setSourceData(sourceDataObj)
 
@@ -202,7 +208,7 @@ const JobEdit: React.FC = () => {
 	if (!job && jobId) {
 		return (
 			<div className="flex h-screen items-center justify-center">
-				<div className="text-lg">Loading job data...</div>
+				<Spin tip="Loading job data..." />
 			</div>
 		)
 	}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import React, { useEffect, useRef, useMemo } from "react"
 import JsonSchemaForm from "./JsonSchemaForm"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
 
@@ -25,42 +25,71 @@ const DynamicSchemaForm: React.FC<DynamicSchemaFormProps> = ({
 	hideSubmit = true,
 	className = "",
 }) => {
-	const [currentFormData, setCurrentFormData] = useState({ ...formData })
+	// Create a stable form ID
+	const formId = useMemo(
+		() => `form-${Math.random().toString(36).substring(2, 9)}`,
+		[],
+	)
 
+	// Use a reference to track if we're in the middle of an update
+	const updatingRef = useRef(false)
+
+	// Store the latest onChange handler to ensure we always call the most recent one
+	const onChangeRef = useRef(onChange)
 	useEffect(() => {
-		setCurrentFormData(formData || {})
-	}, [formData])
+		onChangeRef.current = onChange
+	}, [onChange])
 
-	// Update form data when it changes
+	// The key handler that ensures proper data flow
 	const handleFormChange = (data: any) => {
-		// Handle both formats - direct value or { formData: value }
-		const newFormData = data.formData || data
-		setCurrentFormData(newFormData)
-		onChange(newFormData)
+		if (updatingRef.current) return
+
+		try {
+			updatingRef.current = true
+
+			// Get the form data, either from the event object or directly
+			const newData = data?.formData || data
+
+			// Call the parent's onChange handler
+			onChangeRef.current(newData)
+		} finally {
+			// Always reset the updating flag, even if there's an error
+			setTimeout(() => {
+				updatingRef.current = false
+			}, 0)
+		}
 	}
 
 	// Handle form submission
 	const handleSubmit = (data: any) => {
-		const submitData = data.formData || data
-		onSubmit?.(submitData)
+		if (!onSubmit) return
+		const submitData = data?.formData || data
+		onSubmit(submitData)
 	}
 
 	// Prepare UI schema with some standard enhancements
-	const finalUiSchema: UiSchema = {
-		...(providedUiSchema || {}),
-		"ui:className": "w-full",
-		"ui:options": {
-			...(providedUiSchema?.["ui:options"] || {}),
-			className: "grid grid-cols-2 gap-x-12 gap-y-2",
-		},
-	}
+	const finalUiSchema = useMemo(
+		() => ({
+			...(providedUiSchema || {}),
+			"ui:className": "w-full",
+			"ui:options": {
+				...(providedUiSchema?.["ui:options"] || {}),
+				className: "grid grid-cols-2 gap-x-12 gap-y-2",
+			},
+		}),
+		[providedUiSchema],
+	)
 
 	return (
-		<div className={className}>
+		<div
+			className={className}
+			id={formId}
+		>
 			<JsonSchemaForm
+				key={formId}
 				schema={schema}
 				uiSchema={finalUiSchema}
-				formData={currentFormData}
+				formData={formData}
 				onChange={handleFormChange}
 				onSubmit={handleSubmit}
 				hideSubmit={hideSubmit}
