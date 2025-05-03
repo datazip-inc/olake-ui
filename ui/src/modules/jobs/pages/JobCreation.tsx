@@ -15,6 +15,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import { JobBase, JobCreationSteps } from "../../../types"
 import { getConnectorInLowerCase } from "../../../utils/utils"
+import { destinationService, sourceService } from "../../../api"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -25,11 +26,11 @@ const JobCreation: React.FC = () => {
 	const [sourceName, setSourceName] = useState("")
 	const [sourceConnector, setSourceConnector] = useState("MongoDB")
 	const [sourceFormData, setSourceFormData] = useState<any>({})
-	const [sourceVersion, setSourceVersion] = useState("1.0.0")
+	const [sourceVersion, setSourceVersion] = useState("latest")
 	const [destinationName, setDestinationName] = useState("")
 	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [destinationVersion, setDestinationVersion] = useState("1.0.0")
+	const [destinationVersion, setDestinationVersion] = useState("latest")
 
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 
@@ -44,8 +45,6 @@ const JobCreation: React.FC = () => {
 		setShowSourceCancelModal,
 		setShowTestingModal,
 		setShowSuccessModal,
-		addSource,
-		addDestination,
 		addJob,
 	} = useAppStore()
 
@@ -63,7 +62,7 @@ const JobCreation: React.FC = () => {
 		}
 	}
 
-	const handleNext = () => {
+	const handleNext = async () => {
 		if (currentStep === "source") {
 			const newSourceData = {
 				name: sourceName,
@@ -71,64 +70,37 @@ const JobCreation: React.FC = () => {
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			}
-
-			console.log("newSourceData", newSourceData)
-			setCurrentStep("destination")
-
-			// addSource(newSourceData)
-			// 	.then(() => {
-			// 		setShowTestingModal(true)
-			// 		setTimeout(() => {
-			// 			setShowTestingModal(false)
-			// 			setShowSuccessModal(true)
-			// 			setTimeout(() => {
-			// 				setShowSuccessModal(false)
-			// 				setShowEntitySavedModal(true)
-			// 				setTimeout(() => {
-			// 					setShowEntitySavedModal(false)
-			// 					setCurrentStep("destination")
-			// 				}, 2000)
-			// 			}, 2000)
-			// 		}, 2000)
-			// 	})
-			// 	.catch(error => {
-			// 		console.error("Error adding source:", error)
-			// 		message.error("Failed to create source")
-			// 	})
+			setShowTestingModal(true)
+			const testResult = await sourceService.testSourceConnection(newSourceData)
+			setShowTestingModal(false)
+			if (testResult.success) {
+				setShowSuccessModal(true)
+				setTimeout(() => {
+					setShowSuccessModal(false)
+					setCurrentStep("destination")
+				}, 1000)
+			}
 		} else if (currentStep === "destination") {
 			const newDestinationData = {
 				name: destinationName,
 				type: destinationConnector,
-				config: destinationFormData,
+				config: JSON.stringify(destinationFormData),
 				version: "latest",
 			}
-			console.log("newDestinationData", newDestinationData)
-			setCurrentStep("schema")
-
-			// addDestination(newDestinationData)
-			// 	.then(() => {
-			// 		setShowTestingModal(true)
-			// 		setTimeout(() => {
-			// 			setShowTestingModal(false)
-			// 			setShowSuccessModal(true)
-			// 			setTimeout(() => {
-			// 				setShowSuccessModal(false)
-			// 				setShowEntitySavedModal(true)
-			// 				setTimeout(() => {
-			// 					setShowEntitySavedModal(false)
-			// 					setCurrentStep("schema")
-			// 				}, 2000)
-			// 			}, 2000)
-			// 		}, 2000)
-			// 	})
-			// 	.catch(error => {
-			// 		console.error("Error adding destination:", error)
-			// 		message.error("Failed to create destination")
-			// 	})
+			setShowTestingModal(true)
+			const testResult =
+				await destinationService.testDestinationConnection(newDestinationData)
+			setShowTestingModal(false)
+			if (testResult.success) {
+				setShowSuccessModal(true)
+				setTimeout(() => {
+					setShowSuccessModal(false)
+					setCurrentStep("schema")
+				}, 1000)
+			}
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
-			// Create job
 			const newJobData: JobBase = {
 				name: jobName,
 				source: {
@@ -143,16 +115,14 @@ const JobCreation: React.FC = () => {
 					version: "latest",
 					config: JSON.stringify(destinationFormData),
 				},
-				// Use the selectedStreams directly - it should already be in the combined format
 				streams_config: JSON.stringify(selectedStreams),
 				frequency: replicationFrequency
 					? getReplicationFrequency() || "hourly"
 					: "hourly",
 			}
-
 			addJob(newJobData)
 				.then(() => {
-					// setShowEntitySavedModal(true)
+					setShowEntitySavedModal(true)
 					navigate("/jobs")
 				})
 				.catch(error => {

@@ -41,7 +41,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 						? "Source is connected and saved successfully"
 						: type === "destination"
 							? "Destination is connected and saved successfully"
-							: "Your job is running successfully"}
+							: "Your job is created successfully"}
 				</div>
 				<div className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-[#D9D9D9] px-4 py-2">
 					<div className="flex items-center gap-1">

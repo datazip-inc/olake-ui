@@ -460,7 +460,7 @@ export const destinationService = {
 				"/api/v1/project/123/destinations/test",
 				{
 					type: destination.type.toLowerCase(),
-					version: "1.0.0",
+					version: destination.version,
 					config: destination.config,
 				},
 			)
