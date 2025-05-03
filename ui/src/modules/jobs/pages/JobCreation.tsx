@@ -72,14 +72,18 @@ const JobCreation: React.FC = () => {
 			}
 			setShowTestingModal(true)
 			const testResult = await sourceService.testSourceConnection(newSourceData)
-			setShowTestingModal(false)
-			if (testResult.success) {
-				setShowSuccessModal(true)
-				setTimeout(() => {
-					setShowSuccessModal(false)
-					setCurrentStep("destination")
-				}, 1000)
-			}
+
+			// Ensure testing modal stays visible for at least 1.5 seconds
+			setTimeout(() => {
+				setShowTestingModal(false)
+				if (testResult.success) {
+					setShowSuccessModal(true)
+					setTimeout(() => {
+						setShowSuccessModal(false)
+						setCurrentStep("destination")
+					}, 1000)
+				}
+			}, 1500)
 		} else if (currentStep === "destination") {
 			const newDestinationData = {
 				name: destinationName,
@@ -90,14 +94,18 @@ const JobCreation: React.FC = () => {
 			setShowTestingModal(true)
 			const testResult =
 				await destinationService.testDestinationConnection(newDestinationData)
-			setShowTestingModal(false)
-			if (testResult.success) {
-				setShowSuccessModal(true)
-				setTimeout(() => {
-					setShowSuccessModal(false)
-					setCurrentStep("schema")
-				}, 1000)
-			}
+
+			// Ensure testing modal stays visible for at least 1.5 seconds
+			setTimeout(() => {
+				setShowTestingModal(false)
+				if (testResult.success) {
+					setShowSuccessModal(true)
+					setTimeout(() => {
+						setShowSuccessModal(false)
+						setCurrentStep("schema")
+					}, 1000)
+				}
+			}, 1500)
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
