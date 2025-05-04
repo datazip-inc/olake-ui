@@ -54,8 +54,8 @@ func (r *Runner) WriteToFile(fileData string, ID any) (string, error) {
 	switch {
 	case ID == nil:
 		fileName = "writer.json"
-	case ID == "catalog":
-		fileName = "catalog.json"
+	case ID == "streams":
+		fileName = "streams.json"
 	default:
 		fileName = fmt.Sprintf("config-%v.json", ID)
 	}
@@ -281,7 +281,7 @@ func (r *Runner) TestConnection(sourceType, version, config string, sourceID int
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig string, sourceID, destID int) (map[string]interface{}, error) {
+func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsConfig string, sourceID, destID int) (map[string]interface{}, error) {
 	// Write source config to file
 	configPath, err := r.WriteToFile(sourceConfig, sourceID)
 	if err != nil {
@@ -293,11 +293,18 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig string, s
 	fmt.Printf("working directory path %s\n", outputDir)
 
 	// Define paths for required files
-	catalogPath := filepath.Join(outputDir, "catalog.json")
+	catalogPath := filepath.Join(outputDir, "streams.json")
 	writerPath := filepath.Join(outputDir, "writer.json")
 	statePath := filepath.Join(outputDir, "state.json")
+	// write streams config as streams.json
+	cmd := exec.Command("sudo", "chmod", "-R", "777", outputDir)
+	_ = cmd.Run() // Ignore error; permission setting is not critical
 
-	// First check if catalog.json exists, if not we need to run discover
+	err = os.WriteFile(catalogPath, []byte(streamsConfig), 0755)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write streams config :%v", err)
+	}
+	// First check if streams.json exists, if not we need to run discover
 	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
 		fmt.Println("Catalog file not found, running discover command first")
 		_, err = r.GetCatalog(sourceType, version, sourceConfig, sourceID)
@@ -307,7 +314,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig string, s
 	}
 
 	// Write destination config as writer.json
-	err = os.WriteFile(writerPath, []byte(destConfig), 0644)
+	err = os.WriteFile(writerPath, []byte(destConfig), 0755)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write destination config: %v", err)
 	}

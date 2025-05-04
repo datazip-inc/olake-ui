@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -350,6 +352,7 @@ func (c *JobHandler) SyncJob() {
 		job.SourceID.Version,
 		job.SourceID.Config,
 		job.DestID.Config,
+		job.StreamsConfig,
 		job.SourceID.ID,
 		job.DestID.ID,
 	)
@@ -443,95 +446,102 @@ func (c *JobHandler) GetJobTasks() {
 		return
 	}
 
-	// Get the latest sync folder from logs directory
+	// Get logs directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
 		return
 	}
 	logsDir := filepath.Join(homeDir, ".olake", "logs")
+
+	cmd := exec.Command("sudo", "chmod", "-R", "777", logsDir)
+	_ = cmd.Run() // Ignore error; permission setting is not critical
+
 	entries, err := os.ReadDir(logsDir)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read logs directory")
 		return
 	}
 
-	// Find the latest sync folder
-	var latestSync string
+	// Collect all sync directories
+	var syncDirs []string
 	for _, entry := range entries {
 		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
-			if latestSync == "" || entry.Name() > latestSync {
-				latestSync = entry.Name()
-			}
+			syncDirs = append(syncDirs, entry.Name())
 		}
 	}
 
-	if latestSync == "" {
+	if len(syncDirs) == 0 {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync logs found")
 		return
 	}
 
-	// Read the olake.log file from the latest sync folder
-	logPath := filepath.Join(logsDir, latestSync, "olake.log")
-	logContent, err := os.ReadFile(logPath)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read log file")
-		return
+	// Sort descending (latest first)
+	sort.Slice(syncDirs, func(i, j int) bool {
+		return syncDirs[i] > syncDirs[j]
+	})
+
+	// Limit to latest 10
+	if len(syncDirs) > 10 {
+		syncDirs = syncDirs[:10]
 	}
 
-	// Parse log entries
-	lines := strings.Split(string(logContent), "\n")
+	var tasks []models.JobTask
 
-	// Track first and last timestamps
-	var firstTime, lastTime time.Time
-	var logEntries []struct {
-		Level   string    `json:"level"`
-		Time    time.Time `json:"time"`
-		Message string    `json:"message"`
-	}
-
-	// First pass: collect all valid log entries
-	for _, line := range lines {
-		if line == "" {
-			continue
+	for _, syncDir := range syncDirs {
+		logPath := filepath.Join(logsDir, syncDir, "olake.log")
+		logContent, err := os.ReadFile(logPath)
+		if err != nil {
+			continue // Skip if log file is not readable
 		}
 
-		var logEntry struct {
+		lines := strings.Split(string(logContent), "\n")
+		var logEntries []struct {
 			Level   string    `json:"level"`
 			Time    time.Time `json:"time"`
 			Message string    `json:"message"`
 		}
 
-		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+			var entry struct {
+				Level   string    `json:"level"`
+				Time    time.Time `json:"time"`
+				Message string    `json:"message"`
+			}
+			if err := json.Unmarshal([]byte(line), &entry); err != nil {
+				continue
+			}
+			logEntries = append(logEntries, entry)
+		}
+
+		if len(logEntries) == 0 {
 			continue
 		}
-
-		logEntries = append(logEntries, logEntry)
-	}
-	var task []models.JobTask
-	// If we have entries, calculate runtime
-	if len(logEntries) > 0 {
-		firstTime = logEntries[0].Time
-		lastTime = logEntries[len(logEntries)-1].Time
+		firstTime := logEntries[0].Time
+		lastTime := logEntries[len(logEntries)-1].Time
 		runtime := lastTime.Sub(firstTime)
-		runtimeStr := fmt.Sprintf("%d secs", int(runtime.Seconds()))
-		var status string
-		if logEntries[len(logEntries)-1].Level == "info" {
-			status = "success"
-		} else {
+
+		lastEntry := logEntries[len(logEntries)-1]
+		status := "running"
+
+		if lastEntry.Level == "fatal" || lastEntry.Level == "error" {
 			status = "failed"
+		} else if lastEntry.Level == "info" && strings.Contains(lastEntry.Message, "Total records read: ") {
+			status = "success"
 		}
 
-		// Create a single task entry with the overall runtime
-		task = append(task, models.JobTask{
-			Runtime:   runtimeStr,
+		tasks = append(tasks, models.JobTask{
+			Runtime:   fmt.Sprintf("%d secs", int(runtime.Seconds())),
 			StartTime: firstTime.Format("2006-01-02_15-04-05"),
 			Status:    status,
-			FilePath:  latestSync,
+			FilePath:  syncDir,
 		})
 	}
 
-	utils.SuccessResponse(&c.Controller, task)
+	utils.SuccessResponse(&c.Controller, tasks)
 }
 
 // @router /project/:projectid/jobs/:id/tasks/:taskid/logs [post]
