@@ -18,6 +18,7 @@ const Destinations: React.FC = () => {
 		fetchDestinations,
 		setShowDeleteModal,
 		setSelectedDestination,
+		deleteDestination,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -37,6 +38,18 @@ const Destinations: React.FC = () => {
 
 	const handleDeleteDestination = (destination: Entity) => {
 		setSelectedDestination(destination)
+
+		// For inactive destinations, delete directly without showing modal
+		if (!destination?.jobs || destination.jobs.length === 0) {
+			message.info(`Deleting destination ${destination?.name}`)
+			deleteDestination(String(destination.id)).catch(error => {
+				message.error("Failed to delete destination")
+				console.error(error)
+			})
+			return
+		}
+
+		// For active destinations with jobs, show the delete confirmation modal
 		setTimeout(() => {
 			setShowDeleteModal(true)
 		}, 1000)

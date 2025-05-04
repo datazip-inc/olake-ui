@@ -51,6 +51,7 @@ interface SchemaConfigurationProps {
 	sourceConnector: string
 	sourceVersion: string
 	sourceConfig: string
+	initialStreamsData?: CombinedStreamsData
 }
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
@@ -62,6 +63,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	sourceConnector,
 	sourceVersion,
 	sourceConfig,
+	initialStreamsData,
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
@@ -79,13 +81,22 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			}[]
 		}
 		streams: StreamData[]
-	} | null>(null)
-	const [loading, setLoading] = useState(true)
+	} | null>(initialStreamsData || null)
+	const [loading, setLoading] = useState(!initialStreamsData)
 
 	// Use ref to track if we've initialized to prevent double updates
-	const initialized = React.useRef(false)
+	const initialized = React.useRef(!!initialStreamsData)
 
 	useEffect(() => {
+		// If initial data is provided, use it and skip fetching
+		if (initialStreamsData) {
+			setApiResponse(initialStreamsData)
+			setSelectedStreams(initialStreamsData)
+			setLoading(false)
+			initialized.current = true
+			return
+		}
+
 		const fetchSourceStreams = async () => {
 			if (initialized.current) return // Skip if already initialized
 
@@ -129,8 +140,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				setLoading(false)
 			}
 		}
+
 		fetchSourceStreams()
-	}, [sourceName, sourceConnector, sourceVersion, sourceConfig])
+	}, [
+		sourceName,
+		sourceConnector,
+		sourceVersion,
+		sourceConfig,
+		initialStreamsData,
+		setSelectedStreams,
+	])
 
 	// Update selected streams when sync mode changes
 	const handleStreamSyncModeChange = (

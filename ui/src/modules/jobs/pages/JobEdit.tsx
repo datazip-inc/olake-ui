@@ -9,22 +9,36 @@ import StepProgress from "../components/StepIndicator"
 import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
-import { mockStreamData } from "../../../api/mockData"
+import { StreamData } from "../../../types"
 
 type Step = "source" | "destination" | "schema" | "config"
 
 interface SourceData {
-	id: string
+	id?: string
 	name: string
 	type: string
 	config: Record<string, any>
+	version?: string
 }
 
 interface DestinationData {
-	id: string
+	id?: string
 	name: string
 	type: string
 	config: Record<string, any>
+	version?: string
+}
+
+// Define streams data interface
+interface StreamsDataStructure {
+	selected_streams: {
+		[namespace: string]: {
+			stream_name: string
+			partition_regex: string
+			split_column: string
+		}[]
+	}
+	streams: StreamData[]
 }
 
 // Custom wrapper components for SourceEdit and DestinationEdit to use in job flow
@@ -79,9 +93,12 @@ const JobEdit: React.FC = () => {
 		useState<DestinationData | null>(null)
 
 	// Schema step states
-	const [selectedStreams, setSelectedStreams] = useState<string[]>(
-		mockStreamData.map(stream => stream.stream.name),
-	)
+	const [selectedStreams, setSelectedStreams] = useState<StreamsDataStructure>({
+		selected_streams: {},
+		streams: [],
+	})
+	const [initialStreamsData, setInitialStreamsData] =
+		useState<StreamsDataStructure | null>(null)
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
@@ -90,7 +107,6 @@ const JobEdit: React.FC = () => {
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
 	// Find the job from the store
-
 	useEffect(() => {
 		if (!jobs.length) {
 			fetchJobs()
@@ -98,6 +114,7 @@ const JobEdit: React.FC = () => {
 	}, [fetchJobs, jobs])
 
 	const job = jobs.find(j => j.id.toString() === jobId)
+
 	// Load job data on component mount
 	useEffect(() => {
 		// Make sure we have the jobs, sources, and destinations data
@@ -110,70 +127,135 @@ const JobEdit: React.FC = () => {
 	useEffect(() => {
 		if (job) {
 			setJobName(job.name)
+
+			// Parse source config
+			let sourceConfig = {}
+			try {
+				sourceConfig =
+					typeof job.source.config === "string"
+						? JSON.parse(job.source.config)
+						: job.source.config
+			} catch (error) {
+				console.error("Error parsing source config:", error)
+			}
+
+			// Set source data from job
 			const sourceDataObj: SourceData = {
 				name: job.source.name,
 				type: job.source.type,
-				config: JSON.parse(job.source.config),
-				// {
-				// 	hosts: ["localhost:27017"],
-				// 	username: "admin",
-				// 	password: "password",
-				// 	authdb: "admin",
-				// 	database: "test_db",
-				// 	collection: "test_collection",
-				// },
+				config: sourceConfig,
+				version: job.source.version,
 			}
 			setSourceData(sourceDataObj)
 
-			// Load mock destination data
+			// Parse destination config
+			let destConfig = {}
+			try {
+				destConfig =
+					typeof job.destination.config === "string"
+						? JSON.parse(job.destination.config)
+						: job.destination.config
+			} catch (error) {
+				console.error("Error parsing destination config:", error)
+			}
+
+			// Set destination data from job
 			const destinationDataObj: DestinationData = {
-				id: "mock-destination-id",
-				name: job.destination || "AWS S3 Destination",
-				type: "Amazon S3",
-				config: {
-					normalization: false,
-					s3_bucket: "my-test-bucket",
-					s3_region: "ap-south-1",
-					s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-					s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-					s3_path: "/data/test",
-					type: "PARQUET",
-				},
+				name: job.destination.name,
+				type: job.destination.type,
+				config: destConfig,
+				version: job.destination.version,
 			}
 			setDestinationData(destinationDataObj)
-			setSelectedStreams(["Payments", "public_raw_stream"])
-			setReplicationFrequency("daily")
-			setSchemaChangeStrategy("propagate")
-			setNotifyOnSchemaChanges(true)
+
+			// Set other job settings
+			setReplicationFrequency(job.frequency || "daily")
+
+			// Parse streams config
+			if (job.streams_config) {
+				try {
+					const parsedStreamsConfig = JSON.parse(job.streams_config)
+
+					// Create a proper streams data structure
+					let streamsData: StreamsDataStructure | null = null
+
+					// Handle case where streams_config is a full data structure
+					if (
+						parsedStreamsConfig.streams &&
+						parsedStreamsConfig.selected_streams
+					) {
+						streamsData = parsedStreamsConfig as StreamsDataStructure
+					}
+					// Handle case where streams_config is just an array of stream names
+					else if (Array.isArray(parsedStreamsConfig)) {
+						// Create a basic structure with selected streams
+						streamsData = {
+							selected_streams: { default: [] },
+							streams: [],
+						}
+
+						// Add stream names to the selected_streams
+						parsedStreamsConfig.forEach((streamName: string) => {
+							streamsData!.selected_streams.default.push({
+								stream_name: streamName,
+								partition_regex: "",
+								split_column: "",
+							})
+
+							// Add empty stream objects that will be populated later by API
+							streamsData!.streams.push({
+								stream: {
+									name: streamName,
+									namespace: "default",
+								},
+							} as StreamData)
+						})
+					}
+					// Handle case where streams_config is just selected_streams object
+					else if (typeof parsedStreamsConfig === "object") {
+						streamsData = {
+							selected_streams: parsedStreamsConfig,
+							streams: [],
+						}
+					}
+
+					if (streamsData) {
+						setSelectedStreams(streamsData)
+						setInitialStreamsData(streamsData)
+					}
+				} catch (e) {
+					console.error("Error parsing streams config:", e)
+				}
+			}
 		} else {
+			// Default values for new job
 			setSourceData({
-				id: "new-source",
-				name: "New MongoDB Source",
+				name: "New Source",
 				type: "MongoDB",
 				config: {
 					hosts: ["localhost:27017"],
-					username: "admin",
-					password: "password",
+					username: "",
+					password: "",
 					authdb: "admin",
-					database: "my_database",
-					collection: "users",
+					database: "",
+					collection: "",
 				},
+				version: "latest",
 			})
 
 			setDestinationData({
-				id: "new-destination",
-				name: "New S3 Destination",
-				type: "Amazon S3",
+				name: "New Destination",
+				type: "s3",
 				config: {
 					normalization: false,
-					s3_bucket: "my-new-bucket",
+					s3_bucket: "",
 					s3_region: "us-east-1",
-					s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-					s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-					s3_path: "/data/new",
 					type: "PARQUET",
 				},
+				version: "latest",
 			})
+
+			setJobName("New Job")
 		}
 	}, [job])
 
@@ -205,7 +287,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	// Show loading while job data is loading
-	if (!job && jobId) {
+	if (!job && jobId !== "new" && jobId) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<Spin tip="Loading job data..." />
@@ -225,7 +307,7 @@ const JobEdit: React.FC = () => {
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
-						<div className="text-2xl font-bold">{jobName}</div>
+						<div className="text-2xl font-bold">{jobName || "New Job"}</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
@@ -263,10 +345,15 @@ const JobEdit: React.FC = () => {
 						{currentStep === "schema" && (
 							<div className="w-full">
 								<SchemaConfiguration
-									selectedStreams={selectedStreams}
-									setSelectedStreams={setSelectedStreams}
+									selectedStreams={selectedStreams as any}
+									setSelectedStreams={setSelectedStreams as any}
 									stepNumber={3}
 									stepTitle="Schema evaluation"
+									sourceName={sourceData?.name || ""}
+									sourceConnector={sourceData?.type || ""}
+									sourceVersion={sourceData?.version || "latest"}
+									sourceConfig={JSON.stringify(sourceData?.config || {})}
+									initialStreamsData={initialStreamsData as any}
 								/>
 							</div>
 						)}

@@ -68,6 +68,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [loading, setLoading] = useState(false)
+	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [filteredDestinations, setFilteredDestinations] = useState<
 		ExtendedDestination[]
 	>([])
@@ -81,55 +82,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		setShowSuccessModal,
 		addDestination,
 	} = useAppStore()
-
-	// useEffect(() => {
-	// 	const fetchSchema = async () => {
-	// 		try {
-	// 			setLoading(true)
-	// 			let schemaData
-	// 			if (connector === "Apache Iceberg") {
-	// 				let connectorFromCatalog
-	// 				if (catalog === null) {
-	// 					connectorFromCatalog = "AWS Glue"
-	// 				} else {
-	// 					connectorFromCatalog = catalog
-	// 				}
-	// 				// schemaData =
-	// 				// 	await destinationService.getConnectorSchema(connectorFromCatalog)
-	// 				// setSchema(schemaData)
-	// 				// } else {
-	// 				// 	schemaData = await destinationService.getConnectorSchema(connector)
-	// 				// 	// setSchema(schemaData)
-	// 				// }
-
-	// 				// Initialize with default values from schema
-	// 				// if (schemaData.properties) {
-	// 				// 	const initialData: any = {}
-
-	// 				// 	// Apply default values from schema properties
-	// 				// 	Object.entries(schemaData.properties).forEach(
-	// 				// 		([key, value]: [string, any]) => {
-	// 				// 			if (value.default !== undefined) {
-	// 				// 				initialData[key] = value.default
-	// 				// 			}
-	// 				// 		},
-	// 				// 	)
-
-	// 				// 	// Only set initial data if we don't have existing form data
-	// 				// 	if (Object.keys(formData).length === 0) {
-	// 				// 		setFormData(initialData)
-	// 				// 	}
-	// 			}
-	// 		} catch (error) {
-	// 			console.error("Error fetching schema:", error)
-	// 		} finally {
-	// 			setLoading(false)
-	// 		}
-	// 	}
-
-	// 	// Fetch schema for both new and existing sources
-	// 	fetchSchema()
-	// }, [connector, setupType, catalog])
 
 	useEffect(() => {
 		if (!destinations.length) {
@@ -238,6 +190,9 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				)
 				if (response.success && response.data?.spec) {
 					setSchema(response.data.spec)
+					if (response.data?.uiSchema) {
+						setUiSchema(response.data.uiSchema)
+					}
 				} else {
 					console.error("Failed to get source spec:", response.message)
 				}
@@ -595,6 +550,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 									<div className="w-1/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Name of your destination:
+											<span className="text-red-500">*</span>
 										</label>
 										<Input
 											placeholder="Enter the name of your destination"
@@ -644,7 +600,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 											{schema && (
 												<FixedSchemaForm
 													schema={schema}
-													uiSchema={schema?.uiSchema}
+													{...(uiSchema ? { uiSchema } : {})}
 													formData={formData}
 													onChange={handleFormChange}
 													hideSubmit={true}

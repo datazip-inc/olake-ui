@@ -132,11 +132,7 @@ const JobHistory: React.FC = () => {
 				<div className="flex items-center gap-2">
 					{job?.source && (
 						<img
-							src={
-								typeof job.source === "string"
-									? getConnectorImage(job.source)
-									: getConnectorImage(job.source.name)
-							}
+							src={getConnectorImage(job.source.type)}
 							alt="Source"
 							className="size-7"
 						/>
@@ -144,11 +140,7 @@ const JobHistory: React.FC = () => {
 					<span className="text-gray-500">{"--------------▶"}</span>
 					{job?.destination && (
 						<img
-							src={
-								typeof job.destination === "string"
-									? getConnectorImage(job.destination)
-									: getConnectorImage(job.destination.name)
-							}
+							src={getConnectorImage(job.destination.type)}
 							alt="Destination"
 							className="size-7"
 						/>

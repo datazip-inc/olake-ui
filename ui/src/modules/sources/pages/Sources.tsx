@@ -18,6 +18,7 @@ const Sources: React.FC = () => {
 		fetchSources,
 		setShowDeleteModal,
 		setSelectedSource,
+		deleteSource,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -37,6 +38,18 @@ const Sources: React.FC = () => {
 
 	const handleDeleteSource = (source: Entity) => {
 		setSelectedSource(source)
+
+		// For inactive sources, delete directly without showing modal
+		if (!source?.jobs || source.jobs.length === 0) {
+			message.info(`Deleting source ${source?.name}`)
+			deleteSource(String(source.id)).catch(error => {
+				message.error("Failed to delete source")
+				console.error(error)
+			})
+			return
+		}
+
+		// For active sources with jobs, show the delete confirmation modal
 		setTimeout(() => {
 			setShowDeleteModal(true)
 		}, 1000)

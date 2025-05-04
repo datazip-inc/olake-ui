@@ -87,9 +87,6 @@ interface AppState {
 		filePath: string,
 	) => Promise<void>
 
-	// Actions - Job Logs
-	fetchJobLogs: (jobId: string, historyId: string) => Promise<void>
-
 	// Actions - Sources
 	fetchSources: () => Promise<Entity[]>
 	addSource: (source: EntityBase) => Promise<EntityBase>
@@ -407,41 +404,6 @@ export const useAppStore = create<AppState>(set => ({
 					error instanceof Error ? error.message : "Failed to fetch task logs",
 			})
 			throw error
-		}
-	},
-
-	// Job Logs actions
-	fetchJobLogs: async (jobId, historyId) => {
-		set({ isLoadingJobLogs: true, jobLogsError: null })
-		try {
-			// Mock data for development
-			const logMessage =
-				"Lorem ipsum dolor sit amet consectetur. Urna neque imperdiet nisl libero praesent diam hendrerit urna tortor."
-			const mockLogs: JobLog[] = Array.from({ length: 20 }, (_, i) => {
-				let level: "debug" | "info" | "warning" | "error" = "debug"
-				if (i % 7 === 0) level = "info"
-				if (i % 11 === 0) level = "warning"
-				if (i % 13 === 0) level = "error"
-
-				return {
-					date: "26/02/2025",
-					time: "00:07:23",
-					level,
-					message: logMessage,
-				}
-			})
-
-			set({ jobLogs: mockLogs, isLoadingJobLogs: false })
-
-			// Uncomment for real API call
-			// const logs = await jobService.getJobLogs(jobId, historyId);
-			// set({ jobLogs: logs, isLoadingJobLogs: false });
-		} catch (error) {
-			set({
-				isLoadingJobLogs: false,
-				jobLogsError:
-					error instanceof Error ? error.message : "Failed to fetch job logs",
-			})
 		}
 	},
 

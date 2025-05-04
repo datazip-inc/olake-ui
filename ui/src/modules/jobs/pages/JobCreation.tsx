@@ -30,13 +30,13 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState("")
 	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [destinationVersion, setDestinationVersion] = useState("latest")
+	const [setDestinationVersion] = useState("latest")
 
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
-	const [replicationFrequency, setReplicationFrequency] = useState("seconds")
+	const [replicationFrequency, setReplicationFrequency] = useState("minutes")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
@@ -49,9 +49,7 @@ const JobCreation: React.FC = () => {
 	} = useAppStore()
 
 	const getReplicationFrequency = () => {
-		if (replicationFrequency === "seconds") {
-			return "seconds"
-		} else if (replicationFrequency === "minutes") {
+		if (replicationFrequency === "minutes") {
 			return "minutes"
 		} else if (replicationFrequency === "hours") {
 			return "hourly"

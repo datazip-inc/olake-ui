@@ -7,7 +7,6 @@ import Table from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
-import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import AWSS3 from "../../../assets/AWSS3.svg"
@@ -34,19 +33,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [activeTab, setActiveTab] = useState("config")
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
-	const [catalogName, setCatalogName] = useState<string>("AWS Glue")
+	const catalogName = "AWS Glue"
 	const [destinationName, setDestinationName] = useState("")
-	const [selectedVersion, setSelectedVersion] = useState("")
+	const [selectedVersion, setSelectedVersion] = useState("latest")
 	const [versions, setVersions] = useState<string[]>([])
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
+	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [formData, setFormData] = useState<any>({})
-	const [connectorSchema, setConnectorSchema] = useState<RJSFSchema>({})
-	const [connectorUiSchema] = useState<UiSchema>({})
 	const [isLoading, setIsLoading] = useState(false)
-	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
+	const mockAssociatedJobs: any[] = []
 	const [destination, setDestination] = useState<any>(null)
 	const [pausedJobIds, setPausedJobIds] = useState<string[]>([])
 
@@ -97,8 +95,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					destination.type === "iceberg" ? "Apache Iceberg" : "Amazon S3"
 				setConnector(connectorType)
 				setSelectedVersion(destination.version || "")
-				setFormData(destination.config || {})
-				// Only set catalog if it's an iceberg destination
+				setFormData(destination.config)
 				if (destination.type === "iceberg") {
 					try {
 						const config =
@@ -116,15 +113,74 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}, [destinationId, destinations, fetchDestinations, catalog])
 
+	// Handle initialData for when component is used from JobEdit
+	useEffect(() => {
+		if (initialData) {
+			setDestinationName(initialData.name || "")
+
+			// Normalize connector type
+			let connectorType = initialData.type
+			if (
+				connectorType?.toLowerCase() === "s3" ||
+				connectorType?.toLowerCase() === "amazon s3"
+			) {
+				connectorType = "Amazon S3"
+			} else if (
+				connectorType?.toLowerCase() === "iceberg" ||
+				connectorType?.toLowerCase() === "apache iceberg"
+			) {
+				connectorType = "Apache Iceberg"
+			}
+			setConnector(connectorType)
+			setSelectedVersion(initialData.version || "latest")
+
+			// Handle config data
+			if (initialData.config) {
+				if (typeof initialData.config === "string") {
+					try {
+						const parsedConfig = JSON.parse(initialData.config)
+						setFormData(parsedConfig)
+
+						// If it's iceberg, try to get catalog type
+						if (connectorType === "Apache Iceberg" && parsedConfig.catalog) {
+							setCatalog(getCatalogName(parsedConfig.catalog) || "AWS Glue")
+						}
+					} catch (error) {
+						console.error("Error parsing destination config:", error)
+						setFormData(initialData.config)
+					}
+				} else {
+					setFormData(initialData.config)
+
+					// If it's iceberg, try to get catalog type
+					if (
+						connectorType === "Apache Iceberg" &&
+						initialData.config.catalog
+					) {
+						setCatalog(getCatalogName(initialData.config.catalog) || "AWS Glue")
+					}
+				}
+			}
+		}
+	}, [initialData])
+
 	useEffect(() => {
 		const fetchVersions = async () => {
 			setLoadingVersions(true)
 			try {
-				const response = await destinationService.getDestinationVersions(
-					connector?.toLowerCase() || "",
-				)
-				if (response.data && response.data.version) {
-					setVersions(response.data.version)
+				if (connector) {
+					let connectorType = connector
+					if (connector === "Apache Iceberg") {
+						connectorType = "iceberg"
+					} else {
+						connectorType = "s3"
+					}
+					const response = await destinationService.getDestinationVersions(
+						connectorType.toLowerCase() || "",
+					)
+					if (response.data && response.data.version) {
+						setVersions(response.data.version)
+					}
 				}
 			} catch (error) {
 				console.error("Error fetching versions:", error)
@@ -146,10 +202,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setIsLoading(true)
 				const response = await destinationService.getDestinationSpec(
 					connector as string,
-					selectedVersion,
+					catalogName,
 				)
 				if (response.success && response.data?.spec) {
 					setSchema(response.data.spec)
+					if (response.data?.uiSchema) {
+						setUiSchema(response.data.uiSchema)
+					}
 				} else {
 					console.error("Failed to get source spec:", response.message)
 				}
@@ -455,11 +514,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 														: undefined)
 												}
 												onChange={value => {
-													setFormData({
-														...formData,
-														type: "	Apache Iceberg",
-														catalog: value,
-													})
 													setCatalog(value)
 												}}
 											/>
@@ -470,6 +524,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 										<div className="w-1/3">
 											<label className="mb-2 block text-sm font-medium text-gray-700">
 												Name of your destination:
+												<span className="text-red-500">*</span>
 											</label>
 											<Input
 												placeholder="Enter the name of your destination"
@@ -511,6 +566,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 										formData={formData}
 										onChange={setFormData}
 										hideSubmit={true}
+										{...(uiSchema ? { uiSchema } : {})}
 									/>
 								)}
 							</div>
@@ -553,7 +609,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 				{/* Documentation panel */}
 				<DocumentationPanel
-					docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog ? catalog : catalogName)}`}
+					docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
 					isMinimized={docsMinimized}
 					onToggle={toggleDocsPanel}
 					showResizer={true}
@@ -561,7 +617,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			</div>
 			{/* Delete Modal */}
 			<DeleteModal fromSource={false} />
-			<EditDestinationModal mockAssociatedJobs={mockAssociatedJobs} />
+			<EditDestinationModal />
 
 			{/* Footer with buttons */}
 			{!fromJobFlow && (

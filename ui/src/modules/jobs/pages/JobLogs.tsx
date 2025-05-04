@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 
 const JobLogs: React.FC = () => {
@@ -28,7 +28,6 @@ const JobLogs: React.FC = () => {
 		isLoadingTaskLogs,
 		jobLogsError,
 		taskLogsError,
-		fetchJobLogs,
 		fetchTaskLogs,
 		fetchJobs,
 	} = useAppStore()
@@ -44,11 +43,6 @@ const JobLogs: React.FC = () => {
 					message.error("Failed to fetch task logs")
 					console.error(error)
 				})
-			} else if (historyId) {
-				fetchJobLogs(jobId, historyId).catch(error => {
-					message.error("Failed to fetch job logs")
-					console.error(error)
-				})
 			}
 		}
 	}, [
@@ -56,7 +50,6 @@ const JobLogs: React.FC = () => {
 		historyId,
 		filePath,
 		isTaskLog,
-		fetchJobLogs,
 		fetchTaskLogs,
 		jobs.length,
 		fetchJobs,
@@ -128,7 +121,6 @@ const JobLogs: React.FC = () => {
 							}
 						} else {
 							if (jobId && historyId) {
-								fetchJobLogs(jobId, historyId)
 							}
 						}
 					}}
@@ -168,11 +160,7 @@ const JobLogs: React.FC = () => {
 				<div className="flex items-center gap-2">
 					{job?.source && (
 						<img
-							src={
-								typeof job.source === "string"
-									? getConnectorImage(job.source)
-									: getConnectorImage(job.source.name)
-							}
+							src={getConnectorImage(job.source.type)}
 							alt="Source"
 							className="size-7"
 						/>
@@ -180,11 +168,7 @@ const JobLogs: React.FC = () => {
 					<span className="text-gray-500">{"--------------▶"}</span>
 					{job?.destination && (
 						<img
-							src={
-								typeof job.destination === "string"
-									? getConnectorImage(job.destination)
-									: getConnectorImage(job.destination.name)
-							}
+							src={getConnectorImage(job.destination.type)}
 							alt="Destination"
 							className="size-7"
 						/>
@@ -195,7 +179,7 @@ const JobLogs: React.FC = () => {
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
 				<h2 className="mb-4 text-xl font-bold">Logs</h2>
 
-				<div className="mb-4">
+				<div className="mb-4 flex items-center gap-3">
 					<Search
 						placeholder="Search Logs"
 						allowClear
@@ -203,6 +187,22 @@ const JobLogs: React.FC = () => {
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
+					<Button
+						icon={<ArrowsClockwise size={16} />}
+						onClick={() => {
+							if (isTaskLog && filePath) {
+								fetchTaskLogs(jobId!, historyId || "1", filePath)
+									.then(() => {
+										message.success("Logs refetched successfully")
+									})
+									.catch(error => {
+										message.error("Failed to refetch task logs")
+										console.error(error)
+									})
+							}
+						}}
+						className="flex items-center"
+					></Button>
 				</div>
 
 				{isLoading ? (

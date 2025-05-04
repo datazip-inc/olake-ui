@@ -135,7 +135,6 @@ const JobSettings: React.FC = () => {
 												value={replicationFrequency}
 												onChange={setReplicationFrequency}
 											>
-												<Select.Option value="seconds">Seconds</Select.Option>
 												<Select.Option value="minutes">Minutes</Select.Option>
 												<Select.Option value="hours">Hours</Select.Option>
 												<Select.Option value="months">Months</Select.Option>

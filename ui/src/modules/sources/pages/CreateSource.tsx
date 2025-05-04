@@ -259,19 +259,6 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				)
 				if (response.success && response.data?.spec) {
 					setSchema(response.data.spec)
-					if (response.data.spec?.properties) {
-						const initialData: any = {}
-						Object.entries(response.data.spec?.properties).forEach(
-							([key, value]: [string, any]) => {
-								if (value.default !== undefined) {
-									initialData[key] = value.default
-								}
-							},
-						)
-						if (Object.keys(formData).length === 0) {
-							setFormData(initialData)
-						}
-					}
 				} else {
 					console.error("Failed to get source spec:", response.message)
 				}
@@ -410,6 +397,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 									<div className="w-2/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Name of your source:
+											<span className="text-red-500">*</span>
 										</label>
 										<input
 											type="text"

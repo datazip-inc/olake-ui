@@ -34,6 +34,7 @@ const Jobs: React.FC = () => {
 
 	const handleSyncJob = async (id: string) => {
 		try {
+			navigate(`/jobs/${id}/history`)
 			await jobService.syncJob(id)
 			message.success("Job sync started successfully")
 			// Refresh the jobs list after sync

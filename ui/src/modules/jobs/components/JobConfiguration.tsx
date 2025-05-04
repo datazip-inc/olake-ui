@@ -1,4 +1,4 @@
-import { Input, Select, Switch } from "antd"
+import { Input, Select } from "antd"
 import StepTitle from "../../common/components/StepTitle"
 import { useState } from "react"
 
@@ -20,8 +20,6 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	setJobName,
 	replicationFrequency,
 	setReplicationFrequency,
-	schemaChangeStrategy,
-	setSchemaChangeStrategy,
 	stepNumber = 4,
 	stepTitle = "Job Configuration",
 }) => {
@@ -38,7 +36,9 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 			<div className="rounded-xl border border-[#D9D9D9] p-4">
 				<div className="mb-2 grid grid-cols-2 gap-6">
 					<div>
-						<label className="mb-2 block text-sm font-medium">Job name:</label>
+						<label className="mb-2 block text-sm font-medium">
+							Job name:<span className="text-red-500">*</span>
+						</label>
 						<Input
 							placeholder="Enter your job name"
 							value={jobName}
@@ -62,7 +62,6 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								value={replicationFrequency}
 								onChange={setReplicationFrequency}
 							>
-								<Select.Option value="seconds">Seconds</Select.Option>
 								<Select.Option value="minutes">Minutes</Select.Option>
 								<Select.Option value="hours">Hours</Select.Option>
 								<Select.Option value="months">Months</Select.Option>
@@ -73,7 +72,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 				</div>
 			</div>
 
-			<div className="mb-6 mt-6">
+			{/* <div className="mb-6 mt-6">
 				<label className="mb-2 block text-sm font-medium">
 					When the source schema changes, I want to:
 				</label>
@@ -99,7 +98,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 						/>
 					</div>
 				</div>
-			</div>
+			</div> */}
 		</div>
 	)
 }

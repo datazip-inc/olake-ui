@@ -13,6 +13,7 @@ import DeleteModal from "../../common/Modals/DeleteModal"
 import { getConnectorImage } from "../../../utils/utils"
 import EditSourceModal from "../../common/Modals/EditSourceModal"
 import { sourceService } from "../../../api"
+import { formatDistanceToNow } from "date-fns"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -89,6 +90,21 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				normalizedType = "Postgres"
 			if (initialData.type.toLowerCase() === "mysql") normalizedType = "MySQL"
 			setConnector(normalizedType)
+			setSelectedVersion(initialData.version || "latest")
+
+			// Set form data from initialData
+			if (initialData.config) {
+				if (typeof initialData.config === "string") {
+					try {
+						setFormData(JSON.parse(initialData.config))
+					} catch (error) {
+						console.error("Error parsing source config:", error)
+						setFormData(initialData.config)
+					}
+				} else {
+					setFormData(initialData.config)
+				}
+			}
 		}
 	}, [initialData])
 
@@ -265,7 +281,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		{
 			title: "Last runtime",
 			dataIndex: "last_run_time",
-			key: "last_run_time",
+			render: (text: string) =>
+				formatDistanceToNow(new Date(text), { addSuffix: true }),
 		},
 		{
 			title: "Last runtime status",
@@ -449,6 +466,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Name of your source:
+											<span className="text-red-500">*</span>
 										</label>
 										<Input
 											placeholder="Enter the name of your source"
