@@ -359,6 +359,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 							"title":       "SSL Mode",
 							"description": "SSL mode to connect (disable, require, verify-ca, etc.)",
 							"default":     "disable",
+							"enum":        []string{"disable", "require", "verify-ca", "verify-full"},
 						},
 					},
 				},
