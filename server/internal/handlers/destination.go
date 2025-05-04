@@ -360,11 +360,13 @@ func (c *DestHandler) GetDestinationSpec() {
 	}
 
 	var spec interface{}
+	var uiSchema interface{}
 
 	switch req.Type {
 	case "s3":
 		spec = map[string]interface{}{
-			"type": "object",
+			"title": "Writer Settings",
+			"type":  "object",
 			"properties": map[string]interface{}{
 				"type": map[string]interface{}{
 					"type":        "string",
@@ -416,10 +418,16 @@ func (c *DestHandler) GetDestinationSpec() {
 			},
 			"required": []string{"type", "writer"},
 		}
+		uiSchema = map[string]interface{}{
+			"type": map[string]interface{}{
+				"ui:widget": "hidden",
+			},
+		}
 	case "iceberg":
 		// Get catalog type from request
-
 		var catalogSpec interface{}
+		var catalogUiSchema interface{}
+
 		switch req.Catalog {
 		case "glue":
 			catalogSpec = map[string]interface{}{
@@ -430,6 +438,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"title":       "Catalog Type",
 						"description": "Type of catalog to use",
 						"enum":        []string{"glue"},
+						"default":     "glue",
 					},
 					"normalization": map[string]interface{}{
 						"type":        "boolean",
@@ -479,6 +488,11 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "normalization", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
 			}
+			catalogUiSchema = map[string]interface{}{
+				"catalog_type": map[string]interface{}{
+					"ui:widget": "hidden",
+				},
+			}
 
 		case "rest":
 			catalogSpec = map[string]interface{}{
@@ -489,6 +503,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"title":       "Catalog Type",
 						"description": "Type of catalog to use",
 						"enum":        []string{"rest"},
+						"default":     "rest",
 					},
 					"normalization": map[string]interface{}{
 						"type":        "boolean",
@@ -514,6 +529,11 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "normalization", "rest_catalog_url", "iceberg_s3_path", "iceberg_db"},
 			}
+			catalogUiSchema = map[string]interface{}{
+				"catalog_type": map[string]interface{}{
+					"ui:widget": "hidden",
+				},
+			}
 
 		case "jdbc":
 			catalogSpec = map[string]interface{}{
@@ -524,6 +544,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"title":       "Catalog Type",
 						"description": "Type of catalog to use",
 						"enum":        []string{"jdbc"},
+						"default":     "jdbc",
 					},
 					"normalization": map[string]interface{}{
 						"type":        "boolean",
@@ -594,6 +615,11 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "jdbc_url", "jdbc_username", "jdbc_password", "iceberg_s3_path", "aws_access_key", "aws_secret_key", "aws_region", "iceberg_db"},
 			}
+			catalogUiSchema = map[string]interface{}{
+				"catalog_type": map[string]interface{}{
+					"ui:widget": "hidden",
+				},
+			}
 
 		case "hive":
 			catalogSpec = map[string]interface{}{
@@ -604,6 +630,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"title":       "Catalog Type",
 						"description": "Type of catalog to use",
 						"enum":        []string{"hive"},
+						"default":     "hive",
 					},
 					"normalization": map[string]interface{}{
 						"type":        "boolean",
@@ -675,6 +702,11 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
 			}
+			catalogUiSchema = map[string]interface{}{
+				"catalog_type": map[string]interface{}{
+					"ui:widget": "hidden",
+				},
+			}
 
 		default:
 			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported catalog type")
@@ -682,7 +714,8 @@ func (c *DestHandler) GetDestinationSpec() {
 		}
 
 		spec = map[string]interface{}{
-			"type": "object",
+			"title": "Writer Settings",
+			"type":  "object",
 			"properties": map[string]interface{}{
 				"type": map[string]interface{}{
 					"type":        "string",
@@ -695,14 +728,30 @@ func (c *DestHandler) GetDestinationSpec() {
 			},
 			"required": []string{"type", "writer"},
 		}
+
+		uiSchema = map[string]interface{}{
+			"type": map[string]interface{}{
+				"ui:widget": "hidden",
+			},
+			"writer": catalogUiSchema,
+		}
+
 	default:
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported destination type")
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    spec,
-	})
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Form initialized successfully",
+		"data": map[string]interface{}{
+			"version":  req.Version,
+			"type":     req.Type,
+			"spec":     spec,
+			"uiSchema": uiSchema,
+		},
+	}
+
+	c.Data["json"] = response
+	c.ServeJSON()
 }
