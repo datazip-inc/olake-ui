@@ -118,7 +118,7 @@ export const sourceService = {
 				{
 					name: name,
 					type: type,
-					version: version,
+					version: version != "" ? version : "latest",
 					config: config,
 				},
 			)

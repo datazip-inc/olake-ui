@@ -10,6 +10,7 @@ import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
 import { StreamData } from "../../../types"
+import { jobService } from "../../../api/services/jobService"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -42,7 +43,13 @@ interface StreamsDataStructure {
 }
 
 // Custom wrapper components for SourceEdit and DestinationEdit to use in job flow
-const JobSourceEdit = ({ sourceData }: { sourceData: SourceData }) => {
+const JobSourceEdit = ({
+	sourceData,
+	updateSourceData,
+}: {
+	sourceData: SourceData
+	updateSourceData: (data: SourceData) => void
+}) => {
 	return (
 		<div className="flex h-full flex-col">
 			<div className="flex-1 overflow-auto">
@@ -51,6 +58,14 @@ const JobSourceEdit = ({ sourceData }: { sourceData: SourceData }) => {
 					stepNumber="1"
 					stepTitle="Source config"
 					initialData={sourceData}
+					onNameChange={name => updateSourceData({ ...sourceData, name })}
+					onConnectorChange={type => updateSourceData({ ...sourceData, type })}
+					onVersionChange={version =>
+						updateSourceData({ ...sourceData, version })
+					}
+					onFormDataChange={config =>
+						updateSourceData({ ...sourceData, config })
+					}
 				/>
 			</div>
 		</div>
@@ -59,8 +74,10 @@ const JobSourceEdit = ({ sourceData }: { sourceData: SourceData }) => {
 
 const JobDestinationEdit = ({
 	destinationData,
+	updateDestinationData,
 }: {
 	destinationData: DestinationData
+	updateDestinationData: (data: DestinationData) => void
 }) => {
 	return (
 		<div className="flex h-full flex-col">
@@ -73,6 +90,18 @@ const JobDestinationEdit = ({
 					stepNumber="2"
 					stepTitle="Destination config"
 					initialData={destinationData}
+					onNameChange={name =>
+						updateDestinationData({ ...destinationData, name })
+					}
+					onConnectorChange={type =>
+						updateDestinationData({ ...destinationData, type })
+					}
+					onVersionChange={version =>
+						updateDestinationData({ ...destinationData, version })
+					}
+					onFormDataChange={config =>
+						updateDestinationData({ ...destinationData, config })
+					}
 				/>
 			</div>
 		</div>
@@ -86,6 +115,7 @@ const JobEdit: React.FC = () => {
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
 	const [docsMinimized, setDocsMinimized] = useState(true)
+	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	// Source and destination data for job
 	const [sourceData, setSourceData] = useState<SourceData | null>(null)
@@ -259,6 +289,64 @@ const JobEdit: React.FC = () => {
 		}
 	}, [job])
 
+	// Handle job submission
+	const handleJobSubmit = async () => {
+		if (!sourceData || !destinationData) {
+			message.error("Source and destination data is required")
+			return
+		}
+
+		setIsSubmitting(true)
+
+		try {
+			// Create the job update payload
+			const jobUpdatePayload = {
+				name: jobName,
+				source: {
+					name: sourceData.name,
+					type: sourceData.type,
+					config:
+						typeof sourceData.config === "string"
+							? sourceData.config
+							: JSON.stringify(sourceData.config),
+					version: sourceData.version || "latest",
+				},
+				destination: {
+					name: destinationData.name,
+					type: destinationData.type,
+					config:
+						typeof destinationData.config === "string"
+							? destinationData.config
+							: JSON.stringify(destinationData.config),
+					version: destinationData.version || "latest",
+				},
+				streams_config:
+					typeof selectedStreams === "string"
+						? selectedStreams
+						: JSON.stringify(selectedStreams),
+				frequency: replicationFrequency,
+				activate: true,
+			}
+
+			if (jobId) {
+				await jobService.updateJob(jobId, jobUpdatePayload)
+				message.success("Job updated successfully!")
+			} else {
+				await jobService.createJob(jobUpdatePayload)
+				message.success("Job created successfully!")
+			}
+
+			// Refresh jobs and navigate back to jobs list
+			fetchJobs()
+			navigate("/jobs")
+		} catch (error) {
+			console.error("Error saving job:", error)
+			message.error("Failed to save job. Please try again.")
+		} finally {
+			setIsSubmitting(false)
+		}
+	}
+
 	const handleNext = () => {
 		if (currentStep === "source") {
 			setCurrentStep("destination")
@@ -267,8 +355,7 @@ const JobEdit: React.FC = () => {
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
-			message.success("Job updated successfully!")
-			navigate("/jobs")
+			handleJobSubmit()
 		}
 	}
 
@@ -287,7 +374,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	// Show loading while job data is loading
-	if (!job && jobId !== "new" && jobId) {
+	if (!job && jobId) {
 		return (
 			<div className="flex h-screen items-center justify-center">
 				<Spin tip="Loading job data..." />
@@ -332,13 +419,19 @@ const JobEdit: React.FC = () => {
 					<div className="flex-1 pb-0">
 						{currentStep === "source" && sourceData && (
 							<div className="w-full">
-								<JobSourceEdit sourceData={sourceData} />
+								<JobSourceEdit
+									sourceData={sourceData}
+									updateSourceData={setSourceData}
+								/>
 							</div>
 						)}
 
 						{currentStep === "destination" && destinationData && (
 							<div className="w-full">
-								<JobDestinationEdit destinationData={destinationData} />
+								<JobDestinationEdit
+									destinationData={destinationData}
+									updateDestinationData={setDestinationData}
+								/>
 							</div>
 						)}
 
@@ -406,8 +499,13 @@ const JobEdit: React.FC = () => {
 					<button
 						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleNext}
+						disabled={isSubmitting}
 					>
-						{currentStep === "config" ? "Finish" : "Next"}
+						{currentStep === "config"
+							? isSubmitting
+								? "Saving..."
+								: "Finish"
+							: "Next"}
 						{currentStep !== "config" && (
 							<ArrowRight className="size-4 text-white" />
 						)}

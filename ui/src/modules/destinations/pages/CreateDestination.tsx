@@ -144,13 +144,13 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 						return false
 					const extDestination = destination as any
 					return (
-						extDestination.config?.catalog ===
+						extDestination.config?.writer?.catalog ===
 							getCatalogInLowerCase(catalogValue) ||
-						extDestination.config?.catalog_type ===
+						extDestination.config?.writer?.catalog_type ===
 							getCatalogInLowerCase(catalogValue)
 					)
 				})
-				setFilteredDestinations(filtered as unknown as ExtendedDestination[])
+				setFilteredDestinations(filtered)
 			} else {
 				const filtered = destinations.filter(
 					destination =>

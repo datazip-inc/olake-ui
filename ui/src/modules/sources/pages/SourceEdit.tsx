@@ -20,6 +20,10 @@ interface SourceEditProps {
 	stepNumber?: string | number
 	stepTitle?: string
 	initialData?: any
+	onNameChange?: (name: string) => void
+	onConnectorChange?: (type: string) => void
+	onVersionChange?: (version: string) => void
+	onFormDataChange?: (config: Record<string, any>) => void
 }
 
 const SourceEdit: React.FC<SourceEditProps> = ({
@@ -27,6 +31,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	stepNumber,
 	stepTitle,
 	initialData,
+	onNameChange,
+	onConnectorChange,
+	onVersionChange,
+	onFormDataChange,
 }) => {
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
@@ -335,6 +343,14 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		},
 	]
 
+	// Add a version change handler
+	const handleVersionChange = (version: string) => {
+		setSelectedVersion(version)
+		if (onVersionChange) {
+			onVersionChange(version)
+		}
+	}
+
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{/* Header */}
@@ -416,6 +432,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												value={connector}
 												onChange={value => {
 													setConnector(value)
+													if (onConnectorChange) {
+														onConnectorChange(value)
+													}
 												}}
 												className="h-8 w-full"
 												options={[
@@ -471,7 +490,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 										<Input
 											placeholder="Enter the name of your source"
 											value={sourceName}
-											onChange={e => setSourceName(e.target.value)}
+											onChange={e => {
+												setSourceName(e.target.value)
+												if (onNameChange) {
+													onNameChange(e.target.value)
+												}
+											}}
 											className="h-8"
 										/>
 									</div>
@@ -491,7 +515,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<FixedSchemaForm
 										schema={schema}
 										formData={formData}
-										onChange={setFormData}
+										onChange={updatedFormData => {
+											setFormData(updatedFormData)
+											if (onFormDataChange) {
+												onFormDataChange(updatedFormData)
+											}
+										}}
 										hideSubmit={true}
 									/>
 								)}

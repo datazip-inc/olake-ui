@@ -20,6 +20,10 @@ interface DestinationEditProps {
 	stepNumber?: string | number
 	stepTitle?: string
 	initialData?: any
+	onNameChange?: (name: string) => void
+	onConnectorChange?: (type: string) => void
+	onVersionChange?: (version: string) => void
+	onFormDataChange?: (config: Record<string, any>) => void
 }
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
@@ -27,6 +31,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	stepNumber,
 	stepTitle,
 	initialData,
+	onNameChange,
+	onConnectorChange,
+	onVersionChange,
+	onFormDataChange,
 }) => {
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const isNewDestination = destinationId === "new"
@@ -194,6 +202,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
+		if (onVersionChange) {
+			onVersionChange(value)
+		}
 	}
 
 	useEffect(() => {
@@ -368,6 +379,27 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		},
 	]
 
+	const updateConnector = (value: string) => {
+		setConnector(value)
+		if (onConnectorChange) {
+			onConnectorChange(value)
+		}
+	}
+
+	const updateDestinationName = (value: string) => {
+		setDestinationName(value)
+		if (onNameChange) {
+			onNameChange(value)
+		}
+	}
+
+	const updateFormData = (data: any) => {
+		setFormData(data)
+		if (onFormDataChange) {
+			onFormDataChange(data)
+		}
+	}
+
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{/* Header */}
@@ -453,9 +485,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											<div className="flex items-center">
 												<Select
 													value={connector}
-													onChange={value => {
-														setConnector(value)
-													}}
+													onChange={updateConnector}
 													className="h-8 w-full"
 													options={[
 														{
@@ -529,7 +559,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											<Input
 												placeholder="Enter the name of your destination"
 												value={destinationName}
-												onChange={e => setDestinationName(e.target.value)}
+												onChange={e => updateDestinationName(e.target.value)}
 												className="h-8"
 											/>
 										</div>
@@ -564,7 +594,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									<FixedSchemaForm
 										schema={schema}
 										formData={formData}
-										onChange={setFormData}
+										onChange={updateFormData}
 										hideSubmit={true}
 										{...(uiSchema ? { uiSchema } : {})}
 									/>

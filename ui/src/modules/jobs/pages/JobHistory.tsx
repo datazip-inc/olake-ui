@@ -50,6 +50,10 @@ const JobHistory: React.FC = () => {
 			title: "Start time",
 			dataIndex: "start_time",
 			key: "start_time",
+			render: (text: string) => {
+				// Convert format from 2025-05-05_16-28-53 to 2025-05-05 16:28:53
+				return text.replace("_", " ").replace(/-(\d+)-(\d+)$/, ":$1:$2")
+			},
 		},
 		{
 			title: "Runtime",

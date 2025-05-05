@@ -44,7 +44,7 @@ export const jobService = {
 
 	// Update job
 	updateJob: async (id: string, job: Partial<Job>) => {
-		const response = await api.put<Job>(`/jobs/${id}`, job)
+		const response = await api.put<Job>(`/api/v1/project/123/jobs/${id}`, job)
 		return response.data
 	},
 

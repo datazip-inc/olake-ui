@@ -129,7 +129,6 @@ const JobCreation: React.FC = () => {
 			addJob(newJobData)
 				.then(() => {
 					setShowEntitySavedModal(true)
-					navigate("/jobs")
 				})
 				.catch(error => {
 					console.error("Error adding job:", error)
