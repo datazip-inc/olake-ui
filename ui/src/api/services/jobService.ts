@@ -95,6 +95,7 @@ export const jobService = {
 		try {
 			const response = await api.get<APIResponse<JobTask[]>>(
 				`/api/v1/project/123/jobs/${id}/tasks`,
+				{ timeout: 0 }, // Disable timeout for this request
 			)
 
 			return response.data

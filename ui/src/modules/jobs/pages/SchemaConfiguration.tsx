@@ -261,10 +261,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					if (filtered.length !== updated.selected_streams[namespace].length) {
 						updated.selected_streams[namespace] = filtered
 						changed = true
-
-						if (filtered.length === 0) {
-							delete updated.selected_streams[namespace]
-						}
 					}
 				}
 			}
