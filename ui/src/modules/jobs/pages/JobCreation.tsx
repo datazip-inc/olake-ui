@@ -30,7 +30,7 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState("")
 	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [setDestinationVersion] = useState("latest")
+	const [destinationVersion, setDestinationVersion] = useState("latest")
 
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 
@@ -87,7 +87,7 @@ const JobCreation: React.FC = () => {
 				name: destinationName,
 				type: destinationConnector,
 				config: JSON.stringify(destinationFormData),
-				version: "latest",
+				version: destinationVersion,
 			}
 			setShowTestingModal(true)
 			const testResult =
@@ -118,7 +118,7 @@ const JobCreation: React.FC = () => {
 				destination: {
 					name: destinationName,
 					type: getConnectorInLowerCase(destinationConnector),
-					version: "latest",
+					version: destinationVersion,
 					config: JSON.stringify(destinationFormData),
 				},
 				streams_config: JSON.stringify(selectedStreams),

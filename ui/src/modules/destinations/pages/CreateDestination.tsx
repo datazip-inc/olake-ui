@@ -23,10 +23,19 @@ import {
 	getConnectorInLowerCase,
 	getConnectorName,
 } from "../../../utils/utils"
-import { EntityBase } from "../../../types"
 
+// Define an interface compatible with EntityBase but with more specific types for our component
+interface Destination {
+	id: string | number
+	name: string
+	type: string
+	version: string
+	config: string | Record<string, any>
+}
+
+// ExtendedDestination ensures config is always available
 interface ExtendedDestination extends Destination {
-	config?: any
+	config: string | Record<string, any>
 }
 
 interface CreateDestinationProps {
@@ -141,14 +150,14 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 							getCatalogInLowerCase(catalogValue)
 					)
 				})
-				setFilteredDestinations(filtered as EntityBase[])
+				setFilteredDestinations(filtered as unknown as ExtendedDestination[])
 			} else {
 				const filtered = destinations.filter(
 					destination =>
 						destination.type === getConnectorInLowerCase(connector),
-				) as EntityBase[]
+				)
 
-				setFilteredDestinations(filtered)
+				setFilteredDestinations(filtered as unknown as ExtendedDestination[])
 			}
 		}
 	}, [connector, setupType, destinations, catalog])
@@ -290,18 +299,33 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			if (onVersionChange) {
 				onVersionChange(selectedDestination.version)
 			}
-			if (onFormDataChange) {
-				onFormDataChange(selectedDestination.config)
+
+			// Parse the config properly if it's a string
+			let configObj: Record<string, any> = {}
+			try {
+				if (typeof selectedDestination.config === "string") {
+					configObj = JSON.parse(selectedDestination.config)
+				} else if (
+					selectedDestination.config &&
+					typeof selectedDestination.config === "object"
+				) {
+					configObj = selectedDestination.config
+				}
+			} catch (e) {
+				console.error("Error parsing destination config:", e)
 			}
-			if (
-				JSON.parse(selectedDestination.config)?.catalog ||
-				JSON.parse(selectedDestination.config)?.catalog_type
-			) {
+
+			if (onFormDataChange) {
+				onFormDataChange(configObj)
+			}
+
+			// Check for catalog properties
+			if (configObj.catalog || configObj.catalog_type) {
 				let catalogValue = "none"
-				if (JSON.parse(selectedDestination.config)?.catalog) {
-					catalogValue = JSON.parse(selectedDestination.config)?.catalog
-				} else if (JSON.parse(selectedDestination.config)?.catalog_type) {
-					catalogValue = JSON.parse(selectedDestination.config)?.catalog_type
+				if (configObj.catalog) {
+					catalogValue = configObj.catalog
+				} else if (configObj.catalog_type) {
+					catalogValue = configObj.catalog_type
 				}
 
 				if (catalogValue == "None") {
@@ -316,7 +340,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 					setCatalog("Hive Catalog")
 				}
 			}
-			setFormData(selectedDestination.config || formData)
+			setFormData(configObj)
 		}
 	}
 

@@ -92,6 +92,16 @@ const StreamsCollapsibleList = ({
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
+	// Keep track of checked state locally
+	const [checkedStatus, setCheckedStatus] = useState<{
+		global: boolean
+		namespaces: { [ns: string]: boolean }
+		streams: { [ns: string]: { [streamName: string]: boolean } }
+	}>({
+		global: false,
+		namespaces: {},
+		streams: {},
+	})
 
 	// Open all by default
 	useEffect(() => {
@@ -131,11 +141,79 @@ const StreamsCollapsibleList = ({
 		}
 	}, [selectedStreamsFromAPI]) // Remove setSelectedStreams from dependencies
 
+	// Update local checked status based on selectedStreams
+	useEffect(() => {
+		const newCheckedStatus = {
+			global: false,
+			namespaces: {} as { [ns: string]: boolean },
+			streams: {} as { [ns: string]: { [streamName: string]: boolean } },
+		}
+
+		// Initialize streams checked status
+		Object.entries(groupedStreams).forEach(([ns, streams]) => {
+			newCheckedStatus.streams[ns] = {}
+
+			// For each stream, check if it is selected
+			streams.forEach(stream => {
+				const streamName = stream.stream.name
+				let isStreamSelected = false
+
+				if ("selected_streams" in selectedStreams) {
+					// CombinedStreamsData format
+					isStreamSelected = !!(selectedStreams as any).selected_streams[
+						ns
+					]?.some(
+						(selected: { stream_name: string }) =>
+							selected.stream_name === streamName,
+					)
+				} else {
+					// Regular mapping format
+					isStreamSelected = !!(selectedStreams as any)[ns]?.some(
+						(selected: { stream_name: string }) =>
+							selected.stream_name === streamName,
+					)
+				}
+
+				newCheckedStatus.streams[ns][streamName] = isStreamSelected
+			})
+
+			// Check if all streams in this namespace are selected
+			const allStreamsInNamespaceSelected = streams.every(
+				stream => newCheckedStatus.streams[ns][stream.stream.name],
+			)
+			newCheckedStatus.namespaces[ns] = allStreamsInNamespaceSelected
+		})
+
+		// Check if all namespaces are selected
+		const allNamespacesSelected = Object.values(
+			newCheckedStatus.namespaces,
+		).every(value => value)
+		newCheckedStatus.global = allNamespacesSelected
+
+		setCheckedStatus(newCheckedStatus)
+	}, [selectedStreams, groupedStreams])
+
 	const handleToggleNamespace = (ns: string) => {
 		setOpenNamespaces(prev => ({ ...prev, [ns]: !prev[ns] }))
 	}
 
 	const handleNamespaceSyncAll = (ns: string, checked: boolean) => {
+		// Update local checked status
+		setCheckedStatus(prev => ({
+			...prev,
+			namespaces: { ...prev.namespaces, [ns]: checked },
+			streams: {
+				...prev.streams,
+				[ns]: Object.keys(prev.streams[ns] || {}).reduce(
+					(acc, streamName) => {
+						acc[streamName] = checked
+						return acc
+					},
+					{} as { [streamName: string]: boolean },
+				),
+			},
+		}))
+
 		if (!checked) {
 			// When unchecking a database, remove all its streams from selected_streams
 			setSelectedStreams(prev => {
@@ -145,12 +223,14 @@ const StreamsCollapsibleList = ({
 				} else if (isCombinedStreamsData(prev)) {
 					// CombinedStreamsData structure
 					const updated = { ...prev }
-					delete updated.selected_streams[ns]
+					// Instead of deleting, set to empty array
+					updated.selected_streams[ns] = []
 					return updated
 				} else if (isStreamMapping(prev)) {
 					// Original object structure
 					const updated = { ...prev }
-					delete updated[ns]
+					// Instead of deleting, set to empty array
+					updated[ns] = []
 					return updated
 				}
 				return prev // Default fallback
@@ -188,6 +268,29 @@ const StreamsCollapsibleList = ({
 	}
 
 	const handleGlobalSyncAll = (checked: boolean) => {
+		// Update local checked status for all
+		setCheckedStatus(prev => {
+			const updatedNamespaces = { ...prev.namespaces }
+			const updatedStreams = { ...prev.streams }
+
+			Object.keys(groupedStreams).forEach(ns => {
+				updatedNamespaces[ns] = checked
+				updatedStreams[ns] = groupedStreams[ns].reduce(
+					(acc, stream) => {
+						acc[stream.stream.name] = checked
+						return acc
+					},
+					{} as { [streamName: string]: boolean },
+				)
+			})
+
+			return {
+				global: checked,
+				namespaces: updatedNamespaces,
+				streams: updatedStreams,
+			}
+		})
+
 		setSelectedStreams(prev => {
 			// Handle different types of prev structure
 			if (Array.isArray(prev)) {
@@ -196,7 +299,20 @@ const StreamsCollapsibleList = ({
 				// CombinedStreamsData structure
 				if (!checked) {
 					const updated = { ...prev }
-					updated.selected_streams = {}
+					// Initialize empty objects for all namespaces instead of an empty object
+					const emptySelectedStreams: {
+						[namespace: string]: {
+							stream_name: string
+							partition_regex: string
+							split_column: string
+						}[]
+					} = {}
+
+					Object.keys(groupedStreams).forEach(ns => {
+						emptySelectedStreams[ns] = []
+					})
+
+					updated.selected_streams = emptySelectedStreams
 					return updated
 				}
 
@@ -212,7 +328,20 @@ const StreamsCollapsibleList = ({
 			} else if (isStreamMapping(prev)) {
 				// Original object structure
 				if (!checked) {
-					return {}
+					// Initialize empty arrays for all namespaces instead of an empty object
+					const emptyStructure: {
+						[namespace: string]: {
+							stream_name: string
+							partition_regex: string
+							split_column: string
+						}[]
+					} = {}
+
+					Object.keys(groupedStreams).forEach(ns => {
+						emptyStructure[ns] = []
+					})
+
+					return emptyStructure
 				}
 
 				const updated: {
@@ -236,25 +365,48 @@ const StreamsCollapsibleList = ({
 		})
 	}
 
-	const allStreamsSelected = Object.entries(groupedStreams).every(
-		([ns, streams]) =>
-			streams.every(s => {
-				// Check if the stream is selected in the correct data structure
-				if ("selected_streams" in selectedStreams) {
-					// CombinedStreamsData format
-					return (selectedStreams as any).selected_streams[ns]?.some(
-						(selected: { stream_name: string }) =>
-							selected.stream_name === s.stream.name,
-					)
-				} else {
-					// Regular mapping format
-					return (selectedStreams as any)[ns]?.some(
-						(selected: { stream_name: string }) =>
-							selected.stream_name === s.stream.name,
-					)
-				}
-			}),
-	)
+	// Handle stream selection
+	const handleStreamSelect = (
+		streamName: string,
+		checked: boolean,
+		ns: string,
+	) => {
+		// Update local checked status
+		setCheckedStatus(prev => {
+			const updatedStreams = {
+				...prev.streams,
+				[ns]: {
+					...prev.streams[ns],
+					[streamName]: checked,
+				},
+			}
+
+			// Check if all streams in namespace are now selected
+			const allStreamsInNamespaceSelected = groupedStreams[ns].every(
+				stream => updatedStreams[ns][stream.stream.name],
+			)
+
+			// Update namespace status
+			const updatedNamespaces = {
+				...prev.namespaces,
+				[ns]: allStreamsInNamespaceSelected,
+			}
+
+			// Check if all namespaces are now selected
+			const allNamespacesSelected = Object.keys(groupedStreams).every(
+				namespace => updatedNamespaces[namespace],
+			)
+
+			return {
+				global: allNamespacesSelected,
+				namespaces: updatedNamespaces,
+				streams: updatedStreams,
+			}
+		})
+
+		// Call the original onStreamSelect to update parent state
+		onStreamSelect(streamName, checked, ns)
+	}
 
 	return (
 		<div className="flex h-full flex-col">
@@ -264,29 +416,13 @@ const StreamsCollapsibleList = ({
 				<>
 					<div className="mb-4 flex items-center">
 						<Checkbox
-							checked={allStreamsSelected}
+							checked={checkedStatus.global}
 							onChange={e => handleGlobalSyncAll(e.target.checked)}
 						>
 							Sync all
 						</Checkbox>
 					</div>
 					{Object.entries(groupedStreams).map(([ns, streams]) => {
-						const allChecked = streams.every(s => {
-							// Check if the stream is selected in the correct data structure
-							if ("selected_streams" in selectedStreams) {
-								// CombinedStreamsData format
-								return (selectedStreams as any).selected_streams[ns]?.some(
-									(selected: { stream_name: string }) =>
-										selected.stream_name === s.stream.name,
-								)
-							} else {
-								// Regular mapping format
-								return (selectedStreams as any)[ns]?.some(
-									(selected: { stream_name: string }) =>
-										selected.stream_name === s.stream.name,
-								)
-							}
-						})
 						return (
 							<div
 								key={ns}
@@ -297,7 +433,7 @@ const StreamsCollapsibleList = ({
 									onClick={() => handleToggleNamespace(ns)}
 								>
 									<Checkbox
-										checked={allChecked}
+										checked={checkedStatus.namespaces[ns]}
 										onChange={e => handleNamespaceSyncAll(ns, e.target.checked)}
 										onClick={e => e.stopPropagation()}
 										className="mr-2"
@@ -316,20 +452,11 @@ const StreamsCollapsibleList = ({
 												activeStreamData={activeStreamData}
 												setActiveStreamData={setActiveStreamData}
 												onStreamSelect={(streamName, checked) =>
-													onStreamSelect(streamName, checked, ns)
+													handleStreamSelect(streamName, checked, ns)
 												}
 												isSelected={
-													"selected_streams" in selectedStreams
-														? (selectedStreams as any).selected_streams[
-																ns
-															]?.some(
-																(s: { stream_name: string }) =>
-																	s.stream_name === streamData.stream.name,
-															)
-														: (selectedStreams as any)[ns]?.some(
-																(s: { stream_name: string }) =>
-																	s.stream_name === streamData.stream.name,
-															)
+													checkedStatus.streams[ns]?.[streamData.stream.name] ||
+													false
 												}
 											/>
 										))}

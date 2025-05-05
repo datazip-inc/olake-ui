@@ -84,6 +84,8 @@ export const jobService = {
 	syncJob: async (id: string) => {
 		const response = await api.post<APIResponse<any>>(
 			`/api/v1/project/123/jobs/${id}/sync`,
+			{},
+			{ timeout: 0 }, // Disable timeout for this request since it can take longer
 		)
 		return response.data
 	},

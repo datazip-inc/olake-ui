@@ -142,33 +142,44 @@ const JobTable: React.FC<JobTableProps> = ({
 			title: "Last sync",
 			dataIndex: "last_run_time",
 			key: "last_run_time",
-			render: (text: string) =>
-				formatDistanceToNow(new Date(text), { addSuffix: true }),
+			render: (text?: string) => {
+				if (!text) return <div className="pl-4">-</div>
+				try {
+					const date = new Date(text) // Use native Date instead of parseISO
+					if (isNaN(date.getTime())) throw new Error("Invalid date")
+					return formatDistanceToNow(date, { addSuffix: true })
+				} catch {
+					return "-"
+				}
+			},
 		},
 		{
 			title: "Last sync status",
 			dataIndex: "last_run_state",
 			key: "last_run_state",
-			render: (status: string) => (
-				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
-						status === "success"
-							? "bg-[#f6ffed] text-[#389E0D]"
-							: status === "failed"
-								? "bg-[#fff1f0 text-[#cf1322]"
-								: ""
-					}`}
-				>
-					{getStatusIcon(status)}
-					<span>
-						{status === "success"
-							? "Success"
-							: status === "failed"
-								? "Failed"
-								: status}
-					</span>
-				</div>
-			),
+			render: (status: string) => {
+				if (!status) return <div className="pl-4">-</div>
+				return (
+					<div
+						className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
+							status === "success"
+								? "bg-[#f6ffed] text-[#389E0D]"
+								: status === "failed"
+									? "bg-[#fff1f0 text-[#cf1322]"
+									: ""
+						}`}
+					>
+						{getStatusIcon(status)}
+						<span>
+							{status === "success"
+								? "Success"
+								: status === "failed"
+									? "Failed"
+									: status}
+						</span>
+					</div>
+				)
+			},
 		},
 	]
 
