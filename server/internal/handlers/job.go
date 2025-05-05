@@ -493,7 +493,7 @@ func (c *JobHandler) GetJobTasks() {
 	}
 
 	var tasks []models.JobTask
-
+	isFirst := true
 	for _, syncDir := range syncDirs {
 		logPath := filepath.Join(logsDir, syncDir, "olake.log")
 		logContent, err := os.ReadFile(logPath)
@@ -532,29 +532,33 @@ func (c *JobHandler) GetJobTasks() {
 
 		lastEntry := logEntries[len(logEntries)-1]
 		status := "running"
-		var stateMap map[string]interface{}
-		err = json.Unmarshal([]byte(job.State), &stateMap)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
-			return
-		}
-		stateMap["last_run_state"] = status
-		updatedState, err := json.Marshal(stateMap)
-		if err != nil {
-			// handle error
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to marshal state")
-			return
-		}
-
-		// Step 4: Assign it back to the field
-		job.State = string(updatedState)
-
 		if lastEntry.Level == "fatal" || lastEntry.Level == "error" {
 			status = "failed"
 		} else if lastEntry.Level == "info" && strings.Contains(lastEntry.Message, "Total records read: ") {
 			status = "success"
 		}
-
+		if isFirst {
+			var stateMap map[string]interface{}
+			err = json.Unmarshal([]byte(job.State), &stateMap)
+			if err != nil {
+				utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
+				return
+			}
+			stateMap["last_run_state"] = status
+			stateMap["last_run_time"] = firstTime
+			updatedState, err := json.Marshal(stateMap)
+			if err != nil {
+				// handle error
+				utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to marshal state")
+				return
+			}
+			job.State = string(updatedState)
+			if err := c.jobORM.Update(job); err != nil {
+				utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
+				return
+			}
+			isFirst = false
+		}
 		tasks = append(tasks, models.JobTask{
 			Runtime:   fmt.Sprintf("%d secs", int(runtime.Seconds())),
 			StartTime: firstTime.Format("2006-01-02_15-04-05"),
