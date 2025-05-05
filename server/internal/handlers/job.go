@@ -124,21 +124,27 @@ func (c *JobHandler) GetAllJobs() {
 			jobResp.UpdatedBy = job.UpdatedBy.Username
 		}
 
-		// Parse state for last run info if available
-		// if job.State != "" {
-		// 	var state map[string]interface{}
-		// 	if err := json.Unmarshal([]byte(job.State), &state); err == nil {
-		// 		if lastRunTime, ok := state["last_run_time"].(string); ok {
-		// 			jobResp.LastRunTime = lastRunTime
-		// 		}
+		//Parse state for last run info if available
+		if job.State != "" {
+			var state map[string]interface{}
+			if err := json.Unmarshal([]byte(job.State), &state); err == nil {
+				if lastRunTime, ok := state["last_run_time"].(string); ok {
+					jobResp.LastRunTime = lastRunTime
+				}
 
-		// 		if lastRunState, ok := state["last_run_state"].(string); ok {
-		// 			jobResp.LastRunState = lastRunState
-		// 		}
-		// 	}
+				if lastRunState, ok := state["last_run_state"].(string); ok {
+					jobResp.LastRunState = lastRunState
+				}
+			}
+		}
+		// var stateMap map[string]interface{}
+		// err = json.Unmarshal([]byte(job.State), &stateMap)
+		// if err != nil {
+		// 	utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
+		// 	return
 		// }
-		jobResp.LastRunTime = "2025-04-27T15:30:00Z"
-		jobResp.LastRunState = "success"
+		// jobResp.LastRunTime = stateMap["last_run_time"].(string)
+		// jobResp.LastRunState = stateMap["last_run_state"].(string)
 
 		jobResponses = append(jobResponses, jobResp)
 	}
@@ -440,7 +446,7 @@ func (c *JobHandler) GetJobTasks() {
 	}
 
 	// Get job to verify it exists
-	_, err = c.jobORM.GetByID(id)
+	job, err := c.jobORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -526,6 +532,22 @@ func (c *JobHandler) GetJobTasks() {
 
 		lastEntry := logEntries[len(logEntries)-1]
 		status := "running"
+		var stateMap map[string]interface{}
+		err = json.Unmarshal([]byte(job.State), &stateMap)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
+			return
+		}
+		stateMap["last_run_state"] = status
+		updatedState, err := json.Marshal(stateMap)
+		if err != nil {
+			// handle error
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to marshal state")
+			return
+		}
+
+		// Step 4: Assign it back to the field
+		job.State = string(updatedState)
 
 		if lastEntry.Level == "fatal" || lastEntry.Level == "error" {
 			status = "failed"
