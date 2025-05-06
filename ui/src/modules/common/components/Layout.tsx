@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { NavLink, Link } from "react-router-dom"
+import { NavLink, Link, useNavigate } from "react-router-dom"
 import OlakeLogo from "../../../assets/OlakeLogo.svg"
 import Olake from "../../../assets/OLake.svg"
 import {
@@ -9,7 +9,9 @@ import {
 	LinktreeLogo,
 	Path,
 	X,
+	SignOut,
 } from "@phosphor-icons/react"
+import { useAppStore } from "../../../store"
 
 interface LayoutProps {
 	children: React.ReactNode
@@ -18,9 +20,16 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const [collapsed, setCollapsed] = useState(false)
 	const [showUpdate, setShowUpdate] = useState(true)
+	const { logout } = useAppStore()
+	const navigate = useNavigate()
 
 	const toggleSidebar = () => {
 		setCollapsed(!collapsed)
+	}
+
+	const handleLogout = () => {
+		logout()
+		navigate("/login")
 	}
 
 	return (
@@ -132,6 +141,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 						</div>
 					</div>
 				)}
+
+				{/* Logout button */}
+				<div className="mt-auto p-4">
+					<button
+						onClick={handleLogout}
+						className={`flex w-full items-center rounded-xl p-3 text-gray-700 hover:bg-[#f6f6f6] hover:text-black`}
+					>
+						<SignOut
+							className="mr-3 flex-shrink-0"
+							size={20}
+						/>
+						{!collapsed && <span>Logout</span>}
+					</button>
+				</div>
 
 				{/* Toggle button positioned on the right border of sidebar */}
 				<button

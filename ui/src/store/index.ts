@@ -57,6 +57,8 @@ interface AppState {
 
 	// Auth actions
 	initAuth: () => Promise<void>
+	login: (username: string, password: string) => Promise<void>
+	logout: () => void
 
 	showDeleteJobModal: boolean
 	showClearDataModal: boolean
@@ -168,17 +170,34 @@ export const useAppStore = create<AppState>(set => ({
 		set({ isAuthLoading: true })
 		try {
 			if (!authService.isLoggedIn()) {
-				// Login with default credentials
-				await authService.login("olake", "password")
+				set({ isAuthenticated: false, isAuthLoading: false })
+				return
 			}
 			set({ isAuthenticated: true, isAuthLoading: false })
 		} catch (error) {
 			set({
 				isAuthLoading: false,
+				isAuthenticated: false,
 				jobsError:
 					error instanceof Error ? error.message : "Failed to initialize auth",
 			})
 		}
+	},
+
+	login: async (username: string, password: string) => {
+		set({ isAuthLoading: true })
+		try {
+			await authService.login(username, password)
+			set({ isAuthenticated: true, isAuthLoading: false })
+		} catch (error) {
+			set({ isAuthLoading: false })
+			throw error
+		}
+	},
+
+	logout: () => {
+		authService.logout()
+		set({ isAuthenticated: false })
 	},
 
 	fetchJobs: async () => {

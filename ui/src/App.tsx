@@ -11,6 +11,7 @@ import { ErrorBoundary } from "./modules/common/components/ErrorBoundary"
 import { useAppStore } from "./store"
 
 // Lazy load components
+const Login = lazy(() => import("./modules/auth/pages/Login"))
 const Jobs = lazy(() => import("./modules/jobs/pages/Jobs"))
 const JobHistory = lazy(() => import("./modules/jobs/pages/JobHistory"))
 const JobLogs = lazy(() => import("./modules/jobs/pages/JobLogs"))
@@ -49,7 +50,7 @@ const AuthLoadingScreen = () => (
 
 // Main app content
 const AppContent = () => {
-	const { isAuthLoading, initAuth } = useAppStore()
+	const { isAuthLoading, isAuthenticated, initAuth } = useAppStore()
 
 	useEffect(() => {
 		initAuth()
@@ -57,6 +58,30 @@ const AppContent = () => {
 
 	if (isAuthLoading) {
 		return <AuthLoadingScreen />
+	}
+
+	if (!isAuthenticated) {
+		return (
+			<Router>
+				<Suspense fallback={<LoadingFallback />}>
+					<Routes>
+						<Route
+							path="/login"
+							element={<Login />}
+						/>
+						<Route
+							path="*"
+							element={
+								<Navigate
+									to="/login"
+									replace
+								/>
+							}
+						/>
+					</Routes>
+				</Suspense>
+			</Router>
+		)
 	}
 
 	return (
