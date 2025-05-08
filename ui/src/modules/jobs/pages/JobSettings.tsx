@@ -13,7 +13,6 @@ const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const [replicationFrequencyValue, setReplicationFrequencyValue] =
 		useState("1")
-	const [pauseJob, setPauseJob] = useState(false)
 
 	const {
 		jobs,
@@ -30,10 +29,12 @@ const JobSettings: React.FC = () => {
 		}
 	}, [fetchJobs, jobs.length])
 
-	const job = jobs.find(j => j.id === jobId)
+	const job = jobs.find(j => j.id.toString() === jobId)
+
+	const [pauseJob, setPauseJob] = useState(!job?.activate)
 
 	const [replicationFrequency, setReplicationFrequency] = useState(
-		job?.replication_frequency,
+		job?.frequency,
 	)
 
 	const handleClearData = () => {
@@ -82,7 +83,7 @@ const JobSettings: React.FC = () => {
 							<div className="flex items-center gap-2">
 								{job?.source && (
 									<img
-										src={getConnectorImage(job.source)}
+										src={getConnectorImage(job.source.type)}
 										alt="Source"
 										className="size-7"
 									/>
@@ -90,7 +91,7 @@ const JobSettings: React.FC = () => {
 								<span className="text-gray-500">{"--------------▶"}</span>
 								{job?.destination && (
 									<img
-										src={getConnectorImage(job.destination)}
+										src={getConnectorImage(job.destination.type)}
 										alt="Destination"
 										className="size-7"
 									/>
