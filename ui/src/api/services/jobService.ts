@@ -119,4 +119,18 @@ export const jobService = {
 			throw error
 		}
 	},
+
+	// Activate/Deactivate job
+	activateJob: async (jobId: string, activate: boolean) => {
+		try {
+			const response = await api.post<APIResponse<any>>(
+				`/api/v1/project/123/jobs/${jobId}/activate`,
+				{ activate },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error toggling job activation:", error)
+			throw error
+		}
+	},
 }

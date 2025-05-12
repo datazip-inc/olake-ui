@@ -1,5 +1,4 @@
 import { Checkbox, Empty } from "antd"
-// import { StreamsCollapsibleListProps } from "../../../../types" // Removed unused import
 import { useEffect, useState } from "react"
 import StreamPanel from "./StreamPanel"
 import { StreamData } from "../../../../types"
@@ -45,43 +44,6 @@ interface GroupedStreamsCollapsibleListProps {
 	selectedStreamsFromAPI?: { [namespace: string]: { stream_name: string }[] }
 }
 
-// Add type guard functions at the top of the component
-/* Type guard functions - keeping for reference but commented out as they're not used directly
-const isCombinedStreamsData = (
-	obj: any,
-): obj is {
-	selected_streams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			split_column: string
-		}[]
-	}
-	streams: StreamData[]
-} => {
-	return (
-		obj &&
-		typeof obj === "object" &&
-		"selected_streams" in obj &&
-		"streams" in obj
-	)
-}
-
-const isStreamMapping = (
-	obj: any,
-): obj is {
-	[namespace: string]: {
-		stream_name: string
-		partition_regex: string
-		split_column: string
-	}[]
-} => {
-	return (
-		obj && typeof obj === "object" && !Array.isArray(obj) && !("streams" in obj)
-	)
-}
-*/
-
 const StreamsCollapsibleList = ({
 	groupedStreams,
 	selectedStreams,
@@ -94,7 +56,6 @@ const StreamsCollapsibleList = ({
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
-	// Keep track of checked state locally
 	const [checkedStatus, setCheckedStatus] = useState<{
 		global: boolean
 		namespaces: { [ns: string]: boolean }
@@ -105,7 +66,6 @@ const StreamsCollapsibleList = ({
 		streams: {},
 	})
 
-	// Open all by default
 	useEffect(() => {
 		const allOpen: { [ns: string]: boolean } = {}
 		Object.keys(groupedStreams).forEach((ns: string) => {
@@ -114,7 +74,6 @@ const StreamsCollapsibleList = ({
 		setOpenNamespaces(allOpen)
 	}, [groupedStreams])
 
-	// Initialize selected streams from API response
 	useEffect(() => {
 		if (selectedStreamsFromAPI) {
 			const updated: {
@@ -136,12 +95,11 @@ const StreamsCollapsibleList = ({
 				hasChanges = true
 			})
 
-			// Only update if there are actual changes
 			if (hasChanges) {
 				setSelectedStreams(updated)
 			}
 		}
-	}, [selectedStreamsFromAPI]) // Remove setSelectedStreams from dependencies
+	}, [selectedStreamsFromAPI])
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -235,49 +193,35 @@ const StreamsCollapsibleList = ({
 
 			// Then manually call setSelectedStreams as a fallback approach
 			setTimeout(() => {
-				// @ts-ignore - bypass type checking for now
 				if (selectedStreams && selectedStreams.selected_streams) {
 					const updated = { ...selectedStreams }
-					// @ts-ignore - bypass type checking for now
 					updated.selected_streams = { ...updated.selected_streams }
-					// @ts-ignore - bypass type checking for now
 					updated.selected_streams[ns] = []
 					setSelectedStreams(updated)
 				}
 			}, 100)
 		} else {
-			// When checking a database, add all its streams to selected_streams
 			const streamsInNamespace = groupedStreams[ns] || []
 
-			// Call the handler for each stream in the namespace to ensure they're all selected
 			streamsInNamespace.forEach(streamData => {
 				onStreamSelect(streamData.stream.name, true, ns)
 			})
 
-			// Also add a fallback to directly update the state
 			setTimeout(() => {
 				const streamNames = streamsInNamespace.map(s => s.stream.name)
 
-				// @ts-ignore - bypass type checking for now
 				if (selectedStreams) {
-					// For CombinedStreamsData structure
-					// @ts-ignore
 					if (selectedStreams.selected_streams) {
 						const updated = { ...selectedStreams }
-						// @ts-ignore
 						updated.selected_streams = { ...updated.selected_streams }
-						// @ts-ignore
 						updated.selected_streams[ns] = streamNames.map(stream_name => ({
 							stream_name,
 							partition_regex: "",
 							split_column: "",
 						}))
 						setSelectedStreams(updated)
-					}
-					// For StreamMapping structure
-					else {
+					} else {
 						const updated = { ...selectedStreams }
-						// @ts-ignore
 						updated[ns] = streamNames.map(stream_name => ({
 							stream_name,
 							partition_regex: "",
@@ -291,15 +235,10 @@ const StreamsCollapsibleList = ({
 	}
 
 	const handleGlobalSyncAll = (checked: boolean) => {
-		// Force a state update by manipulating the localStorage first
 		try {
-			// Mark that we're doing a global sync
 			localStorage.setItem("__globalSync", String(checked))
-		} catch {
-			// Ignore any localStorage errors
-		}
+		} catch {}
 
-		// Update local checked status for all
 		setCheckedStatus(prev => {
 			const updatedNamespaces = { ...prev.namespaces }
 			const updatedStreams = { ...prev.streams }
@@ -340,7 +279,6 @@ const StreamsCollapsibleList = ({
 		checked: boolean,
 		ns: string,
 	) => {
-		// Update local checked status
 		setCheckedStatus(prev => {
 			const updatedStreams = {
 				...prev.streams,
@@ -350,18 +288,15 @@ const StreamsCollapsibleList = ({
 				},
 			}
 
-			// Check if all streams in namespace are now selected
 			const allStreamsInNamespaceSelected = groupedStreams[ns].every(
 				stream => updatedStreams[ns][stream.stream.name],
 			)
 
-			// Update namespace status
 			const updatedNamespaces = {
 				...prev.namespaces,
 				[ns]: allStreamsInNamespaceSelected,
 			}
 
-			// Check if all namespaces are now selected
 			const allNamespacesSelected = Object.keys(groupedStreams).every(
 				namespace => updatedNamespaces[namespace],
 			)
@@ -373,7 +308,6 @@ const StreamsCollapsibleList = ({
 			}
 		})
 
-		// Call the original onStreamSelect to update parent state
 		onStreamSelect(streamName, checked, ns)
 	}
 

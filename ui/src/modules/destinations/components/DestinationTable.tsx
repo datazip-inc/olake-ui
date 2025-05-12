@@ -1,9 +1,10 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { Entity } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import DeleteModal from "../../common/Modals/DeleteModal"
+import JobConnection from "../../common/components/JobConnection"
 
 interface DestinationTableProps {
 	destinations: Entity[]
@@ -37,7 +38,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 								key: "edit",
 								icon: <PencilSimpleLine className="size-4" />,
 								label: "Edit",
-								onClick: () => onEdit(record.id),
+								onClick: () => onEdit(String(record.id)),
 							},
 							{
 								key: "delete",
@@ -65,7 +66,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			render: (text: string) => <div className="flex items-center">{text}</div>,
 		},
 		{
-			title: () => <span className="font-medium">Connectors</span>,
+			title: () => <span className="font-medium">Destination</span>,
 			dataIndex: "type",
 			key: "type",
 			render: (text: string) => (
@@ -87,45 +88,14 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				if (jobs.length === 0) {
 					return <div className="text-gray-500">No associated jobs</div>
 				}
+
 				return (
-					<div className="flex-end flex w-fit flex-col items-end gap-3">
-						<div className="mb-1 flex items-center">
-							<div
-								key={`job-${record.jobs[0].name}`}
-								className="flex gap-4"
-							>
-								<div className="flex items-center">
-									<img
-										src={getConnectorImage(record.jobs[0].source_name || "")}
-										className="size-8"
-									/>
-									<div className="ml-2 text-[#A3A3A3]">-------</div>
-									<div className="w-36 truncate rounded-[6px] border border-[#D9D9D9] bg-black bg-opacity-[2%] px-2 py-1 text-center text-black">
-										{record.jobs[0]?.name?.length > 15 ? (
-											<Tooltip title={record.jobs[0].name}>
-												{record.jobs[0].name}
-											</Tooltip>
-										) : (
-											record.jobs[0].name
-										)}
-									</div>
-									<div className="mr-2 text-[#A3A3A3]">-------</div>
-									<img
-										key={record.name}
-										src={getConnectorImage(record.type)}
-										className="size-8"
-									/>
-								</div>
-								<div>
-									<div className="cursor-pointer items-end text-sm font-bold text-[#203FDD] underline">
-										{record.jobs.length > 1
-											? `+${record.jobs.length - 1} more jobs`
-											: ""}
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+					<JobConnection
+						sourceType={jobs[0].source_type || ""}
+						destinationType={record.type}
+						jobName={jobs[0].name}
+						remainingJobs={jobs.length - 1}
+					/>
 				)
 			},
 		},
@@ -137,7 +107,6 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			destination.type.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
-	// Calculate current page data for display
 	const startIndex = (currentPage - 1) * pageSize
 	const endIndex = Math.min(startIndex + pageSize, filteredDestinations.length)
 	const currentPageData = filteredDestinations.slice(startIndex, endIndex)
@@ -167,19 +136,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				<DeleteModal fromSource={false} />
 			</div>
 
-			{/* Fixed pagination at bottom right */}
-			<div
-				style={{
-					position: "fixed",
-					bottom: 60,
-					right: 40,
-					display: "flex",
-					justifyContent: "flex-end",
-					padding: "8px 0",
-					backgroundColor: "#fff",
-					zIndex: 100,
-				}}
-			>
+			<div className="bottom-15 z-100 fixed right-10 flex justify-end bg-white p-2">
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
@@ -189,8 +146,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				/>
 			</div>
 
-			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
-			<div style={{ height: "80px" }}></div>
+			<div className="h-20" />
 		</>
 	)
 }

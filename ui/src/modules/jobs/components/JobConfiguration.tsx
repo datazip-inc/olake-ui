@@ -71,34 +71,6 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 					</div>
 				</div>
 			</div>
-
-			{/* <div className="mb-6 mt-6">
-				<label className="mb-2 block text-sm font-medium">
-					When the source schema changes, I want to:
-				</label>
-				<div className="rounded-xl border border-gray-200 p-4">
-					<div className="flex items-center justify-between">
-						<div>
-							<span className="font-medium">Propagate field changes only</span>
-							<p className="mt-1 text-sm text-[#575757]">
-								Only column changes will be propagated. Incompatible schema
-								changes will be detected, but not propagated.
-							</p>
-						</div>
-						<Switch
-							checked={schemaChangeStrategy === "propagate"}
-							onChange={checked =>
-								setSchemaChangeStrategy(checked ? "propagate" : "none")
-							}
-							className={
-								schemaChangeStrategy === "propagate"
-									? "bg-blue-600"
-									: "bg-gray-300"
-							}
-						/>
-					</div>
-				</div>
-			</div> */}
 		</div>
 	)
 }

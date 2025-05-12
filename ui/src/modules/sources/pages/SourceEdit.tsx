@@ -14,6 +14,7 @@ import { getConnectorImage } from "../../../utils/utils"
 import EditSourceModal from "../../common/Modals/EditSourceModal"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
+import { jobService } from "../../../api"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -33,7 +34,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	initialData,
 	onNameChange,
 	onConnectorChange,
-	onVersionChange,
 	onFormDataChange,
 }) => {
 	const { sourceId } = useParams<{ sourceId: string }>()
@@ -46,13 +46,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [formData, setFormData] = useState<any>({})
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
-	const [mockAssociatedJobs] = useState<any[]>([])
 	const [source, setSource] = useState<any>(null)
 	const [loading, setLoading] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
-
-	// Add a state for tracking paused job IDs
-	const [pausedJobIds, setPausedJobIds] = useState<string[]>([])
 
 	const {
 		sources,
@@ -141,54 +137,17 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		}
 
 		return () => {
-			// Cleanup function to prevent memory leaks
 			setLoading(false)
 		}
 	}, [connector, selectedVersion])
 
-	// Mock associated jobs for the source
-	const associatedJobs = jobs.slice(0, 5).map(job => ({
-		...job,
-		state: "Active",
-		lastRuntime: "3 hours ago",
-		lastRuntimeStatus: "Success",
-		destination: {
-			name: "AWS S3 Data Lake",
-			type: "Amazon S3",
-			paused: false,
-			config: {
-				s3_bucket: "prod-data-lake",
-				s3_region: "us-west-2",
-				writer: "parquet",
-			},
-		},
-		paused: false,
-	}))
-
-	// Additional jobs that will be shown when "View all" is clicked
-	const additionalJobs = jobs.slice(5, 10).map(job => ({
-		...job,
-		state: "Active",
-		lastRuntime: "3 hours ago",
-		lastRuntimeStatus: "Success",
-		destination: {
-			name: "AWS S3 Warehouse",
-			type: "AWS Glue Catalog",
-			paused: false,
-			config: {
-				database: "analytics_db",
-				region: "us-west-2",
-			},
-		},
-		paused: false,
-	}))
-
 	const displayedJobs = showAllJobs
-		? [...associatedJobs, ...additionalJobs]
-		: associatedJobs
+		? source?.jobs || []
+		: (source?.jobs || []).slice(0, 5)
 
 	const handleSave = () => {
-		if (mockAssociatedJobs.length > 0) {
+		setSelectedSource(source)
+		if (displayedJobs.length > 0) {
 			setShowEditSourceModal(true)
 			return
 		}
@@ -225,8 +184,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			name: sourceName || "",
 			type: connector,
 			...formData,
-			associatedJobs: mockAssociatedJobs,
+			jobs: source?.jobs || [],
 		}
+		console.log(sourceToDelete)
 		setSelectedSource(sourceToDelete as any)
 		setShowDeleteModal(true)
 	}
@@ -239,25 +199,29 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		setShowAllJobs(true)
 	}
 
-	const handlePauseAllJobs = (checked: boolean) => {
-		if (checked) {
-			const allJobIds = displayedJobs.map(job => job.id.toString())
-			setPausedJobIds(allJobIds)
-		} else {
-			setPausedJobIds([])
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 		}
-		message.info(`${checked ? "Pausing" : "Resuming"} all jobs for this source`)
 	}
 
-	const handlePauseJob = (jobId: string, checked: boolean) => {
-		// Update the pausedJobIds state to track which jobs are paused
-		if (checked) {
-			setPausedJobIds(prev => [...prev, jobId])
-		} else {
-			setPausedJobIds(prev => prev.filter(id => id !== jobId))
+	const handlePauseAllJobs = async (checked: boolean) => {
+		try {
+			const allJobs = displayedJobs.map(job => job.id.toString())
+			await Promise.all(
+				allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
+			)
+			message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
+		} catch (error) {
+			console.error("Error toggling all jobs status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
 		}
-
-		message.info(`${checked ? "Pausing" : "Resuming"} job ${jobId}`)
 	}
 
 	const toggleDocsPanel = () => {
@@ -327,29 +291,17 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		},
 		{
 			title: "Running status",
-			dataIndex: "id",
+			dataIndex: "activate",
 			key: "pause",
 			render: (activate: boolean, record: any) => (
 				<Switch
 					checked={activate}
 					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
-					className={
-						!pausedJobIds.includes(record.id.toString())
-							? "bg-blue-600"
-							: "bg-gray-200"
-					}
+					className={activate ? "bg-blue-600" : "bg-gray-200"}
 				/>
 			),
 		},
 	]
-
-	// Add a version change handler
-	const handleVersionChange = (version: string) => {
-		setSelectedVersion(version)
-		if (onVersionChange) {
-			onVersionChange(version)
-		}
-	}
 
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
@@ -369,7 +321,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				</div>
 			)}
 
-			{/* Main content */}
 			<div className="mt-2 flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
 				{/* Left content */}
 				<div
@@ -532,14 +483,14 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 							<Table
 								columns={columns}
-								dataSource={source?.jobs}
+								dataSource={displayedJobs}
 								pagination={false}
 								rowKey={record => record.id}
 								className="min-w-full"
 								rowClassName={() => "custom-row"}
 							/>
 
-							{!showAllJobs && additionalJobs.length > 0 && (
+							{!showAllJobs && source?.jobs && source.jobs.length > 5 && (
 								<div className="mt-6 flex justify-center">
 									<Button
 										type="default"

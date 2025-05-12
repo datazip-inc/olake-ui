@@ -85,3 +85,25 @@ export const getCatalogInLowerCase = (catalog: string) => {
 		return "hive"
 	}
 }
+
+export const getStatusLabel = (status: string) => {
+	switch (status) {
+		case "success":
+			return "Success"
+		case "failed":
+			return "Failed"
+		default:
+			return status
+	}
+}
+
+export const getConnectorLabel = (type: string): string => {
+	switch (type) {
+		case "mongodb":
+			return "MongoDB"
+		case "postgres":
+			return "Postgres"
+		default:
+			return "MySQL"
+	}
+}

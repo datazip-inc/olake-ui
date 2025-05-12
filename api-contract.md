@@ -625,9 +625,9 @@ http://localhost:8080
   }
   ```
 
-  ###Activate/Inactivate Job
+### Activate/Inactivate Job
 
-  - **Endpoint**: `/api/v1/project/:projectid/jobs/:id/activate`
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/activate`
 
 - **Method**: POST
 - **Description**: Update the activate status of job
@@ -636,7 +636,7 @@ http://localhost:8080
 
   ```json
   {
-   "activate":boolean  
+   "activate":boolean
   }
   ```
 

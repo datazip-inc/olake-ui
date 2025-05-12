@@ -133,6 +133,7 @@ const EditDestinationModal = () => {
 						dataSource={selectedDestination?.jobs}
 						pagination={false}
 						rowKey="key"
+						scroll={{ y: 300 }}
 					/>
 				</div>
 			</Modal>

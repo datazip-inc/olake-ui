@@ -7,6 +7,7 @@ import Table from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
+import { jobService } from "../../../api/services/jobService"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import AWSS3 from "../../../assets/AWSS3.svg"
@@ -52,9 +53,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [formData, setFormData] = useState<any>({})
 	const [isLoading, setIsLoading] = useState(false)
-	const mockAssociatedJobs: any[] = []
 	const [destination, setDestination] = useState<any>(null)
-	const [pausedJobIds, setPausedJobIds] = useState<string[]>([])
+
+	const displayedJobs = showAllJobs
+		? destination?.jobs || []
+		: (destination?.jobs || []).slice(0, 5)
 
 	const {
 		destinations,
@@ -246,7 +249,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			name: destinationName || "",
 			type: connector,
 			...formData,
-			associatedJobs: mockAssociatedJobs,
+			jobs: destination?.jobs || [],
 		}
 		setSelectedDestination(destinationToDelete as any)
 		// Show the delete modal
@@ -274,27 +277,29 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowAllJobs(true)
 	}
 
-	const handlePauseAllJobs = (checked: boolean) => {
-		if (checked) {
-			const pausedJobs =
-				destination?.jobs?.map((job: EntityJob) => job.activate === false) || []
-			setPausedJobIds(pausedJobs)
-		} else {
-			setPausedJobIds([])
+	const handlePauseAllJobs = async (checked: boolean) => {
+		try {
+			const allJobs = displayedJobs.map((job: EntityJob) => job.id.toString())
+			await Promise.all(
+				allJobs.map((jobId: string) => jobService.activateJob(jobId, !checked)),
+			)
+			message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
+		} catch (error) {
+			console.error("Error toggling all jobs status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
 		}
-		message.info(
-			`${checked ? "Pausing" : "Resuming"} all jobs for this destination`,
-		)
 	}
 
-	const handlePauseJob = (jobId: string, checked: boolean) => {
-		// Update the pausedJobIds state to track which jobs are paused
-		if (checked) {
-			setPausedJobIds(prev => [...prev, jobId])
-		} else {
-			setPausedJobIds(prev => prev.filter(id => id !== jobId))
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 		}
-		message.info(`${checked ? "Pausing" : "Resuming"} job ${jobId}`)
 	}
 
 	const toggleDocsPanel = () => {
@@ -314,7 +319,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			render: (activate: boolean) => (
 				<span
 					className={`rounded px-2 py-1 text-xs ${
-						activate
+						!activate
 							? "bg-[#FFF1F0] text-[#F5222D]"
 							: "bg-[#E6F4FF] text-[#0958D9]"
 					}`}
@@ -363,17 +368,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		},
 		{
 			title: "Running status",
-			dataIndex: "id",
+			dataIndex: "activate",
 			key: "pause",
 			render: (activate: boolean, record: any) => (
 				<Switch
 					checked={activate}
 					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
-					className={
-						!pausedJobIds.includes(record.id.toString())
-							? "bg-blue-600"
-							: "bg-gray-200"
-					}
+					className={activate ? "bg-blue-600" : "bg-gray-200"}
 				/>
 			),
 		},
@@ -607,24 +608,26 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 							<Table
 								columns={columns}
-								dataSource={destination?.jobs}
+								dataSource={displayedJobs}
 								pagination={false}
 								rowKey={record => record.id}
 								className="min-w-full"
 								rowClassName="no-hover"
 							/>
 
-							{!showAllJobs && destination?.jobs.length > 0 && (
-								<div className="mt-6 flex justify-center">
-									<Button
-										type="default"
-										onClick={handleViewAllJobs}
-										className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
-									>
-										View all associated jobs
-									</Button>
-								</div>
-							)}
+							{!showAllJobs &&
+								destination?.jobs &&
+								destination.jobs.length > 5 && (
+									<div className="mt-6 flex justify-center">
+										<Button
+											type="default"
+											onClick={handleViewAllJobs}
+											className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
+										>
+											View all associated jobs
+										</Button>
+									</div>
+								)}
 
 							<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
 								<span className="font-medium">Pause all associated jobs</span>

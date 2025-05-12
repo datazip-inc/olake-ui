@@ -167,6 +167,37 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleSaveJob = () => {
+		const savedJob = {
+			name: jobName || "-",
+			source: {
+				name: sourceName || "-",
+				type: getConnectorInLowerCase(sourceConnector),
+				version: sourceVersion,
+				config: JSON.stringify(sourceFormData),
+			},
+			destination: {
+				name: destinationName || "-",
+				type: getConnectorInLowerCase(destinationConnector),
+				version: destinationVersion,
+				config: JSON.stringify(destinationFormData),
+			},
+			streams_config: JSON.stringify(selectedStreams),
+			frequency: replicationFrequency
+				? getReplicationFrequency() || "hourly"
+				: "hourly",
+			activate: false,
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			created_by: "user",
+			updated_by: "user",
+			last_run_state: "",
+			last_run_time: "",
+		}
+		const existingSavedJobs = JSON.parse(
+			localStorage.getItem("savedJobs") || "[]",
+		)
+		existingSavedJobs.push(savedJob)
+		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
 		message.success("Job saved successfully!")
 		navigate("/jobs")
 	}

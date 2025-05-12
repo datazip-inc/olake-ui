@@ -130,6 +130,7 @@ const EditSourceModal = () => {
 						dataSource={selectedSource?.jobs}
 						pagination={false}
 						rowKey="key"
+						scroll={{ y: 300 }}
 					/>
 				</div>
 			</Modal>

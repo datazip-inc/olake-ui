@@ -60,8 +60,6 @@ const Sources: React.FC = () => {
 			return sources.filter(source => source?.jobs && source.jobs.length > 0)
 		} else if (activeTab === "inactive") {
 			return sources.filter(source => !source?.jobs || source.jobs.length === 0)
-		} else if (activeTab === "saved") {
-			return []
 		}
 		return []
 	}
@@ -71,7 +69,6 @@ const Sources: React.FC = () => {
 	const sourceTabs = [
 		{ key: "active", label: "Active sources" },
 		{ key: "inactive", label: "Inactive sources" },
-		{ key: "saved", label: "Saved sources" },
 	]
 
 	if (sourcesError) {

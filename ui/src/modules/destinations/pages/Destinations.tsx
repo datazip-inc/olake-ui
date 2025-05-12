@@ -64,8 +64,6 @@ const Destinations: React.FC = () => {
 			return destinations.filter(
 				destination => !destination?.jobs || destination.jobs.length === 0,
 			)
-		} else if (activeTab === "saved") {
-			return []
 		}
 		return []
 	}
@@ -75,7 +73,6 @@ const Destinations: React.FC = () => {
 	const destinationTabs = [
 		{ key: "active", label: "Active destinations" },
 		{ key: "inactive", label: "Inactive destinations" },
-		{ key: "saved", label: "Saved destinations" },
 	]
 
 	if (destinationsError) {

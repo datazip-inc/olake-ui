@@ -147,8 +147,9 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 					rowKey="id"
 					loading={loading}
 					pagination={false}
-					className="w-full overflow-hidden rounded-[6px] border"
+					className="w-full rounded-[6px] border"
 					rowClassName="no-hover"
+					scroll={{ y: 300 }}
 				/>
 				<div className="flex w-full justify-end space-x-2">
 					<Button

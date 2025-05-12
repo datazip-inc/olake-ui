@@ -1,18 +1,5 @@
 import { CheckboxChangeEvent } from "antd/es/checkbox"
 
-// export interface Job {
-// 	id: string
-// 	name: string
-// 	status: "active" | "inactive" | "saved" | "failed"
-// 	source: string
-// 	destination: string
-// 	createdAt: Date
-// 	lastSync?: string
-// 	lastSyncStatus?: "success" | "failed" | "running"
-// 	replication_frequency?: string
-// 	paused?: boolean
-// }
-
 export interface Job {
 	id: number
 	name: string

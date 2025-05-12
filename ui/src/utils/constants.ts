@@ -15,3 +15,5 @@ export const PARTITIONING_COLUMNS = [
 		key: "default",
 	},
 ]
+
+export const PAGE_SIZE = 8

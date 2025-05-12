@@ -55,15 +55,34 @@ const Jobs: React.FC = () => {
 	}
 
 	const handleDeleteJob = (id: string) => {
-		message.info(`Deleting job ${id}`)
-		setShowDeleteJobModal(true)
-		setSelectedJobId(id)
+		if (activeTab === "saved") {
+			const savedJobsFromStorage = JSON.parse(
+				localStorage.getItem("savedJobs") || "[]",
+			)
+			const updatedSavedJobs = savedJobsFromStorage.filter(
+				(job: any) => job.id !== parseInt(id),
+			)
+			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+			setSavedJobs(updatedSavedJobs)
+			message.success("Saved job deleted successfully")
+		} else {
+			setShowDeleteJobModal(true)
+			setSelectedJobId(id)
+		}
 	}
 	const [filteredJobs, setFilteredJobs] = useState<typeof jobs>([])
+	const [savedJobs, setSavedJobs] = useState<typeof jobs>([])
+
+	useEffect(() => {
+		const savedJobsFromStorage = JSON.parse(
+			localStorage.getItem("savedJobs") || "[]",
+		)
+		setSavedJobs(savedJobsFromStorage)
+	}, [])
 
 	useEffect(() => {
 		updateJobsList()
-	}, [activeTab, jobs])
+	}, [activeTab, jobs, savedJobs])
 
 	const updateJobsList = () => {
 		if (activeTab === "active") {
@@ -71,7 +90,7 @@ const Jobs: React.FC = () => {
 		} else if (activeTab === "inactive") {
 			setFilteredJobs(jobs.filter(job => job.activate === false))
 		} else if (activeTab === "saved") {
-			setFilteredJobs([])
+			setFilteredJobs(savedJobs)
 		} else if (activeTab === "failed") {
 			setFilteredJobs([])
 		}
@@ -185,6 +204,7 @@ const Jobs: React.FC = () => {
 						<JobTable
 							jobs={filteredJobs}
 							loading={isLoadingJobs}
+							jobType={activeTab as "active" | "inactive" | "saved" | "failed"}
 							onSync={handleSyncJob}
 							onEdit={handleEditJob}
 							onPause={handlePauseJob}

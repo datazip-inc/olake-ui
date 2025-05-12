@@ -2,6 +2,7 @@ import React, { useState } from "react"
 import { Form, Input, Button, Card, Alert } from "antd"
 import { User, LockKey } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
+import { useNavigate } from "react-router-dom"
 
 interface LoginFormValues {
 	username: string
@@ -10,6 +11,7 @@ interface LoginFormValues {
 
 const Login: React.FC = () => {
 	const { login } = useAppStore()
+	const navigate = useNavigate()
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
@@ -19,6 +21,7 @@ const Login: React.FC = () => {
 
 		try {
 			await login(values.username, values.password)
+			navigate("/jobs")
 		} catch (err) {
 			setError(
 				typeof err === "string"

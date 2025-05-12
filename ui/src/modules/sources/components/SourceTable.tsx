@@ -1,16 +1,34 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
-import { getConnectorImage } from "../../../utils/utils"
+import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
 import React from "react"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import { Entity } from "../../../types"
+import { PAGE_SIZE } from "../../../utils/constants"
+import JobConnection from "../../common/components/JobConnection"
 
 interface SourceTableProps {
 	sources: Entity[]
 	loading: boolean
 	onEdit: (id: string) => void
 	onDelete: (source: Entity) => void
+}
+
+const renderJobConnection = (record: Entity) => {
+	const jobs = record.jobs as any[]
+	if (jobs.length === 0) {
+		return <div className="text-gray-500">No associated jobs</div>
+	}
+
+	return (
+		<JobConnection
+			sourceType={record.type}
+			destinationType={jobs[0].dest_type || ""}
+			jobName={jobs[0].name}
+			remainingJobs={jobs.length - 1}
+		/>
+	)
 }
 
 const SourceTable: React.FC<SourceTableProps> = ({
@@ -21,16 +39,13 @@ const SourceTable: React.FC<SourceTableProps> = ({
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
-	const pageSize = 8
-	const { Search } = Input
 
-	const columns = [
+	const getTableColumns = () => [
 		{
 			title: () => <span className="font-medium">Actions</span>,
 			key: "actions",
 			width: 80,
-
-			render: (_: any, record: Entity) => (
+			render: (_: unknown, record: Entity) => (
 				<Dropdown
 					menu={{
 						items: [
@@ -66,7 +81,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			render: (text: string) => <div className="flex items-center">{text}</div>,
 		},
 		{
-			title: () => <span className="font-medium">Connectors</span>,
+			title: () => <span className="font-medium">Source</span>,
 			dataIndex: "type",
 			key: "type",
 			render: (text: string) => (
@@ -74,14 +89,9 @@ const SourceTable: React.FC<SourceTableProps> = ({
 					<img
 						src={getConnectorImage(text)}
 						className="mr-2 size-6"
+						alt={`${text} connector`}
 					/>
-					<span>
-						{text === "mongodb"
-							? "MongoDB"
-							: text === "postgres"
-								? "Postgres"
-								: "MySQL"}
-					</span>
+					<span>{getConnectorLabel(text)}</span>
 				</div>
 			),
 		},
@@ -89,49 +99,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			title: () => <span className="font-medium">Associated jobs</span>,
 			key: "jobs",
 			dataIndex: "jobs",
-			render: (_: any, record: Entity) => {
-				const jobs = record.jobs as any[]
-				if (jobs.length == 0) {
-					return <div className="text-gray-500">No associated jobs</div>
-				}
-				return (
-					<div className="flex-end flex w-fit flex-col items-end gap-3">
-						<div className="mb-1 flex items-center">
-							<div
-								key={`job-${record.jobs[0].name}}`}
-								className="flex items-center gap-3"
-							>
-								<div className="flex items-center">
-									<img
-										src={getConnectorImage(record.type)}
-										className="size-8"
-									/>
-									<div className="ml-2 text-[#A3A3A3]">-------</div>
-									<div className="w-36 truncate rounded-[6px] border border-[#D9D9D9] bg-black bg-opacity-[2%] px-2 py-1 text-center text-black">
-										{record?.jobs[0]?.name?.length > 15 ? (
-											<Tooltip title={record.jobs[0].name}>
-												{record.jobs[0].name}
-											</Tooltip>
-										) : (
-											record.jobs[0].name
-										)}
-									</div>
-									<div className="mr-2 text-[#A3A3A3]">-------</div>
-									<img
-										src={getConnectorImage(record.jobs[0].dest_type || "")}
-										className="size-8"
-									/>
-								</div>
-								<div className="cursor-pointer items-end text-sm font-bold text-[#203FDD] underline">
-									{record.jobs.length > 1
-										? `+${record.jobs.length - 1} more jobs`
-										: ""}
-								</div>
-							</div>
-						</div>
-					</div>
-				)
-			},
+			render: (_: unknown, record: Entity) => renderJobConnection(record),
 		},
 	]
 
@@ -141,16 +109,15 @@ const SourceTable: React.FC<SourceTableProps> = ({
 			source.type.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
-	// Calculate current page data for display
-	const startIndex = (currentPage - 1) * pageSize
-	const endIndex = Math.min(startIndex + pageSize, filteredSources.length)
+	const startIndex = (currentPage - 1) * PAGE_SIZE
+	const endIndex = Math.min(startIndex + PAGE_SIZE, filteredSources.length)
 	const currentPageData = filteredSources.slice(startIndex, endIndex)
 
 	return (
 		<>
 			<div>
 				<div className="mb-4">
-					<Search
+					<Input.Search
 						placeholder="Search Sources"
 						allowClear
 						className="custom-search-input w-1/4"
@@ -161,7 +128,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 
 				<Table
 					dataSource={currentPageData}
-					columns={columns}
+					columns={getTableColumns()}
 					rowKey="id"
 					loading={loading}
 					pagination={false}
@@ -171,30 +138,17 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				<DeleteModal fromSource={true} />
 			</div>
 
-			{/* Fixed pagination at bottom right */}
-			<div
-				style={{
-					position: "fixed",
-					bottom: 60,
-					right: 40,
-					display: "flex",
-					justifyContent: "flex-end",
-					padding: "8px 0",
-					backgroundColor: "#fff",
-					zIndex: 100,
-				}}
-			>
+			<div className="z-100 fixed bottom-[60px] right-[40px] flex justify-end bg-white p-2">
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
 					total={filteredSources.length}
-					pageSize={pageSize}
+					pageSize={PAGE_SIZE}
 					showSizeChanger={false}
 				/>
 			</div>
 
-			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
-			<div style={{ height: "80px" }}></div>
+			<div className="h-[80px]" />
 		</>
 	)
 }
