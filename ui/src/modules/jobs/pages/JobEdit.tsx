@@ -9,8 +9,8 @@ import StepProgress from "../components/StepIndicator"
 import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
-import { StreamData } from "../../../types"
-import { jobService } from "../../../api/services/jobService"
+import { StreamData, Job, JobBase } from "../../../types"
+import { jobService } from "../../../api"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -42,71 +42,66 @@ interface StreamsDataStructure {
 	streams: StreamData[]
 }
 
-// Custom wrapper components for SourceEdit and DestinationEdit to use in job flow
+// Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
 	sourceData,
 	updateSourceData,
 }: {
 	sourceData: SourceData
 	updateSourceData: (data: SourceData) => void
-}) => {
-	return (
-		<div className="flex h-full flex-col">
-			<div className="flex-1 overflow-auto">
-				<SourceEdit
-					fromJobFlow={true}
-					stepNumber="1"
-					stepTitle="Source config"
-					initialData={sourceData}
-					onNameChange={name => updateSourceData({ ...sourceData, name })}
-					onConnectorChange={type => updateSourceData({ ...sourceData, type })}
-					onVersionChange={version =>
-						updateSourceData({ ...sourceData, version })
-					}
-					onFormDataChange={config =>
-						updateSourceData({ ...sourceData, config })
-					}
-				/>
-			</div>
+}) => (
+	<div className="flex h-full flex-col">
+		<div className="flex-1 overflow-auto">
+			<SourceEdit
+				fromJobFlow={true}
+				stepNumber="1"
+				stepTitle="Source config"
+				initialData={sourceData}
+				onNameChange={name => updateSourceData({ ...sourceData, name })}
+				onConnectorChange={type => updateSourceData({ ...sourceData, type })}
+				onVersionChange={version =>
+					updateSourceData({ ...sourceData, version })
+				}
+				onFormDataChange={config => updateSourceData({ ...sourceData, config })}
+			/>
 		</div>
-	)
-}
+	</div>
+)
 
+// Custom wrapper component for DestinationEdit to use in job flow
 const JobDestinationEdit = ({
 	destinationData,
 	updateDestinationData,
 }: {
 	destinationData: DestinationData
 	updateDestinationData: (data: DestinationData) => void
-}) => {
-	return (
-		<div className="flex h-full flex-col">
-			<div
-				className="flex-1 overflow-auto"
-				style={{ paddingBottom: "80px" }}
-			>
-				<DestinationEdit
-					fromJobFlow={true}
-					stepNumber="2"
-					stepTitle="Destination config"
-					initialData={destinationData}
-					onNameChange={name =>
-						updateDestinationData({ ...destinationData, name })
-					}
-					onConnectorChange={type =>
-						updateDestinationData({ ...destinationData, type })
-					}
-					onVersionChange={version =>
-						updateDestinationData({ ...destinationData, version })
-					}
-					onFormDataChange={config =>
-						updateDestinationData({ ...destinationData, config })
-					}
-				/>
-			</div>
+}) => (
+	<div className="flex h-full flex-col">
+		<div
+			className="flex-1 overflow-auto"
+			style={{ paddingBottom: "80px" }}
+		>
+			<DestinationEdit
+				fromJobFlow={true}
+				stepNumber="2"
+				stepTitle="Destination config"
+				initialData={destinationData}
+				onNameChange={name =>
+					updateDestinationData({ ...destinationData, name })
+				}
+				onConnectorChange={type =>
+					updateDestinationData({ ...destinationData, type })
+				}
+				onVersionChange={version =>
+					updateDestinationData({ ...destinationData, version })
+				}
+				onFormDataChange={config =>
+					updateDestinationData({ ...destinationData, config })
+				}
+			/>
 		</div>
-	)
-}
+	</div>
+)
 
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
@@ -147,7 +142,6 @@ const JobEdit: React.FC = () => {
 
 	// Load job data on component mount
 	useEffect(() => {
-		// Make sure we have the jobs, sources, and destinations data
 		fetchJobs()
 		fetchSources()
 		fetchDestinations()
@@ -156,143 +150,153 @@ const JobEdit: React.FC = () => {
 	// Set initial form values when job data is available
 	useEffect(() => {
 		if (job) {
-			setJobName(job.name)
-
-			// Parse source config
-			let sourceConfig = {}
-			try {
-				sourceConfig =
-					typeof job.source.config === "string"
-						? JSON.parse(job.source.config)
-						: job.source.config
-			} catch (error) {
-				console.error("Error parsing source config:", error)
-			}
-
-			// Set source data from job
-			const sourceDataObj: SourceData = {
-				name: job.source.name,
-				type: job.source.type,
-				config: sourceConfig,
-				version: job.source.version,
-			}
-			setSourceData(sourceDataObj)
-
-			// Parse destination config
-			let destConfig = {}
-			try {
-				destConfig =
-					typeof job.destination.config === "string"
-						? JSON.parse(job.destination.config)
-						: job.destination.config
-			} catch (error) {
-				console.error("Error parsing destination config:", error)
-			}
-
-			// Set destination data from job
-			const destinationDataObj: DestinationData = {
-				name: job.destination.name,
-				type: job.destination.type,
-				config: destConfig,
-				version: job.destination.version,
-			}
-			setDestinationData(destinationDataObj)
-
-			// Set other job settings
-			setReplicationFrequency(job.frequency || "daily")
-
-			// Parse streams config
-			if (job.streams_config) {
-				try {
-					const parsedStreamsConfig = JSON.parse(job.streams_config)
-
-					// Create a proper streams data structure
-					let streamsData: StreamsDataStructure | null = null
-
-					// Handle case where streams_config is a full data structure
-					if (
-						parsedStreamsConfig.streams &&
-						parsedStreamsConfig.selected_streams
-					) {
-						streamsData = parsedStreamsConfig as StreamsDataStructure
-					}
-					// Handle case where streams_config is just an array of stream names
-					else if (Array.isArray(parsedStreamsConfig)) {
-						// Create a basic structure with selected streams
-						streamsData = {
-							selected_streams: { default: [] },
-							streams: [],
-						}
-
-						// Add stream names to the selected_streams
-						parsedStreamsConfig.forEach((streamName: string) => {
-							streamsData!.selected_streams.default.push({
-								stream_name: streamName,
-								partition_regex: "",
-								split_column: "",
-							})
-
-							// Add empty stream objects that will be populated later by API
-							streamsData!.streams.push({
-								stream: {
-									name: streamName,
-									namespace: "default",
-								},
-							} as StreamData)
-						})
-					}
-					// Handle case where streams_config is just selected_streams object
-					else if (typeof parsedStreamsConfig === "object") {
-						streamsData = {
-							selected_streams: parsedStreamsConfig,
-							streams: [],
-						}
-					}
-
-					if (streamsData) {
-						setSelectedStreams(streamsData)
-						setInitialStreamsData(streamsData)
-					}
-				} catch (e) {
-					console.error("Error parsing streams config:", e)
-				}
-			}
+			initializeFromExistingJob(job)
 		} else {
-			// Default values for new job
-			setSourceData({
-				name: "New Source",
-				type: "MongoDB",
-				config: {
-					hosts: ["localhost:27017"],
-					username: "",
-					password: "",
-					authdb: "admin",
-					database: "",
-					collection: "",
-				},
-				version: "latest",
-			})
-
-			setDestinationData({
-				name: "New Destination",
-				type: "s3",
-				config: {
-					normalization: false,
-					s3_bucket: "",
-					s3_region: "us-east-1",
-					type: "PARQUET",
-				},
-				version: "latest",
-			})
-
-			setJobName("New Job")
+			initializeForNewJob()
 		}
 	}, [job])
+
+	// Initialize form data from an existing job
+	const initializeFromExistingJob = (job: Job) => {
+		setJobName(job.name)
+
+		// Parse source config
+		let sourceConfig = parseConfig(job.source.config)
+
+		// Set source data from job
+		setSourceData({
+			name: job.source.name,
+			type: job.source.type,
+			config: sourceConfig,
+			version: job.source.version,
+		})
+
+		// Parse destination config
+		let destConfig = parseConfig(job.destination.config)
+
+		// Set destination data from job
+		setDestinationData({
+			name: job.destination.name,
+			type: job.destination.type,
+			config: destConfig,
+			version: job.destination.version,
+		})
+
+		// Set other job settings
+		setReplicationFrequency(job.frequency || "daily")
+
+		// Parse streams config
+		if (job.streams_config) {
+			try {
+				const parsedStreamsConfig = JSON.parse(job.streams_config)
+				const streamsData = processStreamsConfig(parsedStreamsConfig)
+
+				if (streamsData) {
+					setSelectedStreams(streamsData)
+					setInitialStreamsData(streamsData)
+				}
+			} catch (e) {
+				console.error("Error parsing streams config:", e)
+			}
+		}
+	}
+
+	// Process streams configuration into a consistent format
+	const processStreamsConfig = (
+		parsedConfig: any,
+	): StreamsDataStructure | null => {
+		// Handle case where streams_config is a full data structure
+		if (parsedConfig.streams && parsedConfig.selected_streams) {
+			return parsedConfig as StreamsDataStructure
+		}
+
+		// Handle case where streams_config is just an array of stream names
+		else if (Array.isArray(parsedConfig)) {
+			const streamsData: StreamsDataStructure = {
+				selected_streams: { default: [] },
+				streams: [],
+			}
+
+			parsedConfig.forEach((streamName: string) => {
+				streamsData.selected_streams.default.push({
+					stream_name: streamName,
+					partition_regex: "",
+					split_column: "",
+				})
+
+				// Add empty stream objects that will be populated later by API
+				streamsData.streams.push({
+					stream: {
+						name: streamName,
+						namespace: "default",
+					},
+				} as StreamData)
+			})
+
+			return streamsData
+		}
+
+		// Handle case where streams_config is just selected_streams object
+		else if (typeof parsedConfig === "object") {
+			return {
+				selected_streams: parsedConfig,
+				streams: [],
+			}
+		}
+
+		return null
+	}
+
+	// Initialize defaults for a new job
+	const initializeForNewJob = () => {
+		setSourceData({
+			name: "New Source",
+			type: "MongoDB",
+			config: {
+				hosts: ["localhost:27017"],
+				username: "",
+				password: "",
+				authdb: "admin",
+				database: "",
+				collection: "",
+			},
+			version: "latest",
+		})
+
+		setDestinationData({
+			name: "New Destination",
+			type: "s3",
+			config: {
+				normalization: false,
+				s3_bucket: "",
+				s3_region: "us-east-1",
+				type: "PARQUET",
+			},
+			version: "latest",
+		})
+
+		setJobName("New Job")
+	}
+
+	// Helper function to safely parse JSON config strings
+	const parseConfig = (
+		config: string | Record<string, any>,
+	): Record<string, any> => {
+		if (typeof config === "string") {
+			try {
+				return JSON.parse(config)
+			} catch (error) {
+				console.error("Error parsing config:", error)
+				return {}
+			}
+		}
+		return config as Record<string, any>
+	}
 
 	// Handle job submission
 	const handleJobSubmit = async () => {
 		if (!sourceData || !destinationData) {
-			message.error("Source and destination data is required")
+			message.error("Source and destination data are required")
 			return
 		}
 
@@ -300,7 +304,7 @@ const JobEdit: React.FC = () => {
 
 		try {
 			// Create the job update payload
-			const jobUpdatePayload = {
+			const jobUpdatePayload: JobBase = {
 				name: jobName,
 				source: {
 					name: sourceData.name,
@@ -325,7 +329,6 @@ const JobEdit: React.FC = () => {
 						? selectedStreams
 						: JSON.stringify(selectedStreams),
 				frequency: replicationFrequency,
-				activate: true,
 			}
 
 			if (jobId) {
@@ -418,54 +421,46 @@ const JobEdit: React.FC = () => {
 				>
 					<div className="flex-1 pb-0">
 						{currentStep === "source" && sourceData && (
-							<div className="w-full">
-								<JobSourceEdit
-									sourceData={sourceData}
-									updateSourceData={setSourceData}
-								/>
-							</div>
+							<JobSourceEdit
+								sourceData={sourceData}
+								updateSourceData={setSourceData}
+							/>
 						)}
 
 						{currentStep === "destination" && destinationData && (
-							<div className="w-full">
-								<JobDestinationEdit
-									destinationData={destinationData}
-									updateDestinationData={setDestinationData}
-								/>
-							</div>
+							<JobDestinationEdit
+								destinationData={destinationData}
+								updateDestinationData={setDestinationData}
+							/>
 						)}
 
 						{currentStep === "schema" && (
-							<div className="w-full">
-								<SchemaConfiguration
-									selectedStreams={selectedStreams as any}
-									setSelectedStreams={setSelectedStreams as any}
-									stepNumber={3}
-									stepTitle="Schema evaluation"
-									sourceName={sourceData?.name || ""}
-									sourceConnector={sourceData?.type || ""}
-									sourceVersion={sourceData?.version || "latest"}
-									sourceConfig={JSON.stringify(sourceData?.config || {})}
-									initialStreamsData={initialStreamsData as any}
-								/>
-							</div>
+							<SchemaConfiguration
+								selectedStreams={selectedStreams as any}
+								setSelectedStreams={setSelectedStreams as any}
+								stepNumber={3}
+								stepTitle="Schema evaluation"
+								sourceName={sourceData?.name || ""}
+								sourceConnector={sourceData?.type || ""}
+								sourceVersion={sourceData?.version || "latest"}
+								sourceConfig={JSON.stringify(sourceData?.config || {})}
+								initialStreamsData={initialStreamsData as any}
+							/>
 						)}
 
 						{currentStep === "config" && (
-							<div className="w-full">
-								<JobConfiguration
-									jobName={jobName}
-									setJobName={setJobName}
-									replicationFrequency={replicationFrequency}
-									setReplicationFrequency={setReplicationFrequency}
-									schemaChangeStrategy={schemaChangeStrategy}
-									setSchemaChangeStrategy={setSchemaChangeStrategy}
-									notifyOnSchemaChanges={notifyOnSchemaChanges}
-									setNotifyOnSchemaChanges={setNotifyOnSchemaChanges}
-									stepNumber={4}
-									stepTitle="Job Configuration"
-								/>
-							</div>
+							<JobConfiguration
+								jobName={jobName}
+								setJobName={setJobName}
+								replicationFrequency={replicationFrequency}
+								setReplicationFrequency={setReplicationFrequency}
+								schemaChangeStrategy={schemaChangeStrategy}
+								setSchemaChangeStrategy={setSchemaChangeStrategy}
+								notifyOnSchemaChanges={notifyOnSchemaChanges}
+								setNotifyOnSchemaChanges={setNotifyOnSchemaChanges}
+								stepNumber={4}
+								stepTitle="Job Configuration"
+							/>
 						)}
 					</div>
 				</div>

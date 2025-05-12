@@ -1,105 +1,111 @@
 import React, { useEffect, useRef, useState } from "react"
-import DynamicSchemaForm from "../modules/common/components/DynamicSchemaForm"
-import { RJSFSchema } from "@rjsf/utils"
+import { RJSFSchema, UiSchema } from "@rjsf/utils"
 import { Switch, Tooltip, Select } from "antd"
 import { Info, Eye, EyeSlash } from "@phosphor-icons/react"
 
-/**
- * DirectFormField - A single form field that maintains its own state
- */
+interface DynamicSchemaFormProps {
+	schema: RJSFSchema
+	formData: any
+	onChange: (data: any) => void
+	onSubmit?: (data: any) => void
+	uiSchema?: UiSchema
+	hideSubmit?: boolean
+	className?: string
+}
+
+type FieldSchema = {
+	type?: string
+	format?: string
+	title?: string
+	description?: string
+	placeholder?: string
+	enum?: string[]
+	default?: any
+	properties?: Record<string, FieldSchema>
+	required?: string[]
+}
+
+type UISchema = {
+	"ui:widget"?: string
+	[key: string]: any
+}
+
+interface DirectFormFieldProps {
+	name: string
+	schema: FieldSchema
+	value: any
+	onChange: (name: string, value: any) => void
+	required?: boolean
+	uiSchema?: UISchema
+}
+
 const DirectFormField = ({
 	name,
 	schema,
 	value,
 	onChange,
 	required = false,
-	uiSchema,
-}: {
-	name: string
-	schema: any
-	value: any
-	onChange: (name: string, value: any) => void
-	required?: boolean
-	uiSchema?: any
-}) => {
-	// Keep internal state for the input value
+}: DirectFormFieldProps) => {
 	const [fieldValue, setFieldValue] = useState(value)
 	const [showPassword, setShowPassword] = useState(false)
 	const inputRef = useRef<HTMLInputElement>(null)
 
-	// Update internal state if parent value changes and field is not focused
 	useEffect(() => {
 		if (document.activeElement !== inputRef.current) {
 			setFieldValue(value)
 		}
 	}, [value])
 
-	// Determine input type based on schema
-	let inputType = "text"
-	if (schema.type === "number" || schema.type === "integer") {
-		inputType = "number"
-	} else if (schema.type === "boolean") {
-		inputType = "checkbox"
-	} else if (schema.format === "password") {
-		inputType = showPassword ? "text" : "password"
+	const getInputType = (): string => {
+		if (schema.type === "number" || schema.type === "integer") {
+			return "number"
+		} else if (schema.type === "boolean") {
+			return "checkbox"
+		} else if (schema.format === "password") {
+			return showPassword ? "text" : "password"
+		}
+		return "text"
 	}
 
-	// Handle change events for standard inputs
+	const inputType = getInputType()
+
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		let newValue: any
+		const newValue =
+			inputType === "checkbox"
+				? e.target.checked
+				: inputType === "number"
+					? e.target.value
+						? Number(e.target.value)
+						: undefined
+					: e.target.value
 
-		if (inputType === "checkbox") {
-			newValue = e.target.checked
-		} else if (inputType === "number") {
-			newValue = e.target.value ? Number(e.target.value) : undefined
-		} else {
-			newValue = e.target.value
-		}
-
-		// Update local state immediately
 		setFieldValue(newValue)
-
-		// Notify parent component
 		onChange(name, newValue)
 	}
 
-	// Handle change events for Switch component
 	const handleSwitchChange = (checked: boolean) => {
 		setFieldValue(checked)
 		onChange(name, checked)
 	}
 
-	// Handle change events for Select component
 	const handleSelectChange = (value: string) => {
 		setFieldValue(value)
 		onChange(name, value)
 	}
 
-	// Toggle password visibility
 	const togglePasswordVisibility = () => {
-		setShowPassword(!showPassword)
+		setShowPassword(prev => !prev)
 	}
 
-	// Get UI options from uiSchema
-	const uiOptions = uiSchema?.["ui:options"] || {}
-	const fieldClassName = uiSchema?.["ui:className"] || ""
-	const fieldPlaceholder =
-		uiSchema?.["ui:placeholder"] || schema.placeholder || ""
-	const fieldDescription =
-		uiSchema?.["ui:description"] || schema.description || ""
-	const fieldTitle = uiSchema?.["ui:title"] || schema.title || name
-
-	// Render the appropriate input based on type
 	const renderInput = () => {
-		// Handle enum/select type
-		if (schema.enum) {
+		if (schema.enum?.length) {
 			return (
 				<Select
 					value={fieldValue}
 					onChange={handleSelectChange}
-					className={`w-full ${fieldClassName}`}
-					placeholder={fieldPlaceholder}
-					options={schema.enum.map((option: string) => ({
+					className="w-full"
+					placeholder={schema.placeholder}
+					options={schema.enum.map(option => ({
 						label: option,
 						value: option,
 					}))}
@@ -109,7 +115,7 @@ const DirectFormField = ({
 
 		if (schema.type === "boolean") {
 			return (
-				<div className={`flex items-center justify-between ${fieldClassName}`}>
+				<div className="flex items-center justify-between">
 					<Switch
 						checked={!!fieldValue}
 						onChange={handleSwitchChange}
@@ -125,10 +131,10 @@ const DirectFormField = ({
 					<input
 						ref={inputRef}
 						type={showPassword ? "text" : "password"}
-						value={fieldValue || ""}
+						value={fieldValue ?? ""}
 						onChange={handleChange}
-						placeholder={fieldPlaceholder}
-						className={`w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${fieldClassName}`}
+						placeholder={schema.placeholder}
+						className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 					/>
 					<button
 						type="button"
@@ -149,98 +155,86 @@ const DirectFormField = ({
 			<input
 				ref={inputRef}
 				type={inputType}
-				value={inputType !== "checkbox" ? fieldValue || "" : undefined}
-				checked={inputType === "checkbox" ? fieldValue : undefined}
+				value={inputType !== "checkbox" ? (fieldValue ?? "") : undefined}
+				checked={inputType === "checkbox" ? !!fieldValue : undefined}
 				onChange={handleChange}
-				placeholder={fieldPlaceholder}
-				className={`w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${fieldClassName}`}
+				placeholder={schema.placeholder}
+				className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 			/>
 		)
 	}
 
 	return (
-		<div className={`mb-4 ${uiOptions.fullWidth ? "col-span-2" : ""}`}>
+		<div className="mb-4">
 			<div className="mb-1 flex items-center gap-1">
 				<label className="text-sm font-medium text-gray-700">
-					{fieldTitle}
+					{schema.title || name}
 					{required && <span className="text-red-500">*</span>}
 				</label>
-				{fieldDescription && (
-					<Tooltip title={fieldDescription}>
+				{schema.description && (
+					<Tooltip title={schema.description}>
 						<Info className="size-4 cursor-help text-gray-400" />
 					</Tooltip>
 				)}
 			</div>
-
 			{renderInput()}
 		</div>
 	)
 }
 
-/**
- * DirectInputForm - A simple form component that directly renders inputs
- * without going through RJSF, ensuring focus is never lost during typing
- */
+interface DirectInputFormProps {
+	schema: RJSFSchema
+	formData: Record<string, any>
+	onChange: (data: Record<string, any>) => void
+	uiSchema?: Record<string, UISchema>
+}
+
 export const DirectInputForm = ({
 	schema,
 	formData,
 	onChange,
 	uiSchema,
-}: {
-	schema: RJSFSchema
-	formData: any
-	onChange: (data: any) => void
-	uiSchema?: any
-}) => {
-	if (!schema || !schema.properties) {
+}: DirectInputFormProps) => {
+	if (!schema?.properties) {
 		return <div>No schema properties provided</div>
 	}
 
-	// Handle changes from any field
 	const handleFieldChange = (fieldName: string, fieldValue: any) => {
-		const updatedData = {
+		onChange({
 			...formData,
 			[fieldName]: fieldValue,
-		}
-
-		onChange(updatedData)
+		})
 	}
 
-	// Handle changes for nested object fields
-	const handleNestedFieldChange = (parentField: string, fieldData: any) => {
-		const updatedData = {
+	const handleNestedFieldChange = (
+		parentField: string,
+		fieldData: Record<string, any>,
+	) => {
+		onChange({
 			...formData,
 			[parentField]: {
 				...formData?.[parentField],
 				...fieldData,
 			},
-		}
-		onChange(updatedData)
+		})
 	}
 
-	// Generate form fields based on schema
 	const renderFields = () => {
-		// Safely get properties and handle undefined
 		const properties = schema.properties || {}
 
 		return Object.entries(properties)
 			.map(([name, fieldSchemaDefinition]) => {
-				// Handle nested objects
-				const fieldSchema = fieldSchemaDefinition as any
-				const fieldUiSchema =
-					uiSchema && uiSchema[name] ? uiSchema[name] : undefined
+				const fieldSchema = fieldSchemaDefinition as FieldSchema
+				const fieldUiSchema = uiSchema?.[name]
 
-				// Skip hidden fields but keep their values in the form data
-				if (fieldUiSchema && fieldUiSchema["ui:widget"] === "hidden") {
+				if (fieldUiSchema?.["ui:widget"] === "hidden") {
 					return null
 				}
 
-				if (
-					typeof fieldSchema === "object" &&
-					fieldSchema.type === "object" &&
-					fieldSchema.properties
-				) {
-					// For nested objects, show just the title (if any) and render its fields directly
+				const isNestedObject =
+					fieldSchema.type === "object" && fieldSchema.properties
+
+				if (isNestedObject) {
 					return (
 						<div
 							key={name}
@@ -261,7 +255,6 @@ export const DirectInputForm = ({
 					)
 				}
 
-				// Handle regular fields
 				return (
 					<DirectFormField
 						key={name}
@@ -274,7 +267,7 @@ export const DirectInputForm = ({
 					/>
 				)
 			})
-			.filter(Boolean) // Filter out null entries (hidden fields)
+			.filter(Boolean)
 	}
 
 	return (
@@ -286,99 +279,88 @@ export const DirectInputForm = ({
 	)
 }
 
-/**
- * FixedSchemaForm - A direct input form that maintains focus during typing
- * This is a replacement for DynamicSchemaForm when focus issues occur
- */
-export const FixedSchemaForm: React.FC<
-	React.ComponentProps<typeof DynamicSchemaForm>
-> = props => {
-	// Filter the formData to only include fields that exist in the schema
-	const [filteredFormData, setFilteredFormData] = useState<any>({})
+const isNestedObjectSchema = (schema: any): boolean => {
+	return (
+		schema &&
+		typeof schema === "object" &&
+		schema.type === "object" &&
+		schema.properties
+	)
+}
+
+export const FixedSchemaForm: React.FC<DynamicSchemaFormProps> = props => {
+	const [filteredFormData, setFilteredFormData] = useState<Record<string, any>>(
+		{},
+	)
 
 	useEffect(() => {
-		if (props.schema && props.schema.properties) {
-			// Keep only the fields that exist in the schema
-			const filteredData: any = {}
+		if (!props.schema?.properties) {
+			setFilteredFormData(props.formData || {})
+			return
+		}
 
-			// Get field names and properties from the schema
-			const schemaProperties = props.schema.properties || {}
+		const filteredData: Record<string, any> = {}
+		const schemaProperties = props.schema.properties || {}
 
-			// First, populate with default values from schema
-			Object.entries(schemaProperties).forEach(
-				([key, propValue]: [string, any]) => {
-					// Handle nested objects with defaults
+		// Apply defaults for missing values
+		Object.entries(schemaProperties).forEach(
+			([key, propValue]: [string, any]) => {
+				// Handle nested objects
+				if (isNestedObjectSchema(propValue)) {
+					filteredData[key] = filteredData[key] || {}
+
+					Object.entries(propValue.properties || {}).forEach(
+						([nestedKey, nestedProp]: [string, any]) => {
+							const hasDefault = nestedProp?.default !== undefined
+							const isMissing =
+								!props.formData?.[key] ||
+								props.formData[key][nestedKey] === undefined
+
+							if (hasDefault && isMissing) {
+								filteredData[key][nestedKey] = nestedProp.default
+							}
+						},
+					)
+				}
+
+				// Handle top-level properties with defaults
+				const hasDefault = propValue?.default !== undefined
+				const isMissing = !props.formData || props.formData[key] === undefined
+
+				if (hasDefault && isMissing) {
+					filteredData[key] = propValue.default
+				}
+			},
+		)
+
+		// Merge existing form data
+		if (props.formData) {
+			Object.entries(props.formData).forEach(([key, value]) => {
+				if (key in schemaProperties) {
 					if (
-						propValue &&
-						typeof propValue === "object" &&
-						propValue.type === "object" &&
-						propValue.properties
+						isNestedObjectSchema(schemaProperties[key]) &&
+						typeof value === "object" &&
+						value !== null
 					) {
 						filteredData[key] = filteredData[key] || {}
-						Object.entries(propValue.properties).forEach(
-							([nestedKey, nestedProp]: [string, any]) => {
-								if (
-									nestedProp &&
-									typeof nestedProp === "object" &&
-									nestedProp.default !== undefined &&
-									(!props.formData?.[key] ||
-										props.formData[key][nestedKey] === undefined)
-								) {
-									filteredData[key][nestedKey] = nestedProp.default
-								}
-							},
-						)
-					}
 
-					// Handle regular properties with defaults
-					if (
-						propValue &&
-						typeof propValue === "object" &&
-						propValue.default !== undefined &&
-						(!props.formData || props.formData[key] === undefined)
-					) {
-						filteredData[key] = propValue.default
+						Object.entries(value).forEach(([nestedKey, nestedValue]) => {
+							const nestedProperties = (schemaProperties[key] as any)
+								?.properties
+							if (nestedProperties && nestedKey in nestedProperties) {
+								filteredData[key][nestedKey] = nestedValue
+							}
+						})
+					} else {
+						filteredData[key] = value
 					}
-				},
-			)
-
-			// Then overlay with existing formData values
-			if (props.formData) {
-				Object.entries(props.formData).forEach(([key, value]) => {
-					if (key in schemaProperties) {
-						// Handle nested objects
-						if (
-							schemaProperties[key] &&
-							typeof schemaProperties[key] === "object" &&
-							(schemaProperties[key] as any).type === "object" &&
-							typeof value === "object" &&
-							value !== null
-						) {
-							filteredData[key] = filteredData[key] || {}
-							Object.entries(value).forEach(([nestedKey, nestedValue]) => {
-								if (
-									schemaProperties[key] &&
-									typeof schemaProperties[key] === "object" &&
-									(schemaProperties[key] as any).properties &&
-									nestedKey in (schemaProperties[key] as any).properties
-								) {
-									filteredData[key][nestedKey] = nestedValue
-								}
-							})
-						} else {
-							filteredData[key] = value
-						}
-					}
-				})
-			}
-
-			setFilteredFormData(filteredData)
-		} else {
-			setFilteredFormData(props.formData || {})
+				}
+			})
 		}
+
+		setFilteredFormData(filteredData)
 	}, [props.schema, props.formData])
 
-	// Use our direct implementation instead of the problematic RJSF library
 	return (
 		<DirectInputForm
 			schema={props.schema}

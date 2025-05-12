@@ -24,18 +24,51 @@ import {
 	getConnectorName,
 } from "../../../utils/utils"
 
-// Define an interface compatible with EntityBase but with more specific types for our component
+// Constants
+const CONNECTOR_TYPES = {
+	AMAZON_S3: "Amazon S3",
+	APACHE_ICEBERG: "Apache Iceberg",
+} as const
+
+const CATALOG_TYPES = {
+	AWS_GLUE: "AWS Glue",
+	REST_CATALOG: "REST Catalog",
+	JDBC_CATALOG: "JDBC Catalog",
+	HIVE_CATALOG: "Hive Catalog",
+	NONE: "None",
+} as const
+
+const SETUP_TYPES = {
+	NEW: "new",
+	EXISTING: "existing",
+} as const
+
+// Type aliases for our constants
+type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
+type SetupType = (typeof SETUP_TYPES)[keyof typeof SETUP_TYPES]
+
+// Types
+interface DestinationConfig {
+	[key: string]: any
+	catalog?: string
+	catalog_type?: string
+	writer?: {
+		catalog?: string
+		catalog_type?: string
+	}
+}
+
 interface Destination {
 	id: string | number
 	name: string
 	type: string
 	version: string
-	config: string | Record<string, any>
+	config: string | DestinationConfig
 }
 
 // ExtendedDestination ensures config is always available
 interface ExtendedDestination extends Destination {
-	config: string | Record<string, any>
+	config: DestinationConfig
 }
 
 interface CreateDestinationProps {
@@ -45,11 +78,15 @@ interface CreateDestinationProps {
 	onComplete?: () => void
 	stepNumber?: number
 	stepTitle?: string
-	initialConfig?: any
-	initialFormData?: any
+	initialConfig?: {
+		name: string
+		type: string
+		config?: DestinationConfig
+	}
+	initialFormData?: DestinationConfig
 	onDestinationNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
-	onFormDataChange?: (formData: any) => void
+	onFormDataChange?: (formData: DestinationConfig) => void
 	onVersionChange?: (version: string) => void
 }
 
@@ -67,17 +104,19 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	onFormDataChange,
 	onVersionChange,
 }) => {
-	const [setupType, setSetupType] = useState("new")
-	const [connector, setConnector] = useState("Amazon S3")
+	const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
+	const [connector, setConnector] = useState<ConnectorType>(
+		CONNECTOR_TYPES.AMAZON_S3,
+	)
 	const [catalog, setCatalog] = useState<string | null>(null)
 	const [destinationName, setDestinationName] = useState("")
 	const [version, setVersion] = useState("")
 	const [versions, setVersions] = useState<string[]>([])
 	const [loadingVersions, setLoadingVersions] = useState(false)
-	const [formData, setFormData] = useState<any>({})
-	const [schema, setSchema] = useState<any>(null)
+	const [formData, setFormData] = useState<DestinationConfig>({})
+	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 	const [loading, setLoading] = useState(false)
-	const [uiSchema, setUiSchema] = useState<any>(null)
+	const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
 	const [filteredDestinations, setFilteredDestinations] = useState<
 		ExtendedDestination[]
 	>([])
@@ -92,6 +131,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		addDestination,
 	} = useAppStore()
 
+	// Fetch destinations if needed
 	useEffect(() => {
 		if (!destinations.length) {
 			fetchDestinations()
@@ -102,7 +142,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	useEffect(() => {
 		if (initialConfig) {
 			setDestinationName(initialConfig.name)
-			setConnector(initialConfig.type)
+			setConnector(initialConfig.type as ConnectorType)
 			setFormData(initialConfig.config || {})
 		}
 	}, [initialConfig])
@@ -114,54 +154,97 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		}
 	}, [initialFormData])
 
+	// Handle edit flow initialization
 	useEffect(() => {
 		if (fromJobEditFlow && existingDestinationId) {
-			setSetupType("existing")
+			setSetupType(SETUP_TYPES.EXISTING)
 			const selectedDestination = destinations.find(
-				d => d.id === existingDestinationId,
-			) as ExtendedDestination
+				d => d.id.toString() === existingDestinationId,
+			) as ExtendedDestination | undefined
+
 			if (selectedDestination) {
 				setDestinationName(selectedDestination.name)
-				setConnector(selectedDestination.type)
+				setConnector(selectedDestination.type as ConnectorType)
 			}
 		}
 	}, [fromJobEditFlow, existingDestinationId, destinations])
 
+	// Set default catalog for Apache Iceberg
 	useEffect(() => {
-		if (connector === "Apache Iceberg") {
-			setCatalog("AWS Glue")
+		if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+			setCatalog(CATALOG_TYPES.AWS_GLUE)
 		} else {
 			setCatalog(null)
 		}
 	}, [connector])
 
+	// Filter destinations based on connector and catalog
 	useEffect(() => {
-		if (setupType === "existing") {
-			if (connector === "Apache Iceberg") {
-				const catalogValue = catalog || "AWS Glue"
-				const filtered = destinations.filter(destination => {
-					if (destination.type !== getConnectorInLowerCase(connector))
-						return false
-					const extDestination = destination as any
-					return (
-						extDestination.config?.writer?.catalog ===
-							getCatalogInLowerCase(catalogValue) ||
-						extDestination.config?.writer?.catalog_type ===
-							getCatalogInLowerCase(catalogValue)
-					)
-				})
+		if (setupType === SETUP_TYPES.EXISTING) {
+			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+				const catalogValue = catalog || CATALOG_TYPES.AWS_GLUE
+				const filtered = destinations
+					.filter(destination => {
+						if (destination.type !== getConnectorInLowerCase(connector))
+							return false
+
+						let config: DestinationConfig = {}
+						try {
+							if (typeof destination.config === "string") {
+								config = JSON.parse(destination.config)
+							} else {
+								config = destination.config as DestinationConfig
+							}
+
+							return (
+								config?.writer?.catalog ===
+									getCatalogInLowerCase(catalogValue) ||
+								config?.writer?.catalog_type ===
+									getCatalogInLowerCase(catalogValue)
+							)
+						} catch {
+							return false
+						}
+					})
+					.map(dest => {
+						// Transform destination to ensure config is a DestinationConfig object
+						const config =
+							typeof dest.config === "string"
+								? JSON.parse(dest.config)
+								: (dest.config as DestinationConfig)
+
+						return {
+							...dest,
+							config,
+						} as ExtendedDestination
+					})
+
 				setFilteredDestinations(filtered)
 			} else {
-				const filtered = destinations.filter(
-					destination =>
-						destination.type === getConnectorInLowerCase(connector),
-				)
+				const filtered = destinations
+					.filter(
+						destination =>
+							destination.type === getConnectorInLowerCase(connector),
+					)
+					.map(dest => {
+						// Transform destination to ensure config is a DestinationConfig object
+						const config =
+							typeof dest.config === "string"
+								? JSON.parse(dest.config)
+								: (dest.config as DestinationConfig)
 
-				setFilteredDestinations(filtered as unknown as ExtendedDestination[])
+						return {
+							...dest,
+							config,
+						} as ExtendedDestination
+					})
+
+				setFilteredDestinations(filtered)
 			}
 		}
 	}, [connector, setupType, destinations, catalog])
 
+	// Fetch connector versions
 	useEffect(() => {
 		const fetchVersions = async () => {
 			setLoadingVersions(true)
@@ -174,7 +257,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 					const defaultVersion = response.data.version[0] || ""
 					setVersion(defaultVersion)
 
-					// Pass the version to parent component if onVersionChange is provided
 					if (onVersionChange) {
 						onVersionChange(defaultVersion)
 					}
@@ -189,10 +271,11 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		fetchVersions()
 	}, [connector, onVersionChange])
 
+	// Fetch destination spec
 	useEffect(() => {
 		const fetchDestinationSpec = async () => {
+			setLoading(true)
 			try {
-				setLoading(true)
 				const response = await destinationService.getDestinationSpec(
 					connector,
 					catalog,
@@ -203,10 +286,10 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 						setUiSchema(response.data.uiSchema)
 					}
 				} else {
-					console.error("Failed to get source spec:", response.message)
+					console.error("Failed to get destination spec:", response.message)
 				}
 			} catch (error) {
-				console.error("Error fetching source spec:", error)
+				console.error("Error fetching destination spec:", error)
 			} finally {
 				setLoading(false)
 			}
@@ -215,19 +298,19 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		fetchDestinationSpec()
 	}, [connector, catalog, version])
 
+	// Handlers
 	const handleCancel = () => {
 		setShowEntitySavedModal(false)
 	}
 
 	const handleCreate = async () => {
-		let catalogInLowerCase
-		if (catalog) {
-			catalogInLowerCase = getCatalogInLowerCase(catalog)
-		}
+		const catalogInLowerCase = catalog
+			? getCatalogInLowerCase(catalog)
+			: undefined
 		const newDestinationData = {
 			name: destinationName,
-			type: connector === "Amazon S3" ? "s3" : "iceberg",
-			version: version,
+			type: connector === CONNECTOR_TYPES.AMAZON_S3 ? "s3" : "iceberg",
+			version,
 			config: JSON.stringify({ ...formData, catalog: catalogInLowerCase }),
 		}
 
@@ -236,6 +319,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			const testResult =
 				await destinationService.testDestinationConnection(newDestinationData)
 			setShowTestingModal(false)
+
 			if (testResult.success) {
 				setShowSuccessModal(true)
 				setTimeout(() => {
@@ -270,12 +354,14 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	}
 
 	const handleConnectorChange = (value: string) => {
-		setConnector(value)
+		setConnector(value as ConnectorType)
 		if (onConnectorChange) {
 			onConnectorChange(value)
 		}
-		if (value === "Apache Iceberg") {
-			setCatalog("AWS Glue")
+
+		// Set default catalog for Apache Iceberg
+		if (value === CONNECTOR_TYPES.APACHE_ICEBERG) {
+			setCatalog(CATALOG_TYPES.AWS_GLUE)
 		} else {
 			setCatalog(null)
 		}
@@ -289,75 +375,116 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		const selectedDestination = destinations.find(
 			d => d.id.toString() === value.toString(),
 		)
-		if (selectedDestination) {
-			if (onDestinationNameChange) {
-				onDestinationNameChange(selectedDestination.name)
-			}
-			if (onConnectorChange) {
-				onConnectorChange(selectedDestination.type)
-			}
-			if (onVersionChange) {
-				onVersionChange(selectedDestination.version)
-			}
 
-			// Parse the config properly if it's a string
-			let configObj: Record<string, any> = {}
-			try {
-				if (typeof selectedDestination.config === "string") {
-					configObj = JSON.parse(selectedDestination.config)
-				} else if (
-					selectedDestination.config &&
-					typeof selectedDestination.config === "object"
-				) {
-					configObj = selectedDestination.config
-				}
-			} catch (e) {
-				console.error("Error parsing destination config:", e)
-			}
+		if (!selectedDestination) return
 
-			if (onFormDataChange) {
-				onFormDataChange(configObj)
-			}
-
-			// Check for catalog properties
-			if (configObj.catalog || configObj.catalog_type) {
-				let catalogValue = "none"
-				if (configObj.catalog) {
-					catalogValue = configObj.catalog
-				} else if (configObj.catalog_type) {
-					catalogValue = configObj.catalog_type
-				}
-
-				if (catalogValue == "None") {
-					setCatalog(catalogValue)
-				} else if (catalogValue === "glue") {
-					setCatalog("AWS Glue")
-				} else if (catalogValue === "rest") {
-					setCatalog("REST Catalog")
-				} else if (catalogValue === "jdbc") {
-					setCatalog("JDBC Catalog")
-				} else if (catalogValue === "hive") {
-					setCatalog("Hive Catalog")
-				}
-			}
-			setFormData(configObj)
+		if (onDestinationNameChange) {
+			onDestinationNameChange(selectedDestination.name)
 		}
+
+		if (onConnectorChange) {
+			onConnectorChange(selectedDestination.type)
+		}
+
+		if (onVersionChange) {
+			onVersionChange(selectedDestination.version)
+		}
+
+		// Parse the config properly if it's a string
+		let configObj: DestinationConfig = {}
+		try {
+			if (typeof selectedDestination.config === "string") {
+				configObj = JSON.parse(selectedDestination.config)
+			} else if (
+				selectedDestination.config &&
+				typeof selectedDestination.config === "object"
+			) {
+				configObj = selectedDestination.config as DestinationConfig
+			}
+		} catch (e) {
+			console.error("Error parsing destination config:", e)
+		}
+
+		if (onFormDataChange) {
+			onFormDataChange(configObj)
+		}
+
+		// Check for catalog properties
+		if (configObj.catalog || configObj.catalog_type) {
+			const catalogValue = configObj.catalog || configObj.catalog_type || "none"
+
+			if (catalogValue === "None") {
+				setCatalog(catalogValue)
+			} else if (catalogValue === "glue") {
+				setCatalog(CATALOG_TYPES.AWS_GLUE)
+			} else if (catalogValue === "rest") {
+				setCatalog(CATALOG_TYPES.REST_CATALOG)
+			} else if (catalogValue === "jdbc") {
+				setCatalog(CATALOG_TYPES.JDBC_CATALOG)
+			} else if (catalogValue === "hive") {
+				setCatalog(CATALOG_TYPES.HIVE_CATALOG)
+			}
+		}
+
+		setFormData(configObj)
 	}
 
-	const handleFormChange = (newFormData: any) => {
+	const handleFormChange = (newFormData: DestinationConfig) => {
 		setFormData(newFormData)
 		if (onFormDataChange) {
 			onFormDataChange(newFormData)
 		}
 	}
 
-	// Add a handler for version changes
 	const handleVersionChange = (value: string) => {
 		setVersion(value)
 		if (onVersionChange) {
 			onVersionChange(value)
 		}
 	}
+
+	// Helper function to render connector option
+	const renderConnectorOption = (
+		value: string,
+		icon: string,
+		label: string,
+	) => ({
+		value,
+		label: (
+			<div className="flex items-center">
+				<img
+					src={icon}
+					alt={label}
+					className="mr-2 size-5"
+				/>
+				<span>{label}</span>
+			</div>
+		),
+	})
+
+	// Connector options
+	const connectorOptions = [
+		renderConnectorOption(CONNECTOR_TYPES.AMAZON_S3, AWSS3Icon, "Amazon S3"),
+		renderConnectorOption(
+			CONNECTOR_TYPES.APACHE_ICEBERG,
+			ApacheIceBerg,
+			"Apache Iceberg",
+		),
+	]
+
+	// Type for catalog options
+	type CatalogOption = { value: string; label: string }
+
+	// Catalog options
+	const catalogOptions: CatalogOption[] =
+		connector === CONNECTOR_TYPES.APACHE_ICEBERG
+			? [
+					{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
+					{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
+					{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC" },
+					{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive catalog" },
+				]
+			: [{ value: CATALOG_TYPES.NONE, label: "None" }]
 
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
@@ -395,21 +522,23 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 								<div className="mb-4 flex">
 									<Radio.Group
 										value={setupType}
-										onChange={e => setSetupType(e.target.value)}
+										onChange={e => setSetupType(e.target.value as SetupType)}
 										className="flex"
 									>
 										<Radio
-											value="new"
+											value={SETUP_TYPES.NEW}
 											className="mr-8"
 										>
 											Set up a new destination
 										</Radio>
-										<Radio value="existing">Use an existing destination</Radio>
+										<Radio value={SETUP_TYPES.EXISTING}>
+											Use an existing destination
+										</Radio>
 									</Radio.Group>
 								</div>
 							)}
 
-							{setupType === "new" && !fromJobEditFlow ? (
+							{setupType === SETUP_TYPES.NEW && !fromJobEditFlow ? (
 								<div className="flex-start flex w-full gap-12">
 									<div className="w-1/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
@@ -419,61 +548,21 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 											value={connector}
 											onChange={handleConnectorChange}
 											className="w-full"
-											options={[
-												{
-													value: "Amazon S3",
-													label: (
-														<div className="flex items-center">
-															<img
-																src={AWSS3Icon}
-																alt="AWS S3"
-																className="mr-2 size-5"
-															/>
-															<span>Amazon S3</span>
-														</div>
-													),
-												},
-												{
-													value: "Apache Iceberg",
-													label: (
-														<div className="flex items-center">
-															<img
-																src={ApacheIceBerg}
-																alt="Apache Iceberg"
-																className="mr-2 size-5"
-															/>
-															<span>Apache Iceberg</span>
-														</div>
-													),
-												},
-											]}
+											options={connectorOptions}
 										/>
 									</div>
 
 									<div className="w-1/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Catalog :
+											Catalog:
 										</label>
-										{connector === "Apache Iceberg" ? (
-											<Select
-												value={catalog}
-												onChange={handleCatalogChange}
-												className="w-full"
-												options={[
-													{ value: "AWS Glue", label: "AWS Glue" },
-													{ value: "REST Catalog", label: "REST catalog" },
-													{ value: "JDBC Catalog", label: "JDBC" },
-													{ value: "Hive Catalog", label: "Hive catalog" },
-												]}
-											/>
-										) : (
-											<Select
-												value="None"
-												className="w-full"
-												disabled
-												options={[{ value: "None", label: "None" }]}
-											/>
-										)}
+										<Select
+											value={catalog || CATALOG_TYPES.NONE}
+											onChange={handleCatalogChange}
+											className="w-full"
+											disabled={connector !== CONNECTOR_TYPES.APACHE_ICEBERG}
+											options={catalogOptions}
+										/>
 									</div>
 								</div>
 							) : (
@@ -488,61 +577,23 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 												onChange={handleConnectorChange}
 												className="h-8 w-full"
 												disabled={fromJobEditFlow}
-												options={[
-													{
-														value: "Amazon S3",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={AWSS3Icon}
-																	alt="AWS S3"
-																	className="mr-2 size-5"
-																/>
-																<span>Amazon S3</span>
-															</div>
-														),
-													},
-													{
-														value: "Apache Iceberg",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={ApacheIceBerg}
-																	alt="Apache Iceberg"
-																	className="mr-2 size-5"
-																/>
-																<span>Apache Iceberg</span>
-															</div>
-														),
-													},
-												]}
+												options={connectorOptions}
 											/>
 										</div>
 										<div className="w-1/3">
 											<label className="mb-2 block text-sm font-medium text-gray-700">
 												Catalog:
 											</label>
-											{connector === "Apache Iceberg" ? (
-												<Select
-													value={catalog}
-													onChange={handleCatalogChange}
-													className="h-8 w-full"
-													disabled={fromJobEditFlow}
-													options={[
-														{ value: "AWS Glue", label: "AWS Glue" },
-														{ value: "REST Catalog", label: "REST catalog" },
-														{ value: "JDBC Catalog", label: "JDBC" },
-														{ value: "Hive Catalog", label: "Hive catalog" },
-													]}
-												/>
-											) : (
-												<Select
-													value="None"
-													className="w-full"
-													disabled
-													options={[{ value: "None", label: "None" }]}
-												/>
-											)}
+											<Select
+												value={catalog || CATALOG_TYPES.NONE}
+												onChange={handleCatalogChange}
+												className="h-8 w-full"
+												disabled={
+													fromJobEditFlow ||
+													connector !== CONNECTOR_TYPES.APACHE_ICEBERG
+												}
+												options={catalogOptions}
+											/>
 										</div>
 									</div>
 
@@ -569,7 +620,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 								</div>
 							)}
 
-							{setupType === "new" && !fromJobEditFlow && (
+							{setupType === SETUP_TYPES.NEW && !fromJobEditFlow && (
 								<div className="mt-4 flex w-full gap-12">
 									<div className="w-1/3">
 										<label className="mb-2 block text-sm font-medium text-gray-700">
@@ -592,9 +643,9 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 											className="w-full"
 											loading={loadingVersions}
 											placeholder="Select version"
-											options={versions.map(version => ({
-												value: version,
-												label: version,
+											options={versions.map(v => ({
+												value: v,
+												label: v,
 											}))}
 										/>
 									</div>
@@ -603,7 +654,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 						</div>
 					</div>
 
-					{setupType === "new" && (
+					{setupType === SETUP_TYPES.NEW && (
 						<>
 							{loading ? (
 								<div className="flex h-32 items-center justify-center">

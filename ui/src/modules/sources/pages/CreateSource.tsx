@@ -25,7 +25,7 @@ interface CreateSourceProps {
 	onComplete?: () => void
 	stepNumber?: string
 	stepTitle?: string
-	initialConfig?: any
+	initialConfig?: SourceConfig
 	initialFormData?: any
 	onSourceNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
@@ -33,12 +33,27 @@ interface CreateSourceProps {
 	onVersionChange?: (version: string) => void
 }
 
-// Custom components for section titles
-const EndpointTitleComp = ({ title }: { title: string }) => (
+interface SourceConfig {
+	name: string
+	type: string
+	config?: any
+	version?: string
+}
+
+interface ConnectorOption {
+	value: string
+	label: React.ReactNode
+}
+
+const EndpointTitleComp = ({
+	title = "Endpoint config",
+}: {
+	title?: string
+}) => (
 	<div className="mb-4 flex items-center gap-1">
 		<div className="mb-2 flex items-center gap-2">
 			<GenderNeuter className="size-5" />
-			<div className="text-base font-medium">{title || "Endpoint config"}</div>
+			<div className="text-base font-medium">{title}</div>
 		</div>
 	</div>
 )
@@ -80,6 +95,49 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		setShowSourceCancelModal,
 		addSource,
 	} = useAppStore()
+
+	// Create connector options once
+	const connectorOptions: ConnectorOption[] = [
+		{
+			value: "MongoDB",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage("MongoDB")}
+						alt="MongoDB"
+						className="mr-2 size-5"
+					/>
+					<span>MongoDB</span>
+				</div>
+			),
+		},
+		{
+			value: "Postgres",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage("Postgres")}
+						alt="Postgres"
+						className="mr-2 size-5"
+					/>
+					<span>Postgres</span>
+				</div>
+			),
+		},
+		{
+			value: "MySQL",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage("MySQL")}
+						alt="MySQL"
+						className="mr-2 size-5"
+					/>
+					<span>MySQL</span>
+				</div>
+			),
+		},
+	]
 
 	useEffect(() => {
 		if (!sources.length) {
@@ -131,7 +189,9 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		const fetchVersions = async () => {
 			setLoadingVersions(true)
 			try {
-				const response = await sourceService.getSourceVersions("mysql")
+				const response = await sourceService.getSourceVersions(
+					connector.toLowerCase(),
+				)
 				if (response.data && response.data.version) {
 					setVersions(response.data.version)
 					if (response.data.version.length > 0) {
@@ -151,7 +211,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		}
 
 		fetchVersions()
-	}, [onVersionChange])
+	}, [connector, onVersionChange])
 
 	const handleCancel = () => {
 		setShowSourceCancelModal(true)
@@ -272,6 +332,88 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		fetchSourceSpec()
 	}, [connector, selectedVersion])
 
+	const renderConnectorSelection = () => (
+		<div className="w-1/3">
+			<label className="mb-2 block text-sm font-medium text-gray-700">
+				Connector:
+			</label>
+			<div className="flex items-center">
+				<Select
+					value={connector}
+					onChange={handleConnectorChange}
+					className={setupType === "new" ? "h-8 w-full" : "w-full"}
+					disabled={fromJobEditFlow}
+					options={connectorOptions}
+					{...(setupType !== "new"
+						? { style: { boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" } }
+						: {})}
+				/>
+			</div>
+		</div>
+	)
+
+	const renderNewSourceForm = () => (
+		<div className="flex flex-col gap-6">
+			<div className="flex w-full gap-6">
+				{renderConnectorSelection()}
+
+				<div className="w-1/3">
+					<label className="mb-2 block text-sm font-medium text-gray-700">
+						Version:
+					</label>
+					<Select
+						value={selectedVersion}
+						onChange={handleVersionChange}
+						className="w-full"
+						loading={loadingVersions}
+						placeholder="Select version"
+						options={versions.map(version => ({
+							value: version,
+							label: version,
+						}))}
+					/>
+				</div>
+			</div>
+
+			<div className="w-2/3">
+				<label className="mb-2 block text-sm font-medium text-gray-700">
+					Name of your source:
+					<span className="text-red-500">*</span>
+				</label>
+				<input
+					type="text"
+					className="h-8 w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+					placeholder="Enter the name of your source"
+					value={sourceName}
+					onChange={handleSourceNameChange}
+				/>
+			</div>
+		</div>
+	)
+
+	const renderExistingSourceForm = () => (
+		<div className="flex-start flex w-full gap-6">
+			{renderConnectorSelection()}
+
+			<div className="w-1/3">
+				<label className="mb-2 block text-sm font-medium text-gray-700">
+					{fromJobEditFlow ? "Source:" : "Select existing source:"}
+				</label>
+				<Select
+					placeholder="Select a source"
+					className="w-full"
+					onChange={handleExistingSourceSelect}
+					value={fromJobEditFlow ? existingSourceId : undefined}
+					disabled={fromJobEditFlow}
+					options={filteredSources.map(s => ({
+						value: s.id,
+						label: s.name,
+					}))}
+				/>
+			</div>
+		</div>
+	)
+
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{!fromJobFlow && (
@@ -319,171 +461,9 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 								</div>
 							)}
 
-							{setupType === "new" && !fromJobEditFlow ? (
-								<div className="flex flex-col gap-6">
-									<div className="flex w-full gap-6">
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Connector:
-											</label>
-											<div className="flex items-center">
-												<Select
-													value={connector}
-													onChange={handleConnectorChange}
-													className="h-8 w-full"
-													options={[
-														{
-															value: "MongoDB",
-															label: (
-																<div className="flex items-center">
-																	<img
-																		src={getConnectorImage("MongoDB")}
-																		alt="MongoDB"
-																		className="mr-2 size-5"
-																	/>
-																	<span>MongoDB</span>
-																</div>
-															),
-														},
-														{
-															value: "Postgres",
-															label: (
-																<div className="flex items-center">
-																	<img
-																		src={getConnectorImage("Postgres")}
-																		alt="Postgres"
-																		className="mr-2 size-5"
-																	/>
-																	<span>Postgres</span>
-																</div>
-															),
-														},
-														{
-															value: "MySQL",
-															label: (
-																<div className="flex items-center">
-																	<img
-																		src={getConnectorImage("MySQL")}
-																		alt="MySQL"
-																		className="mr-2 size-5"
-																	/>
-																	<span>MySQL</span>
-																</div>
-															),
-														},
-													]}
-												/>
-											</div>
-										</div>
-
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Version:
-											</label>
-											<Select
-												value={selectedVersion}
-												onChange={handleVersionChange}
-												className="w-full"
-												loading={loadingVersions}
-												placeholder="Select version"
-												options={versions.map(version => ({
-													value: version,
-													label: version,
-												}))}
-											/>
-										</div>
-									</div>
-
-									<div className="w-2/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Name of your source:
-											<span className="text-red-500">*</span>
-										</label>
-										<input
-											type="text"
-											className="h-8 w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-											placeholder="Enter the name of your source"
-											value={sourceName}
-											onChange={handleSourceNameChange}
-										/>
-									</div>
-								</div>
-							) : (
-								<div className="flex-start flex w-full gap-6">
-									<div className="w-1/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<div className="flex items-center">
-											<Select
-												value={connector}
-												onChange={handleConnectorChange}
-												className="w-full"
-												disabled={fromJobEditFlow}
-												options={[
-													{
-														value: "MongoDB",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("MongoDB")}
-																	alt="MongoDB"
-																	className="mr-2 size-5"
-																/>
-																<span>MongoDB</span>
-															</div>
-														),
-													},
-													{
-														value: "Postgres",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("Postgres")}
-																	alt="Postgres"
-																	className="mr-2 size-5"
-																/>
-																<span>Postgres</span>
-															</div>
-														),
-													},
-													{
-														value: "MySQL",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("MySQL")}
-																	alt="MySQL"
-																	className="mr-2 size-5"
-																/>
-																<span>MySQL</span>
-															</div>
-														),
-													},
-												]}
-												style={{ boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" }}
-											/>
-										</div>
-									</div>
-
-									<div className="w-1/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											{fromJobEditFlow ? "Source:" : "Select existing source:"}
-										</label>
-										<Select
-											placeholder="Select a source"
-											className="w-full"
-											onChange={handleExistingSourceSelect}
-											value={fromJobEditFlow ? existingSourceId : undefined}
-											disabled={fromJobEditFlow}
-											options={filteredSources.map(s => ({
-												value: s.id,
-												label: s.name,
-											}))}
-										/>
-									</div>
-								</div>
-							)}
+							{setupType === "new" && !fromJobEditFlow
+								? renderNewSourceForm()
+								: renderExistingSourceForm()}
 						</div>
 					</div>
 
@@ -494,19 +474,17 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 									<Spin tip="Loading schema..." />
 								</div>
 							) : (
-								<>
-									{schema && (
-										<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-											<EndpointTitleComp title="Endpoint config" />
-											<FixedSchemaForm
-												schema={schema}
-												formData={formData}
-												onChange={handleFormChange}
-												hideSubmit={true}
-											/>
-										</div>
-									)}
-								</>
+								schema && (
+									<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+										<EndpointTitleComp title="Endpoint config" />
+										<FixedSchemaForm
+											schema={schema}
+											formData={formData}
+											onChange={handleFormChange}
+											hideSubmit={true}
+										/>
+									</div>
+								)
 							)}
 						</>
 					)}

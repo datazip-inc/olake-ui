@@ -1,7 +1,29 @@
-import axios from "axios"
+import axios, {
+	AxiosError,
+	InternalAxiosRequestConfig,
+	AxiosResponse,
+} from "axios"
+import { API_CONFIG } from "./config"
 
+const HTTP_STATUS = {
+	UNAUTHORIZED: 401,
+	FORBIDDEN: 403,
+	SERVER_ERROR: 500,
+} as const
+
+const ERROR_MESSAGES = {
+	AUTH_REQUIRED: "Authentication required. Please log in.",
+	NO_PERMISSION: "You do not have permission to access this resource",
+	SERVER_ERROR: "Server error occurred. Please try again later.",
+	NO_RESPONSE:
+		"No response received from server. Please check your connection.",
+} as const
+
+/**
+ * Creates and configures an axios instance with default settings
+ */
 const api = axios.create({
-	baseURL: "http://4.240.65.100:8080",
+	baseURL: API_CONFIG.BASE_URL,
 	headers: {
 		"Content-Type": "application/json",
 		Accept: "application/json",
@@ -10,48 +32,48 @@ const api = axios.create({
 	withCredentials: true,
 })
 
+/**
+ * Request interceptor to add authentication token to requests
+ */
 api.interceptors.request.use(
-	config => {
+	(config: InternalAxiosRequestConfig) => {
 		const token = localStorage.getItem("token")
-		if (token) {
+		if (token && config.headers) {
 			config.headers.Authorization = `Bearer ${token}`
 		}
 		return config
 	},
-	error => {
+	(error: AxiosError) => {
 		return Promise.reject(error)
 	},
 )
 
+/**
+ * Response interceptor to handle common error cases
+ */
 api.interceptors.response.use(
-	response => {
+	(response: AxiosResponse) => {
 		return response
 	},
-	error => {
+	(error: AxiosError) => {
 		if (error.response) {
 			const { status } = error.response
-			if (status === 401) {
-				// Unauthorized - clear token and redirect to login
-				localStorage.removeItem("token")
-				console.error("Authentication required. Please log in.")
-			}
 
-			if (status === 403) {
-				// Forbidden - user doesn't have permission
-				console.error("You do not have permission to access this resource")
-			}
-
-			if (status === 500) {
-				// Server error
-				console.error("Server error occurred. Please try again later.")
+			switch (status) {
+				case HTTP_STATUS.UNAUTHORIZED:
+					localStorage.removeItem("token")
+					console.error(ERROR_MESSAGES.AUTH_REQUIRED)
+					break
+				case HTTP_STATUS.FORBIDDEN:
+					console.error(ERROR_MESSAGES.NO_PERMISSION)
+					break
+				case HTTP_STATUS.SERVER_ERROR:
+					console.error(ERROR_MESSAGES.SERVER_ERROR)
+					break
 			}
 		} else if (error.request) {
-			// Request was made but no response received
-			console.error(
-				"No response received from server. Please check your connection.",
-			)
+			console.error(ERROR_MESSAGES.NO_RESPONSE)
 		} else {
-			// Something else happened while setting up the request
 			console.error("Error setting up request:", error.message)
 		}
 

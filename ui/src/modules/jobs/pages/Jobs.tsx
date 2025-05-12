@@ -7,7 +7,7 @@ import FirstJob from "../../../assets/FirstJob.svg"
 import JobsTutorial from "../../../assets/JobsTutorial.svg"
 import { GitCommit, PlayCircle, Plus } from "@phosphor-icons/react"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
-import { jobService } from "../../../api/services/jobService"
+import { jobService } from "../../../api"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")

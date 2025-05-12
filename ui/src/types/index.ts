@@ -44,21 +44,6 @@ export interface JobBase {
 	streams_config: string
 }
 
-export interface JobHistory {
-	id: string
-	jobId: string
-	startTime: string
-	runtime: string
-	status: "success" | "failed" | "running" | "scheduled"
-}
-
-export interface JobLog {
-	date: string
-	time: string
-	level: "debug" | "info" | "warning" | "error"
-	message: string
-}
-
 export interface JobTask {
 	runtime: string
 	start_time: string
@@ -70,30 +55,6 @@ export interface TaskLog {
 	level: string
 	message: string
 	time: string
-}
-
-export interface SourceJob {
-	id: string
-	name: string
-	state: string
-	lastRuntime: string
-	lastRuntimeStatus: string
-	destination: {
-		name: string
-		type: string
-		config: any
-	}
-	paused: boolean
-}
-
-export interface DestinationJob {
-	id: string
-	name: string
-	state: string
-	lastRuntime: string
-	lastRuntimeStatus: string
-	source: string
-	paused: boolean
 }
 
 export type UnknownObject = {
@@ -199,4 +160,9 @@ export interface EntityTestResponse {
 	type: string
 	version: string
 	config: string
+}
+
+export interface LoginArgs {
+	username: string
+	password: string
 }

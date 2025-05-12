@@ -8,7 +8,6 @@ import StepTitle from "../../common/components/StepTitle"
 import { sourceService } from "../../../api"
 import React from "react"
 
-// Interface for the new combined format
 interface CombinedStreamsData {
 	selected_streams: {
 		[namespace: string]: {
@@ -351,8 +350,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 mr-4 flex flex-wrap justify-between gap-4">
-				<div className="w-full lg:w-[55%] xl:w-[50%]">
+			<div className="mb-4 mr-4 flex flex-wrap justify-start gap-4">
+				<div className="w-full lg:w-[55%] xl:w-[40%]">
 					<Search
 						placeholder="Search streams"
 						allowClear

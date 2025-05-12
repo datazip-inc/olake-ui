@@ -149,7 +149,7 @@ const Sidebar: React.FC<{
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const [collapsed, setCollapsed] = useState(false)
-	const [showUpdate, setShowUpdate] = useState(true)
+	const [showUpdate, setShowUpdate] = useState(false)
 	const { logout } = useAppStore()
 	const navigate = useNavigate()
 

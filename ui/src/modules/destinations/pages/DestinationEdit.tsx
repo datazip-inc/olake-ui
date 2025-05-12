@@ -1,20 +1,38 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
-import { Input, Button, Select, Switch, message, Spin } from "antd"
+import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, Notebook } from "@phosphor-icons/react"
-import Table from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
-import { jobService } from "../../../api/services/jobService"
+import { jobService } from "../../../api"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import AWSS3 from "../../../assets/AWSS3.svg"
 import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 import { getConnectorImage, getConnectorName } from "../../../utils/utils"
 import EditDestinationModal from "../../common/Modals/EditDestinationModal"
-import { EntityJob } from "../../../types"
+import { Entity, EntityJob } from "../../../types"
+import type { ColumnsType } from "antd/es/table"
+
+// Define the job structure for destination jobs table
+interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
+	source_type: string
+	last_run_time: string
+	last_run_state: string
+	source_name: string
+}
+
+interface ConnectorOption {
+	value: string
+	label: React.ReactNode
+}
+
+interface CatalogOption {
+	value: string
+	label: string
+}
 
 interface DestinationEditProps {
 	fromJobFlow?: boolean
@@ -49,15 +67,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
-	const [schema, setSchema] = useState<any>(null)
-	const [uiSchema, setUiSchema] = useState<any>(null)
-	const [formData, setFormData] = useState<any>({})
+	const [schema, setSchema] = useState<Record<string, any> | null>(null)
+	const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
+	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [isLoading, setIsLoading] = useState(false)
-	const [destination, setDestination] = useState<any>(null)
-
-	const displayedJobs = showAllJobs
-		? destination?.jobs || []
-		: (destination?.jobs || []).slice(0, 5)
+	const [destination, setDestination] = useState<Entity | null>(null)
 
 	const {
 		destinations,
@@ -67,23 +81,76 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowEditDestinationModal,
 	} = useAppStore()
 
+	// Define connector options
+	const connectorOptions: ConnectorOption[] = [
+		{
+			value: "Amazon S3",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={AWSS3}
+						alt="AWS S3"
+						className="mr-2 size-5"
+					/>
+					<span>Amazon S3</span>
+				</div>
+			),
+		},
+		{
+			value: "Apache Iceberg",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={ApacheIceBerg}
+						alt="Apache Iceberg"
+						className="mr-2 size-5"
+					/>
+					<span>Apache Iceberg</span>
+				</div>
+			),
+		},
+	]
+
+	// Define catalog options
+	const catalogOptions: CatalogOption[] = [
+		{ value: "AWS Glue", label: "AWS Glue Catalog" },
+		{ value: "REST Catalog", label: "REST Catalog" },
+		{ value: "JDBC Catalog", label: "JDBC Catalog" },
+	]
+
+	// Transform jobs to the format needed for our interface
+	const transformJobs = (jobs: any[]): DestinationJob[] => {
+		return jobs.map(job => ({
+			id: job.id,
+			name: job.name || job.job_name,
+			source_type: job.source_type || "",
+			source_name: job.source_name || "N/A",
+			last_run_time: job.last_runtime || job.last_run_time || "",
+			last_run_state: job.last_run_state || "unknown",
+			activate: job.activate || false,
+			job_name: job.job_name || job.name,
+			dest_name: job.dest_name || "",
+			dest_type: job.dest_type || "",
+		}))
+	}
+
+	const displayedJobs = showAllJobs
+		? transformJobs(destination?.jobs || [])
+		: transformJobs((destination?.jobs || []).slice(0, 5))
+
 	const getCatalogName = (catalogType: string) => {
-		switch (catalogType) {
+		switch (catalogType?.toLowerCase()) {
 			case "glue":
-				return "AWS Glue"
-			case "AWS Glue":
+			case "aws glue":
 				return "AWS Glue"
 			case "rest":
-				return "REST Catalog"
-			case "REST Catalog":
+			case "rest catalog":
 				return "REST Catalog"
 			case "jdbc":
-				return "JDBC Catalog"
-			case "JDBC Catalog":
+			case "jdbc catalog":
 				return "JDBC Catalog"
 			case "hive":
-				return "Hive Catalog"
-			case "Hive Catalog":
+			case "hive catalog":
 				return "Hive Catalog"
 			default:
 				return null
@@ -95,7 +162,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			fetchDestinations()
 		}
 
-		if (destinationId) {
+		if (destinationId && destinationId !== "new") {
 			const destination = destinations.find(
 				d => d.id.toString() === destinationId,
 			)
@@ -106,13 +173,17 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					destination.type === "iceberg" ? "Apache Iceberg" : "Amazon S3"
 				setConnector(connectorType)
 				setSelectedVersion(destination.version || "")
-				setFormData(destination.config)
+
+				// Handle config data
+				const config =
+					typeof destination.config === "string"
+						? JSON.parse(destination.config)
+						: destination.config
+
+				setFormData(config)
+
 				if (destination.type === "iceberg") {
 					try {
-						const config =
-							typeof destination.config === "string"
-								? JSON.parse(destination.config)
-								: destination.config
 						const catalogType = config.catalog || "AWS Glue"
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
@@ -122,7 +193,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				}
 			}
 		}
-	}, [destinationId, destinations, fetchDestinations, catalog])
+	}, [destinationId, destinations, fetchDestinations])
 
 	// Handle initialData for when component is used from JobEdit
 	useEffect(() => {
@@ -147,29 +218,21 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 			// Handle config data
 			if (initialData.config) {
+				let parsedConfig = initialData.config
 				if (typeof initialData.config === "string") {
 					try {
-						const parsedConfig = JSON.parse(initialData.config)
-						setFormData(parsedConfig)
-
-						// If it's iceberg, try to get catalog type
-						if (connectorType === "Apache Iceberg" && parsedConfig.catalog) {
-							setCatalog(getCatalogName(parsedConfig.catalog) || "AWS Glue")
-						}
+						parsedConfig = JSON.parse(initialData.config)
 					} catch (error) {
 						console.error("Error parsing destination config:", error)
-						setFormData(initialData.config)
+						parsedConfig = {}
 					}
-				} else {
-					setFormData(initialData.config)
+				}
 
-					// If it's iceberg, try to get catalog type
-					if (
-						connectorType === "Apache Iceberg" &&
-						initialData.config.catalog
-					) {
-						setCatalog(getCatalogName(initialData.config.catalog) || "AWS Glue")
-					}
+				setFormData(parsedConfig)
+
+				// If it's iceberg, try to get catalog type
+				if (connectorType === "Apache Iceberg" && parsedConfig.catalog) {
+					setCatalog(getCatalogName(parsedConfig.catalog) || "AWS Glue")
 				}
 			}
 		}
@@ -177,20 +240,30 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	useEffect(() => {
 		const fetchVersions = async () => {
+			if (!connector) return
+
 			setLoadingVersions(true)
 			try {
-				if (connector) {
-					let connectorType = connector
-					if (connector === "Apache Iceberg") {
-						connectorType = "iceberg"
-					} else {
-						connectorType = "s3"
-					}
-					const response = await destinationService.getDestinationVersions(
-						connectorType.toLowerCase() || "",
-					)
-					if (response.data && response.data.version) {
-						setVersions(response.data.version)
+				let connectorType = connector
+				if (connector === "Apache Iceberg") {
+					connectorType = "iceberg"
+				} else {
+					connectorType = "s3"
+				}
+
+				const response = await destinationService.getDestinationVersions(
+					connectorType.toLowerCase(),
+				)
+
+				if (response.data && response.data.version) {
+					setVersions(response.data.version)
+
+					// If no version is selected, set the first one as default
+					if (!selectedVersion && response.data.version.length > 0) {
+						setSelectedVersion(response.data.version[0])
+						if (onVersionChange) {
+							onVersionChange(response.data.version[0])
+						}
 					}
 				}
 			} catch (error) {
@@ -201,7 +274,36 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchVersions()
-	}, [connector])
+	}, [connector, onVersionChange, selectedVersion])
+
+	useEffect(() => {
+		const fetchDestinationSpec = async () => {
+			if (!connector) return
+
+			try {
+				setIsLoading(true)
+				const response = await destinationService.getDestinationSpec(
+					connector,
+					catalogName,
+				)
+
+				if (response.success && response.data?.spec) {
+					setSchema(response.data.spec)
+					if (response.data?.uiSchema) {
+						setUiSchema(response.data.uiSchema)
+					}
+				} else {
+					console.error("Failed to get destination spec:", response.message)
+				}
+			} catch (error) {
+				console.error("Error fetching destination spec:", error)
+			} finally {
+				setIsLoading(false)
+			}
+		}
+
+		fetchDestinationSpec()
+	}, [connector, selectedVersion])
 
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
@@ -210,49 +312,23 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}
 
-	useEffect(() => {
-		const fetchSourceSpec = async () => {
-			try {
-				setIsLoading(true)
-				const response = await destinationService.getDestinationSpec(
-					connector as string,
-					catalogName,
-				)
-				if (response.success && response.data?.spec) {
-					setSchema(response.data.spec)
-					if (response.data?.uiSchema) {
-						setUiSchema(response.data.uiSchema)
-					}
-				} else {
-					console.error("Failed to get source spec:", response.message)
-				}
-			} catch (error) {
-				console.error("Error fetching source spec:", error)
-			} finally {
-				setIsLoading(false)
-			}
-		}
-
-		if (connector) {
-			fetchSourceSpec()
-		}
-
-		return () => {
-			// Cleanup function to prevent memory leaks
-			setIsLoading(false)
-		}
-	}, [connector, selectedVersion])
-
 	const handleDelete = () => {
-		const destinationToDelete = {
-			id: destinationId || "",
-			name: destinationName || "",
-			type: connector,
-			...formData,
-			jobs: destination?.jobs || [],
-		}
-		setSelectedDestination(destinationToDelete as any)
-		// Show the delete modal
+		if (!destination && !destinationId) return
+
+		const destinationToDelete = destination
+			? {
+					...destination,
+					name: destinationName || destination.name,
+					type: connector || destination.type,
+				}
+			: {
+					id: destinationId || "",
+					name: destinationName || "",
+					type: connector,
+					jobs: [],
+				}
+
+		setSelectedDestination(destinationToDelete)
 		setShowDeleteModal(true)
 	}
 
@@ -261,12 +337,17 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const handleSaveChanges = () => {
+		if (!destination && !destinationId) return
+
+		const configStr =
+			typeof formData === "string" ? formData : JSON.stringify(formData)
+
 		const destinationData = {
-			...destination,
+			...(destination || {}),
 			name: destinationName,
 			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
 			version: selectedVersion,
-			config: JSON.stringify(formData),
+			config: configStr,
 		}
 
 		setSelectedDestination(destinationData)
@@ -279,9 +360,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const handlePauseAllJobs = async (checked: boolean) => {
 		try {
-			const allJobs = displayedJobs.map((job: EntityJob) => job.id.toString())
+			const allJobs = displayedJobs.map(job => job.id.toString())
 			await Promise.all(
-				allJobs.map((jobId: string) => jobService.activateJob(jobId, !checked)),
+				allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
 			)
 			message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
 		} catch (error) {
@@ -306,7 +387,28 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setDocsMinimized(!docsMinimized)
 	}
 
-	const columns = [
+	const updateConnector = (value: string) => {
+		setConnector(value)
+		if (onConnectorChange) {
+			onConnectorChange(value)
+		}
+	}
+
+	const updateDestinationName = (value: string) => {
+		setDestinationName(value)
+		if (onNameChange) {
+			onNameChange(value)
+		}
+	}
+
+	const updateFormData = (data: Record<string, any>) => {
+		setFormData(data)
+		if (onFormDataChange) {
+			onFormDataChange(data)
+		}
+	}
+
+	const columns: ColumnsType<DestinationJob> = [
 		{
 			title: "Name",
 			dataIndex: "name",
@@ -355,7 +457,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			title: "Source",
 			dataIndex: "source_name",
 			key: "source_name",
-			render: (source_name: string, record: any) => (
+			render: (source_name: string, record: DestinationJob) => (
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(record.source_type || "")}
@@ -370,7 +472,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			title: "Running status",
 			dataIndex: "activate",
 			key: "pause",
-			render: (activate: boolean, record: any) => (
+			render: (activate: boolean, record: DestinationJob) => (
 				<Switch
 					checked={activate}
 					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
@@ -380,26 +482,139 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		},
 	]
 
-	const updateConnector = (value: string) => {
-		setConnector(value)
-		if (onConnectorChange) {
-			onConnectorChange(value)
-		}
-	}
+	const renderConfigTab = () => (
+		<div className="rounded-lg">
+			<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
+				<div className="mb-4 flex items-center gap-1 text-lg font-medium">
+					<Notebook className="size-5" />
+					Capture information
+				</div>
 
-	const updateDestinationName = (value: string) => {
-		setDestinationName(value)
-		if (onNameChange) {
-			onNameChange(value)
-		}
-	}
+				<div className="flex flex-col gap-6">
+					<div className="flex gap-12">
+						<div className="w-1/3">
+							<label className="mb-2 block text-sm font-medium text-gray-700">
+								Connector:
+							</label>
+							<div className="flex items-center">
+								<Select
+									value={connector}
+									onChange={updateConnector}
+									className="h-8 w-full"
+									options={connectorOptions}
+								/>
+							</div>
+						</div>
 
-	const updateFormData = (data: any) => {
-		setFormData(data)
-		if (onFormDataChange) {
-			onFormDataChange(data)
-		}
-	}
+						<div className="w-1/3">
+							<label className="mb-2 block text-sm font-medium text-gray-700">
+								Catalog:
+							</label>
+							<Select
+								className="h-8 w-full"
+								placeholder="Select catalog"
+								disabled={connector === "Amazon S3" || connector === "AWS S3"}
+								options={catalogOptions}
+								value={
+									catalog ||
+									(connector === "Amazon S3" || connector === "AWS S3"
+										? "None"
+										: undefined)
+								}
+								onChange={value => {
+									setCatalog(value)
+								}}
+							/>
+						</div>
+					</div>
+
+					<div className="flex w-full gap-12">
+						<div className="w-1/3">
+							<label className="mb-2 block text-sm font-medium text-gray-700">
+								Name of your destination:
+								<span className="text-red-500">*</span>
+							</label>
+							<Input
+								placeholder="Enter the name of your destination"
+								value={destinationName}
+								onChange={e => updateDestinationName(e.target.value)}
+								className="h-8"
+							/>
+						</div>
+
+						<div className="w-1/3">
+							<label className="mb-2 block text-sm font-medium text-gray-700">
+								Version:
+							</label>
+							<Select
+								value={selectedVersion}
+								onChange={handleVersionChange}
+								className="w-full"
+								loading={loadingVersions}
+								placeholder="Select version"
+								options={versions.map(version => ({
+									value: version,
+									label: version,
+								}))}
+							/>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
+				<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
+				{isLoading ? (
+					<div className="flex h-32 items-center justify-center">
+						<Spin tip="Loading schema..." />
+					</div>
+				) : schema ? (
+					<FixedSchemaForm
+						schema={schema}
+						formData={formData}
+						onChange={updateFormData}
+						hideSubmit={true}
+						{...(uiSchema ? { uiSchema } : {})}
+					/>
+				) : null}
+			</div>
+		</div>
+	)
+
+	const renderJobsTab = () => (
+		<div className="">
+			<h3 className="mb-4 text-base font-medium">Associated jobs</h3>
+
+			<Table
+				columns={columns}
+				dataSource={displayedJobs}
+				pagination={false}
+				rowKey={record => record.id}
+				className="min-w-full"
+				rowClassName="no-hover"
+			/>
+
+			{!showAllJobs && destination?.jobs && destination.jobs.length > 5 && (
+				<div className="mt-6 flex justify-center">
+					<Button
+						type="default"
+						onClick={handleViewAllJobs}
+						className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
+					>
+						View all associated jobs
+					</Button>
+				</div>
+			)}
+
+			<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
+				<span className="font-medium">Pause all associated jobs</span>
+				<Switch
+					onChange={handlePauseAllJobs}
+					className="bg-gray-200"
+				/>
+			</div>
+		</div>
+	)
 
 	return (
 		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
@@ -469,175 +684,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						</div>
 					)}
 
-					{activeTab === "config" ? (
-						<div className="rounded-lg">
-							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
-								<div className="mb-4 flex items-center gap-1 text-lg font-medium">
-									<Notebook className="size-5" />
-									Capture information
-								</div>
-
-								<div className="flex flex-col gap-6">
-									<div className="flex gap-12">
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Connector:
-											</label>
-											<div className="flex items-center">
-												<Select
-													value={connector}
-													onChange={updateConnector}
-													className="h-8 w-full"
-													options={[
-														{
-															value: "Amazon S3",
-															label: (
-																<div className="flex items-center">
-																	<img
-																		src={AWSS3}
-																		alt="AWS S3"
-																		className="mr-2 size-5"
-																	/>
-																	<span>Amazon S3</span>
-																</div>
-															),
-														},
-														{
-															value: "Apache Iceberg",
-															label: (
-																<div className="flex items-center">
-																	<img
-																		src={ApacheIceBerg}
-																		alt="Apache Iceberg"
-																		className="mr-2 size-5"
-																	/>
-																	<span>Apache Iceberg</span>
-																</div>
-															),
-														},
-													]}
-												/>
-											</div>
-										</div>
-
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Catalog:
-											</label>
-											<Select
-												className="h-8 w-full"
-												placeholder="Select catalog"
-												disabled={
-													connector === "Amazon S3" || connector === "AWS S3"
-												}
-												options={[
-													{
-														value: "AWS Glue",
-														label: "AWS Glue Catalog",
-													},
-													{ value: "REST Catalog", label: "REST Catalog" },
-													{ value: "JDBC Catalog", label: "JDBC Catalog" },
-												]}
-												value={
-													catalog ||
-													(connector === "Amazon S3" || connector === "AWS S3"
-														? "None"
-														: undefined)
-												}
-												onChange={value => {
-													setCatalog(value)
-												}}
-											/>
-										</div>
-									</div>
-
-									<div className="flex w-full gap-12">
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Name of your destination:
-												<span className="text-red-500">*</span>
-											</label>
-											<Input
-												placeholder="Enter the name of your destination"
-												value={destinationName}
-												onChange={e => updateDestinationName(e.target.value)}
-												className="h-8"
-											/>
-										</div>
-
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Version:
-											</label>
-											<Select
-												value={selectedVersion}
-												onChange={handleVersionChange}
-												className="w-full"
-												loading={loadingVersions}
-												placeholder="Select version"
-												options={versions.map(version => ({
-													value: version,
-													label: version,
-												}))}
-											/>
-										</div>
-									</div>
-								</div>
-							</div>
-
-							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
-								<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
-								{isLoading ? (
-									<div className="flex h-32 items-center justify-center">
-										<Spin tip="Loading schema..." />
-									</div>
-								) : (
-									<FixedSchemaForm
-										schema={schema}
-										formData={formData}
-										onChange={updateFormData}
-										hideSubmit={true}
-										{...(uiSchema ? { uiSchema } : {})}
-									/>
-								)}
-							</div>
-						</div>
-					) : (
-						<div className="">
-							<h3 className="mb-4 text-base font-medium">Associated jobs</h3>
-
-							<Table
-								columns={columns}
-								dataSource={displayedJobs}
-								pagination={false}
-								rowKey={record => record.id}
-								className="min-w-full"
-								rowClassName="no-hover"
-							/>
-
-							{!showAllJobs &&
-								destination?.jobs &&
-								destination.jobs.length > 5 && (
-									<div className="mt-6 flex justify-center">
-										<Button
-											type="default"
-											onClick={handleViewAllJobs}
-											className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
-										>
-											View all associated jobs
-										</Button>
-									</div>
-								)}
-
-							<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
-								<span className="font-medium">Pause all associated jobs</span>
-								<Switch
-									onChange={handlePauseAllJobs}
-									className="bg-gray-200"
-								/>
-							</div>
-						</div>
-					)}
+					{activeTab === "config" ? renderConfigTab() : renderJobsTab()}
 				</div>
 
 				{/* Documentation panel */}

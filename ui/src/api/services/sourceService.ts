@@ -1,4 +1,5 @@
 import api from "../axios"
+import { API_CONFIG } from "../config"
 import {
 	Entity,
 	APIResponse,
@@ -7,42 +8,39 @@ import {
 } from "../../types"
 
 export const sourceService = {
-	getSources: async () => {
+	getSources: async (): Promise<Entity[]> => {
 		try {
 			const response = await api.get<APIResponse<Entity[]>>(
-				"/api/v1/project/123/sources",
+				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
 			)
 
-			const sources: Entity[] = response.data.data.map(item => {
-				const config = JSON.parse(item.config)
-
-				return {
-					...item,
-					config,
-				}
-			})
-
-			return sources
+			return response.data.data.map(item => ({
+				...item,
+				config: JSON.parse(item.config),
+			}))
 		} catch (error) {
 			console.error("Error fetching sources from API:", error)
 			throw error
 		}
 	},
 
-	// Create new source
 	createSource: async (source: EntityBase) => {
-		const response = await api.post<EntityBase>(
-			"/api/v1/project/123/sources",
-			source,
-		)
-		return response.data
+		try {
+			const response = await api.post<APIResponse<EntityBase>>(
+				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
+				source,
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error creating source:", error)
+			throw error
+		}
 	},
 
-	// Update source
-	updateSource: async (id: string, source: any) => {
+	updateSource: async (id: string, source: EntityBase) => {
 		try {
-			const response = await api.put<APIResponse<any>>(
-				`/api/v1/project/123/sources/${id}`,
+			const response = await api.put<APIResponse<Entity>>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
 				{
 					name: source.name,
 					type: source.type.toLowerCase(),
@@ -57,17 +55,21 @@ export const sourceService = {
 		}
 	},
 
-	// Delete source
-	deleteSource: async (id: number) => {
-		await api.delete(`/api/v1/project/123/sources/${id}`)
-		return
+	deleteSource: async (id: string) => {
+		try {
+			await api.delete(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+		} catch (error) {
+			console.error("Error deleting source:", error)
+			throw error
+		}
 	},
 
-	// Test source connection
 	testSourceConnection: async (source: EntityTestResponse) => {
 		try {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
-				"/api/v1/project/123/sources/test",
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: source.type.toLowerCase(),
 					version: "1.0.0",
@@ -89,21 +91,31 @@ export const sourceService = {
 	},
 
 	getSourceVersions: async (type: string) => {
-		const response = await api.get<APIResponse<{ version: string[] }>>(
-			`/api/v1/project/123/sources/versions/?type=${type}`,
-		)
-		return response.data
+		try {
+			const response = await api.get<APIResponse<{ version: string[] }>>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error getting source versions:", error)
+			throw error
+		}
 	},
 
 	getSourceSpec: async (type: string, version: string) => {
-		const response = await api.post<APIResponse<any>>(
-			`/api/v1/project/123/sources/spec`,
-			{
-				type: type.toLowerCase(),
-				version: version,
-			},
-		)
-		return response.data
+		try {
+			const response = await api.post<APIResponse<Record<string, unknown>>>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
+				{
+					type: type.toLowerCase(),
+					version,
+				},
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error getting source spec:", error)
+			throw error
+		}
 	},
 
 	getSourceStreams: async (
@@ -113,13 +125,13 @@ export const sourceService = {
 		config: string,
 	) => {
 		try {
-			const response = await api.post<APIResponse<any>>(
-				"/api/v1/project/123/sources/streams",
+			const response = await api.post<APIResponse<Record<string, unknown>>>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 				{
-					name: name,
-					type: type,
-					version: version != "" ? version : "latest",
-					config: config,
+					name,
+					type,
+					version: version === "" ? "latest" : version,
+					config,
 				},
 			)
 			return response.data

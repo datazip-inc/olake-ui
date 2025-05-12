@@ -26,16 +26,19 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(isMinimized)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isReady, setIsReady] = useState(false)
+
 	const resizerRef = useRef<HTMLDivElement>(null)
 	const iframeRef = useRef<HTMLIFrameElement>(null)
 	const panelRef = useRef<HTMLDivElement>(null)
 	const isDragging = useRef(false)
 	const animationFrame = useRef<number>()
 
+	// Sync collapsed state with isMinimized prop
 	useEffect(() => {
 		setIsDocPanelCollapsed(isMinimized)
 	}, [isMinimized])
 
+	// Reset loading state when docUrl changes
 	useEffect(() => {
 		setIsLoading(true)
 		setIsReady(false)
@@ -44,12 +47,16 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		}
 	}, [docUrl])
 
+	// Handle iframe load event
 	useEffect(() => {
 		const iframe = iframeRef.current
 		if (!iframe) return
 
 		const handleLoad = () => {
+			// Post message to iframe for theming
 			iframe.contentWindow?.postMessage({ theme: "light" }, "https://olake.io")
+
+			// Set loading states with slight delay for animations
 			setTimeout(() => {
 				setIsLoading(false)
 				setTimeout(() => {
@@ -59,14 +66,12 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		}
 
 		iframe.addEventListener("load", handleLoad)
-		return () => {
-			iframe.removeEventListener("load", handleLoad)
-		}
+		return () => iframe.removeEventListener("load", handleLoad)
 	}, [docUrl])
 
 	const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
 		e.preventDefault()
-		e.stopPropagation() // Prevent click event from firing
+		e.stopPropagation()
 
 		const startX = e.clientX
 		const panel = panelRef.current
@@ -115,11 +120,10 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 
 	const toggleDocPanel = () => {
 		setIsDocPanelCollapsed(!isDocPanelCollapsed)
-		if (onToggle) {
-			onToggle()
-		}
+		onToggle?.()
 	}
 
+	// Show only the button when panel is collapsed and resizer is hidden
 	if (isDocPanelCollapsed && !showResizer) {
 		return (
 			<div className="fixed bottom-6 right-6">
@@ -145,9 +149,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 			{showResizer && (
 				<div
 					className="relative z-10"
-					style={{
-						width: isDocPanelCollapsed ? "16px" : "0",
-					}}
+					style={{ width: isDocPanelCollapsed ? "16px" : "0" }}
 				>
 					<div
 						ref={resizerRef}
@@ -183,9 +185,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 			<div
 				ref={panelRef}
 				className="relative overflow-hidden border-l-4 border-gray-200 bg-white transition-all duration-500 ease-in-out"
-				style={{
-					width: isDocPanelCollapsed ? "80px" : `${docPanelWidth}%`,
-				}}
+				style={{ width: isDocPanelCollapsed ? "80px" : `${docPanelWidth}%` }}
 			>
 				<div
 					className={`transition-opacity ${!isReady ? "opacity-0" : "h-full opacity-100"}`}

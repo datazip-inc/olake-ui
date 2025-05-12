@@ -3,7 +3,6 @@ import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
 import Layout from "../modules/common/components/Layout"
 import { ErrorBoundary } from "../modules/common/components/ErrorBoundary"
 
-// Lazy loaded components
 const lazyComponents = {
 	Login: lazy(() => import("../modules/auth/pages/Login")),
 	Jobs: lazy(() => import("../modules/jobs/pages/Jobs")),

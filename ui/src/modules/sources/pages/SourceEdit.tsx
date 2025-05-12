@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
-import { GenderNeuter, Notebook } from "@phosphor-icons/react"
+import { GenderNeuter, Notebook, ArrowLeft } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
 import type { ColumnsType } from "antd/es/table"
-import { SourceJob } from "../../../types"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import StepTitle from "../../common/components/StepTitle"
@@ -15,6 +13,22 @@ import EditSourceModal from "../../common/Modals/EditSourceModal"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
 import { jobService } from "../../../api"
+import { Entity } from "../../../types"
+
+interface SourceJob {
+	dest_type: string
+	last_run_time: string
+	last_run_state: string
+	id: number
+	name: string
+	activate: boolean
+	dest_name: string
+}
+
+interface ConnectorOption {
+	value: string
+	label: React.ReactNode
+}
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -44,11 +58,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [sourceName, setSourceName] = useState("")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
-	const [formData, setFormData] = useState<any>({})
+	const [formData, setFormData] = useState<Record<string, any>>({})
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
-	const [source, setSource] = useState<any>(null)
+	const [source, setSource] = useState<Entity | null>(null)
 	const [loading, setLoading] = useState(false)
-	const [schema, setSchema] = useState<any>(null)
+	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 
 	const {
 		sources,
@@ -58,6 +72,49 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		updateSource,
 		setShowEditSourceModal,
 	} = useAppStore()
+
+	// Create connector options once
+	const connectorOptions: ConnectorOption[] = [
+		{
+			value: "MongoDB",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage("MongoDB")}
+						alt="MongoDB"
+						className="mr-2 size-5"
+					/>
+					<span>MongoDB</span>
+				</div>
+			),
+		},
+		{
+			value: "Postgres",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage("Postgres")}
+						alt="Postgres"
+						className="mr-2 size-5"
+					/>
+					<span>Postgres</span>
+				</div>
+			),
+		},
+		{
+			value: "MySQL",
+			label: (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage("MySQL")}
+						alt="MySQL"
+						className="mr-2 size-5"
+					/>
+					<span>MySQL</span>
+				</div>
+			),
+		},
+	]
 
 	useEffect(() => {
 		if (!sources.length) {
@@ -76,7 +133,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
 				setConnector(normalizedType)
 				setSelectedVersion(source.version)
-				setFormData(source.config)
+				setFormData(
+					typeof source.config === "string"
+						? JSON.parse(source.config)
+						: source.config,
+				)
 			} else {
 				message.error("Source not found")
 				navigate("/sources")
@@ -88,11 +149,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		if (initialData) {
 			setSourceName(initialData.name || "")
 			let normalizedType = initialData.type
-			if (initialData.type.toLowerCase() === "mongodb")
+			if (initialData.type?.toLowerCase() === "mongodb")
 				normalizedType = "MongoDB"
-			if (initialData.type.toLowerCase() === "postgres")
+			if (initialData.type?.toLowerCase() === "postgres")
 				normalizedType = "Postgres"
-			if (initialData.type.toLowerCase() === "mysql") normalizedType = "MySQL"
+			if (initialData.type?.toLowerCase() === "mysql") normalizedType = "MySQL"
 			setConnector(normalizedType)
 			setSelectedVersion(initialData.version || "latest")
 
@@ -100,10 +161,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			if (initialData.config) {
 				if (typeof initialData.config === "string") {
 					try {
-						setFormData(JSON.parse(initialData.config))
+						const parsedConfig = JSON.parse(initialData.config)
+						setFormData(parsedConfig)
 					} catch (error) {
 						console.error("Error parsing source config:", error)
-						setFormData(initialData.config)
+						setFormData({})
 					}
 				} else {
 					setFormData(initialData.config)
@@ -141,11 +203,26 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		}
 	}, [connector, selectedVersion])
 
+	const transformJobs = (jobs: any[]): SourceJob[] => {
+		return jobs.map(job => ({
+			id: job.id,
+			name: job.name || job.job_name,
+			dest_type: job.dest_type || "",
+			dest_name: job.dest_name || "",
+			last_run_time:
+				job.last_runtime || job.last_run_time || new Date().toISOString(),
+			last_run_state: job.last_run_state || "unknown",
+			activate: job.activate || false,
+		}))
+	}
+
 	const displayedJobs = showAllJobs
-		? source?.jobs || []
-		: (source?.jobs || []).slice(0, 5)
+		? transformJobs(source?.jobs || [])
+		: transformJobs((source?.jobs || []).slice(0, 5))
 
 	const handleSave = () => {
+		if (!source) return
+
 		setSelectedSource(source)
 		if (displayedJobs.length > 0) {
 			setShowEditSourceModal(true)
@@ -156,13 +233,15 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	const saveSource = () => {
-		let configToSave = { ...formData }
+		const configStr =
+			typeof formData === "string" ? formData : JSON.stringify(formData)
 
 		const sourceData = {
 			name: sourceName,
 			type: connector || "MongoDB",
+			version: selectedVersion,
 			status: "active" as const,
-			config: configToSave,
+			config: configStr,
 		}
 
 		if (sourceId) {
@@ -179,15 +258,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	const handleDelete = () => {
+		if (!source) return
+
+		// Create a simplified source object for deletion
 		const sourceToDelete = {
-			id: sourceId || "",
-			name: sourceName || "",
-			type: connector,
-			...formData,
-			jobs: source?.jobs || [],
+			...source,
+			name: sourceName || source.name,
+			type: connector || source.type,
 		}
-		console.log(sourceToDelete)
-		setSelectedSource(sourceToDelete as any)
+
+		setSelectedSource(sourceToDelete)
 		setShowDeleteModal(true)
 	}
 
@@ -213,7 +293,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 	const handlePauseAllJobs = async (checked: boolean) => {
 		try {
-			const allJobs = displayedJobs.map(job => job.id.toString())
+			// We're working with a custom job format, so we need to extract IDs
+			const allJobs = displayedJobs.map(job => String(job.id))
 			await Promise.all(
 				allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
 			)
@@ -278,7 +359,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			title: "Destination",
 			dataIndex: "dest_name",
 			key: "dest_name",
-			render: (dest_name: string, record: any) => (
+			render: (dest_name: string, record: SourceJob) => (
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(record.dest_type || "")}
@@ -293,7 +374,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			title: "Running status",
 			dataIndex: "activate",
 			key: "pause",
-			render: (activate: boolean, record: any) => (
+			render: (activate: boolean, record: SourceJob) => (
 				<Switch
 					checked={activate}
 					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
@@ -388,47 +469,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													}
 												}}
 												className="h-8 w-full"
-												options={[
-													{
-														value: "MongoDB",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("MongoDB")}
-																	alt="MongoDB"
-																	className="mr-2 size-5"
-																/>
-																<span>MongoDB</span>
-															</div>
-														),
-													},
-													{
-														value: "Postgres",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("Postgres")}
-																	alt="Postgres"
-																	className="mr-2 size-5"
-																/>
-																<span>Postgres</span>
-															</div>
-														),
-													},
-													{
-														value: "MySQL",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={getConnectorImage("MySQL")}
-																	alt="MySQL"
-																	className="mr-2 size-5"
-																/>
-																<span>MySQL</span>
-															</div>
-														),
-													},
-												]}
+												options={connectorOptions}
 											/>
 										</div>
 									</div>
@@ -463,17 +504,19 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 										<Spin tip="Loading schema..." />
 									</div>
 								) : (
-									<FixedSchemaForm
-										schema={schema}
-										formData={formData}
-										onChange={updatedFormData => {
-											setFormData(updatedFormData)
-											if (onFormDataChange) {
-												onFormDataChange(updatedFormData)
-											}
-										}}
-										hideSubmit={true}
-									/>
+									schema && (
+										<FixedSchemaForm
+											schema={schema}
+											formData={formData}
+											onChange={(updatedFormData: Record<string, any>) => {
+												setFormData(updatedFormData)
+												if (onFormDataChange) {
+													onFormDataChange(updatedFormData)
+												}
+											}}
+											hideSubmit={true}
+										/>
+									)
 								)}
 							</div>
 						</div>

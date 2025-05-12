@@ -23,13 +23,11 @@ const Login: React.FC = () => {
 			await login(values.username, values.password)
 			navigate("/jobs")
 		} catch (err) {
-			setError(
-				typeof err === "string"
-					? err
-					: err instanceof Error
-						? err.message
-						: "Failed to login",
-			)
+			const errorMessage =
+				err instanceof Error
+					? err.message
+					: "Failed to login. Please try again."
+			setError(errorMessage)
 		} finally {
 			setLoading(false)
 		}
@@ -63,7 +61,10 @@ const Login: React.FC = () => {
 				>
 					<Form.Item
 						name="username"
-						rules={[{ required: true, message: "Please input your username!" }]}
+						rules={[
+							{ required: true, message: "Please input your username!" },
+							{ min: 3, message: "Username must be at least 3 characters" },
+						]}
 					>
 						<Input
 							prefix={
@@ -80,7 +81,10 @@ const Login: React.FC = () => {
 
 					<Form.Item
 						name="password"
-						rules={[{ required: true, message: "Please input your password!" }]}
+						rules={[
+							{ required: true, message: "Please input your password!" },
+							{ min: 6, message: "Password must be at least 6 characters" },
+						]}
 					>
 						<Input.Password
 							prefix={

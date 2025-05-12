@@ -22,11 +22,8 @@ const JobLogs: React.FC = () => {
 
 	const {
 		jobs,
-		jobLogs,
 		taskLogs,
-		isLoadingJobLogs,
 		isLoadingTaskLogs,
-		jobLogsError,
 		taskLogsError,
 		fetchTaskLogs,
 		fetchJobs,
@@ -83,22 +80,14 @@ const JobLogs: React.FC = () => {
 		}
 	}
 
-	// Use task logs if file path is present, otherwise use job logs
-	const logsToDisplay = isTaskLog ? taskLogs : jobLogs
-	const isLoading = isTaskLog ? isLoadingTaskLogs : isLoadingJobLogs
-	const logError = isTaskLog ? taskLogsError : jobLogsError
-
-	const filteredLogs = logsToDisplay.filter(function (log) {
-		// Safe check if log is an object
+	const filteredLogs = taskLogs.filter(function (log) {
 		if (typeof log !== "object" || log === null) {
 			return false
 		}
 
-		// Get message and level with type checks
 		const message = (log as any).message || ""
 		const level = (log as any).level || ""
 
-		// Filter based on search text
 		const searchLowerCase = searchText.toLowerCase()
 		const messageLowerCase = message.toString().toLowerCase()
 		const levelLowerCase = level.toString().toLowerCase()
@@ -109,10 +98,10 @@ const JobLogs: React.FC = () => {
 		)
 	})
 
-	if (logError) {
+	if (taskLogsError) {
 		return (
 			<div className="p-6">
-				<div className="text-red-500">Error loading logs: {logError}</div>
+				<div className="text-red-500">Error loading logs: {taskLogsError}</div>
 				<Button
 					onClick={() => {
 						if (isTaskLog && filePath) {
@@ -205,7 +194,7 @@ const JobLogs: React.FC = () => {
 					></Button>
 				</div>
 
-				{isLoading ? (
+				{isLoadingTaskLogs ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
@@ -249,7 +238,6 @@ const JobLogs: React.FC = () => {
 											</tr>
 										)
 									} else {
-										// JobLog structure
 										const jobLog = log as any
 										return (
 											<tr key={index}>

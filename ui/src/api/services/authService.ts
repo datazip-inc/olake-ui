@@ -1,12 +1,19 @@
+/**
+ * AuthService handles authentication-related API calls and localStorage management.
+ */
 import api from "../axios"
-import { APIResponse } from "../../types"
+import { APIResponse, LoginArgs } from "../../types"
 
 interface LoginResponse {
 	username: string
+	password: string
 }
 
+const LOCALSTORAGE_TOKEN_KEY = "token"
+const LOCALSTORAGE_USERNAME_KEY = "username"
+
 export const authService = {
-	login: async (username: string, password: string) => {
+	login: async ({ username, password }: LoginArgs) => {
 		try {
 			const response = await api.post<APIResponse<LoginResponse>>(
 				"/login",
@@ -21,30 +28,28 @@ export const authService = {
 				},
 			)
 
-			// Save username in localStorage to indicate logged in status
 			if (response.data.success) {
-				localStorage.setItem("username", response.data.data.username)
-				localStorage.setItem("token", "authenticated")
+				localStorage.setItem(
+					LOCALSTORAGE_USERNAME_KEY,
+					response.data.data.username,
+				)
+				localStorage.setItem(LOCALSTORAGE_TOKEN_KEY, "authenticated")
 				return response.data.data
 			}
 
 			throw new Error(response.data.message || "Login failed")
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Login error:", error)
-			throw error
+			throw new Error(error?.message || "Login failed")
 		}
 	},
 
 	logout: () => {
-		localStorage.removeItem("token")
-		localStorage.removeItem("username")
+		localStorage.removeItem(LOCALSTORAGE_TOKEN_KEY)
+		localStorage.removeItem(LOCALSTORAGE_USERNAME_KEY)
 	},
 
 	isLoggedIn: () => {
-		return !!localStorage.getItem("token")
-	},
-
-	getUsername: () => {
-		return localStorage.getItem("username")
+		return !!localStorage.getItem(LOCALSTORAGE_TOKEN_KEY)
 	},
 }

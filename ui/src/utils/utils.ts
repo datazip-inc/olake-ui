@@ -1,4 +1,3 @@
-// import mongodb and postgres and mysql
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
