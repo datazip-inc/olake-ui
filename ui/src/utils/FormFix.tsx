@@ -44,7 +44,6 @@ const DirectFormField = ({
 	value,
 	onChange,
 	required = false,
-	uiSchema,
 	error,
 	validate = false,
 }: DirectFormFieldProps) => {
@@ -346,6 +345,7 @@ const isNestedObjectSchema = (schema: any): boolean => {
 	)
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const validateFormData = (
 	formData: any,
 	schema: RJSFSchema,
@@ -378,7 +378,6 @@ export const validateFormData = (
 	return errors
 }
 
-// Generate default values from schema
 const generateDefaultValues = (schema: RJSFSchema): Record<string, any> => {
 	const defaults: Record<string, any> = {}
 

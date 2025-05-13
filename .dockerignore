@@ -1,0 +1,23 @@
+# Common
+.git
+.github
+.gitignore
+.env
+.dockerignore
+docker-compose.yml
+*.md
+!README.md
+
+# Frontend
+ui/node_modules
+ui/dist
+ui/.idea
+ui/.vscode
+ui/coverage
+ui/*.log
+
+# Backend
+server/logger/logs
+server/.idea
+server/.vscode
+server/*.log 
