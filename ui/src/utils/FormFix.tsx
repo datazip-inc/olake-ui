@@ -11,6 +11,8 @@ interface DynamicSchemaFormProps {
 	uiSchema?: UiSchema
 	hideSubmit?: boolean
 	className?: string
+	errors?: Record<string, string>
+	validate?: boolean
 }
 
 type FieldSchema = {
@@ -25,18 +27,15 @@ type FieldSchema = {
 	required?: string[]
 }
 
-type UISchema = {
-	"ui:widget"?: string
-	[key: string]: any
-}
-
 interface DirectFormFieldProps {
 	name: string
 	schema: FieldSchema
 	value: any
 	onChange: (name: string, value: any) => void
 	required?: boolean
-	uiSchema?: UISchema
+	uiSchema?: UiSchema
+	error?: string
+	validate?: boolean
 }
 
 const DirectFormField = ({
@@ -45,16 +44,40 @@ const DirectFormField = ({
 	value,
 	onChange,
 	required = false,
+	uiSchema,
+	error,
+	validate = false,
 }: DirectFormFieldProps) => {
 	const [fieldValue, setFieldValue] = useState(value)
 	const [showPassword, setShowPassword] = useState(false)
 	const inputRef = useRef<HTMLInputElement>(null)
+	const [localError, setLocalError] = useState<string | null>(null)
+	const [wasUserModified, setWasUserModified] = useState(false)
 
 	useEffect(() => {
 		if (document.activeElement !== inputRef.current) {
 			setFieldValue(value)
 		}
 	}, [value])
+
+	useEffect(() => {
+		setLocalError(error || null)
+	}, [error])
+
+	const validateField = (value: any): string | null => {
+		const hasDefault = schema.default !== undefined
+		const isEmpty = value === undefined || value === null || value === ""
+		if (required && isEmpty && (wasUserModified || !hasDefault)) {
+			return `${schema.title || name} is required`
+		}
+		return null
+	}
+
+	useEffect(() => {
+		if (validate) {
+			setLocalError(validateField(fieldValue))
+		}
+	}, [validate, fieldValue, required, schema, name, wasUserModified])
 
 	const getInputType = (): string => {
 		if (schema.type === "number" || schema.type === "integer") {
@@ -67,30 +90,49 @@ const DirectFormField = ({
 		return "text"
 	}
 
-	const inputType = getInputType()
-
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newValue =
-			inputType === "checkbox"
+			e.target.type === "checkbox"
 				? e.target.checked
-				: inputType === "number"
+				: e.target.type === "number"
 					? e.target.value
 						? Number(e.target.value)
 						: undefined
 					: e.target.value
 
 		setFieldValue(newValue)
+		setWasUserModified(true)
 		onChange(name, newValue)
+
+		if (validate) {
+			setLocalError(validateField(newValue))
+		} else {
+			setLocalError(null)
+		}
 	}
 
 	const handleSwitchChange = (checked: boolean) => {
 		setFieldValue(checked)
+		setWasUserModified(true)
 		onChange(name, checked)
+
+		if (validate) {
+			setLocalError(validateField(checked))
+		} else {
+			setLocalError(null)
+		}
 	}
 
 	const handleSelectChange = (value: string) => {
 		setFieldValue(value)
+		setWasUserModified(true)
 		onChange(name, value)
+
+		if (validate) {
+			setLocalError(validateField(value))
+		} else {
+			setLocalError(null)
+		}
 	}
 
 	const togglePasswordVisibility = () => {
@@ -105,6 +147,7 @@ const DirectFormField = ({
 					onChange={handleSelectChange}
 					className="w-full"
 					placeholder={schema.placeholder}
+					status={localError ? "error" : undefined}
 					options={schema.enum.map(option => ({
 						label: option,
 						value: option,
@@ -134,7 +177,7 @@ const DirectFormField = ({
 						value={fieldValue ?? ""}
 						onChange={handleChange}
 						placeholder={schema.placeholder}
-						className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+						className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 					/>
 					<button
 						type="button"
@@ -154,12 +197,12 @@ const DirectFormField = ({
 		return (
 			<input
 				ref={inputRef}
-				type={inputType}
-				value={inputType !== "checkbox" ? (fieldValue ?? "") : undefined}
-				checked={inputType === "checkbox" ? !!fieldValue : undefined}
+				type={getInputType()}
+				value={getInputType() !== "checkbox" ? (fieldValue ?? "") : undefined}
+				checked={getInputType() === "checkbox" ? !!fieldValue : undefined}
 				onChange={handleChange}
 				placeholder={schema.placeholder}
-				className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+				className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 			/>
 		)
 	}
@@ -178,6 +221,9 @@ const DirectFormField = ({
 				)}
 			</div>
 			{renderInput()}
+			{validate && localError && (
+				<div className="mt-1 text-sm text-red-500">{localError}</div>
+			)}
 		</div>
 	)
 }
@@ -186,7 +232,9 @@ interface DirectInputFormProps {
 	schema: RJSFSchema
 	formData: Record<string, any>
 	onChange: (data: Record<string, any>) => void
-	uiSchema?: Record<string, UISchema>
+	uiSchema?: UiSchema
+	errors?: Record<string, string>
+	validate?: boolean
 }
 
 export const DirectInputForm = ({
@@ -194,6 +242,8 @@ export const DirectInputForm = ({
 	formData,
 	onChange,
 	uiSchema,
+	errors,
+	validate = false,
 }: DirectInputFormProps) => {
 	if (!schema?.properties) {
 		return <div>No schema properties provided</div>
@@ -250,6 +300,12 @@ export const DirectInputForm = ({
 								formData={formData?.[name] || {}}
 								onChange={data => handleNestedFieldChange(name, data)}
 								uiSchema={fieldUiSchema}
+								errors={
+									typeof errors?.[name] === "object"
+										? (errors?.[name] as Record<string, string>)
+										: undefined
+								}
+								validate={validate}
 							/>
 						</div>
 					)
@@ -264,6 +320,8 @@ export const DirectInputForm = ({
 						onChange={handleFieldChange}
 						required={schema.required?.includes(name)}
 						uiSchema={fieldUiSchema}
+						error={errors?.[name]}
+						validate={validate}
 					/>
 				)
 			})
@@ -288,10 +346,79 @@ const isNestedObjectSchema = (schema: any): boolean => {
 	)
 }
 
+export const validateFormData = (
+	formData: any,
+	schema: RJSFSchema,
+): Record<string, string> => {
+	const errors: Record<string, any> = {}
+
+	if (!schema?.properties) return errors
+
+	Object.entries(schema.properties).forEach(
+		([key, propValue]: [string, any]) => {
+			const isRequired = schema.required?.includes(key)
+			const value = formData?.[key]
+			const hasDefault = propValue?.default !== undefined
+			const isEmpty = value === undefined || value === null || value === ""
+			const wasIntentionallyCleared = hasDefault && isEmpty && key in formData
+
+			if (isRequired && isEmpty && (wasIntentionallyCleared || !hasDefault)) {
+				errors[key] = `${propValue.title || key} is required`
+			}
+
+			if (isNestedObjectSchema(propValue) && formData?.[key]) {
+				const nestedErrors = validateFormData(formData[key], propValue)
+				if (Object.keys(nestedErrors).length > 0) {
+					errors[key] = nestedErrors
+				}
+			}
+		},
+	)
+
+	return errors
+}
+
+// Generate default values from schema
+const generateDefaultValues = (schema: RJSFSchema): Record<string, any> => {
+	const defaults: Record<string, any> = {}
+
+	if (!schema.properties) return defaults
+
+	Object.entries(schema.properties).forEach(
+		([key, propValue]: [string, any]) => {
+			if (propValue?.default !== undefined) {
+				defaults[key] = propValue.default
+			}
+
+			if (isNestedObjectSchema(propValue)) {
+				const nestedDefaults = generateDefaultValues(propValue)
+				if (Object.keys(nestedDefaults).length > 0) {
+					defaults[key] = nestedDefaults
+				}
+			}
+		},
+	)
+
+	return defaults
+}
+
 export const FixedSchemaForm: React.FC<DynamicSchemaFormProps> = props => {
 	const [filteredFormData, setFilteredFormData] = useState<Record<string, any>>(
 		{},
 	)
+
+	useEffect(() => {
+		if (props.schema?.properties && props.onChange) {
+			const defaultValues = generateDefaultValues(props.schema)
+			// Only trigger if we have defaults and user didn't provide formData yet
+			if (
+				Object.keys(defaultValues).length > 0 &&
+				(!props.formData || Object.keys(props.formData).length === 0)
+			) {
+				props.onChange(defaultValues)
+			}
+		}
+	}, [props.schema, props.onChange, props.formData])
 
 	useEffect(() => {
 		if (!props.schema?.properties) {
@@ -367,6 +494,8 @@ export const FixedSchemaForm: React.FC<DynamicSchemaFormProps> = props => {
 			formData={filteredFormData}
 			onChange={props.onChange}
 			uiSchema={props.uiSchema}
+			errors={props.errors}
+			validate={props.validate}
 		/>
 	)
 }

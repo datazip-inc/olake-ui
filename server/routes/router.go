@@ -14,7 +14,7 @@ func Init() {
 
 	// Then CORS
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
-		AllowOrigins:     []string{"http://4.240.65.100:5173"},
+		AllowOrigins:     []string{"http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Content-Type", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},

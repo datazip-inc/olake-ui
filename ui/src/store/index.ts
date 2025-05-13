@@ -46,6 +46,7 @@ interface AppState {
 	// Modal states
 	showTestingModal: boolean
 	showSuccessModal: boolean
+	showFailureModal: boolean
 	showEntitySavedModal: boolean
 	showSourceCancelModal: boolean
 	showDeleteModal: boolean
@@ -98,6 +99,7 @@ interface AppState {
 	// Modal actions
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
+	setShowFailureModal: (show: boolean) => void
 	setShowEntitySavedModal: (show: boolean) => void
 	setShowSourceCancelModal: (show: boolean) => void
 	setShowDeleteModal: (show: boolean) => void
@@ -143,6 +145,7 @@ export const useAppStore = create<AppState>(set => ({
 	// Modal states
 	showTestingModal: false,
 	showSuccessModal: false,
+	showFailureModal: false,
 	showEntitySavedModal: false,
 	showSourceCancelModal: false,
 	showDeleteModal: false,
@@ -450,6 +453,7 @@ export const useAppStore = create<AppState>(set => ({
 	// Modal actions
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
+	setShowFailureModal: show => set({ showFailureModal: show }),
 	setShowEntitySavedModal: show => set({ showEntitySavedModal: show }),
 	setShowSourceCancelModal: show => set({ showSourceCancelModal: show }),
 	setShowDeleteModal: show => set({ showDeleteModal: show }),

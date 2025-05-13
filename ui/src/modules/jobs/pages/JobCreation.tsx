@@ -1,8 +1,12 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { message } from "antd"
-import CreateSource from "../../sources/pages/CreateSource"
-import CreateDestination from "../../destinations/pages/CreateDestination"
+import CreateSource, {
+	CreateSourceHandle,
+} from "../../sources/pages/CreateSource"
+import CreateDestination, {
+	CreateDestinationHandle,
+} from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
@@ -31,10 +35,7 @@ const JobCreation: React.FC = () => {
 	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
 	const [destinationVersion, setDestinationVersion] = useState("latest")
-
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
-
-	// Config step states
 	const [jobName, setJobName] = useState("")
 	const [replicationFrequency, setReplicationFrequency] = useState("minutes")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
@@ -46,7 +47,11 @@ const JobCreation: React.FC = () => {
 		setShowTestingModal,
 		setShowSuccessModal,
 		addJob,
+		setShowFailureModal,
 	} = useAppStore()
+
+	const sourceRef = useRef<CreateSourceHandle>(null)
+	const destinationRef = useRef<CreateDestinationHandle>(null)
 
 	const getReplicationFrequency = () => {
 		if (replicationFrequency === "minutes") {
@@ -62,6 +67,21 @@ const JobCreation: React.FC = () => {
 
 	const handleNext = async () => {
 		if (currentStep === "source") {
+			// Call the source component's validation
+			if (sourceRef.current) {
+				const isValid = await sourceRef.current.validateSource()
+				if (!isValid) {
+					message.error("Please fill in all required fields for the source")
+					return
+				}
+			} else {
+				// Fallback validation if ref isn't available
+				if (!sourceName.trim()) {
+					message.error("Source name is required")
+					return
+				}
+			}
+
 			const newSourceData = {
 				name: sourceName,
 				type: sourceConnector.toLowerCase(),
@@ -71,7 +91,6 @@ const JobCreation: React.FC = () => {
 			setShowTestingModal(true)
 			const testResult = await sourceService.testSourceConnection(newSourceData)
 
-			// Ensure testing modal stays visible for at least 1.5 seconds
 			setTimeout(() => {
 				setShowTestingModal(false)
 				if (testResult.success) {
@@ -80,9 +99,28 @@ const JobCreation: React.FC = () => {
 						setShowSuccessModal(false)
 						setCurrentStep("destination")
 					}, 1000)
+				} else {
+					setShowFailureModal(true)
 				}
 			}, 1500)
 		} else if (currentStep === "destination") {
+			// Call the destination component's validation
+			if (destinationRef.current) {
+				const isValid = await destinationRef.current.validateDestination()
+				if (!isValid) {
+					message.error(
+						"Please fill in all required fields for the destination",
+					)
+					return
+				}
+			} else {
+				// Fallback validation if ref isn't available
+				if (!destinationName.trim()) {
+					message.error("Destination name is required")
+					return
+				}
+			}
+
 			const newDestinationData = {
 				name: destinationName,
 				type: destinationConnector,
@@ -102,6 +140,8 @@ const JobCreation: React.FC = () => {
 						setShowSuccessModal(false)
 						setCurrentStep("schema")
 					}, 1000)
+				} else {
+					setShowFailureModal(true)
 				}
 			}, 1500)
 		} else if (currentStep === "schema") {
@@ -226,9 +266,7 @@ const JobCreation: React.FC = () => {
 				</div>
 			</div>
 
-			{/* Main content */}
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
-				{/* Left content */}
 				<div
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&
@@ -253,6 +291,7 @@ const JobCreation: React.FC = () => {
 								onComplete={() => {
 									setCurrentStep("destination")
 								}}
+								ref={sourceRef}
 							/>
 						</div>
 					)}
@@ -273,6 +312,7 @@ const JobCreation: React.FC = () => {
 								onComplete={() => {
 									setCurrentStep("schema")
 								}}
+								ref={destinationRef}
 							/>
 						</div>
 					)}
