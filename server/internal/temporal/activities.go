@@ -9,12 +9,6 @@ import (
 	"go.temporal.io/sdk/activity"
 )
 
-// SyncResult combines the result map and sync directory path
-type SyncResult struct {
-	Result  map[string]interface{}
-	SyncDir string
-}
-
 // ExecuteDockerCommandActivity executes any Docker command using the refactored Docker runner
 func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
 	// Get activity logger
@@ -41,25 +35,31 @@ func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (m
 		logger.Error("Docker command failed", "error", err)
 		return nil, fmt.Errorf("docker command failed: %v", err)
 	}
+	if params.Command == docker.Check && err == nil {
+		return map[string]interface{}{"status": "success"}, nil
+	}
 
 	// For commands that produce catalog.json, parse and return the result
-	catalogPath := filepath.Join(filepath.Dir(configPath), "streams.json")
+	if configPath == "" {
+		return nil, fmt.Errorf("configPath is empty")
+	}
+	filePath := filepath.Join(filepath.Dir(configPath), string(params.Command)+".json")
 
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Parsing results")
 
 	// Parse and return the result
-	result, err := runner.ParseJSONFile(catalogPath)
+	result, err := runner.ParseJSONFile(filePath)
 	if err != nil {
 		// Try to find alternative output files for different commands
 		outputDir := filepath.Dir(configPath)
-		fileData, findErr := runner.FindAlternativeJSONFile(outputDir, catalogPath, configPath)
+		fileData, findErr := runner.FindAlternativeJSONFile(outputDir, filePath, configPath)
 		if findErr != nil || fileData == nil {
 			return nil, fmt.Errorf("failed to read output file: %v", err)
 		}
 
 		// Re-attempt to parse the result
-		result, err = runner.ParseJSONFile(catalogPath)
+		result, err = runner.ParseJSONFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse JSON from file: %v", err)
 		}
@@ -70,8 +70,31 @@ func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (m
 
 // DiscoverCatalogActivity runs the discover command to get catalog data
 func DiscoverCatalogActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
-	params.Command = docker.Discover
-	return ExecuteDockerCommandActivity(ctx, params)
+	logger := activity.GetLogger(ctx)
+	logger.Info("Starting sync activity",
+		"sourceType", params.SourceType,
+		"workflowID", params.WorkflowID)
+
+	// Create a Docker runner with the default config directory
+	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+
+	// Record heartbeat
+	activity.RecordHeartbeat(ctx, "Running sync command")
+
+	// Execute the sync operation
+	result, err := runner.GetCatalog(
+		params.SourceType,
+		params.Version,
+		params.Config,
+		params.WorkflowID,
+	)
+	if err != nil {
+		logger.Error("Sync command failed", "error", err)
+		return result, fmt.Errorf("sync command failed: %v", err)
+	}
+
+	return result, nil
+
 }
 
 // GetSpecActivity runs the spec command to get connector specifications
@@ -87,7 +110,7 @@ func TestConnectionActivity(ctx context.Context, params ActivityParams) (map[str
 }
 
 // SyncActivity runs the sync command to transfer data between source and destination
-func SyncActivity(ctx context.Context, params SyncParams) (SyncResult, error) {
+func SyncActivity(ctx context.Context, params SyncParams) (map[string]interface{}, error) {
 	// Get activity logger
 	logger := activity.GetLogger(ctx)
 	logger.Info("Starting sync activity",
@@ -102,7 +125,7 @@ func SyncActivity(ctx context.Context, params SyncParams) (SyncResult, error) {
 	activity.RecordHeartbeat(ctx, "Running sync command")
 
 	// Execute the sync operation
-	result, syncDir, err := runner.RunSync(
+	result, err := runner.RunSync(
 		params.SourceType,
 		params.Version,
 		params.SourceConfig,
@@ -116,8 +139,8 @@ func SyncActivity(ctx context.Context, params SyncParams) (SyncResult, error) {
 	)
 	if err != nil {
 		logger.Error("Sync command failed", "error", err)
-		return SyncResult{Result: nil, SyncDir: syncDir}, fmt.Errorf("sync command failed: %v", err)
+		return result, fmt.Errorf("sync command failed: %v", err)
 	}
 
-	return SyncResult{Result: result, SyncDir: syncDir}, nil
+	return result, nil
 }

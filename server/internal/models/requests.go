@@ -11,9 +11,10 @@ type SpecRequest struct {
 	Catalog string `json:"catalog"`
 }
 type SourceTestConnectionRequest struct {
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	Type     string `json:"type"`
+	Version  string `json:"version"`
+	Config   string `json:"config" orm:"type(jsonb)"`
+	SourceID int    `json:"source_id"`
 }
 type DestinationTestConnectionRequest struct {
 	Type    string `json:"type"`

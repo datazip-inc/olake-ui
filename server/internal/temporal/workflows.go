@@ -26,6 +26,7 @@ type ActivityParams struct {
 	Command      docker.Command
 	DestConfig   string
 	DestID       int
+	WorkflowID   string
 	StreamConfig string
 }
 
@@ -147,17 +148,10 @@ func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interf
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
-	var result SyncResult
+	var result map[string]interface{}
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		return nil, err
 	}
-	//store the logs in workflow searchable attributes
-	syncDirKey := temporal.NewSearchAttributeKeyKeywordList("syncDir")
-	err = workflow.UpsertTypedSearchAttributes(ctx, syncDirKey.ValueSet([]string{result.SyncDir}))
-	if err != nil {
-		return nil, err
-	}
-
-	return result.Result, nil
+	return result, nil
 }

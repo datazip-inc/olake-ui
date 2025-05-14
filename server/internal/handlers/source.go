@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -221,9 +222,13 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
+	result, err := c.tempClient.TestConnection(context.Background(), req.Type, req.Version, req.Config, req.SourceID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
+		return
+	}
 	// For now, always return success
-	utils.SuccessResponse(&c.Controller, req)
+	utils.SuccessResponse(&c.Controller, result)
 
 }
 
@@ -235,60 +240,31 @@ func (c *SourceHandler) GetSourceCatalog() {
 		return
 	}
 
-	// Get source ID from request or use 0 for testing
-	sourceID := 67
-
 	// Log the request
 	fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
-		req.Type, req.Version, sourceID)
-
+		req.Type, req.Version)
+	var catalog map[string]interface{}
+	var err error
 	// Try to use Temporal if available
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for catalog discovery")
 
 		// Create a unique workflow ID
-		workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, sourceID, time.Now().Unix())
+		workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, time.Now().Unix())
 		fmt.Printf("Starting workflow with ID: %s\n", workflowID)
-
 		// Execute the workflow using Temporal
-		catalog, err := c.tempClient.GetCatalog(
+		catalog, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),
 			req.Type,
 			req.Version,
 			req.Config,
-			sourceID,
 		)
-
-		if err != nil {
-			// Log the error and fall back to direct execution
-			fmt.Printf("Temporal workflow execution failed: %v", err)
-		} else {
-			// Return catalog data from Temporal workflow
-			fmt.Println("Successfully retrieved catalog via Temporal")
-			utils.SuccessResponse(&c.Controller, catalog)
-			return
-		}
-	} else {
-		fmt.Println("Temporal client not available, using direct execution")
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Temporal client not available")
 	}
-
-	// // Fallback to direct execution if Temporal is not available or fails
-	// fmt.Println("Falling back to direct Docker execution")
-	// // Initialize Docker runner
-	// runner := docker.NewRunner(docker.GetDefaultConfigDir())
-
-	// // Execute Docker command to get catalog
-	// catalog, err := runner.GetCatalog(req.Type, req.Version, req.Config, sourceID)
-	// if err != nil {
-	// 	fmt.Printf("Direct execution failed: %v\n", err)
-	// 	utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to generate catalog: %v", err))
-	// 	return
-	// }
-
-	// // Return catalog data
-	// fmt.Println("Successfully retrieved catalog via direct execution")
-	// utils.SuccessResponse(&c.Controller, catalog)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
+		return
+	}
+	utils.SuccessResponse(&c.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
