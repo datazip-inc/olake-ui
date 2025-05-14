@@ -358,20 +358,6 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 
-	// Create Docker runner
-	// configDir := docker.GetDefaultConfigDir()
-	// runner := docker.NewRunner(configDir)
-
-	// // Run sync operation - the RunSync method will generate the catalog automatically if needed
-	// syncState, err := runner.RunSync(
-	// 	job.SourceID.Type,
-	// 	job.SourceID.Version,
-	// 	job.SourceID.Config,
-	// 	job.DestID.Config,
-	// 	job.StreamsConfig,
-	// 	job.SourceID.ID,
-	// 	job.DestID.ID,
-	// )
 	var syncState map[string]interface{}
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")

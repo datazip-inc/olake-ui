@@ -157,42 +157,57 @@ func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath stri
 }
 
 // GetCatalog runs the discover command and returns catalog data
-func (r *Runner) GetCatalog(sourceType, version, config string, sourceID int) (map[string]interface{}, error) {
+func (r *Runner) GetCatalog(sourceType, version, config string, workflowID string) (map[string]interface{}, error) {
+
+	discoverFolderName := workflowID
+	// Create directory for output
+	discoverDir := filepath.Join(r.WorkingDir, discoverFolderName)
+	fmt.Printf("working directory path %s\n", discoverDir)
+
+	// Ensure the directory exists
+	if err := os.MkdirAll(discoverDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create discover directory: %v", err)
+	}
 	// Write config to file
-	configPath, err := r.WriteToFile(config, sourceID)
-	if err != nil {
-		return nil, err
+	configPath := filepath.Join(discoverDir, "config.json")
+	if err := os.WriteFile(configPath, []byte(config), 0755); err != nil {
+		return nil, fmt.Errorf("failed to write config to file: %v", err)
 	}
 
-	// Define catalog output path
-	outputDir := filepath.Dir(configPath)
-	catalogPath := filepath.Join(outputDir, "streams.json")
+	// Define streams output path
+	catalogPath := filepath.Join(discoverDir, "streams.json")
 
 	// Execute discover command
-	_, err = r.ExecuteDockerCommand(Discover, sourceType, version, configPath)
+	_, err := r.ExecuteDockerCommand(Discover, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// List files in output directory for debugging
-	r.ListOutputFiles(outputDir, "after discover")
+	r.ListOutputFiles(discoverDir, "after discover")
 
-	// Check if catalog file exists
-	_, err = os.ReadFile(catalogPath)
-	if err != nil {
-		// Try to find any JSON file that might be the catalog
-		_, err = r.FindAlternativeJSONFile(outputDir, catalogPath, configPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read catalog file: %v", err)
-		}
+	// Check if streams file exists
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		return map[string]interface{}{
+			"status":  "completed",
+			"message": "discover completed successfully",
+		}, nil
 	}
 
-	// Parse JSON from file
-	return r.ParseJSONFile(catalogPath)
+	// Parse streams file
+	result, err := r.ParseJSONFile(catalogPath)
+	if err != nil {
+		return map[string]interface{}{
+			"status": "completed",
+			"error":  fmt.Sprintf("failed to parse streams file: %v", err),
+		}, nil
+	}
+
+	return result, nil
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, string, error) {
+func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
 	// Create sync folder
 	syncFolderName := workflowID
 	// Create directory for output
@@ -201,7 +216,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsC
 
 	// Ensure the directory exists
 	if err := os.MkdirAll(syncDir, 0755); err != nil {
-		return nil, syncDir, fmt.Errorf("failed to create sync directory: %v", err)
+		return nil, fmt.Errorf("failed to create sync directory: %v", err)
 	}
 
 	// Define paths for required files
@@ -217,17 +232,17 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsC
 	fmt.Printf("writing source config to %s\n", configPath)
 	err := os.WriteFile(configPath, []byte(sourceConfig), 0755)
 	if err != nil {
-		return nil, syncDir, fmt.Errorf("failed to write source config: %v", err)
+		return nil, fmt.Errorf("failed to write source config: %v", err)
 	}
 	// Write streams config as streams.json
 	err = os.WriteFile(catalogPath, []byte(streamsConfig), 0755)
 	if err != nil {
-		return nil, syncDir, fmt.Errorf("failed to write streams config: %v", err)
+		return nil, fmt.Errorf("failed to write streams config: %v", err)
 	}
 	// Write destination config as writer.json
 	err = os.WriteFile(writerPath, []byte(destConfig), 0755)
 	if err != nil {
-		return nil, syncDir, fmt.Errorf("failed to write destination config: %v", err)
+		return nil, fmt.Errorf("failed to write destination config: %v", err)
 	}
 
 	// Execute sync command with additional arguments
@@ -235,7 +250,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsC
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json")
 	if err != nil {
-		return nil, syncDir, err
+		return nil, err
 	}
 
 	// List files in output directory for debugging
@@ -246,7 +261,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsC
 		return map[string]interface{}{
 			"status":  "completed",
 			"message": "Sync completed successfully",
-		}, syncDir, nil
+		}, nil
 	}
 
 	// Parse state file
@@ -255,8 +270,8 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsC
 		return map[string]interface{}{
 			"status": "completed",
 			"error":  fmt.Sprintf("failed to parse state file: %v", err),
-		}, syncDir, nil
+		}, nil
 	}
 
-	return result, syncDir, nil
+	return result, nil
 }
