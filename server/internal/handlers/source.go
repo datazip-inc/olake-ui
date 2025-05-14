@@ -11,22 +11,32 @@ import (
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-server/internal/temporal"
 	"github.com/datazip/olake-server/utils"
 )
 
 type SourceHandler struct {
 	web.Controller
-	sourceORM *database.SourceORM
-	userORM   *database.UserORM
-	jobORM    *database.JobORM
+	sourceORM  *database.SourceORM
+	userORM    *database.UserORM
+	jobORM     *database.JobORM
+	tempClient *temporal.Client
 }
 
 func (c *SourceHandler) Prepare() {
 	c.sourceORM = database.NewSourceORM()
 	c.userORM = database.NewUserORM()
 	c.jobORM = database.NewJobORM()
+
+	// Initialize Temporal client
+	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	tempClient, err := temporal.NewClient(tempAddress)
+	if err != nil {
+		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
+		fmt.Printf("Failed to create Temporal client: %v\n", err)
+	}
+	c.tempClient = tempClient
 }
 
 // @router /project/:projectid/sources [get]
@@ -225,18 +235,60 @@ func (c *SourceHandler) GetSourceCatalog() {
 		return
 	}
 
-	// Initialize Docker runner
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	// Get source ID from request or use 0 for testing
+	sourceID := 67
 
-	// Execute Docker command to get catalog
-	catalog, err := runner.GetCatalog(req.Type, req.Version, req.Config, 0) // Using 0 as ID since this is just a test
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to generate catalog: %v", err))
-		return
+	// Log the request
+	fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
+		req.Type, req.Version, sourceID)
+
+	// Try to use Temporal if available
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for catalog discovery")
+
+		// Create a unique workflow ID
+		workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, sourceID, time.Now().Unix())
+		fmt.Printf("Starting workflow with ID: %s\n", workflowID)
+
+		// Execute the workflow using Temporal
+		catalog, err := c.tempClient.GetCatalog(
+			c.Ctx.Request.Context(),
+			req.Type,
+			req.Version,
+			req.Config,
+			sourceID,
+		)
+
+		if err != nil {
+			// Log the error and fall back to direct execution
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			// Return catalog data from Temporal workflow
+			fmt.Println("Successfully retrieved catalog via Temporal")
+			utils.SuccessResponse(&c.Controller, catalog)
+			return
+		}
+	} else {
+		fmt.Println("Temporal client not available, using direct execution")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Temporal client not available")
 	}
 
-	// Return catalog data
-	utils.SuccessResponse(&c.Controller, catalog)
+	// // Fallback to direct execution if Temporal is not available or fails
+	// fmt.Println("Falling back to direct Docker execution")
+	// // Initialize Docker runner
+	// runner := docker.NewRunner(docker.GetDefaultConfigDir())
+
+	// // Execute Docker command to get catalog
+	// catalog, err := runner.GetCatalog(req.Type, req.Version, req.Config, sourceID)
+	// if err != nil {
+	// 	fmt.Printf("Direct execution failed: %v\n", err)
+	// 	utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to generate catalog: %v", err))
+	// 	return
+	// }
+
+	// // Return catalog data
+	// fmt.Println("Successfully retrieved catalog via direct execution")
+	// utils.SuccessResponse(&c.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
