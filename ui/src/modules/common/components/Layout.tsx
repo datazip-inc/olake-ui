@@ -2,33 +2,13 @@ import { useState } from "react"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import OlakeLogo from "../../../assets/OlakeLogo.svg"
 import Olake from "../../../assets/OLake.svg"
-import {
-	CaretLeft,
-	GitCommit,
-	Info,
-	LinktreeLogo,
-	Path,
-	X,
-	SignOut,
-	IconProps,
-} from "@phosphor-icons/react"
+import { CaretLeft, Info, X, SignOut } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
+import { NAV_ITEMS } from "../../../utils/constants"
 
 interface LayoutProps {
 	children: React.ReactNode
 }
-
-interface NavItem {
-	path: string
-	label: string
-	icon: React.ComponentType<IconProps>
-}
-
-const navItems: NavItem[] = [
-	{ path: "/jobs", label: "Jobs", icon: GitCommit },
-	{ path: "/sources", label: "Sources", icon: LinktreeLogo },
-	{ path: "/destinations", label: "Destinations", icon: Path },
-]
 
 const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 	<div className="p-4">
@@ -93,7 +73,7 @@ const Sidebar: React.FC<{
 			</div>
 
 			<nav className="flex-1 space-y-2 p-4">
-				{navItems.map(({ path, label, icon: Icon }) => (
+				{NAV_ITEMS.map(({ path, label, icon: Icon }) => (
 					<NavLink
 						key={path}
 						to={path}

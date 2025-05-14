@@ -1,3 +1,4 @@
+import { IconProps } from "@phosphor-icons/react"
 import { CheckboxChangeEvent } from "antd/es/checkbox"
 
 export interface Job {
@@ -165,4 +166,10 @@ export interface EntityTestResponse {
 export interface LoginArgs {
 	username: string
 	password: string
+}
+
+export interface NavItem {
+	path: string
+	label: string
+	icon: React.ComponentType<IconProps>
 }

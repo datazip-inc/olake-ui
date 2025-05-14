@@ -3,14 +3,15 @@
  */
 import api from "../axios"
 import { APIResponse, LoginArgs } from "../../types"
+import {
+	LOCALSTORAGE_TOKEN_KEY,
+	LOCALSTORAGE_USERNAME_KEY,
+} from "../../utils/constants"
 
 interface LoginResponse {
 	username: string
 	password: string
 }
-
-const LOCALSTORAGE_TOKEN_KEY = "token"
-const LOCALSTORAGE_USERNAME_KEY = "username"
 
 export const authService = {
 	login: async ({ username, password }: LoginArgs) => {

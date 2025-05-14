@@ -4,6 +4,7 @@ import { ConfigProvider, App as AntApp } from "antd"
 import { useAppStore } from "./store"
 import { router } from "./routes"
 import { AuthLoadingScreen } from "./modules/common/components/LoadingStates"
+import { THEME_CONFIG } from "./utils/constants"
 
 function App() {
 	const { isAuthLoading, initAuth } = useAppStore()
@@ -17,14 +18,7 @@ function App() {
 	}
 
 	return (
-		<ConfigProvider
-			theme={{
-				token: {
-					colorPrimary: "#203FDD",
-					borderRadius: 6,
-				},
-			}}
-		>
+		<ConfigProvider theme={THEME_CONFIG}>
 			<AntApp>
 				<Suspense fallback={<AuthLoadingScreen />}>
 					<RouterProvider router={router} />

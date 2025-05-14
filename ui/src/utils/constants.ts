@@ -1,3 +1,6 @@
+import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
+import { NavItem } from "../types"
+
 export const PARTITIONING_COLUMNS = [
 	{
 		title: "Column name",
@@ -35,3 +38,33 @@ export const SETUP_TYPES = {
 }
 
 export const PAGE_SIZE = 8
+
+export const THEME_CONFIG = {
+	token: {
+		colorPrimary: "#203FDD",
+		borderRadius: 6,
+	},
+}
+
+export const HTTP_STATUS = {
+	UNAUTHORIZED: 401,
+	FORBIDDEN: 403,
+	SERVER_ERROR: 500,
+}
+
+export const ERROR_MESSAGES = {
+	AUTH_REQUIRED: "Authentication required. Please log in.",
+	NO_PERMISSION: "You do not have permission to access this resource",
+	SERVER_ERROR: "Server error occurred. Please try again later.",
+	NO_RESPONSE:
+		"No response received from server. Please check your connection.",
+}
+
+export const LOCALSTORAGE_TOKEN_KEY = "token"
+export const LOCALSTORAGE_USERNAME_KEY = "username"
+
+export const NAV_ITEMS: NavItem[] = [
+	{ path: "/jobs", label: "Jobs", icon: GitCommit },
+	{ path: "/sources", label: "Sources", icon: LinktreeLogo },
+	{ path: "/destinations", label: "Destinations", icon: Path },
+]

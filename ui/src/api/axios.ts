@@ -4,20 +4,7 @@ import axios, {
 	AxiosResponse,
 } from "axios"
 import { API_CONFIG } from "./config"
-
-const HTTP_STATUS = {
-	UNAUTHORIZED: 401,
-	FORBIDDEN: 403,
-	SERVER_ERROR: 500,
-} as const
-
-const ERROR_MESSAGES = {
-	AUTH_REQUIRED: "Authentication required. Please log in.",
-	NO_PERMISSION: "You do not have permission to access this resource",
-	SERVER_ERROR: "Server error occurred. Please try again later.",
-	NO_RESPONSE:
-		"No response received from server. Please check your connection.",
-} as const
+import { ERROR_MESSAGES, HTTP_STATUS } from "../utils/constants"
 
 /**
  * Creates and configures an axios instance with default settings
