@@ -11,6 +11,18 @@ golangci:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest;
 	cd server; $(GOPATH)/bin/golangci-lint run
 
+frontend-lint:
+	cd ui; pnpm run lint
+
+frontend-lint-fix:
+	cd ui; pnpm run lint:fix
+
+frontend-format:
+	cd ui; pnpm run format
+
+frontend-format-check:
+	cd ui; pnpm run format:check
+
 build:
 	gofmt -l -s -w .
 	cd server; go build -ldflags=${LDFLAGS} -o olake-server main.go
@@ -40,7 +52,7 @@ create-user:
 	@curl -s -X POST http://localhost:8080/signup -H "Content-Type: application/json" -d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "username" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
 
 # Build, start server, and create frontend user in one command
-setup: build
+setup: build pre-commit
 	@echo "Starting server and setting up frontend user..."
 	@$(MAKE) run
 	@sleep 5

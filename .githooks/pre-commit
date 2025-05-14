@@ -1,11 +1,40 @@
 #!/bin/sh
 
-# Run golangci-lint on staged files
-echo "Running golangci-lint..."
-cd server; golangci-lint run --fix
+echo "Running pre-commit checks..."
 
-# Check if the linter passed
-if [ $? -ne 0 ]; then
+# Run golangci-lint on server code
+echo "Running golangci-lint on server code..."
+cd server && golangci-lint run --fix
+SERVER_LINT_STATUS=$?
+
+cd ..
+
+# Run frontend linting
+echo "Running frontend linting..."
+cd ui && pnpm run lint
+FRONTEND_LINT_STATUS=$?
+
+# Run frontend format check
+echo "Running frontend format check..."
+pnpm run format:check
+FRONTEND_FORMAT_STATUS=$?
+
+cd ..
+
+if [ $SERVER_LINT_STATUS -ne 0 ]; then
   echo "❌ golangci-lint found issues. Commit aborted."
   exit 1
 fi
+
+if [ $FRONTEND_LINT_STATUS -ne 0 ]; then
+  echo "❌ Frontend linting found issues. Commit aborted."
+  exit 1
+fi
+
+if [ $FRONTEND_FORMAT_STATUS -ne 0 ]; then
+  echo "❌ Frontend formatting issues found. Run 'make frontend-format' to fix. Commit aborted."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
+exit 0
