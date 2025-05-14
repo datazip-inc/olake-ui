@@ -1,31 +1,33 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-server/internal/temporal"
 	"github.com/datazip/olake-server/utils"
+	"go.temporal.io/api/workflowservice/v1"
 )
 
 type JobHandler struct {
 	web.Controller
-	jobORM    *database.JobORM
-	sourceORM *database.SourceORM
-	destORM   *database.DestinationORM
+	jobORM     *database.JobORM
+	sourceORM  *database.SourceORM
+	destORM    *database.DestinationORM
+	tempClient *temporal.Client
 }
 
 // Prepare initializes the ORM instances
@@ -33,6 +35,14 @@ func (c *JobHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 	c.sourceORM = database.NewSourceORM()
 	c.destORM = database.NewDestinationORM()
+	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	tempClient, err := temporal.NewClient(tempAddress)
+	if err != nil {
+		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
+		logs.Error("Failed to create Temporal client: %v", err)
+	} else {
+		c.tempClient = tempClient
+	}
 }
 
 // @router /project/:projectid/jobs [get]
@@ -124,7 +134,7 @@ func (c *JobHandler) GetAllJobs() {
 			jobResp.UpdatedBy = job.UpdatedBy.Username
 		}
 
-		//Parse state for last run info if available
+		// Parse state for last run info if available
 		if job.State != "" {
 			var state map[string]interface{}
 			if err := json.Unmarshal([]byte(job.State), &state); err == nil {
@@ -137,14 +147,6 @@ func (c *JobHandler) GetAllJobs() {
 				}
 			}
 		}
-		// var stateMap map[string]interface{}
-		// err = json.Unmarshal([]byte(job.State), &stateMap)
-		// if err != nil {
-		// 	utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
-		// 	return
-		// }
-		// jobResp.LastRunTime = stateMap["last_run_time"].(string)
-		// jobResp.LastRunState = stateMap["last_run_state"].(string)
 
 		jobResponses = append(jobResponses, jobResp)
 	}
@@ -335,6 +337,14 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+
+	if projectIDStr == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
+
 	// Check if job exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
@@ -349,19 +359,41 @@ func (c *JobHandler) SyncJob() {
 	}
 
 	// Create Docker runner
-	configDir := docker.GetDefaultConfigDir()
-	runner := docker.NewRunner(configDir)
+	// configDir := docker.GetDefaultConfigDir()
+	// runner := docker.NewRunner(configDir)
 
-	// Run sync operation - the RunSync method will generate the catalog automatically if needed
-	syncState, err := runner.RunSync(
-		job.SourceID.Type,
-		job.SourceID.Version,
-		job.SourceID.Config,
-		job.DestID.Config,
-		job.StreamsConfig,
-		job.SourceID.ID,
-		job.DestID.ID,
-	)
+	// // Run sync operation - the RunSync method will generate the catalog automatically if needed
+	// syncState, err := runner.RunSync(
+	// 	job.SourceID.Type,
+	// 	job.SourceID.Version,
+	// 	job.SourceID.Config,
+	// 	job.DestID.Config,
+	// 	job.StreamsConfig,
+	// 	job.SourceID.ID,
+	// 	job.DestID.ID,
+	// )
+	var syncState map[string]interface{}
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		syncState, err = c.tempClient.RunSync(
+			c.Ctx.Request.Context(),
+			job.SourceID.Type,
+			job.SourceID.Version,
+			job.SourceID.Config,
+			job.DestID.Config,
+			job.StreamsConfig,
+			projectID,
+			job.ID,
+			job.SourceID.ID,
+			job.DestID.ID,
+		)
+		if err != nil {
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			fmt.Println("Successfully executed sync job via Temporal")
+		}
+	}
+
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Sync operation failed: %v", err))
 		return
@@ -444,126 +476,46 @@ func (c *JobHandler) GetJobTasks() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
 
+	if projectIDStr == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
 	// Get job to verify it exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
-	// Get logs directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
-		return
-	}
-	logsDir := filepath.Join(homeDir, ".olake", "logs")
-
-	cmd := exec.Command("sudo", "chmod", "-R", "777", logsDir)
-	_ = cmd.Run() // Ignore error; permission setting is not critical
-
-	entries, err := os.ReadDir(logsDir)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read logs directory")
-		return
-	}
-
-	// Collect all sync directories
-	var syncDirs []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
-			syncDirs = append(syncDirs, entry.Name())
-		}
-	}
-
-	if len(syncDirs) == 0 {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync logs found")
-		return
-	}
-
-	// Sort descending (latest first)
-	sort.Slice(syncDirs, func(i, j int) bool {
-		return syncDirs[i] > syncDirs[j]
-	})
-
-	// Limit to latest 10
-	if len(syncDirs) > 10 {
-		syncDirs = syncDirs[:10]
-	}
-
 	var tasks []models.JobTask
-	isFirst := true
-	for _, syncDir := range syncDirs {
-		logPath := filepath.Join(logsDir, syncDir, "olake.log")
-		logContent, err := os.ReadFile(logPath)
-		if err != nil {
-			continue // Skip if log file is not readable
-		}
+	// Construct a query for workflows related to this project and job
+	// Using a simpler approach with ExecutionStatus and WorkflowType
+	query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
+	fmt.Println("Query:", query)
+	// List workflows using the direct query
+	resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+		Query: query,
+	})
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
+		return
+	}
+	for _, execution := range resp.Executions {
+		var runTime time.Duration
+		var endTime time.Time
+		startTime := execution.StartTime.AsTime()
 
-		lines := strings.Split(string(logContent), "\n")
-		var logEntries []struct {
-			Level   string    `json:"level"`
-			Time    time.Time `json:"time"`
-			Message string    `json:"message"`
-		}
-
-		for _, line := range lines {
-			if line == "" {
-				continue
-			}
-			var entry struct {
-				Level   string    `json:"level"`
-				Time    time.Time `json:"time"`
-				Message string    `json:"message"`
-			}
-			if err := json.Unmarshal([]byte(line), &entry); err != nil {
-				continue
-			}
-			logEntries = append(logEntries, entry)
-		}
-
-		if len(logEntries) == 0 {
-			continue
-		}
-		firstTime := logEntries[0].Time
-		lastTime := logEntries[len(logEntries)-1].Time
-		runtime := lastTime.Sub(firstTime)
-
-		lastEntry := logEntries[len(logEntries)-1]
-		status := "running"
-		if lastEntry.Level == "fatal" || lastEntry.Level == "error" {
-			status = "failed"
-		} else if lastEntry.Level == "info" && strings.Contains(lastEntry.Message, "Total records read: ") {
-			status = "success"
-		}
-		if isFirst {
-			var stateMap map[string]interface{}
-			err = json.Unmarshal([]byte(job.State), &stateMap)
-			if err != nil {
-				utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
-				return
-			}
-			stateMap["last_run_state"] = status
-			stateMap["last_run_time"] = firstTime
-			updatedState, err := json.Marshal(stateMap)
-			if err != nil {
-				// handle error
-				utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to marshal state")
-				return
-			}
-			job.State = string(updatedState)
-			if err := c.jobORM.Update(job); err != nil {
-				utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
-				return
-			}
-			isFirst = false
+		if execution.CloseTime != nil {
+			endTime = execution.CloseTime.AsTime()
+			runTime = endTime.Sub(startTime)
 		}
 		tasks = append(tasks, models.JobTask{
-			Runtime:   fmt.Sprintf("%d secs", int(runtime.Seconds())),
-			StartTime: firstTime.Format("2006-01-02_15-04-05"),
-			Status:    status,
-			FilePath:  syncDir,
+			Runtime:   runTime.String(),
+			StartTime: startTime.Format(time.RFC3339),
+			Status:    execution.Status.String(),
+			FilePath:  execution.Execution.WorkflowId,
 		})
 	}
 
@@ -596,17 +548,41 @@ func (c *JobHandler) GetTaskLogs() {
 	}
 
 	// Read the log file
-	// Get the latest sync folder from logs directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
+
+	// Get home directory
+	homeDir := docker.GetDefaultConfigDir()
+
+	// Check if the main sync directory exists
+	mainSyncDir := filepath.Join(homeDir, req.FilePath)
+	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync directory found")
 		return
 	}
-	logsDir := filepath.Join(homeDir, ".olake", "logs")
-	logPath := filepath.Join(logsDir, req.FilePath, "olake.log")
+
+	// Look for log files in the logs directory
+	logsDir := filepath.Join(mainSyncDir, "logs")
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Logs directory not found")
+		return
+	}
+
+	// Since there is only one sync folder in logs, we can get it directly
+	files, err := os.ReadDir(logsDir)
+	fmt.Println(files)
+	if err != nil || len(files) == 0 {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync log directory found")
+		return
+	}
+
+	// Use the first directory we find (since there's only one)
+	syncDir := filepath.Join(logsDir, files[0].Name())
+
+	// Define the log file path
+	logPath := filepath.Join(syncDir, "olake.log")
+
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read log file")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read log file : %s", logPath))
 		return
 	}
 
