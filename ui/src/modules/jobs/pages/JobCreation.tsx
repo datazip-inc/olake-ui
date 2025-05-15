@@ -1,6 +1,7 @@
 import { useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { message } from "antd"
+import { v4 as uuidv4 } from "uuid"
 import CreateSource, {
 	CreateSourceHandle,
 } from "../../sources/pages/CreateSource"
@@ -208,6 +209,7 @@ const JobCreation: React.FC = () => {
 
 	const handleSaveJob = () => {
 		const savedJob = {
+			id: uuidv4(),
 			name: jobName || "-",
 			source: {
 				name: sourceName || "-",

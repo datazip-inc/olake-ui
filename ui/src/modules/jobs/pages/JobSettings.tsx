@@ -19,7 +19,6 @@ const JobSettings: React.FC = () => {
 		fetchJobs,
 		setShowDeleteJobModal,
 		setSelectedJobId,
-		setShowClearDataModal,
 		setShowClearDestinationAndSyncModal,
 	} = useAppStore()
 
@@ -36,10 +35,6 @@ const JobSettings: React.FC = () => {
 	const [replicationFrequency, setReplicationFrequency] = useState(
 		job?.frequency,
 	)
-
-	const handleClearData = () => {
-		setShowClearDataModal(true)
-	}
 
 	const handleClearDestinationAndSync = () => {
 		setShowClearDestinationAndSyncModal(true)
@@ -156,25 +151,7 @@ const JobSettings: React.FC = () => {
 							</div>
 
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-								<div className="mb-3">
-									<div className="flex items-center justify-between">
-										<div className="flex flex-col gap-2">
-											<div className="font-medium">Clear your data:</div>
-											<div className="text-sm text-[#8A8A8A]">
-												Clearing data will delete all the data in your
-												destination
-											</div>
-										</div>
-										<Button
-											onClick={handleClearData}
-											className="py-4"
-										>
-											Clear data
-										</Button>
-									</div>
-								</div>
-
-								<div className="mb-3 border-gray-200 pt-4">
+								<div className="mb-3 border-gray-200">
 									<div className="flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">

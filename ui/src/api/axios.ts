@@ -4,7 +4,11 @@ import axios, {
 	AxiosResponse,
 } from "axios"
 import { API_CONFIG } from "./config"
-import { ERROR_MESSAGES, HTTP_STATUS } from "../utils/constants"
+import {
+	ERROR_MESSAGES,
+	HTTP_STATUS,
+	LOCALSTORAGE_TOKEN_KEY,
+} from "../utils/constants"
 
 /**
  * Creates and configures an axios instance with default settings
@@ -24,7 +28,7 @@ const api = axios.create({
  */
 api.interceptors.request.use(
 	(config: InternalAxiosRequestConfig) => {
-		const token = localStorage.getItem("token")
+		const token = localStorage.getItem(LOCALSTORAGE_TOKEN_KEY)
 		if (token && config.headers) {
 			config.headers.Authorization = `Bearer ${token}`
 		}
@@ -48,8 +52,8 @@ api.interceptors.response.use(
 
 			switch (status) {
 				case HTTP_STATUS.UNAUTHORIZED:
-					localStorage.removeItem("token")
-					console.error(ERROR_MESSAGES.AUTH_REQUIRED)
+					localStorage.removeItem(LOCALSTORAGE_TOKEN_KEY)
+					window.location.href = "/login"
 					break
 				case HTTP_STATUS.FORBIDDEN:
 					console.error(ERROR_MESSAGES.NO_PERMISSION)

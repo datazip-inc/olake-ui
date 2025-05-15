@@ -151,6 +151,7 @@ const CreateDestination = forwardRef<
 			setShowSuccessModal,
 			addDestination,
 			setShowFailureModal,
+			setShowSourceCancelModal,
 		} = useAppStore()
 
 		const parseDestinationConfig = (
@@ -309,7 +310,7 @@ const CreateDestination = forwardRef<
 		}, [connector, catalog, version])
 
 		const handleCancel = () => {
-			setShowEntitySavedModal(false)
+			setShowSourceCancelModal(true)
 		}
 
 		const validateDestination = async (): Promise<boolean> => {
@@ -489,7 +490,7 @@ const CreateDestination = forwardRef<
 					]
 				: [{ value: CATALOG_TYPES.NONE, label: "None" }]
 
-		const SetupTypeSelector = () =>
+		const setupTypeSelector = () =>
 			!fromJobEditFlow && (
 				<div className="mb-4 flex">
 					<Radio.Group
@@ -510,7 +511,7 @@ const CreateDestination = forwardRef<
 				</div>
 			)
 
-		const NewDestinationForm = () =>
+		const newDestinationForm = () =>
 			setupType === SETUP_TYPES.NEW && !fromJobEditFlow ? (
 				<>
 					<div className="flex-start flex w-full gap-12">
@@ -612,7 +613,7 @@ const CreateDestination = forwardRef<
 			)
 
 		// JSX for schema form
-		const SchemaFormSection = () =>
+		const schemaFormSection = () =>
 			setupType === SETUP_TYPES.NEW && (
 				<>
 					{loading ? (
@@ -675,12 +676,12 @@ const CreateDestination = forwardRef<
 									Capture information
 								</div>
 
-								<SetupTypeSelector />
-								<NewDestinationForm />
+								{setupTypeSelector()}
+								{newDestinationForm()}
 							</div>
 						</div>
 
-						<SchemaFormSection />
+						{schemaFormSection()}
 					</div>
 
 					{/* Documentation panel */}

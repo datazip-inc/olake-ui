@@ -60,7 +60,7 @@ const Jobs: React.FC = () => {
 				localStorage.getItem("savedJobs") || "[]",
 			)
 			const updatedSavedJobs = savedJobsFromStorage.filter(
-				(job: any) => job.id !== parseInt(id),
+				(job: any) => job.id !== id,
 			)
 			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
 			setSavedJobs(updatedSavedJobs)
