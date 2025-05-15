@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
+	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
@@ -45,6 +46,12 @@ func (c *SourceHandler) GetAllSources() {
 	sources, err := c.sourceORM.GetAll()
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources")
+		return
+	}
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
 
@@ -87,9 +94,25 @@ func (c *SourceHandler) GetAllSources() {
 					jobInfo["dest_type"] = job.DestID.DestType
 				}
 
-				// Add hardcoded last run info (or parse from job.State if needed)
-				jobInfo["last_run_time"] = "2025-04-27T15:30:00Z"
-				jobInfo["last_run_state"] = "success"
+				query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
+				fmt.Println("Query:", query)
+				// List workflows using the direct query
+				resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+					Query:    query,
+					PageSize: 1,
+				})
+				if err != nil {
+					utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
+					return
+				}
+
+				if len(resp.Executions) > 0 {
+					jobInfo["last_run_time"] = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+					jobInfo["last_run_state"] = resp.Executions[0].Status.String()
+				} else {
+					jobInfo["last_run_time"] = ""
+					jobInfo["last_run_state"] = ""
+				}
 
 				sourceJobs = append(sourceJobs, jobInfo)
 			}

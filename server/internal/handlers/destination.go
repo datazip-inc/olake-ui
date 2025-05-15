@@ -1,36 +1,54 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-server/internal/temporal"
 	"github.com/datazip/olake-server/utils"
 )
 
 type DestHandler struct {
 	web.Controller
-	destORM *database.DestinationORM
-	jobORM  *database.JobORM
+	destORM    *database.DestinationORM
+	jobORM     *database.JobORM
+	tempClient *temporal.Client
 }
 
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 	c.jobORM = database.NewJobORM()
+	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	tempClient, err := temporal.NewClient(tempAddress)
+	if err != nil {
+		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
+		logs.Error("Failed to create Temporal client: %v", err)
+	} else {
+		c.tempClient = tempClient
+	}
 }
 
 // @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
 	// Get project ID from path
 	//use olake project id when is needed
-	//projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
 
 	destinations, err := c.destORM.GetAll()
 	if err != nil {
@@ -85,20 +103,25 @@ func (c *DestHandler) GetAllDestinations() {
 					jobInfo["source_type"] = job.SourceID.Type
 				}
 
-				// Add last run information if available
-				// if job.State != "" {
-				// 	var state map[string]interface{}
-				// 	if err := json.Unmarshal([]byte(job.State), &state); err == nil {
-				// 		if lastRunTime, ok := state["last_run_time"].(string); ok {
-				// 			//jobInfo["last_run_time"] = lastRunTime
-				// 		}
-				// 		if lastRunState, ok := state["last_run_state"].(string); ok {
-				// 			//jobInfo["last_run_state"] = lastRunState
-				// 		}
-				// 	}
-				// }
-				jobInfo["last_run_time"] = "2025-04-27T15:30:00Z"
-				jobInfo["last_run_state"] = "success"
+				query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
+				fmt.Println("Query:", query)
+				// List workflows using the direct query
+				resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+					Query:    query,
+					PageSize: 1,
+				})
+				if err != nil {
+					utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
+					return
+				}
+
+				if len(resp.Executions) > 0 {
+					jobInfo["last_run_time"] = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+					jobInfo["last_run_state"] = resp.Executions[0].Status.String()
+				} else {
+					jobInfo["last_run_time"] = ""
+					jobInfo["last_run_state"] = ""
+				}
 				destJobs = append(destJobs, jobInfo)
 			}
 

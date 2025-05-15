@@ -207,7 +207,7 @@ func (r *Runner) GetCatalog(sourceType, version, config string, workflowID strin
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
 	// Create sync folder
 	syncFolderName := workflowID
 	// Create directory for output
@@ -244,11 +244,17 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsC
 	if err != nil {
 		return nil, fmt.Errorf("failed to write destination config: %v", err)
 	}
+	// Write state config as state.json
+	err = os.WriteFile(statePath, []byte(stateConfig), 0755)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write state config: %v", err)
+	}
 
 	// Execute sync command with additional arguments
 	_, err = r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
 		"--catalog", "/mnt/config/streams.json",
-		"--destination", "/mnt/config/writer.json")
+		"--destination", "/mnt/config/writer.json",
+		"--state", "/mnt/config/state.json")
 	if err != nil {
 		return nil, err
 	}
