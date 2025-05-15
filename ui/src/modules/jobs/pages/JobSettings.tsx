@@ -71,7 +71,7 @@ const JobSettings: React.FC = () => {
 									</div>
 								</div>
 								<div className="ml-10 mt-1.5 w-fit rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
-									{job?.status || "Active"}
+									{job?.activate ? "Active" : "Inactive"}
 								</div>
 							</div>
 

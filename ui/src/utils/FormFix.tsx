@@ -244,6 +244,37 @@ export const DirectInputForm = ({
 	errors,
 	validate = false,
 }: DirectInputFormProps) => {
+	useEffect(() => {
+		if (!schema?.properties || !onChange) {
+			return
+		}
+
+		const currentLevelFormData = formData || {}
+		let needsUpdate = false
+		const newLevelFormData = { ...currentLevelFormData }
+
+		Object.entries(schema.properties).forEach(
+			([name, fieldSchemaDefinition]) => {
+				const fieldSchema = fieldSchemaDefinition as FieldSchema
+				const fieldUiSchemaForCurrentProp = uiSchema?.[name]
+
+				if (
+					fieldUiSchemaForCurrentProp?.["ui:widget"] === "hidden" &&
+					fieldSchema.default !== undefined
+				) {
+					if (currentLevelFormData[name] !== fieldSchema.default) {
+						newLevelFormData[name] = fieldSchema.default
+						needsUpdate = true
+					}
+				}
+			},
+		)
+
+		if (needsUpdate) {
+			onChange(newLevelFormData)
+		}
+	}, [schema, formData, uiSchema, onChange])
+
 	if (!schema?.properties) {
 		return <div>No schema properties provided</div>
 	}

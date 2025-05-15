@@ -87,7 +87,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const initialized = React.useRef(!!initialStreamsData)
 
 	useEffect(() => {
-		// If initial data is provided, use it and skip fetching
 		if (initialStreamsData) {
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
@@ -97,7 +96,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 
 		const fetchSourceStreams = async () => {
-			if (initialized.current) return // Skip if already initialized
+			if (initialized.current) return
 
 			setLoading(true)
 			try {
@@ -108,30 +107,45 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConfig,
 				)
 
-				// Fix: Check and ensure default namespace exists
-				const responseData = response.data
-				if (responseData.streams && responseData.streams.length > 0) {
-					// Ensure selected_streams object is initialized properly
-					if (!responseData.selected_streams) {
-						responseData.selected_streams = {}
-					}
-
-					// Check for streams with undefined or 'default' namespace and ensure they're properly handled
-					responseData.streams.forEach((stream: StreamData) => {
-						const namespace = stream.stream.namespace || "default"
-						if (!responseData.selected_streams[namespace]) {
-							responseData.selected_streams[namespace] = []
-						}
-					})
+				const rawApiResponse = response.data as any
+				const processedResponseData: CombinedStreamsData = {
+					streams: [],
+					selected_streams: {},
 				}
 
-				// First update the API response
-				setApiResponse(responseData)
+				if (rawApiResponse && Array.isArray(rawApiResponse.streams)) {
+					processedResponseData.streams = rawApiResponse.streams
+				}
 
-				// Then set the selected streams for the parent component
-				setSelectedStreams(responseData)
+				if (
+					rawApiResponse &&
+					typeof rawApiResponse.selected_streams === "object" &&
+					rawApiResponse.selected_streams !== null &&
+					!Array.isArray(rawApiResponse.selected_streams)
+				) {
+					for (const ns in rawApiResponse.selected_streams) {
+						if (
+							Object.prototype.hasOwnProperty.call(
+								rawApiResponse.selected_streams,
+								ns,
+							) &&
+							Array.isArray(rawApiResponse.selected_streams[ns])
+						) {
+							processedResponseData.selected_streams[ns] =
+								rawApiResponse.selected_streams[ns]
+						}
+					}
+				}
 
-				// Mark as initialized
+				processedResponseData.streams.forEach((stream: StreamData) => {
+					const namespace = stream.stream.namespace || "default"
+					if (!processedResponseData.selected_streams[namespace]) {
+						processedResponseData.selected_streams[namespace] = []
+					}
+				})
+
+				setApiResponse(processedResponseData)
+				setSelectedStreams(processedResponseData)
 				initialized.current = true
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
@@ -156,11 +170,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		namespace: string,
 		newSyncMode: "full_refresh" | "cdc",
 	) => {
-		// First update the API response
 		setApiResponse(prev => {
 			if (!prev) return prev
 
-			// Check if this is actually a change
 			const streamIndex = prev.streams.findIndex(
 				s => s.stream.name === streamName && s.stream.namespace === namespace,
 			)
@@ -169,15 +181,13 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				streamIndex !== -1 &&
 				prev.streams[streamIndex].stream.sync_mode === newSyncMode
 			) {
-				// No change needed, return existing state
 				return prev
 			}
 
-			// Create a new object to avoid modifying existing state
 			const updated = { ...prev }
 
 			if (streamIndex !== -1) {
-				updated.streams = [...prev.streams] // Clone the array
+				updated.streams = [...prev.streams]
 				updated.streams[streamIndex] = {
 					...updated.streams[streamIndex],
 					stream: {
@@ -190,21 +200,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			return updated
 		})
 
-		// Then update the parent's selected streams
 		setTimeout(() => {
 			setApiResponse(current => {
 				if (!current) return current
 
-				// Create the combined data structure for the parent
 				const updatedData = {
 					selected_streams: current.selected_streams,
 					streams: current.streams,
 				}
-
-				// Update the parent component with the full structure
 				setSelectedStreams(updatedData)
-
-				return current // Return current state without modifying it
+				return current
 			})
 		}, 0)
 	}
@@ -214,27 +219,19 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		checked: boolean,
 		namespace: string,
 	) => {
-		// First update the API response
 		setApiResponse(prev => {
 			if (!prev) return prev
 
-			// Create a new object to avoid modifying existing state
 			const updated = {
 				...prev,
 				selected_streams: { ...prev.selected_streams },
 			}
-
-			// Determine if we need to make a change
 			let changed = false
-
 			if (checked) {
-				// Add stream to selected_streams
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
 					changed = true
 				}
-
-				// Check if the stream is already in the selected streams
 				if (
 					!updated.selected_streams[namespace].some(
 						s => s.stream_name === streamName,
@@ -251,7 +248,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					changed = true
 				}
 			} else {
-				// Remove stream from selected_streams
 				if (updated.selected_streams[namespace]) {
 					const filtered = updated.selected_streams[namespace].filter(
 						s => s.stream_name !== streamName,
@@ -264,30 +260,22 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				}
 			}
 
-			// Only return the updated object if something changed
 			return changed ? updated : prev
 		})
 
-		// Then update the parent's selected streams
 		setTimeout(() => {
 			setApiResponse(current => {
 				if (!current) return current
-
-				// Create the combined data structure for the parent
 				const updatedData = {
 					selected_streams: current.selected_streams,
 					streams: current.streams,
 				}
-
-				// Update the parent component with the full structure
 				setSelectedStreams(updatedData)
-
-				return current // Return current state without modifying it
+				return current
 			})
 		}, 0)
 	}
 
-	// Filter streams based on search and selected filters
 	const filteredStreams = useMemo(() => {
 		if (!apiResponse?.streams) return []
 		let filtered = [...apiResponse.streams]
@@ -314,7 +302,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		})
 	}, [apiResponse, searchText, selectedFilters])
 
-	// Group filtered streams by namespace
 	const groupedFilteredStreams = useMemo(() => {
 		const grouped: { [namespace: string]: StreamData[] } = {}
 		filteredStreams.forEach(stream => {
