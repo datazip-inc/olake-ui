@@ -37,6 +37,7 @@ type SyncParams struct {
 	SourceConfig  string
 	DestConfig    string
 	StreamsConfig string
+	StateConfig   string
 	JobId         int
 	ProjectID     int
 	SourceID      int

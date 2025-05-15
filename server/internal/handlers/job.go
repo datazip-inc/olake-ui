@@ -134,18 +134,24 @@ func (c *JobHandler) GetAllJobs() {
 			jobResp.UpdatedBy = job.UpdatedBy.Username
 		}
 
-		// Parse state for last run info if available
-		if job.State != "" {
-			var state map[string]interface{}
-			if err := json.Unmarshal([]byte(job.State), &state); err == nil {
-				if lastRunTime, ok := state["last_run_time"].(string); ok {
-					jobResp.LastRunTime = lastRunTime
-				}
+		query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
+		fmt.Println("Query:", query)
+		// List workflows using the direct query
+		resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+			Query:    query,
+			PageSize: 1,
+		})
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
+			return
+		}
 
-				if lastRunState, ok := state["last_run_state"].(string); ok {
-					jobResp.LastRunState = lastRunState
-				}
-			}
+		if len(resp.Executions) > 0 {
+			jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+			jobResp.LastRunState = resp.Executions[0].Status.String()
+		} else {
+			jobResp.LastRunTime = ""
+			jobResp.LastRunState = ""
 		}
 
 		jobResponses = append(jobResponses, jobResp)
@@ -367,6 +373,7 @@ func (c *JobHandler) SyncJob() {
 			job.SourceID.Version,
 			job.SourceID.Config,
 			job.DestID.Config,
+			job.State,
 			job.StreamsConfig,
 			projectID,
 			job.ID,
@@ -386,12 +393,12 @@ func (c *JobHandler) SyncJob() {
 	}
 
 	// Update job state with sync result from state.json
-	stateMap := map[string]interface{}{
-		"last_run_time":  time.Now().Format(time.RFC3339),
-		"last_run_state": "success",
-		"sync_state":     syncState,
-	}
-	stateJSON, _ := json.Marshal(stateMap)
+	// stateMap := map[string]interface{}{
+	// 	"last_run_time":  time.Now().Format(time.RFC3339),
+	// 	"last_run_state": "success",
+	// 	"sync_state":     syncState,
+	// }
+	stateJSON, _ := json.Marshal(syncState)
 	job.State = string(stateJSON)
 
 	// Update job in database

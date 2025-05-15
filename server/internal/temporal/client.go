@@ -130,12 +130,13 @@ func (c *Client) TestConnection(ctx context.Context, sourceType, version, config
 }
 
 // RunSync runs a workflow to sync data between source and destination
-func (c *Client) RunSync(ctx context.Context, sourceType, version, sourceConfig, destConfig, streamsConfig string, ProjectID, JobId, sourceID, destID int) (map[string]interface{}, error) {
+func (c *Client) RunSync(ctx context.Context, sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, ProjectID, JobId, sourceID, destID int) (map[string]interface{}, error) {
 	params := SyncParams{
 		SourceType:    sourceType,
 		Version:       version,
 		SourceConfig:  sourceConfig,
 		DestConfig:    destConfig,
+		StateConfig:   stateConfig,
 		StreamsConfig: streamsConfig,
 		ProjectID:     ProjectID,
 		JobId:         JobId,

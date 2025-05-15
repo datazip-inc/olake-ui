@@ -130,6 +130,7 @@ func SyncActivity(ctx context.Context, params SyncParams) (map[string]interface{
 		params.Version,
 		params.SourceConfig,
 		params.DestConfig,
+		params.StateConfig,
 		params.StreamsConfig,
 		params.JobId,
 		params.ProjectID,
