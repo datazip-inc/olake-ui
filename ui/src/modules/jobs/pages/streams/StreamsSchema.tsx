@@ -47,7 +47,10 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 				initialData.stream.type_schema?.properties
 			) {
 				setTimeout(
-					() => setColumnsToDisplay(initialData.stream.type_schema.properties),
+					() =>
+						setColumnsToDisplay(
+							initialData?.stream?.type_schema?.properties || {},
+						),
 					0,
 				)
 			}

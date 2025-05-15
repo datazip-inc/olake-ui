@@ -72,7 +72,7 @@ export const sourceService = {
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: source.type.toLowerCase(),
-					version: "1.0.0",
+					version: source.version,
 					config: source.config,
 				},
 			)

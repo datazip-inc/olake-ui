@@ -11,6 +11,7 @@ const JobHistory: React.FC = () => {
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
 	const pageSize = 8
+	const [isDelayingCall, setIsDelayingCall] = useState(false)
 
 	const {
 		jobs,
@@ -27,10 +28,21 @@ const JobHistory: React.FC = () => {
 		}
 
 		if (jobId) {
-			fetchJobTasks(jobId).catch(error => {
-				message.error("Failed to fetch job tasks")
-				console.error(error)
-			})
+			setIsDelayingCall(true)
+			const timerId = setTimeout(() => {
+				setIsDelayingCall(false)
+				fetchJobTasks(jobId).catch(error => {
+					message.error("Failed to fetch job tasks after delay")
+					console.error("Error fetching job tasks after delay:", error)
+				})
+			}, 300)
+
+			return () => {
+				clearTimeout(timerId)
+				setIsDelayingCall(false)
+			}
+		} else {
+			setIsDelayingCall(false)
 		}
 	}, [jobId, fetchJobTasks, jobs.length, fetchJobs])
 
@@ -51,7 +63,6 @@ const JobHistory: React.FC = () => {
 			dataIndex: "start_time",
 			key: "start_time",
 			render: (text: string) => {
-				// Convert format from 2025-05-05_16-28-53 to 2025-05-05 16:28:53
 				return text.replace("_", " ").replace(/-(\d+)-(\d+)$/, ":$1:$2")
 			},
 		},
@@ -85,29 +96,22 @@ const JobHistory: React.FC = () => {
 		},
 	]
 
-	const filteredTasks = jobTasks.filter(
+	const filteredTasks = jobTasks?.filter(
 		item =>
 			item.start_time.toLowerCase().includes(searchText.toLowerCase()) ||
 			item.status.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
-	// Calculate current page data for display
 	const startIndex = (currentPage - 1) * pageSize
-	const endIndex = Math.min(startIndex + pageSize, filteredTasks.length)
-	const currentPageData = filteredTasks.slice(startIndex, endIndex)
+	const endIndex = Math.min(startIndex + pageSize, filteredTasks?.length)
+	const currentPageData = filteredTasks?.slice(startIndex, endIndex)
 
-	if (jobTasksError) {
+	if (jobTasksError && !isLoadingJobTasks && !isDelayingCall) {
 		return (
 			<div className="p-6">
 				<div className="text-red-500">
 					Error loading job tasks: {jobTasksError}
 				</div>
-				<Button
-					onClick={() => jobId && fetchJobTasks(jobId)}
-					className="mt-4"
-				>
-					Retry
-				</Button>
 			</div>
 		)
 	}
@@ -165,7 +169,7 @@ const JobHistory: React.FC = () => {
 					/>
 				</div>
 
-				{isLoadingJobTasks ? (
+				{isDelayingCall || isLoadingJobTasks ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
@@ -182,7 +186,6 @@ const JobHistory: React.FC = () => {
 				)}
 			</div>
 
-			{/* Fixed pagination at bottom right */}
 			<div
 				style={{
 					position: "fixed",
@@ -198,13 +201,12 @@ const JobHistory: React.FC = () => {
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
-					total={filteredTasks.length}
+					total={filteredTasks?.length}
 					pageSize={pageSize}
 					showSizeChanger={false}
 				/>
 			</div>
 
-			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
 			<div style={{ height: "80px" }}></div>
 
 			<div className="flex justify-end border-t border-gray-200 bg-white p-4">

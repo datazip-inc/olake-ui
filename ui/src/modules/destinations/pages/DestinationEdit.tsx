@@ -328,7 +328,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					jobs: [],
 				}
 
-		setSelectedDestination(destinationToDelete)
+		setSelectedDestination(destinationToDelete as Entity)
 		setShowDeleteModal(true)
 	}
 
@@ -350,7 +350,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			config: configStr,
 		}
 
-		setSelectedDestination(destinationData)
+		setSelectedDestination(destinationData as Entity)
 		setShowEditDestinationModal(true)
 	}
 

@@ -193,11 +193,21 @@ const StreamsCollapsibleList = ({
 
 			// Then manually call setSelectedStreams as a fallback approach
 			setTimeout(() => {
-				if (selectedStreams && selectedStreams.selected_streams) {
-					const updated = { ...selectedStreams }
-					updated.selected_streams = { ...updated.selected_streams }
-					updated.selected_streams[ns] = []
-					setSelectedStreams(updated)
+				if (
+					typeof selectedStreams === "object" &&
+					selectedStreams !== null &&
+					"selected_streams" in selectedStreams &&
+					selectedStreams.selected_streams // Ensure selected_streams itself is not null/undefined
+				) {
+					// selectedStreams is of type { selected_streams: { [key: string]: StreamDetail[] }, streams: StreamData[] }
+					const updatedState = {
+						...selectedStreams,
+						selected_streams: {
+							...selectedStreams.selected_streams,
+							[ns]: [],
+						},
+					}
+					setSelectedStreams(updatedState)
 				}
 			}, 100)
 		} else {
@@ -209,25 +219,40 @@ const StreamsCollapsibleList = ({
 
 			setTimeout(() => {
 				const streamNames = streamsInNamespace.map(s => s.stream.name)
+				const newStreamEntries = streamNames.map(stream_name => ({
+					stream_name,
+					partition_regex: "",
+					split_column: "",
+				}))
 
 				if (selectedStreams) {
-					if (selectedStreams.selected_streams) {
-						const updated = { ...selectedStreams }
-						updated.selected_streams = { ...updated.selected_streams }
-						updated.selected_streams[ns] = streamNames.map(stream_name => ({
-							stream_name,
-							partition_regex: "",
-							split_column: "",
-						}))
-						setSelectedStreams(updated)
-					} else {
-						const updated = { ...selectedStreams }
-						updated[ns] = streamNames.map(stream_name => ({
-							stream_name,
-							partition_regex: "",
-							split_column: "",
-						}))
-						setSelectedStreams(updated)
+					if (
+						typeof selectedStreams === "object" &&
+						selectedStreams !== null &&
+						"selected_streams" in selectedStreams &&
+						selectedStreams.selected_streams
+					) {
+						// selectedStreams is of type { selected_streams: { [key: string]: StreamDetail[] }, streams: StreamData[] }
+						const updatedState = {
+							...selectedStreams,
+							selected_streams: {
+								...selectedStreams.selected_streams,
+								[ns]: newStreamEntries,
+							},
+						}
+						setSelectedStreams(updatedState)
+					} else if (
+						typeof selectedStreams === "object" &&
+						selectedStreams !== null &&
+						!Array.isArray(selectedStreams) &&
+						!("selected_streams" in selectedStreams)
+					) {
+						// selectedStreams is of type { [key: string]: StreamDetail[] }
+						const updatedState = {
+							...(selectedStreams as { [key: string]: any }), // Cast to allow spread for generic object map
+							[ns]: newStreamEntries,
+						}
+						setSelectedStreams(updatedState)
 					}
 				}
 			}, 100)
