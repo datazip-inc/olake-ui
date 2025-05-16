@@ -348,6 +348,10 @@ const CreateDestination = forwardRef<
 			fetchDestinationSpec()
 		}, [connector, catalog, version])
 
+		useEffect(() => {
+			setFormData({})
+		}, [connector, catalog])
+
 		const handleCancel = () => {
 			setShowSourceCancelModal(true)
 		}

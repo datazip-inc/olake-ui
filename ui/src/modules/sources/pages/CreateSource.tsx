@@ -103,7 +103,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			onComplete,
 			stepNumber,
 			stepTitle,
-			initialConfig,
 			initialFormData,
 			initialName,
 			initialConnector,
@@ -195,14 +194,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSourceName(initialName)
 			}
 		}, [initialName])
-
-		useEffect(() => {
-			if (initialConfig) {
-				setSourceName(initialConfig.name)
-				setConnector(initialConfig.type)
-				setFormData(initialConfig.config || {})
-			}
-		}, [initialConfig])
 
 		useEffect(() => {
 			if (initialFormData) {
