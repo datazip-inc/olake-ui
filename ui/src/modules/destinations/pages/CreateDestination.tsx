@@ -128,11 +128,14 @@ const CreateDestination = forwardRef<
 		},
 		ref,
 	) => {
+		console.log("initialconnector", initialConnector)
 		const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
-			(initialConnector === "s3"
+			initialConnector === undefined
 				? CONNECTOR_TYPES.AMAZON_S3
-				: CONNECTOR_TYPES.APACHE_ICEBERG) || CONNECTOR_TYPES.AMAZON_S3,
+				: initialConnector === "s3"
+					? CONNECTOR_TYPES.AMAZON_S3
+					: CONNECTOR_TYPES.APACHE_ICEBERG,
 		)
 		const [catalog, setCatalog] = useState<CatalogType | null>(
 			initialCatalog || null,

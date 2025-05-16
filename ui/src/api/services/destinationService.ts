@@ -117,7 +117,11 @@ export const destinationService = {
 
 	getDestinationSpec: async (type: string, catalog: string | null) => {
 		const normalizedType = normalizeDestinationType(type)
-		const normalizedCatalog = normalizeCatalogType(catalog)
+		let normalizedCatalog = normalizeCatalogType(catalog)
+
+		if (normalizedType === "iceberg" && normalizedCatalog === "none") {
+			normalizedCatalog = "glue"
+		}
 
 		const response = await api.post<APIResponse<any>>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
