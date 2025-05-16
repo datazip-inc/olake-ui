@@ -250,7 +250,6 @@ export const DirectInputForm = ({
 		}
 
 		const currentLevelFormData = formData || {}
-		let needsUpdate = false
 		const newLevelFormData = { ...currentLevelFormData }
 
 		Object.entries(schema.properties).forEach(
@@ -264,7 +263,6 @@ export const DirectInputForm = ({
 				) {
 					if (currentLevelFormData[name] !== fieldSchema.default) {
 						newLevelFormData[name] = fieldSchema.default
-						needsUpdate = true
 					}
 				}
 			},
@@ -436,19 +434,26 @@ export const FixedSchemaForm: React.FC<DynamicSchemaFormProps> = props => {
 	const [filteredFormData, setFilteredFormData] = useState<Record<string, any>>(
 		{},
 	)
+	const prevSchemaString = useRef<string | undefined>()
 
 	useEffect(() => {
-		if (props.schema?.properties && props.onChange) {
-			const defaultValues = generateDefaultValues(props.schema)
-			// Only trigger if we have defaults and user didn't provide formData yet
-			if (
-				Object.keys(defaultValues).length > 0 &&
-				(!props.formData || Object.keys(props.formData).length === 0)
-			) {
-				props.onChange(defaultValues)
+		if (props.onChange) {
+			// Ensure onChange is provided
+			const currentSchemaString = props.schema
+				? JSON.stringify(props.schema)
+				: undefined
+
+			if (prevSchemaString.current !== currentSchemaString) {
+				// Schema has changed (or first render with this schema string)
+				let newDefaults: Record<string, any> = {}
+				if (props.schema && props.schema.properties) {
+					newDefaults = generateDefaultValues(props.schema)
+				}
+				props.onChange(newDefaults)
 			}
+			prevSchemaString.current = currentSchemaString
 		}
-	}, [props.schema, props.onChange, props.formData])
+	}, [props.schema, props.onChange])
 
 	useEffect(() => {
 		if (!props.schema?.properties) {

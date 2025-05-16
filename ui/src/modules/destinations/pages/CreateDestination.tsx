@@ -128,7 +128,6 @@ const CreateDestination = forwardRef<
 		},
 		ref,
 	) => {
-		console.log("initialconnector", initialConnector)
 		const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
@@ -477,7 +476,6 @@ const CreateDestination = forwardRef<
 				const catalogType = mapCatalogValueToType(catalogValue)
 				if (catalogType) setCatalog(catalogType)
 			}
-
 			setFormData(configObj)
 		}
 
@@ -527,8 +525,8 @@ const CreateDestination = forwardRef<
 				? [
 						{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
 						{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
-						{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC" },
-						{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive catalog" },
+						{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC Catalog" },
+						{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive Catalog" },
 					]
 				: [{ value: CATALOG_TYPES.NONE, label: "None" }]
 

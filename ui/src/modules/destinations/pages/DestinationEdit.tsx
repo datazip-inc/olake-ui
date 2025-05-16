@@ -113,9 +113,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	// Define catalog options
 	const catalogOptions: CatalogOption[] = [
-		{ value: "AWS Glue", label: "AWS Glue Catalog" },
+		{ value: "AWS Glue", label: "AWS Glue" },
 		{ value: "REST Catalog", label: "REST Catalog" },
 		{ value: "JDBC Catalog", label: "JDBC Catalog" },
+		{ value: "HIVE Catalog", label: "Hive Catalog" },
 	]
 
 	// Transform jobs to the format needed for our interface
@@ -184,7 +185,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 				if (destination.type === "iceberg") {
 					try {
-						const catalogType = config.catalog || "AWS Glue"
+						const catalogType = config.writer.catalog_type || "AWS Glue"
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
@@ -279,12 +280,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	useEffect(() => {
 		const fetchDestinationSpec = async () => {
 			if (!connector) return
-
 			try {
 				setIsLoading(true)
 				const response = await destinationService.getDestinationSpec(
 					connector,
-					catalogName,
+					catalog,
 				)
 
 				if (response.success && response.data?.spec) {
@@ -303,7 +303,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchDestinationSpec()
-	}, [connector, selectedVersion])
+	}, [connector, selectedVersion, catalog])
 
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
