@@ -18,7 +18,7 @@ import JobConfiguration from "../components/JobConfiguration"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import { JobBase, JobCreationSteps } from "../../../types"
+import { CatalogType, JobBase, JobCreationSteps } from "../../../types"
 import { getConnectorInLowerCase } from "../../../utils/utils"
 import { destinationService, sourceService } from "../../../api"
 
@@ -33,6 +33,8 @@ const JobCreation: React.FC = () => {
 	const [sourceFormData, setSourceFormData] = useState<any>({})
 	const [sourceVersion, setSourceVersion] = useState("latest")
 	const [destinationName, setDestinationName] = useState("")
+	const [destinationCatalogType, setDestinationCatalogType] =
+		useState<CatalogType | null>(null)
 	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
 	const [destinationVersion, setDestinationVersion] = useState("latest")
@@ -68,7 +70,6 @@ const JobCreation: React.FC = () => {
 
 	const handleNext = async () => {
 		if (currentStep === "source") {
-			// Call the source component's validation
 			if (sourceRef.current) {
 				const isValid = await sourceRef.current.validateSource()
 				if (!isValid) {
@@ -105,7 +106,6 @@ const JobCreation: React.FC = () => {
 				}
 			}, 1500)
 		} else if (currentStep === "destination") {
-			// Call the destination component's validation
 			if (destinationRef.current) {
 				const isValid = await destinationRef.current.validateDestination()
 				if (!isValid) {
@@ -132,7 +132,6 @@ const JobCreation: React.FC = () => {
 			const testResult =
 				await destinationService.testDestinationConnection(newDestinationData)
 
-			// Ensure testing modal stays visible for at least 1.5 seconds
 			setTimeout(() => {
 				setShowTestingModal(false)
 				if (testResult.success) {
@@ -148,6 +147,10 @@ const JobCreation: React.FC = () => {
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
+			if (!jobName.trim()) {
+				message.error("Job name is required")
+				return
+			}
 			const newJobData: JobBase = {
 				name: jobName,
 				source: {
@@ -285,10 +288,12 @@ const JobCreation: React.FC = () => {
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
+								initialConnector={sourceConnector}
 								onFormDataChange={data => {
 									setSourceFormData(data)
 								}}
 								initialFormData={sourceFormData}
+								initialName={sourceName}
 								onVersionChange={setSourceVersion}
 								onComplete={() => {
 									setCurrentStep("destination")
@@ -306,10 +311,14 @@ const JobCreation: React.FC = () => {
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
+								initialConnector={destinationConnector}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}
 								initialFormData={destinationFormData}
+								initialName={destinationName}
+								initialCatalog={destinationCatalogType}
+								onCatalogTypeChange={setDestinationCatalogType}
 								onVersionChange={setDestinationVersion}
 								onComplete={() => {
 									setCurrentStep("schema")

@@ -1,5 +1,6 @@
 import { IconProps } from "@phosphor-icons/react"
 import { CheckboxChangeEvent } from "antd/es/checkbox"
+import { CATALOG_TYPES } from "../utils/constants"
 
 export interface Job {
 	id: number
@@ -173,3 +174,5 @@ export interface NavItem {
 	label: string
 	icon: React.ComponentType<IconProps>
 }
+
+export type CatalogType = (typeof CATALOG_TYPES)[keyof typeof CATALOG_TYPES]

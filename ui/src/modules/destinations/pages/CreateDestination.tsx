@@ -28,9 +28,9 @@ import {
 	CONNECTOR_TYPES,
 	SETUP_TYPES,
 } from "../../../utils/constants"
+import { CatalogType } from "../../../types"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
-type CatalogType = (typeof CATALOG_TYPES)[keyof typeof CATALOG_TYPES]
 type SetupType = (typeof SETUP_TYPES)[keyof typeof SETUP_TYPES]
 
 interface DestinationConfig {
@@ -68,10 +68,14 @@ interface CreateDestinationProps {
 		config?: DestinationConfig
 	}
 	initialFormData?: DestinationConfig
+	initialName?: string
+	initialConnector?: string
+	initialCatalog?: CatalogType | null
 	onDestinationNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: DestinationConfig) => void
 	onVersionChange?: (version: string) => void
+	onCatalogTypeChange?: (catalog: CatalogType | null) => void
 }
 
 // Create ref handle interface
@@ -113,19 +117,27 @@ const CreateDestination = forwardRef<
 			stepTitle,
 			initialConfig,
 			initialFormData,
+			initialName,
+			initialConnector,
+			initialCatalog,
 			onDestinationNameChange,
 			onConnectorChange,
 			onFormDataChange,
 			onVersionChange,
+			onCatalogTypeChange,
 		},
 		ref,
 	) => {
 		const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
-			CONNECTOR_TYPES.AMAZON_S3,
+			(initialConnector === "s3"
+				? CONNECTOR_TYPES.AMAZON_S3
+				: CONNECTOR_TYPES.APACHE_ICEBERG) || CONNECTOR_TYPES.AMAZON_S3,
 		)
-		const [catalog, setCatalog] = useState<CatalogType | null>(null)
-		const [destinationName, setDestinationName] = useState("")
+		const [catalog, setCatalog] = useState<CatalogType | null>(
+			initialCatalog || null,
+		)
+		const [destinationName, setDestinationName] = useState(initialName || "")
 		const [version, setVersion] = useState("")
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
@@ -200,6 +212,22 @@ const CreateDestination = forwardRef<
 		}, [initialFormData])
 
 		useEffect(() => {
+			if (initialName) {
+				setDestinationName(initialName)
+			}
+		}, [initialName])
+
+		useEffect(() => {
+			if (initialConnector) {
+				setConnector(
+					initialConnector === "s3"
+						? CONNECTOR_TYPES.AMAZON_S3
+						: CONNECTOR_TYPES.APACHE_ICEBERG,
+				)
+			}
+		}, [initialConnector])
+
+		useEffect(() => {
 			if (fromJobEditFlow && existingDestinationId) {
 				setSetupType(SETUP_TYPES.EXISTING)
 				const selectedDestination = destinations.find(
@@ -220,6 +248,15 @@ const CreateDestination = forwardRef<
 				setCatalog(null)
 			}
 		}, [connector])
+
+		useEffect(() => {
+			if (initialCatalog) {
+				setCatalog(initialCatalog)
+				if (onCatalogTypeChange) {
+					onCatalogTypeChange(initialCatalog)
+				}
+			}
+		}, [initialCatalog, onCatalogTypeChange])
 
 		useEffect(() => {
 			if (setupType !== SETUP_TYPES.EXISTING) return
@@ -411,6 +448,9 @@ const CreateDestination = forwardRef<
 
 		const handleCatalogChange = (value: string) => {
 			setCatalog(value as CatalogType)
+			if (onCatalogTypeChange) {
+				onCatalogTypeChange(value as CatalogType)
+			}
 		}
 
 		const handleExistingDestinationSelect = (value: string) => {
@@ -423,7 +463,6 @@ const CreateDestination = forwardRef<
 				onDestinationNameChange(selectedDestination.name)
 			if (onConnectorChange) onConnectorChange(selectedDestination.type)
 			if (onVersionChange) onVersionChange(selectedDestination.version)
-
 			const configObj = parseDestinationConfig(selectedDestination.config)
 			if (onFormDataChange) onFormDataChange(configObj)
 

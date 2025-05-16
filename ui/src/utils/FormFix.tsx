@@ -270,9 +270,9 @@ export const DirectInputForm = ({
 			},
 		)
 
-		if (needsUpdate) {
-			onChange(newLevelFormData)
-		}
+		// if (needsUpdate) {
+		// 	onChange(newLevelFormData)
+		// }
 	}, [schema, formData, uiSchema, onChange])
 
 	if (!schema?.properties) {

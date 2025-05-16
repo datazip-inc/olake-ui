@@ -50,6 +50,8 @@ interface CreateSourceProps {
 	stepTitle?: string
 	initialConfig?: SourceConfig
 	initialFormData?: any
+	initialName?: string
+	initialConnector?: string
 	onSourceNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void
@@ -103,6 +105,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			stepTitle,
 			initialConfig,
 			initialFormData,
+			initialName,
+			initialConnector,
 			onSourceNameChange,
 			onConnectorChange,
 			onFormDataChange,
@@ -111,8 +115,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		ref,
 	) => {
 		const [setupType, setSetupType] = useState<SetupType>("new")
-		const [connector, setConnector] = useState("MongoDB")
-		const [sourceName, setSourceName] = useState("")
+		const [connector, setConnector] = useState(initialConnector || "MongoDB")
+		const [sourceName, setSourceName] = useState(initialName || "")
 		const [selectedVersion, setSelectedVersion] = useState("latest")
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
@@ -185,6 +189,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				fetchSources()
 			}
 		}, [sources.length, fetchSources])
+
+		useEffect(() => {
+			if (initialName) {
+				setSourceName(initialName)
+			}
+		}, [initialName])
 
 		useEffect(() => {
 			if (initialConfig) {
@@ -273,6 +283,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 			fetchSourceSpec()
 		}, [connector, selectedVersion])
+
+		useEffect(() => {
+			if (initialConnector) {
+				setConnector(initialConnector)
+			}
+		}, [initialConnector])
 
 		const handleCancel = () => {
 			setShowSourceCancelModal(true)
