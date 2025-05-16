@@ -2,6 +2,27 @@ import { lazy } from "react"
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
 import Layout from "../modules/common/components/Layout"
 import { ErrorBoundary } from "../modules/common/components/ErrorBoundary"
+import { useAppStore } from "../store"
+
+// eslint-disable-next-line react-refresh/only-export-components
+const RootHandler = () => {
+	const isAuthenticated = useAppStore(state => state.isAuthenticated)
+
+	if (isAuthenticated) {
+		return (
+			<Layout>
+				<Outlet />
+			</Layout>
+		)
+	} else {
+		return (
+			<Navigate
+				to="/login"
+				replace
+			/>
+		)
+	}
+}
 
 const lazyComponents = {
 	Login: lazy(() => import("../modules/auth/pages/Login")),
@@ -49,16 +70,10 @@ const publicRoutes = [
 const protectedRoutes = [
 	{
 		path: "/",
-		element: (
-			<Layout>
-				<Outlet />
-			</Layout>
-		),
+		element: <RootHandler />,
 		errorElement: (
 			<ErrorBoundary>
-				<Layout>
-					<Outlet />
-				</Layout>
+				<RootHandler />
 			</ErrorBoundary>
 		),
 		children: [

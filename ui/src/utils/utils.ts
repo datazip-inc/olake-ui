@@ -45,8 +45,10 @@ export const getConnectorName = (connector: string, catalog: string | null) => {
 export const getStatusClass = (status: string) => {
 	switch (status) {
 		case "success":
+		case "completed":
 			return "text-[#52C41A] bg-[#F6FFED]"
 		case "failed":
+		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
 		case "running":
 			return "text-[#0958D9] bg-[#E6F4FF]"
@@ -91,6 +93,12 @@ export const getStatusLabel = (status: string) => {
 			return "Success"
 		case "failed":
 			return "Failed"
+		case "cancelled":
+			return "Cancelled"
+		case "running":
+			return "Running"
+		case "scheduled":
+			return "Scheduled"
 		default:
 			return status
 	}

@@ -192,8 +192,8 @@ const JobTable: React.FC<JobTableProps> = ({
 					<div
 						className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
 					>
-						{getStatusIcon(status)}
-						<span>{getStatusLabel(status)}</span>
+						{getStatusIcon(status.toLowerCase())}
+						<span>{getStatusLabel(status.toLowerCase())}</span>
 					</div>
 				)
 			},

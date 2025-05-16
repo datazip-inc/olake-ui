@@ -37,7 +37,6 @@ const Jobs: React.FC = () => {
 			navigate(`/jobs/${id}/history`)
 			await jobService.syncJob(id)
 			message.success("Job sync started successfully")
-			// Refresh the jobs list after sync
 			await fetchJobs()
 		} catch (error) {
 			message.error("Failed to sync job")
@@ -86,13 +85,21 @@ const Jobs: React.FC = () => {
 
 	const updateJobsList = () => {
 		if (activeTab === "active") {
-			setFilteredJobs(jobs.filter(job => job.activate === true))
+			setFilteredJobs(
+				jobs.filter(
+					job => job.activate === true && job.last_run_state != "failed",
+				),
+			)
 		} else if (activeTab === "inactive") {
-			setFilteredJobs(jobs.filter(job => job.activate === false))
+			setFilteredJobs(
+				jobs.filter(
+					job => job.activate === false && job.last_run_state != "failed",
+				),
+			)
 		} else if (activeTab === "saved") {
 			setFilteredJobs(savedJobs)
 		} else if (activeTab === "failed") {
-			setFilteredJobs([])
+			setFilteredJobs(jobs.filter(job => job.last_run_state == "failed"))
 		}
 	}
 
