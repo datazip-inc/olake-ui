@@ -33,7 +33,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.environment == 'master' && 'master' || (github.event.inputs.environment == 'staging' && 'staging' || github.event.inputs.environment == 'dev' && 'feat/bff-api' || 'develop') }}
+          ref: ${{ github.event.inputs.environment == 'master' && 'master' || (github.event.inputs.environment == 'staging' && 'staging' || github.event.inputs.environment == 'dev' && 'fix/refactor_bff_api' || 'develop') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
