@@ -24,12 +24,25 @@ type SourceHandler struct {
 	userORM    *database.UserORM
 	jobORM     *database.JobORM
 	tempClient *temporal.Client
+	sourceORM  *database.SourceORM
+	userORM    *database.UserORM
+	jobORM     *database.JobORM
+	tempClient *temporal.Client
 }
 
 func (c *SourceHandler) Prepare() {
 	c.sourceORM = database.NewSourceORM()
 	c.userORM = database.NewUserORM()
 	c.jobORM = database.NewJobORM()
+
+	// Initialize Temporal client
+	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	tempClient, err := temporal.NewClient(tempAddress)
+	if err != nil {
+		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
+		fmt.Printf("Failed to create Temporal client: %v\n", err)
+	}
+	c.tempClient = tempClient
 
 	// Initialize Temporal client
 	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
@@ -46,6 +59,12 @@ func (c *SourceHandler) GetAllSources() {
 	sources, err := c.sourceORM.GetAll()
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources")
+		return
+	}
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
 	projectIDStr := c.Ctx.Input.Param(":projectid")
@@ -250,7 +269,13 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
 		return
 	}
+	result, err := c.tempClient.TestConnection(context.Background(), req.Type, req.Version, req.Config, req.SourceID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
+		return
+	}
 	// For now, always return success
+	utils.SuccessResponse(&c.Controller, result)
 	utils.SuccessResponse(&c.Controller, result)
 
 }

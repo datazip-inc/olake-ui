@@ -24,11 +24,22 @@ type DestHandler struct {
 	destORM    *database.DestinationORM
 	jobORM     *database.JobORM
 	tempClient *temporal.Client
+	destORM    *database.DestinationORM
+	jobORM     *database.JobORM
+	tempClient *temporal.Client
 }
 
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 	c.jobORM = database.NewJobORM()
+	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	tempClient, err := temporal.NewClient(tempAddress)
+	if err != nil {
+		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
+		logs.Error("Failed to create Temporal client: %v", err)
+	} else {
+		c.tempClient = tempClient
+	}
 	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
 	tempClient, err := temporal.NewClient(tempAddress)
 	if err != nil {
@@ -43,6 +54,12 @@ func (c *DestHandler) Prepare() {
 func (c *DestHandler) GetAllDestinations() {
 	// Get project ID from path
 	//use olake project id when is needed
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 	projectID, err := strconv.Atoi(projectIDStr)
 	if err != nil {

@@ -26,6 +26,7 @@ func NewRunner(workingDir string) *Runner {
 
 	return &Runner{
 		WorkingDir: workingDir,
+		WorkingDir: workingDir,
 	}
 }
 
@@ -117,6 +118,16 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
 func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+// GetDockerImageName constructs a Docker image name based on source type and version
+func (r *Runner) GetDockerImageName(sourceType, version string) string {
+	if version == "" {
+		return fmt.Sprintf("olakego/source-%s:latest", sourceType)
+	}
+	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
+}
+
+// ExecuteDockerCommand executes a Docker command with the given parameters
+func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 
 	// Ensure output directory exists with proper permissions
@@ -135,6 +146,8 @@ func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, conf
 		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	}
 
+	// Add any additional arguments
+	dockerArgs = append(dockerArgs, additionalArgs...)
 	// Add any additional arguments
 	dockerArgs = append(dockerArgs, additionalArgs...)
 
@@ -157,7 +170,13 @@ func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, conf
 
 // ListOutputFiles lists the files in the output directory for debugging
 func (r *Runner) ListOutputFiles(outputDir string, message string) {
+	return output, nil
+}
+
+// ListOutputFiles lists the files in the output directory for debugging
+func (r *Runner) ListOutputFiles(outputDir string, message string) {
 	files, _ := os.ReadDir(outputDir)
+	fmt.Printf("Files in output directory %s:\n", message)
 	fmt.Printf("Files in output directory %s:\n", message)
 	for _, file := range files {
 		fmt.Printf("- %s\n", file.Name())
@@ -167,12 +186,21 @@ func (r *Runner) ListOutputFiles(outputDir string, message string) {
 // ParseJSONFile parses a JSON file into a map
 func (r *Runner) ParseJSONFile(filePath string) (map[string]interface{}, error) {
 	fileData, err := os.ReadFile(filePath)
+}
+
+// ParseJSONFile parses a JSON file into a map
+func (r *Runner) ParseJSONFile(filePath string) (map[string]interface{}, error) {
+	fileData, err := os.ReadFile(filePath)
 	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
+	}
+
 		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(fileData, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
 		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
 	}
 
@@ -239,7 +267,23 @@ func (r *Runner) GetCatalog(sourceType, version, config string, workflowID strin
 
 	// Parse streams file
 	result, err := r.ParseJSONFile(catalogPath)
+	r.ListOutputFiles(discoverDir, "after discover")
+
+	// Check if streams file exists
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		return map[string]interface{}{
+			"status":  "completed",
+			"message": "discover completed successfully",
+		}, nil
+	}
+
+	// Parse streams file
+	result, err := r.ParseJSONFile(catalogPath)
 	if err != nil {
+		return map[string]interface{}{
+			"status": "completed",
+			"error":  fmt.Sprintf("failed to parse streams file: %v", err),
+		}, nil
 		return map[string]interface{}{
 			"status": "completed",
 			"error":  fmt.Sprintf("failed to parse streams file: %v", err),
@@ -294,14 +338,18 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")
+		"--state", "/mnt/config/state.json")
 	if err != nil {
+		return nil, err
 		return nil, err
 	}
 
 	// List files in output directory for debugging
 	r.ListOutputFiles(syncDir, "after sync")
+	r.ListOutputFiles(syncDir, "after sync")
 
 	// Check if state file exists
+	if _, err := os.Stat(statePath); os.IsNotExist(err) {
 	if _, err := os.Stat(statePath); os.IsNotExist(err) {
 		return map[string]interface{}{
 			"status":  "completed",
@@ -309,6 +357,9 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 		}, nil
 	}
 
+	// Parse state file
+	result, err := r.ParseJSONFile(statePath)
+	if err != nil {
 	// Parse state file
 	result, err := r.ParseJSONFile(statePath)
 	if err != nil {
