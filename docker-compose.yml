@@ -1,7 +1,12 @@
-version: "3.8" # It's good practice to specify the Compose file version
+version: "3.8"
 
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath /home/azureuser/temp # Edit this to your own path
+  host_persistence_path: &hostPersistencePath /home/azureuser/temp    # Edit this to your persistence directory
+  app_config_path: &appConfigVolumeDetails /home/azureuser/temp       # Edit this to your app config directory
+  app_config_volume_details: &appConfigPath
+    type: bind
+    source: *appConfigVolumeDetails
+    target: /opt/backend/conf
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
@@ -9,13 +14,17 @@ x-app-defaults:
 
 services:
   olake-app:
-    build:
-      context: .
-      dockerfile: combined.Dockerfile
+    image: tarakaswathi/testimg:dev-v0.0.0.dev
+    pull_policy: always
     container_name: olake-app-combined
+    environment:
+      PERSISTENT_DIR: *hostPersistencePath # Use the anchored path for the env var
     ports:
       - "5173:5173"  # Expose UI port
       - "8080:8080"  # Expose backend API port
+    volumes:
+      - <<: *appConfigPath
+      - <<: *workerConfigVolumeDetails
     networks:
       - temporal-network
     depends_on:
@@ -24,9 +33,8 @@ services:
     restart: unless-stopped
 
   temporal-worker:
-    build:
-      context: .
-      dockerfile: worker.Dockerfile
+    image: tarakaswathi/worker:dev-v0.0.0.dev
+    pull_policy: always
     container_name: olake-temporal-worker
     networks:
       - temporal-network
@@ -36,7 +44,7 @@ services:
       - <<: *workerConfigVolumeDetails
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
-      PERSISTENCE_DIR: *hostPersistencePath # Use the anchored path for the env var
+      PERSISTENT_DIR: *hostPersistencePath # Use the anchored path for the env var
     depends_on:
       - temporal
       - olake-app # Worker now depends on the combined app
@@ -70,9 +78,9 @@ services:
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql # Service name of the postgres container
       - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development-sql.yaml
-      - ENABLE_ES=false # Disabled Elasticsearch
-      # - ES_SEEDS=elasticsearch # Removed
-      # - ES_VERSION=v7 # Removed
+      - ENABLE_ES=true # Disabled Elasticsearch
+      - ES_SEEDS=elasticsearch # Removed
+      - ES_VERSION=v7 # Removed
       - TEMPORAL_ADDRESS=temporal:7233 # How other services refer to temporal
       - TEMPORAL_CLI_ADDRESS=temporal:7233
     networks:
@@ -96,6 +104,25 @@ services:
       - "8081:8080"  # Bind to all interfaces
     restart: unless-stopped
 
+  elasticsearch:
+    container_name: temporal-elasticsearch
+    image: elasticsearch:7.17.10
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+    networks:
+      - temporal-network
+    expose:
+      - 9200
+    volumes:
+      - temporal-elasticsearch-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
 networks:
   temporal-network:
     driver: bridge
@@ -105,5 +132,7 @@ volumes:
   temporal-postgresql-data:
     driver: local
   olake-config-data:
+    driver: local
+  temporal-elasticsearch-data:
     driver: local
 
