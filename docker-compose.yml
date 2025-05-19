@@ -1,8 +1,6 @@
-version: "3.8"
-
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath /home/azureuser/temp    # Edit this to your persistence directory
-  app_config_path: &appConfigVolumeDetails /home/azureuser/temp       # Edit this to your app config directory
+  host_persistence_path: &hostPersistencePath /home/azureuser/temp      # Edit this to your persistence directory
+  app_config_path: &appConfigVolumeDetails /home/azureuser/temp         # Edit this to your app config directory
   app_config_volume_details: &appConfigPath
     type: bind
     source: *appConfigVolumeDetails
