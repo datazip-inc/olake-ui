@@ -53,7 +53,7 @@ RUN mkdir -p /opt/backend/conf \
 # Copy built artifacts from builder stages
 COPY --from=go-builder /app/olake-server /opt/backend/olake-server
 # Copy the backend configuration file
-COPY server/conf/app.conf /opt/backend/conf/app.conf
+# COPY server/conf/app.conf /opt/backend/conf/app.conf
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
 
 # Copy supervisor configuration file
