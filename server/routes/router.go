@@ -46,42 +46,72 @@ func CustomCorsFilter(ctx *context.Context) {
 	r := ctx.Request
 	w := ctx.ResponseWriter
 
-	writeDefaultCorsHeaders(w)
+	// Set common CORS headers that apply to most responses
+	writeDefaultCorsHeaders(w) // This sets Allow-Methods, Allow-Headers, Credentials, Max-Age etc.
 
-	// API endpoints with token validation
-	if strings.HasPrefix(r.URL.Path, "/api/v1/") {
-		_ = extractToken(r)
-		// Here you would implement your isAllowedOriginsFunc logic
-		// For now, we'll allow all origins for API endpoints
-		reqOrigin := r.Header.Get("Origin")
-		if reqOrigin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", reqOrigin)
+	requestOrigin := r.Header.Get("Origin")
+
+	// Handle specific paths that need dynamic origin reflection or wildcard
+	// These include your auth paths and API paths.
+	if strings.HasPrefix(r.URL.Path, "/api/v1/") ||
+		r.URL.Path == "/login" ||
+		r.URL.Path == "/signup" ||
+		r.URL.Path == "/auth/check" {
+
+		if requestOrigin != "" {
+			// For these paths, reflect the request origin.
+			// IMPORTANT: For production, you should validate `requestOrigin` against a list of
+			// explicitly allowed origins from your environment variable (CORS_ALLOWED_ORIGINS)
+			// instead of just reflecting any origin.
+			// Example validation (conceptual, assuming `allowedOrigins` is populated from ENV):
+			// isAllowed := false
+			// for _, allowed := range allowedOrigins { // allowedOrigins should be populated from os.Getenv("CORS_ALLOWED_ORIGINS")
+			//   if requestOrigin == allowed {
+			//     isAllowed = true
+			//     break
+			//   }
+			// }
+			// if isAllowed {
+			//   w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+			// } else {
+			//   // Origin not allowed, you might choose to not set ACAO or handle differently
+			// }
+			w.Header().Set("Access-Control-Allow-Origin", requestOrigin) // Simplified for now, directly reflects
+		} else {
+			// No Origin header present, usually for same-origin or server-to-server.
+			// No ACAO needed, or could set to a default if your app logic expects one.
 		}
 
-		// Handle preflight requests
-		if r.Method == "OPTIONS" {
+		// Handle preflight OPTIONS requests for these paths
+		if r.Method == http.MethodOptions {
+			// Preflight request already has ACAO set (if origin was present),
+			// and other headers from writeDefaultCorsHeaders.
+			// Just return HTTP 200 OK.
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		// Token validation would go here
-		// If invalid token:
-		// response := ErrResponse("Invalid or missing token", nil)
-		// b, _ := json.Marshal(response)
-		// w.WriteHeader(http.StatusUnauthorized)
-		// w.Write(b)
-		// return
+		// For actual requests (GET, POST etc.) on /api/v1/, you might have token logic
+		if strings.HasPrefix(r.URL.Path, "/api/v1/") {
+			_ = extractToken(r) // Assuming token extraction is relevant here
+			// Further token validation might be handled by AuthMiddleware later
+		}
+
 	} else if strings.Contains(r.URL.Path, "/p/") ||
 		strings.Contains(r.URL.Path, "/s/") ||
 		strings.Contains(r.URL.Path, "/t/") {
-		// Public endpoints
+		// Public endpoints that can allow any origin
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
-		if r.Method == "OPTIONS" {
+		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
 	}
+	// For any other paths not explicitly handled by the above conditions,
+	// no specific Access-Control-Allow-Origin is set by this filter.
+	// They will rely on default browser behavior (typically allowed for same-origin,
+	// blocked for cross-origin unless specific headers are set by other means).
 }
 
 func Init() {
