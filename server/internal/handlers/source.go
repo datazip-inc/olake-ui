@@ -80,18 +80,18 @@ func (c *SourceHandler) GetAllSources() {
 
 		// Fetch associated jobs for this source
 		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		sourceJobs := make([]map[string]interface{}, 0) // always initialize
+		sourceJobs := make([]models.JobDataItem, 0) // always initialize
 		if err == nil {
 			for _, job := range jobs {
-				jobInfo := map[string]interface{}{
-					"name":     job.Name,
-					"id":       job.ID,
-					"activate": job.Active,
+				jobInfo := models.JobDataItem{
+					Name:     job.Name,
+					ID:       job.ID,
+					Activate: job.Active,
 				}
 				// Add destination name if available
 				if job.DestID != nil {
-					jobInfo["dest_name"] = job.DestID.Name
-					jobInfo["dest_type"] = job.DestID.DestType
+					jobInfo.DestinationName = job.DestID.Name
+					jobInfo.DestinationType = job.DestID.DestType
 				}
 
 				query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
@@ -107,11 +107,11 @@ func (c *SourceHandler) GetAllSources() {
 				}
 
 				if len(resp.Executions) > 0 {
-					jobInfo["last_run_time"] = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-					jobInfo["last_run_state"] = resp.Executions[0].Status.String()
+					jobInfo.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+					jobInfo.LastRunState = resp.Executions[0].Status.String()
 				} else {
-					jobInfo["last_run_time"] = ""
-					jobInfo["last_run_state"] = ""
+					jobInfo.LastRunTime = ""
+					jobInfo.LastRunState = ""
 				}
 
 				sourceJobs = append(sourceJobs, jobInfo)
@@ -264,30 +264,34 @@ func (c *SourceHandler) GetSourceCatalog() {
 	}
 
 	// Log the request
-	fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
-		req.Type, req.Version)
-	var catalog map[string]interface{}
-	var err error
-	// Try to use Temporal if available
-	if c.tempClient != nil {
-		fmt.Println("Using Temporal workflow for catalog discovery")
+	// fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
+	// 	req.Type, req.Version)
+	// var catalog map[string]interface{}
+	// var err error
+	// // Try to use Temporal if available
+	// if c.tempClient != nil {
+	// 	fmt.Println("Using Temporal workflow for catalog discovery")
 
-		// Create a unique workflow ID
-		workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, time.Now().Unix())
-		fmt.Printf("Starting workflow with ID: %s\n", workflowID)
-		// Execute the workflow using Temporal
-		catalog, err = c.tempClient.GetCatalog(
-			c.Ctx.Request.Context(),
-			req.Type,
-			req.Version,
-			req.Config,
-		)
-	}
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
-		return
-	}
-	utils.SuccessResponse(&c.Controller, catalog)
+	// 	// Create a unique workflow ID
+	// 	workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, time.Now().Unix())
+	// 	fmt.Printf("Starting workflow with ID: %s\n", workflowID)
+	// 	// Execute the workflow using Temporal
+	// 	catalog, err = c.tempClient.GetCatalog(
+	// 		c.Ctx.Request.Context(),
+	// 		req.Type,
+	// 		req.Version,
+	// 		req.Config,
+	// 	)
+	// }
+	// if err != nil {
+	// 	utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
+	// 	return
+	// }
+	utils.SuccessResponse(&c.Controller, struct {
+		Status string `json:"status"`
+	}{
+		Status: "success",
+	})
 }
 
 // @router /sources/:id/jobs [get]

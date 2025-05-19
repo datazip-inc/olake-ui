@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/temporal"
 )
 
@@ -13,11 +14,8 @@ func main() {
 	log.Println("Starting Olake Temporal worker...")
 
 	// Default to localhost if no address provided
-	temporalAddress := os.Getenv("TEMPORAL_ADDRESS")
-	if temporalAddress == "" {
-		temporalAddress = "localhost:7233"
-	}
-
+	temporalAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "temporal:7233")
+	log.Println("Temporal address:", temporalAddress)
 	// Create a new worker
 	worker, err := temporal.NewWorker(temporalAddress)
 	if err != nil {

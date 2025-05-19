@@ -15,6 +15,15 @@ type Runner struct {
 
 // NewRunner creates a new Docker runner
 func NewRunner(workingDir string) *Runner {
+	// Create the working directory with proper permissions if it doesn't exist
+	if _, err := os.Stat(workingDir); os.IsNotExist(err) {
+		// Create with generous permissions (0755) for directories
+		err = os.MkdirAll(workingDir, 0755)
+		if err != nil {
+			fmt.Printf("Warning: Failed to create working directory %s: %v\n", workingDir, err)
+		}
+	}
+
 	return &Runner{
 		WorkingDir: workingDir,
 	}
@@ -43,10 +52,37 @@ const (
 	Sync Command = "sync"
 )
 
+// createDirectory creates a directory with proper permissions and handles errors
+func createDirectory(dirPath string) error {
+	// Check if directory already exists
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		// Create with generous permissions (0755) for directories
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+		}
+	}
+	return nil
+}
+
+// writeFile writes data to a file with proper permissions and handles errors
+func writeFile(filePath string, data []byte) error {
+	// Ensure directory exists
+	dirPath := filepath.Dir(filePath)
+	if err := createDirectory(dirPath); err != nil {
+		return err
+	}
+
+	// Write file with generous permissions (0644) for files
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
+	}
+	return nil
+}
+
 // WriteToFile writes data to a file with a specific name based on ID
 func (r *Runner) WriteToFile(fileData string, ID any) (string, error) {
 	// Create directory if not exists
-	if err := os.MkdirAll(r.WorkingDir, 0755); err != nil {
+	if err := createDirectory(r.WorkingDir); err != nil {
 		return "", fmt.Errorf("failed to create config directory: %v", err)
 	}
 
@@ -63,9 +99,9 @@ func (r *Runner) WriteToFile(fileData string, ID any) (string, error) {
 	// Create a file path
 	configPath := filepath.Join(r.WorkingDir, fileName)
 
-	// Write config to file
-	if err := os.WriteFile(configPath, []byte(fileData), 0644); err != nil {
-		return "", fmt.Errorf("failed to write config to file: %v", err)
+	// Write config to file with proper permissions
+	if err := writeFile(configPath, []byte(fileData)); err != nil {
+		return "", err
 	}
 
 	return configPath, nil
@@ -83,10 +119,17 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 
+	// Ensure output directory exists with proper permissions
+	if err := createDirectory(outputDir); err != nil {
+		return nil, err
+	}
+
 	// Construct Docker command arguments
 	dockerArgs := []string{
 		"run", "--pull=always",
 		"-v", fmt.Sprintf("%s:/mnt/config", outputDir),
+		// Add user mapping to help with permissions in Docker
+		"-u", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
 		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
@@ -146,7 +189,7 @@ func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath stri
 			tryData, tryErr := os.ReadFile(tryPath)
 			if tryErr == nil {
 				// Copy this file to target path
-				err := os.WriteFile(targetPath, tryData, 0644)
+				err := writeFile(targetPath, tryData)
 				if err == nil {
 					return tryData, nil
 				}
@@ -158,20 +201,20 @@ func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath stri
 
 // GetCatalog runs the discover command and returns catalog data
 func (r *Runner) GetCatalog(sourceType, version, config string, workflowID string) (map[string]interface{}, error) {
-
 	discoverFolderName := workflowID
-	// Create directory for output
+	// Create directory for output with proper permissions
 	discoverDir := filepath.Join(r.WorkingDir, discoverFolderName)
 	fmt.Printf("working directory path %s\n", discoverDir)
 
-	// Ensure the directory exists
-	if err := os.MkdirAll(discoverDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create discover directory: %v", err)
+	// Ensure the directory exists with proper permissions
+	if err := createDirectory(discoverDir); err != nil {
+		return nil, err
 	}
-	// Write config to file
+
+	// Write config to file with proper permissions
 	configPath := filepath.Join(discoverDir, "config.json")
-	if err := os.WriteFile(configPath, []byte(config), 0755); err != nil {
-		return nil, fmt.Errorf("failed to write config to file: %v", err)
+	if err := writeFile(configPath, []byte(config)); err != nil {
+		return nil, err
 	}
 
 	// Define streams output path
@@ -210,13 +253,13 @@ func (r *Runner) GetCatalog(sourceType, version, config string, workflowID strin
 func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
 	// Create sync folder
 	syncFolderName := workflowID
-	// Create directory for output
+	// Create directory for output with proper permissions
 	syncDir := filepath.Join(r.WorkingDir, syncFolderName)
 	fmt.Printf("working directory path %s\n", syncDir)
 
-	// Ensure the directory exists
-	if err := os.MkdirAll(syncDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create sync directory: %v", err)
+	// Ensure the directory exists with proper permissions
+	if err := createDirectory(syncDir); err != nil {
+		return nil, err
 	}
 
 	// Define paths for required files
@@ -225,33 +268,29 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 	writerPath := filepath.Join(syncDir, "writer.json")
 	statePath := filepath.Join(syncDir, "state.json")
 
-	// Set permissions for the output directory
-	cmd := exec.Command("sudo", "chmod", "-R", "777", syncDir)
-	_ = cmd.Run() // Ignore error; permission setting is not critical
-	// write source config as config.json
+	// Write source config as config.json with proper permissions
 	fmt.Printf("writing source config to %s\n", configPath)
-	err := os.WriteFile(configPath, []byte(sourceConfig), 0755)
-	if err != nil {
+	if err := writeFile(configPath, []byte(sourceConfig)); err != nil {
 		return nil, fmt.Errorf("failed to write source config: %v", err)
 	}
-	// Write streams config as streams.json
-	err = os.WriteFile(catalogPath, []byte(streamsConfig), 0755)
-	if err != nil {
+
+	// Write streams config as streams.json with proper permissions
+	if err := writeFile(catalogPath, []byte(streamsConfig)); err != nil {
 		return nil, fmt.Errorf("failed to write streams config: %v", err)
 	}
-	// Write destination config as writer.json
-	err = os.WriteFile(writerPath, []byte(destConfig), 0755)
-	if err != nil {
+
+	// Write destination config as writer.json with proper permissions
+	if err := writeFile(writerPath, []byte(destConfig)); err != nil {
 		return nil, fmt.Errorf("failed to write destination config: %v", err)
 	}
-	// Write state config as state.json
-	err = os.WriteFile(statePath, []byte(stateConfig), 0755)
-	if err != nil {
+
+	// Write state config as state.json with proper permissions
+	if err := writeFile(statePath, []byte(stateConfig)); err != nil {
 		return nil, fmt.Errorf("failed to write state config: %v", err)
 	}
 
 	// Execute sync command with additional arguments
-	_, err = r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
+	_, err := r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")

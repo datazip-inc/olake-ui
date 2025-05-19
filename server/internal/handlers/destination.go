@@ -88,19 +88,19 @@ func (c *DestHandler) GetAllDestinations() {
 			item.UpdatedBy = dest.UpdatedBy.Username
 		}
 		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		destJobs := make([]map[string]interface{}, 0, len(jobs))
+		destJobs := make([]models.JobDataItem, 0, len(jobs))
 		if err == nil {
 			for _, job := range jobs {
-				jobInfo := map[string]interface{}{
-					"name":     job.Name,
-					"id":       job.ID,
-					"activate": job.Active,
+				jobInfo := models.JobDataItem{
+					Name:     job.Name,
+					ID:       job.ID,
+					Activate: job.Active,
 				}
 
 				// Add destination name if available
 				if job.DestID != nil {
-					jobInfo["source_name"] = job.SourceID.Name
-					jobInfo["source_type"] = job.SourceID.Type
+					jobInfo.SourceName = job.SourceID.Name
+					jobInfo.SourceType = job.SourceID.Type
 				}
 
 				query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
@@ -116,11 +116,11 @@ func (c *DestHandler) GetAllDestinations() {
 				}
 
 				if len(resp.Executions) > 0 {
-					jobInfo["last_run_time"] = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-					jobInfo["last_run_state"] = resp.Executions[0].Status.String()
+					jobInfo.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+					jobInfo.LastRunState = resp.Executions[0].Status.String()
 				} else {
-					jobInfo["last_run_time"] = ""
-					jobInfo["last_run_state"] = ""
+					jobInfo.LastRunTime = ""
+					jobInfo.LastRunState = ""
 				}
 				destJobs = append(destJobs, jobInfo)
 			}
