@@ -87,9 +87,63 @@ function release_frontend() {
         -t "${image_name}:${latest_tag}" \
         --build-arg ENVIRONMENT="$environment" \
         --build-arg APP_VERSION="$version" \
-        -f ui/frontend.Dockerfile ui/ || fail "Frontend build failed. Exiting..."
+        -f Dockerfile || fail "Frontend build failed. Exiting..."
     
     echo "$(chalk green "Frontend release successful for $image_name version $tag_version")"
+}
+
+# Function to release the temporal worker
+function release_worker() {
+    local version=$1
+    local platform=$2
+    local environment=$3 # Could be 'dev', 'staging', 'master', etc.
+    local image_name="$DOCKER_REPO_WORKER" # Use a specific repo name for the worker, e.g., yourdockerhubuser/olake-worker
+    
+    # Set tag based on environment
+    local tag_version=""
+    local latest_tag=""
+    
+    case "$environment" in
+        "master")
+            tag_version="${version}"
+            latest_tag="latest"
+            ;;
+        "staging")
+            tag_version="stag-${version}"
+            latest_tag="stag-latest"
+            ;;
+        "dev"|*) # Default to dev prefix if not master or staging
+            tag_version="dev-${version}"
+            latest_tag="dev-latest"
+            ;;
+    esac
+
+    # It's good practice to ensure DOCKER_REPO_WORKER is set
+    if [ -z "$DOCKER_REPO_WORKER" ]; then
+        echo "$(chalk red "Error: DOCKER_REPO_WORKER environment variable is not set.")"
+        return 1 # Or use fail "DOCKER_REPO_WORKER not set" if 'fail' is a global helper
+    fi
+
+    echo "Logging into Docker (if not already logged in by a previous function call)..."
+    # Assuming DOCKER_LOGIN and DOCKER_PASSWORD are set globally or passed
+    # If login is handled globally at the start of the script, this might be redundant
+    # but doesn't hurt to ensure.
+    docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD" || fail "Docker login failed for $DOCKER_LOGIN"
+    
+    echo "**** Releasing worker image $image_name for platforms [$platform] with version [$tag_version] ****"
+
+    echo "Building and pushing worker Docker image..."
+    
+    # Assuming worker.Dockerfile is in the project root (context '.')
+    # If worker.Dockerfile or its context (e.g., server files) are elsewhere, adjust paths.
+    docker buildx build --platform "$platform" --push \
+        -t "${image_name}:${tag_version}" \
+        -t "${image_name}:${latest_tag}" \
+        --build-arg APP_VERSION="$version" \ # Pass APP_VERSION if your worker Dockerfile uses it
+        # Add other --build-arg if worker.Dockerfile needs them (e.g., TEMPORAL_ADDRESS if it were configurable at build time)
+        -f worker.Dockerfile . || fail "Worker build failed. Exiting..."
+    
+    echo "$(chalk green "Worker release successful for $image_name version $tag_version")"
 }
 
 SEMVER_EXPRESSION='v([0-9]+\.[0-9]+\.[0-9]+)$'
@@ -140,5 +194,6 @@ chalk green "=== Release version: $VERSION ==="
 
 # Call the frontend-only release function
 release_frontend "$VERSION" "$platform" "$ENVIRONMENT"
+release_worker "$VERSION" "$platform" "$ENVIRONMENT"
 
 echo "$(chalk green "✅ Frontend release process completed successfully")" 
