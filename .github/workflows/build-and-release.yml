@@ -1,4 +1,4 @@
-name: Olake Build And Release
+name: Olake Frontend Build And Release
 on:
   workflow_dispatch:
     inputs:
@@ -18,8 +18,8 @@ on:
         type: string
 
 jobs:
-  build_and_publish:
-    name: Build and publish unified image for ${{ github.event.inputs.environment }}
+  build_and_publish_frontend:
+    name: Build and publish frontend image for ${{ github.event.inputs.environment }}
     environment: ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     env:
@@ -45,18 +45,11 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.23"
-          cache: true
-          cache-dependency-path: server/go.sum
-
       - name: Setup environment variables
         run: |
           echo "ENVIRONMENT=${{ env.ENVIRONMENT }}" >> $GITHUB_ENV
           echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
-          echo "Building unified application for $ENVIRONMENT with version $VERSION"
+          echo "Building frontend application for $ENVIRONMENT with version $VERSION"
 
       - name: Run Release tool
         run: |

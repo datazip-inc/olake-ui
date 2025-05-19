@@ -49,12 +49,12 @@ function setup_buildx() {
     echo "✅ Buildx and QEMU setup complete"
 }
 
-# Function to perform the release
-function release() {
+# Function to release just the frontend
+function release_frontend() {
     local version=$1
     local platform=$2
     local environment=$3
-    local image_name="$DOCKER_REPO/olake"
+    local image_name="$DOCKER_REPO/olake-frontend"
     
     # Set tag based on environment
     local tag_version=""
@@ -78,18 +78,18 @@ function release() {
     echo "Logging into Docker..."
     docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD" || fail "Docker login failed for $DOCKER_LOGIN"
     
-    echo "**** Releasing $image_name for platforms [$platform] with version [$tag_version] ****"
+    echo "**** Releasing frontend image $image_name for platforms [$platform] with version [$tag_version] ****"
 
-    echo "Attempting multi-platform build..."
+    echo "Building and pushing frontend Docker image..."
     
     docker buildx build --platform "$platform" --push \
         -t "${image_name}:${tag_version}" \
         -t "${image_name}:${latest_tag}" \
         --build-arg ENVIRONMENT="$environment" \
         --build-arg APP_VERSION="$version" \
-        -f Dockerfile . || fail "Multi-platform build failed. Exiting..."
+        -f ui/frontend.Dockerfile ui/ || fail "Frontend build failed. Exiting..."
     
-    echo "$(chalk green "Release successful for $image_name version $tag_version")"
+    echo "$(chalk green "Frontend release successful for $image_name version $tag_version")"
 }
 
 SEMVER_EXPRESSION='v([0-9]+\.[0-9]+\.[0-9]+)$'
@@ -132,12 +132,13 @@ setup_buildx
 build_frontend
 
 platform="linux/amd64,linux/arm64"
-echo "✅ Releasing unified application for environment $ENVIRONMENT with version $VERSION on platforms: $platform"
+echo "✅ Releasing frontend application for environment $ENVIRONMENT with version $VERSION on platforms: $platform"
 
-chalk green "=== Releasing unified Olake application ==="
+chalk green "=== Releasing Olake Frontend application ==="
 chalk green "=== Environment: $ENVIRONMENT ==="
 chalk green "=== Release version: $VERSION ==="
 
-release "$VERSION" "$platform" "$ENVIRONMENT"
+# Call the frontend-only release function
+release_frontend "$VERSION" "$platform" "$ENVIRONMENT"
 
-echo "$(chalk green "✅ Release process completed successfully")" 
+echo "$(chalk green "✅ Frontend release process completed successfully")" 
