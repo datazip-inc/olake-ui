@@ -24,10 +24,6 @@ type SourceHandler struct {
 	userORM    *database.UserORM
 	jobORM     *database.JobORM
 	tempClient *temporal.Client
-	sourceORM  *database.SourceORM
-	userORM    *database.UserORM
-	jobORM     *database.JobORM
-	tempClient *temporal.Client
 }
 
 func (c *SourceHandler) Prepare() {
@@ -43,14 +39,6 @@ func (c *SourceHandler) Prepare() {
 		fmt.Printf("Failed to create Temporal client: %v\n", err)
 	}
 	c.tempClient = tempClient
-
-	// Initialize Temporal client
-	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-	tempClient, err := temporal.NewClient(tempAddress)
-	if err != nil {
-		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
-		fmt.Printf("Failed to create Temporal client: %v\n", err)
-	}
 	c.tempClient = tempClient
 }
 
@@ -59,12 +47,6 @@ func (c *SourceHandler) GetAllSources() {
 	sources, err := c.sourceORM.GetAll()
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources")
-		return
-	}
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
 	projectIDStr := c.Ctx.Input.Param(":projectid")
@@ -269,13 +251,6 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), req.Type, req.Version, req.Config, req.SourceID)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
-		return
-	}
-	// For now, always return success
-	utils.SuccessResponse(&c.Controller, result)
 	utils.SuccessResponse(&c.Controller, result)
 
 }
@@ -288,35 +263,31 @@ func (c *SourceHandler) GetSourceCatalog() {
 		return
 	}
 
-	// Log the request
-	// fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
-	// 	req.Type, req.Version)
-	// var catalog map[string]interface{}
-	// var err error
-	// // Try to use Temporal if available
-	// if c.tempClient != nil {
-	// 	fmt.Println("Using Temporal workflow for catalog discovery")
+	//Log the request
+	fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
+		req.Type, req.Version)
+	var catalog map[string]interface{}
+	var err error
+	// Try to use Temporal if available
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for catalog discovery")
 
-	// 	// Create a unique workflow ID
-	// 	workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, time.Now().Unix())
-	// 	fmt.Printf("Starting workflow with ID: %s\n", workflowID)
-	// 	// Execute the workflow using Temporal
-	// 	catalog, err = c.tempClient.GetCatalog(
-	// 		c.Ctx.Request.Context(),
-	// 		req.Type,
-	// 		req.Version,
-	// 		req.Config,
-	// 	)
-	// }
-	// if err != nil {
-	// 	utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
-	// 	return
-	// }
-	utils.SuccessResponse(&c.Controller, struct {
-		Status string `json:"status"`
-	}{
-		Status: "success",
-	})
+		// Create a unique workflow ID
+		workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, time.Now().Unix())
+		fmt.Printf("Starting workflow with ID: %s\n", workflowID)
+		// Execute the workflow using Temporal
+		catalog, err = c.tempClient.GetCatalog(
+			c.Ctx.Request.Context(),
+			req.Type,
+			req.Version,
+			req.Config,
+		)
+	}
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
+		return
+	}
+	utils.SuccessResponse(&c.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
