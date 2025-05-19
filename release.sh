@@ -139,8 +139,8 @@ function release_worker() {
     docker buildx build --platform "$platform" --push \
         -t "${image_name}:${tag_version}" \
         -t "${image_name}:${latest_tag}" \
-        --build-arg APP_VERSION="$version" \ # Pass APP_VERSION if your worker Dockerfile uses it
-        # Add other --build-arg if worker.Dockerfile needs them (e.g., TEMPORAL_ADDRESS if it were configurable at build time)
+        --build-arg ENVIRONMENT="$environment" \
+        --build-arg APP_VERSION="$version" \
         -f worker.Dockerfile . || fail "Worker build failed. Exiting..."
     
     echo "$(chalk green "Worker release successful for $image_name version $tag_version")"
