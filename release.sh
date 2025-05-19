@@ -87,7 +87,7 @@ function release_frontend() {
         -t "${image_name}:${latest_tag}" \
         --build-arg ENVIRONMENT="$environment" \
         --build-arg APP_VERSION="$version" \
-        -f Dockerfile || fail "Frontend build failed. Exiting..."
+        -f Dockerfile . || fail "Frontend build failed. Exiting..."
     
     echo "$(chalk green "Frontend release successful for $image_name version $tag_version")"
 }
