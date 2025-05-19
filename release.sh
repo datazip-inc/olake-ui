@@ -118,11 +118,11 @@ function release_worker() {
             ;;
     esac
 
-    # It's good practice to ensure DOCKER_REPO_WORKER is set
-    if [ -z "$DOCKER_REPO_WORKER" ]; then
-        echo "$(chalk red "Error: DOCKER_REPO_WORKER environment variable is not set.")"
-        return 1 # Or use fail "DOCKER_REPO_WORKER not set" if 'fail' is a global helper
-    fi
+    # # It's good practice to ensure DOCKER_REPO_WORKER is set
+    # if [ -z "$DOCKER_REPO_WORKER" ]; then
+    #     echo "$(chalk red "Error: DOCKER_REPO_WORKER environment variable is not set.")"
+    #     return 1 # Or use fail "DOCKER_REPO_WORKER not set" if 'fail' is a global helper
+    # fi
 
     echo "Logging into Docker (if not already logged in by a previous function call)..."
     # Assuming DOCKER_LOGIN and DOCKER_PASSWORD are set globally or passed
