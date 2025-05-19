@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Runner is responsible for executing Docker commands
@@ -14,19 +15,24 @@ type Runner struct {
 }
 
 // NewRunner creates a new Docker runner
-func NewRunner(workigDir string) *Runner {
+func NewRunner(workingDir string) *Runner {
+	// Create the working directory with proper permissions if it doesn't exist
+	if _, err := os.Stat(workingDir); os.IsNotExist(err) {
+		// Create with generous permissions (0755) for directories
+		err = os.MkdirAll(workingDir, 0755)
+		if err != nil {
+			fmt.Printf("Warning: Failed to create working directory %s: %v\n", workingDir, err)
+		}
+	}
+
 	return &Runner{
-		WorkingDir: workigDir,
+		WorkingDir: workingDir,
 	}
 }
 
 // GetDefaultConfigDir returns the default directory for storing config files
 func GetDefaultConfigDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "/tmp/olake-config"
-	}
-	return filepath.Join(homeDir, ".olake")
+	return "/tmp/olake-config"
 }
 
 // Command represents a Docker command type
@@ -43,10 +49,37 @@ const (
 	Sync Command = "sync"
 )
 
-// WriteConfigToFile writes config JSON to a temporary file
+// createDirectory creates a directory with proper permissions and handles errors
+func createDirectory(dirPath string) error {
+	// Check if directory already exists
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		// Create with generous permissions (0755) for directories
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+		}
+	}
+	return nil
+}
+
+// writeFile writes data to a file with proper permissions and handles errors
+func writeFile(filePath string, data []byte) error {
+	// Ensure directory exists
+	dirPath := filepath.Dir(filePath)
+	if err := createDirectory(dirPath); err != nil {
+		return err
+	}
+
+	// Write file with generous permissions (0644) for files
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
+	}
+	return nil
+}
+
+// WriteToFile writes data to a file with a specific name based on ID
 func (r *Runner) WriteToFile(fileData string, ID any) (string, error) {
 	// Create directory if not exists
-	if err := os.MkdirAll(r.WorkingDir, 0755); err != nil {
+	if err := createDirectory(r.WorkingDir); err != nil {
 		return "", fmt.Errorf("failed to create config directory: %v", err)
 	}
 
@@ -63,51 +96,47 @@ func (r *Runner) WriteToFile(fileData string, ID any) (string, error) {
 	// Create a file path
 	configPath := filepath.Join(r.WorkingDir, fileName)
 
-	// Write config to file
-	if err := os.WriteFile(configPath, []byte(fileData), 0644); err != nil {
-		return "", fmt.Errorf("failed to write config to file: %v", err)
+	// Write config to file with proper permissions
+	if err := writeFile(configPath, []byte(fileData)); err != nil {
+		return "", err
 	}
 
 	return configPath, nil
 }
 
-// RunDockerCommand executes a Docker command for a source and returns the output
-func (r *Runner) RunDockerCommand(sourceType, version, config string, sourceID int, cmd Command) (map[string]interface{}, error) {
-	// Write config to file
-	configPath, err := r.WriteToFile(config, sourceID)
-	if err != nil {
+// GetDockerImageName constructs a Docker image name based on source type and version
+func (r *Runner) GetDockerImageName(sourceType, version string) string {
+	if version == "" {
+		return fmt.Sprintf("olakego/source-%s:latest", sourceType)
+	}
+	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
+}
+
+// ExecuteDockerCommand executes a Docker command with the given parameters
+func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+	outputDir := filepath.Dir(configPath)
+
+	// Ensure output directory exists with proper permissions
+	if err := createDirectory(outputDir); err != nil {
 		return nil, err
 	}
 
-	// Create directory for output
-	outputDir := filepath.Dir(configPath)
+	// Construct Docker command arguments
 
-	// Define output file paths
-	catalogPath := filepath.Join(outputDir, "catalog.json")
-	statePath := filepath.Join(outputDir, "state.json")
-
-	// Construct Docker image name
-	dockerImage := fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
-	if version == "" {
-		dockerImage = fmt.Sprintf("olakego/source-%s:latest", sourceType)
-	}
-
-	// Construct Docker command
+	hostOutputDir := strings.Replace(outputDir, "/tmp/olake-config", os.Getenv("PERSISTENT_DIR"), 1)
+	fmt.Printf("hostOutputDir %s\n", hostOutputDir)
 	dockerArgs := []string{
 		"run", "--pull=always",
-		"-v", fmt.Sprintf("%s:/mnt/config", outputDir),
-		dockerImage,
-		string(cmd),
+		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
+		// Add user mapping to help with permissions in Docker
+		"-u", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
+		r.GetDockerImageName(sourceType, version),
+		string(command),
 		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	}
 
-	// Add additional arguments for sync command
-	if cmd == Sync {
-		dockerArgs = append(dockerArgs,
-			"--catalog", "/mnt/config/catalog.json",
-			"--destination", "/mnt/config/writer.json",
-		)
-	}
+	// Add any additional arguments
+	dockerArgs = append(dockerArgs, additionalArgs...)
 
 	// Print the Docker command for debugging
 	fmt.Printf("Running Docker command: docker %s\n", dockerArgs)
@@ -123,252 +152,165 @@ func (r *Runner) RunDockerCommand(sourceType, version, config string, sourceID i
 		return nil, fmt.Errorf("docker command failed: %v, output: %s", err, string(output))
 	}
 
-	// List files in output directory for debugging
+	return output, nil
+}
+
+// ListOutputFiles lists the files in the output directory for debugging
+func (r *Runner) ListOutputFiles(outputDir string, message string) {
 	files, _ := os.ReadDir(outputDir)
-	fmt.Println("Files in output directory:")
+	fmt.Printf("Files in output directory %s:\n", message)
 	for _, file := range files {
 		fmt.Printf("- %s\n", file.Name())
 	}
+}
 
-	// Determine which output file to read based on the command
-	var outputPath string
-	if cmd == Sync {
-		outputPath = statePath
-	} else if cmd == Discover {
-		outputPath = catalogPath
-	} else {
-		// For other commands, try to find a file with a name containing "catalog"
-		files, _ := os.ReadDir(outputDir)
-		for _, file := range files {
-			if file.Name() != filepath.Base(configPath) &&
-				file.Name() != "writer.json" &&
-				file.Name() != "state.json" {
-				outputPath = filepath.Join(outputDir, file.Name())
-				break
-			}
-		}
-	}
-
-	// If no output file was found, return an error
-	if outputPath == "" {
-		return nil, fmt.Errorf("no output file was generated by the command")
-	}
-
-	// Check if the output file exists
-	fileData, err := os.ReadFile(outputPath)
+// ParseJSONFile parses a JSON file into a map
+func (r *Runner) ParseJSONFile(filePath string) (map[string]interface{}, error) {
+	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-		// Try to find any JSON file in the directory as a fallback
-		files, _ := os.ReadDir(outputDir)
-		for _, file := range files {
-			if filepath.Ext(file.Name()) == ".json" &&
-				file.Name() != filepath.Base(configPath) &&
-				file.Name() != "writer.json" {
-				outputPath = filepath.Join(outputDir, file.Name())
-				fileData, err = os.ReadFile(outputPath)
-				if err == nil {
-					break
-				}
-			}
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to read output file %s: %v", outputPath, err)
-		}
+		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
 	}
 
-	// Parse JSON from file
 	var result map[string]interface{}
 	if err := json.Unmarshal(fileData, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from file: %v", err)
+		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
 	}
 
 	return result, nil
+}
+
+// FindAlternativeJSONFile tries to find any JSON file that might be the catalog
+func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath string) ([]byte, error) {
+	files, _ := os.ReadDir(outputDir)
+	for _, file := range files {
+		if filepath.Ext(file.Name()) == ".json" &&
+			file.Name() != filepath.Base(excludePath) {
+			tryPath := filepath.Join(outputDir, file.Name())
+			tryData, tryErr := os.ReadFile(tryPath)
+			if tryErr == nil {
+				// Copy this file to target path
+				err := writeFile(targetPath, tryData)
+				if err == nil {
+					return tryData, nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("no suitable JSON file found")
 }
 
 // GetCatalog runs the discover command and returns catalog data
-func (r *Runner) GetCatalog(sourceType, version, config string, sourceID int) (map[string]interface{}, error) {
-	// Write config to file
-	configPath, err := r.WriteToFile(config, sourceID)
+func (r *Runner) GetCatalog(sourceType, version, config string, workflowID string) (map[string]interface{}, error) {
+	discoverFolderName := workflowID
+	// Create directory for output with proper permissions
+	discoverDir := filepath.Join(r.WorkingDir, discoverFolderName)
+	fmt.Printf("working directory path %s\n", discoverDir)
+
+	// Ensure the directory exists with proper permissions
+	if err := createDirectory(discoverDir); err != nil {
+		return nil, err
+	}
+
+	// Write config to file with proper permissions
+	configPath := filepath.Join(discoverDir, "config.json")
+	if err := writeFile(configPath, []byte(config)); err != nil {
+		return nil, err
+	}
+
+	// Define streams output path
+	catalogPath := filepath.Join(discoverDir, "streams.json")
+
+	// Execute discover command
+	_, err := r.ExecuteDockerCommand(Discover, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create directory for output
-	outputDir := filepath.Dir(configPath)
-
-	// Define catalog output path
-	catalogPath := filepath.Join(outputDir, "streams.json")
-
-	// Construct Docker image name
-	dockerImage := fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
-	if version == "" {
-		dockerImage = fmt.Sprintf("olakego/source-%s:latest", sourceType)
-	}
-
-	// Construct Docker command
-	dockerArgs := []string{
-		"run", "--pull=always",
-		"-v", fmt.Sprintf("%s:/mnt/config", outputDir),
-		dockerImage,
-		string(Discover),
-		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-	}
-
-	// Print the Docker command for debugging
-	fmt.Printf("Running Docker command: docker %s\n", dockerArgs)
-
-	// Execute Docker command
-	dockerCmd := exec.Command("docker", dockerArgs...)
-
-	// Execute Docker command and capture output
-	output, err := dockerCmd.CombinedOutput()
-	fmt.Printf("Docker command output: %s\n", string(output))
-
-	if err != nil {
-		return nil, fmt.Errorf("docker command failed: %v, output: %s", err, string(output))
-	}
-
 	// List files in output directory for debugging
-	files, _ := os.ReadDir(outputDir)
-	fmt.Println("Files in output directory after discover:")
-	for _, file := range files {
-		fmt.Printf("- %s\n", file.Name())
+	r.ListOutputFiles(discoverDir, "after discover")
+
+	// Check if streams file exists
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		return map[string]interface{}{
+			"status":  "completed",
+			"message": "discover completed successfully",
+		}, nil
 	}
 
-	// Check if catalog file exists
-	fileData, err := os.ReadFile(catalogPath)
+	// Parse streams file
+	result, err := r.ParseJSONFile(catalogPath)
 	if err != nil {
-		// Try to find any JSON file that might be the catalog
-		files, _ := os.ReadDir(outputDir)
-		for _, file := range files {
-			if filepath.Ext(file.Name()) == ".json" &&
-				file.Name() != filepath.Base(configPath) {
-				tryPath := filepath.Join(outputDir, file.Name())
-				tryData, tryErr := os.ReadFile(tryPath)
-				if tryErr == nil {
-					// Copy this file to catalog.json
-					err = os.WriteFile(catalogPath, tryData, 0644)
-					if err == nil {
-						fileData = tryData
-						break
-					}
-				}
-			}
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to read catalog file: %v", err)
-		}
-	}
-
-	// Parse JSON from file
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileData, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from catalog file: %v", err)
+		return map[string]interface{}{
+			"status": "completed",
+			"error":  fmt.Sprintf("failed to parse streams file: %v", err),
+		}, nil
 	}
 
 	return result, nil
 }
 
-// GetSpec runs the spec command and returns connector specification
-func (r *Runner) GetSpec(sourceType, version, config string, sourceID int) (map[string]interface{}, error) {
-	return r.RunDockerCommand(sourceType, version, config, sourceID, Spec)
-}
-
-// TestConnection runs the check command and tests connection
-func (r *Runner) TestConnection(sourceType, version, config string, sourceID int) (map[string]interface{}, error) {
-	return r.RunDockerCommand(sourceType, version, config, sourceID, Check)
-}
-
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, streamsConfig string, sourceID, destID int) (map[string]interface{}, error) {
-	// Write source config to file
-	configPath, err := r.WriteToFile(sourceConfig, sourceID)
+func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
+	syncFolderName := workflowID
+	// Create directory for output with proper permissions
+	syncDir := filepath.Join(r.WorkingDir, syncFolderName)
+	fmt.Printf("working directory path %s\n", syncDir)
+
+	// Ensure the directory exists with proper permissions
+	if err := createDirectory(syncDir); err != nil {
+		return nil, err
+	}
+
+	// Define paths for required files
+	configPath := filepath.Join(syncDir, "config.json")
+	catalogPath := filepath.Join(syncDir, "streams.json")
+	writerPath := filepath.Join(syncDir, "writer.json")
+	statePath := filepath.Join(syncDir, "state.json")
+
+	// Write source config as config.json with proper permissions
+	fmt.Printf("writing source config to %s\n", configPath)
+	if err := writeFile(configPath, []byte(sourceConfig)); err != nil {
+		return nil, fmt.Errorf("failed to write source config: %v", err)
+	}
+
+	// Write streams config as streams.json with proper permissions
+	if err := writeFile(catalogPath, []byte(streamsConfig)); err != nil {
+		return nil, fmt.Errorf("failed to write streams config: %v", err)
+	}
+
+	// Write destination config as writer.json with proper permissions
+	if err := writeFile(writerPath, []byte(destConfig)); err != nil {
+		return nil, fmt.Errorf("failed to write destination config: %v", err)
+	}
+
+	// Write state config as state.json with proper permissions
+	if err := writeFile(statePath, []byte(stateConfig)); err != nil {
+		return nil, fmt.Errorf("failed to write state config: %v", err)
+	}
+
+	// Execute sync command with additional arguments
+	_, err := r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
+		"--catalog", "/mnt/config/streams.json",
+		"--destination", "/mnt/config/writer.json",
+		"--state", "/mnt/config/state.json")
 	if err != nil {
 		return nil, err
 	}
 
-	// Create directory for output
-	outputDir := filepath.Dir(configPath)
-	fmt.Printf("working directory path %s\n", outputDir)
-
-	// Define paths for required files
-	catalogPath := filepath.Join(outputDir, "streams.json")
-	writerPath := filepath.Join(outputDir, "writer.json")
-	statePath := filepath.Join(outputDir, "state.json")
-	// write streams config as streams.json
-	cmd := exec.Command("sudo", "chmod", "-R", "777", outputDir)
-	_ = cmd.Run() // Ignore error; permission setting is not critical
-
-	err = os.WriteFile(catalogPath, []byte(streamsConfig), 0755)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write streams config :%v", err)
-	}
-	// First check if streams.json exists, if not we need to run discover
-	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
-		fmt.Println("Catalog file not found, running discover command first")
-		_, err = r.GetCatalog(sourceType, version, sourceConfig, sourceID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate catalog: %v", err)
-		}
-	}
-
-	// Write destination config as writer.json
-	err = os.WriteFile(writerPath, []byte(destConfig), 0755)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write destination config: %v", err)
-	}
-
-	// Construct Docker image name
-	dockerImage := fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
-	if version == "" {
-		dockerImage = fmt.Sprintf("olakego/source-%s:latest", sourceType)
-	}
-
-	// Construct Docker command
-	dockerArgs := []string{
-		"run", "--pull=always",
-		"-v", fmt.Sprintf("%s:/mnt/config", outputDir),
-		dockerImage,
-		string(Sync),
-		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-		"--catalog", "/mnt/config/streams.json",
-		"--destination", "/mnt/config/writer.json",
-	}
-
-	// Print the Docker command for debugging
-	fmt.Printf("Running Docker sync command: docker %s\n", dockerArgs)
-
-	// Execute Docker command
-	dockerCmd := exec.Command("docker", dockerArgs...)
-
-	// Execute Docker command and capture output
-	output, err := dockerCmd.CombinedOutput()
-	fmt.Printf("Docker sync command output: %s\n", string(output))
-
-	if err != nil {
-		return nil, fmt.Errorf("docker command failed: %v, output: %s", err, string(output))
-	}
-
 	// List files in output directory for debugging
-	files, _ := os.ReadDir(outputDir)
-	fmt.Println("Files in output directory after sync:")
-	for _, file := range files {
-		fmt.Printf("- %s\n", file.Name())
-	}
+	r.ListOutputFiles(syncDir, "after sync")
 
 	// Check if state file exists
-	fileData, err := os.ReadFile(statePath)
-	if err != nil {
+	if _, err := os.Stat(statePath); os.IsNotExist(err) {
 		return map[string]interface{}{
 			"status":  "completed",
 			"message": "Sync completed successfully",
 		}, nil
 	}
 
-	// Parse JSON from file
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileData, &result); err != nil {
+	// Parse state file
+	result, err := r.ParseJSONFile(statePath)
+	if err != nil {
 		return map[string]interface{}{
 			"status": "completed",
 			"error":  fmt.Sprintf("failed to parse state file: %v", err),
