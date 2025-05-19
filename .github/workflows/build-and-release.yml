@@ -1,0 +1,58 @@
+name: Olake Frontend Build And Release
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to build (master, staging, dev)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - master
+          - staging
+          - dev
+      version:
+        description: "Version to release"
+        required: true
+        default: "v0.0.0.dev"
+        type: string
+
+jobs:
+  build_and_publish_frontend:
+    name: Build and publish frontend image for ${{ github.event.inputs.environment }}
+    environment: ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_LOGIN: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
+      ENVIRONMENT: ${{ github.event.inputs.environment }}
+      VERSION: ${{ github.event.inputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.environment == 'master' && 'master' || (github.event.inputs.environment == 'staging' && 'staging' || github.event.inputs.environment == 'dev' && 'feat/bff-api' || 'develop') }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: "ui/pnpm-lock.yaml"
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Setup environment variables
+        run: |
+          echo "ENVIRONMENT=${{ env.ENVIRONMENT }}" >> $GITHUB_ENV
+          echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
+          echo "Building frontend application for $ENVIRONMENT with version $VERSION"
+
+      - name: Run Release tool
+        run: |
+          chmod +x ./release.sh
+          ./release.sh
+        shell: bash
