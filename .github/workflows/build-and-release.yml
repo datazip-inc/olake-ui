@@ -26,6 +26,7 @@ jobs:
       DOCKER_LOGIN: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
+      DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
       ENVIRONMENT: ${{ github.event.inputs.environment }}
       VERSION: ${{ github.event.inputs.version }}
 
