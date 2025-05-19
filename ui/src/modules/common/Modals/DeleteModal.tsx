@@ -1,12 +1,9 @@
 import { Button, message, Modal, Table } from "antd"
 import { useAppStore } from "../../../store"
-import {
-	ArrowsCounterClockwise,
-	CheckCircle,
-	Warning,
-	XCircle,
-} from "@phosphor-icons/react"
-import { Destination, Source } from "../../../types"
+import { getStatusIcon } from "../../../utils/statusIcons"
+import { Warning } from "@phosphor-icons/react"
+import { Entity } from "../../../types"
+import { getConnectorImage } from "../../../utils/utils"
 
 interface DeleteModalProps {
 	fromSource: boolean
@@ -21,7 +18,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 		deleteSource,
 		deleteDestination,
 	} = useAppStore()
-	let entity: Source | Destination | null = null
+	let entity: Entity
 
 	if (fromSource) {
 		entity = selectedSource
@@ -38,7 +35,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 
 	const handleDeleteSource = () => {
 		message.info(`Deleting source ${selectedSource?.name}`)
-		deleteSource(selectedSource?.id as string).catch(error => {
+		deleteSource(selectedSource?.id as unknown as string).catch(error => {
 			message.error("Failed to delete source")
 			console.error(error)
 		})
@@ -46,30 +43,22 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 	}
 	const handleDeleteDestination = () => {
 		message.info(`Deleting destination ${selectedDestination?.name}`)
-		deleteDestination(selectedDestination?.id as string).catch(error => {
-			message.error("Failed to delete destination")
-			console.error(error)
-		})
+		deleteDestination(selectedDestination?.id as unknown as string).catch(
+			error => {
+				message.error("Failed to delete destination")
+				console.error(error)
+			},
+		)
 		setShowDeleteModal(false)
 	}
 
-	const getStatusIcon = (status: string | undefined) => {
-		if (status === "success") {
-			return <CheckCircle className="text-green-500" />
-		} else if (status === "failed") {
-			return <XCircle className="text-red-500" />
-		} else if (status === "running") {
-			return <ArrowsCounterClockwise className="text-blue-500" />
-		}
-		return null
-	}
 	const loading = false
 
 	const columns = [
 		{
 			title: "Name",
-			dataIndex: "jobName",
-			key: "jobName",
+			dataIndex: "name",
+			key: "name",
 		},
 		{
 			title: "Status",
@@ -98,12 +87,16 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 			? [
 					{
 						title: "Destination",
-						dataIndex: "destination",
-						key: "destination",
-						render: (text: string) => (
+						dataIndex: "dest_name",
+						key: "dest_name",
+						render: (dest_name: string, record: any) => (
 							<div className="flex items-center">
-								<span className="mr-2 inline-block h-2 w-2 rounded-full bg-red-600"></span>
-								{text}
+								<img
+									src={getConnectorImage(record.dest_type || "")}
+									alt={record.dest_type}
+									className="mr-2 size-6"
+								/>
+								{dest_name || "N/A"}
 							</div>
 						),
 					},
@@ -111,17 +104,24 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 			: [
 					{
 						title: "Source",
-						dataIndex: "source",
-						key: "source",
-						render: (text: string) => (
-							<div className="flex items-center">{text}</div>
+						dataIndex: "source_name",
+						key: "source_name",
+						render: (source_name: string, record: any) => (
+							<div className="flex items-center">
+								<img
+									src={getConnectorImage(record.source_type || "")}
+									alt={record.dest_type}
+									className="mr-2 size-6"
+								/>
+								{source_name || "N/A"}
+							</div>
 						),
 					},
 				]),
 	]
 
 	// Create an array with the entity if it exists
-	const dataSource = entity?.associatedJobs ? entity?.associatedJobs : []
+	const dataSource = entity?.jobs
 
 	return (
 		<Modal
@@ -149,8 +149,9 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 					rowKey="id"
 					loading={loading}
 					pagination={false}
-					className="w-full overflow-hidden rounded-[6px] border"
+					className="w-full rounded-[6px] border"
 					rowClassName="no-hover"
+					scroll={{ y: 300 }}
 				/>
 				<div className="flex w-full justify-end space-x-2">
 					<Button

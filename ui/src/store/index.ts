@@ -1,152 +1,222 @@
 import { create } from "zustand"
-import { Job, Source, Destination, JobHistory, JobLog } from "../types"
+import {
+	Job,
+	Entity,
+	EntityBase,
+	JobTask,
+	TaskLog,
+	JobBase,
+	APIResponse,
+} from "../types"
 import { jobService, sourceService, destinationService } from "../api"
-import { mockJobs, mockSources, mockDestinations } from "../api/mockData"
+import { authService } from "../api/services/authService"
 
 interface AppState {
-	// Data
+	// Data states
 	jobs: Job[]
-	sources: Source[]
-	destinations: Destination[]
-	jobHistory: JobHistory[]
-	jobLogs: JobLog[]
+	sources: Entity[]
+	destinations: Entity[]
+	jobTasks: JobTask[]
+	taskLogs: TaskLog[]
+
+	// Selected items
+	selectedJobId: string | null
+	selectedHistoryId: string | null
+	selectedSource: Entity
+	selectedDestination: Entity
+
+	// Auth state
+	isAuthenticated: boolean
+	isAuthLoading: boolean
 
 	// Loading states
 	isLoadingJobs: boolean
 	isLoadingSources: boolean
 	isLoadingDestinations: boolean
-	isLoadingJobHistory: boolean
-	isLoadingJobLogs: boolean
+	isLoadingJobTasks: boolean
+	isLoadingTaskLogs: boolean
 
 	// Error states
 	jobsError: string | null
 	sourcesError: string | null
 	destinationsError: string | null
-	jobHistoryError: string | null
-	jobLogsError: string | null
+	jobTasksError: string | null
+	taskLogsError: string | null
 
-	selectedJobId: string | null
-	selectedHistoryId: string | null
-	selectedSource: Source
-	selectedDestination: Destination
-
-	//Modals
+	// Modal states
 	showTestingModal: boolean
 	showSuccessModal: boolean
+	showFailureModal: boolean
 	showEntitySavedModal: boolean
 	showSourceCancelModal: boolean
 	showDeleteModal: boolean
+	showDeleteJobModal: boolean
+	showClearDataModal: boolean
+	showClearDestinationAndSyncModal: boolean
+	showEditSourceModal: boolean
+	showEditDestinationModal: boolean
 
-	// Actions - Jobs
-	fetchJobs: () => Promise<void>
-	addJob: (job: Omit<Job, "id" | "createdAt">) => Promise<Job>
+	// Auth actions
+	initAuth: () => Promise<void>
+	login: (username: string, password: string) => Promise<void>
+	logout: () => void
+
+	// Selection actions
+	setSelectedJobId: (id: string | null) => void
+	setSelectedHistoryId: (id: string | null) => void
+	setSelectedSource: (source: Entity) => void
+	setSelectedDestination: (destination: Entity) => void
+
+	// Job actions
+	fetchJobs: () => Promise<Job[]>
+	addJob: (job: JobBase) => Promise<Job>
 	updateJob: (id: string, job: Partial<Job>) => Promise<Job>
 	deleteJob: (id: string) => Promise<void>
-	runJob: (id: string) => Promise<void>
-	setSelectedJobId: (id: string | null) => void
-	setSelectedSource: (source: Source) => void
-	setSelectedDestination: (destination: Destination) => void
 
-	// Actions - Job History
-	fetchJobHistory: (jobId: string) => Promise<void>
-	setSelectedHistoryId: (id: string | null) => void
+	// Job task actions
+	fetchJobTasks: (jobId: string) => Promise<void>
+	fetchTaskLogs: (
+		jobId: string,
+		taskId: string,
+		filePath: string,
+	) => Promise<void>
 
-	// Actions - Job Logs
-	fetchJobLogs: (jobId: string, historyId: string) => Promise<void>
-
-	// Actions - Sources
-	fetchSources: () => Promise<void>
-	addSource: (source: Omit<Source, "id" | "createdAt">) => Promise<Source>
-	updateSource: (id: string, source: Partial<Source>) => Promise<Source>
+	// Source actions
+	fetchSources: () => Promise<Entity[]>
+	addSource: (source: EntityBase) => Promise<APIResponse<EntityBase>>
+	updateSource: (id: string, source: EntityBase) => Promise<APIResponse<Entity>>
 	deleteSource: (id: string) => Promise<void>
 
-	// Actions - Destinations
-	fetchDestinations: () => Promise<void>
-	addDestination: (
-		destination: Omit<Destination, "id" | "createdAt">,
-	) => Promise<Destination>
+	// Destination actions
+	fetchDestinations: () => Promise<Entity[]>
+	addDestination: (destination: EntityBase) => Promise<EntityBase>
 	updateDestination: (
 		id: string,
-		destination: Partial<Destination>,
-	) => Promise<Destination>
+		destination: Partial<Entity>,
+	) => Promise<APIResponse<EntityBase>>
 	deleteDestination: (id: string) => Promise<void>
 
+	// Modal actions
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
+	setShowFailureModal: (show: boolean) => void
 	setShowEntitySavedModal: (show: boolean) => void
 	setShowSourceCancelModal: (show: boolean) => void
 	setShowDeleteModal: (show: boolean) => void
+	setShowDeleteJobModal: (show: boolean) => void
+	setShowClearDataModal: (show: boolean) => void
+	setShowClearDestinationAndSyncModal: (show: boolean) => void
+	setShowEditSourceModal: (show: boolean) => void
+	setShowEditDestinationModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState>(set => ({
-	// Initial data
+	// Data states
 	jobs: [],
 	sources: [],
 	destinations: [],
-	jobHistory: [],
-	jobLogs: [],
+	jobTasks: [],
+	taskLogs: [],
 
-	// Initial loading states
+	// Selected items
+	selectedJobId: null,
+	selectedHistoryId: null,
+	selectedSource: {} as Entity,
+	selectedDestination: {} as Entity,
+
+	// Auth state
+	isAuthenticated: false,
+	isAuthLoading: true,
+
+	// Loading states
 	isLoadingJobs: false,
 	isLoadingSources: false,
 	isLoadingDestinations: false,
-	isLoadingJobHistory: false,
-	isLoadingJobLogs: false,
+	isLoadingJobTasks: false,
+	isLoadingTaskLogs: false,
 
-	// Initial error states
+	// Error states
 	jobsError: null,
 	sourcesError: null,
 	destinationsError: null,
-	jobHistoryError: null,
-	jobLogsError: null,
+	jobTasksError: null,
+	taskLogsError: null,
 
-	// Selected job
-	selectedJobId: null,
-	selectedHistoryId: null,
-	selectedSource: {} as Source,
-	selectedDestination: {} as Destination,
-
-	// Modals
+	// Modal states
 	showTestingModal: false,
 	showSuccessModal: false,
+	showFailureModal: false,
 	showEntitySavedModal: false,
 	showSourceCancelModal: false,
 	showDeleteModal: false,
+	showDeleteJobModal: false,
+	showClearDataModal: false,
+	showClearDestinationAndSyncModal: false,
+	showEditSourceModal: false,
+	showEditDestinationModal: false,
 
-	// Jobs actions
+	// Auth actions
+	initAuth: async () => {
+		set({ isAuthLoading: true })
+		try {
+			if (!authService.isLoggedIn()) {
+				set({ isAuthenticated: false, isAuthLoading: false })
+				return
+			}
+			set({ isAuthenticated: true, isAuthLoading: false })
+		} catch (error) {
+			set({
+				isAuthLoading: false,
+				isAuthenticated: false,
+				jobsError:
+					error instanceof Error ? error.message : "Failed to initialize auth",
+			})
+		}
+	},
+
+	login: async (username: string, password: string) => {
+		set({ isAuthLoading: true })
+		try {
+			await authService.login({ username, password })
+			set({ isAuthenticated: true, isAuthLoading: false })
+		} catch (error) {
+			set({ isAuthLoading: false })
+			throw error
+		}
+	},
+
+	logout: () => {
+		authService.logout()
+		set({ isAuthenticated: false })
+	},
+
+	// Selection actions
+	setSelectedJobId: id => set({ selectedJobId: id }),
+	setSelectedHistoryId: id => set({ selectedHistoryId: id }),
+	setSelectedSource: source => set({ selectedSource: source }),
+	setSelectedDestination: destination =>
+		set({ selectedDestination: destination }),
+
+	// Job actions
 	fetchJobs: async () => {
 		set({ isLoadingJobs: true, jobsError: null })
 		try {
-			// Use mock data for development
-			set({ jobs: mockJobs, isLoadingJobs: false })
-
-			// Uncomment for real API call
-			// const jobs = await jobService.getJobs();
-			// set({ jobs, isLoadingJobs: false });
+			const jobs = await jobService.getJobs()
+			set({ jobs, isLoadingJobs: false })
+			return jobs
 		} catch (error) {
 			set({
 				isLoadingJobs: false,
 				jobsError:
 					error instanceof Error ? error.message : "Failed to fetch jobs",
 			})
+			throw error
 		}
 	},
 
 	addJob: async jobData => {
 		try {
-			// Create a new job with mock data
-			const newJob: Job = {
-				id: (mockJobs.length + 1).toString(),
-				...jobData,
-				createdAt: new Date(),
-				lastSync: "3 hours ago",
-				lastSyncStatus: "success",
-			}
-
-			// Add to mock data
-			mockJobs.push(newJob)
-
-			// Update store state
+			const newJob = await jobService.createJob(jobData)
 			set(state => ({ jobs: [...state.jobs, newJob] }))
 			return newJob
 		} catch (error) {
@@ -161,7 +231,9 @@ export const useAppStore = create<AppState>(set => ({
 		try {
 			const updatedJob = await jobService.updateJob(id, jobData)
 			set(state => ({
-				jobs: state.jobs.map(job => (job.id === id ? updatedJob : job)),
+				jobs: state.jobs.map(job =>
+					job.id.toString() === id ? updatedJob : job,
+				),
 			}))
 			return updatedJob
 		} catch (error) {
@@ -175,9 +247,10 @@ export const useAppStore = create<AppState>(set => ({
 
 	deleteJob: async id => {
 		try {
-			await jobService.deleteJob(id)
+			const numericId = typeof id === "string" ? parseInt(id, 10) : id
+			await jobService.deleteJob(numericId)
 			set(state => ({
-				jobs: state.jobs.filter(job => job.id !== id),
+				jobs: state.jobs.filter(job => job.id !== numericId),
 			}))
 		} catch (error) {
 			set({
@@ -188,195 +261,65 @@ export const useAppStore = create<AppState>(set => ({
 		}
 	},
 
-	runJob: async id => {
+	// Job Tasks actions
+	fetchJobTasks: async jobId => {
+		set({ isLoadingJobTasks: true, jobTasksError: null })
 		try {
-			await jobService.runJob(id)
-			// Optionally update job status in state
-			set(state => ({
-				jobs: state.jobs.map(job =>
-					job.id === id ? { ...job, status: "active" } : job,
-				),
-			}))
+			const response = await jobService.getJobTasks(jobId)
+			set({
+				jobTasks: response.data,
+				isLoadingJobTasks: false,
+			})
 		} catch (error) {
 			set({
-				jobsError: error instanceof Error ? error.message : "Failed to run job",
+				isLoadingJobTasks: false,
+				jobTasksError:
+					error instanceof Error ? error.message : "Failed to fetch job tasks",
 			})
 			throw error
 		}
 	},
 
-	setSelectedJobId: id => {
-		set({ selectedJobId: id })
-	},
-
-	// Job History actions
-	fetchJobHistory: async jobId => {
-		set({ isLoadingJobHistory: true, jobHistoryError: null })
+	// Task Logs actions
+	fetchTaskLogs: async (jobId, taskId, filePath) => {
+		set({ isLoadingTaskLogs: true, taskLogsError: null })
 		try {
-			// Mock data for development
-			const mockHistory: JobHistory[] = [
-				{
-					id: "hist-1",
-					jobId,
-					startTime: "2025-02-25 07:05 PM",
-					runtime: "30 seconds",
-					status: "success",
-				},
-				{
-					id: "hist-2",
-					jobId,
-					startTime: "2025-02-25 06:40 PM",
-					runtime: "45 seconds",
-					status: "success",
-				},
-				{
-					id: "hist-3",
-					jobId,
-					startTime: "2025-02-25 06:25 PM",
-					runtime: "35 seconds",
-					status: "failed",
-				},
-				{
-					id: "hist-4",
-					jobId,
-					startTime: "2025-02-25 05:35 PM",
-					runtime: "54 seconds",
-					status: "running",
-				},
-				{
-					id: "hist-5",
-					jobId,
-					startTime: "2025-02-25 03:27 PM",
-					runtime: "42 seconds",
-					status: "success",
-				},
-				{
-					id: "hist-6",
-					jobId,
-					startTime: "2025-02-25 10:25 AM",
-					runtime: "45 seconds",
-					status: "success",
-				},
-				{
-					id: "hist-7",
-					jobId,
-					startTime: "2025-02-25 07:25 AM",
-					runtime: "53 seconds",
-					status: "scheduled",
-				},
-				{
-					id: "hist-8",
-					jobId,
-					startTime: "2025-02-25 07:25 AM",
-					runtime: "1 minute 03 seconds",
-					status: "scheduled",
-				},
-				{
-					id: "hist-9",
-					jobId,
-					startTime: "2025-02-25 07:25 AM",
-					runtime: "1 minute 29 seconds",
-					status: "success",
-				},
-				{
-					id: "hist-10",
-					jobId,
-					startTime: "2025-02-25 07:25 AM",
-					runtime: "1 minute 45 seconds",
-					status: "success",
-				},
-			]
-
-			set({ jobHistory: mockHistory, isLoadingJobHistory: false })
-
-			// Uncomment for real API call
-			// const history = await jobService.getJobHistory(jobId);
-			// set({ jobHistory: history, isLoadingJobHistory: false });
+			const response = await jobService.getTaskLogs(jobId, taskId, filePath)
+			set({
+				taskLogs: response.data,
+				isLoadingTaskLogs: false,
+			})
 		} catch (error) {
 			set({
-				isLoadingJobHistory: false,
-				jobHistoryError:
-					error instanceof Error
-						? error.message
-						: "Failed to fetch job history",
+				isLoadingTaskLogs: false,
+				taskLogsError:
+					error instanceof Error ? error.message : "Failed to fetch task logs",
 			})
+			throw error
 		}
 	},
 
-	setSelectedHistoryId: id => {
-		set({ selectedHistoryId: id })
-	},
-
-	setSelectedSource: source => {
-		set({ selectedSource: source })
-	},
-
-	setSelectedDestination: destination => {
-		set({ selectedDestination: destination })
-	},
-
-	// Job Logs actions
-	fetchJobLogs: async () => {
-		set({ isLoadingJobLogs: true, jobLogsError: null })
-		try {
-			// Mock data for development
-			const logMessage =
-				"Lorem ipsum dolor sit amet consectetur. Urna neque imperdiet nisl libero praesent diam hendrerit urna tortor."
-			const mockLogs: JobLog[] = Array.from({ length: 20 }, (_, i) => {
-				let level: "debug" | "info" | "warning" | "error" = "debug"
-				if (i % 7 === 0) level = "info"
-				if (i % 11 === 0) level = "warning"
-				if (i % 13 === 0) level = "error"
-
-				return {
-					date: "26/02/2025",
-					time: "00:07:23",
-					level,
-					message: logMessage,
-				}
-			})
-
-			set({ jobLogs: mockLogs, isLoadingJobLogs: false })
-
-			// Uncomment for real API call
-			// const logs = await jobService.getJobLogs(jobId, historyId);
-			// set({ jobLogs: logs, isLoadingJobLogs: false });
-		} catch (error) {
-			set({
-				isLoadingJobLogs: false,
-				jobLogsError:
-					error instanceof Error ? error.message : "Failed to fetch job logs",
-			})
-		}
-	},
-
-	// Sources actions
+	// Source actions
 	fetchSources: async () => {
 		set({ isLoadingSources: true, sourcesError: null })
 		try {
-			// Only load mock data if the sources array is empty
-			// This prevents overwriting any sources that were added to the state
-			set(state => ({
-				sources: state.sources.length > 0 ? state.sources : mockSources,
-				isLoadingSources: false,
-			}))
-
-			// Uncomment for real API call
-			// const sources = await sourceService.getSources();
-			// set({ sources, isLoadingSources: false });
+			const sources = await sourceService.getSources()
+			set({ sources, isLoadingSources: false })
+			return sources
 		} catch (error) {
 			set({
 				isLoadingSources: false,
 				sourcesError:
 					error instanceof Error ? error.message : "Failed to fetch sources",
 			})
+			throw error
 		}
 	},
 
 	addSource: async sourceData => {
 		try {
 			const newSource = await sourceService.createSource(sourceData)
-			set(state => ({ sources: [...state.sources, newSource] }))
+			set(state => ({ sources: [...state.sources, newSource.data as Entity] }))
 			return newSource
 		} catch (error) {
 			set({
@@ -390,9 +333,11 @@ export const useAppStore = create<AppState>(set => ({
 	updateSource: async (id, sourceData) => {
 		try {
 			const updatedSource = await sourceService.updateSource(id, sourceData)
+			const updatedSourceData = updatedSource.data as Entity
+
 			set(state => ({
 				sources: state.sources.map(source =>
-					source.id === id ? updatedSource : source,
+					source.id.toString() === id ? updatedSourceData : source,
 				),
 			}))
 			return updatedSource
@@ -407,9 +352,10 @@ export const useAppStore = create<AppState>(set => ({
 
 	deleteSource: async id => {
 		try {
-			await sourceService.deleteSource(id)
+			const numericId = typeof id === "string" ? parseInt(id, 10) : id
+			await sourceService.deleteSource(numericId.toString())
 			set(state => ({
-				sources: state.sources.filter(source => source.id !== id),
+				sources: state.sources.filter(source => source.id !== numericId),
 			}))
 		} catch (error) {
 			set({
@@ -424,16 +370,9 @@ export const useAppStore = create<AppState>(set => ({
 	fetchDestinations: async () => {
 		set({ isLoadingDestinations: true, destinationsError: null })
 		try {
-			// Only load mock data if the destinations array is empty
-			// This prevents overwriting any destinations that were added to the state
-			set(state => ({
-				destinations:
-					state.destinations.length > 0 ? state.destinations : mockDestinations,
-				isLoadingDestinations: false,
-			}))
-			// Uncomment for real API call
-			// const destinations = await destinationService.getDestinations();
-			// set({ destinations, isLoadingDestinations: false });
+			const destinations = await destinationService.getDestinations()
+			set({ destinations, isLoadingDestinations: false })
+			return destinations
 		} catch (error) {
 			set({
 				isLoadingDestinations: false,
@@ -442,6 +381,7 @@ export const useAppStore = create<AppState>(set => ({
 						? error.message
 						: "Failed to fetch destinations",
 			})
+			throw error
 		}
 	},
 
@@ -450,7 +390,10 @@ export const useAppStore = create<AppState>(set => ({
 			const newDestination =
 				await destinationService.createDestination(destinationData)
 			set(state => ({
-				destinations: [...state.destinations, newDestination],
+				destinations: [
+					...state.destinations,
+					newDestination as unknown as Entity,
+				],
 			}))
 			return newDestination
 		} catch (error) {
@@ -466,11 +409,13 @@ export const useAppStore = create<AppState>(set => ({
 		try {
 			const updatedDestination = await destinationService.updateDestination(
 				id,
-				destinationData,
+				destinationData as EntityBase,
 			)
+			const updatedDestData = updatedDestination.data as Entity
+
 			set(state => ({
 				destinations: state.destinations.map(destination =>
-					destination.id === id ? updatedDestination : destination,
+					destination.id.toString() === id ? updatedDestData : destination,
 				),
 			}))
 			return updatedDestination
@@ -487,10 +432,11 @@ export const useAppStore = create<AppState>(set => ({
 
 	deleteDestination: async id => {
 		try {
-			await destinationService.deleteDestination(id)
+			const numericId = typeof id === "string" ? parseInt(id, 10) : id
+			await destinationService.deleteDestination(numericId)
 			set(state => ({
 				destinations: state.destinations.filter(
-					destination => destination.id !== id,
+					destination => destination.id !== numericId,
 				),
 			}))
 		} catch (error) {
@@ -504,9 +450,17 @@ export const useAppStore = create<AppState>(set => ({
 		}
 	},
 
+	// Modal actions
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
+	setShowFailureModal: show => set({ showFailureModal: show }),
 	setShowEntitySavedModal: show => set({ showEntitySavedModal: show }),
 	setShowSourceCancelModal: show => set({ showSourceCancelModal: show }),
 	setShowDeleteModal: show => set({ showDeleteModal: show }),
+	setShowDeleteJobModal: show => set({ showDeleteJobModal: show }),
+	setShowClearDataModal: show => set({ showClearDataModal: show }),
+	setShowClearDestinationAndSyncModal: show =>
+		set({ showClearDestinationAndSyncModal: show }),
+	setShowEditSourceModal: show => set({ showEditSourceModal: show }),
+	setShowEditDestinationModal: show => set({ showEditDestinationModal: show }),
 }))

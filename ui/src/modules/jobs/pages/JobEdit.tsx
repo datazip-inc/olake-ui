@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link, useParams } from "react-router-dom"
-import { message } from "antd"
+import { message, Spin } from "antd"
 import SourceEdit from "../../sources/pages/SourceEdit"
 import DestinationEdit from "../../destinations/pages/DestinationEdit"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
@@ -9,64 +9,99 @@ import StepProgress from "../components/StepIndicator"
 import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
-import { mockStreamData } from "../../../api/mockData"
+import { StreamData, Job, JobBase } from "../../../types"
+import { jobService } from "../../../api"
 
 type Step = "source" | "destination" | "schema" | "config"
 
 interface SourceData {
-	id: string
+	id?: string
 	name: string
 	type: string
 	config: Record<string, any>
+	version?: string
 }
 
 interface DestinationData {
-	id: string
+	id?: string
 	name: string
 	type: string
 	config: Record<string, any>
+	version?: string
 }
 
-// Custom wrapper components for SourceEdit and DestinationEdit to use in job flow
-const JobSourceEdit = ({ sourceData }: { sourceData: SourceData }) => {
-	return (
-		<div className="flex h-full flex-col">
-			<div
-				className="flex-1 overflow-auto"
-				style={{ paddingBottom: "80px" }}
-			>
-				<SourceEdit
-					fromJobFlow={true}
-					stepNumber="1"
-					stepTitle="Source config"
-					initialData={sourceData}
-				/>
-			</div>
+// Define streams data interface
+interface StreamsDataStructure {
+	selected_streams: {
+		[namespace: string]: {
+			stream_name: string
+			partition_regex: string
+			split_column: string
+		}[]
+	}
+	streams: StreamData[]
+}
+
+// Custom wrapper component for SourceEdit to use in job flow
+const JobSourceEdit = ({
+	sourceData,
+	updateSourceData,
+}: {
+	sourceData: SourceData
+	updateSourceData: (data: SourceData) => void
+}) => (
+	<div className="flex h-full flex-col">
+		<div className="flex-1 overflow-auto">
+			<SourceEdit
+				fromJobFlow={true}
+				stepNumber="1"
+				stepTitle="Source config"
+				initialData={sourceData}
+				onNameChange={name => updateSourceData({ ...sourceData, name })}
+				onConnectorChange={type => updateSourceData({ ...sourceData, type })}
+				onVersionChange={version =>
+					updateSourceData({ ...sourceData, version })
+				}
+				onFormDataChange={config => updateSourceData({ ...sourceData, config })}
+			/>
 		</div>
-	)
-}
+	</div>
+)
 
+// Custom wrapper component for DestinationEdit to use in job flow
 const JobDestinationEdit = ({
 	destinationData,
+	updateDestinationData,
 }: {
 	destinationData: DestinationData
-}) => {
-	return (
-		<div className="flex h-full flex-col">
-			<div
-				className="flex-1 overflow-auto"
-				style={{ paddingBottom: "80px" }}
-			>
-				<DestinationEdit
-					fromJobFlow={true}
-					stepNumber="2"
-					stepTitle="Destination config"
-					initialData={destinationData}
-				/>
-			</div>
+	updateDestinationData: (data: DestinationData) => void
+}) => (
+	<div className="flex h-full flex-col">
+		<div
+			className="flex-1 overflow-auto"
+			style={{ paddingBottom: "80px" }}
+		>
+			<DestinationEdit
+				fromJobFlow={true}
+				stepNumber="2"
+				stepTitle="Destination config"
+				initialData={destinationData}
+				onNameChange={name =>
+					updateDestinationData({ ...destinationData, name })
+				}
+				onConnectorChange={type =>
+					updateDestinationData({ ...destinationData, type })
+				}
+				onVersionChange={version =>
+					updateDestinationData({ ...destinationData, version })
+				}
+				onFormDataChange={config =>
+					updateDestinationData({ ...destinationData, config })
+				}
+			/>
 		</div>
-	)
-}
+	</div>
+)
 
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
@@ -74,7 +109,8 @@ const JobEdit: React.FC = () => {
 	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
-	const [docsMinimized, setDocsMinimized] = useState(false)
+	const [docsMinimized, setDocsMinimized] = useState(true)
+	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	// Source and destination data for job
 	const [sourceData, setSourceData] = useState<SourceData | null>(null)
@@ -82,22 +118,30 @@ const JobEdit: React.FC = () => {
 		useState<DestinationData | null>(null)
 
 	// Schema step states
-	const [selectedStreams, setSelectedStreams] = useState<string[]>(
-		mockStreamData.map(stream => stream.stream.name),
-	)
+	const [selectedStreams, setSelectedStreams] = useState<StreamsDataStructure>({
+		selected_streams: {},
+		streams: [],
+	})
+	const [initialStreamsData, setInitialStreamsData] =
+		useState<StreamsDataStructure | null>(null)
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
-	const [replicationFrequency, setReplicationFrequency] = useState("daily")
+	const [replicationFrequency, setReplicationFrequency] = useState("seconds")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
 	// Find the job from the store
-	const job = jobs.find(j => j.id === jobId)
+	useEffect(() => {
+		if (!jobs.length) {
+			fetchJobs()
+		}
+	}, [fetchJobs, jobs])
+
+	const job = jobs.find(j => j.id.toString() === jobId)
 
 	// Load job data on component mount
 	useEffect(() => {
-		// Make sure we have the jobs, sources, and destinations data
 		fetchJobs()
 		fetchSources()
 		fetchDestinations()
@@ -106,77 +150,205 @@ const JobEdit: React.FC = () => {
 	// Set initial form values when job data is available
 	useEffect(() => {
 		if (job) {
-			setJobName(job.name)
-			const sourceDataObj: SourceData = {
-				id: "mock-source-id",
-				name: job.source || "MongoDB Source",
-				type: "MongoDB",
-				config: {
-					hosts: ["localhost:27017"],
-					username: "admin",
-					password: "password",
-					authdb: "admin",
-					database: "test_db",
-					collection: "test_collection",
-				},
-			}
-			setSourceData(sourceDataObj)
-
-			// Load mock destination data
-			const destinationDataObj: DestinationData = {
-				id: "mock-destination-id",
-				name: job.destination || "AWS S3 Destination",
-				type: "Amazon S3",
-				config: {
-					writer: {
-						normalization: false,
-						s3_bucket: "my-test-bucket",
-						s3_region: "ap-south-1",
-						s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-						s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-						s3_path: "/data/test",
-					},
-					type: "PARQUET",
-				},
-			}
-			setDestinationData(destinationDataObj)
-			setSelectedStreams(["Payments", "public_raw_stream"])
-			setReplicationFrequency("daily")
-			setSchemaChangeStrategy("propagate")
-			setNotifyOnSchemaChanges(true)
+			initializeFromExistingJob(job)
 		} else {
-			setSourceData({
-				id: "new-source",
-				name: "New MongoDB Source",
-				type: "MongoDB",
-				config: {
-					hosts: ["localhost:27017"],
-					username: "admin",
-					password: "password",
-					authdb: "admin",
-					database: "my_database",
-					collection: "users",
-				},
-			})
-
-			setDestinationData({
-				id: "new-destination",
-				name: "New S3 Destination",
-				type: "Amazon S3",
-				config: {
-					writer: {
-						normalization: false,
-						s3_bucket: "my-new-bucket",
-						s3_region: "us-east-1",
-						s3_access_key: "AKIAXXXXXXXXXXXXXXXX",
-						s3_secret_key: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-						s3_path: "/data/new",
-					},
-					type: "PARQUET",
-				},
-			})
+			initializeForNewJob()
 		}
 	}, [job])
+
+	// Initialize form data from an existing job
+	const initializeFromExistingJob = (job: Job) => {
+		setJobName(job.name)
+
+		// Parse source config
+		let sourceConfig = parseConfig(job.source.config)
+
+		// Set source data from job
+		setSourceData({
+			name: job.source.name,
+			type: job.source.type,
+			config: sourceConfig,
+			version: job.source.version,
+		})
+
+		// Parse destination config
+		let destConfig = parseConfig(job.destination.config)
+
+		// Set destination data from job
+		setDestinationData({
+			name: job.destination.name,
+			type: job.destination.type,
+			config: destConfig,
+			version: job.destination.version,
+		})
+
+		// Set other job settings
+		setReplicationFrequency(job.frequency || "daily")
+
+		// Parse streams config
+		if (job.streams_config) {
+			try {
+				const parsedStreamsConfig = JSON.parse(job.streams_config)
+				const streamsData = processStreamsConfig(parsedStreamsConfig)
+
+				if (streamsData) {
+					setSelectedStreams(streamsData)
+					setInitialStreamsData(streamsData)
+				}
+			} catch (e) {
+				console.error("Error parsing streams config:", e)
+			}
+		}
+	}
+
+	// Process streams configuration into a consistent format
+	const processStreamsConfig = (
+		parsedConfig: any,
+	): StreamsDataStructure | null => {
+		// Handle case where streams_config is a full data structure
+		if (parsedConfig.streams && parsedConfig.selected_streams) {
+			return parsedConfig as StreamsDataStructure
+		}
+
+		// Handle case where streams_config is just an array of stream names
+		else if (Array.isArray(parsedConfig)) {
+			const streamsData: StreamsDataStructure = {
+				selected_streams: { default: [] },
+				streams: [],
+			}
+
+			parsedConfig.forEach((streamName: string) => {
+				streamsData.selected_streams.default.push({
+					stream_name: streamName,
+					partition_regex: "",
+					split_column: "",
+				})
+
+				// Add empty stream objects that will be populated later by API
+				streamsData.streams.push({
+					stream: {
+						name: streamName,
+						namespace: "default",
+					},
+				} as StreamData)
+			})
+
+			return streamsData
+		}
+
+		// Handle case where streams_config is just selected_streams object
+		else if (typeof parsedConfig === "object") {
+			return {
+				selected_streams: parsedConfig,
+				streams: [],
+			}
+		}
+
+		return null
+	}
+
+	// Initialize defaults for a new job
+	const initializeForNewJob = () => {
+		setSourceData({
+			name: "New Source",
+			type: "MongoDB",
+			config: {
+				hosts: ["localhost:27017"],
+				username: "",
+				password: "",
+				authdb: "admin",
+				database: "",
+				collection: "",
+			},
+			version: "latest",
+		})
+
+		setDestinationData({
+			name: "New Destination",
+			type: "s3",
+			config: {
+				normalization: false,
+				s3_bucket: "",
+				s3_region: "us-east-1",
+				type: "PARQUET",
+			},
+			version: "latest",
+		})
+
+		setJobName("New Job")
+	}
+
+	// Helper function to safely parse JSON config strings
+	const parseConfig = (
+		config: string | Record<string, any>,
+	): Record<string, any> => {
+		if (typeof config === "string") {
+			try {
+				return JSON.parse(config)
+			} catch (error) {
+				console.error("Error parsing config:", error)
+				return {}
+			}
+		}
+		return config as Record<string, any>
+	}
+
+	// Handle job submission
+	const handleJobSubmit = async () => {
+		if (!sourceData || !destinationData) {
+			message.error("Source and destination data are required")
+			return
+		}
+
+		setIsSubmitting(true)
+
+		try {
+			// Create the job update payload
+			const jobUpdatePayload: JobBase = {
+				name: jobName,
+				source: {
+					name: sourceData.name,
+					type: sourceData.type,
+					config:
+						typeof sourceData.config === "string"
+							? sourceData.config
+							: JSON.stringify(sourceData.config),
+					version: sourceData.version || "latest",
+				},
+				destination: {
+					name: destinationData.name,
+					type: destinationData.type,
+					config:
+						typeof destinationData.config === "string"
+							? destinationData.config
+							: JSON.stringify(destinationData.config),
+					version: destinationData.version || "latest",
+				},
+				streams_config:
+					typeof selectedStreams === "string"
+						? selectedStreams
+						: JSON.stringify(selectedStreams),
+				frequency: replicationFrequency,
+			}
+
+			if (jobId) {
+				await jobService.updateJob(jobId, jobUpdatePayload)
+				message.success("Job updated successfully!")
+			} else {
+				await jobService.createJob(jobUpdatePayload)
+				message.success("Job created successfully!")
+			}
+
+			// Refresh jobs and navigate back to jobs list
+			fetchJobs()
+			navigate("/jobs")
+		} catch (error) {
+			console.error("Error saving job:", error)
+			message.error("Failed to save job. Please try again.")
+		} finally {
+			setIsSubmitting(false)
+		}
+	}
 
 	const handleNext = () => {
 		if (currentStep === "source") {
@@ -186,8 +358,7 @@ const JobEdit: React.FC = () => {
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
-			message.success("Job updated successfully!")
-			navigate("/jobs")
+			handleJobSubmit()
 		}
 	}
 
@@ -209,7 +380,7 @@ const JobEdit: React.FC = () => {
 	if (!job && jobId) {
 		return (
 			<div className="flex h-screen items-center justify-center">
-				<div className="text-lg">Loading job data...</div>
+				<Spin tip="Loading job data..." />
 			</div>
 		)
 	}
@@ -219,21 +390,26 @@ const JobEdit: React.FC = () => {
 			{/* Header */}
 			<div className="bg-white px-6 pb-3 pt-6">
 				<div className="flex items-center justify-between">
-					<Link
-						to="/jobs"
-						className="flex items-center gap-2"
-					>
-						<ArrowLeft className="mr-1 size-6" />
-						<span className="text-2xl font-bold">{jobName}</span>
-					</Link>
-
+					<div className="flex items-center gap-2">
+						<Link
+							to="/jobs"
+							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+						>
+							<ArrowLeft className="mr-1 size-5" />
+						</Link>
+						<div className="text-2xl font-bold">{jobName || "New Job"}</div>
+					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
 				</div>
 			</div>
 
 			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
+			<div
+				className={`flex flex-1 overflow-hidden border-gray-200 ${
+					currentStep === "config" || currentStep === "schema" ? "border-t" : ""
+				}`}
+			>
 				{/* Left content */}
 				<div
 					className={`${
@@ -243,59 +419,58 @@ const JobEdit: React.FC = () => {
 							: "w-full"
 					} relative flex flex-col`}
 				>
-					<div className="flex-1 overflow-auto pb-0">
+					<div className="flex-1 pb-0">
 						{currentStep === "source" && sourceData && (
-							<div className="w-full">
-								<JobSourceEdit sourceData={sourceData} />
-							</div>
+							<JobSourceEdit
+								sourceData={sourceData}
+								updateSourceData={setSourceData}
+							/>
 						)}
 
 						{currentStep === "destination" && destinationData && (
-							<div className="w-full">
-								<JobDestinationEdit destinationData={destinationData} />
-							</div>
+							<JobDestinationEdit
+								destinationData={destinationData}
+								updateDestinationData={setDestinationData}
+							/>
 						)}
 
 						{currentStep === "schema" && (
-							<div className="w-full">
-								<SchemaConfiguration
-									selectedStreams={selectedStreams}
-									setSelectedStreams={setSelectedStreams}
-									stepNumber={3}
-									stepTitle="Schema evaluation"
-								/>
-							</div>
+							<SchemaConfiguration
+								selectedStreams={selectedStreams as any}
+								setSelectedStreams={setSelectedStreams as any}
+								stepNumber={3}
+								stepTitle="Schema evaluation"
+								sourceName={sourceData?.name || ""}
+								sourceConnector={sourceData?.type || ""}
+								sourceVersion={sourceData?.version || "latest"}
+								sourceConfig={JSON.stringify(sourceData?.config || {})}
+								initialStreamsData={initialStreamsData as any}
+							/>
 						)}
 
 						{currentStep === "config" && (
-							<div className="w-full">
-								<JobConfiguration
-									jobName={jobName}
-									setJobName={setJobName}
-									replicationFrequency={replicationFrequency}
-									setReplicationFrequency={setReplicationFrequency}
-									schemaChangeStrategy={schemaChangeStrategy}
-									setSchemaChangeStrategy={setSchemaChangeStrategy}
-									notifyOnSchemaChanges={notifyOnSchemaChanges}
-									setNotifyOnSchemaChanges={setNotifyOnSchemaChanges}
-									stepNumber={4}
-									stepTitle="Job Configuration"
-								/>
-							</div>
+							<JobConfiguration
+								jobName={jobName}
+								setJobName={setJobName}
+								replicationFrequency={replicationFrequency}
+								setReplicationFrequency={setReplicationFrequency}
+								schemaChangeStrategy={schemaChangeStrategy}
+								setSchemaChangeStrategy={setSchemaChangeStrategy}
+								notifyOnSchemaChanges={notifyOnSchemaChanges}
+								setNotifyOnSchemaChanges={setNotifyOnSchemaChanges}
+								stepNumber={4}
+								stepTitle="Job Configuration"
+							/>
 						)}
 					</div>
 				</div>
 
 				{/* Documentation panel */}
-				{(currentStep === "schema" || currentStep === "config") && (
+				{currentStep === "schema" && (
 					<DocumentationPanel
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
-						docUrl={
-							currentStep === "schema"
-								? "https://olake.io/docs/schema-configuration"
-								: "https://olake.io/docs/job-configuration"
-						}
+						docUrl={`https://olake.io/docs/connectors/${sourceData?.type.toLowerCase()}/config`}
 					/>
 				)}
 			</div>
@@ -319,8 +494,13 @@ const JobEdit: React.FC = () => {
 					<button
 						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleNext}
+						disabled={isSubmitting}
 					>
-						{currentStep === "config" ? "Finish" : "Next"}
+						{currentStep === "config"
+							? isSubmitting
+								? "Saving..."
+								: "Finish"
+							: "Next"}
 						{currentStep !== "config" && (
 							<ArrowRight className="size-4 text-white" />
 						)}
