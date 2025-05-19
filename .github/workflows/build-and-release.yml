@@ -33,17 +33,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.environment == 'master' && 'master' || (github.event.inputs.environment == 'staging' && 'staging' || 'develop') }}
+          ref: ${{ github.event.inputs.environment == 'master' && 'master' || (github.event.inputs.environment == 'staging' && 'staging' || github.event.inputs.environment == 'dev' && 'feat/bff-api' || 'develop') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: "ui/pnpm-lock.yaml"
+          # cache: "pnpm"
+          # cache-dependency-path: "ui/pnpm-lock.yaml"
 
       - name: Install pnpm
         run: npm install -g pnpm
+
+      - name: Cache pnpm store
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('ui/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
 
       - name: Setup environment variables
         run: |
