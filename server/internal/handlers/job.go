@@ -400,7 +400,7 @@ func (c *JobHandler) SyncJob() {
 	// }
 	stateJSON, _ := json.Marshal(syncState)
 	job.State = string(stateJSON)
-
+	// job.Active = true
 	// Update job in database
 	if err := c.jobORM.Update(job); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
@@ -544,11 +544,9 @@ func (c *JobHandler) GetTaskLogs() {
 
 	// Get home directory
 	homeDir := docker.GetDefaultConfigDir()
-	hostOutputDir := strings.Replace(homeDir, "/tmp/olake-config", os.Getenv("PERSISTENT_DIR"), 1)
-	// Check if the main sync directory exists
-	mainSyncDir := filepath.Join(hostOutputDir, req.FilePath)
+	mainSyncDir := filepath.Join(homeDir, req.FilePath)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync directory found")
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
 		return
 	}
 
