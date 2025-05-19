@@ -1,3 +1,12 @@
+version: "3.8" # It's good practice to specify the Compose file version
+
+x-app-defaults:
+  host_persistence_path: &hostPersistencePath /home/azureuser/temp # Edit this to your own path
+  worker_config_volume_details: &workerConfigVolumeDetails
+    type: bind
+    source: *hostPersistencePath
+    target: /tmp/olake-config
+
 services:
   olake-app:
     build:
@@ -23,10 +32,11 @@ services:
       - temporal-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
-      - /home/azureuser/temp:/tmp/olake-config # Persist config data
+      # Use the anchored volume details map by merging it
+      - <<: *workerConfigVolumeDetails
     environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - PERSISTENCE_DIR=/home/azureuser/temp
+      TEMPORAL_ADDRESS: "temporal:7233"
+      PERSISTENCE_DIR: *hostPersistencePath # Use the anchored path for the env var
     depends_on:
       - temporal
       - olake-app # Worker now depends on the combined app
@@ -96,3 +106,4 @@ volumes:
     driver: local
   olake-config-data:
     driver: local
+
