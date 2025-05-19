@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // Runner is responsible for executing Docker commands
@@ -31,11 +32,7 @@ func NewRunner(workingDir string) *Runner {
 
 // GetDefaultConfigDir returns the default directory for storing config files
 func GetDefaultConfigDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "/tmp/olake-config"
-	}
-	return filepath.Join(homeDir, ".olake")
+	return "/tmp/olake-config"
 }
 
 // Command represents a Docker command type
@@ -125,9 +122,12 @@ func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, conf
 	}
 
 	// Construct Docker command arguments
+
+	hostOutputDir := strings.Replace(outputDir, "/tmp/olake-config", os.Getenv("PERSISTENT_DIR"), 1)
+	fmt.Printf("hostOutputDir %s\n", hostOutputDir)
 	dockerArgs := []string{
 		"run", "--pull=always",
-		"-v", fmt.Sprintf("%s:/mnt/config", outputDir),
+		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		// Add user mapping to help with permissions in Docker
 		"-u", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		r.GetDockerImageName(sourceType, version),
@@ -251,7 +251,6 @@ func (r *Runner) GetCatalog(sourceType, version, config string, workflowID strin
 
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
-	// Create sync folder
 	syncFolderName := workflowID
 	// Create directory for output with proper permissions
 	syncDir := filepath.Join(r.WorkingDir, syncFolderName)

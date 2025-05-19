@@ -544,9 +544,9 @@ func (c *JobHandler) GetTaskLogs() {
 
 	// Get home directory
 	homeDir := docker.GetDefaultConfigDir()
-
+	hostOutputDir := strings.Replace(homeDir, "/tmp/olake-config", os.Getenv("PERSISTENT_DIR"), 1)
 	// Check if the main sync directory exists
-	mainSyncDir := filepath.Join(homeDir, req.FilePath)
+	mainSyncDir := filepath.Join(hostOutputDir, req.FilePath)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync directory found")
 		return
