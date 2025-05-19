@@ -76,12 +76,12 @@ TEMPORAL_ADDRESS=temporal:7233
 
 3. **Start all services:**
     ```bash
-    docker-compose up -d
+    docker compose up -d
     ```
 
 4. **Check that everything is running:**
     ```bash
-    docker-compose ps
+    docker compose ps
     ```
 
 5. **Access the services:**
@@ -91,7 +91,7 @@ TEMPORAL_ADDRESS=temporal:7233
 
 6. **Stopping the stack:**
     ```bash
-    docker-compose down
+    docker compose down
     ```
 
 ### Notes
