@@ -1,16 +1,15 @@
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath   /Users/macos/temp      # Edit this to your persistence directory
-  app_config_path: &appConfigVolumeDetails      /Users/macos/temp      # Edit this to your app config directory
-
-  app_config_volume_details: &appConfigPath
-    type: bind
-    source: *appConfigVolumeDetails
-    target: /opt/backend/conf
-  worker_config_volume_details: &workerConfigVolumeDetails
-    type: bind
-    source: *hostPersistencePath
-    target: /tmp/olake-config
-
+    host_persistence_path: &hostPersistencePath   /tmp/olake-config
+    worker_config_volume_details: &workerConfigVolumeDetails
+      type: bind
+      source: *hostPersistencePath
+      target: /tmp/olake-config
+  
+x-signup-defaults:
+  username: &defaultUsername "admin"
+  password: &defaultPassword "password"
+  email: &defaultEmail "test@example.com"
+  
 services:
   olake-app:
     image: olakego/ui:dev-latest
@@ -23,7 +22,6 @@ services:
       - "8000:8000"  # Expose UI port
       - "8080:8080"  # Expose backend API port
     volumes:
-      - <<: *appConfigPath
       - <<: *workerConfigVolumeDetails
     networks:
       - temporal-network
@@ -31,7 +29,28 @@ services:
       - postgresql
       - temporal
     restart: unless-stopped
-
+  
+  signup-init:
+    image: busybox:latest
+    container_name: olake-signup-init
+    networks:
+      - temporal-network
+    depends_on:
+      - olake-app
+    environment:
+      USERNAME: *defaultUsername
+      PASSWORD: *defaultPassword
+      EMAIL: *defaultEmail
+    command: >
+      sh -c "
+        echo 'Waiting for olake-app to start...' &&
+        sleep 10 &&
+        echo 'Creating initial user...' &&
+        wget -q --post-data='{\"username\":\"'$USERNAME'\",\"password\":\"'$PASSWORD'\",\"email\":\"'$EMAIL'\"}' --header='Content-Type: application/json' http://olake-app:8080/signup &&
+        echo 'User creation complete'
+      "
+    restart: "no"
+  
   temporal-worker:
     image: olakego/ui-worker:dev-latest
     pull_policy: always
@@ -48,7 +67,7 @@ services:
       - temporal
       - olake-app
     restart: unless-stopped
-
+  
   postgresql:
     container_name: temporal-postgresql
     image: postgres:13
@@ -64,7 +83,7 @@ services:
     volumes:
       - temporal-postgresql-data:/var/lib/postgresql/data
     restart: unless-stopped
-
+  
   temporal:
     container_name: temporal
     image: temporalio/auto-setup:1.22.3
@@ -86,7 +105,7 @@ services:
     ports:
       - "7233:7233"  # Bind to all interfaces
     restart: unless-stopped
-
+  
   temporal-ui:
     container_name: temporal-ui
     image: temporalio/ui:2.16.2
@@ -99,7 +118,7 @@ services:
     ports:
       - "8081:8080"  # Bind to all interfaces
     restart: unless-stopped
-
+  
   elasticsearch:
     container_name: temporal-elasticsearch
     image: elasticsearch:7.17.10
@@ -118,12 +137,12 @@ services:
     volumes:
       - temporal-elasticsearch-data:/usr/share/elasticsearch/data
     restart: unless-stopped
-
+  
 networks:
   temporal-network:
     driver: bridge
     name: temporal-network
-
+  
 volumes:
   temporal-postgresql-data:
     driver: local
@@ -131,4 +150,4 @@ volumes:
     driver: local
   temporal-elasticsearch-data:
     driver: local
-
+  

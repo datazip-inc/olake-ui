@@ -41,24 +41,6 @@ You can run the entire Olake stack (UI, backend, Temporal worker, Temporal servi
 - [Docker](https://docs.docker.com/get-docker/) installed (Docker Desktop recommended for Mac/Windows)
 - [Docker Compose](https://docs.docker.com/compose/) (comes with Docker Desktop)
 
-### Configuration: `app.conf`
-
-You **must** provide an `app.conf` file with your backend configuration.  
-This file should be placed in the directory specified by the `app_config_path` variable in your `docker-compose.yml` (see the `x-app-defaults` section).
-
-**Example `app.conf`:**
-
-```ini
-appname = olake-server
-httpport = 8080
-runmode = dev
-copyrequestbody = true
-postgresdb = postgres://temporal:temporal@postgresql:5432/temporal
-logsdir = ./logger/logs
-sessionon = true
-TEMPORAL_ADDRESS=temporal:7233
-```
-
 ### Quick Start
 
 1. **Clone the repository:**
@@ -68,7 +50,7 @@ TEMPORAL_ADDRESS=temporal:7233
    cd olake-app
    ```
 
-2. **Edit persistence/config paths (optional):**
+2. **Edit persistence/config paths (required):**
 
    - By default, the `docker-compose.yml` uses `/Users/macos/temp` for persistent data and config.  
      You can change this to any directory on your host by editing the `x-app-defaults` section at the top of `docker-compose.yml`:
@@ -79,23 +61,40 @@ TEMPORAL_ADDRESS=temporal:7233
      ```
    - Make sure the directory exists and is writable.
 
-3. **Start all services:**
+3. **Customizing Admin User:**
+
+   The stack automatically creates an initial admin user on first startup. The default credentials are:
+
+   - Username: "admin"
+   - Password: "password"
+   - Email: "test@example.com"
+
+   To change these defaults, edit the `x-signup-defaults` section in your `docker-compose.yml`:
+
+   ```yaml
+   x-signup-defaults:
+   username: &defaultUsername "your-custom-username"
+   password: &defaultPassword "your-secure-password"
+   email: &defaultEmail "your-email@example.com"
+   ```
+
+4. **Start all services:**
 
    ```bash
    docker compose up -d
    ```
 
-4. **Check that everything is running:**
+5. **Check that everything is running:**
 
    ```bash
    docker compose ps
    ```
 
-5. **Access the services:**
+6. **Access the services:**
 
    - **Frontend UI:** [http://localhost:8000](http://localhost:8000)
 
-6. **Stopping the stack:**
+7. **Stopping the stack:**
    ```bash
    docker compose down
    ```
