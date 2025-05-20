@@ -349,7 +349,9 @@ const CreateDestination = forwardRef<
 		}, [connector, catalog, version])
 
 		useEffect(() => {
-			setFormData({})
+			if (!fromJobFlow) {
+				setFormData({})
+			}
 		}, [connector, catalog])
 
 		const handleCancel = () => {

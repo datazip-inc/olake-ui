@@ -16,7 +16,7 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
 import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import { sourceService } from "../../../api/services/sourceService"
-import { getConnectorImage } from "../../../utils/utils"
+import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 
 type SetupType = "new" | "existing"
@@ -277,7 +277,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		useEffect(() => {
 			if (initialConnector) {
-				setConnector(initialConnector)
+				setConnector(getConnectorLabel(initialConnector))
 			}
 		}, [initialConnector])
 

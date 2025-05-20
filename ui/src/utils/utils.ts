@@ -110,7 +110,9 @@ export const getConnectorLabel = (type: string): string => {
 			return "MongoDB"
 		case "postgres":
 			return "Postgres"
-		default:
+		case "mysql":
 			return "MySQL"
+		default:
+			return "MongoDB"
 	}
 }
