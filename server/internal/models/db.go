@@ -91,3 +91,13 @@ type Catalog struct {
 func (c *Catalog) TableName() string {
 	return constants.TableNameMap[constants.CatalogTable]
 }
+
+type Session struct {
+	SessionKey    string    `json:"session_key" orm:"column(session_key);pk;size(64)"`
+	SessionData   string    `json:"session_data" orm:"column(session_data);type(text)"`
+	SessionExpiry time.Time `json:"session_expiry" orm:"column(session_expiry)"`
+}
+
+func (s *Session) TableName() string {
+	return constants.TableNameMap[constants.SessionTable]
+}

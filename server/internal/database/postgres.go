@@ -44,6 +44,9 @@ func Init(uri string) error {
 		new(models.User),
 		new(models.Catalog),
 	)
+	if web.BConfig.WebConfig.Session.SessionOn {
+		orm.RegisterModel(new(models.Session))
+	}
 
 	// Create tables if they do not exist
 	err = orm.RunSyncdb("default", false, true)
