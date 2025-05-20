@@ -1,11 +1,5 @@
 x-app-defaults:
   host_persistence_path: &hostPersistencePath   /Users/macos/temp      # Edit this to your persistence directory
-  app_config_path: &appConfigVolumeDetails      /Users/macos/temp      # Edit this to your app config directory
-
-  app_config_volume_details: &appConfigPath
-    type: bind
-    source: *appConfigVolumeDetails
-    target: /opt/backend/conf
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
@@ -23,7 +17,6 @@ services:
       - "5173:5173"  # Expose UI port
       - "8080:8080"  # Expose backend API port
     volumes:
-      - <<: *appConfigPath
       - <<: *workerConfigVolumeDetails
     networks:
       - temporal-network

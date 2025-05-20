@@ -20,24 +20,6 @@ You can run the entire Olake stack (UI, Backend, Temporal worker, Temporal servi
 - [Docker](https://docs.docker.com/get-docker/) installed and running (Docker Desktop recommended for Mac/Windows)
 - [Docker Compose](https://docs.docker.com/compose/) (comes with Docker Desktop)
 
-### Configuration: `app.conf`
-
-You **must** provide an `app.conf` file with your backend configuration.  
-This file should be placed in the directory specified by the `app_config_path` variable in your `docker-compose.yml` (see the `x-app-defaults` section).
-
-**Example `app.conf`:**
-
-```ini
-appname = olake-server
-httpport = 8080
-runmode = dev
-copyrequestbody = true
-postgresdb = postgres://temporal:temporal@postgresql:5432/postgres?sslmode=disable
-logsdir = ./logger/logs
-sessionon = true
-TEMPORAL_ADDRESS=temporal:7233
-```
-
 ### Quick Start
 
 1. **Clone the repository:**
