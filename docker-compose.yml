@@ -1,0 +1,134 @@
+x-app-defaults:
+  host_persistence_path: &hostPersistencePath   /Users/macos/temp      # Edit this to your persistence directory
+  app_config_path: &appConfigVolumeDetails      /Users/macos/temp      # Edit this to your app config directory
+
+  app_config_volume_details: &appConfigPath
+    type: bind
+    source: *appConfigVolumeDetails
+    target: /opt/backend/conf
+  worker_config_volume_details: &workerConfigVolumeDetails
+    type: bind
+    source: *hostPersistencePath
+    target: /tmp/olake-config
+
+services:
+  olake-app:
+    image: olakego/ui:dev-latest
+    pull_policy: always
+    container_name: olake-app
+    environment:
+      PERSISTENT_DIR: *hostPersistencePath
+      POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
+    ports:
+      - "5173:5173"  # Expose UI port
+      - "8080:8080"  # Expose backend API port
+    volumes:
+      - <<: *appConfigPath
+      - <<: *workerConfigVolumeDetails
+    networks:
+      - temporal-network
+    depends_on:
+      - postgresql
+      - temporal
+    restart: unless-stopped
+
+  temporal-worker:
+    image: olakego/ui-worker:dev-latest
+    pull_policy: always
+    container_name: olake-temporal-worker
+    networks:
+      - temporal-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
+      - <<: *workerConfigVolumeDetails
+    environment:
+      TEMPORAL_ADDRESS: "temporal:7233"
+      PERSISTENT_DIR: *hostPersistencePath
+    depends_on:
+      - temporal
+      - olake-app
+    restart: unless-stopped
+
+  postgresql:
+    container_name: temporal-postgresql
+    image: postgres:13
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    networks:
+      - temporal-network
+    expose:
+      - 5432
+    ports:
+      - "5433:5432"  # Bind to all interfaces
+    volumes:
+      - temporal-postgresql-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  temporal:
+    container_name: temporal
+    image: temporalio/auto-setup:1.22.3
+    depends_on:
+      - postgresql
+    environment:
+      - DB=postgres12 # This refers to the postgresql service type
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql # Service name of the postgres container
+      - ENABLE_ES=true
+      - ES_SEEDS=elasticsearch 
+      - ES_VERSION=v7 
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    networks:
+      - temporal-network
+    ports:
+      - "7233:7233"  # Bind to all interfaces
+    restart: unless-stopped
+
+  temporal-ui:
+    container_name: temporal-ui
+    image: temporalio/ui:2.16.2
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    networks:
+      - temporal-network
+    ports:
+      - "8081:8080"  # Bind to all interfaces
+    restart: unless-stopped
+
+  elasticsearch:
+    container_name: temporal-elasticsearch
+    image: elasticsearch:7.17.10
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+    networks:
+      - temporal-network
+    expose:
+      - 9200
+    volumes:
+      - temporal-elasticsearch-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
+
+volumes:
+  temporal-postgresql-data:
+    driver: local
+  olake-config-data:
+    driver: local
+  temporal-elasticsearch-data:
+    driver: local
+
