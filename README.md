@@ -96,7 +96,7 @@ TEMPORAL_ADDRESS=temporal:7233
 
 ### Notes
 
-- The first time you run, Docker will pull all required images and build any local ones if needed.
+- The first time you run, Docker will pull all required images.
 - Data and configuration are persisted in the directory you set in `docker-compose.yml`.
 - The Temporal worker requires access to the Docker socket to launch containers for jobs. This is handled by the volume mount in the compose file.
 
