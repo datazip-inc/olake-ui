@@ -57,7 +57,6 @@ You can run the entire Olake stack (UI, backend, Temporal worker, Temporal servi
      ```yaml
      x-app-defaults:
        host_persistence_path: &hostPersistencePath /your/host/path
-       app_config_path: &appConfigVolumeDetails /your/host/path
      ```
    - Make sure the directory exists and is writable.
 
