@@ -1,18 +1,20 @@
 x-app-defaults:
-    host_persistence_path: &hostPersistencePath   /Users/macos/temp
-    worker_config_volume_details: &workerConfigVolumeDetails
-      type: bind
-      source: *hostPersistencePath
-      target: /tmp/olake-config
-  
+  host_persistence_path: &hostPersistencePath   /tmp/olake-config
+  worker_config_volume_details: &workerConfigVolumeDetails
+    type: bind
+    source: *hostPersistencePath
+    target: /tmp/olake-config
+
 x-signup-defaults:
   username: &defaultUsername "admin"
   password: &defaultPassword "password"
-  email: &defaultEmail "test@example.com"
-  
+  email: &defaultEmail "admin@example.com" # Changed to admin@example.com for clarity
+
 services:
   olake-app:
-    image: olakego/ui:dev-latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     pull_policy: always
     container_name: olake-app
     environment:
@@ -26,31 +28,63 @@ services:
     networks:
       - temporal-network
     depends_on:
-      - postgresql
-      - temporal
+      postgresql:
+        condition: service_healthy # Wait for postgres to be healthy
+      temporal:
+        condition: service_started # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
-  
+    healthcheck: # Updated healthcheck for olake-app
+      test: ["CMD-SHELL", "nc -z localhost 8080"] # Check if port 8080 is listening
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give it time to start up before first health check
+
   signup-init:
-    image: busybox:latest
+    image: busybox:latest # busybox usually has nc and a basic curl
     container_name: olake-signup-init
     networks:
       - temporal-network
     depends_on:
-      - olake-app
+      olake-app:
+        condition: service_healthy # Wait for olake-app to be healthy
     environment:
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
       EMAIL: *defaultEmail
+      OLAKE_APP_URL: "http://olake-app:8080/signup"
     command: >
       sh -c "
-        echo 'Waiting for olake-app to start...' &&
-        sleep 10 &&
-        echo 'Creating initial user...' &&
-        wget -q --post-data='{\"username\":\"'$USERNAME'\",\"password\":\"'$PASSWORD'\",\"email\":\"'$EMAIL'\"}' --header='Content-Type: application/json' http://olake-app:8080/signup &&
-        echo 'User creation complete'
+        echo 'signup-init: Waiting for olake-app to be healthy based on depends_on condition...';
+        # The depends_on condition: service_healthy should handle the waiting.
+
+        echo 'signup-init: Creating initial user...';
+        echo \"signup-init: Using credentials: username=$${USERNAME} password=*** email=$${EMAIL}\";
+
+        # Construct JSON payload carefully
+        JSON_PAYLOAD=$$(printf '{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\"}' \"$${USERNAME}\" \"$${PASSWORD}\" \"$${EMAIL}\")
+        echo \"signup-init: Sending payload: $${JSON_PAYLOAD} to $${OLAKE_APP_URL}\"
+
+        # Use curl to send the request, capture HTTP code and response body
+        HTTP_RESPONSE_CODE=$$(curl -s -o /dev/stderr -w '%{http_code}' \
+          -X POST \
+          -H 'Content-Type: application/json' \
+          -d \"$${JSON_PAYLOAD}\" \
+          \"$${OLAKE_APP_URL}\")
+
+        echo \"signup-init: Signup request sent. HTTP Response Code: $${HTTP_RESPONSE_CODE}\";
+        # The actual response body from olake-app will be printed to stderr (and thus to docker logs) by the '-o /dev/stderr' curl option.
+
+        if [ \"$${HTTP_RESPONSE_CODE}\" -ge 200 ] && [ \"$${HTTP_RESPONSE_CODE}\" -lt 300 ]; then
+          echo 'signup-init: User creation request successful (HTTP $${HTTP_RESPONSE_CODE}).';
+        else
+          echo 'signup-init: User creation request FAILED (HTTP $${HTTP_RESPONSE_CODE}). Check logs for response body from server.';
+          exit 1; # Exit with error if signup failed
+        fi
+        echo 'signup-init: User creation process complete.';
       "
     restart: "no"
-  
+
   temporal-worker:
     image: olakego/ui-worker:dev-latest
     pull_policy: always
@@ -58,67 +92,81 @@ services:
     networks:
       - temporal-network
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket
+      - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
       PERSISTENT_DIR: *hostPersistencePath
     depends_on:
-      - temporal
-      - olake-app
+      temporal:
+        condition: service_started # Or service_healthy if temporal has a healthcheck
+      olake-app:
+        condition: service_healthy
     restart: unless-stopped
-  
+
   postgresql:
     container_name: temporal-postgresql
     image: postgres:13
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
+      # POSTGRES_DB: olakedb # Not strictly needed here as olake-app specifies its full DSN
+                           # but good for pg_isready if it needs a specific DB
     networks:
       - temporal-network
     expose:
       - 5432
     ports:
-      - "5433:5432"  # Bind to all interfaces
+      - "5433:5432"
     volumes:
       - temporal-postgresql-data:/var/lib/postgresql/data
     restart: unless-stopped
-  
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -h localhost -p 5432"] # Checks if server is accepting connections
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   temporal:
     container_name: temporal
     image: temporalio/auto-setup:1.22.3
     depends_on:
-      - postgresql
+      postgresql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy # Wait for elasticsearch to be healthy
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
-      - POSTGRES_SEEDS=postgresql # Service name of the postgres container
+      - POSTGRES_SEEDS=postgresql
       - ENABLE_ES=true
-      - ES_SEEDS=elasticsearch 
-      - ES_VERSION=v7 
+      - ES_SEEDS=elasticsearch
+      - ES_VERSION=v7
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
     networks:
       - temporal-network
     ports:
-      - "7233:7233"  # Bind to all interfaces
+      - "7233:7233"
     restart: unless-stopped
-  
+    # For auto-setup, a specific healthcheck might be complex; relying on dependencies.
+
   temporal-ui:
     container_name: temporal-ui
     image: temporalio/ui:2.16.2
     depends_on:
-      - temporal
+      temporal:
+        condition: service_started # Assuming temporal starts its services quickly
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     networks:
       - temporal-network
     ports:
-      - "8081:8080"  # Bind to all interfaces
+      - "8081:8080"
     restart: unless-stopped
-  
+
   elasticsearch:
     container_name: temporal-elasticsearch
     image: elasticsearch:7.17.10
@@ -137,12 +185,17 @@ services:
     volumes:
       - temporal-elasticsearch-data:/usr/share/elasticsearch/data
     restart: unless-stopped
-  
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
 networks:
   temporal-network:
     driver: bridge
     name: temporal-network
-  
+
 volumes:
   temporal-postgresql-data:
     driver: local
@@ -150,4 +203,3 @@ volumes:
     driver: local
   temporal-elasticsearch-data:
     driver: local
-  
