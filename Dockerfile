@@ -61,7 +61,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Expose necessary ports
 EXPOSE 8080
-EXPOSE 5173
+EXPOSE 8000
 
 # Set the default command to run Supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

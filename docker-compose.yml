@@ -20,7 +20,7 @@ services:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
     ports:
-      - "5173:5173"  # Expose UI port
+      - "8000:8000"  # Expose UI port
       - "8080:8080"  # Expose backend API port
     volumes:
       - <<: *appConfigPath
