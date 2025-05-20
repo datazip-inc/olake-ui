@@ -8,13 +8,11 @@ x-app-defaults:
 x-signup-defaults:
   username: &defaultUsername "admin"
   password: &defaultPassword "password"
-  email: &defaultEmail "admin@example.com" # Changed to admin@example.com for clarity
+  email: &defaultEmail "admin@example.com"
 
 services:
   olake-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: olakego/ui:dev-latest
     pull_policy: always
     container_name: olake-app
     environment:
@@ -41,7 +39,7 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: busybox:latest # busybox usually has nc and a basic curl
+    image: curlimages/curl:latest
     container_name: olake-signup-init
     networks:
       - temporal-network
@@ -55,33 +53,30 @@ services:
       OLAKE_APP_URL: "http://olake-app:8080/signup"
     command: >
       sh -c "
-        echo 'signup-init: Waiting for olake-app to be healthy based on depends_on condition...';
-        # The depends_on condition: service_healthy should handle the waiting.
+        echo 'signup-init: Initializing user setup...'
+        # The depends_on condition: service_healthy should handle the waiting for olake-app.
 
-        echo 'signup-init: Creating initial user...';
-        echo \"signup-init: Using credentials: username=$${USERNAME} password=*** email=$${EMAIL}\";
-
-        # Construct JSON payload carefully
         JSON_PAYLOAD=$$(printf '{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\"}' \"$${USERNAME}\" \"$${PASSWORD}\" \"$${EMAIL}\")
-        echo \"signup-init: Sending payload: $${JSON_PAYLOAD} to $${OLAKE_APP_URL}\"
+        echo \"signup-init: Attempting to create user '$${USERNAME}' via $${OLAKE_APP_URL}\"
 
-        # Use curl to send the request, capture HTTP code and response body
-        HTTP_RESPONSE_CODE=$$(curl -s -o /dev/stderr -w '%{http_code}' \
-          -X POST \
-          -H 'Content-Type: application/json' \
-          -d \"$${JSON_PAYLOAD}\" \
-          \"$${OLAKE_APP_URL}\")
+        HTTP_RESPONSE_CODE=$$(/usr/bin/curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d \"$${JSON_PAYLOAD}\" \"$${OLAKE_APP_URL}\")
 
-        echo \"signup-init: Signup request sent. HTTP Response Code: $${HTTP_RESPONSE_CODE}\";
-        # The actual response body from olake-app will be printed to stderr (and thus to docker logs) by the '-o /dev/stderr' curl option.
+        # The actual response body from olake-app will be printed to stderr by the '-o /dev/stderr' curl option.
+        # A newline after stderr output from curl can make logs cleaner.
+        echo '' 
+
+        if ! [ \"$${HTTP_RESPONSE_CODE}\" -eq \"$${HTTP_RESPONSE_CODE}\" ] 2>/dev/null; then
+            echo \"signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$${HTTP_RESPONSE_CODE}'\"
+            exit 1;
+        fi
 
         if [ \"$${HTTP_RESPONSE_CODE}\" -ge 200 ] && [ \"$${HTTP_RESPONSE_CODE}\" -lt 300 ]; then
-          echo 'signup-init: User creation request successful (HTTP $${HTTP_RESPONSE_CODE}).';
+          echo \"signup-init: User '$${USERNAME}' creation request successful (HTTP $${HTTP_RESPONSE_CODE}).\";
         else
-          echo 'signup-init: User creation request FAILED (HTTP $${HTTP_RESPONSE_CODE}). Check logs for response body from server.';
+          echo \"signup-init: User '$${USERNAME}' creation request FAILED (HTTP $${HTTP_RESPONSE_CODE}). Server response body above.\";
           exit 1; # Exit with error if signup failed
         fi
-        echo 'signup-init: User creation process complete.';
+        echo 'signup-init: User setup process complete.';
       "
     restart: "no"
 
@@ -110,8 +105,6 @@ services:
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
-      # POSTGRES_DB: olakedb # Not strictly needed here as olake-app specifies its full DSN
-                           # but good for pg_isready if it needs a specific DB
     networks:
       - temporal-network
     expose:
@@ -151,14 +144,13 @@ services:
     ports:
       - "7233:7233"
     restart: unless-stopped
-    # For auto-setup, a specific healthcheck might be complex; relying on dependencies.
 
   temporal-ui:
     container_name: temporal-ui
     image: temporalio/ui:2.16.2
     depends_on:
       temporal:
-        condition: service_started # Assuming temporal starts its services quickly
+        condition: service_started
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     networks:
