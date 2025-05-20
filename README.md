@@ -32,7 +32,7 @@ appname = olake-server
 httpport = 8080
 runmode = dev
 copyrequestbody = true
-postgresdb = postgres://temporal:temporal@postgresql:5432/temporal
+postgresdb = postgres://temporal:temporal@postgresql:5432/postgres?sslmode=disable
 logsdir = ./logger/logs
 sessionon = true
 TEMPORAL_ADDRESS=temporal:7233
