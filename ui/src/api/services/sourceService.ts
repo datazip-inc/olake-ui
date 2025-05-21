@@ -133,6 +133,7 @@ export const sourceService = {
 					version: version === "" ? "latest" : version,
 					config,
 				},
+				{ timeout: 0 },
 			)
 			return response.data
 		} catch (error) {
