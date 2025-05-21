@@ -4,8 +4,8 @@ Frontend &amp; BFF (Backend for frontend) for Olake. This includes the UI code a
 
 ## Contributing
 
-Checkout - [fix/refactor_bff_api branch](https://github.com/datazip-inc/olake-ui/tree/fix/refactor_bff_api) to see the current development work. This is the current branch for contributions and the related issues are [here.](https://github.com/datazip-inc/olake-frontend/issues)
-Also checkout [CONTRIBUTING.MD](https://github.com/datazip-inc/olake-ui/blob/fix/refactor_bff_api/CONTRIBUTING.md) to get the guidelines.
+Checkout - [frontend initial setup branch](https://github.com/datazip-inc/olake-frontend/tree/feat/frontend_initial_setup_and_BFF) to see the work in progress and the related issues [here.](https://github.com/datazip-inc/olake-frontend/issues)
+Also checkout [CONTRIBUTING.MD](https://github.com/zriyanshdz/olake-frontend/blob/feat/frontend_initial_setup_and_BFF/olake_frontend/CONTRIBUTING.md) to get the guidelines.
 
 The changes will then get merged to staging branch and then to master branch.
 
