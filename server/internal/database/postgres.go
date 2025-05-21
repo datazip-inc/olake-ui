@@ -43,13 +43,24 @@ func Init(uri string) error {
 		new(models.Job),
 		new(models.User),
 		new(models.Catalog),
-		new(models.Session),
 	)
 
 	// Create tables if they do not exist
 	err = orm.RunSyncdb("default", false, true)
 	if err != nil {
 		return fmt.Errorf("failed to sync database schema: %s", err)
+	}
+	// Add session table if sessions are enabled
+	if web.BConfig.WebConfig.Session.SessionOn {
+		_, err = orm.NewOrm().Raw(`CREATE TABLE session (
+    session_key VARCHAR(64) PRIMARY KEY,
+    session_data BYTEA,
+    session_expiry TIMESTAMP WITH TIME ZONE
+);`).Exec()
+
+		if err != nil {
+			return fmt.Errorf("failed to create session table: %s", err)
+		}
 	}
 	return nil
 }

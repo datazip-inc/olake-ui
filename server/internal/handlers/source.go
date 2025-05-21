@@ -273,8 +273,8 @@ func (c *SourceHandler) GetSourceCatalog() {
 		fmt.Println("Using Temporal workflow for catalog discovery")
 
 		// Create a unique workflow ID
-		workflowID := fmt.Sprintf("discover-catalog-%s-%d-%d", req.Type, time.Now().Unix())
-		fmt.Printf("Starting workflow with ID: %s\n", workflowID)
+		// workflowID := fmt.Sprintf("discover-catalog-%s-%d", req.Type, time.Now().Unix())
+		// fmt.Printf("Starting workflow with ID: %s\n", workflowID)
 		// Execute the workflow using Temporal
 		catalog, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),

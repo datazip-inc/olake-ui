@@ -49,7 +49,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config str
 		SourceType: sourceType,
 		Version:    version,
 		Config:     config,
-		WorkflowID: fmt.Sprintf("discover-catalog-%s-%d-%d", sourceType, time.Now().Unix()),
+		WorkflowID: fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
 		Command:    docker.Discover,
 	}
 
