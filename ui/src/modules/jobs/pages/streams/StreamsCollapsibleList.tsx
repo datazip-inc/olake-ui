@@ -2,6 +2,7 @@ import { Checkbox, Empty } from "antd"
 import { useEffect, useState } from "react"
 import StreamPanel from "./StreamPanel"
 import { StreamData } from "../../../../types"
+import { CaretDown, CaretRight } from "@phosphor-icons/react"
 
 interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
@@ -368,7 +369,17 @@ const StreamsCollapsibleList = ({
 									/>
 									<span className="font-semibold">{ns}</span>
 									<span className="ml-auto">
-										{openNamespaces[ns] ? "▼" : "►"}
+										{openNamespaces[ns] ? (
+											<CaretDown
+												size={16}
+												weight="fill"
+											/>
+										) : (
+											<CaretRight
+												size={16}
+												weight="fill"
+											/>
+										)}
 									</span>
 								</div>
 								{openNamespaces[ns] && (

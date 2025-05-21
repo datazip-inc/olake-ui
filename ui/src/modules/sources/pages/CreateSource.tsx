@@ -279,7 +279,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			if (initialConnector) {
 				setConnector(getConnectorLabel(initialConnector))
 			}
-		}, [initialConnector])
+		}, [])
 
 		const handleCancel = () => {
 			setShowSourceCancelModal(true)

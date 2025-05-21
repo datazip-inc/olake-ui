@@ -66,9 +66,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 	const {
 		sources,
-		jobs,
+		// jobs,
 		fetchSources,
-		fetchJobs,
+		// fetchJobs,
 		updateSource,
 		setShowEditSourceModal,
 	} = useAppStore()
@@ -117,10 +117,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	]
 
 	useEffect(() => {
-		if (!sources.length) {
-			fetchSources()
-		}
+		fetchSources()
+	}, [])
 
+	useEffect(() => {
 		if (sourceId) {
 			const source = sources.find(s => s.id.toString() === sourceId)
 			if (source) {
@@ -143,7 +143,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				navigate("/sources")
 			}
 		}
-	}, [sourceId, sources, fetchSources, jobs.length, fetchJobs, navigate])
+	}, [sourceId, sources, fetchSources, navigate])
 
 	useEffect(() => {
 		if (initialData) {

@@ -11,6 +11,11 @@ import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
 import { StreamData, Job, JobBase } from "../../../types"
 import { jobService } from "../../../api"
+import { sourceService } from "../../../api/services/sourceService"
+import { destinationService } from "../../../api/services/destinationService"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -106,7 +111,15 @@ const JobDestinationEdit = ({
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
-	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
+	const {
+		jobs,
+		fetchJobs,
+		fetchSources,
+		fetchDestinations,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowFailureModal,
+	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
 	const [docsMinimized, setDocsMinimized] = useState(true)
@@ -130,38 +143,31 @@ const JobEdit: React.FC = () => {
 	const [replicationFrequency, setReplicationFrequency] = useState("seconds")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+	const [isSavedJob, setIsSavedJob] = useState(false)
+	const [job, setJob] = useState<Job | null>(null)
 
 	// Find the job from the store
-	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-	}, [fetchJobs, jobs])
+	// useEffect(() => {
+	// 	if (!jobs.length) {
+	// 		fetchJobs()
+	// 	}
+	// }, [fetchJobs, jobs])
 
-	const job = jobs.find(j => j.id.toString() === jobId)
+	useEffect(() => {
+		fetchJobs()
+	}, [])
 
 	// Load job data on component mount
 	useEffect(() => {
 		fetchJobs()
 		fetchSources()
 		fetchDestinations()
-	}, [fetchJobs, fetchSources, fetchDestinations])
+	}, [])
 
-	// Set initial form values when job data is available
-	useEffect(() => {
-		if (job) {
-			initializeFromExistingJob(job)
-		} else {
-			initializeForNewJob()
-		}
-	}, [job])
-
-	// Initialize form data from an existing job
 	const initializeFromExistingJob = (job: Job) => {
 		setJobName(job.name)
-
 		// Parse source config
-		let sourceConfig = parseConfig(job.source.config)
+		let sourceConfig = JSON.parse(job.source.config)
 
 		// Set source data from job
 		setSourceData({
@@ -172,7 +178,7 @@ const JobEdit: React.FC = () => {
 		})
 
 		// Parse destination config
-		let destConfig = parseConfig(job.destination.config)
+		let destConfig = JSON.parse(job.destination.config)
 
 		// Set destination data from job
 		setDestinationData({
@@ -188,63 +194,24 @@ const JobEdit: React.FC = () => {
 		// Parse streams config
 		if (job.streams_config) {
 			try {
-				const parsedStreamsConfig = JSON.parse(job.streams_config)
-				const streamsData = processStreamsConfig(parsedStreamsConfig)
+				if (job.streams_config == "[]") {
+					setSelectedStreams({
+						selected_streams: {},
+						streams: [],
+					})
+				} else {
+					const parsedStreamsConfig = JSON.parse(job.streams_config)
+					const streamsData = processStreamsConfig(parsedStreamsConfig)
 
-				if (streamsData) {
-					setSelectedStreams(streamsData)
-					setInitialStreamsData(streamsData)
+					if (streamsData) {
+						setSelectedStreams(streamsData)
+						setInitialStreamsData(streamsData)
+					}
 				}
 			} catch (e) {
 				console.error("Error parsing streams config:", e)
 			}
 		}
-	}
-
-	// Process streams configuration into a consistent format
-	const processStreamsConfig = (
-		parsedConfig: any,
-	): StreamsDataStructure | null => {
-		// Handle case where streams_config is a full data structure
-		if (parsedConfig.streams && parsedConfig.selected_streams) {
-			return parsedConfig as StreamsDataStructure
-		}
-
-		// Handle case where streams_config is just an array of stream names
-		else if (Array.isArray(parsedConfig)) {
-			const streamsData: StreamsDataStructure = {
-				selected_streams: { default: [] },
-				streams: [],
-			}
-
-			parsedConfig.forEach((streamName: string) => {
-				streamsData.selected_streams.default.push({
-					stream_name: streamName,
-					partition_regex: "",
-					split_column: "",
-				})
-
-				// Add empty stream objects that will be populated later by API
-				streamsData.streams.push({
-					stream: {
-						name: streamName,
-						namespace: "default",
-					},
-				} as StreamData)
-			})
-
-			return streamsData
-		}
-
-		// Handle case where streams_config is just selected_streams object
-		else if (typeof parsedConfig === "object") {
-			return {
-				selected_streams: parsedConfig,
-				streams: [],
-			}
-		}
-
-		return null
 	}
 
 	// Initialize defaults for a new job
@@ -278,20 +245,82 @@ const JobEdit: React.FC = () => {
 		setJobName("New Job")
 	}
 
-	// Helper function to safely parse JSON config strings
-	const parseConfig = (
-		config: string | Record<string, any>,
-	): Record<string, any> => {
-		if (typeof config === "string") {
-			try {
-				return JSON.parse(config)
-			} catch (error) {
-				console.error("Error parsing config:", error)
-				return {}
+	useEffect(() => {
+		let job = jobs.find(j => j.id.toString() === jobId)
+		if (job) {
+			setJob(job)
+		}
+		if (!job) {
+			const savedJobsFromStorage = JSON.parse(
+				localStorage.getItem("savedJobs") || "[]",
+			)
+			job = savedJobsFromStorage.find((job: any) => job.id === jobId)
+			if (job) {
+				setJob(job)
+				setIsSavedJob(true)
 			}
 		}
-		return config as Record<string, any>
+
+		if (job) {
+			initializeFromExistingJob(job)
+		} else {
+			initializeForNewJob()
+		}
+	}, [])
+
+	// Process streams configuration into a consistent format
+	const processStreamsConfig = (
+		parsedConfig: any,
+	): StreamsDataStructure | null => {
+		if (parsedConfig.streams && parsedConfig.selected_streams) {
+			return parsedConfig as StreamsDataStructure
+		} else if (Array.isArray(parsedConfig)) {
+			const streamsData: StreamsDataStructure = {
+				selected_streams: { default: [] },
+				streams: [],
+			}
+			parsedConfig.forEach((streamName: string) => {
+				streamsData.selected_streams.default.push({
+					stream_name: streamName,
+					partition_regex: "",
+					split_column: "",
+				})
+				streamsData.streams.push({
+					stream: {
+						name: streamName,
+						namespace: "default",
+					},
+				} as StreamData)
+			})
+
+			return streamsData
+		}
+
+		// Handle case where streams_config is just selected_streams object
+		else if (typeof parsedConfig === "object") {
+			return {
+				selected_streams: parsedConfig,
+				streams: [],
+			}
+		}
+
+		return null
 	}
+
+	// Helper function to safely parse JSON config strings
+	// const parseConfig = (
+	// 	config: string | Record<string, any>,
+	// ): Record<string, any> => {
+	// 	if (typeof config === "string") {
+	// 		try {
+	// 			return JSON.parse(config)
+	// 		} catch (error) {
+	// 			console.error("Error parsing config:", error)
+	// 			return {}
+	// 		}
+	// 	}
+	// 	return config as Record<string, any>
+	// }
 
 	// Handle job submission
 	const handleJobSubmit = async () => {
@@ -331,7 +360,7 @@ const JobEdit: React.FC = () => {
 				frequency: replicationFrequency,
 			}
 
-			if (jobId) {
+			if (jobId && !isSavedJob) {
 				await jobService.updateJob(jobId, jobUpdatePayload)
 				message.success("Job updated successfully!")
 			} else {
@@ -350,11 +379,81 @@ const JobEdit: React.FC = () => {
 		}
 	}
 
-	const handleNext = () => {
+	const handleNext = async () => {
 		if (currentStep === "source") {
-			setCurrentStep("destination")
+			if (isSavedJob && sourceData) {
+				setShowTestingModal(true)
+				try {
+					const testData = {
+						name: sourceData.name,
+						type: sourceData.type.toLowerCase(),
+						version: sourceData.version || "latest",
+						config:
+							typeof sourceData.config === "string"
+								? sourceData.config
+								: JSON.stringify(sourceData.config),
+					}
+					const testResult = await sourceService.testSourceConnection(testData)
+					setTimeout(() => {
+						setShowTestingModal(false)
+					}, 1000)
+					if (testResult.success) {
+						setTimeout(() => {
+							setShowSuccessModal(true)
+						}, 1000)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("destination")
+						}, 2000)
+					} else {
+						setShowFailureModal(true)
+					}
+				} catch (error) {
+					console.error("Error testing source connection:", error)
+					setShowTestingModal(false)
+					setShowFailureModal(true)
+				}
+			} else {
+				setCurrentStep("destination")
+			}
 		} else if (currentStep === "destination") {
-			setCurrentStep("schema")
+			if (isSavedJob && destinationData) {
+				setShowTestingModal(true)
+				try {
+					const testData = {
+						name: destinationData.name,
+						type: destinationData.type.toLowerCase(),
+						version: destinationData.version || "latest",
+						config:
+							typeof destinationData.config === "string"
+								? destinationData.config
+								: JSON.stringify(destinationData.config),
+					}
+					const testResult =
+						await destinationService.testDestinationConnection(testData)
+
+					setTimeout(() => {
+						setShowTestingModal(false)
+					}, 1000)
+					if (testResult.success) {
+						setTimeout(() => {
+							setShowSuccessModal(true)
+						}, 1000)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("schema")
+						}, 2000)
+					} else {
+						setShowFailureModal(true)
+					}
+				} catch (error) {
+					console.error("Error testing destination connection:", error)
+					setShowTestingModal(false)
+					setShowFailureModal(true)
+				}
+			} else {
+				setCurrentStep("schema")
+			}
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
@@ -397,7 +496,9 @@ const JobEdit: React.FC = () => {
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
-						<div className="text-2xl font-bold">{jobName || "New Job"}</div>
+						<div className="text-2xl font-bold">
+							{jobName ? (jobName === "-" ? " " : jobName) : "New Job"}
+						</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
@@ -441,7 +542,7 @@ const JobEdit: React.FC = () => {
 								stepNumber={3}
 								stepTitle="Schema evaluation"
 								sourceName={sourceData?.name || ""}
-								sourceConnector={sourceData?.type || ""}
+								sourceConnector={sourceData?.type.toLowerCase() || ""}
 								sourceVersion={sourceData?.version || "latest"}
 								sourceConfig={JSON.stringify(sourceData?.config || {})}
 								initialStreamsData={initialStreamsData as any}
@@ -507,6 +608,9 @@ const JobEdit: React.FC = () => {
 					</button>
 				</div>
 			</div>
+			<TestConnectionModal />
+			<TestConnectionSuccessModal />
+			<TestConnectionFailureModal />
 		</div>
 	)
 }

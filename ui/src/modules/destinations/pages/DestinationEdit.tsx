@@ -159,10 +159,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	useEffect(() => {
-		if (!destinations.length) {
-			fetchDestinations()
-		}
+		fetchDestinations()
+	}, [])
 
+	useEffect(() => {
 		if (destinationId && destinationId !== "new") {
 			const destination = destinations.find(
 				d => d.id.toString() === destinationId,
@@ -275,7 +275,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchVersions()
-	}, [connector, onVersionChange, selectedVersion])
+	}, [connector])
 
 	useEffect(() => {
 		const fetchDestinationSpec = async () => {

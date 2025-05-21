@@ -271,14 +271,14 @@ const JobCreation: React.FC = () => {
 				</div>
 			</div>
 
-			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
+			<div className="flex flex-1 overflow-auto border-t border-gray-200">
 				<div
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&
 						!docsMinimized
 							? "w-2/3"
 							: "w-full"
-					} pt-0 transition-all duration-300`}
+					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
 						<div className="w-full">
@@ -329,17 +329,19 @@ const JobCreation: React.FC = () => {
 					)}
 
 					{currentStep === "schema" && (
-						<SchemaConfiguration
-							selectedStreams={selectedStreams}
-							setSelectedStreams={setSelectedStreams}
-							stepNumber={3}
-							stepTitle="Streams selection"
-							useDirectForms={true}
-							sourceName={sourceName}
-							sourceConnector={sourceConnector.toLowerCase()}
-							sourceVersion={sourceVersion}
-							sourceConfig={JSON.stringify(sourceFormData)}
-						/>
+						<div className="overflow-scroll">
+							<SchemaConfiguration
+								selectedStreams={selectedStreams}
+								setSelectedStreams={setSelectedStreams}
+								stepNumber={3}
+								stepTitle="Streams selection"
+								useDirectForms={true}
+								sourceName={sourceName}
+								sourceConnector={sourceConnector.toLowerCase()}
+								sourceVersion={sourceVersion}
+								sourceConfig={JSON.stringify(sourceFormData)}
+							/>
+						</div>
 					)}
 
 					{currentStep === "config" && (

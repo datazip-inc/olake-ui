@@ -2,7 +2,12 @@ import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message, Pagination } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
+import {
+	ArrowLeft,
+	ArrowRight,
+	ArrowsClockwise,
+	Eye,
+} from "@phosphor-icons/react"
 import { getConnectorImage, getStatusClass } from "../../../utils/utils"
 
 const JobHistory: React.FC = () => {
@@ -159,7 +164,7 @@ const JobHistory: React.FC = () => {
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
 				<h2 className="mb-4 text-xl font-bold">Job history</h2>
 
-				<div className="mb-4">
+				<div className="mb-4 flex gap-2">
 					<Search
 						placeholder="Search Tasks"
 						allowClear
@@ -167,6 +172,18 @@ const JobHistory: React.FC = () => {
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
+					<Button
+						icon={<ArrowsClockwise size={16} />}
+						onClick={() => {
+							if (jobId) {
+								fetchJobTasks(jobId).catch(error => {
+									message.error("Failed to fetch job tasks after delay")
+									console.error("Error fetching job tasks after delay:", error)
+								})
+							}
+						}}
+						className="flex items-center"
+					></Button>
 				</div>
 
 				{isDelayingCall || isLoadingJobTasks ? (
