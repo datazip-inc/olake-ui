@@ -1,10 +1,6 @@
-FROM golang:1.23-alpine
-
+# Build stage
+FROM golang:1.23-alpine AS builder
 WORKDIR /app/worker
-
-# Install Docker CLI
-# hadolint ignore=DL3018
-RUN apk update && apk add --no-cache docker-cli
 
 # Copy go.mod and go.sum first to leverage Docker caching
 COPY server/go.mod server/go.sum ./
@@ -22,9 +18,15 @@ RUN mkdir -p ./logger/logs
 
 # Environment variables
 ENV TEMPORAL_ADDRESS="temporal:7233"
-
 RUN mkdir -p /mnt/config
 RUN chmod -R 777 /mnt/config
 
-# Run the worker
+# Runtime stage
+FROM alpine:3.18
+WORKDIR /app
+COPY --from=builder /app/worker/temporal-worker .
+RUN apk update && apk add --no-cache docker-cli
+RUN mkdir -p ./logger/logs
+RUN mkdir -p /mnt/config && chmod -R 777 /mnt/config
+ENV TEMPORAL_ADDRESS="temporal:7233"
 CMD ["./temporal-worker"]
