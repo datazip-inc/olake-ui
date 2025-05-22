@@ -16,13 +16,13 @@ import { jobService } from "../../../api"
 import { Entity } from "../../../types"
 
 interface SourceJob {
-	dest_type: string
+	destination_type: string
 	last_run_time: string
 	last_run_state: string
 	id: number
 	name: string
 	activate: boolean
-	dest_name: string
+	destination_name: string
 }
 
 interface ConnectorOption {
@@ -207,11 +207,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		return jobs.map(job => ({
 			id: job.id,
 			name: job.name || job.job_name,
-			dest_type: job.dest_type || "",
-			dest_name: job.dest_name || "",
-			last_run_time:
-				job.last_runtime || job.last_run_time || new Date().toISOString(),
-			last_run_state: job.last_run_state || "unknown",
+			destination_type: job.destination_type || "",
+			destination_name: job.destination_name || "",
+			last_run_time: job.last_runtime || job.last_run_time || "-",
+			last_run_state: job.last_run_state || "-",
 			activate: job.activate || false,
 		}))
 	}
@@ -285,25 +284,27 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			message.success(
 				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
 			)
+			// Refetch sources to update the UI with the latest source details
+			await fetchSources()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 		}
 	}
 
-	const handlePauseAllJobs = async (checked: boolean) => {
-		try {
-			// We're working with a custom job format, so we need to extract IDs
-			const allJobs = displayedJobs.map(job => String(job.id))
-			await Promise.all(
-				allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
-			)
-			message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
-		} catch (error) {
-			console.error("Error toggling all jobs status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
-		}
-	}
+	// const handlePauseAllJobs = async (checked: boolean) => {
+	// 	try {
+	// 		// We're working with a custom job format, so we need to extract IDs
+	// 		const allJobs = displayedJobs.map(job => String(job.id))
+	// 		await Promise.all(
+	// 			allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
+	// 		)
+	// 		message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
+	// 	} catch (error) {
+	// 		console.error("Error toggling all jobs status:", error)
+	// 		message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
+	// 	}
+	// }
 
 	const toggleDocsPanel = () => {
 		setDocsMinimized(!docsMinimized)
@@ -334,8 +335,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		{
 			title: "Last runtime",
 			dataIndex: "last_run_time",
-			render: (text: string) =>
-				formatDistanceToNow(new Date(text), { addSuffix: true }),
+			render: (text: string) => {
+				if (text != "-") {
+					return formatDistanceToNow(new Date(text), { addSuffix: true })
+				}
+				return "-"
+			},
 		},
 		{
 			title: "Last runtime status",
@@ -357,16 +362,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		},
 		{
 			title: "Destination",
-			dataIndex: "dest_name",
-			key: "dest_name",
-			render: (dest_name: string, record: SourceJob) => (
+			dataIndex: "destination_name",
+			key: "destination_name",
+			render: (destination_name: string, record: SourceJob) => (
 				<div className="flex items-center">
 					<img
-						src={getConnectorImage(record.dest_type || "")}
-						alt={record.dest_type || ""}
+						src={getConnectorImage(record.destination_type || "")}
+						alt={record.destination_type || ""}
 						className="mr-2 size-6"
 					/>
-					{dest_name}
+					{destination_name}
 				</div>
 			),
 		},
@@ -545,13 +550,13 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								</div>
 							)}
 
-							<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
+							{/* <div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
 								<span className="font-medium">Pause all associated jobs</span>
 								<Switch
 									onChange={handlePauseAllJobs}
 									className="bg-gray-200"
 								/>
-							</div>
+							</div> */}
 						</div>
 					)}
 				</div>

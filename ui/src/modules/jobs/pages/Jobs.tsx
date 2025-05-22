@@ -85,21 +85,15 @@ const Jobs: React.FC = () => {
 
 	const updateJobsList = () => {
 		if (activeTab === "active") {
-			setFilteredJobs(
-				jobs.filter(
-					job => job.activate === true && job.last_run_state != "failed",
-				),
-			)
+			setFilteredJobs(jobs.filter(job => job.activate === true))
 		} else if (activeTab === "inactive") {
-			setFilteredJobs(
-				jobs.filter(
-					job => job.activate === false && job.last_run_state != "failed",
-				),
-			)
+			setFilteredJobs(jobs.filter(job => job.activate === false))
 		} else if (activeTab === "saved") {
 			setFilteredJobs(savedJobs)
 		} else if (activeTab === "failed") {
-			setFilteredJobs(jobs.filter(job => job.last_run_state == "failed"))
+			setFilteredJobs(
+				jobs.filter(job => job.last_run_state?.toLowerCase() == "failed"),
+			)
 		}
 	}
 

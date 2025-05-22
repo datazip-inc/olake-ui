@@ -28,6 +28,7 @@ type FieldSchema = {
 	items?: {
 		type?: string
 	}
+	order?: number
 }
 
 interface DirectFormFieldProps {
@@ -404,6 +405,11 @@ export const DirectInputForm = ({
 		const properties = schema.properties || {}
 
 		return Object.entries(properties)
+			.sort(([, a], [, b]) => {
+				const orderA = (a as FieldSchema).order ?? Number.MAX_SAFE_INTEGER
+				const orderB = (b as FieldSchema).order ?? Number.MAX_SAFE_INTEGER
+				return orderA - orderB
+			})
 			.map(([name, fieldSchemaDefinition]) => {
 				const fieldSchema = fieldSchemaDefinition as FieldSchema
 				const fieldUiSchema = uiSchema?.[name]

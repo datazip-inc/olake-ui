@@ -1,12 +1,14 @@
 import { Input, Select } from "antd"
 import StepTitle from "../../common/components/StepTitle"
-import { useState } from "react"
+import { getFrequencyValue } from "../../../utils/utils"
 
 interface JobConfigurationProps {
 	jobName: string
 	setJobName: React.Dispatch<React.SetStateAction<string>>
 	replicationFrequency: string
 	setReplicationFrequency: React.Dispatch<React.SetStateAction<string>>
+	replicationFrequencyValue: string
+	setReplicationFrequencyValue: React.Dispatch<React.SetStateAction<string>>
 	schemaChangeStrategy: string
 	setSchemaChangeStrategy: React.Dispatch<React.SetStateAction<string>>
 	notifyOnSchemaChanges: boolean
@@ -20,11 +22,22 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	setJobName,
 	replicationFrequency,
 	setReplicationFrequency,
+	replicationFrequencyValue,
+	setReplicationFrequencyValue,
 	stepNumber = 4,
 	stepTitle = "Job Configuration",
 }) => {
-	const [replicationFrequencyValue, setReplicationFrequencyValue] =
-		useState("1")
+	const handleFrequencyChange = (selectedUnit: string) => {
+		setReplicationFrequency(getFrequencyValue(selectedUnit))
+	}
+
+	const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const newValue = e.target.value
+		setReplicationFrequencyValue(newValue)
+		const unit = getFrequencyValue(replicationFrequency)
+		setReplicationFrequency(unit)
+	}
+
 	return (
 		<div className="w-full p-6">
 			{stepNumber && stepTitle && (
@@ -52,18 +65,19 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 						<div className="flex w-full items-center gap-2">
 							<Input
 								value={replicationFrequencyValue}
-								defaultValue={replicationFrequencyValue}
-								onChange={e => setReplicationFrequencyValue(e.target.value)}
+								onChange={handleValueChange}
 								className="w-2/5"
 							/>
 
 							<Select
 								className="w-3/5"
-								value={replicationFrequency}
-								onChange={setReplicationFrequency}
+								value={getFrequencyValue(replicationFrequency)}
+								onChange={handleFrequencyChange}
 							>
 								<Select.Option value="minutes">Minutes</Select.Option>
 								<Select.Option value="hours">Hours</Select.Option>
+								<Select.Option value="days">Days</Select.Option>
+								<Select.Option value="weeks">Weeks</Select.Option>
 								<Select.Option value="months">Months</Select.Option>
 								<Select.Option value="years">Years</Select.Option>
 							</Select>

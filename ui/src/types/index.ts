@@ -44,6 +44,7 @@ export interface JobBase {
 	}
 	frequency: string
 	streams_config: string
+	activate?: boolean
 }
 
 export interface JobTask {
@@ -134,9 +135,9 @@ export interface Entity {
 
 export interface EntityJob {
 	activate: boolean
-	dest_name?: string
+	destination_name?: string
 	source_name?: string
-	dest_type?: string
+	destination_type?: string
 	source_type?: string
 	id: number
 	job_name: string

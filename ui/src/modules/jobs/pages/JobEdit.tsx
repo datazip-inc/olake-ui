@@ -16,6 +16,7 @@ import { destinationService } from "../../../api/services/destinationService"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import { getFrequencyValue } from "../../../utils/utils"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -144,6 +145,8 @@ const JobEdit: React.FC = () => {
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 	const [isSavedJob, setIsSavedJob] = useState(false)
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
 	const [job, setJob] = useState<Job | null>(null)
 
 	// Find the job from the store
@@ -189,7 +192,15 @@ const JobEdit: React.FC = () => {
 		})
 
 		// Set other job settings
-		setReplicationFrequency(job.frequency || "daily")
+		// Parse frequency with format value-unit (e.g. "1-minutes")
+		if (job.frequency && job.frequency.includes("-")) {
+			const [value, unit] = job.frequency.split("-")
+			setReplicationFrequencyValue(value)
+			setReplicationFrequency(unit)
+		} else {
+			setReplicationFrequency(getFrequencyValue(job.frequency) || "hours")
+			setReplicationFrequencyValue("1")
+		}
 
 		// Parse streams config
 		if (job.streams_config) {
@@ -357,7 +368,8 @@ const JobEdit: React.FC = () => {
 					typeof selectedStreams === "string"
 						? selectedStreams
 						: JSON.stringify(selectedStreams),
-				frequency: replicationFrequency,
+				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
+				activate: job?.activate || true,
 			}
 
 			if (jobId && !isSavedJob) {
@@ -540,7 +552,7 @@ const JobEdit: React.FC = () => {
 								selectedStreams={selectedStreams as any}
 								setSelectedStreams={setSelectedStreams as any}
 								stepNumber={3}
-								stepTitle="Schema evaluation"
+								stepTitle="Streams Selection"
 								sourceName={sourceData?.name || ""}
 								sourceConnector={sourceData?.type.toLowerCase() || ""}
 								sourceVersion={sourceData?.version || "latest"}
@@ -555,6 +567,8 @@ const JobEdit: React.FC = () => {
 								setJobName={setJobName}
 								replicationFrequency={replicationFrequency}
 								setReplicationFrequency={setReplicationFrequency}
+								replicationFrequencyValue={replicationFrequencyValue}
+								setReplicationFrequencyValue={setReplicationFrequencyValue}
 								schemaChangeStrategy={schemaChangeStrategy}
 								setSchemaChangeStrategy={setSchemaChangeStrategy}
 								notifyOnSchemaChanges={notifyOnSchemaChanges}

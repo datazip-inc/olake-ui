@@ -116,3 +116,37 @@ export const getConnectorLabel = (type: string): string => {
 			return "MongoDB"
 	}
 }
+
+export const getFrequencyValue = (frequency: string) => {
+	if (frequency.includes(" ")) {
+		const parts = frequency.split(" ")
+		const unit = parts[1].toLowerCase()
+
+		if (unit.includes("hour")) return "hours"
+		if (unit.includes("minute")) return "minutes"
+		if (unit.includes("day")) return "days"
+		if (unit.includes("week")) return "weeks"
+		if (unit.includes("month")) return "months"
+		if (unit.includes("year")) return "years"
+	}
+
+	switch (frequency) {
+		case "hourly":
+		case "hours":
+			return "hours"
+		case "daily":
+		case "days":
+			return "days"
+		case "weekly":
+		case "weeks":
+			return "weeks"
+		case "monthly":
+		case "months":
+			return "months"
+		case "yearly":
+		case "years":
+			return "years"
+		default:
+			return "hours"
+	}
+}

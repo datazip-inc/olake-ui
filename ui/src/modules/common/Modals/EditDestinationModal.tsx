@@ -122,7 +122,7 @@ const EditDestinationModal = () => {
 									<div className="flex items-center">
 										<img
 											src={getConnectorImage(record.source_type || "")}
-											alt={record.dest_type}
+											alt={record.destination_type}
 											className="mr-2 size-6"
 										/>
 										{source_name || "N/A"}

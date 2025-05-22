@@ -41,6 +41,8 @@ const JobCreation: React.FC = () => {
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 	const [jobName, setJobName] = useState("")
 	const [replicationFrequency, setReplicationFrequency] = useState("minutes")
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 
@@ -59,6 +61,20 @@ const JobCreation: React.FC = () => {
 	const destinationRef = useRef<CreateDestinationHandle>(null)
 
 	const getReplicationFrequency = () => {
+		// Handle combined format like "1 hours"
+		if (replicationFrequency.includes(" ")) {
+			const parts = replicationFrequency.split(" ")
+			const value = parts[0]
+			const unit = parts[1].toLowerCase()
+
+			if (unit.includes("minute")) return `${value} minutes`
+			if (unit.includes("hour")) return "hourly"
+			if (unit.includes("day")) return "daily"
+			if (unit.includes("week")) return "weekly"
+			if (unit.includes("month")) return "monthly"
+			if (unit.includes("year")) return "yearly"
+		}
+
 		if (replicationFrequency === "minutes") {
 			return "minutes"
 		} else if (replicationFrequency === "hours") {
@@ -67,6 +83,10 @@ const JobCreation: React.FC = () => {
 			return "daily"
 		} else if (replicationFrequency === "weeks") {
 			return "weekly"
+		} else if (replicationFrequency === "months") {
+			return "monthly"
+		} else if (replicationFrequency === "years") {
+			return "yearly"
 		}
 	}
 
@@ -169,10 +189,9 @@ const JobCreation: React.FC = () => {
 					config: JSON.stringify(destinationFormData),
 				},
 				streams_config: JSON.stringify(selectedStreams),
-				frequency: replicationFrequency
-					? getReplicationFrequency() || "hourly"
-					: "hourly",
+				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
 			}
+			console.log(replicationFrequency, replicationFrequencyValue)
 			addJob(newJobData)
 				.then(() => {
 					setShowEntitySavedModal(true)
@@ -339,7 +358,7 @@ const JobCreation: React.FC = () => {
 								selectedStreams={selectedStreams}
 								setSelectedStreams={setSelectedStreams}
 								stepNumber={3}
-								stepTitle="Streams selection"
+								stepTitle="Streams Selection"
 								useDirectForms={true}
 								sourceName={sourceName}
 								sourceConnector={sourceConnector.toLowerCase()}
@@ -359,6 +378,8 @@ const JobCreation: React.FC = () => {
 							setJobName={setJobName}
 							replicationFrequency={replicationFrequency}
 							setReplicationFrequency={setReplicationFrequency}
+							replicationFrequencyValue={replicationFrequencyValue}
+							setReplicationFrequencyValue={setReplicationFrequencyValue}
 							schemaChangeStrategy={schemaChangeStrategy}
 							setSchemaChangeStrategy={setSchemaChangeStrategy}
 							notifyOnSchemaChanges={notifyOnSchemaChanges}

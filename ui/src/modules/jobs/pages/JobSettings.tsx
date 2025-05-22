@@ -133,6 +133,8 @@ const JobSettings: React.FC = () => {
 											>
 												<Select.Option value="minutes">Minutes</Select.Option>
 												<Select.Option value="hours">Hours</Select.Option>
+												<Select.Option value="days">Days</Select.Option>
+												<Select.Option value="weeks">Weeks</Select.Option>
 												<Select.Option value="months">Months</Select.Option>
 												<Select.Option value="years">Years</Select.Option>
 											</Select>

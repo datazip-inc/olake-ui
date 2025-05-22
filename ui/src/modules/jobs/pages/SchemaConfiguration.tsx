@@ -56,7 +56,7 @@ interface SchemaConfigurationProps {
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
 	stepNumber = 3,
-	stepTitle = "Schema evaluation",
+	stepTitle = "Streams Selection",
 	useDirectForms = false,
 	sourceName,
 	sourceConnector,

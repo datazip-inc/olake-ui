@@ -15,6 +15,7 @@ import { getConnectorImage, getConnectorName } from "../../../utils/utils"
 import EditDestinationModal from "../../common/Modals/EditDestinationModal"
 import { Entity, EntityJob } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
+import { formatDistanceToNow } from "date-fns"
 
 // Define the job structure for destination jobs table
 interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
@@ -126,12 +127,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			name: job.name || job.job_name,
 			source_type: job.source_type || "",
 			source_name: job.source_name || "N/A",
-			last_run_time: job.last_runtime || job.last_run_time || "",
-			last_run_state: job.last_run_state || "unknown",
+			last_run_time: job.last_runtime || job.last_run_time || "-",
+			last_run_state: job.last_run_state || "-",
 			activate: job.activate || false,
 			job_name: job.job_name || job.name,
-			dest_name: job.dest_name || "",
-			dest_type: job.dest_type || "",
+			destination_name: job.destination_name || "",
+			destination_type: job.destination_type || "",
 		}))
 	}
 
@@ -230,10 +231,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				}
 
 				setFormData(parsedConfig)
-
 				// If it's iceberg, try to get catalog type
-				if (connectorType === "Apache Iceberg" && parsedConfig.catalog) {
-					setCatalog(getCatalogName(parsedConfig.catalog) || "AWS Glue")
+				if (connectorType === "Apache Iceberg") {
+					setCatalog(getCatalogName(parsedConfig.catalog_type) || "AWS Glue")
 				}
 			}
 		}
@@ -358,18 +358,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowAllJobs(true)
 	}
 
-	const handlePauseAllJobs = async (checked: boolean) => {
-		try {
-			const allJobs = displayedJobs.map(job => job.id.toString())
-			await Promise.all(
-				allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
-			)
-			message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
-		} catch (error) {
-			console.error("Error toggling all jobs status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
-		}
-	}
+	// const handlePauseAllJobs = async (checked: boolean) => {
+	// 	try {
+	// 		const allJobs = displayedJobs.map(job => job.id.toString())
+	// 		await Promise.all(
+	// 			allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
+	// 		)
+	// 		message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
+	// 	} catch (error) {
+	// 		console.error("Error toggling all jobs status:", error)
+	// 		message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
+	// 	}
+	// }
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
@@ -377,6 +377,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			message.success(
 				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
 			)
+			await fetchDestinations()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
@@ -434,6 +435,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			title: "Last runtime",
 			dataIndex: "last_run_time",
 			key: "last_run_time",
+			render: (text: string) => {
+				return text !== "-"
+					? formatDistanceToNow(new Date(text), { addSuffix: true })
+					: "-"
+			},
 		},
 		{
 			title: "Last runtime status",
@@ -606,13 +612,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				</div>
 			)}
 
-			<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
+			{/* <div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
 				<span className="font-medium">Pause all associated jobs</span>
 				<Switch
 					onChange={handlePauseAllJobs}
 					className="bg-gray-200"
 				/>
-			</div>
+			</div> */}
 		</div>
 	)
 
