@@ -42,6 +42,10 @@ const StreamConfiguration = ({
 		setActiveTab("config")
 	}, [stream])
 
+	useEffect(() => {
+		setSyncMode(stream.stream.sync_mode === "cdc" ? "cdc" : "full")
+	}, [stream])
+
 	// Handlers
 	const handleSyncModeChange = (mode: string) => {
 		const newSyncMode = mode === "full" ? "full_refresh" : "cdc"
@@ -53,9 +57,9 @@ const StreamConfiguration = ({
 			newSyncMode,
 		)
 		if (mode === "full") {
-			setEnableBackfill(true) // Enable backfill for full refresh
+			setEnableBackfill(true)
 		} else {
-			setEnableBackfill(false) // Disable backfill for CDC
+			setEnableBackfill(false)
 		}
 
 		setFormData({
