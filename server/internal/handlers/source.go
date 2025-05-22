@@ -608,6 +608,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"title":       "Server RAM",
 					"description": "Server memory in GB",
 					"default":     16,
+					"order":       13,
 				},
 				"database": map[string]interface{}{
 					"type":        "string",
