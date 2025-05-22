@@ -3,6 +3,8 @@ package temporal
 import (
 	"time"
 
+	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -43,6 +45,11 @@ type SyncParams struct {
 	SourceID      int
 	DestID        int
 	WorkflowID    string
+}
+
+type JobHandler struct {
+	web.Controller
+	jobORM *database.JobORM
 }
 
 // DockerRunnerWorkflow orchestrates the Docker command execution as a workflow
@@ -154,5 +161,9 @@ func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interf
 	if err != nil {
 		return nil, err
 	}
+	//save the sync result to the DB after every run
+	jobORM := database.NewJobORM()
+	_ = workflow.ExecuteActivity(ctx, SaveSyncStateToDB, params.JobId, result, jobORM).Get(ctx, nil)
+
 	return result, nil
 }

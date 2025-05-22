@@ -364,13 +364,13 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 
-	var syncState map[string]interface{}
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
-		syncState, err = c.tempClient.RunSync(
+		_, err = c.tempClient.RunSync(
 			c.Ctx.Request.Context(),
 			job.SourceID.Type,
 			job.SourceID.Version,
+			job.Frequency,
 			job.SourceID.Config,
 			job.DestID.Config,
 			job.State,
@@ -398,14 +398,14 @@ func (c *JobHandler) SyncJob() {
 	// 	"last_run_state": "success",
 	// 	"sync_state":     syncState,
 	// }
-	stateJSON, _ := json.Marshal(syncState)
-	job.State = string(stateJSON)
-	job.Active = true
-	//Update job in database
-	if err := c.jobORM.Update(job); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
-		return
-	}
+	// stateJSON, _ := json.Marshal(syncState)
+	// job.State = string(stateJSON)
+	// job.Active = true
+	// //Update job in database
+	// if err := c.jobORM.Update(job); err != nil {
+	// 	utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
+	// 	return
+	// }
 
 	utils.SuccessResponse(&c.Controller, nil)
 }

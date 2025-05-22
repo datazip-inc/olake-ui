@@ -122,9 +122,13 @@ func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, conf
 	}
 
 	// Construct Docker command arguments
-
-	hostOutputDir := strings.Replace(outputDir, "/tmp/olake-config", os.Getenv("PERSISTENT_DIR"), 1)
-	fmt.Printf("hostOutputDir %s\n", hostOutputDir)
+	var hostOutputDir string
+	if os.Getenv("PERSISTENT_DIR") != "" {
+		hostOutputDir = strings.Replace(outputDir, "/tmp/olake-config", os.Getenv("PERSISTENT_DIR"), 1)
+		fmt.Printf("hostOutputDir %s\n", hostOutputDir)
+	} else {
+		hostOutputDir = outputDir
+	}
 	dockerArgs := []string{
 		"run", "--pull=always",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),

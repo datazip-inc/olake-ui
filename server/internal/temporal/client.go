@@ -3,6 +3,8 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/datazip/olake-server/internal/docker"
@@ -130,7 +132,7 @@ func (c *Client) TestConnection(ctx context.Context, sourceType, version, config
 }
 
 // RunSync runs a workflow to sync data between source and destination
-func (c *Client) RunSync(ctx context.Context, sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, ProjectID, JobId, sourceID, destID int) (map[string]interface{}, error) {
+func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig string, ProjectID, JobId, sourceID, destID int) (map[string]interface{}, error) {
 	params := SyncParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -146,20 +148,21 @@ func (c *Client) RunSync(ctx context.Context, sourceType, version, sourceConfig,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        params.WorkflowID,
-		TaskQueue: TaskQueue,
+		ID:           params.WorkflowID,
+		TaskQueue:    TaskQueue,
+		CronSchedule: toCron(frequency),
 	}
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, RunSyncWorkflow, params)
+	_, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, RunSyncWorkflow, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute sync workflow: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
-	}
+	// var result map[string]interface{}
+	// if err := run.Get(ctx, &result); err != nil {
+	// 	return nil, fmt.Errorf("workflow execution failed: %v", err)
+	// }
 
-	return result, nil
+	return map[string]interface{}{"message": "Job started successfully"}, nil
 }
 
 // WorkflowExecution represents information about a workflow execution
@@ -225,7 +228,36 @@ func (c *Client) GetWorkflow(ctx context.Context, workflowID, runID string) clie
 // 		executions = append(executions, execution)
 // 	}
 
-// 	return &ListWorkflowExecutionsResponse{
-// 		Executions: executions,
-// 	}, nil
-// }
+//		return &ListWorkflowExecutionsResponse{
+//			Executions: executions,
+//		}, nil
+//	}
+func toCron(frequency string) string {
+	parts := strings.Split(strings.ToLower(frequency), "-")
+	if len(parts) != 2 {
+		return ""
+	}
+
+	valueStr, unit := parts[0], parts[1]
+	value, err := strconv.Atoi(valueStr)
+	if err != nil || value <= 0 {
+		return ""
+	}
+
+	switch unit {
+	case "minutes":
+		return fmt.Sprintf("*/%d * * * *", value) // Every N minutes
+	case "hours":
+		return fmt.Sprintf("0 */%d * * *", value) // Every N hours at minute 0
+	case "days":
+		return fmt.Sprintf("0 0 */%d * *", value) // Every N days at midnight
+	case "weeks":
+		// Every N weeks on Sunday (0), cron doesn't support "every N weeks" directly,
+		// so simulate with day-of-week field (best-effort)
+		return fmt.Sprintf("0 0 * * */%d", value)
+	case "months":
+		return fmt.Sprintf("0 0 1 */%d *", value) // Every N months on the 1st at midnight
+	default:
+		return ""
+	}
+}

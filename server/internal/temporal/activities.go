@@ -2,9 +2,11 @@ package temporal
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 
+	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/activity"
 )
@@ -144,4 +146,16 @@ func SyncActivity(ctx context.Context, params SyncParams) (map[string]interface{
 	}
 
 	return result, nil
+}
+func SaveSyncStateToDB(ctx context.Context, jobID int, syncState map[string]interface{}, jobORM *database.JobORM) error {
+	job, err := jobORM.GetByID(jobID)
+	if err != nil {
+		return err
+	}
+
+	stateJSON, _ := json.Marshal(syncState)
+	job.State = string(stateJSON)
+	job.Active = true
+
+	return jobORM.Update(job)
 }
