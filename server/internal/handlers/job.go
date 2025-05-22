@@ -400,8 +400,8 @@ func (c *JobHandler) SyncJob() {
 	// }
 	stateJSON, _ := json.Marshal(syncState)
 	job.State = string(stateJSON)
-	// job.Active = true
-	// Update job in database
+	job.Active = true
+	//Update job in database
 	if err := c.jobORM.Update(job); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
 		return
