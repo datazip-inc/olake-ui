@@ -14,7 +14,7 @@ COPY server/ ./
 RUN go build -o temporal-worker ./cmd/temporal-worker
 
 # Runtime stage
-FROM alpine:3.18
+FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/worker/temporal-worker .
 RUN apk update && apk add --no-cache docker-cli
