@@ -57,6 +57,7 @@ interface ExtendedDestination extends Destination {
 
 interface CreateDestinationProps {
 	fromJobFlow?: boolean
+	hitBack?: boolean
 	fromJobEditFlow?: boolean
 	existingDestinationId?: string
 	onComplete?: () => void
@@ -110,6 +111,7 @@ const CreateDestination = forwardRef<
 	(
 		{
 			fromJobFlow = false,
+			hitBack = false,
 			fromJobEditFlow = false,
 			existingDestinationId,
 			onComplete,
@@ -350,6 +352,9 @@ const CreateDestination = forwardRef<
 
 		useEffect(() => {
 			if (!fromJobFlow) {
+				setFormData({})
+			}
+			if (fromJobFlow && !hitBack) {
 				setFormData({})
 			}
 		}, [connector, catalog])
