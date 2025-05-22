@@ -13,14 +13,6 @@ COPY server/ ./
 # Build the worker binary
 RUN go build -o temporal-worker ./cmd/temporal-worker
 
-# Create necessary directories
-RUN mkdir -p ./logger/logs
-
-# Environment variables
-ENV TEMPORAL_ADDRESS="temporal:7233"
-RUN mkdir -p /mnt/config
-RUN chmod -R 777 /mnt/config
-
 # Runtime stage
 FROM alpine:3.18
 WORKDIR /app
