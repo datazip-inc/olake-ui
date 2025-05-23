@@ -352,7 +352,7 @@ const JobCreation: React.FC = () => {
 					)}
 
 					{currentStep === "schema" && (
-						<div className="overflow-scroll">
+						<div className="h-full overflow-scroll">
 							<SchemaConfiguration
 								selectedStreams={selectedStreams}
 								setSelectedStreams={setSelectedStreams}
