@@ -191,7 +191,6 @@ const JobCreation: React.FC = () => {
 				streams_config: JSON.stringify(selectedStreams),
 				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
 			}
-			console.log(replicationFrequency, replicationFrequencyValue)
 			addJob(newJobData)
 				.then(() => {
 					setShowEntitySavedModal(true)

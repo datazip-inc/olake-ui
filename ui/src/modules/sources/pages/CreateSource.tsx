@@ -352,6 +352,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const handleSourceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 			const newName = e.target.value
+			if (newName.length >= 1) {
+				setSourceNameError(null)
+			}
 			setSourceName(newName)
 
 			if (onSourceNameChange) {

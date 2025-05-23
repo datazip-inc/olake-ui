@@ -446,6 +446,9 @@ const CreateDestination = forwardRef<
 			e: React.ChangeEvent<HTMLInputElement>,
 		) => {
 			const newName = e.target.value
+			if (newName.length >= 1) {
+				setDestinationNameError(null)
+			}
 			setDestinationName(newName)
 			if (onDestinationNameChange) {
 				onDestinationNameChange(newName)

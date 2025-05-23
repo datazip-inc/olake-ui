@@ -519,7 +519,7 @@ const JobEdit: React.FC = () => {
 
 			{/* Main content */}
 			<div
-				className={`flex flex-1 overflow-hidden border-gray-200 ${
+				className={`flex flex-1 overflow-auto border-gray-200 ${
 					currentStep === "config" || currentStep === "schema" ? "border-t" : ""
 				}`}
 			>
@@ -530,7 +530,7 @@ const JobEdit: React.FC = () => {
 						!docsMinimized
 							? "w-[calc(100%-30%)]"
 							: "w-full"
-					} relative flex flex-col`}
+					} ${currentStep === "schema" ? "" : "overflow-hidden"} relative flex flex-col`}
 				>
 					<div className="flex-1 pb-0">
 						{currentStep === "source" && sourceData && (
@@ -548,17 +548,19 @@ const JobEdit: React.FC = () => {
 						)}
 
 						{currentStep === "schema" && (
-							<SchemaConfiguration
-								selectedStreams={selectedStreams as any}
-								setSelectedStreams={setSelectedStreams as any}
-								stepNumber={3}
-								stepTitle="Streams Selection"
-								sourceName={sourceData?.name || ""}
-								sourceConnector={sourceData?.type.toLowerCase() || ""}
-								sourceVersion={sourceData?.version || "latest"}
-								sourceConfig={JSON.stringify(sourceData?.config || {})}
-								initialStreamsData={initialStreamsData as any}
-							/>
+							<div className="overflow-scroll">
+								<SchemaConfiguration
+									selectedStreams={selectedStreams as any}
+									setSelectedStreams={setSelectedStreams as any}
+									stepNumber={3}
+									stepTitle="Streams Selection"
+									sourceName={sourceData?.name || ""}
+									sourceConnector={sourceData?.type.toLowerCase() || ""}
+									sourceVersion={sourceData?.version || "latest"}
+									sourceConfig={JSON.stringify(sourceData?.config || {})}
+									initialStreamsData={initialStreamsData as any}
+								/>
+							</div>
 						)}
 
 						{currentStep === "config" && (

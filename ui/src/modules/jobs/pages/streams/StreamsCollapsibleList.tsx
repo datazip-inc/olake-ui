@@ -68,11 +68,23 @@ const StreamsCollapsibleList = ({
 	})
 
 	useEffect(() => {
-		const allOpen: { [ns: string]: boolean } = {}
-		Object.keys(groupedStreams).forEach((ns: string) => {
-			allOpen[ns] = true
-		})
-		setOpenNamespaces(allOpen)
+		if (Object.keys(openNamespaces).length === 0) {
+			const allOpen: { [ns: string]: boolean } = {}
+			Object.keys(groupedStreams).forEach((ns: string) => {
+				allOpen[ns] = true
+			})
+			setOpenNamespaces(allOpen)
+		} else {
+			setOpenNamespaces(prev => {
+				const updated = { ...prev }
+				Object.keys(groupedStreams).forEach((ns: string) => {
+					if (updated[ns] === undefined) {
+						updated[ns] = true
+					}
+				})
+				return updated
+			})
+		}
 	}, [groupedStreams])
 
 	useEffect(() => {
@@ -371,12 +383,12 @@ const StreamsCollapsibleList = ({
 									<span className="ml-auto">
 										{openNamespaces[ns] ? (
 											<CaretDown
-												size={16}
+												className="size-4"
 												weight="fill"
 											/>
 										) : (
 											<CaretRight
-												size={16}
+												className="size-4"
 												weight="fill"
 											/>
 										)}

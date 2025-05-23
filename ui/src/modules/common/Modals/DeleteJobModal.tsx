@@ -46,7 +46,9 @@ const DeleteJobModal = ({
 								})
 							}
 							if (fromJobSettings) {
-								navigate("/jobs")
+								setTimeout(() => {
+									navigate("/jobs")
+								}, 500)
 							}
 						}}
 					>
