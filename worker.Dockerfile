@@ -17,6 +17,8 @@ RUN go build -o temporal-worker ./cmd/temporal-worker
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/worker/temporal-worker .
+RUN mkdir -p ./conf
+COPY server/conf/app.conf ./conf/app.conf
 RUN apk update && apk add --no-cache docker-cli
 RUN mkdir -p ./logger/logs
 RUN mkdir -p /mnt/config && chmod -R 777 /mnt/config
