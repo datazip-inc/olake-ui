@@ -3,8 +3,6 @@ package temporal
 import (
 	"time"
 
-	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -45,11 +43,6 @@ type SyncParams struct {
 	SourceID      int
 	DestID        int
 	WorkflowID    string
-}
-
-type JobHandler struct {
-	web.Controller
-	jobORM *database.JobORM
 }
 
 // DockerRunnerWorkflow orchestrates the Docker command execution as a workflow
@@ -145,6 +138,8 @@ func TestConnectionWorkflow(ctx workflow.Context, params ActivityParams) (map[st
 
 // RunSyncWorkflow is a workflow for running data synchronization
 func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interface{}, error) {
+	// OR get workflow info directly from ctx:
+
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 15, // Longer timeout for sync operations
 		RetryPolicy: &temporal.RetryPolicy{
@@ -155,15 +150,10 @@ func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interf
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
-
 	var result map[string]interface{}
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		return nil, err
 	}
-	//save the sync result to the DB after every run
-	jobORM := database.NewJobORM()
-	_ = workflow.ExecuteActivity(ctx, SaveSyncStateToDB, params.JobId, result, jobORM).Get(ctx, nil)
-
 	return result, nil
 }

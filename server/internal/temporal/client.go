@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/datazip/olake-server/internal/docker"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
@@ -132,7 +133,10 @@ func (c *Client) TestConnection(ctx context.Context, sourceType, version, config
 }
 
 // RunSync runs a workflow to sync data between source and destination
-func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig string, ProjectID, JobId, sourceID, destID int) (map[string]interface{}, error) {
+func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig string,
+	ProjectID, JobId, sourceID, destID int,
+) (map[string]interface{}, error) {
+
 	params := SyncParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -147,22 +151,34 @@ func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, so
 		WorkflowID:    fmt.Sprintf("sync-%d-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID, time.Now().Unix()),
 	}
 
-	workflowOptions := client.StartWorkflowOptions{
-		ID:           params.WorkflowID,
-		TaskQueue:    TaskQueue,
-		CronSchedule: toCron(frequency),
+	cronSpec := toCron(frequency)
+
+	schedule := client.ScheduleSpec{
+		CronExpressions: []string{cronSpec},
 	}
-	_, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, RunSyncWorkflow, params)
+
+	action := &client.ScheduleWorkflowAction{
+		ID:        params.WorkflowID,
+		Workflow:  RunSyncWorkflow,
+		Args:      []interface{}{params},
+		TaskQueue: TaskQueue,
+	}
+
+	policies := client.SchedulePolicies{
+		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP, // Prevents overlapping workflow runs
+	}
+	scheduleID := fmt.Sprintf("schedule-%s", params.WorkflowID)
+	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
+		ID:      scheduleID,
+		Spec:    schedule,
+		Action:  action,
+		Overlap: policies.Overlap,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute sync workflow: %v", err)
+		return nil, fmt.Errorf("failed to create schedule: %w", err)
 	}
 
-	// var result map[string]interface{}
-	// if err := run.Get(ctx, &result); err != nil {
-	// 	return nil, fmt.Errorf("workflow execution failed: %v", err)
-	// }
-
-	return map[string]interface{}{"message": "Job started successfully"}, nil
+	return map[string]interface{}{"message": "Schedule created with no overlap"}, nil
 }
 
 // WorkflowExecution represents information about a workflow execution

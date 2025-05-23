@@ -7,11 +7,18 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-server/internal/database"
 )
 
 // Runner is responsible for executing Docker commands
 type Runner struct {
 	WorkingDir string
+}
+type JobHandler struct {
+	web.Controller
+	jobORM *database.JobORM
 }
 
 // NewRunner creates a new Docker runner
@@ -264,6 +271,13 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 	if err := createDirectory(syncDir); err != nil {
 		return nil, err
 	}
+	var jobORM *database.JobORM
+	jobORM = database.NewJobORM()
+	job, err := jobORM.GetByID(JobId)
+	if err != nil {
+		return nil, err
+	}
+	stateConfig = job.State
 
 	// Define paths for required files
 	configPath := filepath.Join(syncDir, "config.json")
@@ -293,7 +307,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 	}
 
 	// Execute sync command with additional arguments
-	_, err := r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
+	_, err = r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")
@@ -320,6 +334,9 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 			"error":  fmt.Sprintf("failed to parse state file: %v", err),
 		}, nil
 	}
-
+	stateJSON, _ := json.Marshal(result)
+	job.State = string(stateJSON)
+	job.Active = true
+	jobORM.Update(job)
 	return result, nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -508,7 +509,7 @@ func (c *JobHandler) GetJobTasks() {
 			Runtime:   runTime.String(),
 			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
-			FilePath:  execution.Execution.WorkflowId,
+			FilePath:  removeIsoSuffix(execution.Execution.WorkflowId),
 		})
 	}
 
@@ -701,4 +702,10 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	return dest, nil
+}
+func removeIsoSuffix(id string) string {
+	// Regex to match ISO 8601 timestamp at the end, prefixed by a dash '-'
+	// Example match: -2025-05-23T12:06:00Z
+	re := regexp.MustCompile(`-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`)
+	return re.ReplaceAllString(id, "")
 }

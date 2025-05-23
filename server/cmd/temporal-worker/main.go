@@ -6,11 +6,30 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/beego/beego/logs"
+	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-server/internal/constants"
+	"github.com/datazip/olake-server/internal/database"
+	"github.com/datazip/olake-server/internal/logger"
 	"github.com/datazip/olake-server/internal/temporal"
 )
 
 func main() {
+	// check constants
+	constants.Init()
+
+	// init logger
+	logsdir, _ := config.String("logsdir")
+	logger.InitLogger(logsdir)
+
+	// init database
+	postgresDB, _ := config.String("postgresdb")
+	err := database.Init(postgresDB)
+	if err != nil {
+		logs.Critical("Failed to initialize database: %s", err)
+	}
+
 	log.Println("Starting Olake Temporal worker...")
 
 	// Default to localhost if no address provided
