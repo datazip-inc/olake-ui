@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -509,7 +510,7 @@ func (c *JobHandler) GetJobTasks() {
 			Runtime:   runTime.String(),
 			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
-			FilePath:  removeIsoSuffix(execution.Execution.WorkflowId),
+			FilePath:  execution.Execution.WorkflowId,
 		})
 	}
 
@@ -540,12 +541,12 @@ func (c *JobHandler) GetTaskLogs() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
+	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(req.FilePath)))
 	// Read the log file
 
 	// Get home directory
 	homeDir := docker.GetDefaultConfigDir()
-	mainSyncDir := filepath.Join(homeDir, req.FilePath)
+	mainSyncDir := filepath.Join(homeDir, syncFolderName)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
 		return

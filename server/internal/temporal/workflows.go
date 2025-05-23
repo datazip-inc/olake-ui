@@ -138,8 +138,9 @@ func TestConnectionWorkflow(ctx workflow.Context, params ActivityParams) (map[st
 
 // RunSyncWorkflow is a workflow for running data synchronization
 func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interface{}, error) {
-	// OR get workflow info directly from ctx:
-
+	// Get workflow info from context
+	workflowInfo := workflow.GetInfo(ctx)
+	workflowID := workflowInfo.WorkflowExecution.ID
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 15, // Longer timeout for sync operations
 		RetryPolicy: &temporal.RetryPolicy{
@@ -149,6 +150,7 @@ func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interf
 			MaximumAttempts:    1, // Fewer retries for sync as it's more expensive
 		},
 	}
+	params.WorkflowID = workflowID
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var result map[string]interface{}
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)

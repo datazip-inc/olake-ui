@@ -148,17 +148,16 @@ func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, so
 		JobId:         JobId,
 		SourceID:      sourceID,
 		DestID:        destID,
-		WorkflowID:    fmt.Sprintf("sync-%d-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID, time.Now().Unix()),
 	}
 
 	cronSpec := toCron(frequency)
-
+	id := fmt.Sprintf("sync-%d-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID, time.Now().Unix())
 	schedule := client.ScheduleSpec{
 		CronExpressions: []string{cronSpec},
 	}
 
 	action := &client.ScheduleWorkflowAction{
-		ID:        params.WorkflowID,
+		ID:        id,
 		Workflow:  RunSyncWorkflow,
 		Args:      []interface{}{params},
 		TaskQueue: TaskQueue,
@@ -167,7 +166,7 @@ func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, so
 	policies := client.SchedulePolicies{
 		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP, // Prevents overlapping workflow runs
 	}
-	scheduleID := fmt.Sprintf("schedule-%s", params.WorkflowID)
+	scheduleID := fmt.Sprintf("schedule-%s", id)
 	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
 		ID:      scheduleID,
 		Spec:    schedule,

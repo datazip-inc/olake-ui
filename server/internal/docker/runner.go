@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -262,7 +263,7 @@ func (r *Runner) GetCatalog(sourceType, version, config string, workflowID strin
 
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
-	syncFolderName := workflowID
+	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 	// Create directory for output with proper permissions
 	syncDir := filepath.Join(r.WorkingDir, syncFolderName)
 	fmt.Printf("working directory path %s\n", syncDir)
