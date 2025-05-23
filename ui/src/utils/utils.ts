@@ -146,6 +146,8 @@ export const getFrequencyValue = (frequency: string) => {
 		case "yearly":
 		case "years":
 			return "years"
+		case "minutes":
+			return "minutes"
 		default:
 			return "hours"
 	}
