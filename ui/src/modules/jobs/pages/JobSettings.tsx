@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Switch, message, Select } from "antd"
 import { ArrowRight } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
@@ -8,11 +8,14 @@ import { getConnectorImage } from "../../../utils/utils"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
+import { jobService } from "../../../api"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const [replicationFrequencyValue, setReplicationFrequencyValue] =
 		useState("1")
+	const [jobName, setJobName] = useState("")
+	const navigate = useNavigate()
 
 	const {
 		jobs,
@@ -29,12 +32,48 @@ const JobSettings: React.FC = () => {
 	}, [fetchJobs, jobs.length])
 
 	const job = jobs.find(j => j.id.toString() === jobId)
+	console.log(job)
 
-	const [pauseJob, setPauseJob] = useState(!job?.activate)
+	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
+
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+			await fetchJobs()
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+		}
+	}
 
 	const [replicationFrequency, setReplicationFrequency] = useState(
-		job?.frequency,
+		job?.frequency ? job.frequency.split("-")[1] : "minutes",
 	)
+
+	useEffect(() => {
+		if (job?.frequency) {
+			const parts = job.frequency.split("-")
+			if (parts.length === 2) {
+				setReplicationFrequencyValue(parts[0])
+				setReplicationFrequency(parts[1])
+			} else {
+				setReplicationFrequencyValue("1")
+				setReplicationFrequency("minutes")
+			}
+		} else if (job) {
+			setReplicationFrequencyValue("1")
+			setReplicationFrequency("minutes")
+		}
+		if (job) {
+			setPauseJob(!job.activate)
+		}
+		if (job?.name) {
+			setJobName(job.name)
+		}
+	}, [job])
 
 	const handleClearDestinationAndSync = () => {
 		setShowClearDestinationAndSyncModal(true)
@@ -47,8 +86,47 @@ const JobSettings: React.FC = () => {
 		setShowDeleteJobModal(true)
 	}
 
-	const handleSaveSettings = () => {
-		message.success("Job settings saved successfully")
+	const handleSaveSettings = async () => {
+		if (!jobId || !job) {
+			message.error("Job details not found.")
+			return
+		}
+
+		const updatedFrequency = `${replicationFrequencyValue}-${replicationFrequency}`
+
+		try {
+			const jobUpdatePayload = {
+				name: jobName,
+				frequency: updatedFrequency,
+				activate: job.activate,
+				source: {
+					...job.source,
+					config:
+						typeof job.source.config === "string"
+							? job.source.config
+							: JSON.stringify(job.source.config),
+				},
+				destination: {
+					...job.destination,
+					config:
+						typeof job.destination.config === "string"
+							? job.destination.config
+							: JSON.stringify(job.destination.config),
+				},
+				streams_config:
+					typeof job.streams_config === "string"
+						? job.streams_config
+						: JSON.stringify(job.streams_config),
+			}
+
+			await jobService.updateJob(jobId, jobUpdatePayload)
+			message.success("Job settings saved successfully")
+			await fetchJobs()
+			navigate("/jobs")
+		} catch (error) {
+			console.error("Error saving job settings:", error)
+			message.error("Failed to save job settings")
+		}
 	}
 
 	return (
@@ -109,6 +187,8 @@ const JobSettings: React.FC = () => {
 										<Input
 											placeholder="Enter your job name"
 											defaultValue={job?.name}
+											value={jobName}
+											onChange={e => setJobName(e.target.value)}
 											className="max-w-md"
 										/>
 									</div>
@@ -146,7 +226,11 @@ const JobSettings: React.FC = () => {
 									<span className="font-medium">Pause your job</span>
 									<Switch
 										checked={pauseJob}
-										onChange={setPauseJob}
+										onChange={newlyChecked => {
+											if (job?.id) {
+												handlePauseJob(job.id.toString(), newlyChecked)
+											}
+										}}
 										className={pauseJob ? "bg-blue-600" : ""}
 									/>
 								</div>
