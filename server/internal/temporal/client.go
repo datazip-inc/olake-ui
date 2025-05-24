@@ -150,34 +150,57 @@ func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, so
 		DestID:        destID,
 	}
 
-	cronSpec := toCron(frequency)
-	id := fmt.Sprintf("sync-%d-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID, time.Now().Unix())
-	schedule := client.ScheduleSpec{
-		CronExpressions: []string{cronSpec},
-	}
-
-	action := &client.ScheduleWorkflowAction{
-		ID:        id,
-		Workflow:  RunSyncWorkflow,
-		Args:      []interface{}{params},
+	// Run the workflow immediately first
+	exec, err := c.temporalClient.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+		ID:        fmt.Sprintf("sync-%d-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID, time.Now().Unix()),
 		TaskQueue: TaskQueue,
-	}
+	}, RunSyncWorkflow, params)
 
-	policies := client.SchedulePolicies{
-		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP, // Prevents overlapping workflow runs
-	}
-	scheduleID := fmt.Sprintf("schedule-%s", id)
-	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
-		ID:      scheduleID,
-		Spec:    schedule,
-		Action:  action,
-		Overlap: policies.Overlap,
-	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create schedule: %w", err)
+		return nil, fmt.Errorf("failed to start immediate sync workflow: %w", err)
 	}
 
-	return map[string]interface{}{"message": "Schedule created with no overlap"}, nil
+	// Only set up the schedule if frequency is specified
+	if frequency != "" {
+		cronSpec := toCron(frequency)
+		id := fmt.Sprintf("sync-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID)
+		schedule := client.ScheduleSpec{
+			CronExpressions: []string{cronSpec},
+		}
+
+		action := &client.ScheduleWorkflowAction{
+			ID:        id,
+			Workflow:  RunSyncWorkflow,
+			Args:      []interface{}{params},
+			TaskQueue: TaskQueue,
+		}
+
+		policies := client.SchedulePolicies{
+			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP, // Prevents overlapping workflow runs
+		}
+		scheduleID := fmt.Sprintf("schedule-%s", id)
+		_, err = c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
+			ID:      scheduleID,
+			Spec:    schedule,
+			Action:  action,
+			Overlap: policies.Overlap,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create schedule: %w", err)
+		}
+
+		return map[string]interface{}{
+			"message":         "Immediate sync started and schedule created with no overlap",
+			"workflowRunId":   exec.GetRunID(),
+			"scheduleCreated": true,
+		}, nil
+	}
+
+	return map[string]interface{}{
+		"message":         "Immediate sync started (no schedule)",
+		"workflowRunId":   exec.GetRunID(),
+		"scheduleCreated": false,
+	}, nil
 }
 
 // WorkflowExecution represents information about a workflow execution
