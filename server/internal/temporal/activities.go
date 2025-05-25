@@ -35,7 +35,7 @@ func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (m
 		logger.Error("Docker command failed", "error", err)
 		return nil, fmt.Errorf("docker command failed: %v", err)
 	}
-	if params.Command == docker.Check && err == nil {
+	if params.Command == docker.Check {
 		return map[string]interface{}{"status": "success"}, nil
 	}
 

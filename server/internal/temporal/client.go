@@ -9,6 +9,7 @@ import (
 
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/api/enums/v1"
+	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
@@ -103,40 +104,12 @@ func (c *Client) GetSpec(ctx context.Context, sourceType, version, config string
 	return result, nil
 }
 
-// TestConnection runs a workflow to test connection
-func (c *Client) TestConnection(ctx context.Context, sourceType, version, config string, sourceID int) (map[string]interface{}, error) {
-	params := ActivityParams{
-		SourceType: sourceType,
-		Version:    version,
-		Config:     config,
-		SourceID:   sourceID,
-		WorkflowID: fmt.Sprintf("test-connection-%s-%d-%d", sourceType, sourceID, time.Now().Unix()),
-		Command:    docker.Check,
-	}
-
-	workflowOptions := client.StartWorkflowOptions{
-		ID:        params.WorkflowID,
-		TaskQueue: TaskQueue,
-	}
-
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute connection test workflow: %v", err)
-	}
-
-	var result map[string]interface{}
-	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
-	}
-
-	return result, nil
-}
-
-// RunSync runs a workflow to sync data between source and destination
-func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig string,
+func (c *Client) CreateSync(
+	ctx context.Context,
+	sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig string,
 	ProjectID, JobId, sourceID, destID int,
+	runImmediately bool,
 ) (map[string]interface{}, error) {
-
 	params := SyncParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -149,57 +122,162 @@ func (c *Client) RunSync(ctx context.Context, sourceType, version, frequency, so
 		SourceID:      sourceID,
 		DestID:        destID,
 	}
+	id := fmt.Sprintf("sync-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID)
+	scheduleID := fmt.Sprintf("schedule-%s", id)
 
-	// Run the workflow immediately first
-	exec, err := c.temporalClient.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
-		ID:        fmt.Sprintf("sync-%d-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID, time.Now().Unix()),
-		TaskQueue: TaskQueue,
-	}, RunSyncWorkflow, params)
+	var scheduleHandle client.ScheduleHandle
+	var scheduleExists bool
+	var needsScheduleUpdate bool
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to start immediate sync workflow: %w", err)
-	}
+	// Check if schedule exists
+	tempHandle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
+	currentSchedule, err := tempHandle.Describe(ctx)
+	scheduleExists = err == nil
 
-	// Only set up the schedule if frequency is specified
-	if frequency != "" {
-		cronSpec := toCron(frequency)
-		id := fmt.Sprintf("sync-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID)
-		schedule := client.ScheduleSpec{
-			CronExpressions: []string{cronSpec},
+	fmt.Printf("Schedule exists: %v\n", scheduleExists)
+
+	// Determine if we need to create/update schedule based on frequency
+	// Handle immediate run
+	if runImmediately {
+		fmt.Printf("Triggering immediate run (frequency provided: %v)\n", frequency != "")
+
+		if scheduleHandle == nil {
+			scheduleHandle = c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
 		}
 
-		action := &client.ScheduleWorkflowAction{
-			ID:        id,
-			Workflow:  RunSyncWorkflow,
-			Args:      []interface{}{params},
-			TaskQueue: TaskQueue,
+		// Verify schedule exists
+		fmt.Println("Verifying schedule exists before manual trigger...")
+		_, err := scheduleHandle.Describe(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("schedule verification failed before manual trigger: %w", err)
 		}
 
-		policies := client.SchedulePolicies{
-			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP, // Prevents overlapping workflow runs
+		// Pause schedule before triggering manually
+		fmt.Println("Pausing schedule before manual trigger...")
+		if err := scheduleHandle.Pause(ctx, client.SchedulePauseOptions{
+			Note: "Paused for manual trigger",
+		}); err != nil {
+			fmt.Printf("Warning: Failed to pause schedule: %v (continuing anyway)\n", err)
+		} else {
+			fmt.Println("Schedule paused successfully")
 		}
-		scheduleID := fmt.Sprintf("schedule-%s", id)
-		_, err = c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
-			ID:      scheduleID,
-			Spec:    schedule,
-			Action:  action,
-			Overlap: policies.Overlap,
+
+		// Trigger
+		fmt.Println("Triggering manual run...")
+		err = scheduleHandle.Trigger(ctx, client.ScheduleTriggerOptions{
+			Overlap: enumspb.SCHEDULE_OVERLAP_POLICY_SKIP,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to create schedule: %w", err)
+			fmt.Printf("Failed to trigger manual run: %v\n", err)
+			if unPauseErr := scheduleHandle.Unpause(ctx, client.ScheduleUnpauseOptions{
+				Note: "Unpaused after trigger failure",
+			}); unPauseErr != nil {
+				fmt.Printf("Failed to unpause after trigger failure: %v\n", unPauseErr)
+			}
+			return nil, fmt.Errorf("failed to trigger schedule manually: %w", err)
+		}
+
+		// Wait briefly for workflow to start
+		time.Sleep(2 * time.Second)
+
+		// Unpause
+		fmt.Println("Unpausing schedule after manual trigger...")
+		if err := scheduleHandle.Unpause(ctx, client.ScheduleUnpauseOptions{
+			Note: "Unpaused after manual trigger",
+		}); err != nil {
+			fmt.Printf("Warning: Failed to unpause schedule: %v\n", err)
+		} else {
+			fmt.Println("Schedule unpaused successfully")
 		}
 
 		return map[string]interface{}{
-			"message":         "Immediate sync started and schedule created with no overlap",
-			"workflowRunId":   exec.GetRunID(),
-			"scheduleCreated": true,
+			"message": "sync triggered sucessfully",
+		}, nil
+	}
+
+	if frequency != "" {
+		cronSpec := toCron(frequency)
+
+		if scheduleExists {
+			// Check if frequency has changed
+			if len(currentSchedule.Schedule.Spec.CronExpressions) == 0 ||
+				currentSchedule.Schedule.Spec.CronExpressions[0] != cronSpec {
+				fmt.Println("Frequency changed, need to update schedule")
+				needsScheduleUpdate = true
+			} else {
+				fmt.Println("Frequency unchanged, keeping existing schedule")
+				needsScheduleUpdate = false
+			}
+		} else {
+			fmt.Println("No existing schedule, need to create new one")
+			needsScheduleUpdate = true
+		}
+
+		// Only update schedule if frequency changed or doesn't exist
+		if needsScheduleUpdate {
+			if scheduleExists {
+				fmt.Println("Deleting existing schedule to recreate with new frequency...")
+				if err := tempHandle.Delete(ctx); err != nil {
+					fmt.Printf("Warning: Failed to delete existing schedule: %v\n", err)
+					scheduleID = fmt.Sprintf("schedule-%s-%d", id, time.Now().Unix())
+				} else {
+					fmt.Println("Existing schedule deleted successfully")
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+
+			fmt.Println("Creating/updating schedule...")
+			schedule := client.ScheduleSpec{
+				CronExpressions: []string{cronSpec},
+			}
+			action := &client.ScheduleWorkflowAction{
+				ID:        id,
+				Workflow:  RunSyncWorkflow,
+				Args:      []interface{}{params},
+				TaskQueue: TaskQueue,
+			}
+			policies := client.SchedulePolicies{
+				Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
+			}
+
+			_, err = c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
+				ID:      scheduleID,
+				Spec:    schedule,
+				Action:  action,
+				Overlap: policies.Overlap,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create schedule: %w", err)
+			}
+			fmt.Println("Schedule created/updated successfully")
+			time.Sleep(200 * time.Millisecond)
+		}
+
+		//	scheduleHandle = c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
+	} else if runImmediately && !scheduleExists {
+		// If no frequency provided but immediate run requested, and no existing schedule
+		return nil, fmt.Errorf("cannot run immediately without a schedule - frequency must be specified or existing schedule must be present")
+	}
+
+	// If only updating schedule (no immediate run)
+	if frequency != "" && needsScheduleUpdate {
+		return map[string]interface{}{
+			"message": "schedule updated successfully",
+		}, nil
+	} else if frequency != "" {
+		return map[string]interface{}{
+			"message": "schedule unchanged",
+		}, nil
+	}
+
+	if scheduleExists {
+		return map[string]interface{}{
+			"message": "schedule created successfully",
 		}, nil
 	}
 
 	return map[string]interface{}{
-		"message":         "Immediate sync started (no schedule)",
-		"workflowRunId":   exec.GetRunID(),
-		"scheduleCreated": false,
+		"message": "sync operation completed",
 	}, nil
 }
 

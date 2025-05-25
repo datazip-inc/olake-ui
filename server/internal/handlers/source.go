@@ -225,6 +225,10 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 	jobs, err := c.jobORM.GetBySourceID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
+
+	}
 	for _, job := range jobs {
 		job.Active = false
 	}
@@ -262,10 +266,6 @@ func (c *SourceHandler) GetSourceCatalog() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
-	//Log the request
-	fmt.Printf("GetSourceCatalog request: type=%s, version=%s, sourceID=%d\n",
-		req.Type, req.Version)
 	var catalog map[string]interface{}
 	var err error
 	// Try to use Temporal if available

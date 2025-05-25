@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -138,19 +137,24 @@ func (c *JobHandler) GetAllJobs() {
 
 		query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
 		fmt.Println("Query:", query)
-		// List workflows using the direct query
-		resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
-			Query:    query,
-			PageSize: 1,
-		})
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
-			return
-		}
 
-		if len(resp.Executions) > 0 {
-			jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-			jobResp.LastRunState = resp.Executions[0].Status.String()
+		// Only try to get workflow information if Temporal client is available
+		if c.tempClient != nil {
+			// List workflows using the direct query
+			resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+				Query:    query,
+				PageSize: 1,
+			})
+			if err != nil {
+				// Log the error but continue without failing the request
+				logs.Error("Failed to list workflows: %v", err)
+			} else if len(resp.Executions) > 0 {
+				jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+				jobResp.LastRunState = resp.Executions[0].Status.String()
+			} else {
+				jobResp.LastRunTime = ""
+				jobResp.LastRunState = ""
+			}
 		} else {
 			jobResp.LastRunTime = ""
 			jobResp.LastRunState = ""
@@ -166,6 +170,11 @@ func (c *JobHandler) GetAllJobs() {
 func (c *JobHandler) CreateJob() {
 	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
+	ProjectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
 
 	// Parse request body
 	var req models.CreateJobRequest
@@ -212,6 +221,30 @@ func (c *JobHandler) CreateJob() {
 		return
 	}
 
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		_, err = c.tempClient.CreateSync(
+			c.Ctx.Request.Context(),
+			job.SourceID.Type,
+			job.SourceID.Version,
+			job.Frequency,
+			job.SourceID.Config,
+			job.DestID.Config,
+			job.State,
+			job.StreamsConfig,
+			ProjectID,
+			job.ID,
+			job.SourceID.ID,
+			job.DestID.ID,
+			false,
+		)
+		if err != nil {
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			fmt.Println("Successfully executed sync job via Temporal")
+		}
+	}
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -219,7 +252,11 @@ func (c *JobHandler) CreateJob() {
 func (c *JobHandler) UpdateJob() {
 	// Get project ID and job ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-
+	projectID, err := strconv.Atoi(projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
+		return
+	}
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -275,6 +312,29 @@ func (c *JobHandler) UpdateJob() {
 	if err := c.jobORM.Update(existingJob); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
 		return
+	}
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		_, err = c.tempClient.CreateSync(
+			c.Ctx.Request.Context(),
+			existingJob.SourceID.Type,
+			existingJob.SourceID.Version,
+			existingJob.Frequency,
+			existingJob.SourceID.Config,
+			existingJob.DestID.Config,
+			existingJob.State,
+			existingJob.StreamsConfig,
+			projectID,
+			existingJob.ID,
+			existingJob.SourceID.ID,
+			existingJob.DestID.ID,
+			false,
+		)
+		if err != nil {
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			fmt.Println("Successfully executed sync job via Temporal")
+		}
 	}
 
 	utils.SuccessResponse(&c.Controller, req)
@@ -347,8 +407,7 @@ func (c *JobHandler) SyncJob() {
 
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 	projectID, err := strconv.Atoi(projectIDStr)
-
-	if projectIDStr == "" {
+	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
@@ -368,7 +427,7 @@ func (c *JobHandler) SyncJob() {
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
-		_, err = c.tempClient.RunSync(
+		resp, err := c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
 			job.SourceID.Type,
 			job.SourceID.Version,
@@ -381,17 +440,13 @@ func (c *JobHandler) SyncJob() {
 			job.ID,
 			job.SourceID.ID,
 			job.DestID.ID,
+			true,
 		)
 		if err != nil {
-			fmt.Printf("Temporal workflow execution failed: %v", err)
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal excuetion failed: %v", err))
 		} else {
-			fmt.Println("Successfully executed sync job via Temporal")
+			utils.SuccessResponse(&c.Controller, resp)
 		}
-	}
-
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Sync operation failed: %v", err))
-		return
 	}
 
 	// Update job state with sync result from state.json
@@ -473,11 +528,11 @@ func (c *JobHandler) GetJobTasks() {
 	}
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 	projectID, err := strconv.Atoi(projectIDStr)
-
-	if projectIDStr == "" {
+	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
+
 	// Get job to verify it exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
@@ -703,10 +758,4 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	return dest, nil
-}
-func removeIsoSuffix(id string) string {
-	// Regex to match ISO 8601 timestamp at the end, prefixed by a dash '-'
-	// Example match: -2025-05-23T12:06:00Z
-	re := regexp.MustCompile(`-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$`)
-	return re.ReplaceAllString(id, "")
 }

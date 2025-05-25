@@ -255,6 +255,9 @@ func (c *DestHandler) DeleteDestination() {
 		return
 	}
 	jobs, err := c.jobORM.GetBySourceID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
+	}
 	for _, job := range jobs {
 		job.Active = false
 	}
