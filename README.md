@@ -25,8 +25,8 @@ You can run the entire Olake stack (UI, Backend, Temporal worker, Temporal servi
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/datazip-inc/olake-app.git
-   cd olake-app
+   git clone https://github.com/datazip-inc/olake-ui.git
+   cd olake-ui
    ```
 
 2. **Edit persistence/config paths (required):**
