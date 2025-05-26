@@ -122,7 +122,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params ActivityParams) (map[st
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
 			MaximumInterval:    time.Minute,
-			MaximumAttempts:    3,
+			MaximumAttempts:    1,
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
