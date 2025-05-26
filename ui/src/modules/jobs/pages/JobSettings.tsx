@@ -32,7 +32,6 @@ const JobSettings: React.FC = () => {
 	}, [fetchJobs, jobs.length])
 
 	const job = jobs.find(j => j.id.toString() === jobId)
-	console.log(job)
 
 	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
 

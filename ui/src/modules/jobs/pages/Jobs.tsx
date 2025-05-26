@@ -132,7 +132,7 @@ const Jobs: React.FC = () => {
 					onClick={handleCreateJob}
 				>
 					<Plus className="size-4 text-white" />
-					Create job
+					Create Job
 				</button>
 			</div>
 

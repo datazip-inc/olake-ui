@@ -61,8 +61,10 @@ const JobLogs: React.FC = () => {
 			case "info":
 				return "text-[#531DAB] bg-[#F9F0FF]"
 			case "warning":
+			case "warn":
 				return "text-[#FAAD14] bg-[#FFFBE6]"
 			case "error":
+			case "fatal":
 				return "text-red-500 bg-[#FFF1F0]"
 			default:
 				return "text-gray-600"
@@ -72,8 +74,10 @@ const JobLogs: React.FC = () => {
 	const getLogTextColor = (level: string) => {
 		switch (level) {
 			case "warning":
+			case "warn":
 				return "text-[#FAAD14]"
 			case "error":
+			case "fatal":
 				return "text-[#F5222D]"
 			default:
 				return "text-[#000000"
@@ -231,7 +235,7 @@ const JobLogs: React.FC = () => {
 													</span>
 												</td>
 												<td
-													className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(taskLog.level)}`}
+													className={`px-4 py-3 text-sm ${getLogTextColor(taskLog.level)}`}
 												>
 													{taskLog.message}
 												</td>

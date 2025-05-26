@@ -55,13 +55,13 @@ const JobCreation: React.FC = () => {
 		setShowSuccessModal,
 		addJob,
 		setShowFailureModal,
+		setSourceTestConnectionError,
 	} = useAppStore()
 
 	const sourceRef = useRef<CreateSourceHandle>(null)
 	const destinationRef = useRef<CreateDestinationHandle>(null)
 
 	const getReplicationFrequency = () => {
-		// Handle combined format like "1 hours"
 		if (replicationFrequency.includes(" ")) {
 			const parts = replicationFrequency.split(" ")
 			const value = parts[0]
@@ -111,20 +111,24 @@ const JobCreation: React.FC = () => {
 				name: sourceName,
 				type: sourceConnector.toLowerCase(),
 				version: sourceVersion,
-				config: JSON.stringify(sourceFormData),
+				config:
+					typeof sourceFormData === "string"
+						? sourceFormData
+						: JSON.stringify(sourceFormData),
 			}
 			setShowTestingModal(true)
 			const testResult = await sourceService.testSourceConnection(newSourceData)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep("destination")
 					}, 1000)
 				} else {
+					setSourceTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			}, 1500)
@@ -286,7 +290,7 @@ const JobCreation: React.FC = () => {
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold"> Create job</div>
+						<div className="text-2xl font-bold"> Create Job</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />

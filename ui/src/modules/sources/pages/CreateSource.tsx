@@ -139,6 +139,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setShowSourceCancelModal,
 			addSource,
 			setShowFailureModal,
+			setSourceTestConnectionError,
 		} = useAppStore()
 
 		const connectorOptions: ConnectorOption[] = [
@@ -328,7 +329,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				const testResult =
 					await sourceService.testSourceConnection(newSourceData)
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -341,6 +342,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							})
 					}, 1000)
 				} else {
+					setSourceTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -388,7 +390,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					onFormDataChange(selectedSource.config)
 				}
 				setSourceName(selectedSource.name)
-				setConnector(selectedSource.type)
+				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
 			}
 		}

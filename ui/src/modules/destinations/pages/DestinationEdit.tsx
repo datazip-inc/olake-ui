@@ -11,7 +11,11 @@ import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import AWSS3 from "../../../assets/AWSS3.svg"
 import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
-import { getConnectorImage, getConnectorName } from "../../../utils/utils"
+import {
+	getCatalogInLowerCase,
+	getConnectorImage,
+	getConnectorName,
+} from "../../../utils/utils"
 import EditDestinationModal from "../../common/Modals/EditDestinationModal"
 import { Entity, EntityJob } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
@@ -73,6 +77,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [isLoading, setIsLoading] = useState(false)
 	const [destination, setDestination] = useState<Entity | null>(null)
+	const [initialCatalog, setInitialCatalog] = useState<string | null>(null)
+	const [initialFormData, setInitialFormData] = useState<Record<string, any>>(
+		{},
+	)
 
 	const {
 		destinations,
@@ -176,33 +184,33 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setConnector(connectorType)
 				setSelectedVersion(destination.version || "")
 
-				// Handle config data
 				const config =
 					typeof destination.config === "string"
 						? JSON.parse(destination.config)
 						: destination.config
 
 				setFormData(config)
+				setInitialFormData(config)
 
 				if (destination.type === "iceberg") {
 					try {
 						const catalogType = config.writer.catalog_type || "AWS Glue"
+						setInitialCatalog(catalogType)
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
 						setCatalog("AWS Glue")
 					}
+				} else {
+					setInitialCatalog("s3")
 				}
 			}
 		}
 	}, [destinationId, destinations, fetchDestinations])
 
-	// Handle initialData for when component is used from JobEdit
 	useEffect(() => {
 		if (initialData) {
 			setDestinationName(initialData.name || "")
-
-			// Normalize connector type
 			let connectorType = initialData.type
 			if (
 				connectorType?.toLowerCase() === "s3" ||
@@ -217,8 +225,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			}
 			setConnector(connectorType)
 			setSelectedVersion(initialData.version || "latest")
-
-			// Handle config data
 			if (initialData.config) {
 				let parsedConfig = initialData.config
 				if (typeof initialData.config === "string") {
@@ -229,11 +235,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						parsedConfig = {}
 					}
 				}
-
 				setFormData(parsedConfig)
-				// If it's iceberg, try to get catalog type
+				setInitialFormData(parsedConfig)
 				if (connectorType === "Apache Iceberg") {
-					setCatalog(getCatalogName(parsedConfig.catalog_type) || "AWS Glue")
+					let writerCatalogType = parsedConfig.writer.catalog_type
+					setCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+					setInitialCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+				} else {
+					setInitialCatalog("s3")
 				}
 			}
 		}
@@ -275,6 +284,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchVersions()
+		if (!initialData) {
+			if (connector === "Apache Iceberg") {
+				setCatalog("AWS Glue")
+			} else {
+				setCatalog("None")
+			}
+		}
 	}, [connector])
 
 	useEffect(() => {
@@ -291,6 +307,19 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					setSchema(response.data.spec)
 					if (response.data?.uiSchema) {
 						setUiSchema(response.data.uiSchema)
+					}
+					if (initialCatalog) {
+						if (
+							initialFormData &&
+							getCatalogInLowerCase(catalog || "") !=
+								getCatalogInLowerCase(initialCatalog)
+						) {
+							setFormData({})
+						} else {
+							if (initialFormData) {
+								setFormData(initialFormData)
+							}
+						}
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)

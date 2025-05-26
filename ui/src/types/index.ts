@@ -165,6 +165,11 @@ export interface EntityTestResponse {
 	config: string
 }
 
+export interface SourceTestResponse {
+	message: string
+	status: "FAILED" | "SUCCEEDED"
+}
+
 export interface LoginArgs {
 	username: string
 	password: string

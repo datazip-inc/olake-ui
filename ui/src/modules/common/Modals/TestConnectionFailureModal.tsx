@@ -5,7 +5,8 @@ import { Info } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 
 const TestConnectionFailureModal = () => {
-	const { showFailureModal, setShowFailureModal } = useAppStore()
+	const { showFailureModal, setShowFailureModal, sourceTestConnectionError } =
+		useAppStore()
 	const navigate = useNavigate()
 
 	const handleCancel = () => {
@@ -44,7 +45,9 @@ const TestConnectionFailureModal = () => {
 							weight="bold"
 							className="size-4 text-[#f5222d]"
 						/>
-						Error : Please check your parameters
+						{sourceTestConnectionError
+							? sourceTestConnectionError
+							: "Error : Please check your parameters"}
 					</div>
 				</div>
 				<div className="flex items-center gap-4">

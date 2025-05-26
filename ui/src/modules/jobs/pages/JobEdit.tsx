@@ -16,7 +16,10 @@ import { destinationService } from "../../../api/services/destinationService"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import { getFrequencyValue } from "../../../utils/utils"
+import {
+	getFrequencyValue,
+	removeSavedJobFromLocalStorage,
+} from "../../../utils/utils"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -120,6 +123,7 @@ const JobEdit: React.FC = () => {
 		setShowTestingModal,
 		setShowSuccessModal,
 		setShowFailureModal,
+		setSourceTestConnectionError,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
@@ -148,6 +152,7 @@ const JobEdit: React.FC = () => {
 	const [replicationFrequencyValue, setReplicationFrequencyValue] =
 		useState("1")
 	const [job, setJob] = useState<Job | null>(null)
+	const [savedJobId, setSavedJobId] = useState<string | null>(null)
 
 	// Find the job from the store
 	// useEffect(() => {
@@ -269,6 +274,7 @@ const JobEdit: React.FC = () => {
 			if (job) {
 				setJob(job)
 				setIsSavedJob(true)
+				setSavedJobId(job.id.toString())
 			}
 		}
 
@@ -409,7 +415,7 @@ const JobEdit: React.FC = () => {
 					setTimeout(() => {
 						setShowTestingModal(false)
 					}, 1000)
-					if (testResult.success) {
+					if (testResult.data?.status === "SUCCEEDED") {
 						setTimeout(() => {
 							setShowSuccessModal(true)
 						}, 1000)
@@ -418,6 +424,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("destination")
 						}, 2000)
 					} else {
+						setSourceTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
 					}
 				} catch (error) {
@@ -469,6 +476,9 @@ const JobEdit: React.FC = () => {
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
+			if (isSavedJob) {
+				removeSavedJobFromLocalStorage(savedJobId || "")
+			}
 			handleJobSubmit()
 		}
 	}

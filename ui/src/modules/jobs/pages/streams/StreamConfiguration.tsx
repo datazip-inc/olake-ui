@@ -26,46 +26,94 @@ const StreamConfiguration = ({
 }) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
-		stream.stream.sync_mode === "cdc" ? "cdc" : "full",
+		stream.stream.sync_mode === "full_refresh" ? "full" : "cdc",
 	)
-	const [enableBackfill, setEnableBackfill] = useState(syncMode === "full")
+	const [enableBackfill, setEnableBackfill] = useState(false)
 	const [normalisation, setNormalisation] = useState(false)
 	const [partitionRegex, setPartitionRegex] = useState("")
 	const [partitionInfo, setPartitionInfo] = useState<string[]>([])
 	const [formData, setFormData] = useState<any>({
 		sync_mode: stream.stream.sync_mode,
-		backfill: enableBackfill,
+		backfill: false,
 		partition_regex: "",
 	})
 
 	useEffect(() => {
 		setActiveTab("config")
-	}, [stream])
+		const initialApiSyncMode = stream.stream.sync_mode
+		let initialEnableBackfillForSwitch = false
 
-	useEffect(() => {
-		setSyncMode(stream.stream.sync_mode === "cdc" ? "cdc" : "full")
+		if (initialApiSyncMode === "full_refresh") {
+			setSyncMode("full")
+			initialEnableBackfillForSwitch = true
+		} else if (initialApiSyncMode === "cdc") {
+			setSyncMode("cdc")
+			initialEnableBackfillForSwitch = true
+		} else if (initialApiSyncMode === "strict_cdc") {
+			setSyncMode("cdc")
+			initialEnableBackfillForSwitch = false
+		}
+		setEnableBackfill(initialEnableBackfillForSwitch)
+
+		setFormData((prevFormData: any) => ({
+			...prevFormData,
+			sync_mode: initialApiSyncMode,
+			backfill: initialEnableBackfillForSwitch,
+		}))
 	}, [stream])
 
 	// Handlers
-	const handleSyncModeChange = (mode: string) => {
-		const newSyncMode = mode === "full" ? "full_refresh" : "cdc"
-		setSyncMode(mode)
-		stream.stream.sync_mode = newSyncMode
+	const handleSyncModeChange = (selectedRadioValue: string) => {
+		setSyncMode(selectedRadioValue)
+		let newApiSyncMode: "full_refresh" | "cdc" = "cdc"
+		let newEnableBackfillState = true
+
+		if (selectedRadioValue === "full") {
+			newApiSyncMode = "full_refresh"
+			newEnableBackfillState = true
+		} else {
+			newApiSyncMode = "cdc"
+			newEnableBackfillState = true
+		}
+
+		stream.stream.sync_mode = newApiSyncMode
+		setEnableBackfill(newEnableBackfillState)
 		onSyncModeChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "default",
-			newSyncMode,
+			newApiSyncMode,
 		)
-		if (mode === "full") {
-			setEnableBackfill(true)
-		} else {
-			setEnableBackfill(false)
+
+		setFormData({
+			...formData,
+			sync_mode: newApiSyncMode,
+			backfill: newEnableBackfillState,
+		})
+	}
+
+	const handleEnableBackfillChange = (checked: boolean) => {
+		setEnableBackfill(checked)
+		let finalApiSyncMode = stream.stream.sync_mode
+
+		if (syncMode === "cdc") {
+			if (checked) {
+				finalApiSyncMode = "cdc"
+				stream.stream.sync_mode = "cdc"
+				onSyncModeChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "default",
+					"cdc",
+				)
+			} else {
+				finalApiSyncMode = "strict_cdc"
+				stream.stream.sync_mode = "strict_cdc"
+			}
 		}
 
 		setFormData({
 			...formData,
-			sync_mode: newSyncMode,
-			backfill: mode === "full",
+			backfill: checked,
+			sync_mode: finalApiSyncMode,
 		})
 	}
 
@@ -143,7 +191,7 @@ const StreamConfiguration = ({
 						<label className="font-medium">Enable backfill</label>
 						<Switch
 							checked={enableBackfill}
-							onChange={setEnableBackfill}
+							onChange={handleEnableBackfillChange}
 							disabled={syncMode === "full"}
 						/>
 					</div>

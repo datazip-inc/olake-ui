@@ -36,7 +36,7 @@ export const getConnectorName = (connector: string, catalog: string | null) => {
 			return "iceberg/catalog/rest"
 		} else if (catalog === "JDBC Catalog") {
 			return "iceberg/catalog/jdbc"
-		} else if (catalog === "Hive Catalog") {
+		} else if (catalog === "Hive Catalog" || catalog === "HIVE Catalog") {
 			return "iceberg/catalog/hive"
 		}
 	}
@@ -76,13 +76,13 @@ export const getConnectorInLowerCase = (connector: string) => {
 }
 
 export const getCatalogInLowerCase = (catalog: string) => {
-	if (catalog === "AWS Glue") {
+	if (catalog === "AWS Glue" || catalog === "glue") {
 		return "glue"
-	} else if (catalog === "REST Catalog") {
+	} else if (catalog === "REST Catalog" || catalog === "rest") {
 		return "rest"
-	} else if (catalog === "JDBC Catalog") {
+	} else if (catalog === "JDBC Catalog" || catalog === "jdbc") {
 		return "jdbc"
-	} else if (catalog === "Hive Catalog") {
+	} else if (catalog === "Hive Catalog" || catalog === "hive") {
 		return "hive"
 	}
 }
@@ -150,5 +150,14 @@ export const getFrequencyValue = (frequency: string) => {
 			return "minutes"
 		default:
 			return "hours"
+	}
+}
+
+export const removeSavedJobFromLocalStorage = (jobId: string) => {
+	const savedJobs = localStorage.getItem("savedJobs")
+	if (savedJobs) {
+		const jobs = JSON.parse(savedJobs)
+		const filteredJobs = jobs.filter((job: any) => job.id !== jobId)
+		localStorage.setItem("savedJobs", JSON.stringify(filteredJobs))
 	}
 }
