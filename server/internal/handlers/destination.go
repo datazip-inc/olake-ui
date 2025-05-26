@@ -571,6 +571,32 @@ func (c *DestHandler) GetDestinationSpec() {
 						"description": "Name of the Iceberg database",
 						"order":       5,
 					},
+					"s3_endpoint": map[string]interface{}{
+						"type":        "string",
+						"title":       "S3 Endpoint",
+						"description": "S3 endpoint URL",
+						"order":       6,
+					},
+					"aws_region": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Region",
+						"description": "AWS region for Glue catalog",
+						"order":       7,
+					},
+					"aws_access_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Access Key",
+						"description": "AWS access key ID",
+						"format":      "password",
+						"order":       8,
+					},
+					"aws_secret_key": map[string]interface{}{
+						"type":        "string",
+						"title":       "AWS Secret Key",
+						"description": "AWS secret access key",
+						"format":      "password",
+						"order":       9,
+					},
 				},
 				"required": []string{"catalog_type", "normalization", "rest_catalog_url", "iceberg_s3_path", "iceberg_db"},
 			}

@@ -75,6 +75,34 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config str
 	return result, nil
 }
 
+// TestConnection runs a workflow to test connection
+func (c *Client) TestConnection(ctx context.Context, sourceType, version, config string) (map[string]interface{}, error) {
+	params := ActivityParams{
+		SourceType: sourceType,
+		Version:    version,
+		Config:     config,
+		WorkflowID: fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix()),
+		Command:    docker.Check,
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        params.WorkflowID,
+		TaskQueue: TaskQueue,
+	}
+
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute test connection workflow: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := run.Get(ctx, &result); err != nil {
+		return nil, fmt.Errorf("workflow execution failed: %v", err)
+	}
+
+	return result, nil
+}
+
 // GetSpec runs a workflow to get connector specification
 func (c *Client) GetSpec(ctx context.Context, sourceType, version, config string, sourceID int) (map[string]interface{}, error) {
 	params := ActivityParams{

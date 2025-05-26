@@ -105,8 +105,10 @@ func GetSpecActivity(ctx context.Context, params ActivityParams) (map[string]int
 
 // TestConnectionActivity runs the check command to test connection
 func TestConnectionActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
-	params.Command = docker.Check
-	return ExecuteDockerCommandActivity(ctx, params)
+	// Create a Docker runner with the default config directory
+	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	resp, err := runner.TestSourceConnection(params.SourceType, params.Version, params.Config, params.WorkflowID)
+	return resp, err
 }
 
 // SyncActivity runs the sync command to transfer data between source and destination

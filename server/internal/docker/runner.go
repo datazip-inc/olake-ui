@@ -11,6 +11,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/database"
+	"github.com/datazip/olake-server/internal/utils"
 )
 
 // Runner is responsible for executing Docker commands
@@ -209,6 +210,39 @@ func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath stri
 		}
 	}
 	return nil, fmt.Errorf("no suitable JSON file found")
+}
+
+// TestSourceConnection run the check command and return connection status
+func (r *Runner) TestSourceConnection(sourceType, version, config, workflowID string) (map[string]interface{}, error) {
+	// Create directory for output with proper permissions
+	checkFolderName := workflowID
+	checkDir := filepath.Join(r.WorkingDir, checkFolderName)
+
+	if err := createDirectory(checkDir); err != nil {
+		return nil, err
+	}
+	// Write config to file with proper permissions
+	configPath := filepath.Join(checkDir, "config.json")
+	if err := writeFile(configPath, []byte(config)); err != nil {
+		return nil, err
+	}
+	// Execute discover command
+	output, err := r.ExecuteDockerCommand(Check, sourceType, version, configPath)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("check command output: %s\n", string(output))
+	logMsg, err := utils.ExtractAndParseLastLogMessage([]byte(output))
+	if err != nil {
+		return nil, err
+	}
+	if logMsg.ConnectionStatus == nil {
+		return nil, fmt.Errorf("connection status not found")
+	}
+	return map[string]interface{}{
+		"message": logMsg.ConnectionStatus.Message,
+		"status":  logMsg.ConnectionStatus.Status,
+	}, nil
 }
 
 // GetCatalog runs the discover command and returns catalog data
