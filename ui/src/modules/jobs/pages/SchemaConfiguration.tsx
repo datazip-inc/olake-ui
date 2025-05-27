@@ -278,26 +278,53 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	const filteredStreams = useMemo(() => {
 		if (!apiResponse?.streams) return []
-		let filtered = [...apiResponse.streams]
+		let tempFilteredStreams = [...apiResponse.streams]
 
 		if (searchText) {
-			filtered = filtered.filter(stream =>
+			tempFilteredStreams = tempFilteredStreams.filter(stream =>
 				stream.stream.name.toLowerCase().includes(searchText.toLowerCase()),
 			)
 		}
 
-		if (selectedFilters.includes("All tables")) return filtered
+		if (selectedFilters.includes("All tables")) {
+			return tempFilteredStreams
+		}
 
-		return filtered.filter(stream => {
-			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || "default"
-			]?.some(s => s.stream_name === stream.stream.name)
+		return tempFilteredStreams.filter(stream => {
+			const cdcIsActive = selectedFilters.includes("CDC")
+			const frIsActive = selectedFilters.includes("Full refresh")
 			const hasSelectedFilter = selectedFilters.includes("Selected")
 			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
 
-			if (hasSelectedFilter && hasNotSelectedFilter) return true
-			if (hasSelectedFilter) return isSelected
-			if (hasNotSelectedFilter) return !isSelected
+			// Sync mode filtering
+			let passesSyncModeFilter = true
+			if (cdcIsActive && frIsActive) {
+				passesSyncModeFilter =
+					stream.stream.sync_mode === "cdc" ||
+					stream.stream.sync_mode === "full_refresh"
+			} else if (cdcIsActive) {
+				passesSyncModeFilter = stream.stream.sync_mode === "cdc"
+			} else if (frIsActive) {
+				passesSyncModeFilter = stream.stream.sync_mode === "full_refresh"
+			}
+
+			if (!passesSyncModeFilter) {
+				return false
+			}
+
+			// Selection status filtering
+			const isSelected = apiResponse.selected_streams[
+				stream.stream.namespace || "default"
+			]?.some(s => s.stream_name === stream.stream.name)
+
+			if (hasSelectedFilter && hasNotSelectedFilter) {
+				// No filtering based on selection status if both are selected
+			} else if (hasSelectedFilter) {
+				if (!isSelected) return false
+			} else if (hasNotSelectedFilter) {
+				if (isSelected) return false
+			}
+
 			return true
 		})
 	}, [apiResponse, searchText, selectedFilters])
