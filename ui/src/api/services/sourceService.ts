@@ -46,7 +46,10 @@ export const sourceService = {
 					name: source.name,
 					type: source.type.toLowerCase(),
 					version: source.version,
-					config: JSON.stringify(source.config),
+					config:
+						typeof source.config === "string"
+							? source.config
+							: JSON.stringify(source.config),
 				},
 			)
 			return response.data

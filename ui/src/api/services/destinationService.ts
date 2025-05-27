@@ -67,7 +67,10 @@ export const destinationService = {
 					name: destination.name,
 					type: destination.type,
 					version: destination.version,
-					config: destination.config,
+					config:
+						typeof destination.config === "string"
+							? destination.config
+							: JSON.stringify(destination.config),
 				},
 			)
 			return response.data

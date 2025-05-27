@@ -270,10 +270,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		setShowDeleteModal(true)
 	}
 
-	const handleTestConnection = () => {
-		message.success("Connection test successful")
-	}
-
 	const handleViewAllJobs = () => {
 		setShowAllJobs(true)
 	}
@@ -586,12 +582,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 						</button>
 					</div>
 					<div className="flex space-x-4">
-						<button
-							onClick={handleTestConnection}
-							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
-						>
-							Test connection
-						</button>
 						<button
 							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 							onClick={handleSave}
