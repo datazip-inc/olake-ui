@@ -122,7 +122,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 	useEffect(() => {
 		if (sourceId) {
-			const source = sources.find(s => s.id.toString() === sourceId)
+			const source = sources.find(s => s.id?.toString() === sourceId)
 			if (source) {
 				setSource(source)
 				setSourceName(source.name)
@@ -139,11 +139,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 						: source.config,
 				)
 			} else {
-				message.error("Source not found")
 				navigate("/sources")
 			}
 		}
-	}, [sourceId, sources, fetchSources, navigate])
+	}, [sourceId, sources, fetchSources])
 
 	useEffect(() => {
 		if (initialData) {

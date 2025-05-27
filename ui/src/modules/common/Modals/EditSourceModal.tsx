@@ -1,7 +1,7 @@
 import { Button, Modal, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { getConnectorImage } from "../../../utils/utils"
-import { CheckCircle, PencilLine, Warning } from "@phosphor-icons/react"
+import { CheckCircle, Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 import { message } from "antd"
 import { formatDistanceToNow } from "date-fns"
@@ -55,10 +55,9 @@ const EditSourceModal = () => {
 						key="edit"
 						type="primary"
 						onClick={handleEdit}
-						icon={<PencilLine size={16} />}
 						className="bg-blue-600"
 					>
-						Edit
+						Confirm
 					</Button>,
 					<Button
 						key="cancel"

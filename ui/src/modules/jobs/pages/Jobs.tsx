@@ -49,8 +49,10 @@ const Jobs: React.FC = () => {
 		navigate(`/jobs/${id}/edit`)
 	}
 
-	const handlePauseJob = (id: string) => {
-		message.info(`Pausing job ${id}`)
+	const handlePauseJob = async (id: string, checked: boolean) => {
+		await jobService.activateJob(id, !checked)
+		message.success(`Successfully ${checked ? "paused" : "resumed"} job ${id}`)
+		await fetchJobs()
 	}
 
 	const handleDeleteJob = (id: string) => {
