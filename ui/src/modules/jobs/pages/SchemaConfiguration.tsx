@@ -13,7 +13,7 @@ interface CombinedStreamsData {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	streams: StreamData[]
@@ -26,7 +26,7 @@ interface SchemaConfigurationProps {
 				[namespace: string]: {
 					stream_name: string
 					partition_regex: string
-					split_column: string
+					normalization: boolean
 				}[]
 		  }
 		| CombinedStreamsData
@@ -37,7 +37,7 @@ interface SchemaConfigurationProps {
 					[namespace: string]: {
 						stream_name: string
 						partition_regex: string
-						split_column: string
+						normalization: boolean
 					}[]
 			  }
 			| CombinedStreamsData
@@ -76,7 +76,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			[namespace: string]: {
 				stream_name: string
 				partition_regex: string
-				split_column: string
+				normalization: boolean
 			}[]
 		}
 		streams: StreamData[]
@@ -164,7 +164,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		setSelectedStreams,
 	])
 
-	// Update selected streams when sync mode changes
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
@@ -214,6 +213,70 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}, 0)
 	}
 
+	const handleNormalizationChange = (
+		streamName: string,
+		namespace: string,
+		normalization: boolean,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, normalization } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handlePartitionRegexChange = (
+		streamName: string,
+		namespace: string,
+		partitionRegex: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev // Should not happen if UI is correct
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName
+						? { ...s, partition_regex: partitionRegex }
+						: s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
 	const handleStreamSelect = (
 		streamName: string,
 		checked: boolean,
@@ -242,7 +305,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						{
 							stream_name: streamName,
 							partition_regex: "",
-							split_column: "",
+							normalization: false,
 						},
 					]
 					changed = true
@@ -407,7 +470,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								// Pass it to the parent component
 								setSelectedStreams(fullData as CombinedStreamsData)
 							}}
-							selectedStreamsFromAPI={apiResponse.selected_streams}
 						/>
 					) : loading ? (
 						<Spin size="large">Loading streams...</Spin>
@@ -432,6 +494,25 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
 							useDirectForms={useDirectForms}
+							isSelected={
+								!!apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.some(s => s.stream_name === activeStreamData.stream.name)
+							}
+							initialNormalization={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.normalization || false
+							}
+							onNormalizationChange={handleNormalizationChange}
+							initialPartitionRegex={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.partition_regex || ""
+							}
+							onPartitionRegexChange={handlePartitionRegexChange}
 						/>
 					</div>
 				)}

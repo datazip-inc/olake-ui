@@ -18,18 +18,39 @@ const TAB_STYLES = {
 
 const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
 
+interface ExtendedStreamConfigurationProps extends StreamConfigurationProps {
+	onUpdate?: (stream: any) => void
+	isSelected: boolean
+	initialNormalization: boolean
+	initialPartitionRegex: string
+	onNormalizationChange: (
+		streamName: string,
+		namespace: string,
+		normalization: boolean,
+	) => void
+	onPartitionRegexChange: (
+		streamName: string,
+		namespace: string,
+		partitionRegex: string,
+	) => void
+}
+
 const StreamConfiguration = ({
 	stream,
 	onSyncModeChange,
-}: StreamConfigurationProps & {
-	onUpdate?: (stream: any) => void
-}) => {
+	isSelected,
+	initialNormalization,
+	initialPartitionRegex,
+	onNormalizationChange,
+	onPartitionRegexChange,
+}: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
 		stream.stream.sync_mode === "full_refresh" ? "full" : "cdc",
 	)
 	const [enableBackfill, setEnableBackfill] = useState(false)
-	const [normalisation, setNormalisation] = useState(false)
+	const [normalisation, setNormalisation] =
+		useState<boolean>(initialNormalization)
 	const [partitionRegex, setPartitionRegex] = useState("")
 	const [partitionInfo, setPartitionInfo] = useState<string[]>([])
 	const [formData, setFormData] = useState<any>({
@@ -54,13 +75,16 @@ const StreamConfiguration = ({
 			initialEnableBackfillForSwitch = false
 		}
 		setEnableBackfill(initialEnableBackfillForSwitch)
+		setNormalisation(initialNormalization)
+		setPartitionRegex(initialPartitionRegex || "")
 
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
 			sync_mode: initialApiSyncMode,
 			backfill: initialEnableBackfillForSwitch,
+			partition_regex: initialPartitionRegex || "",
 		}))
-	}, [stream])
+	}, [stream, initialNormalization, initialPartitionRegex])
 
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
@@ -117,14 +141,35 @@ const StreamConfiguration = ({
 		})
 	}
 
+	const handleNormalizationChange = (checked: boolean) => {
+		setNormalisation(checked)
+		onNormalizationChange(
+			stream.stream.name,
+			stream.stream.namespace || "default",
+			checked,
+		)
+		setFormData({
+			...formData,
+			normalization: checked,
+		})
+	}
+
 	const handleAddPartitionRegex = () => {
 		if (partitionRegex) {
-			setPartitionInfo([...partitionInfo, partitionRegex])
+			const newPartitionInfo = [...partitionInfo, partitionRegex]
+			setPartitionInfo(newPartitionInfo)
 			setPartitionRegex("")
+
+			const newPartitionRegexString = newPartitionInfo.join(",")
+			onPartitionRegexChange(
+				stream.stream.name,
+				stream.stream.namespace || "default",
+				newPartitionRegexString,
+			)
 
 			setFormData({
 				...formData,
-				partition_regex: [...partitionInfo, partitionRegex].join(","),
+				partition_regex: newPartitionRegexString,
 			})
 		}
 	}
@@ -196,15 +241,17 @@ const StreamConfiguration = ({
 						/>
 					</div>
 				</div>
-				<div className={`mb-4 ${CARD_STYLE}`}>
-					<div className="flex items-center justify-between">
-						<label className="font-medium">Normalisation</label>
-						<Switch
-							checked={normalisation}
-							onChange={setNormalisation}
-						/>
+				{isSelected && (
+					<div className={`mb-4 ${CARD_STYLE}`}>
+						<div className="flex items-center justify-between">
+							<label className="font-medium">Normalisation</label>
+							<Switch
+								checked={normalisation}
+								onChange={handleNormalizationChange}
+							/>
+						</div>
 					</div>
-				</div>
+				)}
 			</div>
 		)
 	}
@@ -218,31 +265,37 @@ const StreamConfiguration = ({
 	const renderPartitioningRegexContent = () => (
 		<>
 			<div className="text-[#575757]">Partitioning regex:</div>
-			<Input
-				placeholder="Enter your partition regex"
-				className="w-full"
-				value={partitionRegex}
-				onChange={e => setPartitionRegex(e.target.value)}
-			/>
-			<Button
-				className="w-20 bg-[#203FDD] py-3 font-light text-white"
-				onClick={handleAddPartitionRegex}
-				disabled={!partitionRegex}
-			>
-				Partition
-			</Button>
-			{partitionInfo.length > 0 && (
-				<div className="mt-4">
-					<div className="text-sm text-[#575757]">Added partitions:</div>
-					{partitionInfo.map((regex, index) => (
-						<div
-							key={index}
-							className="mt-2 text-sm"
-						>
-							{regex}
+			{isSelected ? (
+				<>
+					<Input
+						placeholder="Enter your partition regex"
+						className="w-full"
+						value={partitionRegex}
+						onChange={e => setPartitionRegex(e.target.value)}
+					/>
+					<Button
+						className="w-20 bg-[#203FDD] py-3 font-light text-white"
+						onClick={handleAddPartitionRegex}
+						disabled={!partitionRegex}
+					>
+						Partition
+					</Button>
+					{partitionInfo.length > 0 && (
+						<div className="mt-4">
+							<div className="text-sm text-[#575757]">Added partitions:</div>
+							{partitionInfo.map((regex, index) => (
+								<div
+									key={index}
+									className="mt-2 text-sm"
+								>
+									{regex}
+								</div>
+							))}
 						</div>
-					))}
-				</div>
+					)}
+				</>
+			) : (
+				<div className="text-sm text-gray-500">Stream not selected</div>
 			)}
 		</>
 	)

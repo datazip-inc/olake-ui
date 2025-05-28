@@ -10,7 +10,7 @@ interface GroupedStreamsCollapsibleListProps {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	setActiveStreamData: (stream: StreamData) => void
@@ -27,7 +27,7 @@ interface GroupedStreamsCollapsibleListProps {
 					[namespace: string]: {
 						stream_name: string
 						partition_regex: string
-						split_column: string
+						normalization: boolean
 					}[]
 			  }
 			| {
@@ -35,14 +35,13 @@ interface GroupedStreamsCollapsibleListProps {
 						[namespace: string]: {
 							stream_name: string
 							partition_regex: string
-							split_column: string
+							normalization: boolean
 						}[]
 					}
 					streams: StreamData[]
 			  }
 		>
 	>
-	selectedStreamsFromAPI?: { [namespace: string]: { stream_name: string }[] }
 }
 
 const StreamsCollapsibleList = ({
@@ -52,7 +51,6 @@ const StreamsCollapsibleList = ({
 	activeStreamData,
 	onStreamSelect,
 	setSelectedStreams,
-	selectedStreamsFromAPI,
 }: GroupedStreamsCollapsibleListProps) => {
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
@@ -86,33 +84,6 @@ const StreamsCollapsibleList = ({
 			})
 		}
 	}, [groupedStreams])
-
-	useEffect(() => {
-		if (selectedStreamsFromAPI) {
-			const updated: {
-				[namespace: string]: {
-					stream_name: string
-					partition_regex: string
-					split_column: string
-				}[]
-			} = {}
-
-			let hasChanges = false
-
-			Object.entries(selectedStreamsFromAPI).forEach(([ns, streams]) => {
-				updated[ns] = streams.map(stream => ({
-					stream_name: stream.stream_name,
-					partition_regex: "",
-					split_column: "",
-				}))
-				hasChanges = true
-			})
-
-			if (hasChanges) {
-				setSelectedStreams(updated)
-			}
-		}
-	}, [selectedStreamsFromAPI])
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -235,7 +206,7 @@ const StreamsCollapsibleList = ({
 				const newStreamEntries = streamNames.map(stream_name => ({
 					stream_name,
 					partition_regex: "",
-					split_column: "",
+					normalization: false,
 				}))
 
 				if (selectedStreams) {

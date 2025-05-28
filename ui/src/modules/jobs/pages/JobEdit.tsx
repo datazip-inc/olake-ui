@@ -45,7 +45,7 @@ interface StreamsDataStructure {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	streams: StreamData[]
@@ -300,7 +300,7 @@ const JobEdit: React.FC = () => {
 				streamsData.selected_streams.default.push({
 					stream_name: streamName,
 					partition_regex: "",
-					split_column: "",
+					normalization: false,
 				})
 				streamsData.streams.push({
 					stream: {
