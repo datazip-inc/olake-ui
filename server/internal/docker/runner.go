@@ -11,7 +11,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/utils"
+	"github.com/datazip/olake-server/utils"
 )
 
 // Runner is responsible for executing Docker commands
