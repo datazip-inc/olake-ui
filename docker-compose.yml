@@ -1,5 +1,5 @@
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath   /tmp/olake-config
+  host_persistence_path: &hostPersistencePath /tmp/olake-config
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
@@ -19,8 +19,8 @@ services:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
     ports:
-      - "8000:8000"  # Expose UI port
-      - "8080:8080"  # Expose backend API port
+      - "8000:8000" # Expose UI port
+      - "8080:8080" # Expose backend API port
     volumes:
       - <<: *workerConfigVolumeDetails
     networks:
@@ -178,10 +178,148 @@ services:
       - temporal-elasticsearch-data:/usr/share/elasticsearch/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"]
-      interval: 10s
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s",
+        ]
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      temporal-network:
+        aliases:
+          - warehouse.minio
+
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ./data/minio-data:/data
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  mc:
+    depends_on:
+      - minio
+    image: minio/mc
+    container_name: mc
+    networks:
+      temporal-network:
+
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: |
+      /bin/sh -c "
+      until (/usr/bin/mc alias set minio http://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      if ! /usr/bin/mc ls minio/warehouse > /dev/null 2>&1; then
+        /usr/bin/mc mb minio/warehouse;
+        /usr/bin/mc policy set public minio/warehouse;
+      fi;
+      tail -f /dev/null
+      "
+
+  hive-metastore:
+    image: apache/hive:4.0.0
+    container_name: hive-metastore
+    networks:
+      temporal-network:
+
+    ports:
+      - "9083:9083"
+    environment:
+      - SERVICE_NAME=metastore
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      spark-iceberg:
+        condition: service_started
+    user: root
+    volumes:
+      - ./data/ivy-cache:/root/.ivy2
+      - ./hive-site.conf:/opt/hive/conf/hive-site.xml
+    entrypoint: |
+      /bin/sh -c "
+      # Wait for Spark to download JARs
+      echo 'Waiting for Spark to download JARs...'
+      while [ ! -f /root/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar ] || \
+            [ ! -f /root/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar ] || \
+            [ ! -f /root/.ivy2/jars/org.postgresql_postgresql-42.5.4.jar ]; do
+        echo 'Waiting for JARs to be available...'
+        sleep 5
+      done
+
+      echo 'JARs found. Copying to Hive lib directory...'
+
+      # Copy the JAR files to Hive's lib directory
+      cp /root/.ivy2/jars/org.apache.hadoop_hadoop-aws-3.3.4.jar /opt/hive/lib/hadoop-aws-3.3.4.jar || { echo 'Failed to copy hadoop-aws-3.3.4.jar'; exit 1; }
+      cp /root/.ivy2/jars/com.amazonaws_aws-java-sdk-bundle-1.12.262.jar /opt/hive/lib/aws-java-sdk-bundle-1.12.262.jar || { echo 'Failed to copy aws-java-sdk-bundle-1.12.262.jar'; exit 1; }
+      cp /root/.ivy2/jars/org.postgresql_postgresql-42.5.4.jar /opt/hive/lib/postgresql-42.5.4.jar || { echo 'Failed to copy postgresql-42.5.4.jar'; exit 1; }
+
+      # Verify files were copied successfully
+      if [ ! -f /opt/hive/lib/hadoop-aws-3.3.4.jar ] || [ ! -f /opt/hive/lib/aws-java-sdk-bundle-1.12.262.jar ] || [ ! -f /opt/hive/lib/postgresql-42.5.4.jar ]; then
+        echo 'JAR files not found in Hive lib directory. Exiting.'
+        exit 1
+      fi
+
+      # Fix permissions for Hive directories
+      chown -R hive:hive /opt/hive/lib
+
+      echo 'JAR files copied to Hive lib directory. Starting hive-metastore...'
+
+      # Start the hive metastore service
+      sh -c "/entrypoint.sh"
+      "
+
+  spark-iceberg:
+    image: tabulario/spark-iceberg
+    container_name: spark-iceberg
+    networks:
+      temporal-network:
+    depends_on:
+      - minio
+      - postgres
+    volumes:
+      - ./spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
+      - ./data/ivy-cache:/root/.ivy2
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    ports:
+      - 8888:8888
+      - 8088:8080
+      - 10000:10000
+      - 10001:10001
+
+  postgres:
+    image: postgres:15
+    container_name: iceberg-postgres
+    networks:
+      temporal-network:
+
+    environment:
+      - POSTGRES_USER=iceberg
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=iceberg
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "iceberg", "-d", "iceberg"]
+      interval: 2s
       timeout: 10s
-      retries: 5
+      retries: 3
+      start_period: 10s
+    ports:
+      - 5434:5432
+    volumes:
+      - ./data/postgres-data:/var/lib/postgresql/data
 
 networks:
   temporal-network:
@@ -195,3 +333,4 @@ volumes:
     driver: local
   temporal-elasticsearch-data:
     driver: local
+  minio-data:
