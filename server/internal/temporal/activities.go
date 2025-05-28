@@ -30,7 +30,7 @@ func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (m
 	activity.RecordHeartbeat(ctx, "Running docker command")
 
 	// Execute Docker command
-	_, err = runner.ExecuteDockerCommand(params.Command, params.SourceType, params.Version, configPath)
+	_, err = runner.ExecuteDockerCommand("config", params.Command, params.SourceType, params.Version, configPath)
 	if err != nil {
 		logger.Error("Docker command failed", "error", err)
 		return nil, fmt.Errorf("docker command failed: %v", err)
@@ -107,7 +107,7 @@ func GetSpecActivity(ctx context.Context, params ActivityParams) (map[string]int
 func TestConnectionActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
 	// Create a Docker runner with the default config directory
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
-	resp, err := runner.TestSourceConnection(params.SourceType, params.Version, params.Config, params.WorkflowID)
+	resp, err := runner.TestConnection(params.Flag, params.SourceType, params.Version, params.Config, params.WorkflowID)
 	return resp, err
 }
 

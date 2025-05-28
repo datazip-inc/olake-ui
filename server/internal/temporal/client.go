@@ -76,13 +76,14 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config str
 }
 
 // TestConnection runs a workflow to test connection
-func (c *Client) TestConnection(ctx context.Context, sourceType, version, config string) (map[string]interface{}, error) {
+func (c *Client) TestConnection(ctx context.Context, flag string, sourceType, version, config string) (map[string]interface{}, error) {
 	params := ActivityParams{
 		SourceType: sourceType,
 		Version:    version,
 		Config:     config,
 		WorkflowID: fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix()),
 		Command:    docker.Check,
+		Flag:       flag,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{

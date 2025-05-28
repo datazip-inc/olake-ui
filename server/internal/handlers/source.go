@@ -250,7 +250,7 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	result, _ := c.tempClient.TestConnection(context.Background(), req.Type, req.Version, req.Config)
+	result, _ := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
 	// if err != nil {
 	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
 	// 	return

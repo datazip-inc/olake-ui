@@ -293,9 +293,12 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
-
-	// For now, always return success
-	utils.SuccessResponse(&c.Controller, req)
+	result, _ := c.tempClient.TestConnection(context.Background(), "destination", req.Type, req.Version, req.Config)
+	// if err != nil {
+	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
+	// 	return
+	// }
+	utils.SuccessResponse(&c.Controller, result)
 }
 
 // @router /destinations/:id/jobs [get]
