@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // DockerHubTag represents a single tag from Docker Hub API response
@@ -37,7 +38,9 @@ func GetDockerHubTags(imageName string) ([]string, error) {
 
 	tags := make([]string, 0, len(responseData.Results))
 	for _, tagData := range responseData.Results {
-		tags = append(tags, tagData.Name)
+		if !strings.Contains(tagData.Name, "stag") && !strings.Contains(tagData.Name, "latest") && !strings.Contains(tagData.Name, "dev") {
+			tags = append(tags, tagData.Name)
+		}
 	}
 
 	return tags, nil
