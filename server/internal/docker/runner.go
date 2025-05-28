@@ -11,7 +11,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/utils"
+	"github.com/datazip/olake-server/utils"
 )
 
 // Runner is responsible for executing Docker commands
@@ -122,7 +122,7 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
-func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 
 	// Ensure output directory exists with proper permissions
@@ -145,7 +145,7 @@ func (r *Runner) ExecuteDockerCommand(command Command, sourceType, version, conf
 		"-u", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
-		"--config", fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
+		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	}
 
 	// Add any additional arguments
@@ -213,7 +213,7 @@ func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath stri
 }
 
 // TestSourceConnection run the check command and return connection status
-func (r *Runner) TestSourceConnection(sourceType, version, config, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
 	// Create directory for output with proper permissions
 	checkFolderName := workflowID
 	checkDir := filepath.Join(r.WorkingDir, checkFolderName)
@@ -227,7 +227,7 @@ func (r *Runner) TestSourceConnection(sourceType, version, config, workflowID st
 		return nil, err
 	}
 	// Execute discover command
-	output, err := r.ExecuteDockerCommand(Check, sourceType, version, configPath)
+	output, err := r.ExecuteDockerCommand(flag, Check, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (r *Runner) GetCatalog(sourceType, version, config string, workflowID strin
 	catalogPath := filepath.Join(discoverDir, "streams.json")
 
 	// Execute discover command
-	_, err := r.ExecuteDockerCommand(Discover, sourceType, version, configPath)
+	_, err := r.ExecuteDockerCommand("config", Discover, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 	}
 
 	// Execute sync command with additional arguments
-	_, err = r.ExecuteDockerCommand(Sync, sourceType, version, configPath,
+	_, err = r.ExecuteDockerCommand("config", Sync, sourceType, version, configPath,
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")

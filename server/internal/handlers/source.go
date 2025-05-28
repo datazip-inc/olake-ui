@@ -250,7 +250,7 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	result, _ := c.tempClient.TestConnection(context.Background(), req.Type, req.Version, req.Config)
+	result, _ := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
 	// if err != nil {
 	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
 	// 	return
@@ -339,12 +339,14 @@ func (c *SourceHandler) GetSourceVersions() {
 		return
 	}
 
-	// In a real implementation, we would query for available versions
-	// based on the source type and project ID
-	// For now, we'll return a mock response
+	// Get versions from Docker Hub
+	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 
-	// Mock available versions (this would be replaced with actual DB query)
-	versions := []string{"latest"}
+	versions, err := utils.GetDockerHubTags(imageName)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
+		return
+	}
 
 	response := map[string]interface{}{
 		"version": versions,

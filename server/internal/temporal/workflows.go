@@ -28,6 +28,7 @@ type ActivityParams struct {
 	DestID       int
 	WorkflowID   string
 	StreamConfig string
+	Flag         string
 }
 
 // SyncParams contains parameters for sync activities
@@ -53,7 +54,7 @@ func DockerRunnerWorkflow(ctx workflow.Context, params ActivityParams) (map[stri
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
 			MaximumInterval:    time.Minute,
-			MaximumAttempts:    3,
+			MaximumAttempts:    1,
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
@@ -76,7 +77,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params ActivityParams) (map[s
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
 			MaximumInterval:    time.Minute,
-			MaximumAttempts:    3,
+			MaximumAttempts:    1,
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)

@@ -293,9 +293,12 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
-
-	// For now, always return success
-	utils.SuccessResponse(&c.Controller, req)
+	result, _ := c.tempClient.TestConnection(context.Background(), "destination", req.Type, req.Version, req.Config)
+	// if err != nil {
+	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
+	// 	return
+	// }
+	utils.SuccessResponse(&c.Controller, result)
 }
 
 // @router /destinations/:id/jobs [get]
@@ -403,13 +406,6 @@ func (c *DestHandler) GetDestinationSpec() {
 				"writer": map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
-						"normalization": map[string]interface{}{
-							"type":        "boolean",
-							"title":       "Normalization",
-							"description": "Whether to normalize the data before writing",
-							"default":     false,
-							"order":       1,
-						},
 						"s3_bucket": map[string]interface{}{
 							"type":        "string",
 							"title":       "S3 Bucket",
@@ -472,13 +468,6 @@ func (c *DestHandler) GetDestinationSpec() {
 						"default":     "glue",
 						"order":       2,
 					},
-					"normalization": map[string]interface{}{
-						"type":        "boolean",
-						"title":       "Normalization",
-						"description": "Whether to normalize the data before writing",
-						"default":     false,
-						"order":       1,
-					},
 					"iceberg_s3_path": map[string]interface{}{
 						"type":        "string",
 						"title":       "Iceberg S3 Path",
@@ -526,7 +515,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"order":       9,
 					},
 				},
-				"required": []string{"catalog_type", "normalization", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
+				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
 			}
 			catalogUiSchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{
@@ -545,13 +534,6 @@ func (c *DestHandler) GetDestinationSpec() {
 						"enum":        []string{"rest"},
 						"default":     "rest",
 						"order":       2,
-					},
-					"normalization": map[string]interface{}{
-						"type":        "boolean",
-						"title":       "Normalization",
-						"description": "Whether to normalize the data before writing",
-						"default":     false,
-						"order":       1,
 					},
 					"rest_catalog_url": map[string]interface{}{
 						"type":        "string",
@@ -598,7 +580,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"order":       9,
 					},
 				},
-				"required": []string{"catalog_type", "normalization", "rest_catalog_url", "iceberg_s3_path", "iceberg_db"},
+				"required": []string{"catalog_type", "rest_catalog_url", "iceberg_s3_path", "iceberg_db"},
 			}
 			catalogUiSchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{
@@ -617,13 +599,6 @@ func (c *DestHandler) GetDestinationSpec() {
 						"enum":        []string{"jdbc"},
 						"default":     "jdbc",
 						"order":       2,
-					},
-					"normalization": map[string]interface{}{
-						"type":        "boolean",
-						"title":       "Normalization",
-						"description": "Whether to normalize the data before writing",
-						"default":     false,
-						"order":       1,
 					},
 					"jdbc_url": map[string]interface{}{
 						"type":        "string",
@@ -716,13 +691,6 @@ func (c *DestHandler) GetDestinationSpec() {
 						"enum":        []string{"hive"},
 						"default":     "hive",
 						"order":       2,
-					},
-					"normalization": map[string]interface{}{
-						"type":        "boolean",
-						"title":       "Normalization",
-						"description": "Whether to normalize the data before writing",
-						"default":     false,
-						"order":       1,
 					},
 					"iceberg_s3_path": map[string]interface{}{
 						"type":        "string",
