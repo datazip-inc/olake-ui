@@ -306,13 +306,15 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 	if err := createDirectory(syncDir); err != nil {
 		return nil, err
 	}
-	var jobORM *database.JobORM
-	jobORM = database.NewJobORM()
+	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(JobId)
 	if err != nil {
 		return nil, err
 	}
 	stateConfig = job.State
+	sourceConfig = job.SourceID.Config
+	destConfig = job.DestID.Config
+	streamsConfig = job.StreamsConfig
 
 	// Define paths for required files
 	configPath := filepath.Join(syncDir, "config.json")

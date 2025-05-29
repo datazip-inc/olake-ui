@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, Notebook } from "@phosphor-icons/react"
@@ -20,6 +20,9 @@ import EditDestinationModal from "../../common/Modals/EditDestinationModal"
 import { Entity, EntityJob } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 
 // Define the job structure for destination jobs table
 interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
@@ -88,7 +91,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSelectedDestination,
 		setShowDeleteModal,
 		setShowEditDestinationModal,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowFailureModal,
+		setDestinationTestConnectionError,
+		updateDestination,
 	} = useAppStore()
+
+	const navigate = useNavigate()
 
 	// Define connector options
 	const connectorOptions: ConnectorOption[] = [
@@ -342,6 +352,20 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}
 
+	const getDestinationData = () => {
+		const configStr =
+			typeof formData === "string" ? formData : JSON.stringify(formData)
+
+		const destinationData = {
+			...(destination || {}),
+			name: destinationName,
+			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
+			version: selectedVersion,
+			config: configStr,
+		}
+		return destinationData
+	}
+
 	const handleDelete = () => {
 		if (!destination && !destinationId) return
 
@@ -362,30 +386,51 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowDeleteModal(true)
 	}
 
-	const handleTestConnection = () => {
-		message.success("Connection test successful")
-	}
-
-	const handleSaveChanges = () => {
+	const handleSaveChanges = async () => {
 		if (!destination && !destinationId) return
 
-		const configStr =
-			typeof formData === "string" ? formData : JSON.stringify(formData)
-
-		const destinationData = {
-			...(destination || {}),
-			name: destinationName,
-			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
-			version: selectedVersion,
-			config: configStr,
+		if (displayedJobs.length > 0) {
+			setSelectedDestination(getDestinationData() as Entity)
+			setShowEditDestinationModal(true)
+			return
 		}
 
-		setSelectedDestination(destinationData as Entity)
-		setShowEditDestinationModal(true)
+		setShowTestingModal(true)
+		const testResult =
+			await destinationService.testDestinationConnection(getDestinationData())
+		if (testResult.data?.status === "SUCCEEDED") {
+			setTimeout(() => {
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
+			}, 1000)
+
+			setTimeout(() => {
+				setShowSuccessModal(false)
+				saveDestination()
+			}, 2000)
+		} else {
+			setShowTestingModal(false)
+			setDestinationTestConnectionError(testResult.data?.message || "")
+			setShowFailureModal(true)
+		}
 	}
 
 	const handleViewAllJobs = () => {
 		setShowAllJobs(true)
+	}
+
+	const saveDestination = () => {
+		if (destinationId) {
+			updateDestination(destinationId, getDestinationData())
+				.then(() => {
+					message.success("Destination updated successfully")
+					navigate("/destinations")
+				})
+				.catch(error => {
+					message.error("Failed to update source")
+					console.error(error)
+				})
+		}
 	}
 
 	// const handlePauseAllJobs = async (checked: boolean) => {
@@ -733,6 +778,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			</div>
 			{/* Delete Modal */}
 			<DeleteModal fromSource={false} />
+			<TestConnectionModal />
+			<TestConnectionSuccessModal />
+			<TestConnectionFailureModal />
 			<EditDestinationModal />
 
 			{/* Footer with buttons */}
@@ -749,12 +797,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						)}
 					</div>
 					<div className="flex space-x-4">
-						<button
-							onClick={handleTestConnection}
-							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
-						>
-							Test connection
-						</button>
 						<button
 							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 							onClick={handleSaveChanges}

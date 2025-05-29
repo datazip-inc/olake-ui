@@ -284,7 +284,7 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
-	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "dev-latest", req.Config)
+	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
 	// if err != nil {
 	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
 	// 	return

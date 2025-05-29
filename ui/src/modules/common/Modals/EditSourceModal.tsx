@@ -5,6 +5,7 @@ import { CheckCircle, Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 import { message } from "antd"
 import { formatDistanceToNow } from "date-fns"
+import { sourceService } from "../../../api"
 
 const EditSourceModal = () => {
 	const navigate = useNavigate()
@@ -15,7 +16,25 @@ const EditSourceModal = () => {
 		setShowSuccessModal,
 		selectedSource,
 		updateSource,
+		setShowTestingModal,
+		setShowFailureModal,
+		setSourceTestConnectionError,
 	} = useAppStore()
+
+	const getSourceData = () => {
+		const configStr =
+			typeof selectedSource?.config === "string"
+				? selectedSource?.config
+				: JSON.stringify(selectedSource?.config)
+
+		const sourceData = {
+			name: selectedSource?.name,
+			type: selectedSource?.type,
+			version: selectedSource?.version,
+			config: configStr,
+		}
+		return sourceData
+	}
 
 	const handleEdit = async () => {
 		if (!selectedSource?.id) {
@@ -25,12 +44,26 @@ const EditSourceModal = () => {
 
 		try {
 			setShowEditSourceModal(false)
-			await updateSource(selectedSource.id.toString(), selectedSource)
-			setShowSuccessModal(true)
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				navigate("/sources")
-			}, 1000)
+			setShowTestingModal(true)
+			const testResult =
+				await sourceService.testSourceConnection(getSourceData())
+
+			if (testResult.data?.status === "SUCCEEDED") {
+				setTimeout(() => {
+					setShowTestingModal(false)
+					setShowSuccessModal(true)
+				}, 1000)
+
+				setTimeout(async () => {
+					setShowSuccessModal(false)
+					await updateSource(selectedSource.id.toString(), selectedSource)
+					navigate("/sources")
+				}, 2000)
+			} else {
+				setShowTestingModal(false)
+				setSourceTestConnectionError(testResult.data?.message || "")
+				setShowFailureModal(true)
+			}
 		} catch (error) {
 			message.error("Failed to update source")
 			console.error(error)
@@ -107,8 +140,15 @@ const EditSourceModal = () => {
 								title: "Last runtime",
 								dataIndex: "last_run_time",
 								key: "last_run_time",
-								render: (text: string) =>
-									formatDistanceToNow(new Date(text), { addSuffix: true }),
+								render: (text: string) => (
+									<span>
+										{text !== undefined
+											? formatDistanceToNow(new Date(text), {
+													addSuffix: true,
+												})
+											: "-"}
+									</span>
+								),
 							},
 							{
 								title: "Destination",
