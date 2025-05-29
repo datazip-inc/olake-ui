@@ -49,7 +49,7 @@ type JobHandler struct {
 
 // NewRunner creates a new Docker runner
 func NewRunner(workingDir string) *Runner {
-	if err := createDirectory(workingDir); err != nil {
+	if err := utils.CreateDirectory(workingDir, DefaultDirPermissions); err != nil {
 		fmt.Printf("Warning: Failed to create working directory %s: %v\n", workingDir, err)
 	}
 
@@ -63,32 +63,10 @@ func GetDefaultConfigDir() string {
 	return DefaultConfigDir
 }
 
-// File system utilities
-func createDirectory(dirPath string) error {
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(dirPath, DefaultDirPermissions); err != nil {
-			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
-		}
-	}
-	return nil
-}
-
-func writeFile(filePath string, data []byte) error {
-	dirPath := filepath.Dir(filePath)
-	if err := createDirectory(dirPath); err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(filePath, data, DefaultFilePermissions); err != nil {
-		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
-	}
-	return nil
-}
-
 // setupWorkDirectory creates a working directory and returns the full path
 func (r *Runner) setupWorkDirectory(subDir string) (string, error) {
 	workDir := filepath.Join(r.WorkingDir, subDir)
-	if err := createDirectory(workDir); err != nil {
+	if err := utils.CreateDirectory(workDir, DefaultDirPermissions); err != nil {
 		return "", fmt.Errorf("failed to create work directory: %v", err)
 	}
 	return workDir, nil
@@ -98,7 +76,7 @@ func (r *Runner) setupWorkDirectory(subDir string) (string, error) {
 func (r *Runner) writeConfigFiles(workDir string, configs []FileConfig) error {
 	for _, config := range configs {
 		filePath := filepath.Join(workDir, config.Name)
-		if err := writeFile(filePath, []byte(config.Data)); err != nil {
+		if err := utils.WriteFile(filePath, []byte(config.Data), DefaultFilePermissions); err != nil {
 			return fmt.Errorf("failed to write %s: %v", config.Name, err)
 		}
 	}
@@ -116,7 +94,7 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 // ExecuteDockerCommand executes a Docker command with the given parameters
 func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
-	if err := createDirectory(outputDir); err != nil {
+	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
 		return nil, err
 	}
 
@@ -163,69 +141,13 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 }
 
 // ListOutputFiles lists the files in the output directory for debugging
-func (r *Runner) ListOutputFiles(outputDir string, message string) {
-	files, _ := os.ReadDir(outputDir)
-	fmt.Printf("Files in output directory %s:\n", message)
-	for _, file := range files {
-		fmt.Printf("- %s\n", file.Name())
-	}
-}
-
-// ParseJSONFile parses a JSON file into a map
-func (r *Runner) ParseJSONFile(filePath string) (map[string]interface{}, error) {
-	fileData, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileData, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
-	}
-
-	return result, nil
-}
-
-// parseJSONFileWithFallback attempts to parse a JSON file, with fallback handling
-func (r *Runner) parseJSONFileWithFallback(targetPath, workDir string) (map[string]interface{}, error) {
-	if _, err := os.Stat(targetPath); os.IsNotExist(err) {
-		return r.handleMissingJSONFile()
-	}
-
-	result, err := r.ParseJSONFile(targetPath)
-	if err != nil {
-		return map[string]interface{}{
-			"status": "completed",
-			"error":  fmt.Sprintf("failed to parse file: %v", err),
-		}, nil
-	}
-
-	return result, nil
-}
-
-// handleMissingJSONFile handles the case when expected JSON file is missing
-func (r *Runner) handleMissingJSONFile() (map[string]interface{}, error) {
-	return map[string]interface{}{
-		"status":  "completed",
-		"message": "operation completed successfully",
-	}, nil
-}
-
-// FindAlternativeJSONFile tries to find any JSON file that might be the catalog
-func (r *Runner) FindAlternativeJSONFile(outputDir, targetPath, excludePath string) ([]byte, error) {
-	files, _ := os.ReadDir(outputDir)
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".json" && file.Name() != filepath.Base(excludePath) {
-			tryPath := filepath.Join(outputDir, file.Name())
-			if tryData, tryErr := os.ReadFile(tryPath); tryErr == nil {
-				if err := writeFile(targetPath, tryData); err == nil {
-					return tryData, nil
-				}
-			}
-		}
-	}
-	return nil, fmt.Errorf("no suitable JSON file found")
-}
+// func (r *Runner) ListOutputFiles(outputDir string, message string) {
+// 	files, _ := os.ReadDir(outputDir)
+// 	fmt.Printf("Files in output directory %s:\n", message)
+// 	for _, file := range files {
+// 		fmt.Printf("- %s\n", file.Name())
+// 	}
+// }
 
 // TestConnection runs the check command and returns connection status
 func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
@@ -290,22 +212,20 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 		return nil, err
 	}
 
-	r.ListOutputFiles(workDir, "after discover")
+	//	r.ListOutputFiles(workDir, "after discover")
 
-	return r.parseJSONFileWithFallback(catalogPath, workDir)
+	// Simplified JSON parsing - just parse if exists, return error if not
+	return utils.ParseJSONFile(catalogPath)
 }
 
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
-	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	workDir, err := r.setupWorkDirectory(syncFolderName)
+	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
 	if err != nil {
 		return nil, err
 	}
-
 	fmt.Printf("working directory path %s\n", workDir)
-
 	// Get current job state
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(JobId)
@@ -342,36 +262,22 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 		return nil, err
 	}
 
-	r.ListOutputFiles(workDir, "after sync")
+	//r.ListOutputFiles(workDir, "after sync")
 
-	// Parse and update job state
-	result, err := r.parseJSONFileWithFallback(statePath, workDir)
+	// Parse state file
+	result, err := utils.ParseJSONFile(statePath)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update job state if we have valid result
-	if err := r.updateJobState(jobORM, job, result); err != nil {
-		fmt.Printf("Warning: Failed to update job state: %v\n", err)
+	if stateJSON, err := json.Marshal(result); err == nil {
+		job.State = string(stateJSON)
+		job.Active = true
+		if err := jobORM.Update(job); err != nil {
+			return nil, err
+		}
 	}
 
 	return result, nil
-}
-
-// updateJobState updates the job state in database
-func (r *Runner) updateJobState(jobORM *database.JobORM, job interface{}, result map[string]interface{}) error {
-	if stateJSON, err := json.Marshal(result); err == nil {
-		// Note: You'll need to implement this based on your actual job struct
-		// For now, casting to the expected type - adjust as needed
-		if j, ok := job.(interface {
-			SetState(string)
-			SetActive(bool)
-		}); ok {
-			j.SetState(string(stateJSON))
-			j.SetActive(true)
-			// return jobORM.Update(job)
-		}
-		fmt.Printf("Job state updated: %s\n", string(stateJSON))
-	}
-	return nil
 }
