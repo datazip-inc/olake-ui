@@ -284,16 +284,7 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
-	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
-		return
-	}
-
-	if req.Version == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
-		return
-	}
-	result, _ := c.tempClient.TestConnection(context.Background(), "destination", req.Type, req.Version, req.Config)
+	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "dev-latest", req.Config)
 	// if err != nil {
 	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
 	// 	return
