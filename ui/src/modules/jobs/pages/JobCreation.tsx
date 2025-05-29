@@ -56,6 +56,7 @@ const JobCreation: React.FC = () => {
 		addJob,
 		setShowFailureModal,
 		setSourceTestConnectionError,
+		setDestinationTestConnectionError,
 	} = useAppStore()
 
 	const sourceRef = useRef<CreateSourceHandle>(null)
@@ -100,7 +101,6 @@ const JobCreation: React.FC = () => {
 					return
 				}
 			} else {
-				// Fallback validation if ref isn't available
 				if (!sourceName.trim()) {
 					message.error("Source name is required")
 					return
@@ -152,7 +152,10 @@ const JobCreation: React.FC = () => {
 			const newDestinationData = {
 				name: destinationName,
 				type: destinationConnector,
-				config: JSON.stringify(destinationFormData),
+				config:
+					typeof destinationFormData === "string"
+						? destinationFormData
+						: JSON.stringify(destinationFormData),
 				version: destinationVersion,
 			}
 			setShowTestingModal(true)
@@ -161,13 +164,14 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep("schema")
 					}, 1000)
 				} else {
+					setDestinationTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			}, 1500)

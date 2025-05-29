@@ -43,6 +43,7 @@ interface AppState {
 	jobTasksError: string | null
 	taskLogsError: string | null
 	sourceTestConnectionError: string | null
+	destinationTestConnectionError: string | null
 
 	// Modal states
 	showTestingModal: boolean
@@ -68,6 +69,7 @@ interface AppState {
 	setSelectedSource: (source: Entity) => void
 	setSelectedDestination: (destination: Entity) => void
 	setSourceTestConnectionError: (error: string | null) => void
+	setDestinationTestConnectionError: (error: string | null) => void
 
 	// Job actions
 	fetchJobs: () => Promise<Job[]>
@@ -144,6 +146,7 @@ export const useAppStore = create<AppState>(set => ({
 	jobTasksError: null,
 	taskLogsError: null,
 	sourceTestConnectionError: null,
+	destinationTestConnectionError: null,
 
 	// Modal states
 	showTestingModal: false,
@@ -468,4 +471,6 @@ export const useAppStore = create<AppState>(set => ({
 	setShowEditDestinationModal: show => set({ showEditDestinationModal: show }),
 	setSourceTestConnectionError: error =>
 		set({ sourceTestConnectionError: error }),
+	setDestinationTestConnectionError: error =>
+		set({ destinationTestConnectionError: error }),
 }))

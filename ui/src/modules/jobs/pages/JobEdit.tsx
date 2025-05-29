@@ -124,6 +124,7 @@ const JobEdit: React.FC = () => {
 		setShowSuccessModal,
 		setShowFailureModal,
 		setSourceTestConnectionError,
+		setDestinationTestConnectionError,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
@@ -454,7 +455,7 @@ const JobEdit: React.FC = () => {
 					setTimeout(() => {
 						setShowTestingModal(false)
 					}, 1000)
-					if (testResult.success) {
+					if (testResult.data?.status === "SUCCEEDED") {
 						setTimeout(() => {
 							setShowSuccessModal(true)
 						}, 1000)
@@ -463,6 +464,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("schema")
 						}, 2000)
 					} else {
+						setDestinationTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
 					}
 				} catch (error) {

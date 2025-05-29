@@ -301,6 +301,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				const response = await destinationService.getDestinationSpec(
 					connector,
 					catalog,
+					selectedVersion,
 				)
 
 				if (response.success && response.data?.spec) {

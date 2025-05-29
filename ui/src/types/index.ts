@@ -159,13 +159,13 @@ export interface APIResponse<T> {
 	data: T
 }
 
-export interface EntityTestResponse {
+export interface EntityTestRequest {
 	type: string
 	version: string
 	config: string
 }
 
-export interface SourceTestResponse {
+export interface EntityTestResponse {
 	message: string
 	status: "FAILED" | "SUCCEEDED"
 }
