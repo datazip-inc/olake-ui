@@ -1,5 +1,5 @@
-import type { IconProps } from '@phosphor-icons/react'
-import type { CATALOG_TYPES } from '../utils/constants'
+import type { IconProps } from "@phosphor-icons/react"
+import type { CATALOG_TYPES } from "../utils/constants"
 
 export type UnknownObject = {
 	[key: string]: unknown | UnknownObject
