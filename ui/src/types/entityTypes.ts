@@ -33,3 +33,7 @@ export interface EntityTestRequest {
 	version: string
 	config: string
 }
+export interface EntityTestResponse {
+	message: string
+	status: "FAILED" | "SUCCEEDED"
+}

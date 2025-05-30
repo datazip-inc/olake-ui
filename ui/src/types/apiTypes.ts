@@ -3,7 +3,3 @@ export interface APIResponse<T> {
 	message: string
 	data: T
 }
-export interface SourceTestResponse {
-	message: string
-	status: "FAILED" | "SUCCEEDED"
-}
