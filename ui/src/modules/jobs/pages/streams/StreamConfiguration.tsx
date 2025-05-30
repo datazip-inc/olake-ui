@@ -76,7 +76,16 @@ const StreamConfiguration = ({
 		}
 		setEnableBackfill(initialEnableBackfillForSwitch)
 		setNormalisation(initialNormalization)
-		setPartitionRegex(initialPartitionRegex || "")
+
+		// Handle initial partition regex
+		if (initialPartitionRegex) {
+			const partitions = initialPartitionRegex.split(",").filter(p => p.trim())
+			setPartitionInfo(partitions)
+			setPartitionRegex("")
+		} else {
+			setPartitionInfo([])
+			setPartitionRegex("")
+		}
 
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
@@ -172,6 +181,25 @@ const StreamConfiguration = ({
 				partition_regex: newPartitionRegexString,
 			})
 		}
+	}
+
+	const handleDeletePartition = (indexToDelete: number) => {
+		const newPartitionInfo = partitionInfo.filter(
+			(_, index) => index !== indexToDelete,
+		)
+		setPartitionInfo(newPartitionInfo)
+
+		const newPartitionRegexString = newPartitionInfo.join(",")
+		onPartitionRegexChange(
+			stream.stream.name,
+			stream.stream.namespace || "default",
+			newPartitionRegexString,
+		)
+
+		setFormData({
+			...formData,
+			partition_regex: newPartitionRegexString,
+		})
 	}
 
 	// Tab button component
@@ -272,11 +300,12 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
+						disabled={partitionInfo.length > 0}
 					/>
 					<Button
 						className="w-20 bg-[#203FDD] py-3 font-light text-white"
 						onClick={handleAddPartitionRegex}
-						disabled={!partitionRegex}
+						disabled={!partitionRegex || partitionInfo.length > 0}
 					>
 						Partition
 					</Button>
@@ -286,9 +315,17 @@ const StreamConfiguration = ({
 							{partitionInfo.map((regex, index) => (
 								<div
 									key={index}
-									className="mt-2 text-sm"
+									className="mt-2 flex items-center justify-between text-sm"
 								>
-									{regex}
+									<span>{regex}</span>
+									<Button
+										type="text"
+										danger
+										size="small"
+										onClick={() => handleDeletePartition(index)}
+									>
+										Delete
+									</Button>
 								</div>
 							))}
 						</div>
