@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Input, Radio, Select, Spin } from "antd"
+import { Input, message, Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -373,6 +373,7 @@ const CreateDestination = forwardRef<
 			if (setupType === SETUP_TYPES.NEW) {
 				if (!destinationName.trim()) {
 					setDestinationNameError("Destination name is required")
+					message.error("Destination name is required")
 					isValid = false
 				} else {
 					setDestinationNameError(null)

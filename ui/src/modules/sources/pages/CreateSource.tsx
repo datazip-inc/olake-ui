@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Radio, Select, Spin } from "antd"
+import { message, Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -294,6 +294,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			if (setupType === "new") {
 				if (!sourceName.trim()) {
 					setSourceNameError("Source name is required")
+					message.error("Source name is required")
 					isValid = false
 				} else {
 					setSourceNameError(null)
