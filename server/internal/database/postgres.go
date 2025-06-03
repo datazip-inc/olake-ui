@@ -52,7 +52,7 @@ func Init(uri string) error {
 	}
 	// Add session table if sessions are enabled
 	if web.BConfig.WebConfig.Session.SessionOn {
-		_, err = orm.NewOrm().Raw(`CREATE TABLE session (
+		_, err = orm.NewOrm().Raw(`CREATE TABLE IF NOT EXISTS session (
     session_key VARCHAR(64) PRIMARY KEY,
     session_data BYTEA,
     session_expiry TIMESTAMP WITH TIME ZONE

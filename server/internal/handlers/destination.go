@@ -197,7 +197,7 @@ func (c *DestHandler) DeleteDestination() {
 	// Get destination ID from path
 	id := GetIDFromPath(&c.Controller)
 	// Get the name for the response
-	name, err := c.destORM.GetName(id)
+	dest, err := c.destORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
@@ -208,6 +208,10 @@ func (c *DestHandler) DeleteDestination() {
 	}
 	for _, job := range jobs {
 		job.Active = false
+		if err := c.jobORM.Update(job); err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this destination")
+			return
+		}
 	}
 	if err := c.destORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
@@ -215,7 +219,7 @@ func (c *DestHandler) DeleteDestination() {
 	}
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
-		Name: name,
+		Name: dest.Name,
 	})
 }
 
@@ -237,7 +241,7 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
-	result, _ := c.tempClient.TestConnection(context.Background(), "destination", req.Type, req.Version, req.Config)
+	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
 	utils.SuccessResponse(&c.Controller, result)
 }
 

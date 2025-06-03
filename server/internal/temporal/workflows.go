@@ -3,6 +3,7 @@ package temporal
 import (
 	"time"
 
+	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -33,17 +34,9 @@ type ActivityParams struct {
 
 // SyncParams contains parameters for sync activities
 type SyncParams struct {
-	SourceType    string
-	Version       string
-	SourceConfig  string
-	DestConfig    string
-	StreamsConfig string
-	StateConfig   string
-	JobId         int
-	ProjectID     string
-	SourceID      int
-	DestID        int
-	WorkflowID    string
+	JobORM     *database.JobORM
+	JobId      int
+	WorkflowID string
 }
 
 // DockerRunnerWorkflow orchestrates the Docker command execution as a workflow

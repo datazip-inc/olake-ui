@@ -150,6 +150,7 @@ func (c *JobHandler) CreateJob() {
 		Frequency:     req.Frequency,
 		StreamsConfig: req.StreamsConfig,
 		State:         "{}",
+		ProjectID:     projectIDStr,
 	}
 	// Set user information
 	userID := c.GetSession(constants.SessionUserID)
@@ -169,17 +170,10 @@ func (c *JobHandler) CreateJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			job.SourceID.Type,
-			job.SourceID.Version,
+			c.jobORM,
 			job.Frequency,
-			job.SourceID.Config,
-			job.DestID.Config,
-			job.State,
-			job.StreamsConfig,
 			job.ProjectID,
 			job.ID,
-			job.SourceID.ID,
-			job.DestID.ID,
 			false,
 		)
 		if err != nil {
@@ -239,6 +233,7 @@ func (c *JobHandler) UpdateJob() {
 	existingJob.Frequency = req.Frequency
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.UpdatedAt = time.Now()
+	existingJob.ProjectID = projectIDStr
 
 	// Update user information
 	userID := c.GetSession(constants.SessionUserID)
@@ -256,17 +251,10 @@ func (c *JobHandler) UpdateJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			existingJob.SourceID.Type,
-			existingJob.SourceID.Version,
+			c.jobORM,
 			existingJob.Frequency,
-			existingJob.SourceID.Config,
-			existingJob.DestID.Config,
-			existingJob.State,
-			existingJob.StreamsConfig,
 			existingJob.ProjectID,
 			existingJob.ID,
-			existingJob.SourceID.ID,
-			existingJob.DestID.ID,
 			false,
 		)
 		if err != nil {
@@ -361,17 +349,10 @@ func (c *JobHandler) SyncJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		resp, err := c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			job.SourceID.Type,
-			job.SourceID.Version,
+			c.jobORM,
 			job.Frequency,
-			job.SourceID.Config,
-			job.DestID.Config,
-			job.State,
-			job.StreamsConfig,
 			projectIDStr,
 			job.ID,
-			job.SourceID.ID,
-			job.DestID.ID,
 			true,
 		)
 		if err != nil {

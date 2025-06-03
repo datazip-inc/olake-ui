@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/utils"
 )
@@ -40,11 +39,6 @@ type FileConfig struct {
 // Runner is responsible for executing Docker commands
 type Runner struct {
 	WorkingDir string
-}
-
-type JobHandler struct {
-	web.Controller
-	jobORM *database.JobORM
 }
 
 // NewRunner creates a new Docker runner
@@ -193,9 +187,7 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 	if err != nil {
 		return nil, err
 	}
-
 	fmt.Printf("working directory path %s\n", workDir)
-
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 	}
@@ -219,31 +211,26 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId int, projectID string, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) RunSync(jobORM *database.JobORM, jobID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
 	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
 	if err != nil {
 		return nil, err
 	}
+	jobORM = database.NewJobORM()
 	fmt.Printf("working directory path %s\n", workDir)
 	// Get current job state
-	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(JobId)
+	job, err := jobORM.GetByID(jobID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Use job state if available
-	if job.State != "" {
-		stateConfig = job.State
-	}
-
 	// Prepare all configuration files
 	configs := []FileConfig{
-		{Name: "config.json", Data: sourceConfig},
-		{Name: "streams.json", Data: streamsConfig},
-		{Name: "writer.json", Data: destConfig},
-		{Name: "state.json", Data: stateConfig},
+		{Name: "config.json", Data: job.SourceID.Config},
+		{Name: "streams.json", Data: job.StreamsConfig},
+		{Name: "writer.json", Data: job.DestID.Config},
+		{Name: "state.json", Data: job.State},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -254,7 +241,7 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 	statePath := filepath.Join(workDir, "state.json")
 
 	// Execute sync command
-	_, err = r.ExecuteDockerCommand("config", Sync, sourceType, version, configPath,
+	_, err = r.ExecuteDockerCommand("config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")
@@ -278,6 +265,5 @@ func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateCon
 			return nil, err
 		}
 	}
-
 	return result, nil
 }

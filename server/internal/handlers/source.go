@@ -196,27 +196,36 @@ func (c *SourceHandler) UpdateSource() {
 // @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
 	id := GetIDFromPath(&c.Controller)
-	name, err := c.sourceORM.GetName(id)
+	source, err := c.sourceORM.GetByID(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
+
+	// Get all jobs using this source
 	jobs, err := c.jobORM.GetBySourceID(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
-
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs for source")
+		return
 	}
+
+	// Deactivate all jobs using this source
 	for _, job := range jobs {
 		job.Active = false
+		if err := c.jobORM.Update(job); err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this source")
+			return
+		}
 	}
 
+	// Delete the source
 	if err := c.sourceORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return
 	}
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
-		Name: name,
+		Name: source.Name,
 	})
 }
 
