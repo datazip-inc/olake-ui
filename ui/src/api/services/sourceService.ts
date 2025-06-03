@@ -4,6 +4,7 @@ import {
 	Entity,
 	APIResponse,
 	EntityBase,
+	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
 
@@ -45,7 +46,10 @@ export const sourceService = {
 					name: source.name,
 					type: source.type.toLowerCase(),
 					version: source.version,
-					config: JSON.stringify(source.config),
+					config:
+						typeof source.config === "string"
+							? source.config
+							: JSON.stringify(source.config),
 				},
 			)
 			return response.data
@@ -66,7 +70,7 @@ export const sourceService = {
 		}
 	},
 
-	testSourceConnection: async (source: EntityTestResponse) => {
+	testSourceConnection: async (source: EntityTestRequest) => {
 		try {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
@@ -75,10 +79,12 @@ export const sourceService = {
 					version: source.version,
 					config: source.config,
 				},
+				{ timeout: 0 },
 			)
 			return {
 				success: response.data.success,
 				message: response.data.message,
+				data: response.data.data,
 			}
 		} catch (error) {
 			console.error("Error testing source connection:", error)
@@ -133,6 +139,7 @@ export const sourceService = {
 					version: version === "" ? "latest" : version,
 					config,
 				},
+				{ timeout: 0 },
 			)
 			return response.data
 		} catch (error) {

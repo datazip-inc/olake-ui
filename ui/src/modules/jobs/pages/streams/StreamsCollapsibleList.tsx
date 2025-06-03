@@ -2,6 +2,7 @@ import { Checkbox, Empty } from "antd"
 import { useEffect, useState } from "react"
 import StreamPanel from "./StreamPanel"
 import { StreamData } from "../../../../types"
+import { CaretDown, CaretRight } from "@phosphor-icons/react"
 
 interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
@@ -9,7 +10,7 @@ interface GroupedStreamsCollapsibleListProps {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	setActiveStreamData: (stream: StreamData) => void
@@ -26,7 +27,7 @@ interface GroupedStreamsCollapsibleListProps {
 					[namespace: string]: {
 						stream_name: string
 						partition_regex: string
-						split_column: string
+						normalization: boolean
 					}[]
 			  }
 			| {
@@ -34,14 +35,13 @@ interface GroupedStreamsCollapsibleListProps {
 						[namespace: string]: {
 							stream_name: string
 							partition_regex: string
-							split_column: string
+							normalization: boolean
 						}[]
 					}
 					streams: StreamData[]
 			  }
 		>
 	>
-	selectedStreamsFromAPI?: { [namespace: string]: { stream_name: string }[] }
 }
 
 const StreamsCollapsibleList = ({
@@ -51,7 +51,6 @@ const StreamsCollapsibleList = ({
 	activeStreamData,
 	onStreamSelect,
 	setSelectedStreams,
-	selectedStreamsFromAPI,
 }: GroupedStreamsCollapsibleListProps) => {
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
@@ -67,39 +66,24 @@ const StreamsCollapsibleList = ({
 	})
 
 	useEffect(() => {
-		const allOpen: { [ns: string]: boolean } = {}
-		Object.keys(groupedStreams).forEach((ns: string) => {
-			allOpen[ns] = true
-		})
-		setOpenNamespaces(allOpen)
-	}, [groupedStreams])
-
-	useEffect(() => {
-		if (selectedStreamsFromAPI) {
-			const updated: {
-				[namespace: string]: {
-					stream_name: string
-					partition_regex: string
-					split_column: string
-				}[]
-			} = {}
-
-			let hasChanges = false
-
-			Object.entries(selectedStreamsFromAPI).forEach(([ns, streams]) => {
-				updated[ns] = streams.map(stream => ({
-					stream_name: stream.stream_name,
-					partition_regex: "",
-					split_column: "",
-				}))
-				hasChanges = true
+		if (Object.keys(openNamespaces).length === 0) {
+			const allOpen: { [ns: string]: boolean } = {}
+			Object.keys(groupedStreams).forEach((ns: string) => {
+				allOpen[ns] = true
 			})
-
-			if (hasChanges) {
-				setSelectedStreams(updated)
-			}
+			setOpenNamespaces(allOpen)
+		} else {
+			setOpenNamespaces(prev => {
+				const updated = { ...prev }
+				Object.keys(groupedStreams).forEach((ns: string) => {
+					if (updated[ns] === undefined) {
+						updated[ns] = true
+					}
+				})
+				return updated
+			})
 		}
-	}, [selectedStreamsFromAPI])
+	}, [groupedStreams])
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -222,7 +206,7 @@ const StreamsCollapsibleList = ({
 				const newStreamEntries = streamNames.map(stream_name => ({
 					stream_name,
 					partition_regex: "",
-					split_column: "",
+					normalization: false,
 				}))
 
 				if (selectedStreams) {
@@ -368,7 +352,17 @@ const StreamsCollapsibleList = ({
 									/>
 									<span className="font-semibold">{ns}</span>
 									<span className="ml-auto">
-										{openNamespaces[ns] ? "▼" : "►"}
+										{openNamespaces[ns] ? (
+											<CaretDown
+												className="size-4"
+												weight="fill"
+											/>
+										) : (
+											<CaretRight
+												className="size-4"
+												weight="fill"
+											/>
+										)}
 									</span>
 								</div>
 								{openNamespaces[ns] && (

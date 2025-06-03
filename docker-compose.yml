@@ -1,0 +1,197 @@
+x-app-defaults:
+  host_persistence_path: &hostPersistencePath   /tmp/olake-config
+  worker_config_volume_details: &workerConfigVolumeDetails
+    type: bind
+    source: *hostPersistencePath
+    target: /tmp/olake-config
+
+x-signup-defaults:
+  username: &defaultUsername "admin"
+  password: &defaultPassword "password"
+  email: &defaultEmail "admin@example.com"
+
+services:
+  olake-app:
+    image: olakego/ui:dev-latest
+    pull_policy: always
+    container_name: olake-app
+    environment:
+      PERSISTENT_DIR: *hostPersistencePath
+      POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
+    ports:
+      - "8000:8000"  # Expose UI port
+      - "8080:8080"  # Expose backend API port
+    volumes:
+      - <<: *workerConfigVolumeDetails
+    networks:
+      - temporal-network
+    depends_on:
+      postgresql:
+        condition: service_healthy # Wait for postgres to be healthy
+      temporal:
+        condition: service_started # Or service_healthy if temporal has a healthcheck
+    restart: unless-stopped
+    healthcheck: # Updated healthcheck for olake-app
+      test: ["CMD-SHELL", "nc -z localhost 8080"] # Check if port 8080 is listening
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give it time to start up before first health check
+
+  signup-init:
+    image: curlimages/curl:latest
+    container_name: olake-signup-init
+    networks:
+      - temporal-network
+    depends_on:
+      olake-app:
+        condition: service_healthy # Wait for olake-app to be healthy
+    environment:
+      USERNAME: *defaultUsername
+      PASSWORD: *defaultPassword
+      EMAIL: *defaultEmail
+      OLAKE_APP_URL: "http://olake-app:8080/signup"
+    command: >
+      sh -c "
+        echo 'signup-init: Initializing user setup...'
+        # The depends_on condition: service_healthy should handle the waiting for olake-app.
+
+        JSON_PAYLOAD=$$(printf '{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\"}' \"$${USERNAME}\" \"$${PASSWORD}\" \"$${EMAIL}\")
+        echo \"signup-init: Attempting to create user '$${USERNAME}' via $${OLAKE_APP_URL}\"
+
+        HTTP_RESPONSE_CODE=$$(/usr/bin/curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d \"$${JSON_PAYLOAD}\" \"$${OLAKE_APP_URL}\")
+
+        # The actual response body from olake-app will be printed to stderr by the '-o /dev/stderr' curl option.
+        # A newline after stderr output from curl can make logs cleaner.
+        echo '' 
+
+        if ! [ \"$${HTTP_RESPONSE_CODE}\" -eq \"$${HTTP_RESPONSE_CODE}\" ] 2>/dev/null; then
+            echo \"signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$${HTTP_RESPONSE_CODE}'\"
+            exit 1;
+        fi
+
+        if [ \"$${HTTP_RESPONSE_CODE}\" -ge 200 ] && [ \"$${HTTP_RESPONSE_CODE}\" -lt 300 ]; then
+          echo \"signup-init: User '$${USERNAME}' creation request successful (HTTP $${HTTP_RESPONSE_CODE}).\";
+        else
+          echo \"signup-init: User '$${USERNAME}' creation request FAILED (HTTP $${HTTP_RESPONSE_CODE}). Server response body above.\";
+          exit 1; # Exit with error if signup failed
+        fi
+        echo 'signup-init: User setup process complete.';
+      "
+    restart: "no"
+
+  temporal-worker:
+    image: olakego/ui-worker:dev-latest
+    pull_policy: always
+    container_name: olake-temporal-worker
+    networks:
+      - temporal-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - <<: *workerConfigVolumeDetails
+    environment:
+      TEMPORAL_ADDRESS: "temporal:7233"
+      PERSISTENT_DIR: *hostPersistencePath
+    depends_on:
+      temporal:
+        condition: service_started # Or service_healthy if temporal has a healthcheck
+      olake-app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgresql:
+    container_name: temporal-postgresql
+    image: postgres:13
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    networks:
+      - temporal-network
+    expose:
+      - 5432
+    ports:
+      - "5433:5432"
+    volumes:
+      - temporal-postgresql-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -h localhost -p 5432"] # Checks if server is accepting connections
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    container_name: temporal
+    image: temporalio/auto-setup:1.22.3
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy # Wait for elasticsearch to be healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - ENABLE_ES=true
+      - ES_SEEDS=elasticsearch
+      - ES_VERSION=v7
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    networks:
+      - temporal-network
+    ports:
+      - "7233:7233"
+    restart: unless-stopped
+
+  temporal-ui:
+    container_name: temporal-ui
+    image: temporalio/ui:2.16.2
+    depends_on:
+      temporal:
+        condition: service_started
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    networks:
+      - temporal-network
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+  elasticsearch:
+    container_name: temporal-elasticsearch
+    image: elasticsearch:7.17.10
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+    networks:
+      - temporal-network
+    expose:
+      - 9200
+    volumes:
+      - temporal-elasticsearch-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
+
+volumes:
+  temporal-postgresql-data:
+    driver: local
+  olake-config-data:
+    driver: local
+  temporal-elasticsearch-data:
+    driver: local

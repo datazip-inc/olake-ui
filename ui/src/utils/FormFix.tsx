@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react"
 import { RJSFSchema, UiSchema } from "@rjsf/utils"
-import { Switch, Tooltip, Select } from "antd"
-import { Info, Eye, EyeSlash } from "@phosphor-icons/react"
+import { Switch, Tooltip, Select, Button, Input } from "antd"
+import { Info, Eye, EyeSlash, Plus, Trash } from "@phosphor-icons/react"
 
 interface DynamicSchemaFormProps {
 	schema: RJSFSchema
@@ -25,6 +25,10 @@ type FieldSchema = {
 	default?: any
 	properties?: Record<string, FieldSchema>
 	required?: string[]
+	items?: {
+		type?: string
+	}
+	order?: number
 }
 
 interface DirectFormFieldProps {
@@ -52,6 +56,7 @@ const DirectFormField = ({
 	const inputRef = useRef<HTMLInputElement>(null)
 	const [localError, setLocalError] = useState<string | null>(null)
 	const [wasUserModified, setWasUserModified] = useState(false)
+	const [arrayItemInput, setArrayItemInput] = useState("")
 
 	useEffect(() => {
 		if (document.activeElement !== inputRef.current) {
@@ -65,7 +70,11 @@ const DirectFormField = ({
 
 	const validateField = (value: any): string | null => {
 		const hasDefault = schema.default !== undefined
-		const isEmpty = value === undefined || value === null || value === ""
+		const isEmpty =
+			value === undefined ||
+			value === null ||
+			value === "" ||
+			(Array.isArray(value) && value.length === 0)
 		if (required && isEmpty && (wasUserModified || !hasDefault)) {
 			return `${schema.title || name} is required`
 		}
@@ -134,11 +143,106 @@ const DirectFormField = ({
 		}
 	}
 
+	const handleArrayItemAdd = () => {
+		if (!arrayItemInput.trim()) return
+
+		const newArray = Array.isArray(fieldValue) ? [...fieldValue] : []
+		newArray.push(arrayItemInput.trim())
+
+		setFieldValue(newArray)
+		setWasUserModified(true)
+		onChange(name, newArray)
+		setArrayItemInput("")
+
+		if (validate) {
+			setLocalError(validateField(newArray))
+		} else {
+			setLocalError(null)
+		}
+	}
+
+	const handleArrayItemRemove = (index: number) => {
+		if (!Array.isArray(fieldValue)) return
+
+		const newArray = [...fieldValue]
+		newArray.splice(index, 1)
+
+		setFieldValue(newArray)
+		setWasUserModified(true)
+		onChange(name, newArray)
+
+		if (validate) {
+			setLocalError(validateField(newArray))
+		} else {
+			setLocalError(null)
+		}
+	}
+
 	const togglePasswordVisibility = () => {
 		setShowPassword(prev => !prev)
 	}
 
+	const renderArrayField = () => {
+		const arrayValues = Array.isArray(fieldValue) ? fieldValue : []
+		const itemType = schema.items?.type || "string"
+
+		return (
+			<div className="rounded-[6px] border border-gray-300 p-3">
+				<div className="mb-2">
+					{arrayValues.map((item, index) => (
+						<div
+							key={index}
+							className="mb-2 flex items-center"
+						>
+							<div className="flex-grow">
+								{itemType === "string" && (
+									<Input
+										value={item}
+										disabled
+										className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
+									/>
+								)}
+							</div>
+							<Button
+								type="text"
+								className="ml-2 text-red-500 hover:text-red-700"
+								onClick={() => handleArrayItemRemove(index)}
+								icon={<Trash className="size-4" />}
+							/>
+						</div>
+					))}
+				</div>
+				<div className="flex items-center">
+					<Input
+						value={arrayItemInput}
+						onChange={e => setArrayItemInput(e.target.value)}
+						placeholder={`Add ${schema.title || name} item...`}
+						onKeyPress={e => {
+							if (e.key === "Enter") {
+								e.preventDefault()
+								handleArrayItemAdd()
+							}
+						}}
+						className="flex-grow rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
+					/>
+					<Button
+						type="primary"
+						className="ml-2 bg-[#203FDD] hover:bg-blue-700"
+						onClick={handleArrayItemAdd}
+						icon={<Plus className="size-4" />}
+					>
+						Add
+					</Button>
+				</div>
+			</div>
+		)
+	}
+
 	const renderInput = () => {
+		if (schema.type === "array") {
+			return renderArrayField()
+		}
+
 		if (schema.enum?.length) {
 			return (
 				<Select
@@ -301,6 +405,11 @@ export const DirectInputForm = ({
 		const properties = schema.properties || {}
 
 		return Object.entries(properties)
+			.sort(([, a], [, b]) => {
+				const orderA = (a as FieldSchema).order ?? Number.MAX_SAFE_INTEGER
+				const orderB = (b as FieldSchema).order ?? Number.MAX_SAFE_INTEGER
+				return orderA - orderB
+			})
 			.map(([name, fieldSchemaDefinition]) => {
 				const fieldSchema = fieldSchemaDefinition as FieldSchema
 				const fieldUiSchema = uiSchema?.[name]
@@ -388,7 +497,11 @@ export const validateFormData = (
 			const isRequired = schema.required?.includes(key)
 			const value = formData?.[key]
 			const hasDefault = propValue?.default !== undefined
-			const isEmpty = value === undefined || value === null || value === ""
+			const isEmpty =
+				value === undefined ||
+				value === null ||
+				value === "" ||
+				(Array.isArray(value) && value.length === 0)
 			const wasIntentionallyCleared = hasDefault && isEmpty && key in formData
 
 			if (isRequired && isEmpty && (wasIntentionallyCleared || !hasDefault)) {

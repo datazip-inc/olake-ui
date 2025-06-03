@@ -42,6 +42,7 @@ func Init() {
 		DestinationTable: "olake-$$-destination",
 		JobTable:         "olake-$$-job",
 		CatalogTable:     "olake-$$-catalog",
+		SessionTable:     "session",
 	}
 
 	// replace $$ with the environment

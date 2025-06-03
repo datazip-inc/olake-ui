@@ -49,8 +49,10 @@ const Jobs: React.FC = () => {
 		navigate(`/jobs/${id}/edit`)
 	}
 
-	const handlePauseJob = (id: string) => {
-		message.info(`Pausing job ${id}`)
+	const handlePauseJob = async (id: string, checked: boolean) => {
+		await jobService.activateJob(id, !checked)
+		message.success(`Successfully ${checked ? "paused" : "resumed"} job ${id}`)
+		await fetchJobs()
 	}
 
 	const handleDeleteJob = (id: string) => {
@@ -85,21 +87,15 @@ const Jobs: React.FC = () => {
 
 	const updateJobsList = () => {
 		if (activeTab === "active") {
-			setFilteredJobs(
-				jobs.filter(
-					job => job.activate === true && job.last_run_state != "failed",
-				),
-			)
+			setFilteredJobs(jobs.filter(job => job.activate === true))
 		} else if (activeTab === "inactive") {
-			setFilteredJobs(
-				jobs.filter(
-					job => job.activate === false && job.last_run_state != "failed",
-				),
-			)
+			setFilteredJobs(jobs.filter(job => job.activate === false))
 		} else if (activeTab === "saved") {
 			setFilteredJobs(savedJobs)
 		} else if (activeTab === "failed") {
-			setFilteredJobs(jobs.filter(job => job.last_run_state == "failed"))
+			setFilteredJobs(
+				jobs.filter(job => job.last_run_state?.toLowerCase() == "failed"),
+			)
 		}
 	}
 
@@ -138,7 +134,7 @@ const Jobs: React.FC = () => {
 					onClick={handleCreateJob}
 				>
 					<Plus className="size-4 text-white" />
-					Create job
+					Create Job
 				</button>
 			</div>
 

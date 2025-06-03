@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-	BASE_URL: "http://localhost:8080",
+	BASE_URL: `${window.location.protocol}//${window.location.host.split(":")[0]}:8080`,
 	PROJECT_ID: "123",
 	ENDPOINTS: {
 		PROJECT: (projectId: string) => `/api/v1/project/${projectId}`,

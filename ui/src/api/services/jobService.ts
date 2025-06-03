@@ -91,6 +91,7 @@ export const jobService = {
 			const response = await api.post<APIResponse<TaskLog[]>>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs`,
 				{ file_path: filePath },
+				{ timeout: 0 },
 			)
 			return response.data
 		} catch (error) {

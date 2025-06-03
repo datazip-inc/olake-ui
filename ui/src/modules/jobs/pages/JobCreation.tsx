@@ -41,8 +41,12 @@ const JobCreation: React.FC = () => {
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 	const [jobName, setJobName] = useState("")
 	const [replicationFrequency, setReplicationFrequency] = useState("minutes")
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+
+	const [hitBack, setHitBack] = useState(false)
 
 	const {
 		setShowEntitySavedModal,
@@ -51,12 +55,27 @@ const JobCreation: React.FC = () => {
 		setShowSuccessModal,
 		addJob,
 		setShowFailureModal,
+		setSourceTestConnectionError,
+		setDestinationTestConnectionError,
 	} = useAppStore()
 
 	const sourceRef = useRef<CreateSourceHandle>(null)
 	const destinationRef = useRef<CreateDestinationHandle>(null)
 
 	const getReplicationFrequency = () => {
+		if (replicationFrequency.includes(" ")) {
+			const parts = replicationFrequency.split(" ")
+			const value = parts[0]
+			const unit = parts[1].toLowerCase()
+
+			if (unit.includes("minute")) return `${value} minutes`
+			if (unit.includes("hour")) return "hourly"
+			if (unit.includes("day")) return "daily"
+			if (unit.includes("week")) return "weekly"
+			if (unit.includes("month")) return "monthly"
+			if (unit.includes("year")) return "yearly"
+		}
+
 		if (replicationFrequency === "minutes") {
 			return "minutes"
 		} else if (replicationFrequency === "hours") {
@@ -65,10 +84,15 @@ const JobCreation: React.FC = () => {
 			return "daily"
 		} else if (replicationFrequency === "weeks") {
 			return "weekly"
+		} else if (replicationFrequency === "months") {
+			return "monthly"
+		} else if (replicationFrequency === "years") {
+			return "yearly"
 		}
 	}
 
 	const handleNext = async () => {
+		setHitBack(false)
 		if (currentStep === "source") {
 			if (sourceRef.current) {
 				const isValid = await sourceRef.current.validateSource()
@@ -77,7 +101,6 @@ const JobCreation: React.FC = () => {
 					return
 				}
 			} else {
-				// Fallback validation if ref isn't available
 				if (!sourceName.trim()) {
 					message.error("Source name is required")
 					return
@@ -88,20 +111,24 @@ const JobCreation: React.FC = () => {
 				name: sourceName,
 				type: sourceConnector.toLowerCase(),
 				version: sourceVersion,
-				config: JSON.stringify(sourceFormData),
+				config:
+					typeof sourceFormData === "string"
+						? sourceFormData
+						: JSON.stringify(sourceFormData),
 			}
 			setShowTestingModal(true)
 			const testResult = await sourceService.testSourceConnection(newSourceData)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep("destination")
 					}, 1000)
 				} else {
+					setSourceTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			}, 1500)
@@ -125,7 +152,10 @@ const JobCreation: React.FC = () => {
 			const newDestinationData = {
 				name: destinationName,
 				type: destinationConnector,
-				config: JSON.stringify(destinationFormData),
+				config:
+					typeof destinationFormData === "string"
+						? destinationFormData
+						: JSON.stringify(destinationFormData),
 				version: destinationVersion,
 			}
 			setShowTestingModal(true)
@@ -134,13 +164,14 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep("schema")
 					}, 1000)
 				} else {
+					setDestinationTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			}, 1500)
@@ -166,9 +197,7 @@ const JobCreation: React.FC = () => {
 					config: JSON.stringify(destinationFormData),
 				},
 				streams_config: JSON.stringify(selectedStreams),
-				frequency: replicationFrequency
-					? getReplicationFrequency() || "hourly"
-					: "hourly",
+				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
 			}
 			addJob(newJobData)
 				.then(() => {
@@ -192,6 +221,7 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleBack = () => {
+		setHitBack(true)
 		if (currentStep === "destination") {
 			setCurrentStep("source")
 		} else if (currentStep === "schema") {
@@ -264,21 +294,21 @@ const JobCreation: React.FC = () => {
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold"> Create job</div>
+						<div className="text-2xl font-bold"> Create Job</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
 				</div>
 			</div>
 
-			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
+			<div className="flex flex-1 overflow-auto border-t border-gray-200">
 				<div
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&
 						!docsMinimized
 							? "w-2/3"
 							: "w-full"
-					} pt-0 transition-all duration-300`}
+					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
 						<div className="w-full">
@@ -307,6 +337,7 @@ const JobCreation: React.FC = () => {
 						<div className="w-full">
 							<CreateDestination
 								fromJobFlow={true}
+								hitBack={hitBack}
 								stepNumber={2}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
@@ -329,17 +360,23 @@ const JobCreation: React.FC = () => {
 					)}
 
 					{currentStep === "schema" && (
-						<SchemaConfiguration
-							selectedStreams={selectedStreams}
-							setSelectedStreams={setSelectedStreams}
-							stepNumber={3}
-							stepTitle="Streams selection"
-							useDirectForms={true}
-							sourceName={sourceName}
-							sourceConnector={sourceConnector.toLowerCase()}
-							sourceVersion={sourceVersion}
-							sourceConfig={JSON.stringify(sourceFormData)}
-						/>
+						<div className="h-full overflow-scroll">
+							<SchemaConfiguration
+								selectedStreams={selectedStreams}
+								setSelectedStreams={setSelectedStreams}
+								stepNumber={3}
+								stepTitle="Streams Selection"
+								useDirectForms={true}
+								sourceName={sourceName}
+								sourceConnector={sourceConnector.toLowerCase()}
+								sourceVersion={sourceVersion}
+								sourceConfig={
+									typeof sourceFormData === "string"
+										? sourceFormData
+										: JSON.stringify(sourceFormData)
+								}
+							/>
+						</div>
 					)}
 
 					{currentStep === "config" && (
@@ -348,6 +385,8 @@ const JobCreation: React.FC = () => {
 							setJobName={setJobName}
 							replicationFrequency={replicationFrequency}
 							setReplicationFrequency={setReplicationFrequency}
+							replicationFrequencyValue={replicationFrequencyValue}
+							setReplicationFrequencyValue={setReplicationFrequencyValue}
 							schemaChangeStrategy={schemaChangeStrategy}
 							setSchemaChangeStrategy={setSchemaChangeStrategy}
 							notifyOnSchemaChanges={notifyOnSchemaChanges}

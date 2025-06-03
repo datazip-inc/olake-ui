@@ -2,19 +2,31 @@ import { Modal } from "antd"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
 import { useAppStore } from "../../../store"
 import { Info } from "@phosphor-icons/react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 
 const TestConnectionFailureModal = () => {
-	const { showFailureModal, setShowFailureModal } = useAppStore()
+	const {
+		showFailureModal,
+		setShowFailureModal,
+		sourceTestConnectionError,
+		destinationTestConnectionError,
+	} = useAppStore()
 	const navigate = useNavigate()
+	const location = useLocation()
+
+	const isFromSources = location.pathname.includes("/sources")
 
 	const handleCancel = () => {
 		setShowFailureModal(false)
 	}
 
-	const handleBackToSources = () => {
+	const handleBackToPath = () => {
 		setShowFailureModal(false)
-		navigate("/sources")
+		if (isFromSources) {
+			navigate("/sources")
+		} else {
+			navigate("/destinations")
+		}
 	}
 
 	return (
@@ -39,20 +51,22 @@ const TestConnectionFailureModal = () => {
 					<h2 className="text-center text-lg font-medium">
 						Your test connection has failed
 					</h2>
-					<div className="mt-2 flex items-center gap-1 rounded-xl bg-[#f8f8f8] p-3 text-xs">
+					<div className="mt-2 flex w-[360px] items-center gap-1 overflow-scroll rounded-xl bg-[#f8f8f8] p-3 text-xs">
 						<Info
 							weight="bold"
 							className="size-4 text-[#f5222d]"
 						/>
-						Error : Please check your parameters
+						{sourceTestConnectionError || destinationTestConnectionError
+							? sourceTestConnectionError || destinationTestConnectionError
+							: "Error : Please check your parameters"}
 					</div>
 				</div>
 				<div className="flex items-center gap-4">
 					<button
-						onClick={handleBackToSources}
+						onClick={handleBackToPath}
 						className="w-fit rounded-md border border-[#d9d9d9] px-4 py-2 text-black"
 					>
-						Back to Sources
+						{isFromSources ? "Back to Sources" : "Back to Destinations"}
 					</button>
 					<button
 						onClick={handleCancel}

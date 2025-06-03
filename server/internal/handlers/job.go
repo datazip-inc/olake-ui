@@ -1,31 +1,34 @@
 package handlers
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-server/internal/temporal"
 	"github.com/datazip/olake-server/utils"
+	"go.temporal.io/api/workflowservice/v1"
 )
 
 type JobHandler struct {
 	web.Controller
-	jobORM    *database.JobORM
-	sourceORM *database.SourceORM
-	destORM   *database.DestinationORM
+	jobORM     *database.JobORM
+	sourceORM  *database.SourceORM
+	destORM    *database.DestinationORM
+	tempClient *temporal.Client
 }
 
 // Prepare initializes the ORM instances
@@ -33,58 +36,29 @@ func (c *JobHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 	c.sourceORM = database.NewSourceORM()
 	c.destORM = database.NewDestinationORM()
+	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	tempClient, err := temporal.NewClient(tempAddress)
+	if err != nil {
+		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
+		logs.Error("Failed to create Temporal client: %v", err)
+	} else {
+		c.tempClient = tempClient
+	}
 }
 
 // @router /project/:projectid/jobs [get]
 func (c *JobHandler) GetAllJobs() {
-	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
+	// Get jobs with optional filtering
+	jobs, err := c.jobORM.GetAllByProjectID(projectIDStr)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
-	// Get optional query parameters for filtering
-	sourceID := c.GetString("source_id")
-	destID := c.GetString("dest_id")
-
-	var jobs []*models.Job
-	var getErr error
-
-	// Apply filters if provided
-	if sourceID != "" {
-		sourceIDInt, err := strconv.Atoi(sourceID)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-			return
-		}
-		jobs, getErr = c.jobORM.GetBySourceID(sourceIDInt)
-	} else if destID != "" {
-		destIDInt, err := strconv.Atoi(destID)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
-			return
-		}
-		jobs, getErr = c.jobORM.GetByDestinationID(destIDInt)
-	} else {
-		// Get jobs for the project
-		jobs, getErr = c.jobORM.GetAllByProjectID(projectID)
-	}
-
-	if getErr != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID")
 		return
 	}
 
 	// Transform to response format
 	jobResponses := make([]models.JobResponse, 0, len(jobs))
 	for _, job := range jobs {
-		// Get source and destination details
-		source := job.SourceID
-		dest := job.DestID
-
-		// Create response object
 		jobResp := models.JobResponse{
 			ID:            job.ID,
 			Name:          job.Name,
@@ -95,56 +69,46 @@ func (c *JobHandler) GetAllJobs() {
 			Activate:      job.Active,
 		}
 
-		// Set source details if available
-		if source != nil {
+		// Set source and destination details
+		if job.SourceID != nil {
 			jobResp.Source = models.JobSourceConfig{
-				Name:    source.Name,
-				Type:    source.Type,
-				Config:  source.Config,
-				Version: source.Version,
+				Name:    job.SourceID.Name,
+				Type:    job.SourceID.Type,
+				Config:  job.SourceID.Config,
+				Version: job.SourceID.Version,
 			}
 		}
 
-		// Set destination details if available
-		if dest != nil {
+		if job.DestID != nil {
 			jobResp.Destination = models.JobDestinationConfig{
-				Name:    dest.Name,
-				Type:    dest.DestType,
-				Config:  dest.Config,
-				Version: dest.Version,
+				Name:    job.DestID.Name,
+				Type:    job.DestID.DestType,
+				Config:  job.DestID.Config,
+				Version: job.DestID.Version,
 			}
 		}
 
-		// Set user details if available
+		// Set user details
 		if job.CreatedBy != nil {
 			jobResp.CreatedBy = job.CreatedBy.Username
 		}
-
 		if job.UpdatedBy != nil {
 			jobResp.UpdatedBy = job.UpdatedBy.Username
 		}
 
-		//Parse state for last run info if available
-		if job.State != "" {
-			var state map[string]interface{}
-			if err := json.Unmarshal([]byte(job.State), &state); err == nil {
-				if lastRunTime, ok := state["last_run_time"].(string); ok {
-					jobResp.LastRunTime = lastRunTime
-				}
-
-				if lastRunState, ok := state["last_run_state"].(string); ok {
-					jobResp.LastRunState = lastRunState
-				}
+		// Get workflow information if Temporal client is available
+		if c.tempClient != nil {
+			query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
+			if resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+				Query:    query,
+				PageSize: 1,
+			}); err != nil {
+				logs.Error("Failed to list workflows: %v", err)
+			} else if len(resp.Executions) > 0 {
+				jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+				jobResp.LastRunState = resp.Executions[0].Status.String()
 			}
 		}
-		// var stateMap map[string]interface{}
-		// err = json.Unmarshal([]byte(job.State), &stateMap)
-		// if err != nil {
-		// 	utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
-		// 	return
-		// }
-		// jobResp.LastRunTime = stateMap["last_run_time"].(string)
-		// jobResp.LastRunState = stateMap["last_run_state"].(string)
 
 		jobResponses = append(jobResponses, jobResp)
 	}
@@ -156,7 +120,6 @@ func (c *JobHandler) GetAllJobs() {
 func (c *JobHandler) CreateJob() {
 	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-
 	// Parse request body
 	var req models.CreateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -187,6 +150,7 @@ func (c *JobHandler) CreateJob() {
 		Frequency:     req.Frequency,
 		StreamsConfig: req.StreamsConfig,
 		State:         "{}",
+		ProjectID:     projectIDStr,
 	}
 	// Set user information
 	userID := c.GetSession(constants.SessionUserID)
@@ -202,6 +166,23 @@ func (c *JobHandler) CreateJob() {
 		return
 	}
 
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		_, err = c.tempClient.CreateSync(
+			c.Ctx.Request.Context(),
+			c.jobORM,
+			job.Frequency,
+			job.ProjectID,
+			job.ID,
+			false,
+		)
+		if err != nil {
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			fmt.Println("Successfully executed sync job via Temporal")
+		}
+	}
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -209,7 +190,6 @@ func (c *JobHandler) CreateJob() {
 func (c *JobHandler) UpdateJob() {
 	// Get project ID and job ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -253,6 +233,7 @@ func (c *JobHandler) UpdateJob() {
 	existingJob.Frequency = req.Frequency
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.UpdatedAt = time.Now()
+	existingJob.ProjectID = projectIDStr
 
 	// Update user information
 	userID := c.GetSession(constants.SessionUserID)
@@ -265,6 +246,22 @@ func (c *JobHandler) UpdateJob() {
 	if err := c.jobORM.Update(existingJob); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
 		return
+	}
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		_, err = c.tempClient.CreateSync(
+			c.Ctx.Request.Context(),
+			c.jobORM,
+			existingJob.Frequency,
+			existingJob.ProjectID,
+			existingJob.ID,
+			false,
+		)
+		if err != nil {
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			fmt.Println("Successfully executed sync job via Temporal")
+		}
 	}
 
 	utils.SuccessResponse(&c.Controller, req)
@@ -294,37 +291,36 @@ func (c *JobHandler) DeleteJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, struct {
-		Name string `json:"name"`
-	}{
+	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
 	})
 }
 
+// no need any more
 // @router /project/:projectid/jobs/:id/streams [get]
-func (c *JobHandler) GetJobStreams() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+// func (c *JobHandler) GetJobStreams() {
+// 	idStr := c.Ctx.Input.Param(":id")
+// 	id, err := strconv.Atoi(idStr)
+// 	if err != nil {
+// 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+// 		return
+// 	}
 
-	// Get job
-	job, err := c.jobORM.GetByID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
-		return
-	}
+// 	// Get job
+// 	job, err := c.jobORM.GetByID(id)
+// 	if err != nil {
+// 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+// 		return
+// 	}
 
-	utils.SuccessResponse(&c.Controller,
-		struct {
-			StreamsConfig string `json:"streams_config"`
-		}{
-			StreamsConfig: job.StreamsConfig,
-		},
-	)
-}
+// 	utils.SuccessResponse(&c.Controller,
+// 		struct {
+// 			StreamsConfig string `json:"streams_config"`
+// 		}{
+// 			StreamsConfig: job.StreamsConfig,
+// 		},
+// 	)
+// }
 
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
@@ -335,6 +331,7 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 
+	projectIDStr := c.Ctx.Input.Param(":projectid")
 	// Check if job exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
@@ -348,40 +345,22 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 
-	// Create Docker runner
-	configDir := docker.GetDefaultConfigDir()
-	runner := docker.NewRunner(configDir)
-
-	// Run sync operation - the RunSync method will generate the catalog automatically if needed
-	syncState, err := runner.RunSync(
-		job.SourceID.Type,
-		job.SourceID.Version,
-		job.SourceID.Config,
-		job.DestID.Config,
-		job.StreamsConfig,
-		job.SourceID.ID,
-		job.DestID.ID,
-	)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Sync operation failed: %v", err))
-		return
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		resp, err := c.tempClient.CreateSync(
+			c.Ctx.Request.Context(),
+			c.jobORM,
+			job.Frequency,
+			projectIDStr,
+			job.ID,
+			true,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal excuetion failed: %v", err))
+		} else {
+			utils.SuccessResponse(&c.Controller, resp)
+		}
 	}
-
-	// Update job state with sync result from state.json
-	stateMap := map[string]interface{}{
-		"last_run_time":  time.Now().Format(time.RFC3339),
-		"last_run_state": "success",
-		"sync_state":     syncState,
-	}
-	stateJSON, _ := json.Marshal(stateMap)
-	job.State = string(stateJSON)
-
-	// Update job in database
-	if err := c.jobORM.Update(job); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
-		return
-	}
-
 	utils.SuccessResponse(&c.Controller, nil)
 }
 
@@ -395,9 +374,7 @@ func (c *JobHandler) ActivateJob() {
 	}
 
 	// Parse request body
-	var req struct {
-		Activate bool `json:"activate"`
-	}
+	var req models.JobStatus
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
@@ -427,13 +404,7 @@ func (c *JobHandler) ActivateJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller,
-		struct {
-			Activate bool `json:"activate"`
-		}{
-			Activate: job.Active,
-		},
-	)
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/jobs/:id/tasks [get]
@@ -444,6 +415,7 @@ func (c *JobHandler) GetJobTasks() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
+	projectIDStr := c.Ctx.Input.Param(":projectid")
 
 	// Get job to verify it exists
 	job, err := c.jobORM.GetByID(id)
@@ -451,119 +423,31 @@ func (c *JobHandler) GetJobTasks() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
-	// Get logs directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
-		return
-	}
-	logsDir := filepath.Join(homeDir, ".olake", "logs")
-
-	cmd := exec.Command("sudo", "chmod", "-R", "777", logsDir)
-	_ = cmd.Run() // Ignore error; permission setting is not critical
-
-	entries, err := os.ReadDir(logsDir)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read logs directory")
-		return
-	}
-
-	// Collect all sync directories
-	var syncDirs []string
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
-			syncDirs = append(syncDirs, entry.Name())
-		}
-	}
-
-	if len(syncDirs) == 0 {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync logs found")
-		return
-	}
-
-	// Sort descending (latest first)
-	sort.Slice(syncDirs, func(i, j int) bool {
-		return syncDirs[i] > syncDirs[j]
-	})
-
-	// Limit to latest 10
-	if len(syncDirs) > 10 {
-		syncDirs = syncDirs[:10]
-	}
-
 	var tasks []models.JobTask
-	isFirst := true
-	for _, syncDir := range syncDirs {
-		logPath := filepath.Join(logsDir, syncDir, "olake.log")
-		logContent, err := os.ReadFile(logPath)
-		if err != nil {
-			continue // Skip if log file is not readable
-		}
+	// Construct a query for workflows related to this project and job
+	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
+	// List workflows using the direct query
+	resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+		Query: query,
+	})
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
+		return
+	}
+	for _, execution := range resp.Executions {
+		var runTime time.Duration
+		var endTime time.Time
+		startTime := execution.StartTime.AsTime()
 
-		lines := strings.Split(string(logContent), "\n")
-		var logEntries []struct {
-			Level   string    `json:"level"`
-			Time    time.Time `json:"time"`
-			Message string    `json:"message"`
-		}
-
-		for _, line := range lines {
-			if line == "" {
-				continue
-			}
-			var entry struct {
-				Level   string    `json:"level"`
-				Time    time.Time `json:"time"`
-				Message string    `json:"message"`
-			}
-			if err := json.Unmarshal([]byte(line), &entry); err != nil {
-				continue
-			}
-			logEntries = append(logEntries, entry)
-		}
-
-		if len(logEntries) == 0 {
-			continue
-		}
-		firstTime := logEntries[0].Time
-		lastTime := logEntries[len(logEntries)-1].Time
-		runtime := lastTime.Sub(firstTime)
-
-		lastEntry := logEntries[len(logEntries)-1]
-		status := "running"
-		if lastEntry.Level == "fatal" || lastEntry.Level == "error" {
-			status = "failed"
-		} else if lastEntry.Level == "info" && strings.Contains(lastEntry.Message, "Total records read: ") {
-			status = "success"
-		}
-		if isFirst {
-			var stateMap map[string]interface{}
-			err = json.Unmarshal([]byte(job.State), &stateMap)
-			if err != nil {
-				utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to unmarshal state")
-				return
-			}
-			stateMap["last_run_state"] = status
-			stateMap["last_run_time"] = firstTime
-			updatedState, err := json.Marshal(stateMap)
-			if err != nil {
-				// handle error
-				utils.ErrorResponse(&c.Controller, http.StatusNotFound, "failed to marshal state")
-				return
-			}
-			job.State = string(updatedState)
-			if err := c.jobORM.Update(job); err != nil {
-				utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
-				return
-			}
-			isFirst = false
+		if execution.CloseTime != nil {
+			endTime = execution.CloseTime.AsTime()
+			runTime = endTime.Sub(startTime)
 		}
 		tasks = append(tasks, models.JobTask{
-			Runtime:   fmt.Sprintf("%d secs", int(runtime.Seconds())),
-			StartTime: firstTime.Format("2006-01-02_15-04-05"),
-			Status:    status,
-			FilePath:  syncDir,
+			Runtime:   runTime.String(),
+			StartTime: startTime.Format(time.RFC3339),
+			Status:    execution.Status.String(),
+			FilePath:  execution.Execution.WorkflowId,
 		})
 	}
 
@@ -594,19 +478,40 @@ func (c *JobHandler) GetTaskLogs() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
+	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(req.FilePath)))
 	// Read the log file
-	// Get the latest sync folder from logs directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user home directory")
+
+	// Get home directory
+	homeDir := docker.GetDefaultConfigDir()
+	mainSyncDir := filepath.Join(homeDir, syncFolderName)
+	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
 		return
 	}
-	logsDir := filepath.Join(homeDir, ".olake", "logs")
-	logPath := filepath.Join(logsDir, req.FilePath, "olake.log")
+
+	// Look for log files in the logs directory
+	logsDir := filepath.Join(mainSyncDir, "logs")
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Logs directory not found")
+		return
+	}
+
+	// Since there is only one sync folder in logs, we can get it directly
+	files, err := os.ReadDir(logsDir)
+	if err != nil || len(files) == 0 {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync log directory found")
+		return
+	}
+
+	// Use the first directory we find (since there's only one)
+	syncDir := filepath.Join(logsDir, files[0].Name())
+
+	// Define the log file path
+	logPath := filepath.Join(syncDir, "olake.log")
+
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to read log file")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read log file : %s", logPath))
 		return
 	}
 

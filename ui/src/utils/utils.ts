@@ -36,7 +36,7 @@ export const getConnectorName = (connector: string, catalog: string | null) => {
 			return "iceberg/catalog/rest"
 		} else if (catalog === "JDBC Catalog") {
 			return "iceberg/catalog/jdbc"
-		} else if (catalog === "Hive Catalog") {
+		} else if (catalog === "Hive Catalog" || catalog === "HIVE Catalog") {
 			return "iceberg/catalog/hive"
 		}
 	}
@@ -76,13 +76,13 @@ export const getConnectorInLowerCase = (connector: string) => {
 }
 
 export const getCatalogInLowerCase = (catalog: string) => {
-	if (catalog === "AWS Glue") {
+	if (catalog === "AWS Glue" || catalog === "glue") {
 		return "glue"
-	} else if (catalog === "REST Catalog") {
+	} else if (catalog === "REST Catalog" || catalog === "rest") {
 		return "rest"
-	} else if (catalog === "JDBC Catalog") {
+	} else if (catalog === "JDBC Catalog" || catalog === "jdbc") {
 		return "jdbc"
-	} else if (catalog === "Hive Catalog") {
+	} else if (catalog === "Hive Catalog" || catalog === "hive") {
 		return "hive"
 	}
 }
@@ -110,7 +110,54 @@ export const getConnectorLabel = (type: string): string => {
 			return "MongoDB"
 		case "postgres":
 			return "Postgres"
-		default:
+		case "mysql":
 			return "MySQL"
+		default:
+			return "MongoDB"
+	}
+}
+
+export const getFrequencyValue = (frequency: string) => {
+	if (frequency.includes(" ")) {
+		const parts = frequency.split(" ")
+		const unit = parts[1].toLowerCase()
+
+		if (unit.includes("hour")) return "hours"
+		if (unit.includes("minute")) return "minutes"
+		if (unit.includes("day")) return "days"
+		if (unit.includes("week")) return "weeks"
+		if (unit.includes("month")) return "months"
+		if (unit.includes("year")) return "years"
+	}
+
+	switch (frequency) {
+		case "hourly":
+		case "hours":
+			return "hours"
+		case "daily":
+		case "days":
+			return "days"
+		case "weekly":
+		case "weeks":
+			return "weeks"
+		case "monthly":
+		case "months":
+			return "months"
+		case "yearly":
+		case "years":
+			return "years"
+		case "minutes":
+			return "minutes"
+		default:
+			return "hours"
+	}
+}
+
+export const removeSavedJobFromLocalStorage = (jobId: string) => {
+	const savedJobs = localStorage.getItem("savedJobs")
+	if (savedJobs) {
+		const jobs = JSON.parse(savedJobs)
+		const filteredJobs = jobs.filter((job: any) => job.id !== jobId)
+		localStorage.setItem("savedJobs", JSON.stringify(filteredJobs))
 	}
 }

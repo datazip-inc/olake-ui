@@ -1,10 +1,11 @@
 import { Button, Modal, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { getConnectorImage } from "../../../utils/utils"
-import { CheckCircle, PencilLine, Warning } from "@phosphor-icons/react"
+import { CheckCircle, Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 import { message } from "antd"
 import { formatDistanceToNow } from "date-fns"
+import { sourceService } from "../../../api"
 
 const EditSourceModal = () => {
 	const navigate = useNavigate()
@@ -15,7 +16,25 @@ const EditSourceModal = () => {
 		setShowSuccessModal,
 		selectedSource,
 		updateSource,
+		setShowTestingModal,
+		setShowFailureModal,
+		setSourceTestConnectionError,
 	} = useAppStore()
+
+	const getSourceData = () => {
+		const configStr =
+			typeof selectedSource?.config === "string"
+				? selectedSource?.config
+				: JSON.stringify(selectedSource?.config)
+
+		const sourceData = {
+			name: selectedSource?.name,
+			type: selectedSource?.type,
+			version: selectedSource?.version,
+			config: configStr,
+		}
+		return sourceData
+	}
 
 	const handleEdit = async () => {
 		if (!selectedSource?.id) {
@@ -25,12 +44,26 @@ const EditSourceModal = () => {
 
 		try {
 			setShowEditSourceModal(false)
-			await updateSource(selectedSource.id.toString(), selectedSource)
-			setShowSuccessModal(true)
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				navigate("/sources")
-			}, 1000)
+			setShowTestingModal(true)
+			const testResult =
+				await sourceService.testSourceConnection(getSourceData())
+
+			if (testResult.data?.status === "SUCCEEDED") {
+				setTimeout(() => {
+					setShowTestingModal(false)
+					setShowSuccessModal(true)
+				}, 1000)
+
+				setTimeout(async () => {
+					setShowSuccessModal(false)
+					await updateSource(selectedSource.id.toString(), selectedSource)
+					navigate("/sources")
+				}, 2000)
+			} else {
+				setShowTestingModal(false)
+				setSourceTestConnectionError(testResult.data?.message || "")
+				setShowFailureModal(true)
+			}
 		} catch (error) {
 			message.error("Failed to update source")
 			console.error(error)
@@ -55,10 +88,9 @@ const EditSourceModal = () => {
 						key="edit"
 						type="primary"
 						onClick={handleEdit}
-						icon={<PencilLine size={16} />}
 						className="bg-blue-600"
 					>
-						Edit
+						Confirm
 					</Button>,
 					<Button
 						key="cancel"
@@ -108,21 +140,28 @@ const EditSourceModal = () => {
 								title: "Last runtime",
 								dataIndex: "last_run_time",
 								key: "last_run_time",
-								render: (text: string) =>
-									formatDistanceToNow(new Date(text), { addSuffix: true }),
+								render: (text: string) => (
+									<span>
+										{text !== undefined
+											? formatDistanceToNow(new Date(text), {
+													addSuffix: true,
+												})
+											: "-"}
+									</span>
+								),
 							},
 							{
 								title: "Destination",
-								dataIndex: "dest_name",
-								key: "dest_name",
-								render: (dest_name: string, record: any) => (
+								dataIndex: "destination_name",
+								key: "destination_name",
+								render: (destination_name: string, record: any) => (
 									<div className="flex items-center">
 										<img
-											src={getConnectorImage(record.dest_type || "")}
-											alt={record.dest_type}
+											src={getConnectorImage(record.destination_type || "")}
+											alt={record.destination_type}
 											className="mr-2 size-6"
 										/>
-										{dest_name || "N/A"}
+										{destination_name || "N/A"}
 									</div>
 								),
 							},

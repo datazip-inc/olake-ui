@@ -73,6 +73,7 @@ type Job struct {
 	State         string       `json:"state" orm:"type(jsonb)"`
 	CreatedBy     *User        `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy     *User        `json:"updated_by" orm:"rel(fk)"`
+	ProjectID     string       `json:"project_id" orm:"column(project_id)"`
 }
 
 func (j *Job) TableName() string {
@@ -90,4 +91,14 @@ type Catalog struct {
 
 func (c *Catalog) TableName() string {
 	return constants.TableNameMap[constants.CatalogTable]
+}
+
+type Session struct {
+	SessionKey    string    `json:"session_key" orm:"column(session_key);pk;size(64)"`
+	SessionData   string    `json:"session_data" orm:"column(session_data);type(text)"`
+	SessionExpiry time.Time `json:"session_expiry" orm:"column(session_expiry)"`
+}
+
+func (s *Session) TableName() string {
+	return constants.TableNameMap[constants.SessionTable]
 }

@@ -24,7 +24,7 @@ const renderJobConnection = (record: Entity) => {
 	return (
 		<JobConnection
 			sourceType={record.type}
-			destinationType={jobs[0].dest_type || ""}
+			destinationType={jobs[0].destination_type || ""}
 			jobName={jobs[0].name}
 			remainingJobs={jobs.length - 1}
 		/>

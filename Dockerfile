@@ -1,63 +1,67 @@
-FROM node:20-alpine AS frontend-builder
+# Stage 1: Go Builder (Backend)
+FROM golang:1.23-alpine AS go-builder
 
-WORKDIR /app/ui
-
-RUN npm install -g pnpm
-
-COPY ui/package.json ui/pnpm-lock.yaml ./
-
-RUN pnpm install
-
-COPY ui/ ./
-
-RUN pnpm run build
-
-
-FROM golang:1.23-alpine AS backend-builder
-
-WORKDIR /app/server
-
-COPY server/go.mod server/go.sum ./
-
-RUN go mod download
-
-COPY server/ ./
-
-RUN go build -o olake-server .
-
-######################################################################
-# Final image
-######################################################################
-FROM alpine:latest
-
-ARG ENVIRONMENT
-ARG APP_VERSION
+# Install git, as it might be needed by go mod download or go build
+RUN apk add --no-cache git
 
 WORKDIR /app
 
-RUN apk add --no-cache nodejs npm
+# Copy go.mod and go.sum for the entire server project
+COPY server/go.mod server/go.sum ./
+RUN go mod download
 
-# Create directories
-RUN mkdir -p /app/ui/dist /app/server/logger/logs
+# Copy the entire server source code
+COPY server/ ./server/
 
-# Copy UI build from frontend-builder
-COPY --from=frontend-builder /app/ui/dist /app/ui/dist
+# Build backend (assuming main package is at the root of 'server/' content)
+# Using -ldflags to create smaller binaries
+RUN cd server && go build -ldflags="-w -s" -o /app/olake-server .
 
-# Copy server binary from backend-builder
-COPY --from=backend-builder /app/server/olake-server /app/server/
-COPY --from=backend-builder /app/server/conf /app/server/conf
-COPY --from=backend-builder /app/server/views /app/server/views
+# Stage 2: Frontend Builder
+FROM node:20-alpine AS node-builder
+WORKDIR /app/ui
 
-# Create startup script
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'cd /app/server && ./olake-server & cd /app/ui && exec node /app/ui/server.js' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# Install pnpm globally
+RUN npm install -g pnpm
 
-EXPOSE 5173 8080
+# Copy package files
+COPY ui/package.json ui/pnpm-lock.yaml ./
+# Install dependencies
+RUN pnpm install
 
-# Set environment variables
-ENV ENVIRONMENT=${ENVIRONMENT} \
-    APP_VERSION=${APP_VERSION}
+# Copy the rest of the UI code
+COPY ui/ ./
+# Build the UI
+RUN pnpm build
 
-# Run both server and UI
-CMD ["/app/start.sh"] 
+# Stage 3: Final Runtime Image
+FROM alpine:latest
+
+# Install dependencies: supervisor, nodejs, and npm (for 'serve')
+# docker-cli is removed as worker is no longer included
+RUN apk add --no-cache supervisor nodejs npm
+
+# Install 'serve' globally for the frontend
+RUN npm install -g serve
+
+# Create directories for applications, logs, and supervisor config
+RUN mkdir -p /opt/backend/conf \
+             /opt/frontend/dist \
+             /var/log/supervisor \
+             /etc/supervisor/conf.d
+
+# Copy built artifacts from builder stages
+COPY --from=go-builder /app/olake-server /opt/backend/olake-server
+# Copy the backend configuration file
+COPY server/conf/app.conf /opt/backend/conf/app.conf
+COPY --from=node-builder /app/ui/dist /opt/frontend/dist
+
+# Copy supervisor configuration file
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose necessary ports
+EXPOSE 8080
+EXPOSE 8000
+
+# Set the default command to run Supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

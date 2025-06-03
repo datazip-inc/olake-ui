@@ -87,16 +87,16 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 			? [
 					{
 						title: "Destination",
-						dataIndex: "dest_name",
-						key: "dest_name",
-						render: (dest_name: string, record: any) => (
+						dataIndex: "destination_name",
+						key: "destination_name",
+						render: (destination_name: string, record: any) => (
 							<div className="flex items-center">
 								<img
-									src={getConnectorImage(record.dest_type || "")}
-									alt={record.dest_type}
+									src={getConnectorImage(record.destination_type || "")}
+									alt={record.destination_type}
 									className="mr-2 size-6"
 								/>
-								{dest_name || "N/A"}
+								{destination_name || "N/A"}
 							</div>
 						),
 					},
@@ -110,7 +110,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 							<div className="flex items-center">
 								<img
 									src={getConnectorImage(record.source_type || "")}
-									alt={record.dest_type}
+									alt={record.destination_type}
 									className="mr-2 size-6"
 								/>
 								{source_name || "N/A"}

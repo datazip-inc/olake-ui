@@ -4,6 +4,7 @@ import {
 	APIResponse,
 	Entity,
 	EntityBase,
+	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
 
@@ -67,7 +68,10 @@ export const destinationService = {
 					name: destination.name,
 					type: destination.type,
 					version: destination.version,
-					config: destination.config,
+					config:
+						typeof destination.config === "string"
+							? destination.config
+							: JSON.stringify(destination.config),
 				},
 			)
 			return response.data
@@ -84,7 +88,7 @@ export const destinationService = {
 		return
 	},
 
-	testDestinationConnection: async (destination: EntityTestResponse) => {
+	testDestinationConnection: async (destination: EntityTestRequest) => {
 		try {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
@@ -93,10 +97,12 @@ export const destinationService = {
 					version: destination.version,
 					config: destination.config,
 				},
+				{ timeout: 0 },
 			)
 			return {
 				success: response.data.success,
 				message: response.data.message,
+				data: response.data.data,
 			}
 		} catch (error) {
 			console.error("Error testing destination connection:", error)
@@ -115,7 +121,11 @@ export const destinationService = {
 		return response.data
 	},
 
-	getDestinationSpec: async (type: string, catalog: string | null) => {
+	getDestinationSpec: async (
+		type: string,
+		catalog: string | null,
+		version: string,
+	) => {
 		const normalizedType = normalizeDestinationType(type)
 		let normalizedCatalog = normalizeCatalogType(catalog)
 
@@ -127,7 +137,7 @@ export const destinationService = {
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
-				version: "latest",
+				version: version === "" ? "latest" : version,
 				catalog: normalizedCatalog,
 			},
 		)

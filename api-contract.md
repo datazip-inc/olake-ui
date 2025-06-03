@@ -787,7 +787,7 @@ All endpoints may return the following error responses:
 
 The API allows requests from:
 
-- Origin: `http://localhost:5173`
+- Origin: `http://localhost:8000`
 - Methods: GET, POST, PUT, DELETE, OPTIONS
 - Headers: Origin, Content-Type, Accept, Authorization
 - Credentials: true

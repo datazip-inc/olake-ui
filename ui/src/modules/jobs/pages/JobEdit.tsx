@@ -11,6 +11,15 @@ import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
 import { StreamData, Job, JobBase } from "../../../types"
 import { jobService } from "../../../api"
+import { sourceService } from "../../../api/services/sourceService"
+import { destinationService } from "../../../api/services/destinationService"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import {
+	getFrequencyValue,
+	removeSavedJobFromLocalStorage,
+} from "../../../utils/utils"
 
 type Step = "source" | "destination" | "schema" | "config"
 
@@ -36,7 +45,7 @@ interface StreamsDataStructure {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	streams: StreamData[]
@@ -106,7 +115,17 @@ const JobDestinationEdit = ({
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
-	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
+	const {
+		jobs,
+		fetchJobs,
+		fetchSources,
+		fetchDestinations,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowFailureModal,
+		setSourceTestConnectionError,
+		setDestinationTestConnectionError,
+	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
 	const [docsMinimized, setDocsMinimized] = useState(true)
@@ -130,38 +149,34 @@ const JobEdit: React.FC = () => {
 	const [replicationFrequency, setReplicationFrequency] = useState("seconds")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+	const [isSavedJob, setIsSavedJob] = useState(false)
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
+	const [job, setJob] = useState<Job | null>(null)
+	const [savedJobId, setSavedJobId] = useState<string | null>(null)
 
 	// Find the job from the store
-	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-	}, [fetchJobs, jobs])
+	// useEffect(() => {
+	// 	if (!jobs.length) {
+	// 		fetchJobs()
+	// 	}
+	// }, [fetchJobs, jobs])
 
-	const job = jobs.find(j => j.id.toString() === jobId)
+	useEffect(() => {
+		fetchJobs()
+	}, [])
 
 	// Load job data on component mount
 	useEffect(() => {
 		fetchJobs()
 		fetchSources()
 		fetchDestinations()
-	}, [fetchJobs, fetchSources, fetchDestinations])
+	}, [])
 
-	// Set initial form values when job data is available
-	useEffect(() => {
-		if (job) {
-			initializeFromExistingJob(job)
-		} else {
-			initializeForNewJob()
-		}
-	}, [job])
-
-	// Initialize form data from an existing job
 	const initializeFromExistingJob = (job: Job) => {
 		setJobName(job.name)
-
 		// Parse source config
-		let sourceConfig = parseConfig(job.source.config)
+		let sourceConfig = JSON.parse(job.source.config)
 
 		// Set source data from job
 		setSourceData({
@@ -172,7 +187,7 @@ const JobEdit: React.FC = () => {
 		})
 
 		// Parse destination config
-		let destConfig = parseConfig(job.destination.config)
+		let destConfig = JSON.parse(job.destination.config)
 
 		// Set destination data from job
 		setDestinationData({
@@ -183,68 +198,37 @@ const JobEdit: React.FC = () => {
 		})
 
 		// Set other job settings
-		setReplicationFrequency(job.frequency || "daily")
+		// Parse frequency with format value-unit (e.g. "1-minutes")
+		if (job.frequency && job.frequency.includes("-")) {
+			const [value, unit] = job.frequency.split("-")
+			setReplicationFrequencyValue(value)
+			setReplicationFrequency(unit)
+		} else {
+			setReplicationFrequency(getFrequencyValue(job.frequency) || "hours")
+			setReplicationFrequencyValue("1")
+		}
 
 		// Parse streams config
 		if (job.streams_config) {
 			try {
-				const parsedStreamsConfig = JSON.parse(job.streams_config)
-				const streamsData = processStreamsConfig(parsedStreamsConfig)
+				if (job.streams_config == "[]") {
+					setSelectedStreams({
+						selected_streams: {},
+						streams: [],
+					})
+				} else {
+					const parsedStreamsConfig = JSON.parse(job.streams_config)
+					const streamsData = processStreamsConfig(parsedStreamsConfig)
 
-				if (streamsData) {
-					setSelectedStreams(streamsData)
-					setInitialStreamsData(streamsData)
+					if (streamsData) {
+						setSelectedStreams(streamsData)
+						setInitialStreamsData(streamsData)
+					}
 				}
 			} catch (e) {
 				console.error("Error parsing streams config:", e)
 			}
 		}
-	}
-
-	// Process streams configuration into a consistent format
-	const processStreamsConfig = (
-		parsedConfig: any,
-	): StreamsDataStructure | null => {
-		// Handle case where streams_config is a full data structure
-		if (parsedConfig.streams && parsedConfig.selected_streams) {
-			return parsedConfig as StreamsDataStructure
-		}
-
-		// Handle case where streams_config is just an array of stream names
-		else if (Array.isArray(parsedConfig)) {
-			const streamsData: StreamsDataStructure = {
-				selected_streams: { default: [] },
-				streams: [],
-			}
-
-			parsedConfig.forEach((streamName: string) => {
-				streamsData.selected_streams.default.push({
-					stream_name: streamName,
-					partition_regex: "",
-					split_column: "",
-				})
-
-				// Add empty stream objects that will be populated later by API
-				streamsData.streams.push({
-					stream: {
-						name: streamName,
-						namespace: "default",
-					},
-				} as StreamData)
-			})
-
-			return streamsData
-		}
-
-		// Handle case where streams_config is just selected_streams object
-		else if (typeof parsedConfig === "object") {
-			return {
-				selected_streams: parsedConfig,
-				streams: [],
-			}
-		}
-
-		return null
 	}
 
 	// Initialize defaults for a new job
@@ -278,19 +262,67 @@ const JobEdit: React.FC = () => {
 		setJobName("New Job")
 	}
 
-	// Helper function to safely parse JSON config strings
-	const parseConfig = (
-		config: string | Record<string, any>,
-	): Record<string, any> => {
-		if (typeof config === "string") {
-			try {
-				return JSON.parse(config)
-			} catch (error) {
-				console.error("Error parsing config:", error)
-				return {}
+	useEffect(() => {
+		let job = jobs.find(j => j.id.toString() === jobId)
+		if (job) {
+			setJob(job)
+		}
+		if (!job) {
+			const savedJobsFromStorage = JSON.parse(
+				localStorage.getItem("savedJobs") || "[]",
+			)
+			job = savedJobsFromStorage.find((job: any) => job.id === jobId)
+			if (job) {
+				setJob(job)
+				setIsSavedJob(true)
+				setSavedJobId(job.id.toString())
 			}
 		}
-		return config as Record<string, any>
+
+		if (job) {
+			initializeFromExistingJob(job)
+		} else {
+			initializeForNewJob()
+		}
+	}, [])
+
+	// Process streams configuration into a consistent format
+	const processStreamsConfig = (
+		parsedConfig: any,
+	): StreamsDataStructure | null => {
+		if (parsedConfig.streams && parsedConfig.selected_streams) {
+			return parsedConfig as StreamsDataStructure
+		} else if (Array.isArray(parsedConfig)) {
+			const streamsData: StreamsDataStructure = {
+				selected_streams: { default: [] },
+				streams: [],
+			}
+			parsedConfig.forEach((streamName: string) => {
+				streamsData.selected_streams.default.push({
+					stream_name: streamName,
+					partition_regex: "",
+					normalization: false,
+				})
+				streamsData.streams.push({
+					stream: {
+						name: streamName,
+						namespace: "default",
+					},
+				} as StreamData)
+			})
+
+			return streamsData
+		}
+
+		// Handle case where streams_config is just selected_streams object
+		else if (typeof parsedConfig === "object") {
+			return {
+				selected_streams: parsedConfig,
+				streams: [],
+			}
+		}
+
+		return null
 	}
 
 	// Handle job submission
@@ -328,10 +360,11 @@ const JobEdit: React.FC = () => {
 					typeof selectedStreams === "string"
 						? selectedStreams
 						: JSON.stringify(selectedStreams),
-				frequency: replicationFrequency,
+				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
+				activate: job?.activate || true,
 			}
 
-			if (jobId) {
+			if (jobId && !isSavedJob) {
 				await jobService.updateJob(jobId, jobUpdatePayload)
 				message.success("Job updated successfully!")
 			} else {
@@ -350,14 +383,141 @@ const JobEdit: React.FC = () => {
 		}
 	}
 
-	const handleNext = () => {
+	const handleNext = async () => {
 		if (currentStep === "source") {
-			setCurrentStep("destination")
+			if (isSavedJob && sourceData) {
+				setShowTestingModal(true)
+				try {
+					const testData = {
+						name: sourceData.name,
+						type: sourceData.type.toLowerCase(),
+						version: sourceData.version || "latest",
+						config:
+							typeof sourceData.config === "string"
+								? sourceData.config
+								: JSON.stringify(sourceData.config),
+					}
+					const testResult = await sourceService.testSourceConnection(testData)
+					setTimeout(() => {
+						setShowTestingModal(false)
+					}, 1000)
+					if (testResult.data?.status === "SUCCEEDED") {
+						setTimeout(() => {
+							setShowSuccessModal(true)
+						}, 1000)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("destination")
+						}, 2000)
+					} else {
+						setSourceTestConnectionError(testResult.data?.message || "")
+						setShowFailureModal(true)
+					}
+				} catch (error) {
+					console.error("Error testing source connection:", error)
+					setShowTestingModal(false)
+					setShowFailureModal(true)
+				}
+			} else {
+				if (sourceData) {
+					let newSourceData = {
+						name: sourceData.name,
+						type: sourceData.type,
+						config:
+							typeof sourceData.config === "string"
+								? sourceData.config
+								: JSON.stringify(sourceData.config),
+						version: sourceData.version || "latest",
+					}
+					setShowTestingModal(true)
+					const testResult =
+						await sourceService.testSourceConnection(newSourceData)
+					if (testResult.data?.status === "SUCCEEDED") {
+						setShowTestingModal(false)
+						setShowSuccessModal(true)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("destination")
+						}, 1000)
+					} else {
+						setShowTestingModal(false)
+						setSourceTestConnectionError(testResult.data?.message || "")
+						setShowFailureModal(true)
+					}
+				}
+			}
 		} else if (currentStep === "destination") {
-			setCurrentStep("schema")
+			if (isSavedJob && destinationData) {
+				setShowTestingModal(true)
+				try {
+					const testData = {
+						name: destinationData.name,
+						type: destinationData.type.toLowerCase(),
+						version: destinationData.version || "latest",
+						config:
+							typeof destinationData.config === "string"
+								? destinationData.config
+								: JSON.stringify(destinationData.config),
+					}
+					const testResult =
+						await destinationService.testDestinationConnection(testData)
+
+					setTimeout(() => {
+						setShowTestingModal(false)
+					}, 1000)
+					if (testResult.data?.status === "SUCCEEDED") {
+						setTimeout(() => {
+							setShowSuccessModal(true)
+						}, 1000)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("schema")
+						}, 2000)
+					} else {
+						setDestinationTestConnectionError(testResult.data?.message || "")
+						setShowFailureModal(true)
+					}
+				} catch (error) {
+					console.error("Error testing destination connection:", error)
+					setShowTestingModal(false)
+					setShowFailureModal(true)
+				}
+			} else {
+				if (destinationData) {
+					let newDestinationData = {
+						name: destinationData.name,
+						type: destinationData.type,
+						config:
+							typeof destinationData.config === "string"
+								? destinationData.config
+								: JSON.stringify(destinationData.config),
+						version: destinationData.version || "latest",
+					}
+					setShowTestingModal(true)
+					const testResult =
+						await destinationService.testDestinationConnection(
+							newDestinationData,
+						)
+					if (testResult.data?.status === "SUCCEEDED") {
+						setShowTestingModal(false)
+						setShowSuccessModal(true)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("schema")
+						}, 1000)
+					} else {
+						setShowTestingModal(false)
+						setDestinationTestConnectionError(testResult.data?.message || "")
+						setShowFailureModal(true)
+					}
+				}
+			}
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
+			if (isSavedJob) {
+				removeSavedJobFromLocalStorage(savedJobId || "")
+			}
 			handleJobSubmit()
 		}
 	}
@@ -397,7 +557,9 @@ const JobEdit: React.FC = () => {
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
-						<div className="text-2xl font-bold">{jobName || "New Job"}</div>
+						<div className="text-2xl font-bold">
+							{jobName ? (jobName === "-" ? " " : jobName) : "New Job"}
+						</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
@@ -406,7 +568,7 @@ const JobEdit: React.FC = () => {
 
 			{/* Main content */}
 			<div
-				className={`flex flex-1 overflow-hidden border-gray-200 ${
+				className={`flex flex-1 overflow-auto border-gray-200 ${
 					currentStep === "config" || currentStep === "schema" ? "border-t" : ""
 				}`}
 			>
@@ -417,7 +579,7 @@ const JobEdit: React.FC = () => {
 						!docsMinimized
 							? "w-[calc(100%-30%)]"
 							: "w-full"
-					} relative flex flex-col`}
+					} ${currentStep === "schema" ? "" : "overflow-hidden"} relative flex flex-col`}
 				>
 					<div className="flex-1 pb-0">
 						{currentStep === "source" && sourceData && (
@@ -435,17 +597,19 @@ const JobEdit: React.FC = () => {
 						)}
 
 						{currentStep === "schema" && (
-							<SchemaConfiguration
-								selectedStreams={selectedStreams as any}
-								setSelectedStreams={setSelectedStreams as any}
-								stepNumber={3}
-								stepTitle="Schema evaluation"
-								sourceName={sourceData?.name || ""}
-								sourceConnector={sourceData?.type || ""}
-								sourceVersion={sourceData?.version || "latest"}
-								sourceConfig={JSON.stringify(sourceData?.config || {})}
-								initialStreamsData={initialStreamsData as any}
-							/>
+							<div className="h-full overflow-scroll">
+								<SchemaConfiguration
+									selectedStreams={selectedStreams as any}
+									setSelectedStreams={setSelectedStreams as any}
+									stepNumber={3}
+									stepTitle="Streams Selection"
+									sourceName={sourceData?.name || ""}
+									sourceConnector={sourceData?.type.toLowerCase() || ""}
+									sourceVersion={sourceData?.version || "latest"}
+									sourceConfig={JSON.stringify(sourceData?.config || {})}
+									initialStreamsData={initialStreamsData as any}
+								/>
+							</div>
 						)}
 
 						{currentStep === "config" && (
@@ -454,6 +618,8 @@ const JobEdit: React.FC = () => {
 								setJobName={setJobName}
 								replicationFrequency={replicationFrequency}
 								setReplicationFrequency={setReplicationFrequency}
+								replicationFrequencyValue={replicationFrequencyValue}
+								setReplicationFrequencyValue={setReplicationFrequencyValue}
 								schemaChangeStrategy={schemaChangeStrategy}
 								setSchemaChangeStrategy={setSchemaChangeStrategy}
 								notifyOnSchemaChanges={notifyOnSchemaChanges}
@@ -507,6 +673,9 @@ const JobEdit: React.FC = () => {
 					</button>
 				</div>
 			</div>
+			<TestConnectionModal />
+			<TestConnectionSuccessModal />
+			<TestConnectionFailureModal />
 		</div>
 	)
 }

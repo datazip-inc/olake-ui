@@ -13,7 +13,7 @@ interface CombinedStreamsData {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	streams: StreamData[]
@@ -26,7 +26,7 @@ interface SchemaConfigurationProps {
 				[namespace: string]: {
 					stream_name: string
 					partition_regex: string
-					split_column: string
+					normalization: boolean
 				}[]
 		  }
 		| CombinedStreamsData
@@ -37,7 +37,7 @@ interface SchemaConfigurationProps {
 					[namespace: string]: {
 						stream_name: string
 						partition_regex: string
-						split_column: string
+						normalization: boolean
 					}[]
 			  }
 			| CombinedStreamsData
@@ -56,7 +56,7 @@ interface SchemaConfigurationProps {
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
 	stepNumber = 3,
-	stepTitle = "Schema evaluation",
+	stepTitle = "Streams Selection",
 	useDirectForms = false,
 	sourceName,
 	sourceConnector,
@@ -76,7 +76,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			[namespace: string]: {
 				stream_name: string
 				partition_regex: string
-				split_column: string
+				normalization: boolean
 			}[]
 		}
 		streams: StreamData[]
@@ -164,7 +164,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		setSelectedStreams,
 	])
 
-	// Update selected streams when sync mode changes
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
@@ -214,6 +213,70 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}, 0)
 	}
 
+	const handleNormalizationChange = (
+		streamName: string,
+		namespace: string,
+		normalization: boolean,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, normalization } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handlePartitionRegexChange = (
+		streamName: string,
+		namespace: string,
+		partitionRegex: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev // Should not happen if UI is correct
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName
+						? { ...s, partition_regex: partitionRegex }
+						: s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
 	const handleStreamSelect = (
 		streamName: string,
 		checked: boolean,
@@ -242,7 +305,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						{
 							stream_name: streamName,
 							partition_regex: "",
-							split_column: "",
+							normalization: false,
 						},
 					]
 					changed = true
@@ -278,26 +341,53 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	const filteredStreams = useMemo(() => {
 		if (!apiResponse?.streams) return []
-		let filtered = [...apiResponse.streams]
+		let tempFilteredStreams = [...apiResponse.streams]
 
 		if (searchText) {
-			filtered = filtered.filter(stream =>
+			tempFilteredStreams = tempFilteredStreams.filter(stream =>
 				stream.stream.name.toLowerCase().includes(searchText.toLowerCase()),
 			)
 		}
 
-		if (selectedFilters.includes("All tables")) return filtered
+		if (selectedFilters.includes("All tables")) {
+			return tempFilteredStreams
+		}
 
-		return filtered.filter(stream => {
-			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || "default"
-			]?.some(s => s.stream_name === stream.stream.name)
+		return tempFilteredStreams.filter(stream => {
+			const cdcIsActive = selectedFilters.includes("CDC")
+			const frIsActive = selectedFilters.includes("Full refresh")
 			const hasSelectedFilter = selectedFilters.includes("Selected")
 			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
 
-			if (hasSelectedFilter && hasNotSelectedFilter) return true
-			if (hasSelectedFilter) return isSelected
-			if (hasNotSelectedFilter) return !isSelected
+			// Sync mode filtering
+			let passesSyncModeFilter = true
+			if (cdcIsActive && frIsActive) {
+				passesSyncModeFilter =
+					stream.stream.sync_mode === "cdc" ||
+					stream.stream.sync_mode === "full_refresh"
+			} else if (cdcIsActive) {
+				passesSyncModeFilter = stream.stream.sync_mode === "cdc"
+			} else if (frIsActive) {
+				passesSyncModeFilter = stream.stream.sync_mode === "full_refresh"
+			}
+
+			if (!passesSyncModeFilter) {
+				return false
+			}
+
+			// Selection status filtering
+			const isSelected = apiResponse.selected_streams[
+				stream.stream.namespace || "default"
+			]?.some(s => s.stream_name === stream.stream.name)
+
+			if (hasSelectedFilter && hasNotSelectedFilter) {
+				// No filtering based on selection status if both are selected
+			} else if (hasSelectedFilter) {
+				if (!isSelected) return false
+			} else if (hasNotSelectedFilter) {
+				if (isSelected) return false
+			}
+
 			return true
 		})
 	}, [apiResponse, searchText, selectedFilters])
@@ -380,7 +470,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								// Pass it to the parent component
 								setSelectedStreams(fullData as CombinedStreamsData)
 							}}
-							selectedStreamsFromAPI={apiResponse.selected_streams}
 						/>
 					) : loading ? (
 						<Spin size="large">Loading streams...</Spin>
@@ -405,6 +494,25 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
 							useDirectForms={useDirectForms}
+							isSelected={
+								!!apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.some(s => s.stream_name === activeStreamData.stream.name)
+							}
+							initialNormalization={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.normalization || false
+							}
+							onNormalizationChange={handleNormalizationChange}
+							initialPartitionRegex={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.partition_regex || ""
+							}
+							onPartitionRegexChange={handlePartitionRegexChange}
 						/>
 					</div>
 				)}

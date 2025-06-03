@@ -9,6 +9,7 @@ import {
 	Gear,
 	Pause,
 	PencilSimple,
+	Play,
 	Trash,
 } from "@phosphor-icons/react"
 import {
@@ -28,7 +29,7 @@ interface JobTableProps {
 	jobType: JobType
 	onSync: (id: string) => void
 	onEdit: (id: string) => void
-	onPause: (id: string) => void
+	onPause: (id: string, checked: boolean) => void
 	onDelete: (id: string) => void
 }
 
@@ -102,9 +103,13 @@ const JobTable: React.FC<JobTableProps> = ({
 								},
 								{
 									key: "pause",
-									icon: <Pause className="size-4" />,
-									label: "Pause job",
-									onClick: () => onPause(record.id.toString()),
+									icon: record.activate ? (
+										<Pause className="size-4" />
+									) : (
+										<Play className="size-4" />
+									),
+									label: record.activate ? "Pause job" : "Resume job",
+									onClick: () => onPause(record.id.toString(), record.activate),
 								},
 								{
 									key: "history",

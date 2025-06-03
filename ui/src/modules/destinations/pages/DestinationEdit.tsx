@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useParams, Link } from "react-router-dom"
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, Notebook } from "@phosphor-icons/react"
@@ -11,10 +11,18 @@ import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import AWSS3 from "../../../assets/AWSS3.svg"
 import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
-import { getConnectorImage, getConnectorName } from "../../../utils/utils"
+import {
+	getCatalogInLowerCase,
+	getConnectorImage,
+	getConnectorName,
+} from "../../../utils/utils"
 import EditDestinationModal from "../../common/Modals/EditDestinationModal"
 import { Entity, EntityJob } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
+import { formatDistanceToNow } from "date-fns"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 
 // Define the job structure for destination jobs table
 interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
@@ -72,6 +80,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [isLoading, setIsLoading] = useState(false)
 	const [destination, setDestination] = useState<Entity | null>(null)
+	const [initialCatalog, setInitialCatalog] = useState<string | null>(null)
+	const [initialFormData, setInitialFormData] = useState<Record<string, any>>(
+		{},
+	)
 
 	const {
 		destinations,
@@ -79,7 +91,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSelectedDestination,
 		setShowDeleteModal,
 		setShowEditDestinationModal,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowFailureModal,
+		setDestinationTestConnectionError,
+		updateDestination,
 	} = useAppStore()
+
+	const navigate = useNavigate()
 
 	// Define connector options
 	const connectorOptions: ConnectorOption[] = [
@@ -126,12 +145,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			name: job.name || job.job_name,
 			source_type: job.source_type || "",
 			source_name: job.source_name || "N/A",
-			last_run_time: job.last_runtime || job.last_run_time || "",
-			last_run_state: job.last_run_state || "unknown",
+			last_run_time: job.last_runtime || job.last_run_time || "-",
+			last_run_state: job.last_run_state || "-",
 			activate: job.activate || false,
 			job_name: job.job_name || job.name,
-			dest_name: job.dest_name || "",
-			dest_type: job.dest_type || "",
+			destination_name: job.destination_name || "",
+			destination_type: job.destination_type || "",
 		}))
 	}
 
@@ -159,10 +178,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	useEffect(() => {
-		if (!destinations.length) {
-			fetchDestinations()
-		}
+		fetchDestinations()
+	}, [])
 
+	useEffect(() => {
 		if (destinationId && destinationId !== "new") {
 			const destination = destinations.find(
 				d => d.id.toString() === destinationId,
@@ -175,33 +194,33 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setConnector(connectorType)
 				setSelectedVersion(destination.version || "")
 
-				// Handle config data
 				const config =
 					typeof destination.config === "string"
 						? JSON.parse(destination.config)
 						: destination.config
 
 				setFormData(config)
+				setInitialFormData(config)
 
 				if (destination.type === "iceberg") {
 					try {
 						const catalogType = config.writer.catalog_type || "AWS Glue"
+						setInitialCatalog(catalogType)
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
 						setCatalog("AWS Glue")
 					}
+				} else {
+					setInitialCatalog("s3")
 				}
 			}
 		}
 	}, [destinationId, destinations, fetchDestinations])
 
-	// Handle initialData for when component is used from JobEdit
 	useEffect(() => {
 		if (initialData) {
 			setDestinationName(initialData.name || "")
-
-			// Normalize connector type
 			let connectorType = initialData.type
 			if (
 				connectorType?.toLowerCase() === "s3" ||
@@ -216,8 +235,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			}
 			setConnector(connectorType)
 			setSelectedVersion(initialData.version || "latest")
-
-			// Handle config data
 			if (initialData.config) {
 				let parsedConfig = initialData.config
 				if (typeof initialData.config === "string") {
@@ -228,12 +245,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						parsedConfig = {}
 					}
 				}
-
 				setFormData(parsedConfig)
-
-				// If it's iceberg, try to get catalog type
-				if (connectorType === "Apache Iceberg" && parsedConfig.catalog) {
-					setCatalog(getCatalogName(parsedConfig.catalog) || "AWS Glue")
+				setInitialFormData(parsedConfig)
+				if (connectorType === "Apache Iceberg") {
+					let writerCatalogType = parsedConfig.writer.catalog_type
+					setCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+					setInitialCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+				} else {
+					setInitialCatalog("s3")
 				}
 			}
 		}
@@ -275,7 +294,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchVersions()
-	}, [connector, onVersionChange, selectedVersion])
+		if (!initialData) {
+			if (connector === "Apache Iceberg") {
+				setCatalog("AWS Glue")
+			} else {
+				setCatalog("None")
+			}
+		}
+	}, [connector])
 
 	useEffect(() => {
 		const fetchDestinationSpec = async () => {
@@ -285,12 +311,26 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				const response = await destinationService.getDestinationSpec(
 					connector,
 					catalog,
+					selectedVersion,
 				)
 
 				if (response.success && response.data?.spec) {
 					setSchema(response.data.spec)
 					if (response.data?.uiSchema) {
 						setUiSchema(response.data.uiSchema)
+					}
+					if (initialCatalog) {
+						if (
+							initialFormData &&
+							getCatalogInLowerCase(catalog || "") !=
+								getCatalogInLowerCase(initialCatalog)
+						) {
+							setFormData({})
+						} else {
+							if (initialFormData) {
+								setFormData(initialFormData)
+							}
+						}
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)
@@ -310,6 +350,20 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		if (onVersionChange) {
 			onVersionChange(value)
 		}
+	}
+
+	const getDestinationData = () => {
+		const configStr =
+			typeof formData === "string" ? formData : JSON.stringify(formData)
+
+		const destinationData = {
+			...(destination || {}),
+			name: destinationName,
+			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
+			version: selectedVersion,
+			config: configStr,
+		}
+		return destinationData
 	}
 
 	const handleDelete = () => {
@@ -332,44 +386,65 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowDeleteModal(true)
 	}
 
-	const handleTestConnection = () => {
-		message.success("Connection test successful")
-	}
-
-	const handleSaveChanges = () => {
+	const handleSaveChanges = async () => {
 		if (!destination && !destinationId) return
 
-		const configStr =
-			typeof formData === "string" ? formData : JSON.stringify(formData)
-
-		const destinationData = {
-			...(destination || {}),
-			name: destinationName,
-			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
-			version: selectedVersion,
-			config: configStr,
+		if (displayedJobs.length > 0) {
+			setSelectedDestination(getDestinationData() as Entity)
+			setShowEditDestinationModal(true)
+			return
 		}
 
-		setSelectedDestination(destinationData as Entity)
-		setShowEditDestinationModal(true)
+		setShowTestingModal(true)
+		const testResult =
+			await destinationService.testDestinationConnection(getDestinationData())
+		if (testResult.data?.status === "SUCCEEDED") {
+			setTimeout(() => {
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
+			}, 1000)
+
+			setTimeout(() => {
+				setShowSuccessModal(false)
+				saveDestination()
+			}, 2000)
+		} else {
+			setShowTestingModal(false)
+			setDestinationTestConnectionError(testResult.data?.message || "")
+			setShowFailureModal(true)
+		}
 	}
 
 	const handleViewAllJobs = () => {
 		setShowAllJobs(true)
 	}
 
-	const handlePauseAllJobs = async (checked: boolean) => {
-		try {
-			const allJobs = displayedJobs.map(job => job.id.toString())
-			await Promise.all(
-				allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
-			)
-			message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
-		} catch (error) {
-			console.error("Error toggling all jobs status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
+	const saveDestination = () => {
+		if (destinationId) {
+			updateDestination(destinationId, getDestinationData())
+				.then(() => {
+					message.success("Destination updated successfully")
+					navigate("/destinations")
+				})
+				.catch(error => {
+					message.error("Failed to update source")
+					console.error(error)
+				})
 		}
 	}
+
+	// const handlePauseAllJobs = async (checked: boolean) => {
+	// 	try {
+	// 		const allJobs = displayedJobs.map(job => job.id.toString())
+	// 		await Promise.all(
+	// 			allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
+	// 		)
+	// 		message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
+	// 	} catch (error) {
+	// 		console.error("Error toggling all jobs status:", error)
+	// 		message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
+	// 	}
+	// }
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
@@ -377,6 +452,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			message.success(
 				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
 			)
+			await fetchDestinations()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
@@ -434,6 +510,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			title: "Last runtime",
 			dataIndex: "last_run_time",
 			key: "last_run_time",
+			render: (text: string) => {
+				return text !== "-"
+					? formatDistanceToNow(new Date(text), { addSuffix: true })
+					: "-"
+			},
 		},
 		{
 			title: "Last runtime status",
@@ -606,13 +687,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				</div>
 			)}
 
-			<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
+			{/* <div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
 				<span className="font-medium">Pause all associated jobs</span>
 				<Switch
 					onChange={handlePauseAllJobs}
 					className="bg-gray-200"
 				/>
-			</div>
+			</div> */}
 		</div>
 	)
 
@@ -697,6 +778,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			</div>
 			{/* Delete Modal */}
 			<DeleteModal fromSource={false} />
+			<TestConnectionModal />
+			<TestConnectionSuccessModal />
+			<TestConnectionFailureModal />
 			<EditDestinationModal />
 
 			{/* Footer with buttons */}
@@ -713,12 +797,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						)}
 					</div>
 					<div className="flex space-x-4">
-						<button
-							onClick={handleTestConnection}
-							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
-						>
-							Test connection
-						</button>
 						<button
 							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 							onClick={handleSaveChanges}

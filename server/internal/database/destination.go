@@ -33,6 +33,12 @@ func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 	return destinations, err
 }
 
+func (r *DestinationORM) GetAllByProjectID(projectID string) ([]*models.Destination, error) {
+	var destinations []*models.Destination
+	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().All(&destinations)
+	return destinations, err
+}
+
 func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 	destination := &models.Destination{ID: id}
 	err := r.ormer.Read(destination)

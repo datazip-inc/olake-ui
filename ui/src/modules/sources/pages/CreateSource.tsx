@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Radio, Select, Spin } from "antd"
+import { message, Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -16,7 +16,7 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
 import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import { sourceService } from "../../../api/services/sourceService"
-import { getConnectorImage } from "../../../utils/utils"
+import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 
 type SetupType = "new" | "existing"
@@ -139,6 +139,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setShowSourceCancelModal,
 			addSource,
 			setShowFailureModal,
+			setSourceTestConnectionError,
 		} = useAppStore()
 
 		const connectorOptions: ConnectorOption[] = [
@@ -277,9 +278,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		useEffect(() => {
 			if (initialConnector) {
-				setConnector(initialConnector)
+				setConnector(getConnectorLabel(initialConnector))
 			}
-		}, [initialConnector])
+		}, [])
 
 		const handleCancel = () => {
 			setShowSourceCancelModal(true)
@@ -293,6 +294,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			if (setupType === "new") {
 				if (!sourceName.trim()) {
 					setSourceNameError("Source name is required")
+					message.error("Source name is required")
 					isValid = false
 				} else {
 					setSourceNameError(null)
@@ -328,7 +330,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				const testResult =
 					await sourceService.testSourceConnection(newSourceData)
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -341,6 +343,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							})
 					}, 1000)
 				} else {
+					setSourceTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -352,6 +355,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const handleSourceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 			const newName = e.target.value
+			if (newName.length >= 1) {
+				setSourceNameError(null)
+			}
 			setSourceName(newName)
 
 			if (onSourceNameChange) {
@@ -385,7 +391,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					onFormDataChange(selectedSource.config)
 				}
 				setSourceName(selectedSource.name)
-				setConnector(selectedSource.type)
+				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
 			}
 		}
