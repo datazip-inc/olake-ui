@@ -3,70 +3,69 @@ package temporal
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/activity"
 )
 
 // ExecuteDockerCommandActivity executes any Docker command using the refactored Docker runner
-func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
-	// Get activity logger
-	logger := activity.GetLogger(ctx)
-	logger.Info("Starting Docker command activity",
-		"sourceType", params.SourceType,
-		"command", params.Command)
+// func ExecuteDockerCommandActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
+// 	// Get activity logger
+// 	logger := activity.GetLogger(ctx)
+// 	logger.Info("Starting Docker command activity",
+// 		"sourceType", params.SourceType,
+// 		"command", params.Command)
 
-	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+// 	// Create a Docker runner with the default config directory
+// 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 
-	// Write config to file
-	configPath, err := runner.WriteToFile(params.Config, params.SourceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write config to file: %v", err)
-	}
+// 	// Write config to file
+// 	configPath, err := runner.WriteToFile(params.Config, params.SourceID)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to write config to file: %v", err)
+// 	}
 
-	// Record heartbeat
-	activity.RecordHeartbeat(ctx, "Running docker command")
+// 	// Record heartbeat
+// 	activity.RecordHeartbeat(ctx, "Running docker command")
 
-	// Execute Docker command
-	_, err = runner.ExecuteDockerCommand("config", params.Command, params.SourceType, params.Version, configPath)
-	if err != nil {
-		logger.Error("Docker command failed", "error", err)
-		return nil, fmt.Errorf("docker command failed: %v", err)
-	}
-	if params.Command == docker.Check {
-		return map[string]interface{}{"status": "success"}, nil
-	}
+// 	// Execute Docker command
+// 	_, err = runner.ExecuteDockerCommand("config", params.Command, params.SourceType, params.Version, configPath)
+// 	if err != nil {
+// 		logger.Error("Docker command failed", "error", err)
+// 		return nil, fmt.Errorf("docker command failed: %v", err)
+// 	}
+// 	if params.Command == docker.Check {
+// 		return map[string]interface{}{"status": "success"}, nil
+// 	}
 
-	// For commands that produce catalog.json, parse and return the result
-	if configPath == "" {
-		return nil, fmt.Errorf("configPath is empty")
-	}
-	filePath := filepath.Join(filepath.Dir(configPath), string(params.Command)+".json")
+// 	// For commands that produce catalog.json, parse and return the result
+// 	if configPath == "" {
+// 		return nil, fmt.Errorf("configPath is empty")
+// 	}
+// 	filePath := filepath.Join(filepath.Dir(configPath), string(params.Command)+".json")
 
-	// Record heartbeat
-	activity.RecordHeartbeat(ctx, "Parsing results")
+// 	// Record heartbeat
+// 	activity.RecordHeartbeat(ctx, "Parsing results")
 
-	// Parse and return the result
-	result, err := runner.ParseJSONFile(filePath)
-	if err != nil {
-		// Try to find alternative output files for different commands
-		outputDir := filepath.Dir(configPath)
-		fileData, findErr := runner.FindAlternativeJSONFile(outputDir, filePath, configPath)
-		if findErr != nil || fileData == nil {
-			return nil, fmt.Errorf("failed to read output file: %v", err)
-		}
+// 	// Parse and return the result
+// 	result, err := runner.ParseJSONFile(filePath)
+// 	if err != nil {
+// 		// Try to find alternative output files for different commands
+// 		outputDir := filepath.Dir(configPath)
+// 		fileData, findErr := runner.FindAlternativeJSONFile(outputDir, filePath, configPath)
+// 		if findErr != nil || fileData == nil {
+// 			return nil, fmt.Errorf("failed to read output file: %v", err)
+// 		}
 
-		// Re-attempt to parse the result
-		result, err = runner.ParseJSONFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse JSON from file: %v", err)
-		}
-	}
+// 		// Re-attempt to parse the result
+// 		result, err = runner.ParseJSONFile(filePath)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("failed to parse JSON from file: %v", err)
+// 		}
+// 	}
 
-	return result, nil
-}
+// 	return result, nil
+// }
 
 // DiscoverCatalogActivity runs the discover command to get catalog data
 func DiscoverCatalogActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
@@ -97,11 +96,11 @@ func DiscoverCatalogActivity(ctx context.Context, params ActivityParams) (map[st
 
 }
 
-// GetSpecActivity runs the spec command to get connector specifications
-func GetSpecActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
-	params.Command = docker.Spec
-	return ExecuteDockerCommandActivity(ctx, params)
-}
+// // GetSpecActivity runs the spec command to get connector specifications
+// func GetSpecActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
+// 	params.Command = docker.Spec
+// 	return ExecuteDockerCommandActivity(ctx, params)
+// }
 
 // TestConnectionActivity runs the check command to test connection
 func TestConnectionActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
@@ -116,9 +115,8 @@ func SyncActivity(ctx context.Context, params SyncParams) (map[string]interface{
 	// Get activity logger
 	logger := activity.GetLogger(ctx)
 	logger.Info("Starting sync activity",
-		"sourceType", params.SourceType,
-		"sourceID", params.SourceID,
-		"destID", params.DestID)
+		"jobId", params.JobId,
+		"workflowID", params.WorkflowID)
 
 	// Create a Docker runner with the default config directory
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
@@ -128,16 +126,8 @@ func SyncActivity(ctx context.Context, params SyncParams) (map[string]interface{
 
 	// Execute the sync operation
 	result, err := runner.RunSync(
-		params.SourceType,
-		params.Version,
-		params.SourceConfig,
-		params.DestConfig,
-		params.StateConfig,
-		params.StreamsConfig,
+		params.JobORM,
 		params.JobId,
-		params.ProjectID,
-		params.SourceID,
-		params.DestID,
 		params.WorkflowID,
 	)
 	if err != nil {

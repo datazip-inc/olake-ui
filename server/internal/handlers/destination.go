@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -44,26 +43,11 @@ func (c *DestHandler) GetAllDestinations() {
 	// Get project ID from path
 	//use olake project id when is needed
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-	destinations, err := c.destORM.GetAll()
+	destinations, err := c.destORM.GetAllByProjectID(projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve destinations")
 		return
 	}
-
-	// Filter destinations by project ID in memory
-	// In a real implementation, this would be done in the database query
-	// var filteredDestinations []*models.Destination
-	// for _, dest := range destinations {
-	// 	if dest.ProjectID == projectIDStr {
-	// 		filteredDestinations = append(filteredDestinations, dest)
-	// 	}
-	// }
-
 	// Format response data
 	destItems := make([]models.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
@@ -102,8 +86,7 @@ func (c *DestHandler) GetAllDestinations() {
 					jobInfo.SourceType = job.SourceID.Type
 				}
 
-				query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
-				fmt.Println("Query:", query)
+				query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
 				// List workflows using the direct query
 				resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
 					Query:    query,
@@ -171,25 +154,8 @@ func (c *DestHandler) CreateDestination() {
 
 // @router /project/:projectid/destinations/:id [put]
 func (c *DestHandler) UpdateDestination() {
-	// Get project ID from path
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 64)
-	if err != nil {
-		fmt.Println("Error converting project ID to int:", err)
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
-	// Project ID will be used for permission checking in future implementations
-	_ = projectID
-
 	// Get destination ID from path
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 
 	var req models.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -228,55 +194,37 @@ func (c *DestHandler) UpdateDestination() {
 
 // @router /project/:projectid/destinations/:id [delete]
 func (c *DestHandler) DeleteDestination() {
-	// Get project ID from path
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.ParseUint(projectIDStr, 10, 64)
-	if err != nil {
-		fmt.Println("Error converting project ID to int:", err)
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
-	// Project ID will be used for permission checking in future implementations
-	_ = projectID
-
 	// Get destination ID from path
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
-		return
-	}
-
+	id := GetIDFromPath(&c.Controller)
 	// Get the name for the response
-	name, err := c.destORM.GetName(id)
+	dest, err := c.destORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
-	jobs, err := c.jobORM.GetBySourceID(id)
+	jobs, err := c.jobORM.GetByDestinationID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
 	}
 	for _, job := range jobs {
 		job.Active = false
+		if err := c.jobORM.Update(job); err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this destination")
+			return
+		}
 	}
 	if err := c.destORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
 		return
 	}
 
-	response := models.DeleteDestinationResponse{
-		Name: name,
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
+		Name: dest.Name,
+	})
 }
 
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
-	// Get project ID from path (not used in current implementation)
-	_ = c.Ctx.Input.Param(":projectid")
 	// Will be used for multi-tenant filtering in the future
 	var req models.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -284,25 +232,24 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
+	if req.Type == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		return
+	}
+
+	if req.Version == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+		return
+	}
 	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
-	// if err != nil {
-	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
-	// 	return
-	// }
 	utils.SuccessResponse(&c.Controller, result)
 }
 
 // @router /destinations/:id/jobs [get]
 func (c *DestHandler) GetDestinationJobs() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
-		return
-	}
-
+	id := GetIDFromPath(&c.Controller)
 	// Check if destination exists
-	_, err = c.destORM.GetByID(id)
+	_, err := c.destORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
@@ -317,24 +264,13 @@ func (c *DestHandler) GetDestinationJobs() {
 	}
 
 	// Format as required by API contract
-	response := map[string]interface{}{
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"jobs": jobs,
-	}
-
-	c.Data["json"] = response
-	c.ServeJSON()
+	})
 }
 
 // @router /project/:projectid/destinations/versions [get]
 func (c *DestHandler) GetDestinationVersions() {
-	// Get project ID from path
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	_, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
 	// Get destination type from query parameter
 	destType := c.GetString("type")
 	if destType == "" {
@@ -349,11 +285,9 @@ func (c *DestHandler) GetDestinationVersions() {
 	// Mock available versions (this would be replaced with actual DB query)
 	versions := []string{"latest"}
 
-	response := map[string]interface{}{
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	})
 }
 
 // @router /project/:projectid/destinations/spec [post]
