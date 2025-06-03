@@ -10,3 +10,20 @@ export interface NavItem {
 	icon: React.ComponentType<IconProps>
 }
 export type CatalogType = (typeof CATALOG_TYPES)[keyof typeof CATALOG_TYPES]
+
+export type SetupType = "new" | "existing"
+
+export interface ConnectorOption {
+	value: string
+	label: React.ReactNode
+}
+
+export interface EndpointTitleProps {
+	title?: string
+}
+export interface SetupTypeSelectorProps {
+	value: SetupType
+	onChange: (value: SetupType) => void
+	newLabel?: string
+	existingLabel?: string
+}

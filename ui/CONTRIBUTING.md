@@ -61,6 +61,7 @@ After setting up your local repository using either method above:
 - `master` - Production-ready code
 - Feature branches - Named as `feat/your-feature-name`
 - Bug fix branches - Named as `fix/bug-description`
+- Refactor branches - Named as `refactor/refactor_types`
 
 ### Commit Guidelines
 
@@ -125,8 +126,8 @@ feat: add user authentication component
 
 - Use Tailwind CSS for styling
 - Follow the project's design system
-- Ensure responsive design for all components
 - Use Ant Design components when appropriate
+- Use Phosphor Icons for UI elements that require icons
 
 ## Code Quality
 

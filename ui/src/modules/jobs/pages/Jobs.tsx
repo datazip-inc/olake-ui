@@ -200,7 +200,7 @@ const Jobs: React.FC = () => {
 					) : filteredJobs.length === 0 ? (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
-							description="No data"
+							description="No jobs configured"
 							className="flex flex-col items-start"
 						/>
 					) : (
