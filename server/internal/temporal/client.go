@@ -133,7 +133,7 @@ func (c *Client) TestConnection(ctx context.Context, flag string, sourceType, ve
 // }
 
 // CreateSync creates a sync workflow
-func (c *Client) CreateSync(ctx context.Context, sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig string, ProjectID, JobId, sourceID, destID int, runImmediately bool) (map[string]interface{}, error) {
+func (c *Client) CreateSync(ctx context.Context, sourceType, version, frequency, sourceConfig, destConfig, stateConfig, streamsConfig, ProjectID string, JobId, sourceID, destID int, runImmediately bool) (map[string]interface{}, error) {
 	params := SyncParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -147,7 +147,7 @@ func (c *Client) CreateSync(ctx context.Context, sourceType, version, frequency,
 		DestID:        destID,
 	}
 
-	id := fmt.Sprintf("sync-%d-%d-%d-%d", ProjectID, JobId, sourceID, destID)
+	id := fmt.Sprintf("sync-%s-%d", ProjectID, JobId)
 	scheduleID := fmt.Sprintf("schedule-%s", id)
 
 	// Get schedule handle

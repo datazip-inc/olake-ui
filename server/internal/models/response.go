@@ -36,6 +36,10 @@ type UpdateSourceResponse struct {
 type DeleteSourceResponse struct {
 	Name string `json:"name"`
 }
+type JobStatus struct {
+	Activate bool `json:"activate"`
+}
+
 type CreateDestinationResponse struct {
 	Success bool                     `json:"success"`
 	Message string                   `json:"message"`

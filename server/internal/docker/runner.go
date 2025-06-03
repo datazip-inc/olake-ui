@@ -219,7 +219,7 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId, projectID, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) RunSync(sourceType, version, sourceConfig, destConfig, stateConfig, streamsConfig string, JobId int, projectID string, sourceID, destID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
 	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
 	if err != nil {

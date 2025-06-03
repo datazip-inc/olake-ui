@@ -40,7 +40,7 @@ type SyncParams struct {
 	StreamsConfig string
 	StateConfig   string
 	JobId         int
-	ProjectID     int
+	ProjectID     string
 	SourceID      int
 	DestID        int
 	WorkflowID    string
