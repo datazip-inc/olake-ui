@@ -4,8 +4,8 @@ import {
 	Entity,
 	APIResponse,
 	EntityBase,
+	EntityTestRequest,
 	EntityTestResponse,
-	SourceTestResponse,
 } from "../../types"
 
 export const sourceService = {
@@ -70,9 +70,9 @@ export const sourceService = {
 		}
 	},
 
-	testSourceConnection: async (source: EntityTestResponse) => {
+	testSourceConnection: async (source: EntityTestRequest) => {
 		try {
-			const response = await api.post<APIResponse<SourceTestResponse>>(
+			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: source.type.toLowerCase(),

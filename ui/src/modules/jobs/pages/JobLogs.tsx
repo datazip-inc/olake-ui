@@ -105,7 +105,6 @@ const JobLogs: React.FC = () => {
 	if (taskLogsError) {
 		return (
 			<div className="p-6">
-				<div className="text-red-500">Error loading logs: {taskLogsError}</div>
 				<Button
 					onClick={() => {
 						if (isTaskLog && filePath) {

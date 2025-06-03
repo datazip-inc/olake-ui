@@ -45,7 +45,7 @@ interface StreamsDataStructure {
 		[namespace: string]: {
 			stream_name: string
 			partition_regex: string
-			split_column: string
+			normalization: boolean
 		}[]
 	}
 	streams: StreamData[]
@@ -124,6 +124,7 @@ const JobEdit: React.FC = () => {
 		setShowSuccessModal,
 		setShowFailureModal,
 		setSourceTestConnectionError,
+		setDestinationTestConnectionError,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<Step>("source")
@@ -300,7 +301,7 @@ const JobEdit: React.FC = () => {
 				streamsData.selected_streams.default.push({
 					stream_name: streamName,
 					partition_regex: "",
-					split_column: "",
+					normalization: false,
 				})
 				streamsData.streams.push({
 					stream: {
@@ -323,21 +324,6 @@ const JobEdit: React.FC = () => {
 
 		return null
 	}
-
-	// Helper function to safely parse JSON config strings
-	// const parseConfig = (
-	// 	config: string | Record<string, any>,
-	// ): Record<string, any> => {
-	// 	if (typeof config === "string") {
-	// 		try {
-	// 			return JSON.parse(config)
-	// 		} catch (error) {
-	// 			console.error("Error parsing config:", error)
-	// 			return {}
-	// 		}
-	// 	}
-	// 	return config as Record<string, any>
-	// }
 
 	// Handle job submission
 	const handleJobSubmit = async () => {
@@ -433,7 +419,32 @@ const JobEdit: React.FC = () => {
 					setShowFailureModal(true)
 				}
 			} else {
-				setCurrentStep("destination")
+				if (sourceData) {
+					let newSourceData = {
+						name: sourceData.name,
+						type: sourceData.type,
+						config:
+							typeof sourceData.config === "string"
+								? sourceData.config
+								: JSON.stringify(sourceData.config),
+						version: sourceData.version || "latest",
+					}
+					setShowTestingModal(true)
+					const testResult =
+						await sourceService.testSourceConnection(newSourceData)
+					if (testResult.data?.status === "SUCCEEDED") {
+						setShowTestingModal(false)
+						setShowSuccessModal(true)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("destination")
+						}, 1000)
+					} else {
+						setShowTestingModal(false)
+						setSourceTestConnectionError(testResult.data?.message || "")
+						setShowFailureModal(true)
+					}
+				}
 			}
 		} else if (currentStep === "destination") {
 			if (isSavedJob && destinationData) {
@@ -454,7 +465,7 @@ const JobEdit: React.FC = () => {
 					setTimeout(() => {
 						setShowTestingModal(false)
 					}, 1000)
-					if (testResult.success) {
+					if (testResult.data?.status === "SUCCEEDED") {
 						setTimeout(() => {
 							setShowSuccessModal(true)
 						}, 1000)
@@ -463,6 +474,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("schema")
 						}, 2000)
 					} else {
+						setDestinationTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
 					}
 				} catch (error) {
@@ -471,7 +483,34 @@ const JobEdit: React.FC = () => {
 					setShowFailureModal(true)
 				}
 			} else {
-				setCurrentStep("schema")
+				if (destinationData) {
+					let newDestinationData = {
+						name: destinationData.name,
+						type: destinationData.type,
+						config:
+							typeof destinationData.config === "string"
+								? destinationData.config
+								: JSON.stringify(destinationData.config),
+						version: destinationData.version || "latest",
+					}
+					setShowTestingModal(true)
+					const testResult =
+						await destinationService.testDestinationConnection(
+							newDestinationData,
+						)
+					if (testResult.data?.status === "SUCCEEDED") {
+						setShowTestingModal(false)
+						setShowSuccessModal(true)
+						setTimeout(() => {
+							setShowSuccessModal(false)
+							setCurrentStep("schema")
+						}, 1000)
+					} else {
+						setShowTestingModal(false)
+						setDestinationTestConnectionError(testResult.data?.message || "")
+						setShowFailureModal(true)
+					}
+				}
 			}
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")

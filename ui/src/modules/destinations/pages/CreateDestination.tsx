@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Input, Radio, Select, Spin } from "antd"
+import { Input, message, Radio, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -29,6 +29,7 @@ import {
 	SETUP_TYPES,
 } from "../../../utils/constants"
 import { CatalogType } from "../../../types"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 type SetupType = (typeof SETUP_TYPES)[keyof typeof SETUP_TYPES]
@@ -168,6 +169,7 @@ const CreateDestination = forwardRef<
 			addDestination,
 			setShowFailureModal,
 			setShowSourceCancelModal,
+			setDestinationTestConnectionError,
 		} = useAppStore()
 
 		const parseDestinationConfig = (
@@ -333,6 +335,7 @@ const CreateDestination = forwardRef<
 					const response = await destinationService.getDestinationSpec(
 						connector,
 						catalog,
+						version,
 					)
 					if (response.success && response.data?.spec) {
 						setSchema(response.data.spec)
@@ -370,6 +373,7 @@ const CreateDestination = forwardRef<
 			if (setupType === SETUP_TYPES.NEW) {
 				if (!destinationName.trim()) {
 					setDestinationNameError("Destination name is required")
+					message.error("Destination name is required")
 					isValid = false
 				} else {
 					setDestinationNameError(null)
@@ -424,7 +428,7 @@ const CreateDestination = forwardRef<
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)
 
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -433,6 +437,7 @@ const CreateDestination = forwardRef<
 							.catch(error => console.error("Error adding destination:", error))
 					}, 1000)
 				} else {
+					setDestinationTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -766,6 +771,7 @@ const CreateDestination = forwardRef<
 
 				<TestConnectionModal />
 				<TestConnectionSuccessModal />
+				<TestConnectionFailureModal />
 				<EntitySavedModal
 					type="destination"
 					onComplete={onComplete}

@@ -14,6 +14,9 @@ import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
 import { jobService } from "../../../api"
 import { Entity } from "../../../types"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 
 interface SourceJob {
 	destination_type: string
@@ -71,6 +74,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		// fetchJobs,
 		updateSource,
 		setShowEditSourceModal,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowFailureModal,
+		setSourceTestConnectionError,
 	} = useAppStore()
 
 	// Create connector options once
@@ -218,32 +225,57 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		? transformJobs(source?.jobs || [])
 		: transformJobs((source?.jobs || []).slice(0, 5))
 
-	const handleSave = () => {
-		if (!source) return
-
-		setSelectedSource(source)
-		if (displayedJobs.length > 0) {
-			setShowEditSourceModal(true)
-			return
-		}
-
-		saveSource()
-	}
-
-	const saveSource = () => {
+	const getSourceData = () => {
 		const configStr =
 			typeof formData === "string" ? formData : JSON.stringify(formData)
 
 		const sourceData = {
+			id: source?.id || 0,
 			name: sourceName,
 			type: connector || "MongoDB",
 			version: selectedVersion,
 			status: "active" as const,
 			config: configStr,
+			created_at: source?.created_at || new Date().toISOString(),
+			updated_at: source?.updated_at || new Date().toISOString(),
+			created_by: source?.created_by || "",
+			updated_by: source?.updated_by || "",
+			jobs: source?.jobs || [],
+		}
+		return sourceData
+	}
+
+	const handleSave = async () => {
+		if (!source) return
+
+		if (displayedJobs.length > 0) {
+			setSelectedSource(getSourceData())
+			setShowEditSourceModal(true)
+			return
 		}
 
+		setShowTestingModal(true)
+		const testResult = await sourceService.testSourceConnection(getSourceData())
+		if (testResult.data?.status === "SUCCEEDED") {
+			setTimeout(() => {
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
+			}, 1000)
+
+			setTimeout(() => {
+				setShowSuccessModal(false)
+				saveSource()
+			}, 2000)
+		} else {
+			setShowTestingModal(false)
+			setSourceTestConnectionError(testResult.data?.message || "")
+			setShowFailureModal(true)
+		}
+	}
+
+	const saveSource = () => {
 		if (sourceId) {
-			updateSource(sourceId, sourceData)
+			updateSource(sourceId, getSourceData())
 				.then(() => {
 					message.success("Source updated successfully")
 					navigate("/sources")
@@ -563,6 +595,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					showResizer={true}
 				/>
 			</div>
+
+			<TestConnectionModal />
+			<TestConnectionSuccessModal />
+			<TestConnectionFailureModal />
 
 			<EditSourceModal />
 

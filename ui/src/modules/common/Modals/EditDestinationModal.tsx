@@ -15,7 +15,26 @@ const EditDestinationModal = () => {
 		showSuccessModal,
 		setShowSuccessModal,
 		selectedDestination,
+		setShowTestingModal,
+		setShowFailureModal,
+		setDestinationTestConnectionError,
+		updateDestination,
 	} = useAppStore()
+
+	const getDestinationData = () => {
+		const configStr =
+			typeof selectedDestination?.config === "string"
+				? selectedDestination?.config
+				: JSON.stringify(selectedDestination?.config)
+
+		const destinationData = {
+			name: selectedDestination?.name,
+			type: selectedDestination?.type,
+			version: selectedDestination?.version,
+			config: configStr,
+		}
+		return destinationData
+	}
 
 	const handleEdit = async () => {
 		if (!selectedDestination?.id) {
@@ -25,15 +44,29 @@ const EditDestinationModal = () => {
 
 		try {
 			setShowEditDestinationModal(false)
-			await destinationService.updateDestination(
-				selectedDestination.id.toString(),
-				selectedDestination,
-			)
-			setShowSuccessModal(true)
-			setTimeout(() => {
-				setShowSuccessModal(false)
-				navigate("/destinations")
-			}, 1000)
+			setShowTestingModal(true)
+			const testResult =
+				await destinationService.testDestinationConnection(getDestinationData())
+
+			if (testResult.data?.status === "SUCCEEDED") {
+				setTimeout(() => {
+					setShowTestingModal(false)
+					setShowSuccessModal(true)
+				}, 1000)
+
+				setTimeout(async () => {
+					setShowSuccessModal(false)
+					await updateDestination(
+						selectedDestination.id.toString(),
+						selectedDestination,
+					)
+					navigate("/destinations")
+				}, 2000)
+			} else {
+				setShowTestingModal(false)
+				setDestinationTestConnectionError(testResult.data?.message || "")
+				setShowFailureModal(true)
+			}
 		} catch (error) {
 			message.error("Failed to update destination")
 			console.error(error)
@@ -110,8 +143,15 @@ const EditDestinationModal = () => {
 								title: "Last runtime",
 								dataIndex: "last_run_time",
 								key: "last_run_time",
-								render: (text: string) =>
-									formatDistanceToNow(new Date(text), { addSuffix: true }),
+								render: (text: string) => (
+									<span>
+										{text !== undefined
+											? formatDistanceToNow(new Date(text), {
+													addSuffix: true,
+												})
+											: "-"}
+									</span>
+								),
 							},
 							{
 								title: "Source",
