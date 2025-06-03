@@ -9,7 +9,6 @@ import FixedSchemaForm from "../../../utils/FormFix"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import { getConnectorImage } from "../../../utils/utils"
-import EditSourceModal from "../../common/Modals/EditSourceModal"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
 import { jobService } from "../../../api"
@@ -18,6 +17,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import connectorOptions from "../components/connectorOptions"
+import EntityEditModal from "../../common/Modals/EntityEditModal"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -540,8 +540,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal />
 
-			<EditSourceModal />
-
 			{/* Delete Modal */}
 			<DeleteModal fromSource={true} />
 
@@ -566,6 +564,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 				</div>
 			)}
+
+			{/* Entity Edit Modal */}
+			<EntityEditModal entityType="source" />
 		</div>
 	)
 }

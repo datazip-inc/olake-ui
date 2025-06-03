@@ -14,7 +14,6 @@ import {
 	getConnectorImage,
 	getConnectorName,
 } from "../../../utils/utils"
-import EditDestinationModal from "../../common/Modals/EditDestinationModal"
 import { DestinationJob, Entity } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
@@ -22,6 +21,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import { connectorOptions } from "../components/connectorOptions"
+import EntityEditModal from "../../common/Modals/EntityEditModal"
 
 interface CatalogOption {
 	value: string
@@ -737,7 +737,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal />
-			<EditDestinationModal />
+			<EntityEditModal entityType="destination" />
 
 			{/* Footer with buttons */}
 			{!fromJobFlow && (

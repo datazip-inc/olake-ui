@@ -64,7 +64,7 @@ const JobSourceEdit = ({
 			<SourceEdit
 				fromJobFlow={true}
 				stepNumber="1"
-				stepTitle="Source config"
+				stepTitle="Source Config"
 				initialData={sourceData}
 				onNameChange={name => updateSourceData({ ...sourceData, name })}
 				onConnectorChange={type => updateSourceData({ ...sourceData, type })}
@@ -93,7 +93,7 @@ const JobDestinationEdit = ({
 			<DestinationEdit
 				fromJobFlow={true}
 				stepNumber="2"
-				stepTitle="Destination config"
+				stepTitle="Destination Config"
 				initialData={destinationData}
 				onNameChange={name =>
 					updateDestinationData({ ...destinationData, name })
