@@ -170,7 +170,6 @@ func (c *JobHandler) CreateJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			c.jobORM,
 			job.Frequency,
 			job.ProjectID,
 			job.ID,
@@ -251,7 +250,6 @@ func (c *JobHandler) UpdateJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			c.jobORM,
 			existingJob.Frequency,
 			existingJob.ProjectID,
 			existingJob.ID,
@@ -349,7 +347,6 @@ func (c *JobHandler) SyncJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		resp, err := c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			c.jobORM,
 			job.Frequency,
 			projectIDStr,
 			job.ID,

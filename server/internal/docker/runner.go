@@ -115,7 +115,6 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 	dockerArgs := []string{
 		"run", "--pull=always",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
-		"-u", fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid()),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
@@ -211,15 +210,15 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(jobORM *database.JobORM, jobID int, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
 	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
 	if err != nil {
 		return nil, err
 	}
-	jobORM = database.NewJobORM()
 	fmt.Printf("working directory path %s\n", workDir)
 	// Get current job state
+	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID)
 	if err != nil {
 		return nil, err

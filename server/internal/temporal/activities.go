@@ -126,7 +126,6 @@ func SyncActivity(ctx context.Context, params SyncParams) (map[string]interface{
 
 	// Execute the sync operation
 	result, err := runner.RunSync(
-		params.JobORM,
 		params.JobId,
 		params.WorkflowID,
 	)

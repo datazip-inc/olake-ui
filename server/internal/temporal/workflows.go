@@ -3,7 +3,6 @@ package temporal
 import (
 	"time"
 
-	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -34,7 +33,6 @@ type ActivityParams struct {
 
 // SyncParams contains parameters for sync activities
 type SyncParams struct {
-	JobORM     *database.JobORM
 	JobId      int
 	WorkflowID string
 }
@@ -131,10 +129,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params ActivityParams) (map[st
 }
 
 // RunSyncWorkflow is a workflow for running data synchronization
-func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interface{}, error) {
-	// Get workflow info from context
-	workflowInfo := workflow.GetInfo(ctx)
-	workflowID := workflowInfo.WorkflowExecution.ID
+func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 15, // Longer timeout for sync operations
 		RetryPolicy: &temporal.RetryPolicy{
@@ -144,7 +139,10 @@ func RunSyncWorkflow(ctx workflow.Context, params SyncParams) (map[string]interf
 			MaximumAttempts:    1, // Fewer retries for sync as it's more expensive
 		},
 	}
-	params.WorkflowID = workflowID
+	params := SyncParams{
+		JobId:      jobID,
+		WorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
+	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var result map[string]interface{}
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)

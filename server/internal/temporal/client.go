@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/utils"
 	"go.temporal.io/api/enums/v1"
@@ -134,13 +133,7 @@ func (c *Client) TestConnection(ctx context.Context, flag string, sourceType, ve
 // }
 
 // CreateSync creates a sync workflow
-func (c *Client) CreateSync(ctx context.Context, jobORM *database.JobORM, frequency string, projectIDStr string, JobId int, runImmediately bool) (map[string]interface{}, error) {
-	params := SyncParams{
-		JobORM:     jobORM,
-		JobId:      JobId,
-		WorkflowID: fmt.Sprintf("sync-%s-%d", projectIDStr, JobId),
-	}
-
+func (c *Client) CreateSync(ctx context.Context, frequency string, projectIDStr string, JobId int, runImmediately bool) (map[string]interface{}, error) {
 	id := fmt.Sprintf("sync-%s-%d", projectIDStr, JobId)
 	scheduleID := fmt.Sprintf("schedule-%s", id)
 
@@ -186,7 +179,7 @@ func (c *Client) CreateSync(ctx context.Context, jobORM *database.JobORM, freque
 			action := &client.ScheduleWorkflowAction{
 				ID:        id,
 				Workflow:  RunSyncWorkflow,
-				Args:      []interface{}{params},
+				Args:      []interface{}{JobId},
 				TaskQueue: TaskQueue,
 			}
 
