@@ -438,7 +438,7 @@ func (c *JobHandler) GetJobTasks() {
 		}
 		tasks = append(tasks, models.JobTask{
 			Runtime:   runTime.String(),
-			StartTime: startTime.Format(time.RFC3339),
+			StartTime: startTime.UTC().Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
 		})
