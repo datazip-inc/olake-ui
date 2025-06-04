@@ -3,39 +3,20 @@ package temporal
 import (
 	"time"
 
-	"github.com/datazip/olake-server/internal/docker"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
-// DockerCommandParams contains parameters for Docker commands (legacy)
-type DockerCommandParams struct {
-	SourceType string
-	Version    string
-	Config     string
-	SourceID   int
-	Command    string
-}
-
-// ActivityParams contains parameters for Docker command activities
-type ActivityParams struct {
-	SourceType   string
-	Version      string
-	Config       string
-	SourceID     int
-	Command      docker.Command
-	DestConfig   string
-	DestID       int
-	WorkflowID   string
-	StreamConfig string
-	Flag         string
-}
-
-// SyncParams contains parameters for sync activities
-type SyncParams struct {
-	JobId      int
-	WorkflowID string
-}
+// Retry policy constants
+var (
+	// DefaultRetryPolicy is used for standard operations like discovery and testing connections
+	DefaultRetryPolicy = &temporal.RetryPolicy{
+		InitialInterval:    time.Second * 5,
+		BackoffCoefficient: 2.0,
+		MaximumInterval:    time.Minute * 5,
+		MaximumAttempts:    1,
+	}
+)
 
 // DockerRunnerWorkflow orchestrates the Docker command execution as a workflow
 // func DockerRunnerWorkflow(ctx workflow.Context, params ActivityParams) (map[string]interface{}, error) {
@@ -64,12 +45,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params ActivityParams) (map[s
 	// Execute the DiscoverCatalogActivity directly
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 5,
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval:    time.Second,
-			BackoffCoefficient: 2.0,
-			MaximumInterval:    time.Minute,
-			MaximumAttempts:    1,
-		},
+		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -87,12 +63,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params ActivityParams) (map[s
 // 	// Execute the GetSpecActivity directly
 // 	options := workflow.ActivityOptions{
 // 		StartToCloseTimeout: time.Minute * 5,
-// 		RetryPolicy: &temporal.RetryPolicy{
-// 			InitialInterval:    time.Second,
-// 			BackoffCoefficient: 2.0,
-// 			MaximumInterval:    time.Minute,
-// 			MaximumAttempts:    1,
-// 		},
+// 		RetryPolicy: DefaultRetryPolicy,
 // 	}
 // 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -110,12 +81,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params ActivityParams) (map[st
 	// Execute the TestConnectionActivity directly
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 5,
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval:    time.Second,
-			BackoffCoefficient: 2.0,
-			MaximumInterval:    time.Minute,
-			MaximumAttempts:    1,
-		},
+		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -132,12 +98,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params ActivityParams) (map[st
 func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 15, // Longer timeout for sync operations
-		RetryPolicy: &temporal.RetryPolicy{
-			InitialInterval:    time.Second * 5,
-			BackoffCoefficient: 2.0,
-			MaximumInterval:    time.Minute * 5,
-			MaximumAttempts:    1, // Fewer retries for sync as it's more expensive
-		},
+		RetryPolicy:         DefaultRetryPolicy,
 	}
 	params := SyncParams{
 		JobId:      jobID,

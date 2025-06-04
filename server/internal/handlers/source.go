@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"go.temporal.io/api/workflowservice/v1"
 
@@ -31,13 +32,11 @@ func (c *SourceHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 
 	// Initialize Temporal client
-	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-	tempClient, err := temporal.NewClient(tempAddress)
+	var err error
+	c.tempClient, err = temporal.NewClient()
 	if err != nil {
-		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
-		fmt.Printf("Failed to create Temporal client: %v\n", err)
+		logs.Error("Failed to create Temporal client: %v", err)
 	}
-	c.tempClient = tempClient
 }
 
 // @router /project/:projectid/sources [get]
@@ -70,10 +69,9 @@ func (c *SourceHandler) GetAllSources() {
 		if source.UpdatedBy != nil {
 			item.UpdatedBy = source.UpdatedBy.Username
 		}
-
+		sourceJobs := make([]models.JobDataItem, 0)
 		// Fetch associated jobs for this source
 		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		sourceJobs := make([]models.JobDataItem, 0) // always initialize
 		if err == nil {
 			for _, job := range jobs {
 				jobInfo := models.JobDataItem{

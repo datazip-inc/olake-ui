@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/docker"
 	"github.com/datazip/olake-server/utils"
 	"go.temporal.io/api/enums/v1"
@@ -16,19 +17,23 @@ import (
 // TaskQueue is the default task queue for Olake Docker workflows
 const TaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
 
+var (
+	TemporalAddress string
+)
+
+func init() {
+	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+}
+
 // Client provides methods to interact with Temporal
 type Client struct {
 	temporalClient client.Client
 }
 
 // NewClient creates a new Temporal client
-func NewClient(address string) (*Client, error) {
-	if address == "" {
-		address = "localhost:7233" // Default Temporal address
-	}
-
+func NewClient() (*Client, error) {
 	c, err := client.Dial(client.Options{
-		HostPort: address,
+		HostPort: TemporalAddress,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
@@ -137,61 +142,14 @@ func (c *Client) CreateSync(ctx context.Context, frequency string, projectIDStr 
 	id := fmt.Sprintf("sync-%s-%d", projectIDStr, JobId)
 	scheduleID := fmt.Sprintf("schedule-%s", id)
 
-	// Get schedule handle
 	scheduleHandle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
-
-	// Check if schedule exists
 	currentSchedule, err := scheduleHandle.Describe(ctx)
 	scheduleExists := err == nil
 
-	// Handle schedule creation/update based on frequency
+	// Handle schedule creation/update
 	if frequency != "" && !runImmediately {
-		cronSpec := utils.ToCron(frequency)
-
-		if scheduleExists {
-			// Check if frequency has changed
-			needsUpdate := len(currentSchedule.Schedule.Spec.CronExpressions) == 0 ||
-				currentSchedule.Schedule.Spec.CronExpressions[0] != cronSpec
-
-			if needsUpdate {
-				// Update existing schedule
-				log.Printf("Updating schedule %s to cron: %s", scheduleID, cronSpec)
-				updateSchedule := func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
-					input.Description.Schedule.Spec = &client.ScheduleSpec{
-						CronExpressions: []string{cronSpec},
-					}
-					return &client.ScheduleUpdate{
-						Schedule: &input.Description.Schedule,
-					}, nil
-				}
-				err = scheduleHandle.Update(ctx, client.ScheduleUpdateOptions{
-					DoUpdate: updateSchedule,
-				})
-				if err != nil {
-					return nil, fmt.Errorf("failed to update schedule: %w", err)
-				}
-			}
-		} else {
-			// Create new schedule
-			schedule := client.ScheduleSpec{
-				CronExpressions: []string{cronSpec},
-			}
-			action := &client.ScheduleWorkflowAction{
-				ID:        id,
-				Workflow:  RunSyncWorkflow,
-				Args:      []interface{}{JobId},
-				TaskQueue: TaskQueue,
-			}
-
-			_, err = c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
-				ID:      scheduleID,
-				Spec:    schedule,
-				Action:  action,
-				Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
-			})
-			if err != nil {
-				return nil, fmt.Errorf("failed to create schedule: %w", err)
-			}
+		if err := c.handleSchedule(ctx, scheduleHandle, frequency, scheduleExists, currentSchedule, id, scheduleID, JobId); err != nil {
+			return nil, err
 		}
 	}
 
@@ -201,7 +159,6 @@ func (c *Client) CreateSync(ctx context.Context, frequency string, projectIDStr 
 			return nil, fmt.Errorf("cannot run immediately without a schedule - frequency must be specified or existing schedule must be present")
 		}
 
-		// Trigger immediate run (no need to pause/unpause)
 		err = scheduleHandle.Trigger(ctx, client.ScheduleTriggerOptions{
 			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 		})
@@ -215,6 +172,59 @@ func (c *Client) CreateSync(ctx context.Context, frequency string, projectIDStr 
 	}
 
 	return nil, nil
+}
+
+// handleSchedule creates or updates a schedule based on frequency
+func (c *Client) handleSchedule(ctx context.Context, scheduleHandle client.ScheduleHandle, frequency string, scheduleExists bool, currentSchedule *client.ScheduleDescription, id, scheduleID string, JobId int) error {
+	cronSpec := utils.ToCron(frequency)
+
+	if scheduleExists {
+		// Check if frequency has changed
+		needsUpdate := len(currentSchedule.Schedule.Spec.CronExpressions) == 0 ||
+			currentSchedule.Schedule.Spec.CronExpressions[0] != cronSpec
+
+		if needsUpdate {
+			// Update existing schedule
+			log.Printf("Updating schedule %s to cron: %s", scheduleID, cronSpec)
+			updateSchedule := func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
+				input.Description.Schedule.Spec = &client.ScheduleSpec{
+					CronExpressions: []string{cronSpec},
+				}
+				return &client.ScheduleUpdate{
+					Schedule: &input.Description.Schedule,
+				}, nil
+			}
+			err := scheduleHandle.Update(ctx, client.ScheduleUpdateOptions{
+				DoUpdate: updateSchedule,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to update schedule: %w", err)
+			}
+		}
+	} else {
+		// Create new schedule
+		schedule := client.ScheduleSpec{
+			CronExpressions: []string{cronSpec},
+		}
+		action := &client.ScheduleWorkflowAction{
+			ID:        id,
+			Workflow:  RunSyncWorkflow,
+			Args:      []interface{}{JobId},
+			TaskQueue: TaskQueue,
+		}
+
+		_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
+			ID:      scheduleID,
+			Spec:    schedule,
+			Action:  action,
+			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create schedule: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // ListWorkflow lists workflow executions based on the provided query

@@ -36,13 +36,10 @@ func (c *JobHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 	c.sourceORM = database.NewSourceORM()
 	c.destORM = database.NewDestinationORM()
-	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-	tempClient, err := temporal.NewClient(tempAddress)
+	var err error
+	c.tempClient, err = temporal.NewClient()
 	if err != nil {
-		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
 		logs.Error("Failed to create Temporal client: %v", err)
-	} else {
-		c.tempClient = tempClient
 	}
 }
 
@@ -256,9 +253,7 @@ func (c *JobHandler) UpdateJob() {
 			false,
 		)
 		if err != nil {
-			fmt.Printf("Temporal workflow execution failed: %v", err)
-		} else {
-			fmt.Println("Successfully executed sync job via Temporal")
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
 		}
 	}
 
@@ -354,6 +349,7 @@ func (c *JobHandler) SyncJob() {
 		)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal excuetion failed: %v", err))
+			return
 		} else {
 			utils.SuccessResponse(&c.Controller, resp)
 		}

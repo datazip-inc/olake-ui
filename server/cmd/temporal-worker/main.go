@@ -8,7 +8,6 @@ import (
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/internal/logger"
@@ -32,18 +31,14 @@ func main() {
 
 	log.Println("Starting Olake Temporal worker...")
 
-	// Default to localhost if no address provided
-	temporalAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "temporal:7233")
-	log.Println("Temporal address:", temporalAddress)
 	// Create a new worker
-	worker, err := temporal.NewWorker(temporalAddress)
+	worker, err := temporal.NewWorker()
 	if err != nil {
 		log.Fatalf("Failed to create worker: %v", err)
 	}
 
 	// Start the worker in a goroutine
 	go func() {
-		log.Printf("Starting worker with Temporal server at %s", temporalAddress)
 		err := worker.Start()
 		if err != nil {
 			log.Fatalf("Failed to start worker: %v", err)

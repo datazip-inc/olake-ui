@@ -28,13 +28,10 @@ type DestHandler struct {
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 	c.jobORM = database.NewJobORM()
-	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-	tempClient, err := temporal.NewClient(tempAddress)
+	var err error
+	c.tempClient, err = temporal.NewClient()
 	if err != nil {
-		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
 		logs.Error("Failed to create Temporal client: %v", err)
-	} else {
-		c.tempClient = tempClient
 	}
 }
 
