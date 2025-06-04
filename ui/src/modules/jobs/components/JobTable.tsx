@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { EntityBase, Job } from "../../../types"
+import { EntityBase, Job, JobTableProps } from "../../../types"
 import { useNavigate } from "react-router-dom"
 import {
 	ArrowsClockwise,
@@ -20,18 +20,6 @@ import {
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { formatDistanceToNow } from "date-fns"
 import { PAGE_SIZE } from "../../../utils/constants"
-
-type JobType = "active" | "inactive" | "saved" | "failed"
-
-interface JobTableProps {
-	jobs: Job[]
-	loading: boolean
-	jobType: JobType
-	onSync: (id: string) => void
-	onEdit: (id: string) => void
-	onPause: (id: string, checked: boolean) => void
-	onDelete: (id: string) => void
-}
 
 const formatLastSyncTime = (text?: string) => {
 	if (!text) return <div className="pl-4">-</div>

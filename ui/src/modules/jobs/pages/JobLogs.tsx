@@ -3,7 +3,11 @@ import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
-import { getConnectorImage } from "../../../utils/utils"
+import {
+	getConnectorImage,
+	getLogLevelClass,
+	getLogTextColor,
+} from "../../../utils/utils"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -54,36 +58,6 @@ const JobLogs: React.FC = () => {
 
 	const job = jobs.find(j => j.id === Number(jobId))
 
-	const getLogLevelClass = (level: string) => {
-		switch (level) {
-			case "debug":
-				return "text-blue-600 bg-[#F0F5FF]"
-			case "info":
-				return "text-[#531DAB] bg-[#F9F0FF]"
-			case "warning":
-			case "warn":
-				return "text-[#FAAD14] bg-[#FFFBE6]"
-			case "error":
-			case "fatal":
-				return "text-red-500 bg-[#FFF1F0]"
-			default:
-				return "text-gray-600"
-		}
-	}
-
-	const getLogTextColor = (level: string) => {
-		switch (level) {
-			case "warning":
-			case "warn":
-				return "text-[#FAAD14]"
-			case "error":
-			case "fatal":
-				return "text-[#F5222D]"
-			default:
-				return "text-[#000000"
-		}
-	}
-
 	const filteredLogs = taskLogs.filter(function (log) {
 		if (typeof log !== "object" || log === null) {
 			return false
@@ -126,7 +100,7 @@ const JobLogs: React.FC = () => {
 
 	return (
 		<div className="flex h-screen flex-col">
-			<div className="mb-6 flex items-center justify-between px-6 pt-3">
+			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="mb-2 flex items-center">
 						<div className="flex items-center gap-2">
@@ -138,15 +112,16 @@ const JobLogs: React.FC = () => {
 									<ArrowLeft className="size-5" />
 								</Link>
 							</div>
-							<div className="text-2xl font-bold">
-								{job?.name || "Jobname"}{" "}
-								{isTaskLog ? `[${filePath}]` : "[Timestamp]"}
+							<div className="flex flex-col items-start gap-1">
+								<div className="text-2xl font-bold">
+									{job?.name || "Jobname"}{" "}
+								</div>
+								<div className="rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#203FDD]">
+									{job?.last_run_state || "Active"}
+								</div>
 							</div>
 						</div>
 					</div>
-					<span className="ml-6 rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#203FDD]">
-						{job?.last_run_state || "Active"}
-					</span>
 				</div>
 
 				<div className="flex items-center gap-2">
@@ -226,7 +201,7 @@ const JobLogs: React.FC = () => {
 												</td>
 												<td className="w-24 px-4 py-3 text-sm">
 													<span
-														className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
+														className={`rounded-[6px] px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
 															taskLog.level,
 														)}`}
 													>

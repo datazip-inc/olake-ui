@@ -96,3 +96,25 @@ export const destinationTabs = [
 	{ key: "active", label: "Active destinations" },
 	{ key: "inactive", label: "Inactive destinations" },
 ]
+
+export const COLORS = {
+	selected: {
+		border: "#203FDD",
+		text: "#203FDD",
+	},
+	unselected: {
+		border: "#D9D9D9",
+		text: "#575757",
+	},
+} as const
+
+export const steps: string[] = ["source", "destination", "schema", "config"]
+
+export const TAB_STYLES = {
+	active:
+		"border border-[#203FDD] bg-white text-[#203FDD] rounded-[6px] py-1 px-2",
+	inactive: "bg-[#F5F5F5] text-slate-900 py-1 px-2",
+	hover: "hover:text-[#203FDD]",
+}
+
+export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"

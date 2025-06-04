@@ -39,3 +39,11 @@ export interface SourceJob {
 	activate: boolean
 	destination_name: string
 }
+
+export interface SourceData {
+	id?: string
+	name: string
+	type: string
+	config: Record<string, any>
+	version?: string
+}

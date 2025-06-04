@@ -9,7 +9,15 @@ import StepProgress from "../components/StepIndicator"
 import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import { useAppStore } from "../../../store"
-import { StreamData, Job, JobBase } from "../../../types"
+import {
+	StreamData,
+	Job,
+	JobBase,
+	JobCreationSteps,
+	SourceData,
+	DestinationData,
+	StreamsDataStructure,
+} from "../../../types"
 import { jobService } from "../../../api"
 import { sourceService } from "../../../api/services/sourceService"
 import { destinationService } from "../../../api/services/destinationService"
@@ -20,36 +28,6 @@ import {
 	getFrequencyValue,
 	removeSavedJobFromLocalStorage,
 } from "../../../utils/utils"
-
-type Step = "source" | "destination" | "schema" | "config"
-
-interface SourceData {
-	id?: string
-	name: string
-	type: string
-	config: Record<string, any>
-	version?: string
-}
-
-interface DestinationData {
-	id?: string
-	name: string
-	type: string
-	config: Record<string, any>
-	version?: string
-}
-
-// Define streams data interface
-interface StreamsDataStructure {
-	selected_streams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
-	}
-	streams: StreamData[]
-}
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -127,11 +105,10 @@ const JobEdit: React.FC = () => {
 		setDestinationTestConnectionError,
 	} = useAppStore()
 
-	const [currentStep, setCurrentStep] = useState<Step>("source")
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
 	const [docsMinimized, setDocsMinimized] = useState(true)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
-	// Source and destination data for job
 	const [sourceData, setSourceData] = useState<SourceData | null>(null)
 	const [destinationData, setDestinationData] =
 		useState<DestinationData | null>(null)
@@ -154,13 +131,6 @@ const JobEdit: React.FC = () => {
 		useState("1")
 	const [job, setJob] = useState<Job | null>(null)
 	const [savedJobId, setSavedJobId] = useState<string | null>(null)
-
-	// Find the job from the store
-	// useEffect(() => {
-	// 	if (!jobs.length) {
-	// 		fetchJobs()
-	// 	}
-	// }, [fetchJobs, jobs])
 
 	useEffect(() => {
 		fetchJobs()

@@ -43,7 +43,7 @@ export const getConnectorName = (connector: string, catalog: string | null) => {
 }
 
 export const getStatusClass = (status: string) => {
-	switch (status) {
+	switch (status.toLowerCase()) {
 		case "success":
 		case "completed":
 			return "text-[#52C41A] bg-[#F6FFED]"
@@ -159,5 +159,64 @@ export const removeSavedJobFromLocalStorage = (jobId: string) => {
 		const jobs = JSON.parse(savedJobs)
 		const filteredJobs = jobs.filter((job: any) => job.id !== jobId)
 		localStorage.setItem("savedJobs", JSON.stringify(filteredJobs))
+	}
+}
+
+export const getReplicationFrequency = (replicationFrequency: string) => {
+	if (replicationFrequency.includes(" ")) {
+		const parts = replicationFrequency.split(" ")
+		const value = parts[0]
+		const unit = parts[1].toLowerCase()
+
+		if (unit.includes("minute")) return `${value} minutes`
+		if (unit.includes("hour")) return "hourly"
+		if (unit.includes("day")) return "daily"
+		if (unit.includes("week")) return "weekly"
+		if (unit.includes("month")) return "monthly"
+		if (unit.includes("year")) return "yearly"
+	}
+
+	if (replicationFrequency === "minutes") {
+		return "minutes"
+	} else if (replicationFrequency === "hours") {
+		return "hourly"
+	} else if (replicationFrequency === "days") {
+		return "daily"
+	} else if (replicationFrequency === "weeks") {
+		return "weekly"
+	} else if (replicationFrequency === "months") {
+		return "monthly"
+	} else if (replicationFrequency === "years") {
+		return "yearly"
+	}
+}
+
+export const getLogLevelClass = (level: string) => {
+	switch (level) {
+		case "debug":
+			return "text-blue-600 bg-[#F0F5FF]"
+		case "info":
+			return "text-[#531DAB] bg-[#F9F0FF]"
+		case "warning":
+		case "warn":
+			return "text-[#FAAD14] bg-[#FFFBE6]"
+		case "error":
+		case "fatal":
+			return "text-red-500 bg-[#FFF1F0]"
+		default:
+			return "text-gray-600"
+	}
+}
+
+export const getLogTextColor = (level: string) => {
+	switch (level) {
+		case "warning":
+		case "warn":
+			return "text-[#FAAD14]"
+		case "error":
+		case "fatal":
+			return "text-[#F5222D]"
+		default:
+			return "text-[#000000"
 	}
 }

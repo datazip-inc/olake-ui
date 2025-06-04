@@ -1,8 +1,4 @@
-interface TabsFilterProps {
-	tabs: { key: string; label: string }[]
-	activeTab: string
-	onChange: (key: string) => void
-}
+import { TabsFilterProps } from "../../../types"
 
 const TabsFilter: React.FC<TabsFilterProps> = ({
 	tabs,

@@ -60,3 +60,11 @@ export interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
 	last_run_state: string
 	source_name: string
 }
+
+export interface DestinationData {
+	id?: string
+	name: string
+	type: string
+	config: Record<string, any>
+	version?: string
+}

@@ -6,14 +6,7 @@ import {
 	CaretRight,
 	Info,
 } from "@phosphor-icons/react"
-
-interface DocumentationPanelProps {
-	docUrl: string
-	isMinimized?: boolean
-	onToggle?: () => void
-	showResizer?: boolean
-	initialWidth?: number
-}
+import { DocumentationPanelProps } from "../../../types"
 
 const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	docUrl,

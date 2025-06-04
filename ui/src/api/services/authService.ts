@@ -2,16 +2,11 @@
  * AuthService handles authentication-related API calls and localStorage management.
  */
 import api from "../axios"
-import { APIResponse, LoginArgs } from "../../types"
+import { APIResponse, LoginArgs, LoginResponse } from "../../types"
 import {
 	LOCALSTORAGE_TOKEN_KEY,
 	LOCALSTORAGE_USERNAME_KEY,
 } from "../../utils/constants"
-
-interface LoginResponse {
-	username: string
-	password: string
-}
 
 export const authService = {
 	login: async ({ username, password }: LoginArgs) => {

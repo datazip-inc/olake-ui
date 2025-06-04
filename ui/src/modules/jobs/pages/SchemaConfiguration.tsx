@@ -2,56 +2,15 @@ import { useEffect, useState, useMemo } from "react"
 import { Input, Empty, Spin } from "antd"
 import FilterButton from "../components/FilterButton"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
-import { StreamData } from "../../../types"
+import {
+	CombinedStreamsData,
+	SchemaConfigurationProps,
+	StreamData,
+} from "../../../types"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StepTitle from "../../common/components/StepTitle"
 import { sourceService } from "../../../api"
 import React from "react"
-
-interface CombinedStreamsData {
-	selected_streams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
-	}
-	streams: StreamData[]
-}
-
-interface SchemaConfigurationProps {
-	selectedStreams:
-		| string[]
-		| {
-				[namespace: string]: {
-					stream_name: string
-					partition_regex: string
-					normalization: boolean
-				}[]
-		  }
-		| CombinedStreamsData
-	setSelectedStreams: React.Dispatch<
-		React.SetStateAction<
-			| string[]
-			| {
-					[namespace: string]: {
-						stream_name: string
-						partition_regex: string
-						normalization: boolean
-					}[]
-			  }
-			| CombinedStreamsData
-		>
-	>
-	stepNumber?: number | string
-	stepTitle?: string
-	useDirectForms?: boolean
-	sourceName: string
-	sourceConnector: string
-	sourceVersion: string
-	sourceConfig: string
-	initialStreamsData?: CombinedStreamsData
-}
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,

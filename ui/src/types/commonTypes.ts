@@ -27,3 +27,33 @@ export interface SetupTypeSelectorProps {
 	newLabel?: string
 	existingLabel?: string
 }
+
+export interface TabsFilterProps {
+	tabs: { key: string; label: string }[]
+	activeTab: string
+	onChange: (key: string) => void
+}
+
+export interface DocumentationPanelProps {
+	docUrl: string
+	isMinimized?: boolean
+	onToggle?: () => void
+	showResizer?: boolean
+	initialWidth?: number
+}
+
+export type FilterButtonProps = {
+	filter: string
+	selectedFilters: string[]
+	setSelectedFilters: (filters: string[]) => void
+}
+
+export interface StepIndicatorProps {
+	step: string
+	index: number
+	currentStep: string
+}
+
+export interface StepProgressProps {
+	currentStep: string
+}

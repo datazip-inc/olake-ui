@@ -81,7 +81,7 @@ const JobHistory: React.FC = () => {
 			dataIndex: "status",
 			key: "status",
 			render: (status: string) => (
-				<span className={`${getStatusClass(status)} rounded-xl px-2 py-2`}>
+				<span className={`${getStatusClass(status)} rounded-[6px] px-2 py-2`}>
 					{status}
 				</span>
 			),
@@ -123,9 +123,9 @@ const JobHistory: React.FC = () => {
 
 	return (
 		<div className="flex h-screen flex-col">
-			<div className="mb-6 flex items-center justify-between px-6 pt-3">
+			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
-					<div className="flex items-center gap-2">
+					<div className="flex items-start gap-2">
 						<Link
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
@@ -133,12 +133,14 @@ const JobHistory: React.FC = () => {
 							<ArrowLeft className="size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold">
-							{job?.name || "<Job_name>"}
+						<div className="flex flex-col items-start">
+							<div className="text-2xl font-bold">
+								{job?.name || "<Job_name>"}
+							</div>
+							<div className="mt-2 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
+								{job?.last_run_state || "Active"}
+							</div>
 						</div>
-					</div>
-					<div className="ml-6 mt-1.5 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
-						{job?.last_run_state || "Active"}
 					</div>
 				</div>
 
