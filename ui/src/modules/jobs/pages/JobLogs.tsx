@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, message, Button } from "antd"
+import { Input, Spin, message, Button, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
 import {
 	getConnectorImage,
 	getLogLevelClass,
 	getLogTextColor,
+	getStatusClass,
+	getStatusLabel,
 } from "../../../utils/utils"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -21,6 +24,7 @@ const JobLogs: React.FC = () => {
 
 	const navigate = useNavigate()
 	const [searchText, setSearchText] = useState("")
+	const [showOnlyErrors, setShowOnlyErrors] = useState(false)
 
 	const { Search } = Input
 
@@ -70,10 +74,20 @@ const JobLogs: React.FC = () => {
 		const messageLowerCase = message.toString().toLowerCase()
 		const levelLowerCase = level.toString().toLowerCase()
 
-		return (
+		const matchesSearch =
 			messageLowerCase.includes(searchLowerCase) ||
 			levelLowerCase.includes(searchLowerCase)
-		)
+
+		if (showOnlyErrors) {
+			return (
+				matchesSearch &&
+				(messageLowerCase.includes("error") ||
+					levelLowerCase.includes("error") ||
+					levelLowerCase.includes("fatal"))
+			)
+		}
+
+		return matchesSearch
 	})
 
 	if (taskLogsError) {
@@ -116,8 +130,11 @@ const JobLogs: React.FC = () => {
 								<div className="text-2xl font-bold">
 									{job?.name || "Jobname"}{" "}
 								</div>
-								<div className="rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#203FDD]">
-									{job?.last_run_state || "Active"}
+								<div
+									className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-2 py-1 text-xs ${getStatusClass(job?.last_run_state || "active")}`}
+								>
+									{getStatusIcon(job?.last_run_state?.toLowerCase())}
+									<span>{getStatusLabel(job?.last_run_state || "active")}</span>
 								</div>
 							</div>
 						</div>
@@ -154,22 +171,31 @@ const JobLogs: React.FC = () => {
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
+					<Tooltip title="Click to refetch the logs">
+						<Button
+							icon={<ArrowsClockwise size={16} />}
+							onClick={() => {
+								if (isTaskLog && filePath) {
+									fetchTaskLogs(jobId!, historyId || "1", filePath)
+										.then(() => {
+											message.success("Logs refetched successfully")
+										})
+										.catch(error => {
+											message.error("Failed to refetch task logs")
+											console.error(error)
+										})
+								}
+							}}
+							className="flex items-center"
+						></Button>
+					</Tooltip>
 					<Button
-						icon={<ArrowsClockwise size={16} />}
-						onClick={() => {
-							if (isTaskLog && filePath) {
-								fetchTaskLogs(jobId!, historyId || "1", filePath)
-									.then(() => {
-										message.success("Logs refetched successfully")
-									})
-									.catch(error => {
-										message.error("Failed to refetch task logs")
-										console.error(error)
-									})
-							}
-						}}
+						type={showOnlyErrors ? "primary" : "default"}
+						onClick={() => setShowOnlyErrors(!showOnlyErrors)}
 						className="flex items-center"
-					></Button>
+					>
+						Errors
+					</Button>
 				</div>
 
 				{isLoadingTaskLogs ? (

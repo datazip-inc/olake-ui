@@ -409,7 +409,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			</div>
 
 			<div className="flex">
-				<div className={`${activeStreamData ? "w-1/2" : "w-full"} `}>
+				<div
+					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
+				>
 					{!loading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
@@ -431,14 +433,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}}
 						/>
 					) : loading ? (
-						<Spin size="large">Loading streams...</Spin>
+						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
+							<Spin size="large"></Spin>
+						</div>
 					) : (
 						<Empty className="flex h-full flex-col items-center justify-center" />
 					)}
 				</div>
 
 				{activeStreamData && (
-					<div className="mx-4 flex h-full w-1/2 flex-col rounded-xl border bg-[#ffffff] p-4 transition-all duration-150 ease-linear">
+					<div className="sticky top-0 mx-4 flex h-[calc(100vh-250px)] w-1/2 flex-col rounded-xl border bg-[#ffffff] p-4 transition-all duration-150 ease-linear">
 						<StreamConfiguration
 							stream={activeStreamData}
 							onUpdate={() => {

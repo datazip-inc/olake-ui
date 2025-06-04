@@ -8,7 +8,11 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
-import { getConnectorImage } from "../../../utils/utils"
+import {
+	getConnectorImage,
+	getStatusClass,
+	getStatusLabel,
+} from "../../../utils/utils"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
 import { jobService } from "../../../api"
@@ -18,6 +22,7 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import connectorOptions from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -315,15 +320,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
-						last_run_state === "success"
-							? "bg-[#f6ffed] text-[#389E0D]"
-							: last_run_state === "failed"
-								? "bg-[#fff1f0] text-[#cf1322]"
-								: ""
-					}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
-					{last_run_state}
+					{getStatusIcon(last_run_state.toLowerCase())}
+					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
 				</div>
 			),
 		},

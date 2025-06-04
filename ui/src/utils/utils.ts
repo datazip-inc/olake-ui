@@ -55,7 +55,7 @@ export const getStatusClass = (status: string) => {
 		case "scheduled":
 			return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
 		default:
-			return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
+			return "text-[rgba(0,0,0,88)] bg-transparent"
 	}
 }
 
@@ -99,6 +99,8 @@ export const getStatusLabel = (status: string) => {
 			return "Running"
 		case "scheduled":
 			return "Scheduled"
+		case "completed":
+			return "Completed"
 		default:
 			return status
 	}

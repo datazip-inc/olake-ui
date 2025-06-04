@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Pagination } from "antd"
+import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -8,7 +8,12 @@ import {
 	ArrowsClockwise,
 	Eye,
 } from "@phosphor-icons/react"
-import { getConnectorImage, getStatusClass } from "../../../utils/utils"
+import {
+	getConnectorImage,
+	getStatusClass,
+	getStatusLabel,
+} from "../../../utils/utils"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -81,9 +86,12 @@ const JobHistory: React.FC = () => {
 			dataIndex: "status",
 			key: "status",
 			render: (status: string) => (
-				<span className={`${getStatusClass(status)} rounded-[6px] px-2 py-2`}>
-					{status}
-				</span>
+				<div
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+				>
+					{getStatusIcon(status.toLowerCase())}
+					<span>{getStatusLabel(status.toLowerCase())}</span>
+				</div>
 			),
 		},
 		{
@@ -137,8 +145,11 @@ const JobHistory: React.FC = () => {
 							<div className="text-2xl font-bold">
 								{job?.name || "<Job_name>"}
 							</div>
-							<div className="mt-2 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
-								{job?.last_run_state || "Active"}
+							<div
+								className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-2 py-1 text-xs ${getStatusClass(job?.last_run_state || "active")}`}
+							>
+								{getStatusIcon(job?.last_run_state?.toLowerCase())}
+								<span>{getStatusLabel(job?.last_run_state || "active")}</span>
 							</div>
 						</div>
 					</div>
@@ -174,18 +185,23 @@ const JobHistory: React.FC = () => {
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
-					<Button
-						icon={<ArrowsClockwise size={16} />}
-						onClick={() => {
-							if (jobId) {
-								fetchJobTasks(jobId).catch(error => {
-									message.error("Failed to fetch job tasks after delay")
-									console.error("Error fetching job tasks after delay:", error)
-								})
-							}
-						}}
-						className="flex items-center"
-					></Button>
+					<Tooltip title="Click to refetch">
+						<Button
+							icon={<ArrowsClockwise size={16} />}
+							onClick={() => {
+								if (jobId) {
+									fetchJobTasks(jobId).catch(error => {
+										message.error("Failed to fetch job tasks after delay")
+										console.error(
+											"Error fetching job tasks after delay:",
+											error,
+										)
+									})
+								}
+							}}
+							className="flex items-center"
+						></Button>
+					</Tooltip>
 				</div>
 
 				{isDelayingCall || isLoadingJobTasks ? (
