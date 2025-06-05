@@ -10,6 +10,7 @@ import {
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StepTitle from "../../common/components/StepTitle"
 import { sourceService } from "../../../api"
+import StreamsDefault from "../../../assets/StreamsDefault.svg"
 import React from "react"
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
@@ -441,8 +442,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					)}
 				</div>
 
-				{activeStreamData && (
-					<div className="sticky top-0 mx-4 flex h-[calc(100vh-250px)] w-1/2 flex-col rounded-xl border bg-[#ffffff] p-4 transition-all duration-150 ease-linear">
+				<div
+					className={`sticky top-0 mx-4 flex h-[calc(100vh-250px)] w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+				>
+					{activeStreamData ? (
 						<StreamConfiguration
 							stream={activeStreamData}
 							onUpdate={() => {
@@ -477,8 +480,23 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}
 							onPartitionRegexChange={handlePartitionRegexChange}
 						/>
-					</div>
-				)}
+					) : (
+						!loading && (
+							<div className="flex flex-col">
+								<img
+									src={StreamsDefault}
+									alt="StreamsDefault"
+									className="size-10"
+								/>
+
+								<div className="mt-2 font-semibold">No stream selected</div>
+								<div className="text-sm text-[#787878]">
+									Please select a stream to configure
+								</div>
+							</div>
+						)
+					)}
+				</div>
 			</div>
 		</div>
 	)

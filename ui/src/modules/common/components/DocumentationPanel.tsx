@@ -201,7 +201,8 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 							<div className="absolute right-3 top-10 z-10 rounded-xl border border-gray-200 bg-[#F0F0F0] p-2">
 								<Info
 									size={25}
-									className="text-gray-500 transition-all duration-300 ease-in-out"
+									className="cursor-pointer text-gray-500 transition-all duration-300 ease-in-out"
+									onClick={toggleDocPanel}
 								/>
 							</div>
 						</div>
