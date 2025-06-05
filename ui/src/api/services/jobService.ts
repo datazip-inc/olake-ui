@@ -9,9 +9,7 @@ export const jobService = {
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
 			)
 
-			return response.data.data.map(item => ({
-				...item,
-			}))
+			return response.data.data
 		} catch (error) {
 			console.error("Error fetching jobs from API:", error)
 			throw error

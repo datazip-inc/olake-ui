@@ -53,3 +53,30 @@ export interface TaskLog {
 	time: string
 }
 export type JobCreationSteps = "source" | "destination" | "schema" | "config"
+
+export type JobType = "active" | "inactive" | "saved" | "failed"
+
+export interface JobTableProps {
+	jobs: Job[]
+	loading: boolean
+	jobType: JobType
+	onSync: (id: string) => void
+	onEdit: (id: string) => void
+	onPause: (id: string, checked: boolean) => void
+	onDelete: (id: string) => void
+}
+
+export interface JobConfigurationProps {
+	jobName: string
+	setJobName: React.Dispatch<React.SetStateAction<string>>
+	replicationFrequency: string
+	setReplicationFrequency: React.Dispatch<React.SetStateAction<string>>
+	replicationFrequencyValue: string
+	setReplicationFrequencyValue: React.Dispatch<React.SetStateAction<string>>
+	schemaChangeStrategy: string
+	setSchemaChangeStrategy: React.Dispatch<React.SetStateAction<string>>
+	notifyOnSchemaChanges: boolean
+	setNotifyOnSchemaChanges: React.Dispatch<React.SetStateAction<boolean>>
+	stepNumber?: number | string
+	stepTitle?: string
+}

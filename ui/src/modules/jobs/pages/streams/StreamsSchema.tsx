@@ -3,13 +3,7 @@ import RenderTypeItems from "../../../common/components/RenderTypeItems"
 import { Checkbox } from "antd/es"
 import { useState, useEffect, useMemo } from "react"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
-import { StreamData } from "../../../../types"
-
-interface StreamSchemaProps {
-	initialData: StreamData
-	onColumnsChange?: (columns: string[]) => void
-	onSyncModeChange?: (mode: "full_refresh" | "cdc") => void
-}
+import { StreamSchemaProps } from "../../../../types"
 
 const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 	const [columnsToDisplay, setColumnsToDisplay] = useState<Record<string, any>>(

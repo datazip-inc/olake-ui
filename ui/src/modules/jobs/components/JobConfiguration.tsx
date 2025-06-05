@@ -1,21 +1,7 @@
 import { Input, Select } from "antd"
 import StepTitle from "../../common/components/StepTitle"
 import { getFrequencyValue } from "../../../utils/utils"
-
-interface JobConfigurationProps {
-	jobName: string
-	setJobName: React.Dispatch<React.SetStateAction<string>>
-	replicationFrequency: string
-	setReplicationFrequency: React.Dispatch<React.SetStateAction<string>>
-	replicationFrequencyValue: string
-	setReplicationFrequencyValue: React.Dispatch<React.SetStateAction<string>>
-	schemaChangeStrategy: string
-	setSchemaChangeStrategy: React.Dispatch<React.SetStateAction<string>>
-	notifyOnSchemaChanges: boolean
-	setNotifyOnSchemaChanges: React.Dispatch<React.SetStateAction<boolean>>
-	stepNumber?: number | string
-	stepTitle?: string
-}
+import { JobConfigurationProps } from "../../../types"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobName,

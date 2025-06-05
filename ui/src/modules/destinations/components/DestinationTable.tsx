@@ -1,17 +1,10 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { Entity } from "../../../types"
+import { DestinationTableProps, Entity } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import JobConnection from "../../common/components/JobConnection"
-
-interface DestinationTableProps {
-	destinations: Entity[]
-	loading: boolean
-	onEdit: (id: string) => void
-	onDelete: (destination: Entity) => void
-}
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
 	destinations,
@@ -95,6 +88,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 						destinationType={record.type}
 						jobName={jobs[0].name}
 						remainingJobs={jobs.length - 1}
+						jobs={jobs}
 					/>
 				)
 			},

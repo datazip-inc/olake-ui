@@ -9,33 +9,22 @@ import { destinationService } from "../../../api/services/destinationService"
 import { jobService } from "../../../api"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
-import AWSS3 from "../../../assets/AWSS3.svg"
-import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 import {
 	getCatalogInLowerCase,
 	getConnectorImage,
 	getConnectorName,
+	getStatusClass,
+	getStatusLabel,
 } from "../../../utils/utils"
-import EditDestinationModal from "../../common/Modals/EditDestinationModal"
-import { Entity, EntityJob } from "../../../types"
+import { DestinationJob, Entity } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-
-// Define the job structure for destination jobs table
-interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
-	source_type: string
-	last_run_time: string
-	last_run_state: string
-	source_name: string
-}
-
-interface ConnectorOption {
-	value: string
-	label: React.ReactNode
-}
+import { connectorOptions } from "../components/connectorOptions"
+import EntityEditModal from "../../common/Modals/EntityEditModal"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 interface CatalogOption {
 	value: string
@@ -99,36 +88,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	} = useAppStore()
 
 	const navigate = useNavigate()
-
-	// Define connector options
-	const connectorOptions: ConnectorOption[] = [
-		{
-			value: "Amazon S3",
-			label: (
-				<div className="flex items-center">
-					<img
-						src={AWSS3}
-						alt="AWS S3"
-						className="mr-2 size-5"
-					/>
-					<span>Amazon S3</span>
-				</div>
-			),
-		},
-		{
-			value: "Apache Iceberg",
-			label: (
-				<div className="flex items-center">
-					<img
-						src={ApacheIceBerg}
-						alt="Apache Iceberg"
-						className="mr-2 size-5"
-					/>
-					<span>Apache Iceberg</span>
-				</div>
-			),
-		},
-	]
 
 	// Define catalog options
 	const catalogOptions: CatalogOption[] = [
@@ -205,7 +164,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				if (destination.type === "iceberg") {
 					try {
 						const catalogType = config.writer.catalog_type || "AWS Glue"
-						setInitialCatalog(catalogType)
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
@@ -522,15 +480,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
-						last_run_state === "success"
-							? "bg-[#f6ffed] text-[#389E0D]"
-							: last_run_state === "failed"
-								? "bg-[#fff1f0] text-[#cf1322]"
-								: ""
-					}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
-					{last_run_state}
+					{getStatusIcon(last_run_state.toLowerCase())}
+					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
 				</div>
 			),
 		},
@@ -781,7 +734,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal />
-			<EditDestinationModal />
+			<EntityEditModal entityType="destination" />
 
 			{/* Footer with buttons */}
 			{!fromJobFlow && (

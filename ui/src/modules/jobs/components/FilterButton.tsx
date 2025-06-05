@@ -1,19 +1,5 @@
-type FilterButtonProps = {
-	filter: string
-	selectedFilters: string[]
-	setSelectedFilters: (filters: string[]) => void
-}
-
-const COLORS = {
-	selected: {
-		border: "#203FDD",
-		text: "#203FDD",
-	},
-	unselected: {
-		border: "#D9D9D9",
-		text: "#575757",
-	},
-} as const
+import { FilterButtonProps } from "../../../types"
+import { COLORS } from "../../../utils/constants"
 
 const FilterButton: React.FC<FilterButtonProps> = ({
 	filter,
