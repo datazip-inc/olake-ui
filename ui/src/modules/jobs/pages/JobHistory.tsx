@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Pagination } from "antd"
+import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
@@ -8,7 +8,12 @@ import {
 	ArrowsClockwise,
 	Eye,
 } from "@phosphor-icons/react"
-import { getConnectorImage, getStatusClass } from "../../../utils/utils"
+import {
+	getConnectorImage,
+	getStatusClass,
+	getStatusLabel,
+} from "../../../utils/utils"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -81,9 +86,12 @@ const JobHistory: React.FC = () => {
 			dataIndex: "status",
 			key: "status",
 			render: (status: string) => (
-				<span className={`${getStatusClass(status)} rounded-xl px-2 py-2`}>
-					{status}
-				</span>
+				<div
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+				>
+					{getStatusIcon(status.toLowerCase())}
+					<span>{getStatusLabel(status.toLowerCase())}</span>
+				</div>
 			),
 		},
 		{
@@ -123,9 +131,9 @@ const JobHistory: React.FC = () => {
 
 	return (
 		<div className="flex h-screen flex-col">
-			<div className="mb-6 flex items-center justify-between px-6 pt-3">
+			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
-					<div className="flex items-center gap-2">
+					<div className="flex items-start gap-2">
 						<Link
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
@@ -133,12 +141,17 @@ const JobHistory: React.FC = () => {
 							<ArrowLeft className="size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold">
-							{job?.name || "<Job_name>"}
+						<div className="flex flex-col items-start">
+							<div className="text-2xl font-bold">
+								{job?.name || "<Job_name>"}
+							</div>
+							<div
+								className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-2 py-1 text-xs ${getStatusClass(job?.last_run_state || "active")}`}
+							>
+								{getStatusIcon(job?.last_run_state?.toLowerCase())}
+								<span>{getStatusLabel(job?.last_run_state || "active")}</span>
+							</div>
 						</div>
-					</div>
-					<div className="ml-6 mt-1.5 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
-						{job?.last_run_state || "Active"}
 					</div>
 				</div>
 
@@ -172,18 +185,23 @@ const JobHistory: React.FC = () => {
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
-					<Button
-						icon={<ArrowsClockwise size={16} />}
-						onClick={() => {
-							if (jobId) {
-								fetchJobTasks(jobId).catch(error => {
-									message.error("Failed to fetch job tasks after delay")
-									console.error("Error fetching job tasks after delay:", error)
-								})
-							}
-						}}
-						className="flex items-center"
-					></Button>
+					<Tooltip title="Click to refetch">
+						<Button
+							icon={<ArrowsClockwise size={16} />}
+							onClick={() => {
+								if (jobId) {
+									fetchJobTasks(jobId).catch(error => {
+										message.error("Failed to fetch job tasks after delay")
+										console.error(
+											"Error fetching job tasks after delay:",
+											error,
+										)
+									})
+								}
+							}}
+							className="flex items-center"
+						></Button>
+					</Tooltip>
 				</div>
 
 				{isDelayingCall || isLoadingJobTasks ? (

@@ -54,3 +54,123 @@ export type StreamConfigurationProps = {
 	) => void
 	useDirectForms?: boolean
 }
+
+export interface StreamsDataStructure {
+	selected_streams: {
+		[namespace: string]: {
+			stream_name: string
+			partition_regex: string
+			normalization: boolean
+		}[]
+	}
+	streams: StreamData[]
+}
+
+export interface CombinedStreamsData {
+	selected_streams: {
+		[namespace: string]: {
+			stream_name: string
+			partition_regex: string
+			normalization: boolean
+		}[]
+	}
+	streams: StreamData[]
+}
+
+export interface SchemaConfigurationProps {
+	selectedStreams:
+		| string[]
+		| {
+				[namespace: string]: {
+					stream_name: string
+					partition_regex: string
+					normalization: boolean
+				}[]
+		  }
+		| CombinedStreamsData
+	setSelectedStreams: React.Dispatch<
+		React.SetStateAction<
+			| string[]
+			| {
+					[namespace: string]: {
+						stream_name: string
+						partition_regex: string
+						normalization: boolean
+					}[]
+			  }
+			| CombinedStreamsData
+		>
+	>
+	stepNumber?: number | string
+	stepTitle?: string
+	useDirectForms?: boolean
+	sourceName: string
+	sourceConnector: string
+	sourceVersion: string
+	sourceConfig: string
+	initialStreamsData?: CombinedStreamsData
+}
+
+export interface ExtendedStreamConfigurationProps
+	extends StreamConfigurationProps {
+	onUpdate?: (stream: any) => void
+	isSelected: boolean
+	initialNormalization: boolean
+	initialPartitionRegex: string
+	onNormalizationChange: (
+		streamName: string,
+		namespace: string,
+		normalization: boolean,
+	) => void
+	onPartitionRegexChange: (
+		streamName: string,
+		namespace: string,
+		partitionRegex: string,
+	) => void
+}
+
+export interface GroupedStreamsCollapsibleListProps {
+	groupedStreams: { [namespace: string]: StreamData[] }
+	selectedStreams: {
+		[namespace: string]: {
+			stream_name: string
+			partition_regex: string
+			normalization: boolean
+		}[]
+	}
+	setActiveStreamData: (stream: StreamData) => void
+	activeStreamData: StreamData | null
+	onStreamSelect: (
+		streamName: string,
+		checked: boolean,
+		namespace: string,
+	) => void
+	setSelectedStreams: React.Dispatch<
+		React.SetStateAction<
+			| string[]
+			| {
+					[namespace: string]: {
+						stream_name: string
+						partition_regex: string
+						normalization: boolean
+					}[]
+			  }
+			| {
+					selected_streams: {
+						[namespace: string]: {
+							stream_name: string
+							partition_regex: string
+							normalization: boolean
+						}[]
+					}
+					streams: StreamData[]
+			  }
+		>
+	>
+}
+
+export interface StreamSchemaProps {
+	initialData: StreamData
+	onColumnsChange?: (columns: string[]) => void
+	onSyncModeChange?: (mode: "full_refresh" | "cdc") => void
+}

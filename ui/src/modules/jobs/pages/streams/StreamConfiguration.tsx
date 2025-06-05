@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { StreamConfigurationProps } from "../../../../types"
+import { ExtendedStreamConfigurationProps } from "../../../../types"
 import { Button, Input, Radio, Switch } from "antd"
 import StreamsSchema from "./StreamsSchema"
 import {
@@ -7,33 +7,7 @@ import {
 	GridFour,
 	SlidersHorizontal,
 } from "@phosphor-icons/react"
-
-// Constants for styling
-const TAB_STYLES = {
-	active:
-		"border border-[#203FDD] bg-white text-[#203FDD] rounded-[6px] py-1 px-2",
-	inactive: "bg-[#F5F5F5] text-slate-900 py-1 px-2",
-	hover: "hover:text-[#203FDD]",
-}
-
-const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
-
-interface ExtendedStreamConfigurationProps extends StreamConfigurationProps {
-	onUpdate?: (stream: any) => void
-	isSelected: boolean
-	initialNormalization: boolean
-	initialPartitionRegex: string
-	onNormalizationChange: (
-		streamName: string,
-		namespace: string,
-		normalization: boolean,
-	) => void
-	onPartitionRegexChange: (
-		streamName: string,
-		namespace: string,
-		partitionRegex: string,
-	) => void
-}
+import { CARD_STYLE, TAB_STYLES } from "../../../../utils/constants"
 
 const StreamConfiguration = ({
 	stream,
@@ -332,7 +306,9 @@ const StreamConfiguration = ({
 					)}
 				</>
 			) : (
-				<div className="text-sm text-gray-500">Stream not selected</div>
+				<div className="text-sm text-gray-500">
+					Select the stream to configure Partitioning
+				</div>
 			)}
 		</>
 	)

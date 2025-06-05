@@ -8,30 +8,21 @@ import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
-import { getConnectorImage } from "../../../utils/utils"
-import EditSourceModal from "../../common/Modals/EditSourceModal"
+import {
+	getConnectorImage,
+	getStatusClass,
+	getStatusLabel,
+} from "../../../utils/utils"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
 import { jobService } from "../../../api"
-import { Entity } from "../../../types"
+import { Entity, SourceJob } from "../../../types"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-
-interface SourceJob {
-	destination_type: string
-	last_run_time: string
-	last_run_state: string
-	id: number
-	name: string
-	activate: boolean
-	destination_name: string
-}
-
-interface ConnectorOption {
-	value: string
-	label: React.ReactNode
-}
+import connectorOptions from "../components/connectorOptions"
+import EntityEditModal from "../../common/Modals/EntityEditModal"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 interface SourceEditProps {
 	fromJobFlow?: boolean
@@ -69,9 +60,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 	const {
 		sources,
-		// jobs,
 		fetchSources,
-		// fetchJobs,
 		updateSource,
 		setShowEditSourceModal,
 		setShowTestingModal,
@@ -79,49 +68,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		setShowFailureModal,
 		setSourceTestConnectionError,
 	} = useAppStore()
-
-	// Create connector options once
-	const connectorOptions: ConnectorOption[] = [
-		{
-			value: "MongoDB",
-			label: (
-				<div className="flex items-center">
-					<img
-						src={getConnectorImage("MongoDB")}
-						alt="MongoDB"
-						className="mr-2 size-5"
-					/>
-					<span>MongoDB</span>
-				</div>
-			),
-		},
-		{
-			value: "Postgres",
-			label: (
-				<div className="flex items-center">
-					<img
-						src={getConnectorImage("Postgres")}
-						alt="Postgres"
-						className="mr-2 size-5"
-					/>
-					<span>Postgres</span>
-				</div>
-			),
-		},
-		{
-			value: "MySQL",
-			label: (
-				<div className="flex items-center">
-					<img
-						src={getConnectorImage("MySQL")}
-						alt="MySQL"
-						className="mr-2 size-5"
-					/>
-					<span>MySQL</span>
-				</div>
-			),
-		},
-	]
 
 	useEffect(() => {
 		fetchSources()
@@ -290,7 +236,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const handleDelete = () => {
 		if (!source) return
 
-		// Create a simplified source object for deletion
 		const sourceToDelete = {
 			...source,
 			name: sourceName || source.name,
@@ -375,15 +320,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${
-						last_run_state === "success"
-							? "bg-[#f6ffed] text-[#389E0D]"
-							: last_run_state === "failed"
-								? "bg-[#fff1f0] text-[#cf1322]"
-								: ""
-					}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
-					{last_run_state}
+					{getStatusIcon(last_run_state.toLowerCase())}
+					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
 				</div>
 			),
 		},
@@ -600,8 +540,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal />
 
-			<EditSourceModal />
-
 			{/* Delete Modal */}
 			<DeleteModal fromSource={true} />
 
@@ -626,6 +564,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 				</div>
 			)}
+
+			{/* Entity Edit Modal */}
+			<EntityEditModal entityType="source" />
 		</div>
 	)
 }

@@ -2,56 +2,16 @@ import { useEffect, useState, useMemo } from "react"
 import { Input, Empty, Spin } from "antd"
 import FilterButton from "../components/FilterButton"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
-import { StreamData } from "../../../types"
+import {
+	CombinedStreamsData,
+	SchemaConfigurationProps,
+	StreamData,
+} from "../../../types"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StepTitle from "../../common/components/StepTitle"
 import { sourceService } from "../../../api"
+import StreamsDefault from "../../../assets/StreamsDefault.svg"
 import React from "react"
-
-interface CombinedStreamsData {
-	selected_streams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
-	}
-	streams: StreamData[]
-}
-
-interface SchemaConfigurationProps {
-	selectedStreams:
-		| string[]
-		| {
-				[namespace: string]: {
-					stream_name: string
-					partition_regex: string
-					normalization: boolean
-				}[]
-		  }
-		| CombinedStreamsData
-	setSelectedStreams: React.Dispatch<
-		React.SetStateAction<
-			| string[]
-			| {
-					[namespace: string]: {
-						stream_name: string
-						partition_regex: string
-						normalization: boolean
-					}[]
-			  }
-			| CombinedStreamsData
-		>
-	>
-	stepNumber?: number | string
-	stepTitle?: string
-	useDirectForms?: boolean
-	sourceName: string
-	sourceConnector: string
-	sourceVersion: string
-	sourceConfig: string
-	initialStreamsData?: CombinedStreamsData
-}
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
@@ -450,7 +410,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			</div>
 
 			<div className="flex">
-				<div className={`${activeStreamData ? "w-1/2" : "w-full"} `}>
+				<div
+					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
+				>
 					{!loading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
@@ -472,14 +434,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}}
 						/>
 					) : loading ? (
-						<Spin size="large">Loading streams...</Spin>
+						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
+							<Spin size="large"></Spin>
+						</div>
 					) : (
 						<Empty className="flex h-full flex-col items-center justify-center" />
 					)}
 				</div>
 
-				{activeStreamData && (
-					<div className="mx-4 flex h-full w-1/2 flex-col rounded-xl border bg-[#ffffff] p-4 transition-all duration-150 ease-linear">
+				<div
+					className={`sticky top-0 mx-4 flex h-[calc(100vh-250px)] w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+				>
+					{activeStreamData ? (
 						<StreamConfiguration
 							stream={activeStreamData}
 							onUpdate={() => {
@@ -514,8 +480,23 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}
 							onPartitionRegexChange={handlePartitionRegexChange}
 						/>
-					</div>
-				)}
+					) : (
+						!loading && (
+							<div className="flex flex-col">
+								<img
+									src={StreamsDefault}
+									alt="StreamsDefault"
+									className="size-10"
+								/>
+
+								<div className="mt-2 font-semibold">No stream selected</div>
+								<div className="text-sm text-[#787878]">
+									Please select a stream to configure
+								</div>
+							</div>
+						)
+					)}
+				</div>
 			</div>
 		</div>
 	)

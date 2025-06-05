@@ -1,13 +1,13 @@
 import { StateCreator } from "zustand"
-import type { JobTask } from '../types'
-import type { TaskLog } from '../types'
-import { jobService } from '../api'
+import type { JobTask } from "../types"
+import type { TaskLog } from "../types"
+import { jobService } from "../api"
 
 export interface TaskSlice {
 	jobTasksError: string | null
-  taskLogsError: string | null
-  isLoadingJobTasks: boolean
-  isLoadingTaskLogs: boolean
+	taskLogsError: string | null
+	isLoadingJobTasks: boolean
+	isLoadingTaskLogs: boolean
 	jobTasks: JobTask[]
 	taskLogs: TaskLog[]
 	// Job task actions
@@ -20,9 +20,9 @@ export interface TaskSlice {
 }
 export const createTaskSlice: StateCreator<TaskSlice> = set => ({
 	jobTasks: [],
-  taskLogs: [],
-  isLoadingJobTasks: false,
-  isLoadingTaskLogs: false,
+	taskLogs: [],
+	isLoadingJobTasks: false,
+	isLoadingTaskLogs: false,
 	jobTasksError: null,
 	taskLogsError: null,
 	fetchJobTasks: async jobId => {
@@ -62,4 +62,3 @@ export const createTaskSlice: StateCreator<TaskSlice> = set => ({
 		}
 	},
 })
-

@@ -1,13 +1,10 @@
 import { Button, message, Modal, Table } from "antd"
 import { useAppStore } from "../../../store"
-import { getStatusIcon } from "../../../utils/statusIcons"
 import { Warning } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
 import { getConnectorImage } from "../../../utils/utils"
-
-interface DeleteModalProps {
-	fromSource: boolean
-}
+import { DeleteModalProps } from "../../../types/modalTypes"
+import { formatDistanceToNow } from "date-fns"
 
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 	const {
@@ -18,6 +15,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 		deleteSource,
 		deleteDestination,
 	} = useAppStore()
+
 	let entity: Entity
 
 	if (fromSource) {
@@ -62,24 +60,31 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 		},
 		{
 			title: "Status",
-			dataIndex: "lastSyncStatus",
-			key: "lastSyncStatus",
-			render: (status: string) => (
-				<div className="flex items-center">
-					{getStatusIcon(status)}
-					<span className="ml-1 rounded-[6px] bg-[#f6ffed] px-1.5 py-1 text-xs text-[#52c41a]">
-						success
-					</span>
-				</div>
+			dataIndex: "activate",
+			key: "activate",
+			render: (activate: boolean) => (
+				<span
+					className={`rounded px-2 py-1 text-xs ${
+						!activate
+							? "bg-[#FFF1F0] text-[#F5222D]"
+							: "bg-[#E6F4FF] text-[#0958D9]"
+					}`}
+				>
+					{activate ? "Active" : "Inactive"}
+				</span>
 			),
 		},
 		{
 			title: "Last runtime",
-			dataIndex: "lastRuntime",
-			key: "lastRuntime",
-			render: () => (
-				<div className="flex items-center">
-					<span>3 hours ago</span>
+			dataIndex: "last_run_time",
+			key: "last_run_time",
+			render: (text: string) => (
+				<div className="flex justify-center">
+					{text !== undefined
+						? formatDistanceToNow(new Date(text), {
+								addSuffix: true,
+							})
+						: "-"}
 				</div>
 			),
 		},
@@ -120,7 +125,6 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 				]),
 	]
 
-	// Create an array with the entity if it exists
 	const dataSource = entity?.jobs
 
 	return (
