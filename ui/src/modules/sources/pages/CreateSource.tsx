@@ -370,6 +370,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				onChange={setSetupType}
 				newLabel="Set up a new source"
 				existingLabel="Use an existing source"
+				fromJobFlow={fromJobFlow}
 			/>
 		)
 

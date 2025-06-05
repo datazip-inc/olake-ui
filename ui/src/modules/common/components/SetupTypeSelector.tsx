@@ -6,6 +6,7 @@ export const SetupTypeSelector: React.FC<SetupTypeSelectorProps> = ({
 	onChange,
 	newLabel = "Set up a new source",
 	existingLabel = "Use an existing source",
+	fromJobFlow = false,
 }) => {
 	return (
 		<div className="mb-4 flex">
@@ -20,7 +21,7 @@ export const SetupTypeSelector: React.FC<SetupTypeSelectorProps> = ({
 				>
 					{newLabel}
 				</Radio>
-				<Radio value="existing">{existingLabel}</Radio>
+				{fromJobFlow && <Radio value="existing">{existingLabel}</Radio>}
 			</Radio.Group>
 		</div>
 	)

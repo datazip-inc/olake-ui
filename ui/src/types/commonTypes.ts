@@ -26,6 +26,7 @@ export interface SetupTypeSelectorProps {
 	onChange: (value: SetupType) => void
 	newLabel?: string
 	existingLabel?: string
+	fromJobFlow?: boolean
 }
 
 export interface TabsFilterProps {

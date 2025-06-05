@@ -432,6 +432,7 @@ const CreateDestination = forwardRef<
 				onChange={value => setSetupType(value)}
 				newLabel="Set up a new destination"
 				existingLabel="Use an existing destination"
+				fromJobFlow={fromJobFlow}
 			/>
 		)
 
