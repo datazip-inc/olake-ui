@@ -9,7 +9,6 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
@@ -46,9 +45,10 @@ func (c *SourceHandler) GetAllSources() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources")
 		return
 	}
+
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	// Format response data
 	sourceItems := make([]models.SourceDataItem, 0, len(sources))
+
 	for _, source := range sources {
 		item := models.SourceDataItem{
 			ID:        source.ID,
@@ -60,56 +60,14 @@ func (c *SourceHandler) GetAllSources() {
 			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
 		}
 
-		// Add creator username if available
-		if source.CreatedBy != nil {
-			item.CreatedBy = source.CreatedBy.Username
-		}
+		setUsernames(&item.CreatedBy, &item.UpdatedBy, source.CreatedBy, source.UpdatedBy)
 
-		// Add updater username if available
-		if source.UpdatedBy != nil {
-			item.UpdatedBy = source.UpdatedBy.Username
-		}
-		sourceJobs := make([]models.JobDataItem, 0)
-		// Fetch associated jobs for this source
 		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		if err == nil {
-			for _, job := range jobs {
-				jobInfo := models.JobDataItem{
-					Name:     job.Name,
-					ID:       job.ID,
-					Activate: job.Active,
-				}
-				// Add destination name if available
-				if job.DestID != nil {
-					jobInfo.DestinationName = job.DestID.Name
-					jobInfo.DestinationType = job.DestID.DestType
-				}
-
-				query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
-				fmt.Println("Query:", query)
-				// List workflows using the direct query
-				resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
-					Query:    query,
-					PageSize: 1,
-				})
-				if err != nil {
-					utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
-					return
-				}
-
-				if len(resp.Executions) > 0 {
-					jobInfo.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-					jobInfo.LastRunState = resp.Executions[0].Status.String()
-				} else {
-					jobInfo.LastRunTime = ""
-					jobInfo.LastRunState = ""
-				}
-
-				sourceJobs = append(sourceJobs, jobInfo)
-			}
+		var success bool
+		item.Jobs, success = buildJobDataItems(jobs, err, projectIDStr, "source", c.tempClient, &c.Controller)
+		if !success {
+			return // Error occurred in buildJobDataItems
 		}
-		// Assign jobs even if empty
-		item.Jobs = sourceJobs
 
 		sourceItems = append(sourceItems, item)
 	}

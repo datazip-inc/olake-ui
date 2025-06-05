@@ -9,7 +9,6 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"go.temporal.io/api/workflowservice/v1"
 
 	"github.com/datazip/olake-server/internal/constants"
 	"github.com/datazip/olake-server/internal/database"
@@ -37,15 +36,12 @@ func (c *DestHandler) Prepare() {
 
 // @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
-	// Get project ID from path
-	//use olake project id when is needed
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 	destinations, err := c.destORM.GetAllByProjectID(projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve destinations")
 		return
 	}
-	// Format response data
 	destItems := make([]models.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
 		item := models.DestinationDataItem{
@@ -58,58 +54,18 @@ func (c *DestHandler) GetAllDestinations() {
 			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
 
-		// Add creator username if available
-		if dest.CreatedBy != nil {
-			item.CreatedBy = dest.CreatedBy.Username
-		}
+		setUsernames(&item.CreatedBy, &item.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
-		// Add updater username if available
-		if dest.UpdatedBy != nil {
-			item.UpdatedBy = dest.UpdatedBy.Username
-		}
 		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		destJobs := make([]models.JobDataItem, 0, len(jobs))
-		if err == nil {
-			for _, job := range jobs {
-				jobInfo := models.JobDataItem{
-					Name:     job.Name,
-					ID:       job.ID,
-					Activate: job.Active,
-				}
-
-				// Add destination name if available
-				if job.DestID != nil {
-					jobInfo.SourceName = job.SourceID.Name
-					jobInfo.SourceType = job.SourceID.Type
-				}
-
-				query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
-				// List workflows using the direct query
-				resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
-					Query:    query,
-					PageSize: 1,
-				})
-				if err != nil {
-					utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to list workflows: %v", err))
-					return
-				}
-
-				if len(resp.Executions) > 0 {
-					jobInfo.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-					jobInfo.LastRunState = resp.Executions[0].Status.String()
-				} else {
-					jobInfo.LastRunTime = ""
-					jobInfo.LastRunState = ""
-				}
-				destJobs = append(destJobs, jobInfo)
-			}
-
+		var success bool
+		item.Jobs, success = buildJobDataItems(jobs, err, projectIDStr, "destination", c.tempClient, &c.Controller)
+		if !success {
+			return // Error occurred in buildJobDataItems
 		}
-		item.Jobs = destJobs
 
 		destItems = append(destItems, item)
-
 	}
+
 	utils.SuccessResponse(&c.Controller, destItems)
 }
 

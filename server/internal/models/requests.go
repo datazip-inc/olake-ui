@@ -1,68 +1,58 @@
 package models
 
+// Common fields for source/destination config
+type ConnectorConfig struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Version string `json:"version"`
+	Config  string `json:"config" orm:"type(jsonb)"`
+}
+
 // LoginRequest represents the expected JSON structure for login requests
 type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+// Spec request for getting specs
 type SpecRequest struct {
 	Type    string `json:"type"`
 	Version string `json:"version"`
 	Catalog string `json:"catalog"`
 }
+
+// Test connection requests
 type SourceTestConnectionRequest struct {
-	Type     string `json:"type"`
-	Version  string `json:"version"`
-	Config   string `json:"config" orm:"type(jsonb)"`
-	SourceID int    `json:"source_id"`
+	ConnectorConfig
+	SourceID int `json:"source_id"`
 }
+
 type DestinationTestConnectionRequest struct {
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	ConnectorConfig
 }
+
+// Create/Update source and destination requests
 type CreateSourceRequest struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	ConnectorConfig
 }
+
 type UpdateSourceRequest struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	ConnectorConfig
 }
+
 type CreateDestinationRequest struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	ConnectorConfig
 }
+
 type UpdateDestinationRequest struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	ConnectorConfig
 }
 
-// Job source configuration
-type JobSourceConfig struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Config  string `json:"config"`
-	Version string `json:"version"`
-}
+// Job source and destination configurations
+type JobSourceConfig = ConnectorConfig
+type JobDestinationConfig = ConnectorConfig
 
-// Job destination configuration
-type JobDestinationConfig struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Config  string `json:"config"`
-	Version string `json:"version"`
-}
-
-// CreateJobRequest represents the request body for creating a job
+// Create and update job requests
 type CreateJobRequest struct {
 	Name          string               `json:"name"`
 	Source        JobSourceConfig      `json:"source"`
@@ -72,7 +62,6 @@ type CreateJobRequest struct {
 	Activate      bool                 `json:"activate,omitempty"`
 }
 
-// UpdateJobRequest represents the request body for updating a job
 type UpdateJobRequest struct {
 	Name          string               `json:"name"`
 	Source        JobSourceConfig      `json:"source"`
