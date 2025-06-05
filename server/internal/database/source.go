@@ -61,9 +61,3 @@ func (r *SourceORM) GetByNameAndType(name, sourceType string, projectIDStr strin
 		All(&sources)
 	return sources, err
 }
-
-func (r *SourceORM) GetName(id int) (string, error) {
-	source := &models.Source{ID: id}
-	err := r.ormer.Read(source)
-	return source.Name, err
-}

@@ -136,7 +136,7 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (testResult.success) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -273,7 +273,7 @@ const JobCreation: React.FC = () => {
 				</div>
 			</div>
 
-			<div className="flex flex-1 overflow-auto border-t border-gray-200">
+			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&

@@ -164,7 +164,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				if (destination.type === "iceberg") {
 					try {
 						const catalogType = config.writer.catalog_type || "AWS Glue"
-						setInitialCatalog(catalogType)
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)

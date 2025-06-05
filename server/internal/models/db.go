@@ -73,6 +73,7 @@ type Job struct {
 	State         string       `json:"state" orm:"type(jsonb)"`
 	CreatedBy     *User        `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy     *User        `json:"updated_by" orm:"rel(fk)"`
+	ProjectID     string       `json:"project_id" orm:"column(project_id)"`
 }
 
 func (j *Job) TableName() string {

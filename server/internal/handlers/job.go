@@ -36,66 +36,26 @@ func (c *JobHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 	c.sourceORM = database.NewSourceORM()
 	c.destORM = database.NewDestinationORM()
-	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-	tempClient, err := temporal.NewClient(tempAddress)
+	var err error
+	c.tempClient, err = temporal.NewClient()
 	if err != nil {
-		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
 		logs.Error("Failed to create Temporal client: %v", err)
-	} else {
-		c.tempClient = tempClient
 	}
 }
 
 // @router /project/:projectid/jobs [get]
 func (c *JobHandler) GetAllJobs() {
-	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
+	// Get jobs with optional filtering
+	jobs, err := c.jobORM.GetAllByProjectID(projectIDStr)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
-	// Get optional query parameters for filtering
-	sourceID := c.GetString("source_id")
-	destID := c.GetString("dest_id")
-
-	var jobs []*models.Job
-	var getErr error
-
-	// Apply filters if provided
-	if sourceID != "" {
-		sourceIDInt, err := strconv.Atoi(sourceID)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-			return
-		}
-		jobs, getErr = c.jobORM.GetBySourceID(sourceIDInt)
-	} else if destID != "" {
-		destIDInt, err := strconv.Atoi(destID)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid destination ID")
-			return
-		}
-		jobs, getErr = c.jobORM.GetByDestinationID(destIDInt)
-	} else {
-		// Get jobs for the project
-		jobs, getErr = c.jobORM.GetAllByProjectID(projectID)
-	}
-
-	if getErr != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID")
 		return
 	}
 
 	// Transform to response format
 	jobResponses := make([]models.JobResponse, 0, len(jobs))
 	for _, job := range jobs {
-		// Get source and destination details
-		source := job.SourceID
-		dest := job.DestID
-
-		// Create response object
 		jobResp := models.JobResponse{
 			ID:            job.ID,
 			Name:          job.Name,
@@ -106,58 +66,45 @@ func (c *JobHandler) GetAllJobs() {
 			Activate:      job.Active,
 		}
 
-		// Set source details if available
-		if source != nil {
+		// Set source and destination details
+		if job.SourceID != nil {
 			jobResp.Source = models.JobSourceConfig{
-				Name:    source.Name,
-				Type:    source.Type,
-				Config:  source.Config,
-				Version: source.Version,
+				Name:    job.SourceID.Name,
+				Type:    job.SourceID.Type,
+				Config:  job.SourceID.Config,
+				Version: job.SourceID.Version,
 			}
 		}
 
-		// Set destination details if available
-		if dest != nil {
+		if job.DestID != nil {
 			jobResp.Destination = models.JobDestinationConfig{
-				Name:    dest.Name,
-				Type:    dest.DestType,
-				Config:  dest.Config,
-				Version: dest.Version,
+				Name:    job.DestID.Name,
+				Type:    job.DestID.DestType,
+				Config:  job.DestID.Config,
+				Version: job.DestID.Version,
 			}
 		}
 
-		// Set user details if available
+		// Set user details
 		if job.CreatedBy != nil {
 			jobResp.CreatedBy = job.CreatedBy.Username
 		}
-
 		if job.UpdatedBy != nil {
 			jobResp.UpdatedBy = job.UpdatedBy.Username
 		}
 
-		query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
-		fmt.Println("Query:", query)
-
-		// Only try to get workflow information if Temporal client is available
+		// Get workflow information if Temporal client is available
 		if c.tempClient != nil {
-			// List workflows using the direct query
-			resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+			query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
+			if resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
 				Query:    query,
 				PageSize: 1,
-			})
-			if err != nil {
-				// Log the error but continue without failing the request
+			}); err != nil {
 				logs.Error("Failed to list workflows: %v", err)
 			} else if len(resp.Executions) > 0 {
 				jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
 				jobResp.LastRunState = resp.Executions[0].Status.String()
-			} else {
-				jobResp.LastRunTime = ""
-				jobResp.LastRunState = ""
 			}
-		} else {
-			jobResp.LastRunTime = ""
-			jobResp.LastRunState = ""
 		}
 
 		jobResponses = append(jobResponses, jobResp)
@@ -170,12 +117,6 @@ func (c *JobHandler) GetAllJobs() {
 func (c *JobHandler) CreateJob() {
 	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	ProjectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
 	// Parse request body
 	var req models.CreateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -206,6 +147,7 @@ func (c *JobHandler) CreateJob() {
 		Frequency:     req.Frequency,
 		StreamsConfig: req.StreamsConfig,
 		State:         "{}",
+		ProjectID:     projectIDStr,
 	}
 	// Set user information
 	userID := c.GetSession(constants.SessionUserID)
@@ -225,17 +167,9 @@ func (c *JobHandler) CreateJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			job.SourceID.Type,
-			job.SourceID.Version,
 			job.Frequency,
-			job.SourceID.Config,
-			job.DestID.Config,
-			job.State,
-			job.StreamsConfig,
-			ProjectID,
+			job.ProjectID,
 			job.ID,
-			job.SourceID.ID,
-			job.DestID.ID,
 			false,
 		)
 		if err != nil {
@@ -252,11 +186,6 @@ func (c *JobHandler) CreateJob() {
 func (c *JobHandler) UpdateJob() {
 	// Get project ID and job ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -300,6 +229,7 @@ func (c *JobHandler) UpdateJob() {
 	existingJob.Frequency = req.Frequency
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.UpdatedAt = time.Now()
+	existingJob.ProjectID = projectIDStr
 
 	// Update user information
 	userID := c.GetSession(constants.SessionUserID)
@@ -317,23 +247,13 @@ func (c *JobHandler) UpdateJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			existingJob.SourceID.Type,
-			existingJob.SourceID.Version,
 			existingJob.Frequency,
-			existingJob.SourceID.Config,
-			existingJob.DestID.Config,
-			existingJob.State,
-			existingJob.StreamsConfig,
-			projectID,
+			existingJob.ProjectID,
 			existingJob.ID,
-			existingJob.SourceID.ID,
-			existingJob.DestID.ID,
 			false,
 		)
 		if err != nil {
-			fmt.Printf("Temporal workflow execution failed: %v", err)
-		} else {
-			fmt.Println("Successfully executed sync job via Temporal")
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
 		}
 	}
 
@@ -364,37 +284,36 @@ func (c *JobHandler) DeleteJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, struct {
-		Name string `json:"name"`
-	}{
+	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
 	})
 }
 
+// no need any more
 // @router /project/:projectid/jobs/:id/streams [get]
-func (c *JobHandler) GetJobStreams() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+// func (c *JobHandler) GetJobStreams() {
+// 	idStr := c.Ctx.Input.Param(":id")
+// 	id, err := strconv.Atoi(idStr)
+// 	if err != nil {
+// 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+// 		return
+// 	}
 
-	// Get job
-	job, err := c.jobORM.GetByID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
-		return
-	}
+// 	// Get job
+// 	job, err := c.jobORM.GetByID(id)
+// 	if err != nil {
+// 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+// 		return
+// 	}
 
-	utils.SuccessResponse(&c.Controller,
-		struct {
-			StreamsConfig string `json:"streams_config"`
-		}{
-			StreamsConfig: job.StreamsConfig,
-		},
-	)
-}
+// 	utils.SuccessResponse(&c.Controller,
+// 		struct {
+// 			StreamsConfig string `json:"streams_config"`
+// 		}{
+// 			StreamsConfig: job.StreamsConfig,
+// 		},
+// 	)
+// }
 
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
@@ -406,12 +325,6 @@ func (c *JobHandler) SyncJob() {
 	}
 
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
 	// Check if job exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
@@ -429,41 +342,18 @@ func (c *JobHandler) SyncJob() {
 		fmt.Println("Using Temporal workflow for sync job")
 		resp, err := c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
-			job.SourceID.Type,
-			job.SourceID.Version,
 			job.Frequency,
-			job.SourceID.Config,
-			job.DestID.Config,
-			job.State,
-			job.StreamsConfig,
-			projectID,
+			projectIDStr,
 			job.ID,
-			job.SourceID.ID,
-			job.DestID.ID,
 			true,
 		)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal excuetion failed: %v", err))
+			return
 		} else {
 			utils.SuccessResponse(&c.Controller, resp)
 		}
 	}
-
-	// Update job state with sync result from state.json
-	// stateMap := map[string]interface{}{
-	// 	"last_run_time":  time.Now().Format(time.RFC3339),
-	// 	"last_run_state": "success",
-	// 	"sync_state":     syncState,
-	// }
-	// stateJSON, _ := json.Marshal(syncState)
-	// job.State = string(stateJSON)
-	// job.Active = true
-	// //Update job in database
-	// if err := c.jobORM.Update(job); err != nil {
-	// 	utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job state")
-	// 	return
-	// }
-
 	utils.SuccessResponse(&c.Controller, nil)
 }
 
@@ -477,9 +367,7 @@ func (c *JobHandler) ActivateJob() {
 	}
 
 	// Parse request body
-	var req struct {
-		Activate bool `json:"activate"`
-	}
+	var req models.JobStatus
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
@@ -509,13 +397,7 @@ func (c *JobHandler) ActivateJob() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller,
-		struct {
-			Activate bool `json:"activate"`
-		}{
-			Activate: job.Active,
-		},
-	)
+	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/jobs/:id/tasks [get]
@@ -527,11 +409,6 @@ func (c *JobHandler) GetJobTasks() {
 		return
 	}
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
 
 	// Get job to verify it exists
 	job, err := c.jobORM.GetByID(id)
@@ -541,9 +418,7 @@ func (c *JobHandler) GetJobTasks() {
 	}
 	var tasks []models.JobTask
 	// Construct a query for workflows related to this project and job
-	// Using a simpler approach with ExecutionStatus and WorkflowType
-	query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
-	fmt.Println("Query:", query)
+	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
 	// List workflows using the direct query
 	resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
@@ -616,7 +491,6 @@ func (c *JobHandler) GetTaskLogs() {
 
 	// Since there is only one sync folder in logs, we can get it directly
 	files, err := os.ReadDir(logsDir)
-	fmt.Println(files)
 	if err != nil || len(files) == 0 {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync log directory found")
 		return

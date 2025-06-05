@@ -538,7 +538,7 @@ const JobEdit: React.FC = () => {
 
 			{/* Main content */}
 			<div
-				className={`flex flex-1 overflow-auto border-gray-200 ${
+				className={`flex flex-1 overflow-hidden border-gray-200 ${
 					currentStep === "config" || currentStep === "schema" ? "border-t" : ""
 				}`}
 			>

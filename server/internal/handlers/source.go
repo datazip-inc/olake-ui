@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"go.temporal.io/api/workflowservice/v1"
 
@@ -32,14 +32,11 @@ func (c *SourceHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 
 	// Initialize Temporal client
-	tempAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-	tempClient, err := temporal.NewClient(tempAddress)
+	var err error
+	c.tempClient, err = temporal.NewClient()
 	if err != nil {
-		// Log the error but continue - we'll fall back to direct Docker execution if Temporal fails
-		fmt.Printf("Failed to create Temporal client: %v\n", err)
+		logs.Error("Failed to create Temporal client: %v", err)
 	}
-	c.tempClient = tempClient
-	c.tempClient = tempClient
 }
 
 // @router /project/:projectid/sources [get]
@@ -50,12 +47,6 @@ func (c *SourceHandler) GetAllSources() {
 		return
 	}
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	projectID, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
 	// Format response data
 	sourceItems := make([]models.SourceDataItem, 0, len(sources))
 	for _, source := range sources {
@@ -78,10 +69,9 @@ func (c *SourceHandler) GetAllSources() {
 		if source.UpdatedBy != nil {
 			item.UpdatedBy = source.UpdatedBy.Username
 		}
-
+		sourceJobs := make([]models.JobDataItem, 0)
 		// Fetch associated jobs for this source
 		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		sourceJobs := make([]models.JobDataItem, 0) // always initialize
 		if err == nil {
 			for _, job := range jobs {
 				jobInfo := models.JobDataItem{
@@ -95,7 +85,7 @@ func (c *SourceHandler) GetAllSources() {
 					jobInfo.DestinationType = job.DestID.DestType
 				}
 
-				query := fmt.Sprintf("WorkflowId between 'sync-%d-%d' and 'sync-%d-%d-~'", projectID, job.ID, projectID, job.ID)
+				query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
 				fmt.Println("Query:", query)
 				// List workflows using the direct query
 				resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
@@ -144,8 +134,7 @@ func (c *SourceHandler) CreateSource() {
 	}
 
 	// Get project ID if needed
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	source.ProjectID = projectIDStr
+	source.ProjectID = c.Ctx.Input.Param(":projectid")
 
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
@@ -158,8 +147,6 @@ func (c *SourceHandler) CreateSource() {
 		source.CreatedBy = user
 		source.UpdatedBy = user
 	}
-	fmt.Printf("source: %+v\n", source)
-
 	if err := c.sourceORM.Create(source); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create source: %s", err))
 		return
@@ -170,19 +157,12 @@ func (c *SourceHandler) CreateSource() {
 
 // @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-		return
-	}
-
+	id := GetIDFromPath(&c.Controller)
 	var req models.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
 	// Get existing source
 	existingSource, err := c.sourceORM.GetByID(id)
 	if err != nil {
@@ -213,33 +193,37 @@ func (c *SourceHandler) UpdateSource() {
 
 // @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
+	id := GetIDFromPath(&c.Controller)
+	source, err := c.sourceORM.GetByID(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
-	name, err := c.sourceORM.GetName(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
-		return
-	}
+
+	// Get all jobs using this source
 	jobs, err := c.jobORM.GetBySourceID(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
-
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs for source")
+		return
 	}
+
+	// Deactivate all jobs using this source
 	for _, job := range jobs {
 		job.Active = false
+		if err := c.jobORM.Update(job); err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this source")
+			return
+		}
 	}
 
+	// Delete the source
 	if err := c.sourceORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return
 	}
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
-		Name: name,
+		Name: source.Name,
 	})
 }
 
@@ -251,10 +235,6 @@ func (c *SourceHandler) TestConnection() {
 		return
 	}
 	result, _ := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
-	// if err != nil {
-	// 	//utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection")
-	// 	return
-	// }
 	utils.SuccessResponse(&c.Controller, result)
 
 }
@@ -270,11 +250,6 @@ func (c *SourceHandler) GetSourceCatalog() {
 	var err error
 	// Try to use Temporal if available
 	if c.tempClient != nil {
-		fmt.Println("Using Temporal workflow for catalog discovery")
-
-		// Create a unique workflow ID
-		// workflowID := fmt.Sprintf("discover-catalog-%s-%d", req.Type, time.Now().Unix())
-		// fmt.Printf("Starting workflow with ID: %s\n", workflowID)
 		// Execute the workflow using Temporal
 		catalog, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),
@@ -292,46 +267,28 @@ func (c *SourceHandler) GetSourceCatalog() {
 
 // @router /sources/:id/jobs [get]
 func (c *SourceHandler) GetSourceJobs() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-		return
-	}
-
+	id := GetIDFromPath(&c.Controller)
 	// Check if source exists
-	_, err = c.sourceORM.GetByID(id)
+	_, err := c.sourceORM.GetByID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
 
 	// Create a job ORM and get jobs by source ID
-	jobORM := database.NewJobORM()
-	jobs, err := jobORM.GetBySourceID(id)
+	jobs, err := c.jobORM.GetBySourceID(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
 		return
 	}
-
 	// Format as required by API contract
-	response := map[string]interface{}{
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"jobs": jobs,
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	})
 }
 
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
-	// Get project ID from path
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	_, err := strconv.Atoi(projectIDStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid project ID")
-		return
-	}
-
 	// Get source type from query parameter
 	sourceType := c.GetString("type")
 	if sourceType == "" {
@@ -347,12 +304,9 @@ func (c *SourceHandler) GetSourceVersions() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
 		return
 	}
-
-	response := map[string]interface{}{
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	})
 }
 
 // @router /project/:projectid/sources/spec [get]
