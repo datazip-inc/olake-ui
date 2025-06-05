@@ -4,16 +4,9 @@ import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
 import React from "react"
 import DeleteModal from "../../common/Modals/DeleteModal"
-import { Entity } from "../../../types"
+import { Entity, SourceTableProps } from "../../../types"
 import { PAGE_SIZE } from "../../../utils/constants"
 import JobConnection from "../../common/components/JobConnection"
-
-interface SourceTableProps {
-	sources: Entity[]
-	loading: boolean
-	onEdit: (id: string) => void
-	onDelete: (source: Entity) => void
-}
 
 const renderJobConnection = (record: Entity) => {
 	const jobs = record.jobs as any[]
@@ -27,6 +20,7 @@ const renderJobConnection = (record: Entity) => {
 			destinationType={jobs[0].destination_type || ""}
 			jobName={jobs[0].name}
 			remainingJobs={jobs.length - 1}
+			jobs={jobs}
 		/>
 	)
 }

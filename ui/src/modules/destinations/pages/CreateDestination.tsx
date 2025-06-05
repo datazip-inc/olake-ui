@@ -1,15 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Input, message, Radio, Select, Spin } from "antd"
+import { Input, message, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import {
-	ArrowLeft,
-	ArrowRight,
-	GenderNeuter,
-	Notebook,
-} from "@phosphor-icons/react"
-import AWSS3Icon from "../../../assets/AWSS3.svg"
-import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
+import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
@@ -26,84 +19,30 @@ import {
 import {
 	CATALOG_TYPES,
 	CONNECTOR_TYPES,
+	IcebergCatalogTypes,
+	mapCatalogValueToType,
 	SETUP_TYPES,
 } from "../../../utils/constants"
-import { CatalogType } from "../../../types"
+import {
+	CatalogType,
+	CreateDestinationProps,
+	DestinationConfig,
+	ExtendedDestination,
+	SelectOption,
+	SetupType,
+} from "../../../types"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import EndpointTitle from "../../../utils/EndpointTitle"
+import FormField from "../../../utils/FormField"
+import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import { connectorOptions } from "../components/connectorOptions"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
-type SetupType = (typeof SETUP_TYPES)[keyof typeof SETUP_TYPES]
-
-interface DestinationConfig {
-	[key: string]: any
-	catalog?: string
-	catalog_type?: string
-	writer?: {
-		catalog?: string
-		catalog_type?: string
-	}
-}
-
-interface Destination {
-	id: string | number
-	name: string
-	type: string
-	version: string
-	config: string | DestinationConfig
-}
-
-interface ExtendedDestination extends Destination {
-	config: DestinationConfig
-}
-
-interface CreateDestinationProps {
-	fromJobFlow?: boolean
-	hitBack?: boolean
-	fromJobEditFlow?: boolean
-	existingDestinationId?: string
-	onComplete?: () => void
-	stepNumber?: number
-	stepTitle?: string
-	initialConfig?: {
-		name: string
-		type: string
-		config?: DestinationConfig
-	}
-	initialFormData?: DestinationConfig
-	initialName?: string
-	initialConnector?: string
-	initialCatalog?: CatalogType | null
-	onDestinationNameChange?: (name: string) => void
-	onConnectorChange?: (connector: string) => void
-	onFormDataChange?: (formData: DestinationConfig) => void
-	onVersionChange?: (version: string) => void
-	onCatalogTypeChange?: (catalog: CatalogType | null) => void
-}
 
 // Create ref handle interface
 export interface CreateDestinationHandle {
 	validateDestination: () => Promise<boolean>
 }
-
-type FormFieldProps = {
-	label: string
-	required?: boolean
-	children: React.ReactNode
-	error?: string | null
-}
-
-const FormField = ({ label, required, children, error }: FormFieldProps) => (
-	<div className="w-1/3">
-		<label className="mb-2 block text-sm font-medium text-gray-700">
-			{label}
-			{required && <span className="text-red-500">*</span>}
-		</label>
-		{children}
-		{error && <div className="mt-1 text-sm text-red-500">{error}</div>}
-	</div>
-)
-
-type SelectOption = { value: string; label: React.ReactNode | string }
 
 const CreateDestination = forwardRef<
 	CreateDestinationHandle,
@@ -113,8 +52,6 @@ const CreateDestination = forwardRef<
 		{
 			fromJobFlow = false,
 			hitBack = false,
-			fromJobEditFlow = false,
-			existingDestinationId,
 			onComplete,
 			stepNumber,
 			stepTitle,
@@ -131,7 +68,7 @@ const CreateDestination = forwardRef<
 		},
 		ref,
 	) => {
-		const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
+		const [setupType, setSetupType] = useState(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
 				? CONNECTOR_TYPES.AMAZON_S3
@@ -186,17 +123,6 @@ const CreateDestination = forwardRef<
 			return config as DestinationConfig
 		}
 
-		const mapCatalogValueToType = (
-			catalogValue: string,
-		): CatalogType | null => {
-			if (catalogValue === "none") return CATALOG_TYPES.NONE
-			if (catalogValue === "glue") return CATALOG_TYPES.AWS_GLUE
-			if (catalogValue === "rest") return CATALOG_TYPES.REST_CATALOG
-			if (catalogValue === "jdbc") return CATALOG_TYPES.JDBC_CATALOG
-			if (catalogValue === "hive") return CATALOG_TYPES.HIVE_CATALOG
-			return null
-		}
-
 		useEffect(() => {
 			if (!destinations.length) {
 				fetchDestinations()
@@ -232,20 +158,6 @@ const CreateDestination = forwardRef<
 				)
 			}
 		}, [initialConnector])
-
-		useEffect(() => {
-			if (fromJobEditFlow && existingDestinationId) {
-				setSetupType(SETUP_TYPES.EXISTING)
-				const selectedDestination = destinations.find(
-					d => d.id.toString() === existingDestinationId,
-				) as ExtendedDestination | undefined
-
-				if (selectedDestination) {
-					setDestinationName(selectedDestination.name)
-					setConnector(selectedDestination.type as ConnectorType)
-				}
-			}
-		}, [fromJobEditFlow, existingDestinationId, destinations])
 
 		useEffect(() => {
 			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
@@ -285,10 +197,7 @@ const CreateDestination = forwardRef<
 
 						try {
 							const config = parseDestinationConfig(destination.config)
-							return (
-								config?.writer?.catalog === catalogLowerCase ||
-								config?.writer?.catalog_type === catalogLowerCase
-							)
+							return config?.writer?.catalog_type === catalogLowerCase
 						} catch {
 							return false
 						}
@@ -512,66 +421,23 @@ const CreateDestination = forwardRef<
 			}
 		}
 
-		const renderConnectorOption = (
-			value: string,
-			icon: string,
-			label: string,
-		): SelectOption => ({
-			value,
-			label: (
-				<div className="flex items-center">
-					<img
-						src={icon}
-						alt={label}
-						className="mr-2 size-5"
-					/>
-					<span>{label}</span>
-				</div>
-			),
-		})
-
-		const connectorOptions: SelectOption[] = [
-			renderConnectorOption(CONNECTOR_TYPES.AMAZON_S3, AWSS3Icon, "Amazon S3"),
-			renderConnectorOption(
-				CONNECTOR_TYPES.APACHE_ICEBERG,
-				ApacheIceBerg,
-				"Apache Iceberg",
-			),
-		]
-
 		const catalogOptions: SelectOption[] =
 			connector === CONNECTOR_TYPES.APACHE_ICEBERG
-				? [
-						{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
-						{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
-						{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC Catalog" },
-						{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive Catalog" },
-					]
+				? IcebergCatalogTypes
 				: [{ value: CATALOG_TYPES.NONE, label: "None" }]
 
-		const setupTypeSelector = () =>
-			!fromJobEditFlow && (
-				<div className="mb-4 flex">
-					<Radio.Group
-						value={setupType}
-						onChange={e => setSetupType(e.target.value as SetupType)}
-						className="flex"
-					>
-						<Radio
-							value={SETUP_TYPES.NEW}
-							className="mr-8"
-						>
-							Set up a new destination
-						</Radio>
-						<Radio value={SETUP_TYPES.EXISTING}>
-							Use an existing destination
-						</Radio>
-					</Radio.Group>
-				</div>
-			)
+		const setupTypeSelector = () => (
+			<SetupTypeSelector
+				value={setupType as SetupType}
+				onChange={value => setSetupType(value)}
+				newLabel="Set up a new destination"
+				existingLabel="Use an existing destination"
+				fromJobFlow={fromJobFlow}
+			/>
+		)
 
 		const newDestinationForm = () =>
-			setupType === SETUP_TYPES.NEW && !fromJobEditFlow ? (
+			setupType === SETUP_TYPES.NEW ? (
 				<>
 					<div className="flex-start flex w-full gap-12">
 						<FormField label="Connector:">
@@ -631,7 +497,6 @@ const CreateDestination = forwardRef<
 								value={connector}
 								onChange={handleConnectorChange}
 								className="h-8 w-full"
-								disabled={fromJobEditFlow}
 								options={connectorOptions}
 							/>
 						</FormField>
@@ -641,10 +506,7 @@ const CreateDestination = forwardRef<
 								value={catalog || CATALOG_TYPES.NONE}
 								onChange={handleCatalogChange}
 								className="h-8 w-full"
-								disabled={
-									fromJobEditFlow ||
-									connector !== CONNECTOR_TYPES.APACHE_ICEBERG
-								}
+								disabled={connector !== CONNECTOR_TYPES.APACHE_ICEBERG}
 								options={catalogOptions}
 							/>
 						</FormField>
@@ -652,16 +514,13 @@ const CreateDestination = forwardRef<
 
 					<div className="w-3/5">
 						<label className="mb-2 block text-sm font-medium text-gray-700">
-							{fromJobEditFlow
-								? "Destination:"
-								: "Select existing destination:"}
+							Select existing destination:
 						</label>
 						<Select
 							placeholder="Select a destination"
 							className="w-full"
 							onChange={handleExistingDestinationSelect}
-							value={fromJobEditFlow ? existingDestinationId : undefined}
-							disabled={fromJobEditFlow}
+							value={undefined}
 							options={filteredDestinations.map(d => ({
 								value: d.id,
 								label: d.name,
@@ -682,12 +541,7 @@ const CreateDestination = forwardRef<
 					) : (
 						schema && (
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-								<div className="mb-4 flex items-center">
-									<div className="mb-2 flex items-center gap-1">
-										<GenderNeuter className="size-5" />
-										<div className="text-base font-medium">Endpoint config</div>
-									</div>
-								</div>
+								<EndpointTitle title="Endpoint config" />
 								<FixedSchemaForm
 									schema={schema}
 									{...(uiSchema ? { uiSchema } : {})}
@@ -780,9 +634,7 @@ const CreateDestination = forwardRef<
 				/>
 				<EntityCancelModal
 					type="destination"
-					navigateTo={
-						fromJobEditFlow ? "jobs" : fromJobFlow ? "jobs/new" : "destinations"
-					}
+					navigateTo={fromJobFlow ? "jobs/new" : "destinations"}
 				/>
 			</div>
 		)

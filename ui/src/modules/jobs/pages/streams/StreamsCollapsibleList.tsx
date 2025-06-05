@@ -1,48 +1,8 @@
 import { Checkbox, Empty } from "antd"
 import { useEffect, useState } from "react"
 import StreamPanel from "./StreamPanel"
-import { StreamData } from "../../../../types"
+import { GroupedStreamsCollapsibleListProps } from "../../../../types"
 import { CaretDown, CaretRight } from "@phosphor-icons/react"
-
-interface GroupedStreamsCollapsibleListProps {
-	groupedStreams: { [namespace: string]: StreamData[] }
-	selectedStreams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
-	}
-	setActiveStreamData: (stream: StreamData) => void
-	activeStreamData: StreamData | null
-	onStreamSelect: (
-		streamName: string,
-		checked: boolean,
-		namespace: string,
-	) => void
-	setSelectedStreams: React.Dispatch<
-		React.SetStateAction<
-			| string[]
-			| {
-					[namespace: string]: {
-						stream_name: string
-						partition_regex: string
-						normalization: boolean
-					}[]
-			  }
-			| {
-					selected_streams: {
-						[namespace: string]: {
-							stream_name: string
-							partition_regex: string
-							normalization: boolean
-						}[]
-					}
-					streams: StreamData[]
-			  }
-		>
-	>
-}
 
 const StreamsCollapsibleList = ({
 	groupedStreams,

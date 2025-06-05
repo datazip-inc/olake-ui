@@ -66,13 +66,15 @@ const TestConnectionFailureModal = () => {
 						onClick={handleBackToPath}
 						className="w-fit rounded-md border border-[#d9d9d9] px-4 py-2 text-black"
 					>
-						{isFromSources ? "Back to Sources" : "Back to Destinations"}
+						{isFromSources
+							? "Back to Sources Page"
+							: "Back to Destinations Page"}
 					</button>
 					<button
 						onClick={handleCancel}
 						className="w-fit flex-1 rounded-md border border-[#f5222d] px-4 py-2 text-[#f5222d]"
 					>
-						Cancel
+						Update
 					</button>
 				</div>
 			</div>

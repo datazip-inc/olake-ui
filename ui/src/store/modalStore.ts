@@ -51,5 +51,3 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	setShowEditSourceModal: show => set({ showEditSourceModal: show }),
 	setShowEditDestinationModal: show => set({ showEditDestinationModal: show }),
 })
-
-

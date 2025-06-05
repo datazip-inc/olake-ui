@@ -1,11 +1,13 @@
 import { Tooltip } from "antd"
 import { getConnectorImage } from "../../../utils/utils"
+import { EntityJob } from "../../../types"
 
 interface JobConnectionProps {
 	sourceType: string
 	destinationType: string
 	jobName: string
 	remainingJobs?: number
+	jobs: EntityJob[]
 }
 
 const JobConnection: React.FC<JobConnectionProps> = ({
@@ -13,7 +15,13 @@ const JobConnection: React.FC<JobConnectionProps> = ({
 	destinationType,
 	jobName,
 	remainingJobs = 0,
+	jobs,
 }) => {
+	const remainingJobNames = jobs
+		.slice(1)
+		.map(job => job.name)
+		.join(", ")
+
 	return (
 		<div className="flex-end flex w-fit flex-col items-end gap-3">
 			<div className="mb-1 flex items-center">
@@ -40,9 +48,11 @@ const JobConnection: React.FC<JobConnectionProps> = ({
 						/>
 					</div>
 					{remainingJobs > 0 && (
-						<div className="cursor-pointer items-end text-sm font-bold text-[#203FDD]">
-							+{remainingJobs} more jobs
-						</div>
+						<Tooltip title={remainingJobNames}>
+							<div className="cursor-pointer items-end text-sm font-bold text-[#203FDD]">
+								+{remainingJobs} more jobs
+							</div>
+						</Tooltip>
 					)}
 				</div>
 			</div>

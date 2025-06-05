@@ -1,13 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { message, Radio, Select, Spin } from "antd"
+import { message, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import {
-	ArrowLeft,
-	ArrowRight,
-	GenderNeuter,
-	Notebook,
-} from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
@@ -16,90 +11,23 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
 import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import { sourceService } from "../../../api/services/sourceService"
-import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
+import { getConnectorLabel } from "../../../utils/utils"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-
-type SetupType = "new" | "existing"
-
-interface SourceConfig {
-	name: string
-	type: string
-	config?: any
-	version?: string
-}
-
-interface ConnectorOption {
-	value: string
-	label: React.ReactNode
-}
-
-interface Source {
-	id: string | number
-	name: string
-	type: string
-	version: string
-	config?: any
-}
-
-interface CreateSourceProps {
-	fromJobFlow?: boolean
-	fromJobEditFlow?: boolean
-	existingSourceId?: string
-	onComplete?: () => void
-	stepNumber?: string
-	stepTitle?: string
-	initialConfig?: SourceConfig
-	initialFormData?: any
-	initialName?: string
-	initialConnector?: string
-	onSourceNameChange?: (name: string) => void
-	onConnectorChange?: (connector: string) => void
-	onFormDataChange?: (formData: any) => void
-	onVersionChange?: (version: string) => void
-}
+import { SetupType, Source, CreateSourceProps } from "../../../types"
+import EndpointTitle from "../../../utils/EndpointTitle"
+import FormField from "../../../utils/FormField"
+import connectorOptions from "../components/connectorOptions"
+import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
 	validateSource: () => Promise<boolean>
 }
 
-interface FormFieldProps {
-	label: string
-	required?: boolean
-	children: React.ReactNode
-	error?: string | null
-}
-
-const FormField = ({ label, required, children, error }: FormFieldProps) => (
-	<div className="w-full">
-		<label className="mb-2 block text-sm font-medium text-gray-700">
-			{label}
-			{required && <span className="text-red-500">*</span>}
-		</label>
-		{children}
-		{error && <div className="mt-1 text-sm text-red-500">{error}</div>}
-	</div>
-)
-
-interface EndpointTitleProps {
-	title?: string
-}
-
-const EndpointTitle = ({ title = "Endpoint config" }: EndpointTitleProps) => (
-	<div className="mb-4 flex items-center gap-1">
-		<div className="mb-2 flex items-center gap-2">
-			<GenderNeuter className="size-5" />
-			<div className="text-base font-medium">{title}</div>
-		</div>
-	</div>
-)
-
 const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 	(
 		{
 			fromJobFlow = false,
-			fromJobEditFlow = false,
-			existingSourceId,
 			onComplete,
 			stepNumber,
 			stepTitle,
@@ -142,48 +70,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setSourceTestConnectionError,
 		} = useAppStore()
 
-		const connectorOptions: ConnectorOption[] = [
-			{
-				value: "MongoDB",
-				label: (
-					<div className="flex items-center">
-						<img
-							src={getConnectorImage("MongoDB")}
-							alt="MongoDB"
-							className="mr-2 size-5"
-						/>
-						<span>MongoDB</span>
-					</div>
-				),
-			},
-			{
-				value: "Postgres",
-				label: (
-					<div className="flex items-center">
-						<img
-							src={getConnectorImage("Postgres")}
-							alt="Postgres"
-							className="mr-2 size-5"
-						/>
-						<span>Postgres</span>
-					</div>
-				),
-			},
-			{
-				value: "MySQL",
-				label: (
-					<div className="flex items-center">
-						<img
-							src={getConnectorImage("MySQL")}
-							alt="MySQL"
-							className="mr-2 size-5"
-						/>
-						<span>MySQL</span>
-					</div>
-				),
-			},
-		]
-
 		useEffect(() => {
 			if (!sources.length) {
 				fetchSources()
@@ -201,22 +87,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setFormData(initialFormData)
 			}
 		}, [initialFormData])
-
-		useEffect(() => {
-			if (fromJobEditFlow && existingSourceId) {
-				setSetupType("existing")
-
-				const selectedSource = sources.find(
-					s => String(s.id) === existingSourceId,
-				)
-
-				if (selectedSource) {
-					setSourceName(selectedSource.name)
-					setConnector(selectedSource.type)
-					setSelectedVersion(selectedSource.version)
-				}
-			}
-		}, [fromJobEditFlow, existingSourceId, sources])
 
 		useEffect(() => {
 			if (setupType === "existing") {
@@ -288,9 +158,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const validateSource = async (): Promise<boolean> => {
 			setValidating(true)
-
 			let isValid = true
-
 			if (setupType === "new") {
 				if (!sourceName.trim()) {
 					setSourceNameError("Source name is required")
@@ -300,13 +168,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					setSourceNameError(null)
 				}
 			}
-
 			if (setupType === "new" && schema) {
 				const schemaErrors = validateFormData(formData, schema)
 				setFormErrors(schemaErrors)
 				isValid = isValid && Object.keys(schemaErrors).length === 0
 			}
-
 			return isValid
 		}
 
@@ -426,7 +292,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						value={connector}
 						onChange={handleConnectorChange}
 						className={setupType === "new" ? "h-8 w-full" : "w-full"}
-						disabled={fromJobEditFlow}
 						options={connectorOptions}
 						{...(setupType !== "new"
 							? { style: { boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" } }
@@ -483,14 +348,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 				<div className="w-1/3">
 					<label className="mb-2 block text-sm font-medium text-gray-700">
-						{fromJobEditFlow ? "Source:" : "Select existing source:"}
+						Select existing source:
 					</label>
 					<Select
 						placeholder="Select a source"
 						className="w-full"
 						onChange={handleExistingSourceSelect}
-						value={fromJobEditFlow ? existingSourceId : undefined}
-						disabled={fromJobEditFlow}
+						value={undefined}
 						options={filteredSources.map(s => ({
 							value: s.id,
 							label: s.name,
@@ -500,24 +364,15 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			</div>
 		)
 
-		const renderSetupTypeSelector = () =>
-			!fromJobEditFlow && (
-				<div className="mb-4 flex">
-					<Radio.Group
-						value={setupType}
-						onChange={e => setSetupType(e.target.value)}
-						className="flex"
-					>
-						<Radio
-							value="new"
-							className="mr-8"
-						>
-							Set up a new source
-						</Radio>
-						<Radio value="existing">Use an existing source</Radio>
-					</Radio.Group>
-				</div>
-			)
+		const renderSetupTypeSelector = () => (
+			<SetupTypeSelector
+				value={setupType as SetupType}
+				onChange={setSetupType}
+				newLabel="Set up a new source"
+				existingLabel="Use an existing source"
+				fromJobFlow={fromJobFlow}
+			/>
+		)
 
 		const renderSchemaForm = () =>
 			setupType === "new" && (
@@ -575,7 +430,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 								{renderSetupTypeSelector()}
 
-								{setupType === "new" && !fromJobEditFlow
+								{setupType === "new"
 									? renderNewSourceForm()
 									: renderExistingSourceForm()}
 							</div>
@@ -593,7 +448,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				</div>
 
 				{/* Footer */}
-				{!fromJobFlow && !fromJobEditFlow && (
+				{!fromJobFlow && (
 					<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 						<button
 							onClick={handleCancel}
@@ -622,9 +477,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				/>
 				<EntityCancelModal
 					type="source"
-					navigateTo={
-						fromJobEditFlow ? "jobs" : fromJobFlow ? "jobs/new" : "sources"
-					}
+					navigateTo={fromJobFlow ? "jobs/new" : "sources"}
 				/>
 			</div>
 		)

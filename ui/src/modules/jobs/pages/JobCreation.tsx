@@ -19,15 +19,16 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import { CatalogType, JobBase, JobCreationSteps } from "../../../types"
-import { getConnectorInLowerCase } from "../../../utils/utils"
+import {
+	getConnectorInLowerCase,
+	getReplicationFrequency,
+} from "../../../utils/utils"
 import { destinationService, sourceService } from "../../../api"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
 	const [docsMinimized, setDocsMinimized] = useState(true)
-
-	// Source and destination states
 	const [sourceName, setSourceName] = useState("")
 	const [sourceConnector, setSourceConnector] = useState("MongoDB")
 	const [sourceFormData, setSourceFormData] = useState<any>({})
@@ -61,35 +62,6 @@ const JobCreation: React.FC = () => {
 
 	const sourceRef = useRef<CreateSourceHandle>(null)
 	const destinationRef = useRef<CreateDestinationHandle>(null)
-
-	const getReplicationFrequency = () => {
-		if (replicationFrequency.includes(" ")) {
-			const parts = replicationFrequency.split(" ")
-			const value = parts[0]
-			const unit = parts[1].toLowerCase()
-
-			if (unit.includes("minute")) return `${value} minutes`
-			if (unit.includes("hour")) return "hourly"
-			if (unit.includes("day")) return "daily"
-			if (unit.includes("week")) return "weekly"
-			if (unit.includes("month")) return "monthly"
-			if (unit.includes("year")) return "yearly"
-		}
-
-		if (replicationFrequency === "minutes") {
-			return "minutes"
-		} else if (replicationFrequency === "hours") {
-			return "hourly"
-		} else if (replicationFrequency === "days") {
-			return "daily"
-		} else if (replicationFrequency === "weeks") {
-			return "weekly"
-		} else if (replicationFrequency === "months") {
-			return "monthly"
-		} else if (replicationFrequency === "years") {
-			return "yearly"
-		}
-	}
 
 	const handleNext = async () => {
 		setHitBack(false)
@@ -164,7 +136,7 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (testResult.success) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -258,7 +230,7 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: replicationFrequency
-				? getReplicationFrequency() || "hourly"
+				? getReplicationFrequency(replicationFrequency) || "hourly"
 				: "hourly",
 			activate: false,
 			created_at: new Date().toISOString(),
@@ -301,7 +273,7 @@ const JobCreation: React.FC = () => {
 				</div>
 			</div>
 
-			<div className="flex flex-1 overflow-auto border-t border-gray-200">
+			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&

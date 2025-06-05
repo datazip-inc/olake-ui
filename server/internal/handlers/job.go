@@ -186,12 +186,7 @@ func (c *JobHandler) CreateJob() {
 func (c *JobHandler) UpdateJob() {
 	// Get project ID and job ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 
 	// Parse request body
 	var req models.UpdateJobRequest

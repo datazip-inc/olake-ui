@@ -37,3 +37,9 @@ export interface EntityTestResponse {
 	message: string
 	status: "FAILED" | "SUCCEEDED"
 }
+
+export type EntityType = "source" | "destination"
+
+export interface EntityEditModalProps {
+	entityType: EntityType
+}

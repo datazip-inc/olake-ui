@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand"
-import type { Entity } from '../types'
+import type { Entity } from "../types"
 
 export interface SelectionSlice {
 	selectedJobId: string | null
@@ -21,5 +21,5 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = set => ({
 	setSelectedHistoryId: id => set({ selectedHistoryId: id }),
 	setSelectedSource: source => set({ selectedSource: source }),
 	setSelectedDestination: destination =>
-    set({ selectedDestination: destination }),
+		set({ selectedDestination: destination }),
 })

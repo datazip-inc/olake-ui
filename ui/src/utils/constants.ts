@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { NavItem } from "../types"
+import { CatalogType, NavItem } from "../types"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -68,3 +68,53 @@ export const NAV_ITEMS: NavItem[] = [
 	{ path: "/sources", label: "Sources", icon: LinktreeLogo },
 	{ path: "/destinations", label: "Destinations", icon: Path },
 ]
+
+export const sourceTabs = [
+	{ key: "active", label: "Active sources" },
+	{ key: "inactive", label: "Inactive sources" },
+]
+
+export const mapCatalogValueToType = (
+	catalogValue: string,
+): CatalogType | null => {
+	if (catalogValue === "none") return CATALOG_TYPES.NONE
+	if (catalogValue === "glue") return CATALOG_TYPES.AWS_GLUE
+	if (catalogValue === "rest") return CATALOG_TYPES.REST_CATALOG
+	if (catalogValue === "jdbc") return CATALOG_TYPES.JDBC_CATALOG
+	if (catalogValue === "hive") return CATALOG_TYPES.HIVE_CATALOG
+	return null
+}
+
+export const IcebergCatalogTypes = [
+	{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
+	{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
+	{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC Catalog" },
+	{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive Catalog" },
+]
+
+export const destinationTabs = [
+	{ key: "active", label: "Active destinations" },
+	{ key: "inactive", label: "Inactive destinations" },
+]
+
+export const COLORS = {
+	selected: {
+		border: "#203FDD",
+		text: "#203FDD",
+	},
+	unselected: {
+		border: "#D9D9D9",
+		text: "#575757",
+	},
+} as const
+
+export const steps: string[] = ["source", "destination", "schema", "config"]
+
+export const TAB_STYLES = {
+	active:
+		"border border-[#203FDD] bg-white text-[#203FDD] rounded-[6px] py-1 px-2",
+	inactive: "bg-[#F5F5F5] text-slate-900 py-1 px-2",
+	hover: "hover:text-[#203FDD]",
+}
+
+export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
