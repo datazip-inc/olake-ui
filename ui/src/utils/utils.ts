@@ -222,3 +222,22 @@ export const getLogTextColor = (level: string) => {
 			return "text-[#000000"
 	}
 }
+
+export const getCatalogName = (catalogType: string) => {
+	switch (catalogType?.toLowerCase()) {
+		case "glue":
+		case "aws glue":
+			return "AWS Glue"
+		case "rest":
+		case "rest catalog":
+			return "REST Catalog"
+		case "jdbc":
+		case "jdbc catalog":
+			return "JDBC Catalog"
+		case "hive":
+		case "hive catalog":
+			return "Hive Catalog"
+		default:
+			return null
+	}
+}

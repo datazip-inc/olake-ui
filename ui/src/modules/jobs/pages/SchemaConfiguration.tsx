@@ -47,7 +47,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const initialized = React.useRef(!!initialStreamsData)
 
 	useEffect(() => {
-		if (initialStreamsData) {
+		if (
+			initialStreamsData &&
+			initialStreamsData.selected_streams &&
+			Object.keys(initialStreamsData.selected_streams).length > 0
+		) {
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
 			setLoading(false)

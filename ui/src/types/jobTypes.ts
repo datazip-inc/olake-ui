@@ -1,3 +1,5 @@
+import { EntityJob } from "./entityTypes"
+
 export interface Job {
 	id: number
 	name: string
@@ -79,4 +81,12 @@ export interface JobConfigurationProps {
 	setNotifyOnSchemaChanges: React.Dispatch<React.SetStateAction<boolean>>
 	stepNumber?: number | string
 	stepTitle?: string
+}
+
+export interface JobConnectionProps {
+	sourceType: string
+	destinationType: string
+	jobName: string
+	remainingJobs?: number
+	jobs: EntityJob[]
 }

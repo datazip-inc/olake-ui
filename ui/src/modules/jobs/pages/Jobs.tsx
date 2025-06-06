@@ -162,7 +162,7 @@ const Jobs: React.FC = () => {
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
 							description="No jobs configured"
-							className="flex flex-col items-start"
+							className="flex flex-col items-center"
 						/>
 					) : (
 						<JobTable

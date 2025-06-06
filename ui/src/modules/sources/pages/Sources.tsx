@@ -57,9 +57,19 @@ const Sources: React.FC = () => {
 
 	const filteredSources = (): Entity[] => {
 		if (activeTab === "active") {
-			return sources.filter(source => source?.jobs && source.jobs.length > 0)
+			return sources.filter(
+				source =>
+					source?.jobs &&
+					source.jobs.length > 0 &&
+					source.jobs.some(job => job.activate === true),
+			)
 		} else if (activeTab === "inactive") {
-			return sources.filter(source => !source?.jobs || source.jobs.length === 0)
+			return sources.filter(
+				source =>
+					!source?.jobs ||
+					source.jobs.length === 0 ||
+					source.jobs.every(job => job.activate === false),
+			)
 		}
 		return []
 	}
@@ -122,7 +132,7 @@ const Sources: React.FC = () => {
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
 							description="No sources configured"
-							className="flex flex-col items-start"
+							className="flex flex-col items-center"
 						/>
 					) : (
 						<SourceTable

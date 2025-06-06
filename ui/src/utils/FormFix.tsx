@@ -1,46 +1,13 @@
 import React, { useEffect, useRef, useState } from "react"
-import { RJSFSchema, UiSchema } from "@rjsf/utils"
+import { RJSFSchema } from "@rjsf/utils"
 import { Switch, Tooltip, Select, Button, Input } from "antd"
 import { Info, Eye, EyeSlash, Plus, Trash } from "@phosphor-icons/react"
-
-interface DynamicSchemaFormProps {
-	schema: RJSFSchema
-	formData: any
-	onChange: (data: any) => void
-	onSubmit?: (data: any) => void
-	uiSchema?: UiSchema
-	hideSubmit?: boolean
-	className?: string
-	errors?: Record<string, string>
-	validate?: boolean
-}
-
-type FieldSchema = {
-	type?: string
-	format?: string
-	title?: string
-	description?: string
-	placeholder?: string
-	enum?: string[]
-	default?: any
-	properties?: Record<string, FieldSchema>
-	required?: string[]
-	items?: {
-		type?: string
-	}
-	order?: number
-}
-
-interface DirectFormFieldProps {
-	name: string
-	schema: FieldSchema
-	value: any
-	onChange: (name: string, value: any) => void
-	required?: boolean
-	uiSchema?: UiSchema
-	error?: string
-	validate?: boolean
-}
+import {
+	DirectFormFieldProps,
+	DirectInputFormProps,
+	DynamicSchemaFormProps,
+	FieldSchema,
+} from "../types"
 
 const DirectFormField = ({
 	name,
@@ -178,6 +145,23 @@ const DirectFormField = ({
 		}
 	}
 
+	const handleArrayItemEdit = (index: number, newValue: string) => {
+		if (!Array.isArray(fieldValue)) return
+
+		const newArray = [...fieldValue]
+		newArray[index] = newValue
+
+		setFieldValue(newArray)
+		setWasUserModified(true)
+		onChange(name, newArray)
+
+		if (validate) {
+			setLocalError(validateField(newArray))
+		} else {
+			setLocalError(null)
+		}
+	}
+
 	const togglePasswordVisibility = () => {
 		setShowPassword(prev => !prev)
 	}
@@ -198,7 +182,7 @@ const DirectFormField = ({
 								{itemType === "string" && (
 									<Input
 										value={item}
-										disabled
+										onChange={e => handleArrayItemEdit(index, e.target.value)}
 										className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
 									/>
 								)}
@@ -329,15 +313,6 @@ const DirectFormField = ({
 			)}
 		</div>
 	)
-}
-
-interface DirectInputFormProps {
-	schema: RJSFSchema
-	formData: Record<string, any>
-	onChange: (data: Record<string, any>) => void
-	uiSchema?: UiSchema
-	errors?: Record<string, string>
-	validate?: boolean
 }
 
 export const DirectInputForm = ({
