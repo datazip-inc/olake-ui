@@ -239,7 +239,7 @@ func (c *JobHandler) UpdateJob() {
 		return
 	}
 	if c.tempClient != nil {
-		fmt.Println("Using Temporal workflow for sync job")
+		logs.Info("Using Temporal workflow for sync job")
 		_, err = c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
 			existingJob.Frequency,
@@ -334,7 +334,7 @@ func (c *JobHandler) SyncJob() {
 	}
 
 	if c.tempClient != nil {
-		fmt.Println("Using Temporal workflow for sync job")
+		logs.Info("Using Temporal workflow for sync job")
 		resp, err := c.tempClient.CreateSync(
 			c.Ctx.Request.Context(),
 			job.Frequency,

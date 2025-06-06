@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,7 +20,6 @@ func main() {
 	// init logger
 	logsdir, _ := config.String("logsdir")
 	logger.InitLogger(logsdir)
-
 	// init database
 	postgresDB, _ := config.String("postgresdb")
 	err := database.Init(postgresDB)
@@ -29,19 +27,19 @@ func main() {
 		logs.Critical("Failed to initialize database: %s", err)
 	}
 
-	log.Println("Starting Olake Temporal worker...")
+	logs.Info("Starting Olake Temporal worker...")
 
 	// Create a new worker
 	worker, err := temporal.NewWorker()
 	if err != nil {
-		log.Fatalf("Failed to create worker: %v", err)
+		logs.Critical("Failed to create worker: %v", err)
 	}
 
 	// Start the worker in a goroutine
 	go func() {
 		err := worker.Start()
 		if err != nil {
-			log.Fatalf("Failed to start worker: %v", err)
+			logs.Critical("Failed to start worker: %v", err)
 		}
 	}()
 
@@ -51,9 +49,9 @@ func main() {
 
 	// Wait for termination signal
 	sig := <-signalChan
-	log.Printf("Received signal %v, shutting down worker...", sig)
+	logs.Info("Received signal %v, shutting down worker...", sig)
 
 	// Stop the worker
 	worker.Stop()
-	log.Println("Worker stopped. Goodbye!")
+	logs.Info("Worker stopped. Goodbye!")
 }

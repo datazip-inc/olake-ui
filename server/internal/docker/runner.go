@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-server/internal/database"
 	"github.com/datazip/olake-server/utils"
 )
@@ -44,7 +45,7 @@ type Runner struct {
 // NewRunner creates a new Docker runner
 func NewRunner(workingDir string) *Runner {
 	if err := utils.CreateDirectory(workingDir, DefaultDirPermissions); err != nil {
-		fmt.Printf("Warning: Failed to create working directory %s: %v\n", workingDir, err)
+		logs.Critical("Failed to create working directory %s: %v", workingDir, err)
 	}
 
 	return &Runner{
@@ -94,12 +95,12 @@ func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, 
 
 	dockerArgs := r.buildDockerArgs(flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
 
-	fmt.Printf("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
+	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 
 	dockerCmd := exec.Command("docker", dockerArgs...)
 	output, err := dockerCmd.CombinedOutput()
 
-	fmt.Printf("Docker command output: %s\n", string(output))
+	logs.Info("Docker command output: %s\n", string(output))
 
 	if err != nil {
 		return nil, fmt.Errorf("docker command failed: %v, output: %s", err, string(output))
@@ -127,7 +128,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 func (r *Runner) getHostOutputDir(outputDir string) string {
 	if persistentDir := os.Getenv("PERSISTENT_DIR"); persistentDir != "" {
 		hostOutputDir := strings.Replace(outputDir, DefaultConfigDir, persistentDir, 1)
-		fmt.Printf("hostOutputDir %s\n", hostOutputDir)
+		logs.Info("hostOutputDir %s\n", hostOutputDir)
 		return hostOutputDir
 	}
 	return outputDir
@@ -163,7 +164,7 @@ func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID st
 		return nil, err
 	}
 
-	fmt.Printf("check command output: %s\n", string(output))
+	logs.Info("check command output: %s\n", string(output))
 
 	logMsg, err := utils.ExtractAndParseLastLogMessage(output)
 	if err != nil {
@@ -186,7 +187,7 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("working directory path %s\n", workDir)
+	logs.Info("working directory path %s\n", workDir)
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 	}
@@ -216,7 +217,7 @@ func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, 
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("working directory path %s\n", workDir)
+	logs.Info("working directory path %s\n", workDir)
 	// Get current job state
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID)
