@@ -7,10 +7,7 @@ import {
 	getConnectorImage,
 	getLogLevelClass,
 	getLogTextColor,
-	getStatusClass,
-	getStatusLabel,
 } from "../../../utils/utils"
-import { getStatusIcon } from "../../../utils/statusIcons"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -126,15 +123,9 @@ const JobLogs: React.FC = () => {
 									<ArrowLeft className="size-5" />
 								</Link>
 							</div>
-							<div className="flex flex-col items-start gap-1">
+							<div className="flex flex-col items-start">
 								<div className="text-2xl font-bold">
 									{job?.name || "Jobname"}{" "}
-								</div>
-								<div
-									className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-2 py-1 text-xs ${getStatusClass(job?.last_run_state || "active")}`}
-								>
-									{getStatusIcon(job?.last_run_state?.toLowerCase())}
-									<span>{getStatusLabel(job?.last_run_state || "active")}</span>
 								</div>
 							</div>
 						</div>
@@ -203,7 +194,9 @@ const JobLogs: React.FC = () => {
 						<Spin size="large" />
 					</div>
 				) : (
-					<div className="overflow-scroll rounded-xl border bg-white">
+					<div
+						className={`overflow-scroll rounded-xl ${filteredLogs.length > 0 ? "border" : ""} bg-white`}
+					>
 						<table className="min-w-full">
 							<tbody>
 								{filteredLogs.map((log, index) => {

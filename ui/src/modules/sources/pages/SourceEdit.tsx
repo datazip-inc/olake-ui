@@ -10,30 +10,20 @@ import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import {
 	getConnectorImage,
+	getConnectorInLowerCase,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
 import { jobService } from "../../../api"
-import { Entity, SourceJob } from "../../../types"
+import { Entity, SourceEditProps, SourceJob } from "../../../types"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import connectorOptions from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
-
-interface SourceEditProps {
-	fromJobFlow?: boolean
-	stepNumber?: string | number
-	stepTitle?: string
-	initialData?: any
-	onNameChange?: (name: string) => void
-	onConnectorChange?: (type: string) => void
-	onVersionChange?: (version: string) => void
-	onFormDataChange?: (config: Record<string, any>) => void
-}
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -43,12 +33,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	onNameChange,
 	onConnectorChange,
 	onFormDataChange,
+	onVersionChange,
 }) => {
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
 	const [activeTab, setActiveTab] = useState("config")
 	const [connector, setConnector] = useState<string | null>(null)
 	const [selectedVersion, setSelectedVersion] = useState("")
+	const [availableVersions, setAvailableVersions] = useState<
+		{ label: string; value: string }[]
+	>([])
 	const [sourceName, setSourceName] = useState("")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
@@ -154,6 +148,49 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			setLoading(false)
 		}
 	}, [connector, selectedVersion])
+
+	useEffect(() => {
+		const fetchVersions = async () => {
+			if (!connector) return
+			try {
+				const response = await sourceService.getSourceVersions(
+					getConnectorInLowerCase(connector),
+				)
+				if (response.success && response.data?.version) {
+					const versions = response.data.version.map((version: string) => ({
+						label: version,
+						value: version,
+					}))
+					setAvailableVersions([...versions])
+					if (
+						source?.type !== getConnectorInLowerCase(connector) &&
+						versions.length > 0 &&
+						!initialData
+					) {
+						setSelectedVersion(versions[0].value)
+						if (onVersionChange) {
+							onVersionChange(versions[0].value)
+						}
+					} else if (initialData) {
+						if (
+							initialData?.type != getConnectorInLowerCase(connector) &&
+							initialData.version
+						) {
+							setSelectedVersion(initialData.version)
+							if (onVersionChange) {
+								onVersionChange(initialData.version)
+							}
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching versions:", error)
+				message.error("Failed to fetch versions")
+			}
+		}
+
+		fetchVersions()
+	}, [connector])
 
 	const transformJobs = (jobs: any[]): SourceJob[] => {
 		return jobs.map(job => ({
@@ -461,6 +498,24 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												}
 											}}
 											className="h-8"
+										/>
+									</div>
+
+									<div>
+										<label className="mb-2 block text-sm font-medium text-gray-700">
+											Version:
+											<span className="text-red-500">*</span>
+										</label>
+										<Select
+											value={selectedVersion}
+											onChange={value => {
+												setSelectedVersion(value)
+												if (onVersionChange) {
+													onVersionChange(value)
+												}
+											}}
+											className="h-8 w-full"
+											options={availableVersions}
 										/>
 									</div>
 								</div>

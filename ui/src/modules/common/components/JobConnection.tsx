@@ -1,14 +1,6 @@
 import { Tooltip } from "antd"
 import { getConnectorImage } from "../../../utils/utils"
-import { EntityJob } from "../../../types"
-
-interface JobConnectionProps {
-	sourceType: string
-	destinationType: string
-	jobName: string
-	remainingJobs?: number
-	jobs: EntityJob[]
-}
+import { JobConnectionProps } from "../../../types"
 
 const JobConnection: React.FC<JobConnectionProps> = ({
 	sourceType,

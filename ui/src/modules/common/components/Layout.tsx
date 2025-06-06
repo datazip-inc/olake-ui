@@ -5,10 +5,7 @@ import Olake from "../../../assets/OLake.svg"
 import { CaretLeft, Info, X, SignOut } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
-
-interface LayoutProps {
-	children: React.ReactNode
-}
+import { LayoutProps } from "antd"
 
 const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 	<div className="p-4">

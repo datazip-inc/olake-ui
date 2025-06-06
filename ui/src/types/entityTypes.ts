@@ -1,3 +1,5 @@
+import { JobCreationSteps } from "./jobTypes"
+
 export interface Entity {
 	id: number
 	name: string
@@ -42,4 +44,11 @@ export type EntityType = "source" | "destination"
 
 export interface EntityEditModalProps {
 	entityType: EntityType
+}
+
+export interface EntitySavedModalProps {
+	type: JobCreationSteps
+	onComplete?: () => void
+	fromJobFlow: boolean
+	entityName?: string
 }

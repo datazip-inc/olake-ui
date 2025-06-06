@@ -58,11 +58,17 @@ const Destinations: React.FC = () => {
 	const filteredDestinations = (): Entity[] => {
 		if (activeTab === "active") {
 			return destinations.filter(
-				destination => destination?.jobs && destination.jobs.length > 0,
+				destination =>
+					destination?.jobs &&
+					destination.jobs.length > 0 &&
+					destination.jobs.some(job => job.activate === true),
 			)
 		} else if (activeTab === "inactive") {
 			return destinations.filter(
-				destination => !destination?.jobs || destination.jobs.length === 0,
+				destination =>
+					!destination?.jobs ||
+					destination.jobs.length === 0 ||
+					destination.jobs.every(job => job.activate === false),
 			)
 		}
 		return []
@@ -126,7 +132,7 @@ const Destinations: React.FC = () => {
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
 							description="No destinations configured"
-							className="flex flex-col items-start"
+							className="flex flex-col items-center"
 						/>
 					) : (
 						<DestinationTable

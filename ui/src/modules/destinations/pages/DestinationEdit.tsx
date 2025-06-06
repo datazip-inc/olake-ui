@@ -11,12 +11,13 @@ import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import {
 	getCatalogInLowerCase,
+	getCatalogName,
 	getConnectorImage,
 	getConnectorName,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import { DestinationJob, Entity } from "../../../types"
+import { DestinationEditProps, DestinationJob, Entity } from "../../../types"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
@@ -25,22 +26,7 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import { connectorOptions } from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
-
-interface CatalogOption {
-	value: string
-	label: string
-}
-
-interface DestinationEditProps {
-	fromJobFlow?: boolean
-	stepNumber?: string | number
-	stepTitle?: string
-	initialData?: any
-	onNameChange?: (name: string) => void
-	onConnectorChange?: (type: string) => void
-	onVersionChange?: (version: string) => void
-	onFormDataChange?: (config: Record<string, any>) => void
-}
+import { catalogOptions } from "../../../utils/constants"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -89,14 +75,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const navigate = useNavigate()
 
-	// Define catalog options
-	const catalogOptions: CatalogOption[] = [
-		{ value: "AWS Glue", label: "AWS Glue" },
-		{ value: "REST Catalog", label: "REST Catalog" },
-		{ value: "JDBC Catalog", label: "JDBC Catalog" },
-		{ value: "HIVE Catalog", label: "Hive Catalog" },
-	]
-
 	// Transform jobs to the format needed for our interface
 	const transformJobs = (jobs: any[]): DestinationJob[] => {
 		return jobs.map(job => ({
@@ -116,25 +94,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const displayedJobs = showAllJobs
 		? transformJobs(destination?.jobs || [])
 		: transformJobs((destination?.jobs || []).slice(0, 5))
-
-	const getCatalogName = (catalogType: string) => {
-		switch (catalogType?.toLowerCase()) {
-			case "glue":
-			case "aws glue":
-				return "AWS Glue"
-			case "rest":
-			case "rest catalog":
-				return "REST Catalog"
-			case "jdbc":
-			case "jdbc catalog":
-				return "JDBC Catalog"
-			case "hive":
-			case "hive catalog":
-				return "Hive Catalog"
-			default:
-				return null
-		}
-	}
 
 	useEffect(() => {
 		fetchDestinations()

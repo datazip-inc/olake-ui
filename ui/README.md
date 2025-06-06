@@ -93,6 +93,7 @@ pnpx npkill
 |   |   ├── destinationTypes //Destination specific types
 |   |   ├── sourceTypes // Source specific types
 |   |   ├── formTypes // Form specific types
+|   |   ├── errorTypes //Error specific Types
 |   |   ├── index  //types root file
 |   |
 |   ├── utils // common functions and constants
