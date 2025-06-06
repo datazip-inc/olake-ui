@@ -52,7 +52,7 @@ func (r *SourceORM) Delete(id int) error {
 }
 
 // GetByNameAndType retrieves sources by name, type, and project ID
-func (r *SourceORM) GetByNameAndType(name, sourceType string, projectIDStr string) ([]*models.Source, error) {
+func (r *SourceORM) GetByNameAndType(name, sourceType, projectIDStr string) ([]*models.Source, error) {
 	var sources []*models.Source
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("name", name).

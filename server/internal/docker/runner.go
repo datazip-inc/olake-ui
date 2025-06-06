@@ -134,15 +134,6 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	return outputDir
 }
 
-// ListOutputFiles lists the files in the output directory for debugging
-// func (r *Runner) ListOutputFiles(outputDir string, message string) {
-// 	files, _ := os.ReadDir(outputDir)
-// 	fmt.Printf("Files in output directory %s:\n", message)
-// 	for _, file := range files {
-// 		fmt.Printf("- %s\n", file.Name())
-// 	}
-// }
-
 // TestConnection runs the check command and returns connection status
 func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
 	workDir, err := r.setupWorkDirectory(workflowID)
@@ -204,8 +195,6 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 		return nil, err
 	}
 
-	//	r.ListOutputFiles(workDir, "after discover")
-
 	// Simplified JSON parsing - just parse if exists, return error if not
 	return utils.ParseJSONFile(catalogPath)
 }
@@ -248,9 +237,6 @@ func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, 
 	if err != nil {
 		return nil, err
 	}
-
-	//r.ListOutputFiles(workDir, "after sync")
-
 	// Parse state file
 	result, err := utils.ParseJSONFile(statePath)
 	if err != nil {

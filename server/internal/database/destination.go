@@ -58,7 +58,7 @@ func (r *DestinationORM) Delete(id int) error {
 }
 
 // GetByNameAndType retrieves destinations by name, type, and project ID
-func (r *DestinationORM) GetByNameAndType(name, destType string, projectIDStr string) ([]*models.Destination, error) {
+func (r *DestinationORM) GetByNameAndType(name, destType, projectIDStr string) ([]*models.Destination, error) {
 	var destinations []*models.Destination
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("name", name).

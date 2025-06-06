@@ -15,7 +15,6 @@ type Worker struct {
 
 // NewWorker creates a new Temporal worker
 func NewWorker() (*Worker, error) {
-
 	c, err := client.Dial(client.Options{
 		HostPort: TemporalAddress,
 	})
@@ -27,16 +26,12 @@ func NewWorker() (*Worker, error) {
 	w := worker.New(c, TaskQueue, worker.Options{})
 
 	// Register workflows
-	//w.RegisterWorkflow(DockerRunnerWorkflow)
 	w.RegisterWorkflow(DiscoverCatalogWorkflow)
-	//w.RegisterWorkflow(GetSpecWorkflow)
 	w.RegisterWorkflow(TestConnectionWorkflow)
 	w.RegisterWorkflow(RunSyncWorkflow)
 
 	// Register activities
-	//w.RegisterActivity(ExecuteDockerCommandActivity)
 	w.RegisterActivity(DiscoverCatalogActivity)
-	//w.RegisterActivity(GetSpecActivity)
 	w.RegisterActivity(TestConnectionActivity)
 	w.RegisterActivity(SyncActivity)
 

@@ -343,11 +343,11 @@ func (c *JobHandler) SyncJob() {
 			true,
 		)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal excuetion failed: %v", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal execution failed: %v", err))
 			return
-		} else {
-			utils.SuccessResponse(&c.Controller, resp)
 		}
+		utils.SuccessResponse(&c.Controller, resp)
+		return
 	}
 	utils.SuccessResponse(&c.Controller, nil)
 }

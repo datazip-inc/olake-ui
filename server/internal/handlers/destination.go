@@ -331,7 +331,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	case "iceberg":
 		// Get catalog type from request
 		var catalogSpec interface{}
-		var catalogUiSchema interface{}
+		var catalogUISchema interface{}
 
 		switch req.Catalog {
 		case "glue":
@@ -395,7 +395,7 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
 			}
-			catalogUiSchema = map[string]interface{}{
+			catalogUISchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{
 					"ui:widget": "hidden",
 				},
@@ -460,7 +460,7 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "rest_catalog_url", "iceberg_s3_path", "iceberg_db"},
 			}
-			catalogUiSchema = map[string]interface{}{
+			catalogUISchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{
 					"ui:widget": "hidden",
 				},
@@ -552,7 +552,7 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "jdbc_url", "jdbc_username", "jdbc_password", "iceberg_s3_path", "aws_access_key", "aws_secret_key", "aws_region", "iceberg_db"},
 			}
-			catalogUiSchema = map[string]interface{}{
+			catalogUISchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{
 					"ui:widget": "hidden",
 				},
@@ -620,7 +620,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"description": "Specifies whether path-style access is used for S3; 'true' enables path-style addressing instead of the default virtual-hosted style",
 						"order":       10,
 					},
-					" hive_clients": map[string]interface{}{
+					"hive_clients": map[string]interface{}{
 						"type":        "integer",
 						"title":       "Hive Clients",
 						"description": "Specifies the number of Hive clients allocated to handle interactions with the Hive Metastore",
@@ -641,7 +641,7 @@ func (c *DestHandler) GetDestinationSpec() {
 				},
 				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
 			}
-			catalogUiSchema = map[string]interface{}{
+			catalogUISchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{
 					"ui:widget": "hidden",
 				},
@@ -672,7 +672,7 @@ func (c *DestHandler) GetDestinationSpec() {
 			"type": map[string]interface{}{
 				"ui:widget": "hidden",
 			},
-			"writer": catalogUiSchema,
+			"writer": catalogUISchema,
 		}
 
 	default:
@@ -691,6 +691,5 @@ func (c *DestHandler) GetDestinationSpec() {
 		},
 	}
 
-	c.Data["json"] = response
-	c.ServeJSON()
+	utils.SuccessResponse(&c.Controller, response)
 }

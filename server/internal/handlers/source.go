@@ -194,7 +194,6 @@ func (c *SourceHandler) TestConnection() {
 	}
 	result, _ := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
 	utils.SuccessResponse(&c.Controller, result)
-
 }
 
 // @router /sources/streams[post]
