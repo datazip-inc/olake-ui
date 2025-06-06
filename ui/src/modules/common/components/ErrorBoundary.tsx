@@ -1,14 +1,5 @@
-import { Component, ErrorInfo, ReactNode } from "react"
-
-interface Props {
-	children: ReactNode
-	fallback?: ReactNode
-}
-
-interface State {
-	hasError: boolean
-	error: Error | null
-}
+import { Component, ErrorInfo } from "react"
+import { Props, State } from "../../../types/errorTypes"
 
 export class ErrorBoundary extends Component<Props, State> {
 	public state: State = {

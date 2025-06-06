@@ -47,3 +47,14 @@ export interface SourceData {
 	config: Record<string, any>
 	version?: string
 }
+
+export interface SourceEditProps {
+	fromJobFlow?: boolean
+	stepNumber?: string | number
+	stepTitle?: string
+	initialData?: any
+	onNameChange?: (name: string) => void
+	onConnectorChange?: (type: string) => void
+	onVersionChange?: (version: string) => void
+	onFormDataChange?: (config: Record<string, any>) => void
+}

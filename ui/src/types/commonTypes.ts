@@ -58,3 +58,12 @@ export interface StepIndicatorProps {
 export interface StepProgressProps {
 	currentStep: string
 }
+
+export interface CatalogOption {
+	value: string
+	label: string
+}
+
+export interface LayoutProps {
+	children: React.ReactNode
+}

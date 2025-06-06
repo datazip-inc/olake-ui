@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
@@ -22,6 +22,8 @@ const JobHistory: React.FC = () => {
 	const [currentPage, setCurrentPage] = useState(1)
 	const pageSize = 8
 	const [isDelayingCall, setIsDelayingCall] = useState(false)
+	const retryCountRef = useRef(0)
+	const THROTTLE_DELAY = 1000
 
 	const {
 		jobs,
@@ -38,21 +40,39 @@ const JobHistory: React.FC = () => {
 		}
 
 		if (jobId) {
-			setIsDelayingCall(true)
-			const timerId = setTimeout(() => {
-				setIsDelayingCall(false)
-				fetchJobTasks(jobId).catch(error => {
-					message.error("Failed to fetch job tasks after delay")
-					console.error("Error fetching job tasks after delay:", error)
-				})
-			}, 300)
+			const fetchWithRetry = async () => {
+				setIsDelayingCall(true)
+				try {
+					await fetchJobTasks(jobId)
+					await new Promise(resolve => setTimeout(resolve, 1000))
+					if (jobTasks && jobTasks.length > 0) {
+						retryCountRef.current = 0
+						setIsDelayingCall(false)
+						return
+					}
+
+					if (retryCountRef.current < 4) {
+						retryCountRef.current++
+						setTimeout(fetchWithRetry, THROTTLE_DELAY)
+					} else {
+						setIsDelayingCall(false)
+					}
+				} catch (error) {
+					console.error("Error fetching job tasks:", error)
+					if (retryCountRef.current < 4) {
+						retryCountRef.current++
+						setTimeout(fetchWithRetry, THROTTLE_DELAY)
+					} else {
+						setIsDelayingCall(false)
+					}
+				}
+			}
+
+			fetchWithRetry()
 
 			return () => {
-				clearTimeout(timerId)
-				setIsDelayingCall(false)
+				retryCountRef.current = 0
 			}
-		} else {
-			setIsDelayingCall(false)
 		}
 	}, [jobId, fetchJobTasks, jobs.length, fetchJobs])
 
@@ -144,12 +164,6 @@ const JobHistory: React.FC = () => {
 						<div className="flex flex-col items-start">
 							<div className="text-2xl font-bold">
 								{job?.name || "<Job_name>"}
-							</div>
-							<div
-								className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-2 py-1 text-xs ${getStatusClass(job?.last_run_state || "active")}`}
-							>
-								{getStatusIcon(job?.last_run_state?.toLowerCase())}
-								<span>{getStatusLabel(job?.last_run_state || "active")}</span>
 							</div>
 						</div>
 					</div>

@@ -347,6 +347,13 @@ const JobCreation: React.FC = () => {
 										? sourceFormData
 										: JSON.stringify(sourceFormData)
 								}
+								initialStreamsData={
+									selectedStreams &&
+									selectedStreams.selected_streams &&
+									Object.keys(selectedStreams.selected_streams).length > 0
+										? selectedStreams
+										: undefined
+								}
 							/>
 						</div>
 					)}

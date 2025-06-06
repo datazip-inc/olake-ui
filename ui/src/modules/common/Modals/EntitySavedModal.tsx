@@ -2,14 +2,7 @@ import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
-import { JobCreationSteps } from "../../../types"
-
-interface EntitySavedModalProps {
-	type: JobCreationSteps
-	onComplete?: () => void
-	fromJobFlow: boolean
-	entityName?: string
-}
+import { EntitySavedModalProps } from "../../../types"
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	type,
