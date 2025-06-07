@@ -1,14 +1,11 @@
 name: CI/CD Pipeline
-
 on:
   push:
     branches:
-      - master
-      - staging
+      - "master"
   pull_request:
     branches:
-      - master
-      - staging
+      - "*"
 
 jobs:
   lint:
