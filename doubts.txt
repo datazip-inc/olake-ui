@@ -1,0 +1,8 @@
+createSourceFunction in update and create job
+createDestinationFunction in update and create job
+file hardcoded value in test connection
+update all config files in run sync
+
+tmp directory
+deafult version in case of empty
+
