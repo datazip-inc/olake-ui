@@ -8,10 +8,10 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/models"
-	"github.com/datazip/olake-server/utils"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type AuthHandler struct {

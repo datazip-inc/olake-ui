@@ -10,11 +10,11 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/models"
-	"github.com/datazip/olake-server/internal/temporal"
-	"github.com/datazip/olake-server/utils"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type SourceHandler struct {

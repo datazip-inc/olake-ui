@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/datazip/olake-server/internal/docker"
+	"github.com/datazip/olake-frontend/server/internal/docker"
 	"go.temporal.io/sdk/activity"
 )
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/filter/cors"
-	"github.com/datazip/olake-server/internal/handlers"
+	"github.com/datazip/olake-frontend/server/internal/handlers"
 )
 
 func Init() {

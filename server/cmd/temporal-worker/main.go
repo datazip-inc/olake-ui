@@ -7,10 +7,10 @@ import (
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/logger"
-	"github.com/datazip/olake-server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/logger"
+	"github.com/datazip/olake-frontend/server/internal/temporal"
 )
 
 func main() {
