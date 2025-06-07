@@ -2,7 +2,7 @@ module github.com/datazip/olake-frontend/server
 
 go 1.24.2
 
-require github.com/beego/beego/v2 v2.3.4
+require github.com/beego/beego/v2 v2.3.8
 
 require (
 	github.com/lib/pq v1.10.5
