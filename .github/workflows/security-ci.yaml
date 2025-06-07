@@ -3,11 +3,11 @@ on:
   push:
     branches:
       - "master"
-      - "fix/bff_lint"
+      - "feat/bff-api"
   pull_request:
     branches:
       - "*"
-      - "fix/bff_lint"
+      - "feat/bff-api"
   workflow_dispatch:
     inputs:
       logLevel:

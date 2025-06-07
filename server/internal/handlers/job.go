@@ -523,7 +523,7 @@ func (c *JobHandler) GetTaskLogs() {
 
 		logs = append(logs, map[string]interface{}{
 			"level":   logEntry.Level,
-			"time":    logEntry.Time.Format(time.RFC3339),
+			"time":    logEntry.Time.UTC().Format(time.RFC3339),
 			"message": logEntry.Message,
 		})
 	}

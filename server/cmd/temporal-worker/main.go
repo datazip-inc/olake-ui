@@ -25,6 +25,7 @@ func main() {
 	err := database.Init(postgresDB)
 	if err != nil {
 		logs.Critical("Failed to initialize database: %s", err)
+		os.Exit(1)
 	}
 
 	logs.Info("Starting Olake Temporal worker...")
@@ -33,6 +34,7 @@ func main() {
 	worker, err := temporal.NewWorker()
 	if err != nil {
 		logs.Critical("Failed to create worker: %v", err)
+		os.Exit(1)
 	}
 
 	// Start the worker in a goroutine
@@ -40,6 +42,7 @@ func main() {
 		err := worker.Start()
 		if err != nil {
 			logs.Critical("Failed to start worker: %v", err)
+			os.Exit(1)
 		}
 	}()
 
