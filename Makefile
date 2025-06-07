@@ -32,5 +32,8 @@ pre-commit:
 	chmod +x $(shell pwd)/.githooks/commit-msg
 	git config core.hooksPath $(shell pwd)/.githooks
 
+gosec:
+	cd server; $(GOPATH)/bin/gosec -exclude=G115 -severity=high -confidence=medium ./...
+
 trivy:
 	trivy fs  --vuln-type  os,library --severity HIGH,CRITICAL .
