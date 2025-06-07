@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-server/internal/models"
-	"github.com/datazip/olake-server/internal/temporal"
-	"github.com/datazip/olake-server/utils"
+	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/utils"
 	"go.temporal.io/api/workflowservice/v1"
 )
 

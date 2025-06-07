@@ -1,3 +1,0 @@
-1.destintion-check command integration
-2.writer.json is not saving
-3. start reafactoring

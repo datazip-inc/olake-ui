@@ -7,8 +7,8 @@ import (
 	"github.com/beego/beego/v2/client/orm"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // UserORM handles database operations

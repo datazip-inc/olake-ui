@@ -5,8 +5,8 @@ import (
 
 	"github.com/beego/beego/v2/client/orm"
 
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // SourceORM handles database operations for sources

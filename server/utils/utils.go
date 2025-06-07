@@ -16,7 +16,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
 
-	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {
