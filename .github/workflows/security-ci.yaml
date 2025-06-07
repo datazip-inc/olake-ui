@@ -4,9 +4,11 @@ on:
     branches:
       - "master"
       - "*"
+      - "fix/bff_lint"
   pull_request:
     branches:
       - "*"
+      - "fix/bff_lint"
   workflow_dispatch:
     inputs:
       logLevel:
