@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
-import { Button, Tabs, Empty, message } from "antd"
+import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
 import { useAppStore } from "../../../store"
 import SourceTable from "../components/SourceTable"
-import FirstSource from "../../../assets/FirstSource.svg"
-import SourcesTutorial from "../../../assets/SourcesTutorial.svg"
-import { LinktreeLogo, PlayCircle, Plus } from "@phosphor-icons/react"
-import { Source } from "../../../types"
+import { LinktreeLogo, Plus } from "@phosphor-icons/react"
+import { Entity } from "../../../types"
+import { sourceTabs } from "../../../utils/constants"
+import SourceEmptyState from "../components/SourceEmptyState"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -18,6 +18,7 @@ const Sources: React.FC = () => {
 		fetchSources,
 		setShowDeleteModal,
 		setSelectedSource,
+		deleteSource,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -35,21 +36,45 @@ const Sources: React.FC = () => {
 		navigate(`/sources/${id}`)
 	}
 
-	const handleDeleteSource = (source: Source) => {
+	const handleDeleteSource = (source: Entity) => {
 		setSelectedSource(source)
+
+		// For inactive sources, delete directly without showing modal
+		if (!source?.jobs || source.jobs.length === 0) {
+			message.info(`Deleting source ${source?.name}`)
+			deleteSource(String(source.id)).catch(error => {
+				message.error("Failed to delete source")
+				console.error(error)
+			})
+			return
+		}
+
+		// For active sources with jobs, show the delete confirmation modal
 		setTimeout(() => {
 			setShowDeleteModal(true)
 		}, 1000)
 	}
 
-	const filteredSources = sources.filter(source => source.status === activeTab)
-	const showEmpty = sources.length === 0
+	const filteredSources = (): Entity[] => {
+		if (activeTab === "active") {
+			return sources.filter(
+				source =>
+					source?.jobs &&
+					source.jobs.length > 0 &&
+					source.jobs.some(job => job.activate === true),
+			)
+		} else if (activeTab === "inactive") {
+			return sources.filter(
+				source =>
+					!source?.jobs ||
+					source.jobs.length === 0 ||
+					source.jobs.every(job => job.activate === false),
+			)
+		}
+		return []
+	}
 
-	const sourceTabs = [
-		{ key: "active", label: "Active sources" },
-		{ key: "inactive", label: "Inactive sources" },
-		{ key: "saved", label: "Saved sources" },
-	]
+	const showEmpty = !isLoadingSources && sources.length === 0
 
 	if (sourcesError) {
 		return (
@@ -58,7 +83,9 @@ const Sources: React.FC = () => {
 					Error loading sources: {sourcesError}
 				</div>
 				<Button
-					onClick={() => fetchSources()}
+					onClick={() => {
+						fetchSources()
+					}}
 					className="mt-4"
 				>
 					Retry
@@ -92,62 +119,29 @@ const Sources: React.FC = () => {
 				items={sourceTabs.map(tab => ({
 					key: tab.key,
 					label: tab.label,
-					children:
-						tab.key === "active" && showEmpty ? (
-							<div className="flex flex-col items-center justify-center py-16">
-								<img
-									src={FirstSource}
-									alt="Empty state"
-									className="mb-8 h-64 w-96"
-								/>
-								<div className="mb-2 text-blue-600">Welcome User !</div>
-								<h2 className="mb-2 text-2xl font-bold">
-									Ready to create your first source
-								</h2>
-								<p className="mb-8 text-gray-600">
-									Get started and experience the speed of OLake by running jobs
-								</p>
-								<Button
-									type="primary"
-									className="border-1 mb-12 border-[1px] border-[#D9D9D9] bg-white px-6 py-4 text-black"
-									onClick={handleCreateSource}
-								>
-									<Plus />
-									New Source
-								</Button>
-								<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-4 shadow-sm">
-									<div className="flex items-center gap-4">
-										<img
-											src={SourcesTutorial}
-											alt="Job Tutorial"
-											className="rounded-lg"
-										/>
-										<div className="flex-1">
-											<div className="mb-1 flex items-center gap-1 text-xs">
-												<PlayCircle color="#9f9f9f" />
-												<span className="text-[#9F9F9F]">OLake/ Tutorial</span>
-											</div>
-											<div className="text-xs">
-												Checkout this tutorial, to know more about running jobs
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
-						) : filteredSources.length === 0 ? (
-							<Empty
-								image={Empty.PRESENTED_IMAGE_SIMPLE}
-								description="No data"
-								className="flex flex-col items-start"
+					children: isLoadingSources ? (
+						<div className="flex items-center justify-center py-16">
+							<Spin
+								size="large"
+								tip="Loading sources..."
 							/>
-						) : (
-							<SourceTable
-								sources={filteredSources}
-								loading={isLoadingSources}
-								onEdit={handleEditSource}
-								onDelete={handleDeleteSource}
-							/>
-						),
+						</div>
+					) : tab.key === "active" && showEmpty ? (
+						<SourceEmptyState handleCreateSource={handleCreateSource} />
+					) : filteredSources().length === 0 ? (
+						<Empty
+							image={Empty.PRESENTED_IMAGE_SIMPLE}
+							description="No sources configured"
+							className="flex flex-col items-center"
+						/>
+					) : (
+						<SourceTable
+							sources={filteredSources()}
+							loading={isLoadingSources}
+							onEdit={handleEditSource}
+							onDelete={handleDeleteSource}
+						/>
+					),
 				}))}
 			/>
 		</div>

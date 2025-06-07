@@ -1,8 +1,13 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { message } from "antd"
-import CreateSource from "../../sources/pages/CreateSource"
-import CreateDestination from "../../destinations/pages/CreateDestination"
+import { v4 as uuidv4 } from "uuid"
+import CreateSource, {
+	CreateSourceHandle,
+} from "../../sources/pages/CreateSource"
+import CreateDestination, {
+	CreateDestinationHandle,
+} from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
@@ -11,111 +16,161 @@ import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
-import { mockStreamData } from "../../../api/mockData"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import { JobCreationSteps } from "../../../types"
+import { CatalogType, JobBase, JobCreationSteps } from "../../../types"
+import {
+	getConnectorInLowerCase,
+	getReplicationFrequency,
+} from "../../../utils/utils"
+import { destinationService, sourceService } from "../../../api"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
-	const [docsMinimized, setDocsMinimized] = useState(false)
-
-	// Source and destination states
+	const [docsMinimized, setDocsMinimized] = useState(true)
 	const [sourceName, setSourceName] = useState("")
-	const [sourceConnector, setSourceConnector] = useState("")
+	const [sourceConnector, setSourceConnector] = useState("MongoDB")
 	const [sourceFormData, setSourceFormData] = useState<any>({})
+	const [sourceVersion, setSourceVersion] = useState("latest")
 	const [destinationName, setDestinationName] = useState("")
-	const [destinationConnector, setDestinationConnector] = useState("")
+	const [destinationCatalogType, setDestinationCatalogType] =
+		useState<CatalogType | null>(null)
+	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
-
-	// Schema step states
-	const [selectedStreams, setSelectedStreams] = useState<string[]>(
-		mockStreamData.map(stream => stream.stream.name),
-	)
-
-	// Config step states
+	const [destinationVersion, setDestinationVersion] = useState("latest")
+	const [selectedStreams, setSelectedStreams] = useState<any>([])
 	const [jobName, setJobName] = useState("")
-	const [replicationFrequency, setReplicationFrequency] = useState("daily")
+	const [replicationFrequency, setReplicationFrequency] = useState("minutes")
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+
+	const [hitBack, setHitBack] = useState(false)
 
 	const {
 		setShowEntitySavedModal,
 		setShowSourceCancelModal,
 		setShowTestingModal,
 		setShowSuccessModal,
-		addSource,
-		addDestination,
 		addJob,
+		setShowFailureModal,
+		setSourceTestConnectionError,
+		setDestinationTestConnectionError,
 	} = useAppStore()
 
-	const handleNext = () => {
+	const sourceRef = useRef<CreateSourceHandle>(null)
+	const destinationRef = useRef<CreateDestinationHandle>(null)
+
+	const handleNext = async () => {
+		setHitBack(false)
 		if (currentStep === "source") {
-			// Create source
-			const newSourceData = {
-				name: sourceName,
-				type: sourceConnector,
-				status: "active" as const,
-				config: sourceFormData,
+			if (sourceRef.current) {
+				const isValid = await sourceRef.current.validateSource()
+				if (!isValid) {
+					message.error("Please fill in all required fields for the source")
+					return
+				}
+			} else {
+				if (!sourceName.trim()) {
+					message.error("Source name is required")
+					return
+				}
 			}
 
-			addSource(newSourceData)
-				.then(() => {
-					setShowTestingModal(true)
+			const newSourceData = {
+				name: sourceName,
+				type: sourceConnector.toLowerCase(),
+				version: sourceVersion,
+				config:
+					typeof sourceFormData === "string"
+						? sourceFormData
+						: JSON.stringify(sourceFormData),
+			}
+			setShowTestingModal(true)
+			const testResult = await sourceService.testSourceConnection(newSourceData)
+
+			setTimeout(() => {
+				setShowTestingModal(false)
+				if (testResult.data?.status === "SUCCEEDED") {
+					setShowSuccessModal(true)
 					setTimeout(() => {
-						setShowTestingModal(false)
-						setShowSuccessModal(true)
-						setTimeout(() => {
-							setShowSuccessModal(false)
-							setShowEntitySavedModal(true)
-						}, 2000)
-					}, 2000)
-				})
-				.catch(error => {
-					console.error("Error adding source:", error)
-					message.error("Failed to create source")
-				})
+						setShowSuccessModal(false)
+						setCurrentStep("destination")
+					}, 1000)
+				} else {
+					setSourceTestConnectionError(testResult.data?.message || "")
+					setShowFailureModal(true)
+				}
+			}, 1500)
 		} else if (currentStep === "destination") {
-			// Create destination
+			if (destinationRef.current) {
+				const isValid = await destinationRef.current.validateDestination()
+				if (!isValid) {
+					message.error(
+						"Please fill in all required fields for the destination",
+					)
+					return
+				}
+			} else {
+				// Fallback validation if ref isn't available
+				if (!destinationName.trim()) {
+					message.error("Destination name is required")
+					return
+				}
+			}
+
 			const newDestinationData = {
 				name: destinationName,
 				type: destinationConnector,
-				status: "active" as const,
-				config: destinationFormData,
+				config:
+					typeof destinationFormData === "string"
+						? destinationFormData
+						: JSON.stringify(destinationFormData),
+				version: destinationVersion,
 			}
+			setShowTestingModal(true)
+			const testResult =
+				await destinationService.testDestinationConnection(newDestinationData)
 
-			addDestination(newDestinationData)
-				.then(() => {
-					setShowTestingModal(true)
+			setTimeout(() => {
+				setShowTestingModal(false)
+				if (testResult.success) {
+					setShowSuccessModal(true)
 					setTimeout(() => {
-						setShowTestingModal(false)
-						setShowSuccessModal(true)
-						setTimeout(() => {
-							setShowSuccessModal(false)
-							setShowEntitySavedModal(true)
-						}, 2000)
-					}, 2000)
-				})
-				.catch(error => {
-					console.error("Error adding destination:", error)
-					message.error("Failed to create destination")
-				})
+						setShowSuccessModal(false)
+						setCurrentStep("schema")
+					}, 1000)
+				} else {
+					setDestinationTestConnectionError(testResult.data?.message || "")
+					setShowFailureModal(true)
+				}
+			}, 1500)
 		} else if (currentStep === "schema") {
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
-			// Create job
-			const newJobData = {
-				name: jobName,
-				source: sourceName,
-				destination: destinationName,
-				streams: selectedStreams,
-				replicationFrequency,
-				schemaChangeStrategy,
-				notifyOnSchemaChanges,
-				status: "active" as const,
+			if (!jobName.trim()) {
+				message.error("Job name is required")
+				return
 			}
-
+			const newJobData: JobBase = {
+				name: jobName,
+				source: {
+					name: sourceName,
+					type: getConnectorInLowerCase(sourceConnector),
+					version: sourceVersion,
+					config: JSON.stringify(sourceFormData),
+				},
+				destination: {
+					name: destinationName,
+					type: getConnectorInLowerCase(destinationConnector),
+					version: destinationVersion,
+					config: JSON.stringify(destinationFormData),
+				},
+				streams_config: JSON.stringify(selectedStreams),
+				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
+			}
 			addJob(newJobData)
 				.then(() => {
 					setShowEntitySavedModal(true)
@@ -138,6 +193,7 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleBack = () => {
+		setHitBack(true)
 		if (currentStep === "destination") {
 			setCurrentStep("source")
 		} else if (currentStep === "schema") {
@@ -157,6 +213,38 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleSaveJob = () => {
+		const savedJob = {
+			id: uuidv4(),
+			name: jobName || "-",
+			source: {
+				name: sourceName || "-",
+				type: getConnectorInLowerCase(sourceConnector),
+				version: sourceVersion,
+				config: JSON.stringify(sourceFormData),
+			},
+			destination: {
+				name: destinationName || "-",
+				type: getConnectorInLowerCase(destinationConnector),
+				version: destinationVersion,
+				config: JSON.stringify(destinationFormData),
+			},
+			streams_config: JSON.stringify(selectedStreams),
+			frequency: replicationFrequency
+				? getReplicationFrequency(replicationFrequency) || "hourly"
+				: "hourly",
+			activate: false,
+			created_at: new Date().toISOString(),
+			updated_at: new Date().toISOString(),
+			created_by: "user",
+			updated_by: "user",
+			last_run_state: "",
+			last_run_time: "",
+		}
+		const existingSavedJobs = JSON.parse(
+			localStorage.getItem("savedJobs") || "[]",
+		)
+		existingSavedJobs.push(savedJob)
+		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
 		message.success("Job saved successfully!")
 		navigate("/jobs")
 	}
@@ -170,29 +258,29 @@ const JobCreation: React.FC = () => {
 			{/* Header */}
 			<div className="bg-white px-6 pb-3 pt-6">
 				<div className="flex items-center justify-between">
-					<Link
-						to="/jobs"
-						className="flex items-center gap-2"
-					>
-						<ArrowLeft className="mr-1 size-6" />
-						<span className="text-2xl font-bold"> Create job</span>
-					</Link>
+					<div className="flex items-center gap-2">
+						<Link
+							to="/jobs"
+							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+						>
+							<ArrowLeft className="mr-1 size-5" />
+						</Link>
 
+						<div className="text-2xl font-bold"> Create Job</div>
+					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
 				</div>
 			</div>
 
-			{/* Main content */}
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
-				{/* Left content */}
 				<div
 					className={`${
 						(currentStep === "schema" || currentStep === "config") &&
 						!docsMinimized
 							? "w-2/3"
 							: "w-full"
-					} overflow-auto pt-0 transition-all duration-300`}
+					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
 						<div className="w-full">
@@ -202,10 +290,17 @@ const JobCreation: React.FC = () => {
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
-								onFormDataChange={setSourceFormData}
+								initialConnector={sourceConnector}
+								onFormDataChange={data => {
+									setSourceFormData(data)
+								}}
+								initialFormData={sourceFormData}
+								initialName={sourceName}
+								onVersionChange={setSourceVersion}
 								onComplete={() => {
 									setCurrentStep("destination")
 								}}
+								ref={sourceRef}
 							/>
 						</div>
 					)}
@@ -214,25 +309,53 @@ const JobCreation: React.FC = () => {
 						<div className="w-full">
 							<CreateDestination
 								fromJobFlow={true}
+								hitBack={hitBack}
 								stepNumber={2}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
-								onFormDataChange={setDestinationFormData}
+								initialConnector={destinationConnector}
+								onFormDataChange={data => {
+									setDestinationFormData(data)
+								}}
+								initialFormData={destinationFormData}
+								initialName={destinationName}
+								initialCatalog={destinationCatalogType}
+								onCatalogTypeChange={setDestinationCatalogType}
+								onVersionChange={setDestinationVersion}
 								onComplete={() => {
 									setCurrentStep("schema")
 								}}
+								ref={destinationRef}
 							/>
 						</div>
 					)}
 
 					{currentStep === "schema" && (
-						<SchemaConfiguration
-							selectedStreams={selectedStreams}
-							setSelectedStreams={setSelectedStreams}
-							stepNumber={3}
-							stepTitle="Streams selection"
-						/>
+						<div className="h-full overflow-scroll">
+							<SchemaConfiguration
+								selectedStreams={selectedStreams}
+								setSelectedStreams={setSelectedStreams}
+								stepNumber={3}
+								stepTitle="Streams Selection"
+								useDirectForms={true}
+								sourceName={sourceName}
+								sourceConnector={sourceConnector.toLowerCase()}
+								sourceVersion={sourceVersion}
+								sourceConfig={
+									typeof sourceFormData === "string"
+										? sourceFormData
+										: JSON.stringify(sourceFormData)
+								}
+								initialStreamsData={
+									selectedStreams &&
+									selectedStreams.selected_streams &&
+									Object.keys(selectedStreams.selected_streams).length > 0
+										? selectedStreams
+										: undefined
+								}
+							/>
+						</div>
 					)}
 
 					{currentStep === "config" && (
@@ -241,6 +364,8 @@ const JobCreation: React.FC = () => {
 							setJobName={setJobName}
 							replicationFrequency={replicationFrequency}
 							setReplicationFrequency={setReplicationFrequency}
+							replicationFrequencyValue={replicationFrequencyValue}
+							setReplicationFrequencyValue={setReplicationFrequencyValue}
 							schemaChangeStrategy={schemaChangeStrategy}
 							setSchemaChangeStrategy={setSchemaChangeStrategy}
 							notifyOnSchemaChanges={notifyOnSchemaChanges}
@@ -252,9 +377,9 @@ const JobCreation: React.FC = () => {
 				</div>
 
 				{/* Documentation panel */}
-				{(currentStep === "schema" || currentStep === "config") && (
+				{currentStep === "schema" && (
 					<DocumentationPanel
-						docUrl="https://olake.io/docs/category/mongodb"
+						docUrl={`https://olake.io/docs/connectors/${sourceConnector.toLowerCase()}/config`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

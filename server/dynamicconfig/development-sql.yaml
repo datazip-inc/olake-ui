@@ -1,0 +1,42 @@
+# Default dynamic config for Temporal using SQL (development)
+
+frontend.enableUpdateWorkflowExecution:
+  - value: true
+frontend.enableTerminateWorkflowExecution:
+  - value: true
+frontend.enableSignalWorkflowExecution:
+  - value: true
+frontend.enableResetWorkflowExecution:
+  - value: true
+frontend.enableDeleteWorkflowExecution:
+  - value: true
+system.enableReadFromClosedExecutionV2:
+  - value: true
+frontend.enableGetWorkflowExecutionRawHistoryV2:
+  - value: true
+frontend.enableListArchivedWorkflowExecutions:
+  - value: true
+frontend.enableListBatchWorkflowExecutions:
+  - value: true
+frontend.enableParentClosePolicy:
+  - value: true
+frontend.enableConsistentQuery:
+  - value: true
+frontend.enableUpdateSearchAttributes:
+  - value: true
+frontend.enableBatchSignalWorkflowExecution:
+  - value: true
+frontend.enableBatchTerminateWorkflowExecution:
+  - value: true
+frontend.enableArchival:
+  - value: true
+frontend.enableNamespaceReplication:
+  - value: true
+frontend.enableCrossNamespaceCommands:
+  - value: true
+frontend.enableScheduleWorkflow:
+  - value: true
+frontend.enableWorkerVersioning:
+  - value: true
+frontend.enableBuildIdBasedVersioning:
+  - value: true

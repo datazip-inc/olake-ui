@@ -1,60 +1,116 @@
 import api from "../axios"
-import { Job, JobHistory, JobLog } from "../../types"
+import { API_CONFIG } from "../config"
+import { APIResponse, Job, JobBase, JobTask, TaskLog } from "../../types"
 
 export const jobService = {
-	// Get all jobs
-	getJobs: async () => {
-		const response = await api.get<Job[]>("/jobs")
-		return response.data
+	getJobs: async (): Promise<Job[]> => {
+		try {
+			const response = await api.get<APIResponse<Job[]>>(
+				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
+			)
+
+			return response.data.data
+		} catch (error) {
+			console.error("Error fetching jobs from API:", error)
+			throw error
+		}
 	},
 
-	// Get job by id
-	getJobById: async (id: string) => {
-		const response = await api.get<Job>(`/jobs/${id}`)
-		return response.data
+	createJob: async (job: JobBase): Promise<Job> => {
+		try {
+			const response = await api.post<Job>(
+				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
+				job,
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error creating job:", error)
+			throw error
+		}
 	},
 
-	// Create new job
-	createJob: async (job: Omit<Job, "id" | "createdAt">) => {
-		const response = await api.post<Job>("/jobs", job)
-		return response.data
+	updateJob: async (id: string, job: Partial<Job>): Promise<Job> => {
+		try {
+			const response = await api.put<Job>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				job,
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error updating job:", error)
+			throw error
+		}
 	},
 
-	// Update job
-	updateJob: async (id: string, job: Partial<Job>) => {
-		const response = await api.put<Job>(`/jobs/${id}`, job)
-		return response.data
+	deleteJob: async (id: number): Promise<void> => {
+		try {
+			await api.delete(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+		} catch (error) {
+			console.error("Error deleting job:", error)
+			throw error
+		}
 	},
 
-	// Delete job
-	deleteJob: async (id: string) => {
-		const response = await api.delete(`/jobs/${id}`)
-		return response.data
+	syncJob: async (id: string): Promise<any> => {
+		try {
+			const response = await api.post<APIResponse<any>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/sync`,
+				{},
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error syncing job:", error)
+			throw error
+		}
 	},
 
-	// Run job
-	runJob: async (id: string) => {
-		const response = await api.post(`/jobs/${id}/run`)
-		return response.data
+	getJobTasks: async (id: string): Promise<APIResponse<JobTask[]>> => {
+		try {
+			const response = await api.get<APIResponse<JobTask[]>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/tasks`,
+				{ timeout: 0 }, // Disable timeout for this request
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error fetching job tasks:", error)
+			throw error
+		}
 	},
 
-	// Stop job
-	stopJob: async (id: string) => {
-		const response = await api.post(`/jobs/${id}/stop`)
-		return response.data
+	getTaskLogs: async (
+		jobId: string,
+		taskId: string,
+		filePath: string,
+	): Promise<APIResponse<TaskLog[]>> => {
+		try {
+			const response = await api.post<APIResponse<TaskLog[]>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs`,
+				{ file_path: filePath },
+				{ timeout: 0 },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error fetching task logs:", error)
+			throw error
+		}
 	},
 
-	// Get job history
-	getJobHistory: async (id: string) => {
-		const response = await api.get<JobHistory[]>(`/jobs/${id}/history`)
-		return response.data
-	},
-
-	// Get job logs
-	getJobLogs: async (jobId: string, historyId: string) => {
-		const response = await api.get<JobLog[]>(
-			`/jobs/${jobId}/history/${historyId}/logs`,
-		)
-		return response.data
+	activateJob: async (
+		jobId: string,
+		activate: boolean,
+	): Promise<APIResponse<any>> => {
+		try {
+			const response = await api.post<APIResponse<any>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/activate`,
+				{ activate },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error toggling job activation:", error)
+			throw error
+		}
 	},
 }

@@ -36,5 +36,5 @@ func main() {
 		orm.Debug = true
 	}
 
-	web.Run("localhost")
+	web.Run()
 }

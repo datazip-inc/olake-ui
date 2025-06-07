@@ -20,7 +20,7 @@ const StreamPanel: React.FC<StreamPanelProps> = ({
 	const toggle = useCallback(
 		(e: CheckboxChangeEvent) => {
 			const { checked } = e.target
-			e.stopPropagation() // hack to prevent configuration triggers
+			e.stopPropagation()
 			setChecked(checked)
 			onStreamSelect?.(stream.stream.name, checked)
 		},

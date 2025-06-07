@@ -1,16 +1,10 @@
-import { Fragment, useState } from "react"
+import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { Destination } from "../../../types"
-import { DotsThree, PencilSimpleLine, TrashSimple } from "@phosphor-icons/react"
+import { DestinationTableProps, Entity } from "../../../types"
+import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 import { getConnectorImage } from "../../../utils/utils"
 import DeleteModal from "../../common/Modals/DeleteModal"
-
-interface DestinationTableProps {
-	destinations: Destination[]
-	loading: boolean
-	onEdit: (id: string) => void
-	onDelete: (destination: Destination) => void
-}
+import JobConnection from "../../common/components/JobConnection"
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
 	destinations,
@@ -20,7 +14,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
-	const pageSize = 5
+	const pageSize = 8
 
 	const { Search } = Input
 
@@ -29,19 +23,19 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			title: () => <span className="font-medium">Actions</span>,
 			key: "actions",
 			width: 80,
-			render: (_: any, record: Destination) => (
+			render: (_: any, record: Entity) => (
 				<Dropdown
 					menu={{
 						items: [
 							{
 								key: "edit",
-								icon: <PencilSimpleLine />,
+								icon: <PencilSimpleLine className="size-4" />,
 								label: "Edit",
-								onClick: () => onEdit(record.id),
+								onClick: () => onEdit(String(record.id)),
 							},
 							{
 								key: "delete",
-								icon: <TrashSimple />,
+								icon: <Trash className="size-4" />,
 								label: "Delete",
 								danger: true,
 								onClick: () => onDelete(record),
@@ -65,7 +59,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			render: (text: string) => <div className="flex items-center">{text}</div>,
 		},
 		{
-			title: () => <span className="font-medium">Connectors</span>,
+			title: () => <span className="font-medium">Destination</span>,
 			dataIndex: "type",
 			key: "type",
 			render: (text: string) => (
@@ -74,41 +68,28 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 						src={getConnectorImage(text)}
 						className="mr-2 size-6"
 					/>
-					<span>{text}</span>
+					<span>{text === "iceberg" ? "Apache Iceberg" : "AWS S3"}</span>
 				</div>
 			),
 		},
 		{
 			title: () => <span className="font-medium">Associated jobs</span>,
-			key: "associatedJobs",
-			render: (_: any, record: Destination) => {
-				if (!record.associatedJobs || record.associatedJobs.length === 0) {
+			key: "jobs",
+			dataIndex: "jobs",
+			render: (_: any, record: Entity) => {
+				const jobs = record.jobs as any[]
+				if (jobs.length === 0) {
 					return <div className="text-gray-500">No associated jobs</div>
 				}
+
 				return (
-					<div className="flex-end flex w-fit flex-col items-end gap-3">
-						<div className="mb-1 flex items-center">
-							<Fragment key={`job-${record.associatedJobs[0].jobName}`}>
-								<img
-									src={getConnectorImage(record.associatedJobs[0].source)}
-									className="size-8"
-								/>
-								<div className="ml-2 text-[#A3A3A3]">-------</div>
-								<div className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-[#0958D9]">
-									{record.associatedJobs[0].jobName}
-								</div>
-								<div className="mr-2 text-[#A3A3A3]">-------</div>
-								<img
-									key={record.associatedJobs[0].destination}
-									src={getConnectorImage(record.associatedJobs[0].destination)}
-									className="size-8"
-								/>
-							</Fragment>
-						</div>
-						<div className="items-end text-sm font-bold text-[#203FDD]">
-							+{record.associatedJobs.length - 1} more jobs
-						</div>
-					</div>
+					<JobConnection
+						sourceType={jobs[0].source_type || ""}
+						destinationType={record.type}
+						jobName={jobs[0].name}
+						remainingJobs={jobs.length - 1}
+						jobs={jobs}
+					/>
 				)
 			},
 		},
@@ -120,7 +101,6 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			destination.type.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
-	// Calculate current page data for display
 	const startIndex = (currentPage - 1) * pageSize
 	const endIndex = Math.min(startIndex + pageSize, filteredDestinations.length)
 	const currentPageData = filteredDestinations.slice(startIndex, endIndex)
@@ -150,19 +130,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				<DeleteModal fromSource={false} />
 			</div>
 
-			{/* Fixed pagination at bottom right */}
-			<div
-				style={{
-					position: "fixed",
-					bottom: 60,
-					right: 40,
-					display: "flex",
-					justifyContent: "flex-end",
-					padding: "8px 0",
-					backgroundColor: "#fff",
-					zIndex: 100,
-				}}
-			>
+			<div className="bottom-15 z-100 fixed right-10 flex justify-end bg-white p-2">
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
@@ -172,8 +140,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				/>
 			</div>
 
-			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
-			<div style={{ height: "80px" }}></div>
+			<div className="h-20" />
 		</>
 	)
 }

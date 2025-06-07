@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -157,4 +161,127 @@ func ULID() string {
 	}
 
 	return newUlid.String()
+}
+
+// ConnectionStatus represents the structure of the connection status JSON
+type ConnectionStatus struct {
+	Message string `json:"message"`
+	Status  string `json:"status"`
+}
+
+// LogMessage represents the structure of the log message JSON
+type LogMessage struct {
+	ConnectionStatus *ConnectionStatus `json:"connectionStatus,omitempty"`
+	Type             string            `json:"type,omitempty"`
+	// Add other fields as needed
+}
+
+// ExtractAndParseLastLogMessage extracts the JSON from the last log line and parses it
+func ExtractAndParseLastLogMessage(output []byte) (*LogMessage, error) {
+	// Convert output to string and split into lines
+	outputStr := strings.TrimSpace(string(output))
+	if outputStr == "" {
+		return nil, fmt.Errorf("empty output")
+	}
+
+	lines := strings.Split(outputStr, "\n")
+
+	// Find the last non-empty line
+	var lastLine string
+	for i := len(lines) - 1; i >= 0; i-- {
+		if trimmed := strings.TrimSpace(lines[i]); trimmed != "" {
+			lastLine = trimmed
+			break
+		}
+	}
+
+	if lastLine == "" {
+		return nil, fmt.Errorf("no log lines found")
+	}
+
+	// Extract JSON part (everything after the first "{")
+	start := strings.Index(lastLine, "{")
+	if start == -1 {
+		return nil, fmt.Errorf("no JSON found in log line")
+	}
+	jsonStr := lastLine[start:]
+
+	// Parse the JSON
+	var msg LogMessage
+	if err := json.Unmarshal([]byte(jsonStr), &msg); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	return &msg, nil
+}
+
+// CreateDirectory creates a directory with the specified permissions if it doesn't exist
+func CreateDirectory(dirPath string, perm os.FileMode) error {
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		if err := os.MkdirAll(dirPath, perm); err != nil {
+			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+		}
+	}
+	return nil
+}
+
+// WriteFile writes data to a file, creating the directory if necessary
+func WriteFile(filePath string, data []byte, perm os.FileMode) error {
+	dirPath := filepath.Dir(filePath)
+	if err := CreateDirectory(dirPath, 0755); err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(filePath, data, perm); err != nil {
+		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
+	}
+	return nil
+}
+
+// ParseJSONFile parses a JSON file into a map
+func ParseJSONFile(filePath string) (map[string]interface{}, error) {
+	fileData, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(fileData, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
+	}
+
+	return result, nil
+}
+
+// ToCron converts a frequency string to a cron expression
+func ToCron(frequency string) string {
+	parts := strings.Split(strings.ToLower(frequency), "-")
+	if len(parts) != 2 {
+		return ""
+	}
+
+	valueStr, unit := parts[0], parts[1]
+	value, err := strconv.Atoi(valueStr)
+	if err != nil || value <= 0 {
+		return ""
+	}
+
+	switch unit {
+	case "minutes":
+		return fmt.Sprintf("*/%d * * * *", value) // Every N minutes
+	case "hours":
+		return fmt.Sprintf("0 */%d * * *", value) // Every N hours at minute 0
+	case "days":
+		return fmt.Sprintf("0 0 */%d * *", value) // Every N days at midnight
+	case "weeks":
+		// Every N weeks on Sunday (0), cron doesn't support "every N weeks" directly,
+		// so simulate with day-of-week field (best-effort)
+		return fmt.Sprintf("0 0 * * */%d", value)
+	case "months":
+		return fmt.Sprintf("0 0 1 */%d *", value) // Every N months on the 1st at midnight
+	case "years":
+		return fmt.Sprintf("0 0 1 1 */%d", value) // Every N years on the 1st of January at midnight
+	default:
+		return ""
+	}
 }

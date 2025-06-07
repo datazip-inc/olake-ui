@@ -1,27 +1,36 @@
 import { useEffect, useState } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Spin, message, Button } from "antd"
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
+import { Input, Spin, message, Button, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
-import { getConnectorImage } from "../../../utils/utils"
+import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
+import {
+	getConnectorImage,
+	getLogLevelClass,
+	getLogTextColor,
+} from "../../../utils/utils"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
 		jobId: string
 		historyId: string
+		taskId?: string
 	}>()
+	const [searchParams] = useSearchParams()
+	const filePath = searchParams.get("file")
+	const isTaskLog = Boolean(filePath)
 
 	const navigate = useNavigate()
 	const [searchText, setSearchText] = useState("")
+	const [showOnlyErrors, setShowOnlyErrors] = useState(false)
 
 	const { Search } = Input
 
 	const {
 		jobs,
-		jobLogs,
-		isLoadingJobLogs,
-		jobLogsError,
-		fetchJobLogs,
+		taskLogs,
+		isLoadingTaskLogs,
+		taskLogsError,
+		fetchTaskLogs,
 		fetchJobs,
 	} = useAppStore()
 
@@ -30,56 +39,68 @@ const JobLogs: React.FC = () => {
 			fetchJobs()
 		}
 
-		if (jobId && historyId) {
-			fetchJobLogs(jobId, historyId).catch(error => {
-				message.error("Failed to fetch job logs")
-				console.error(error)
-			})
+		if (jobId) {
+			if (isTaskLog && filePath) {
+				fetchTaskLogs(jobId, historyId || "1", filePath).catch(error => {
+					message.error("Failed to fetch task logs")
+					console.error(error)
+				})
+			}
 		}
-	}, [jobId, historyId, fetchJobLogs, jobs.length, fetchJobs])
+	}, [
+		jobId,
+		historyId,
+		filePath,
+		isTaskLog,
+		fetchTaskLogs,
+		jobs.length,
+		fetchJobs,
+	])
 
-	const job = jobs.find(j => j.id === jobId)
+	const job = jobs.find(j => j.id === Number(jobId))
 
-	const getLogLevelClass = (level: string) => {
-		switch (level) {
-			case "debug":
-				return "text-blue-600 bg-[#F0F5FF]"
-			case "info":
-				return "text-[#531DAB] bg-[#F9F0FF]"
-			case "warning":
-				return "text-[#FAAD14] bg-[#FFFBE6]"
-			case "error":
-				return "text-red-500 bg-[#FFF1F0]"
-			default:
-				return "text-gray-600"
+	const filteredLogs = taskLogs.filter(function (log) {
+		if (typeof log !== "object" || log === null) {
+			return false
 		}
-	}
 
-	const getLogTextColor = (level: string) => {
-		switch (level) {
-			case "warning":
-				return "text-[#FAAD14]"
-			case "error":
-				return "text-[#F5222D]"
-			default:
-				return "text-[#000000"
+		const message = (log as any).message || ""
+		const level = (log as any).level || ""
+
+		const searchLowerCase = searchText.toLowerCase()
+		const messageLowerCase = message.toString().toLowerCase()
+		const levelLowerCase = level.toString().toLowerCase()
+
+		const matchesSearch =
+			messageLowerCase.includes(searchLowerCase) ||
+			levelLowerCase.includes(searchLowerCase)
+
+		if (showOnlyErrors) {
+			return (
+				matchesSearch &&
+				(messageLowerCase.includes("error") ||
+					levelLowerCase.includes("error") ||
+					levelLowerCase.includes("fatal"))
+			)
 		}
-	}
 
-	const filteredLogs = jobLogs.filter(
-		log =>
-			log.message.toLowerCase().includes(searchText.toLowerCase()) ||
-			log.level.toLowerCase().includes(searchText.toLowerCase()),
-	)
+		return matchesSearch
+	})
 
-	if (jobLogsError) {
+	if (taskLogsError) {
 		return (
 			<div className="p-6">
-				<div className="text-red-500">
-					Error loading job logs: {jobLogsError}
-				</div>
 				<Button
-					onClick={() => jobId && historyId && fetchJobLogs(jobId, historyId)}
+					onClick={() => {
+						if (isTaskLog && filePath) {
+							if (jobId) {
+								fetchTaskLogs(jobId, historyId || "1", filePath)
+							}
+						} else {
+							if (jobId && historyId) {
+							}
+						}
+					}}
 					className="mt-4"
 				>
 					Retry
@@ -90,32 +111,31 @@ const JobLogs: React.FC = () => {
 
 	return (
 		<div className="flex h-screen flex-col">
-			<div className="mb-6 flex items-center justify-between px-6 pt-3">
+			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="mb-2 flex items-center">
 						<div className="flex items-center gap-2">
 							<div>
 								<Link
 									to={`/jobs/${jobId}/history`}
-									className="mt-[2px] flex items-center"
+									className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 								>
-									<ArrowLeft size={20} />
+									<ArrowLeft className="size-5" />
 								</Link>
 							</div>
-							<div className="text-2xl font-bold">
-								{job?.name || "Jobname"} [Timestamp]
+							<div className="flex flex-col items-start">
+								<div className="text-2xl font-bold">
+									{job?.name || "Jobname"}{" "}
+								</div>
 							</div>
 						</div>
 					</div>
-					<span className="ml-6 rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#203FDD]">
-						{job?.status || "Active"}
-					</span>
 				</div>
 
 				<div className="flex items-center gap-2">
 					{job?.source && (
 						<img
-							src={getConnectorImage(job.source)}
+							src={getConnectorImage(job.source.type)}
 							alt="Source"
 							className="size-7"
 						/>
@@ -123,7 +143,7 @@ const JobLogs: React.FC = () => {
 					<span className="text-gray-500">{"--------------▶"}</span>
 					{job?.destination && (
 						<img
-							src={getConnectorImage(job.destination)}
+							src={getConnectorImage(job.destination.type)}
 							alt="Destination"
 							className="size-7"
 						/>
@@ -134,7 +154,7 @@ const JobLogs: React.FC = () => {
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
 				<h2 className="mb-4 text-xl font-bold">Logs</h2>
 
-				<div className="mb-4">
+				<div className="mb-4 flex items-center gap-3">
 					<Search
 						placeholder="Search Logs"
 						allowClear
@@ -142,40 +162,106 @@ const JobLogs: React.FC = () => {
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
+					<Tooltip title="Click to refetch the logs">
+						<Button
+							icon={<ArrowsClockwise size={16} />}
+							onClick={() => {
+								if (isTaskLog && filePath) {
+									fetchTaskLogs(jobId!, historyId || "1", filePath)
+										.then(() => {
+											message.success("Logs refetched successfully")
+										})
+										.catch(error => {
+											message.error("Failed to refetch task logs")
+											console.error(error)
+										})
+								}
+							}}
+							className="flex items-center"
+						></Button>
+					</Tooltip>
+					<Button
+						type={showOnlyErrors ? "primary" : "default"}
+						onClick={() => setShowOnlyErrors(!showOnlyErrors)}
+						className="flex items-center"
+					>
+						Errors
+					</Button>
 				</div>
 
-				{isLoadingJobLogs ? (
+				{isLoadingTaskLogs ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
 				) : (
-					<div className="overflow-scroll rounded-xl border bg-white">
+					<div
+						className={`overflow-scroll rounded-xl ${filteredLogs.length > 0 ? "border" : ""} bg-white`}
+					>
 						<table className="min-w-full">
 							<tbody>
-								{filteredLogs.map((log, index) => (
-									<tr key={index}>
-										<td className="w-32 px-4 py-3 text-sm text-gray-500">
-											{log.date}
-										</td>
-										<td className="w-24 px-4 py-3 text-sm text-gray-500">
-											{log.time}
-										</td>
-										<td className="w-24 px-4 py-3 text-sm">
-											<span
-												className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
-													log.level,
-												)}`}
-											>
-												{log.level}
-											</span>
-										</td>
-										<td
-											className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(log.level)}`}
-										>
-											{log.message}
-										</td>
-									</tr>
-								))}
+								{filteredLogs.map((log, index) => {
+									// Handle rendering differently based on the log type
+									if (isTaskLog) {
+										// TaskLog structure
+										const taskLog = log as any
+										return (
+											<tr key={index}>
+												<td className="w-32 px-4 py-3 text-sm text-gray-500">
+													{/* Extract date from ISO timestamp if possible */}
+													{taskLog.time
+														? new Date(taskLog.time).toLocaleDateString()
+														: ""}
+												</td>
+												<td className="w-24 px-4 py-3 text-sm text-gray-500">
+													{/* Extract time from ISO timestamp if possible */}
+													{taskLog.time
+														? new Date(taskLog.time).toLocaleTimeString()
+														: ""}
+												</td>
+												<td className="w-24 px-4 py-3 text-sm">
+													<span
+														className={`rounded-[6px] px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
+															taskLog.level,
+														)}`}
+													>
+														{taskLog.level}
+													</span>
+												</td>
+												<td
+													className={`px-4 py-3 text-sm ${getLogTextColor(taskLog.level)}`}
+												>
+													{taskLog.message}
+												</td>
+											</tr>
+										)
+									} else {
+										const jobLog = log as any
+										return (
+											<tr key={index}>
+												<td className="w-32 px-4 py-3 text-sm text-gray-500">
+													{jobLog.date}
+												</td>
+												<td className="w-24 px-4 py-3 text-sm text-gray-500">
+													{jobLog.time}
+												</td>
+												<td className="w-24 px-4 py-3 text-sm">
+													<span
+														className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
+															jobLog.level,
+														)}`}
+													>
+														{jobLog.level}
+													</span>
+												</td>
+												<td
+													className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(jobLog.level)}`}
+												>
+													{jobLog.message}
+												</td>
+											</tr>
+										)
+									}
+								})}
 							</tbody>
 						</table>
 					</div>

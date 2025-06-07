@@ -43,4 +43,3 @@ npm-debug*
 # ----------------------------
 *.env
 *.env.*
-server/conf/app.conf
