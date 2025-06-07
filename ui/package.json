@@ -13,10 +13,11 @@
 		"format:check": "prettier --check \"**/*.{js,jsx,ts,tsx}\""
 	},
 	"dependencies": {
+		"@babel/runtime": "7.26.10",
 		"@phosphor-icons/react": "^2.1.7",
 		"@rjsf/utils": "^5.24.8",
 		"antd": "^5.24.2",
-		"axios": "^1.8.1",
+		"axios": "^1.8.2",
 		"date-fns": "^4.1.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",

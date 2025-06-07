@@ -207,10 +207,10 @@ const JobEdit: React.FC = () => {
 			name: "New Source",
 			type: "MongoDB",
 			config: {
-				hosts: ["localhost:27017"],
+				hosts: [],
 				username: "",
 				password: "",
-				authdb: "admin",
+				authdb: "",
 				database: "",
 				collection: "",
 			},
@@ -223,7 +223,7 @@ const JobEdit: React.FC = () => {
 			config: {
 				normalization: false,
 				s3_bucket: "",
-				s3_region: "us-east-1",
+				s3_region: "",
 				type: "PARQUET",
 			},
 			version: "latest",
