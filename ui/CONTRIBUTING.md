@@ -37,7 +37,7 @@ We expect all contributors to follow our Code of Conduct. Please be respectful a
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/datazip-inc/olake-frontend.git
+   git clone https://github.com/datazip-inc/olake-ui.git
    cd ui
    ```
 

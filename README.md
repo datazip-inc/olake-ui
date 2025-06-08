@@ -119,8 +119,8 @@ You can run the entire Olake stack (UI, backend, Temporal worker, Temporal servi
 
 ## Contributing
 
-Checkout - [frontend initial setup branch](https://github.com/datazip-inc/olake-frontend/tree/feat/frontend_initial_setup_and_BFF) to see the work in progress and the related issues [here.](https://github.com/datazip-inc/olake-frontend/issues)
-Also checkout [CONTRIBUTING.MD](https://github.com/zriyanshdz/olake-frontend/blob/feat/frontend_initial_setup_and_BFF/olake_frontend/CONTRIBUTING.md) to get the guidelines.
+Related issues [here.](https://github.com/datazip-inc/olake-ui/issues)
+Also checkout [CONTRIBUTING.MD](https://github.com/zriyanshdz/olake-ui/blob/feat/frontend_initial_setup_and_BFF/olake_frontend/CONTRIBUTING.md) to get the guidelines.
 
 The changes will then get merged to staging branch and then to master branch.
 
