@@ -112,7 +112,6 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 func (c *Client) CreateSync(ctx context.Context, frequency, projectIDStr string, jobID int, runImmediately bool) (map[string]interface{}, error) {
 	id := fmt.Sprintf("sync-%s-%d", projectIDStr, jobID)
 	scheduleID := fmt.Sprintf("schedule-%s", id)
-
 	scheduleHandle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
 	currentSchedule, err := scheduleHandle.Describe(ctx)
 	scheduleExists := err == nil
@@ -180,7 +179,7 @@ func (c *Client) handleSchedule(ctx context.Context, scheduleHandle client.Sched
 		action := &client.ScheduleWorkflowAction{
 			ID:        id,
 			Workflow:  RunSyncWorkflow,
-			Args:      []interface{}{jobID},
+			Args:      []any{jobID},
 			TaskQueue: TaskQueue,
 		}
 

@@ -55,7 +55,7 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 	// Get activity logger
 	logger := activity.GetLogger(ctx)
 	logger.Info("Starting sync activity",
-		"jobId", params.jobID,
+		"jobId", params.JobID,
 		"workflowID", params.WorkflowID)
 	// Create a Docker runner with the default config directory
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
@@ -63,7 +63,7 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 	activity.RecordHeartbeat(ctx, "Running sync command")
 	// Execute the sync operation
 	result, err := runner.RunSync(
-		params.jobID,
+		params.JobID,
 		params.WorkflowID,
 	)
 	if err != nil {

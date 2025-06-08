@@ -680,16 +680,10 @@ func (c *DestHandler) GetDestinationSpec() {
 		return
 	}
 
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Form initialized successfully",
-		"data": map[string]interface{}{
-			"version":  req.Version,
-			"type":     req.Type,
-			"spec":     spec,
-			"uiSchema": uiSchema,
-		},
-	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+		"version":  req.Version,
+		"type":     req.Type,
+		"spec":     spec,
+		"uiSchema": uiSchema,
+	})
 }

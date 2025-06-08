@@ -61,7 +61,7 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	params := SyncParams{
-		jobID:      jobID,
+		JobID:      jobID,
 		WorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
