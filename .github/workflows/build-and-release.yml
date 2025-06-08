@@ -39,11 +39,18 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js cache
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
           cache: "pnpm"
           cache-dependency-path: "ui/pnpm-lock.yaml"
-
-      - name: Install pnpm
-        run: npm install -g pnpm
 
       - name: Setup environment variables
         run: |
