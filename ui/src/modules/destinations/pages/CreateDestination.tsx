@@ -1,571 +1,646 @@
-import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
-import { Input, Radio, Select, Spin } from "antd"
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { Input, message, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import {
-	ArrowLeft,
-	ArrowRight,
-	GenderNeuter,
-	Notebook,
-} from "@phosphor-icons/react"
-import AWSS3Icon from "../../../assets/AWSS3.svg"
-import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
+import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import StepTitle from "../../common/components/StepTitle"
-import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
-import { Destination } from "../../../types"
+import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
+import {
+	getCatalogInLowerCase,
+	getConnectorInLowerCase,
+	getConnectorName,
+} from "../../../utils/utils"
+import {
+	CATALOG_TYPES,
+	CONNECTOR_TYPES,
+	IcebergCatalogTypes,
+	mapCatalogValueToType,
+	SETUP_TYPES,
+} from "../../../utils/constants"
+import {
+	CatalogType,
+	CreateDestinationProps,
+	DestinationConfig,
+	ExtendedDestination,
+	SelectOption,
+	SetupType,
+} from "../../../types"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import EndpointTitle from "../../../utils/EndpointTitle"
+import FormField from "../../../utils/FormField"
+import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import { connectorOptions } from "../components/connectorOptions"
 
-interface ExtendedDestination extends Destination {
-	config?: any
+type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
+
+// Create ref handle interface
+export interface CreateDestinationHandle {
+	validateDestination: () => Promise<boolean>
 }
 
-interface CreateDestinationProps {
-	fromJobFlow?: boolean
-	fromJobEditFlow?: boolean
-	existingDestinationId?: string
-	onComplete?: () => void
-	stepNumber?: number
-	stepTitle?: string
-	initialConfig?: any
-	initialFormData?: any
-	onDestinationNameChange?: (name: string) => void
-	onConnectorChange?: (connector: string) => void
-	onFormDataChange?: (formData: any) => void
-}
+const CreateDestination = forwardRef<
+	CreateDestinationHandle,
+	CreateDestinationProps
+>(
+	(
+		{
+			fromJobFlow = false,
+			hitBack = false,
+			onComplete,
+			stepNumber,
+			stepTitle,
+			initialConfig,
+			initialFormData,
+			initialName,
+			initialConnector,
+			initialCatalog,
+			onDestinationNameChange,
+			onConnectorChange,
+			onFormDataChange,
+			onVersionChange,
+			onCatalogTypeChange,
+		},
+		ref,
+	) => {
+		const [setupType, setSetupType] = useState(SETUP_TYPES.NEW)
+		const [connector, setConnector] = useState<ConnectorType>(
+			initialConnector === undefined
+				? CONNECTOR_TYPES.AMAZON_S3
+				: initialConnector === "s3"
+					? CONNECTOR_TYPES.AMAZON_S3
+					: CONNECTOR_TYPES.APACHE_ICEBERG,
+		)
+		const [catalog, setCatalog] = useState<CatalogType | null>(
+			initialCatalog || null,
+		)
+		const [destinationName, setDestinationName] = useState(initialName || "")
+		const [version, setVersion] = useState("")
+		const [versions, setVersions] = useState<string[]>([])
+		const [loadingVersions, setLoadingVersions] = useState(false)
+		const [formData, setFormData] = useState<DestinationConfig>({})
+		const [schema, setSchema] = useState<Record<string, any> | null>(null)
+		const [loading, setLoading] = useState(false)
+		const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
+		const [filteredDestinations, setFilteredDestinations] = useState<
+			ExtendedDestination[]
+		>([])
+		const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+		const [destinationNameError, setDestinationNameError] = useState<
+			string | null
+		>(null)
+		const [validating, setValidating] = useState(false)
+		const navigate = useNavigate()
 
-const CreateDestination: React.FC<CreateDestinationProps> = ({
-	fromJobFlow = false,
-	fromJobEditFlow = false,
-	existingDestinationId,
-	onComplete,
-	stepNumber,
-	stepTitle,
-	initialConfig,
-	initialFormData,
-	onDestinationNameChange,
-	onConnectorChange,
-	onFormDataChange,
-}) => {
-	const [setupType, setSetupType] = useState("new")
-	const [connector, setConnector] = useState("Amazon S3")
-	const [catalog, setCatalog] = useState<string | null>(null)
-	const [destinationName, setDestinationName] = useState("")
-	const [formData, setFormData] = useState<any>({})
-	const [schema, setSchema] = useState<any>(null)
-	const [loading, setLoading] = useState(false)
-	const [filteredDestinations, setFilteredDestinations] = useState<
-		ExtendedDestination[]
-	>([])
+		const {
+			destinations,
+			fetchDestinations,
+			setShowEntitySavedModal,
+			setShowTestingModal,
+			setShowSuccessModal,
+			addDestination,
+			setShowFailureModal,
+			setShowSourceCancelModal,
+			setDestinationTestConnectionError,
+		} = useAppStore()
 
-	const {
-		destinations,
-		fetchDestinations,
-		setShowEntitySavedModal,
-		setShowTestingModal,
-		setShowSuccessModal,
-		addDestination,
-	} = useAppStore()
-
-	useEffect(() => {
-		const fetchSchema = async () => {
-			try {
-				setLoading(true)
-				let schemaData
-				if (connector === "Apache Iceberg") {
-					let connectorFromCatalog
-					if (catalog === null) {
-						connectorFromCatalog = "AWS Glue"
-					} else {
-						connectorFromCatalog = catalog
-					}
-					schemaData =
-						await destinationService.getConnectorSchema(connectorFromCatalog)
-					setSchema(schemaData)
-				} else {
-					schemaData = await destinationService.getConnectorSchema(connector)
-					setSchema(schemaData)
+		const parseDestinationConfig = (
+			config: string | DestinationConfig,
+		): DestinationConfig => {
+			if (typeof config === "string") {
+				try {
+					return JSON.parse(config)
+				} catch (e) {
+					console.error("Error parsing destination config:", e)
+					return {}
 				}
+			}
+			return config as DestinationConfig
+		}
 
-				// Initialize with default values from schema
-				if (schemaData.properties) {
-					const initialData: any = {}
+		useEffect(() => {
+			if (!destinations.length) {
+				fetchDestinations()
+			}
+		}, [destinations.length, fetchDestinations])
 
-					// Apply default values from schema properties
-					Object.entries(schemaData.properties).forEach(
-						([key, value]: [string, any]) => {
-							if (value.default !== undefined) {
-								initialData[key] = value.default
+		useEffect(() => {
+			if (initialConfig) {
+				setDestinationName(initialConfig.name)
+				setConnector(initialConfig.type as ConnectorType)
+				setFormData(initialConfig.config || {})
+			}
+		}, [initialConfig])
+
+		useEffect(() => {
+			if (initialFormData) {
+				setFormData(initialFormData)
+			}
+		}, [initialFormData])
+
+		useEffect(() => {
+			if (initialName) {
+				setDestinationName(initialName)
+			}
+		}, [initialName])
+
+		useEffect(() => {
+			if (initialConnector) {
+				setConnector(
+					initialConnector === "s3"
+						? CONNECTOR_TYPES.AMAZON_S3
+						: CONNECTOR_TYPES.APACHE_ICEBERG,
+				)
+			}
+		}, [initialConnector])
+
+		useEffect(() => {
+			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+				setCatalog(CATALOG_TYPES.AWS_GLUE)
+			} else {
+				setCatalog(null)
+			}
+		}, [connector])
+
+		useEffect(() => {
+			if (initialCatalog) {
+				setCatalog(initialCatalog)
+				if (onCatalogTypeChange) {
+					onCatalogTypeChange(initialCatalog)
+				}
+			}
+		}, [initialCatalog, onCatalogTypeChange])
+
+		useEffect(() => {
+			if (setupType !== SETUP_TYPES.EXISTING) return
+
+			const filterDestinationsByConnectorAndCatalog = () => {
+				const connectorLowerCase = getConnectorInLowerCase(connector)
+				const isIceberg = connector === CONNECTOR_TYPES.APACHE_ICEBERG
+				const catalogValue = isIceberg
+					? catalog || CATALOG_TYPES.AWS_GLUE
+					: null
+				const catalogLowerCase = catalogValue
+					? getCatalogInLowerCase(catalogValue)
+					: null
+
+				return destinations
+					.filter(destination => {
+						if (destination.type !== connectorLowerCase) return false
+
+						if (!isIceberg) return true
+
+						try {
+							const config = parseDestinationConfig(destination.config)
+							return config?.writer?.catalog_type === catalogLowerCase
+						} catch {
+							return false
+						}
+					})
+					.map(dest => ({
+						...dest,
+						config: parseDestinationConfig(dest.config),
+					}))
+			}
+
+			setFilteredDestinations(filterDestinationsByConnectorAndCatalog())
+		}, [connector, setupType, destinations, catalog])
+
+		useEffect(() => {
+			const fetchVersions = async () => {
+				setLoadingVersions(true)
+				try {
+					const response = await destinationService.getDestinationVersions(
+						connector.toLowerCase(),
+					)
+					if (response.data?.version) {
+						setVersions(response.data.version)
+						const defaultVersion = response.data.version[0] || ""
+						setVersion(defaultVersion)
+
+						if (onVersionChange) {
+							onVersionChange(defaultVersion)
+						}
+					}
+				} catch (error) {
+					console.error("Error fetching versions:", error)
+				} finally {
+					setLoadingVersions(false)
+				}
+			}
+
+			fetchVersions()
+		}, [connector, onVersionChange])
+
+		useEffect(() => {
+			const fetchDestinationSpec = async () => {
+				setLoading(true)
+				try {
+					const response = await destinationService.getDestinationSpec(
+						connector,
+						catalog,
+						version,
+					)
+					if (response.success && response.data?.spec) {
+						setSchema(response.data.spec)
+						setUiSchema(response.data.uiSchema || null)
+					} else {
+						console.error("Failed to get destination spec:", response.message)
+					}
+				} catch (error) {
+					console.error("Error fetching destination spec:", error)
+				} finally {
+					setLoading(false)
+				}
+			}
+
+			fetchDestinationSpec()
+		}, [connector, catalog, version])
+
+		useEffect(() => {
+			if (!fromJobFlow) {
+				setFormData({})
+			}
+			if (fromJobFlow && !hitBack) {
+				setFormData({})
+			}
+		}, [connector, catalog])
+
+		const handleCancel = () => {
+			setShowSourceCancelModal(true)
+		}
+
+		const validateDestination = async (): Promise<boolean> => {
+			setValidating(true)
+			let isValid = true
+
+			if (setupType === SETUP_TYPES.NEW) {
+				if (!destinationName.trim()) {
+					setDestinationNameError("Destination name is required")
+					message.error("Destination name is required")
+					isValid = false
+				} else {
+					setDestinationNameError(null)
+				}
+			}
+
+			if (setupType === SETUP_TYPES.NEW && schema) {
+				const enrichedFormData = { ...formData }
+				if (schema.properties) {
+					Object.entries(schema.properties).forEach(
+						([key, propValue]: [string, any]) => {
+							if (
+								propValue.default !== undefined &&
+								(enrichedFormData[key] === undefined ||
+									enrichedFormData[key] === null)
+							) {
+								enrichedFormData[key] = propValue.default
 							}
 						},
 					)
-
-					// Only set initial data if we don't have existing form data
-					if (Object.keys(formData).length === 0) {
-						setFormData(initialData)
-					}
 				}
-			} catch (error) {
-				console.error("Error fetching schema:", error)
-			} finally {
-				setLoading(false)
+
+				const schemaErrors = validateFormData(enrichedFormData, schema)
+				setFormErrors(schemaErrors)
+				isValid = isValid && Object.keys(schemaErrors).length === 0
 			}
+
+			return isValid
 		}
 
-		// Fetch schema for both new and existing sources
-		fetchSchema()
-	}, [connector, setupType, catalog])
+		useImperativeHandle(ref, () => ({
+			validateDestination,
+		}))
 
-	useEffect(() => {
-		if (!destinations.length) {
-			fetchDestinations()
-		}
-	}, [destinations.length, fetchDestinations])
+		const handleCreate = async () => {
+			const isValid = await validateDestination()
+			if (!isValid) return
 
-	// Initialize with initial config if provided
-	useEffect(() => {
-		if (initialConfig) {
-			setDestinationName(initialConfig.name)
-			setConnector(initialConfig.type)
-			setFormData(initialConfig.config || {})
-		}
-	}, [initialConfig])
-
-	// Update form data when initial form data changes
-	useEffect(() => {
-		if (initialFormData) {
-			setFormData(initialFormData)
-		}
-	}, [initialFormData])
-
-	useEffect(() => {
-		if (fromJobEditFlow && existingDestinationId) {
-			setSetupType("existing")
-			const selectedDestination = destinations.find(
-				d => d.id === existingDestinationId,
-			) as ExtendedDestination
-			if (selectedDestination) {
-				setDestinationName(selectedDestination.name)
-				setConnector(selectedDestination.type)
+			const catalogInLowerCase = catalog
+				? getCatalogInLowerCase(catalog)
+				: undefined
+			const newDestinationData = {
+				name: destinationName,
+				type: connector === CONNECTOR_TYPES.AMAZON_S3 ? "s3" : "iceberg",
+				version,
+				config: JSON.stringify({ ...formData, catalog: catalogInLowerCase }),
 			}
-		}
-	}, [fromJobEditFlow, existingDestinationId, destinations])
 
-	// Make sure catalog is immediately set when connector changes
-	useEffect(() => {
-		if (connector === "Apache Iceberg") {
-			setCatalog("AWS Glue")
-		} else {
-			setCatalog(null)
-		}
-	}, [connector])
-
-	// Update useEffect for filtered destinations to remove redundant catalog check
-	useEffect(() => {
-		if (setupType === "existing") {
-			// Only filter by catalog if it's Apache Iceberg
-			if (connector === "Apache Iceberg") {
-				// Make sure we have a catalog value
-				const catalogValue = catalog || "AWS Glue"
-
-				// Create a safe version of the filter that checks for config existence
-				const filtered = destinations.filter(destination => {
-					// First check if it's the right connector type
-					if (destination.type !== connector) return false
-
-					// For Apache Iceberg, also check the catalog value
-					const extDestination = destination as ExtendedDestination
-					return extDestination.catalog === catalogValue
-				})
-				setFilteredDestinations(filtered as ExtendedDestination[])
-			} else {
-				const filtered = destinations.filter(
-					destination => destination.type === connector,
-				) as ExtendedDestination[]
-
-				setFilteredDestinations(filtered)
-			}
-		}
-	}, [connector, setupType, destinations, catalog])
-
-	const handleCancel = () => {
-		setShowEntitySavedModal(false)
-	}
-
-	const handleCreate = () => {
-		// Add the new destination to the store state
-		const newDestinationData = {
-			name: destinationName,
-			type: connector,
-			status: "active" as const,
-			config: { ...formData, catalog },
-		}
-
-		addDestination(newDestinationData)
-			.then(() => {
-				// Continue with the existing flow
+			try {
 				setShowTestingModal(true)
-				setTimeout(() => {
-					setShowTestingModal(false)
+				const testResult =
+					await destinationService.testDestinationConnection(newDestinationData)
+				setShowTestingModal(false)
+
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
-						setShowEntitySavedModal(true)
-					}, 2000)
-				}, 2000)
-			})
-			.catch(error => {
-				console.error("Error adding destination:", error)
-			})
-	}
-
-	const handleDestinationNameChange = (
-		e: React.ChangeEvent<HTMLInputElement>,
-	) => {
-		const newName = e.target.value
-		setDestinationName(newName)
-		if (onDestinationNameChange) {
-			onDestinationNameChange(newName)
-		}
-	}
-
-	const handleConnectorChange = (value: string) => {
-		setConnector(value)
-		if (onConnectorChange) {
-			onConnectorChange(value)
-		}
-	}
-
-	const handleCatalogChange = (value: string) => {
-		setCatalog(value)
-	}
-
-	const handleExistingDestinationSelect = (value: string) => {
-		const selectedDestination = destinations.find(
-			d => d.id === value,
-		) as ExtendedDestination
-		if (selectedDestination) {
-			setDestinationName(selectedDestination.name)
-			setConnector(selectedDestination.type)
-			if (selectedDestination.config?.catalog) {
-				setCatalog(selectedDestination.config.catalog)
+						addDestination(newDestinationData)
+							.then(() => setShowEntitySavedModal(true))
+							.catch(error => console.error("Error adding destination:", error))
+					}, 1000)
+				} else {
+					setDestinationTestConnectionError(testResult.data?.message || "")
+					setShowFailureModal(true)
+				}
+			} catch (error) {
+				setShowTestingModal(false)
+				console.error("Error testing connection:", error)
+				navigate("/destinations")
 			}
-			setFormData(selectedDestination.config || formData)
 		}
-	}
 
-	const handleFormChange = (newFormData: any) => {
-		setFormData(newFormData)
-		if (onFormDataChange) {
-			onFormDataChange(newFormData)
+		const handleDestinationNameChange = (
+			e: React.ChangeEvent<HTMLInputElement>,
+		) => {
+			const newName = e.target.value
+			if (newName.length >= 1) {
+				setDestinationNameError(null)
+			}
+			setDestinationName(newName)
+			if (onDestinationNameChange) {
+				onDestinationNameChange(newName)
+			}
 		}
-	}
 
-	return (
-		<div className="flex h-screen flex-col">
-			{/* Header */}
-			{!fromJobFlow && (
-				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
-					<Link
-						to={"/destinations"}
-						className="flex items-center text-lg font-bold"
-					>
-						<ArrowLeft className="mr-1 size-6 font-bold" />
-					</Link>
-					<div className="text-xl font-bold">Create destination</div>
-				</div>
-			)}
+		const handleConnectorChange = (value: string) => {
+			setConnector(value as ConnectorType)
+			if (onConnectorChange) {
+				onConnectorChange(value)
+			}
+		}
 
-			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden">
-				{/* Left content */}
-				<div className="w-full overflow-auto p-6 pt-6">
-					{stepNumber && stepTitle && (
-						<StepTitle
-							stepNumber={stepNumber}
-							stepTitle={stepTitle}
-						/>
-					)}
-					<div className="mb-6 mt-6 rounded-xl border border-gray-200 bg-white p-6">
-						<div>
-							<div className="mb-4 flex items-center gap-1 text-base font-medium">
-								<Notebook className="size-5" />
-								Capture information
-							</div>
+		const handleCatalogChange = (value: string) => {
+			setCatalog(value as CatalogType)
+			if (onCatalogTypeChange) {
+				onCatalogTypeChange(value as CatalogType)
+			}
+		}
 
-							{!fromJobEditFlow && (
-								<div className="mb-4 flex">
-									<Radio.Group
-										value={setupType}
-										onChange={e => setSetupType(e.target.value)}
-										className="flex"
-									>
-										<Radio
-											value="new"
-											className="mr-8"
-										>
-											Set up a new destination
-										</Radio>
-										<Radio value="existing">Use an existing destination</Radio>
-									</Radio.Group>
-								</div>
-							)}
+		const handleExistingDestinationSelect = (value: string) => {
+			const selectedDestination = destinations.find(
+				d => d.id.toString() === value.toString(),
+			)
+			if (!selectedDestination) return
 
-							{setupType === "new" && !fromJobEditFlow ? (
-								<div className="flex-start flex w-full gap-6">
-									<div className="w-1/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<Select
-											value={connector}
-											onChange={handleConnectorChange}
-											className="w-full"
-											options={[
-												{
-													value: "Amazon S3",
-													label: (
-														<div className="flex items-center">
-															<img
-																src={AWSS3Icon}
-																alt="AWS S3"
-																className="mr-2 size-5"
-															/>
-															<span>Amazon S3</span>
-														</div>
-													),
-												},
-												{
-													value: "Apache Iceberg",
-													label: (
-														<div className="flex items-center">
-															<img
-																src={ApacheIceBerg}
-																alt="Apache Iceberg"
-																className="mr-2 size-5"
-															/>
-															<span>Apache Iceberg</span>
-														</div>
-													),
-												},
-											]}
-										/>
-									</div>
+			if (onDestinationNameChange)
+				onDestinationNameChange(selectedDestination.name)
+			if (onConnectorChange) onConnectorChange(selectedDestination.type)
+			if (onVersionChange) onVersionChange(selectedDestination.version)
+			const configObj = parseDestinationConfig(selectedDestination.config)
+			if (onFormDataChange) onFormDataChange(configObj)
 
-									<div className="w-1/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Catalog :
-										</label>
-										{connector === "Apache Iceberg" ? (
-											<Select
-												value={catalog}
-												onChange={handleCatalogChange}
-												className="w-full"
-												options={[
-													{ value: "AWS Glue", label: "AWS Glue" },
-													{ value: "REST Catalog", label: "REST catalog" },
-													{ value: "JDBC Catalog", label: "JDBC" },
-													{ value: "HIVE Catalog", label: "HIVE catalog" },
-												]}
-											/>
-										) : (
-											<Select
-												value="None"
-												className="w-full"
-												disabled
-												options={[{ value: "None", label: "None" }]}
-											/>
-										)}
-									</div>
-								</div>
-							) : (
-								<div className="flex flex-col gap-6">
-									<div className="flex w-full gap-6">
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Connector:
-											</label>
-											<Select
-												value={connector}
-												onChange={handleConnectorChange}
-												className="h-8 w-full"
-												disabled={fromJobEditFlow}
-												options={[
-													{
-														value: "Amazon S3",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={AWSS3Icon}
-																	alt="AWS S3"
-																	className="mr-2 size-5"
-																/>
-																<span>Amazon S3</span>
-															</div>
-														),
-													},
-													{
-														value: "Apache Iceberg",
-														label: (
-															<div className="flex items-center">
-																<img
-																	src={ApacheIceBerg}
-																	alt="Apache Iceberg"
-																	className="mr-2 size-5"
-																/>
-																<span>Apache Iceberg</span>
-															</div>
-														),
-													},
-												]}
-											/>
-										</div>
-										<div className="w-1/3">
-											<label className="mb-2 block text-sm font-medium text-gray-700">
-												Catalog:
-											</label>
-											{connector === "Apache Iceberg" ? (
-												<Select
-													value={catalog}
-													onChange={handleCatalogChange}
-													className="h-8 w-full"
-													disabled={fromJobEditFlow}
-													options={[
-														{ value: "AWS Glue", label: "AWS Glue" },
-														{ value: "REST Catalog", label: "REST catalog" },
-														{ value: "JDBC Catalog", label: "JDBC" },
-														{ value: "HIVE Catalog", label: "HIVE catalog" },
-													]}
-												/>
-											) : (
-												<Select
-													value="None"
-													className="w-full"
-													disabled
-													options={[{ value: "None", label: "None" }]}
-												/>
-											)}
-										</div>
-									</div>
+			setDestinationName(selectedDestination.name)
 
-									<div className="w-2/3">
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											{fromJobEditFlow
-												? "Destination:"
-												: "Select existing destination:"}
-										</label>
-										<Select
-											placeholder="Select a destination"
-											className="w-full"
-											onChange={handleExistingDestinationSelect}
-											value={
-												fromJobEditFlow ? existingDestinationId : undefined
-											}
-											disabled={fromJobEditFlow}
-											options={filteredDestinations.map(d => ({
-												value: d.id,
-												label: d.name,
-											}))}
-										/>
-									</div>
-								</div>
-							)}
+			if (configObj.catalog || configObj.catalog_type) {
+				const catalogValue =
+					configObj.catalog || configObj.catalog_type || "none"
+				const catalogType = mapCatalogValueToType(catalogValue)
+				if (catalogType) setCatalog(catalogType)
+			}
+			setFormData(configObj)
+		}
 
-							{setupType === "new" && !fromJobEditFlow && (
-								<div className="mt-4 w-2/3">
-									<label className="mb-2 block text-sm font-medium text-gray-700">
-										Name of your destination :
-									</label>
-									<Input
-										placeholder="Enter the name of your destination"
-										value={destinationName}
-										onChange={handleDestinationNameChange}
-									/>
-								</div>
-							)}
-						</div>
+		const handleFormChange = (newFormData: DestinationConfig) => {
+			setFormData(newFormData)
+			if (onFormDataChange) {
+				onFormDataChange(newFormData)
+			}
+		}
+
+		const handleVersionChange = (value: string) => {
+			setVersion(value)
+			if (onVersionChange) {
+				onVersionChange(value)
+			}
+		}
+
+		const catalogOptions: SelectOption[] =
+			connector === CONNECTOR_TYPES.APACHE_ICEBERG
+				? IcebergCatalogTypes
+				: [{ value: CATALOG_TYPES.NONE, label: "None" }]
+
+		const setupTypeSelector = () => (
+			<SetupTypeSelector
+				value={setupType as SetupType}
+				onChange={value => setSetupType(value)}
+				newLabel="Set up a new destination"
+				existingLabel="Use an existing destination"
+				fromJobFlow={fromJobFlow}
+			/>
+		)
+
+		const newDestinationForm = () =>
+			setupType === SETUP_TYPES.NEW ? (
+				<>
+					<div className="flex-start flex w-full gap-12">
+						<FormField label="Connector:">
+							<Select
+								value={connector}
+								onChange={handleConnectorChange}
+								className="w-full"
+								options={connectorOptions}
+							/>
+						</FormField>
+
+						<FormField label="Catalog:">
+							<Select
+								value={catalog || CATALOG_TYPES.NONE}
+								onChange={handleCatalogChange}
+								className="w-full"
+								disabled={connector !== CONNECTOR_TYPES.APACHE_ICEBERG}
+								options={catalogOptions}
+							/>
+						</FormField>
 					</div>
 
-					{setupType === "new" && (
-						<>
-							{loading ? (
-								<div className="flex h-32 items-center justify-center">
-									<Spin tip="Loading schema..." />
-								</div>
-							) : (
-								<>
-									{schema && (
-										<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-											<div className="mb-4 flex items-center">
-												<div className="mb-2 flex items-center gap-1">
-													<GenderNeuter className="size-5" />
-													<div className="text-base font-medium">
-														Endpoint config
-													</div>
-												</div>
-											</div>
+					<div className="mt-4 flex w-full gap-12">
+						<FormField
+							label="Name of your destination:"
+							required
+							error={destinationNameError}
+						>
+							<Input
+								placeholder="Enter the name of your destination"
+								value={destinationName}
+								onChange={handleDestinationNameChange}
+								status={destinationNameError ? "error" : ""}
+							/>
+						</FormField>
 
-											<DynamicSchemaForm
-												schema={schema}
-												uiSchema={schema?.uiSchema}
-												formData={formData}
-												onChange={handleFormChange}
-												hideSubmit={true}
-											/>
-										</div>
-									)}
-								</>
-							)}
-						</>
+						<FormField label="Version:">
+							<Select
+								value={version}
+								onChange={handleVersionChange}
+								className="w-full"
+								loading={loadingVersions}
+								placeholder="Select version"
+								options={versions.map(v => ({
+									value: v,
+									label: v,
+								}))}
+							/>
+						</FormField>
+					</div>
+				</>
+			) : (
+				<div className="flex flex-col gap-8">
+					<div className="flex w-full gap-6">
+						<FormField label="Connector:">
+							<Select
+								value={connector}
+								onChange={handleConnectorChange}
+								className="h-8 w-full"
+								options={connectorOptions}
+							/>
+						</FormField>
+
+						<FormField label="Catalog:">
+							<Select
+								value={catalog || CATALOG_TYPES.NONE}
+								onChange={handleCatalogChange}
+								className="h-8 w-full"
+								disabled={connector !== CONNECTOR_TYPES.APACHE_ICEBERG}
+								options={catalogOptions}
+							/>
+						</FormField>
+					</div>
+
+					<div className="w-3/5">
+						<label className="mb-2 block text-sm font-medium text-gray-700">
+							Select existing destination:
+						</label>
+						<Select
+							placeholder="Select a destination"
+							className="w-full"
+							onChange={handleExistingDestinationSelect}
+							value={undefined}
+							options={filteredDestinations.map(d => ({
+								value: d.id,
+								label: d.name,
+							}))}
+						/>
+					</div>
+				</div>
+			)
+
+		// JSX for schema form
+		const schemaFormSection = () =>
+			setupType === SETUP_TYPES.NEW && (
+				<>
+					{loading ? (
+						<div className="flex h-32 items-center justify-center">
+							<Spin tip="Loading schema..." />
+						</div>
+					) : (
+						schema && (
+							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
+								<EndpointTitle title="Endpoint config" />
+								<FixedSchemaForm
+									schema={schema}
+									{...(uiSchema ? { uiSchema } : {})}
+									formData={formData}
+									onChange={handleFormChange}
+									hideSubmit={true}
+									errors={formErrors}
+									validate={validating}
+								/>
+							</div>
+						)
 					)}
+				</>
+			)
+
+		return (
+			<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
+				{/* Header */}
+				{!fromJobFlow && (
+					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+						<Link
+							to={"/destinations"}
+							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+						>
+							<ArrowLeft className="mr-1 size-5" />
+						</Link>
+						<div className="text-xl font-bold">Create destination</div>
+					</div>
+				)}
+
+				{/* Main content */}
+				<div className="flex flex-1 overflow-hidden">
+					{/* Left content */}
+					<div className="w-full overflow-auto p-6 pt-6">
+						{stepNumber && stepTitle && (
+							<StepTitle
+								stepNumber={stepNumber}
+								stepTitle={stepTitle}
+							/>
+						)}
+						<div className="mb-6 mt-6 rounded-xl border border-gray-200 bg-white p-6">
+							<div>
+								<div className="mb-4 flex items-center gap-1 text-base font-medium">
+									<Notebook className="size-5" />
+									Capture information
+								</div>
+
+								{setupTypeSelector()}
+								{newDestinationForm()}
+							</div>
+						</div>
+
+						{schemaFormSection()}
+					</div>
+
+					{/* Documentation panel */}
+					<DocumentationPanel
+						docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
+						showResizer={true}
+					/>
 				</div>
 
-				{/* Documentation panel */}
-				<DocumentationPanel
-					docUrl="https://olake.io/docs/category/aws-s3"
-					showResizer={true}
+				{/* Footer */}
+				{!fromJobFlow && (
+					<div className="flex justify-between border-t border-gray-200 bg-white p-4">
+						<button
+							onClick={handleCancel}
+							className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+						>
+							Cancel
+						</button>
+						<button
+							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+							onClick={handleCreate}
+						>
+							Create
+							<ArrowRight className="size-4 text-white" />
+						</button>
+					</div>
+				)}
+
+				<TestConnectionModal />
+				<TestConnectionSuccessModal />
+				<TestConnectionFailureModal />
+				<EntitySavedModal
+					type="destination"
+					onComplete={onComplete}
+					fromJobFlow={fromJobFlow || false}
+					entityName={destinationName}
+				/>
+				<EntityCancelModal
+					type="destination"
+					navigateTo={fromJobFlow ? "jobs/new" : "destinations"}
 				/>
 			</div>
+		)
+	},
+)
 
-			{/* Footer */}
-			{!fromJobFlow && (
-				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-					<button
-						onClick={handleCancel}
-						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-					>
-						Cancel
-					</button>
-					<button
-						className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
-						onClick={handleCreate}
-					>
-						Create
-						<ArrowRight className="size-4 text-white" />
-					</button>
-				</div>
-			)}
-
-			<TestConnectionModal />
-			<TestConnectionSuccessModal />
-			<EntitySavedModal
-				type="destination"
-				onComplete={onComplete}
-				fromJobFlow={fromJobFlow || false}
-				entityName={destinationName}
-			/>
-			<EntityCancelModal
-				type="destination"
-				navigateTo={
-					fromJobEditFlow ? "jobs" : fromJobFlow ? "jobs/new" : "destinations"
-				}
-			/>
-		</div>
-	)
-}
+CreateDestination.displayName = "CreateDestination"
 
 export default CreateDestination

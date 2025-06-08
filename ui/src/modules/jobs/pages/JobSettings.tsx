@@ -1,20 +1,29 @@
 import { useState, useEffect } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Button, Radio, Switch, Dropdown, message, Divider } from "antd"
+import { useParams, Link, useNavigate } from "react-router-dom"
+import { Input, Button, Switch, message, Select } from "antd"
 import { ArrowRight } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, CaretDown } from "@phosphor-icons/react"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
+import { ArrowLeft } from "@phosphor-icons/react"
+import { getConnectorImage } from "../../../utils/utils"
+import DeleteJobModal from "../../common/Modals/DeleteJobModal"
+import ClearDataModal from "../../common/Modals/ClearDataModal"
+import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
+import { jobService } from "../../../api"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
+	const [replicationFrequencyValue, setReplicationFrequencyValue] =
+		useState("1")
+	const [jobName, setJobName] = useState("")
 	const navigate = useNavigate()
-	const [docsMinimized, setDocsMinimized] = useState(false)
-	const [replicationFrequency, setReplicationFrequency] = useState("daily")
-	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
-	const [pauseJob, setPauseJob] = useState(false)
 
-	const { jobs, fetchJobs } = useAppStore()
+	const {
+		jobs,
+		fetchJobs,
+		setShowDeleteJobModal,
+		setSelectedJobId,
+		setShowClearDestinationAndSyncModal,
+	} = useAppStore()
 
 	useEffect(() => {
 		if (!jobs.length) {
@@ -22,186 +31,222 @@ const JobSettings: React.FC = () => {
 		}
 	}, [fetchJobs, jobs.length])
 
-	const job = jobs.find(j => j.id === jobId)
+	const job = jobs.find(j => j.id.toString() === jobId)
 
-	const handleClearData = () => {
-		message.success("Data cleared successfully")
+	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
+
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+			await fetchJobs()
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+		}
 	}
 
+	const [replicationFrequency, setReplicationFrequency] = useState(
+		job?.frequency ? job.frequency.split("-")[1] : "minutes",
+	)
+
+	useEffect(() => {
+		if (job?.frequency) {
+			const parts = job.frequency.split("-")
+			if (parts.length === 2) {
+				setReplicationFrequencyValue(parts[0])
+				setReplicationFrequency(parts[1])
+			} else {
+				setReplicationFrequencyValue("1")
+				setReplicationFrequency("minutes")
+			}
+		} else if (job) {
+			setReplicationFrequencyValue("1")
+			setReplicationFrequency("minutes")
+		}
+		if (job) {
+			setPauseJob(!job.activate)
+		}
+		if (job?.name) {
+			setJobName(job.name)
+		}
+	}, [job])
+
 	const handleClearDestinationAndSync = () => {
-		message.success("Destination cleared and sync initiated")
+		setShowClearDestinationAndSyncModal(true)
 	}
 
 	const handleDeleteJob = () => {
-		message.success("Job deleted successfully")
-		navigate("/jobs")
+		if (jobId) {
+			setSelectedJobId(jobId)
+		}
+		setShowDeleteJobModal(true)
 	}
 
-	const handleSaveSettings = () => {
-		message.success("Job settings saved successfully")
-	}
+	const handleSaveSettings = async () => {
+		if (!jobId || !job) {
+			message.error("Job details not found.")
+			return
+		}
 
-	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
-	}
+		const updatedFrequency = `${replicationFrequencyValue}-${replicationFrequency}`
 
-	const frequencyOptions = [
-		{ label: "Hourly", value: "hourly" },
-		{ label: "Daily", value: "daily" },
-		{ label: "Weekly", value: "weekly" },
-		{ label: "Monthly", value: "monthly" },
-	]
+		try {
+			const jobUpdatePayload = {
+				name: jobName,
+				frequency: updatedFrequency,
+				activate: job.activate,
+				source: {
+					...job.source,
+					config:
+						typeof job.source.config === "string"
+							? job.source.config
+							: JSON.stringify(job.source.config),
+				},
+				destination: {
+					...job.destination,
+					config:
+						typeof job.destination.config === "string"
+							? job.destination.config
+							: JSON.stringify(job.destination.config),
+				},
+				streams_config:
+					typeof job.streams_config === "string"
+						? job.streams_config
+						: JSON.stringify(job.streams_config),
+			}
+
+			await jobService.updateJob(jobId, jobUpdatePayload)
+			message.success("Job settings saved successfully")
+			await fetchJobs()
+			navigate("/jobs")
+		} catch (error) {
+			console.error("Error saving job settings:", error)
+			message.error("Failed to save job settings")
+		}
+	}
 
 	return (
 		<>
 			<div className="flex h-screen flex-col">
-				<div className="overflow-scroll">
-					<div className="px-6 pt-6">
+				<div className="flex-1 overflow-hidden">
+					<div className="px-6 pb-4 pt-6">
 						<div className="flex items-center justify-between">
 							<div>
 								<div className="flex items-center gap-2">
 									<Link
 										to="/jobs"
-										className="items-cente mt-[2px] flex"
+										className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 									>
-										<ArrowLeft size={20} />
+										<ArrowLeft className="size-5" />
 									</Link>
 
 									<div className="text-2xl font-bold">
 										{job?.name || "<Job_name>"}
 									</div>
 								</div>
-								<span className="ml-6 mt-2 rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
-									{job?.status || "Active"}
-								</span>
+								<div className="ml-10 mt-1.5 w-fit rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
+									{job?.activate ? "Active" : "Inactive"}
+								</div>
 							</div>
 
 							<div className="flex items-center gap-2">
-								<Button className="rounded-full bg-green-500 text-white">
-									S
-								</Button>
-								<span className="text-gray-500">--------------</span>
-								<Button className="rounded-full bg-red-500 text-white">
-									D
-								</Button>
+								{job?.source && (
+									<img
+										src={getConnectorImage(job.source.type)}
+										alt="Source"
+										className="size-7"
+									/>
+								)}
+								<span className="text-gray-500">{"--------------▶"}</span>
+								{job?.destination && (
+									<img
+										src={getConnectorImage(job.destination.type)}
+										alt="Destination"
+										className="size-7"
+									/>
+								)}
 							</div>
 						</div>
 					</div>
 
-					<Divider className="h-[2px]" />
-
-					<div className="flex px-6">
+					<div className="flex h-full border-t px-6">
 						{/* Main content */}
-						<div
-							className={`${
-								docsMinimized ? "w-full" : "w-3/4"
-							} pr-6 transition-all duration-300`}
-						>
+						<div className="mt-2 w-full pr-6 transition-all duration-300">
 							<h2 className="mb-4 text-xl font-medium">Job settings</h2>
 
 							<div className="mb-6">
-								<div className="flex w-full flex-row justify-between rounded-xl border border-[#D9D9D9] bg-white p-6">
-									<div className="mb-6 w-1/2">
+								<div className="flex w-full flex-row justify-between gap-8 rounded-xl border border-[#D9D9D9] bg-white px-6 pb-2 pt-6">
+									<div className="mb-6 w-1/3">
 										<label className="mb-2 block text-sm text-gray-700">
 											Job name:
 										</label>
 										<Input
 											placeholder="Enter your job name"
 											defaultValue={job?.name}
+											value={jobName}
+											onChange={e => setJobName(e.target.value)}
 											className="max-w-md"
 										/>
 									</div>
 
-									<div className="mb-6 w-1/2">
+									<div className="mb-6 w-2/3">
 										<label className="mb-2 block text-sm text-gray-700">
 											Replication frequency:
 										</label>
-										<Dropdown
-											menu={{
-												items: frequencyOptions.map(option => ({
-													key: option.value,
-													label: option.label,
-													onClick: () => setReplicationFrequency(option.value),
-												})),
-											}}
-										>
-											<Button className="flex w-64 items-center justify-between">
-												<span>
-													{frequencyOptions.find(
-														option => option.value === replicationFrequency,
-													)?.label || "Select frequency"}
-												</span>
-												<CaretDown size={16} />
-											</Button>
-										</Dropdown>
+										<div className="flex w-full items-center gap-2">
+											<Input
+												value={replicationFrequencyValue}
+												defaultValue={replicationFrequencyValue}
+												onChange={e =>
+													setReplicationFrequencyValue(e.target.value)
+												}
+												className="w-2/5"
+											/>
+											<Select
+												className="w-3/5"
+												value={replicationFrequency}
+												onChange={setReplicationFrequency}
+											>
+												<Select.Option value="minutes">Minutes</Select.Option>
+												<Select.Option value="hours">Hours</Select.Option>
+												<Select.Option value="days">Days</Select.Option>
+												<Select.Option value="weeks">Weeks</Select.Option>
+												<Select.Option value="months">Months</Select.Option>
+												<Select.Option value="years">Years</Select.Option>
+											</Select>
+										</div>
 									</div>
 								</div>
 
-								<div className="mb-6">
-									<div className="mb-2 mt-4 text-sm text-[#000]">
-										When the source schema changes, I want to:
-									</div>
-									<div className="rounded-xl border border-[#D9D9D9] px-6 pt-6">
-										<Radio.Group defaultValue="propagate">
-											<div className="mb-2">
-												<Radio value="propagate">
-													<div>
-														<span className="font-medium">
-															Propagate field changes only
-														</span>
-													</div>
-												</Radio>
-												<p className="mb-4 mt-1 pl-5 text-sm text-[#575757]">
-													Only column changes will be propagated. Incompatible
-													schema changes will be detected, but not propagated.
-												</p>
-											</div>
-										</Radio.Group>
-									</div>
-								</div>
-
-								<div className="flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-6">
-									<span className="font-medium">
-										Be notified when schema changes occur
-									</span>
-									<Switch
-										checked={notifyOnSchemaChanges}
-										onChange={setNotifyOnSchemaChanges}
-										className={notifyOnSchemaChanges ? "bg-[#203FDD]" : ""}
-									/>
-								</div>
-
-								<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-6">
+								<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-4">
 									<span className="font-medium">Pause your job</span>
 									<Switch
 										checked={pauseJob}
-										onChange={setPauseJob}
+										onChange={newlyChecked => {
+											if (job?.id) {
+												handlePauseJob(job.id.toString(), newlyChecked)
+											}
+										}}
 										className={pauseJob ? "bg-blue-600" : ""}
 									/>
 								</div>
 							</div>
 
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-								<div className="mb-3">
-									<div className="mb-2 flex items-center justify-between">
-										<span className="font-medium">Clear your data:</span>
-										<Button
-											onClick={handleClearData}
-											className="py-4"
-										>
-											Clear data
-										</Button>
-									</div>
-									<p className="text-sm text-[#8A8A8A]">
-										Clearing data will delete all the data in your destination
-									</p>
-								</div>
-
-								<div className="mb-3 border-gray-200 pt-4">
-									<div className="mb-2 flex items-center justify-between">
-										<span className="font-medium">
-											Clear destination and sync:
-										</span>
+								<div className="mb-3 border-gray-200">
+									<div className="flex items-center justify-between">
+										<div className="flex flex-col gap-2">
+											<div className="font-medium">
+												Clear destination and sync:
+											</div>
+											<div className="text-sm text-[#8A8A8A]">
+												It will delete all the data in the destination and then
+												sync the data from the source
+											</div>
+										</div>
 										<Button
 											onClick={handleClearDestinationAndSync}
 											className="py-4"
@@ -209,15 +254,16 @@ const JobSettings: React.FC = () => {
 											Clear destination and sync
 										</Button>
 									</div>
-									<p className="text-sm text-[#8A8A8A]">
-										It will delete all the data in the destination and then sync
-										the data from the source
-									</p>
 								</div>
 
 								<div className="border-gray-200 pt-4">
 									<div className="mb-2 flex items-center justify-between">
-										<span className="font-medium">Delete the job:</span>
+										<div className="flex flex-col gap-2">
+											<div className="font-medium">Delete the job:</div>
+											<div className="text-sm text-[#8A8A8A]">
+												No data will be deleted in your source and destination.
+											</div>
+										</div>
 										<button
 											onClick={handleDeleteJob}
 											className="rounded-[6px] border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
@@ -225,31 +271,27 @@ const JobSettings: React.FC = () => {
 											Delete this job
 										</button>
 									</div>
-									<p className="text-sm text-[#8A8A8A]">
-										No data will be deleted in your source and destination.
-									</p>
 								</div>
+								<DeleteJobModal fromJobSettings={true} />
+								<ClearDataModal />
+								<ClearDestinationAndSyncModal />
 							</div>
 						</div>
-
-						{/* Documentation panel with iframe */}
-						<DocumentationPanel
-							docUrl="https://olake.io/docs/category/mongodb"
-							isMinimized={docsMinimized}
-							onToggle={toggleDocsPanel}
-							showResizer={true}
-						/>
 					</div>
 				</div>
 
-				<div className="flex justify-end border-t border-gray-200 p-4">
+				{/* Footer */}
+				<div className="flex justify-end border-t border-gray-200 bg-white p-4 shadow-sm">
 					<Button
 						type="primary"
-						className="bg-blue-600"
 						onClick={handleSaveSettings}
+						className="flex items-center gap-1 bg-[#203FDD] hover:bg-[#132685]"
 					>
-						<ArrowRight size={16} />
-						Save
+						Save{" "}
+						<ArrowRight
+							size={16}
+							className="text-white"
+						/>
 					</Button>
 				</div>
 			</div>

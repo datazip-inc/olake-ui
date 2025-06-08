@@ -1,10 +1,5 @@
-interface StepIndicatorProps {
-	step: string
-	index: number
-	currentStep: string
-}
-
-const steps: string[] = ["source", "destination", "schema", "config"]
+import { StepIndicatorProps, StepProgressProps } from "../../../types"
+import { steps } from "../../../utils/constants"
 
 const StepIndicator: React.FC<StepIndicatorProps> = ({
 	step,
@@ -45,10 +40,6 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 			</span>
 		</div>
 	)
-}
-
-interface StepProgressProps {
-	currentStep: string
 }
 
 const StepProgress: React.FC<StepProgressProps> = ({ currentStep }) => {

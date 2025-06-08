@@ -1,9 +1,19 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Pagination } from "antd"
+import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight, Eye } from "@phosphor-icons/react"
-import { getConnectorImage } from "../../../utils/utils"
+import {
+	ArrowLeft,
+	ArrowRight,
+	ArrowsClockwise,
+	Eye,
+} from "@phosphor-icons/react"
+import {
+	getConnectorImage,
+	getStatusClass,
+	getStatusLabel,
+} from "../../../utils/utils"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -11,13 +21,16 @@ const JobHistory: React.FC = () => {
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
 	const pageSize = 8
+	const [isDelayingCall, setIsDelayingCall] = useState(false)
+	const retryCountRef = useRef(0)
+	const THROTTLE_DELAY = 1000
 
 	const {
 		jobs,
-		jobHistory,
-		isLoadingJobHistory,
-		jobHistoryError,
-		fetchJobHistory,
+		jobTasks,
+		isLoadingJobTasks,
+		jobTasksError,
+		fetchJobTasks,
 		fetchJobs,
 	} = useAppStore()
 
@@ -27,42 +40,61 @@ const JobHistory: React.FC = () => {
 		}
 
 		if (jobId) {
-			fetchJobHistory(jobId).catch(error => {
-				message.error("Failed to fetch job history")
-				console.error(error)
-			})
-		}
-	}, [jobId, fetchJobHistory, jobs.length, fetchJobs])
+			const fetchWithRetry = async () => {
+				setIsDelayingCall(true)
+				try {
+					await fetchJobTasks(jobId)
+					await new Promise(resolve => setTimeout(resolve, 1000))
+					if (jobTasks && jobTasks.length > 0) {
+						retryCountRef.current = 0
+						setIsDelayingCall(false)
+						return
+					}
 
-	const job = jobs.find(j => j.id === jobId)
-	const handleViewLogs = (historyId: string) => {
+					if (retryCountRef.current < 4) {
+						retryCountRef.current++
+						setTimeout(fetchWithRetry, THROTTLE_DELAY)
+					} else {
+						setIsDelayingCall(false)
+					}
+				} catch (error) {
+					console.error("Error fetching job tasks:", error)
+					if (retryCountRef.current < 4) {
+						retryCountRef.current++
+						setTimeout(fetchWithRetry, THROTTLE_DELAY)
+					} else {
+						setIsDelayingCall(false)
+					}
+				}
+			}
+
+			fetchWithRetry()
+
+			return () => {
+				retryCountRef.current = 0
+			}
+		}
+	}, [jobId, fetchJobTasks, jobs.length, fetchJobs])
+
+	const job = jobs.find(j => j.id === Number(jobId))
+	const handleViewLogs = (filePath: string) => {
 		if (jobId) {
-			navigate(`/jobs/${jobId}/history/${historyId}/logs`)
+			navigate(
+				`/jobs/${jobId}/history/1/logs?file=${encodeURIComponent(filePath)}`,
+			)
 		}
 	}
 
 	const { Search } = Input
 
-	const getStatusClass = (status: string) => {
-		switch (status) {
-			case "success":
-				return "text-[#52C41A] bg-[#F6FFED]"
-			case "failed":
-				return "text-[#F5222D] bg-[#FFF1F0]"
-			case "running":
-				return "text-[#0958D9] bg-[#E6F4FF]"
-			case "scheduled":
-				return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
-			default:
-				return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
-		}
-	}
-
 	const columns = [
 		{
-			title: "Start time (UTC)",
-			dataIndex: "startTime",
-			key: "startTime",
+			title: "Start time",
+			dataIndex: "start_time",
+			key: "start_time",
+			render: (text: string) => {
+				return text.replace("_", " ").replace(/-(\d+)-(\d+)$/, ":$1:$2")
+			},
 		},
 		{
 			title: "Runtime",
@@ -74,20 +106,22 @@ const JobHistory: React.FC = () => {
 			dataIndex: "status",
 			key: "status",
 			render: (status: string) => (
-				<span className={`${getStatusClass(status)} rounded-xl px-2 py-2`}>
-					{status}
-				</span>
+				<div
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+				>
+					{getStatusIcon(status.toLowerCase())}
+					<span>{getStatusLabel(status.toLowerCase())}</span>
+				</div>
 			),
 		},
 		{
 			title: "Actions",
 			key: "actions",
-
 			render: (_: any, record: any) => (
 				<Button
 					type="default"
 					icon={<Eye size={16} />}
-					onClick={() => handleViewLogs(record.id)}
+					onClick={() => handleViewLogs(record.file_path)}
 				>
 					View logs
 				</Button>
@@ -95,58 +129,50 @@ const JobHistory: React.FC = () => {
 		},
 	]
 
-	const filteredHistory = jobHistory.filter(
+	const filteredTasks = jobTasks?.filter(
 		item =>
-			item.startTime.toLowerCase().includes(searchText.toLowerCase()) ||
+			item.start_time.toLowerCase().includes(searchText.toLowerCase()) ||
 			item.status.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
-	// Calculate current page data for display
 	const startIndex = (currentPage - 1) * pageSize
-	const endIndex = Math.min(startIndex + pageSize, filteredHistory.length)
-	const currentPageData = filteredHistory.slice(startIndex, endIndex)
+	const endIndex = Math.min(startIndex + pageSize, filteredTasks?.length)
+	const currentPageData = filteredTasks?.slice(startIndex, endIndex)
 
-	if (jobHistoryError) {
+	if (jobTasksError && !isLoadingJobTasks && !isDelayingCall) {
 		return (
 			<div className="p-6">
 				<div className="text-red-500">
-					Error loading job history: {jobHistoryError}
+					Error loading job tasks: {jobTasksError}
 				</div>
-				<Button
-					onClick={() => jobId && fetchJobHistory(jobId)}
-					className="mt-4"
-				>
-					Retry
-				</Button>
 			</div>
 		)
 	}
 
 	return (
 		<div className="flex h-screen flex-col">
-			<div className="mb-6 flex items-center justify-between px-6 pt-3">
+			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
-					<div className="flex items-center gap-2">
+					<div className="flex items-start gap-2">
 						<Link
 							to="/jobs"
-							className="items-cente mt-[2px] flex"
+							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 						>
-							<ArrowLeft size={20} />
+							<ArrowLeft className="size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold">
-							{job?.name || "<Job_name>"}
+						<div className="flex flex-col items-start">
+							<div className="text-2xl font-bold">
+								{job?.name || "<Job_name>"}
+							</div>
 						</div>
-					</div>
-					<div className="ml-6 mt-1.5 w-fit rounded bg-[#E6F4FF] px-2 py-1 text-xs capitalize text-[#0958D9]">
-						{job?.status || "Active"}
 					</div>
 				</div>
 
 				<div className="flex items-center gap-2">
 					{job?.source && (
 						<img
-							src={getConnectorImage(job.source)}
+							src={getConnectorImage(job.source.type)}
 							alt="Source"
 							className="size-7"
 						/>
@@ -154,7 +180,7 @@ const JobHistory: React.FC = () => {
 					<span className="text-gray-500">{"--------------▶"}</span>
 					{job?.destination && (
 						<img
-							src={getConnectorImage(job.destination)}
+							src={getConnectorImage(job.destination.type)}
 							alt="Destination"
 							className="size-7"
 						/>
@@ -165,17 +191,34 @@ const JobHistory: React.FC = () => {
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
 				<h2 className="mb-4 text-xl font-bold">Job history</h2>
 
-				<div className="mb-4">
+				<div className="mb-4 flex gap-2">
 					<Search
-						placeholder="Search Jobs"
+						placeholder="Search Tasks"
 						allowClear
 						className="w-1/4"
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
+					<Tooltip title="Click to refetch">
+						<Button
+							icon={<ArrowsClockwise size={16} />}
+							onClick={() => {
+								if (jobId) {
+									fetchJobTasks(jobId).catch(error => {
+										message.error("Failed to fetch job tasks after delay")
+										console.error(
+											"Error fetching job tasks after delay:",
+											error,
+										)
+									})
+								}
+							}}
+							className="flex items-center"
+						></Button>
+					</Tooltip>
 				</div>
 
-				{isLoadingJobHistory ? (
+				{isDelayingCall || isLoadingJobTasks ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
@@ -184,7 +227,7 @@ const JobHistory: React.FC = () => {
 						<Table
 							dataSource={currentPageData}
 							columns={columns}
-							rowKey="id"
+							rowKey="file_path"
 							pagination={false}
 							className="overflow-scroll rounded-lg border"
 						/>
@@ -192,7 +235,6 @@ const JobHistory: React.FC = () => {
 				)}
 			</div>
 
-			{/* Fixed pagination at bottom right */}
 			<div
 				style={{
 					position: "fixed",
@@ -208,13 +250,12 @@ const JobHistory: React.FC = () => {
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
-					total={filteredHistory.length}
+					total={filteredTasks?.length}
 					pageSize={pageSize}
 					showSizeChanger={false}
 				/>
 			</div>
 
-			{/* Add padding at bottom to prevent content from being hidden behind fixed pagination */}
 			<div style={{ height: "80px" }}></div>
 
 			<div className="flex justify-end border-t border-gray-200 bg-white p-4">

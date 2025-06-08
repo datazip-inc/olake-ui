@@ -1,97 +1,131 @@
 import { Input, Tooltip } from "antd"
 import RenderTypeItems from "../../../common/components/RenderTypeItems"
 import { Checkbox } from "antd/es"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
+import { StreamSchemaProps } from "../../../../types"
 
-const StreamsSchema = ({ initialData, onColumnsChange }: any) => {
-	const [columnsToDisplay, setColumnsToDisplay] = useState(initialData)
-	const [selectedColumns, setSelectedColumns] = useState<string[]>(
-		Object.keys(initialData || {}),
+const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
+	const [columnsToDisplay, setColumnsToDisplay] = useState<Record<string, any>>(
+		initialData.stream.type_schema?.properties || {},
 	)
+	const [selectedColumns, setSelectedColumns] = useState<string[]>(
+		Object.keys(initialData.stream?.type_schema?.properties || {}),
+	)
+	const [isDisabled] = useState(true)
 
 	useEffect(() => {
-		setColumnsToDisplay(initialData)
-		setSelectedColumns(Object.keys(initialData || {}))
+		if (initialData.stream.type_schema?.properties) {
+			setColumnsToDisplay(initialData.stream.type_schema.properties)
+			setSelectedColumns(Object.keys(initialData.stream.type_schema.properties))
+		}
 	}, [initialData])
 
-	const handleSearch = (query: string) => {
-		const asArray = Object.entries(initialData)
-		const filtered = asArray.filter(([key]) => key.includes(query))
-		setColumnsToDisplay(Object.fromEntries(filtered))
-	}
+	const handleSearch = useMemo(
+		() => (query: string) => {
+			if (!initialData.stream.type_schema?.properties) return
+			const asArray = Object.entries(initialData.stream.type_schema.properties)
+			const filtered = asArray.filter(([key]) =>
+				key.toLowerCase().includes(query.toLowerCase()),
+			)
+			const filteredObject = Object.fromEntries(filtered)
+			setColumnsToDisplay(filteredObject as Record<string, any>)
+		},
+		[initialData],
+	)
 
-	const handleSearchValueClear = (
-		event: React.ChangeEvent<HTMLInputElement>,
-	) => {
-		if (event.target.value === "")
-			setTimeout(() => setColumnsToDisplay(initialData), 0)
-	}
+	const handleSearchValueClear = useMemo(
+		() => (event: React.ChangeEvent<HTMLInputElement>) => {
+			if (
+				event.target.value === "" &&
+				initialData.stream.type_schema?.properties
+			) {
+				setTimeout(
+					() =>
+						setColumnsToDisplay(
+							initialData?.stream?.type_schema?.properties || {},
+						),
+					0,
+				)
+			}
+		},
+		[initialData],
+	)
 
-	const handleSelectAll = (checked: boolean) => {
-		const allColumns = Object.keys(initialData || {})
-		setSelectedColumns(checked ? allColumns : [])
-		onColumnsChange?.(checked ? allColumns : [])
-	}
+	const handleSelectAll = useMemo(
+		() => (e: CheckboxChangeEvent) => {
+			if (!initialData.stream.type_schema?.properties) return
+			const allColumns = Object.keys(initialData.stream.type_schema.properties)
+			setSelectedColumns(e.target.checked ? allColumns : [])
+			onColumnsChange?.(e.target.checked ? allColumns : [])
+		},
+		[initialData, onColumnsChange],
+	)
 
-	const handleColumnSelect = (column: string, checked: boolean) => {
-		const newSelectedColumns = checked
-			? [...selectedColumns, column]
-			: selectedColumns.filter(col => col !== column)
-		setSelectedColumns(newSelectedColumns)
-		onColumnsChange?.(newSelectedColumns)
-	}
+	const handleColumnSelect = useMemo(
+		() => (column: string, checked: boolean) => {
+			const newSelectedColumns = checked
+				? [...selectedColumns, column]
+				: selectedColumns.filter(col => col !== column)
+			setSelectedColumns(newSelectedColumns)
+			onColumnsChange?.(newSelectedColumns)
+		},
+		[selectedColumns, onColumnsChange],
+	)
 
-	const isAllSelected =
-		Object.keys(columnsToDisplay || {}).length === selectedColumns.length
+	const isAllSelected = useMemo(
+		() =>
+			initialData.stream.type_schema?.properties
+				? Object.keys(columnsToDisplay).length === selectedColumns.length
+				: false,
+		[initialData, columnsToDisplay, selectedColumns],
+	)
 
 	return (
-		<>
-			<div className={`flex flex-col items-center gap-2`}>
+		<div className="rounded-xl border border-[#E3E3E3] bg-white p-4">
+			<div className="mb-3">
 				<Input.Search
 					className="custom-search-input w-full"
-					placeholder="Search Schema"
+					placeholder="Search streams"
+					allowClear
 					onSearch={handleSearch}
 					onChange={handleSearchValueClear}
 				/>
-				<div className="flex w-full items-center">
-					<div className="flex w-full flex-col items-center justify-between truncate rounded-[6px] border border-solid border-[#d9d9d9]">
-						<div className="flex w-full items-center border-b border-solid border-[#d9d9d9] px-6 py-4">
-							<Checkbox
-								checked={isAllSelected}
-								onChange={e => handleSelectAll(e.target.checked)}
-								className="font-medium"
-							>
-								Select all
-							</Checkbox>
-						</div>
-						<div className="max-h-[400px] w-full overflow-auto">
-							{Object.keys(columnsToDisplay)?.map(item => (
-								<div
-									key={item}
-									className={`flex w-full items-center justify-between truncate border border-l-0 border-r-0 border-t-0 border-solid border-[#d9d9d9] px-6 py-4 last:border-b-0`}
-								>
-									<div className="flex items-center gap-4 overflow-hidden">
-										<Checkbox
-											checked={selectedColumns.includes(item)}
-											onChange={e => handleColumnSelect(item, e.target.checked)}
-											className="ml-auto select-none rounded-lg"
-										>
-											<Tooltip title={item}>
-												<span className="truncate font-medium">{item}</span>
-											</Tooltip>
-										</Checkbox>
-									</div>
-									<RenderTypeItems
-										initialList={initialData}
-										item={item}
-									/>
-								</div>
-							))}
-						</div>
-					</div>
-				</div>
 			</div>
-		</>
+			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
+				<div className="flex items-center border-b border-[#d9d9d9] p-3 last:border-b-0 hover:bg-[#f5f5f5]">
+					<Checkbox
+						checked={isAllSelected}
+						onChange={handleSelectAll}
+						className="font-medium"
+						disabled={isDisabled}
+					>
+						Select all
+					</Checkbox>
+				</div>
+				{Object.keys(columnsToDisplay || {}).map(item => (
+					<div
+						key={item}
+						className="flex items-center justify-between border-b border-[#d9d9d9] p-3 last:border-b-0 hover:bg-[#f5f5f5]"
+					>
+						<div className="flex items-center gap-2">
+							<Checkbox
+								checked={selectedColumns.includes(item)}
+								onChange={e => handleColumnSelect(item, e.target.checked)}
+								disabled={isDisabled}
+							/>
+							<Tooltip title={item}>
+								<span className="truncate font-medium">{item}</span>
+							</Tooltip>
+						</div>
+						<RenderTypeItems
+							initialList={initialData.stream.type_schema?.properties}
+							item={item}
+						/>
+					</div>
+				))}
+			</div>
+		</div>
 	)
 }
 
