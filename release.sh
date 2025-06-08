@@ -54,7 +54,7 @@ function release_frontend() {
     local version=$1
     local platform=$2
     local environment=$3
-    local image_name="$DOCKER_REPO/olake-ui"
+    local image_name="$DOCKER_REPO"
     
     # Set tag based on environment
     local tag_version=""
