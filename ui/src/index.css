@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.custom-row td {
+	padding: 26px !important;
+}
+
+.ant-radio-checked .ant-radio-inner {
+	background-color: white !important;
+	border: 2px solid #203fdd !important;
+}
+
+.ant-radio-inner::after {
+	width: 8px;
+	height: 8px;
+	background-color: #203fdd !important;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+/* Remove hover styles from table rows */
+.ant-table-tbody > tr.no-hover:hover > td {
+	background: transparent !important;
+}
+
+/* Ensure the background stays the same on hover */
+.ant-table-tbody > tr.no-hover > td {
+	transition: none !important;
+}
+
+/* Remove hover styles for the entire row */
+.ant-table-tbody > tr.no-hover:hover {
+	background: transparent !important;
+}
+
+/* Custom Input.Search styling */
+.custom-search-input .ant-input {
+	height: 36px !important;
+}
+
+.custom-search-input .ant-input-search-button {
+	height: 36px !important;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.custom-search-input .ant-input-group-addon {
+	height: 36px;
+}
+
+.custom-search-input .ant-input-affix-wrapper {
+	height: 36px !important;
+	padding-top: 0;
+	padding-bottom: 0;
+	display: flex;
+	align-items: center;
+}

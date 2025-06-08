@@ -1,0 +1,45 @@
+name: Go Build and Lint
+on:
+  push:
+    branches:
+      - "master"
+      - "*"
+      - "feat/bff-api"
+  pull_request:
+    branches:
+      - "*"
+      - "feat/bff-api"
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: "Log level"
+        required: true
+        default: "warning"
+
+jobs:
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          check-latest: "true"
+          go-version: "1.24.x"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ./server
+          args: --out-format=colored-line-number
+  build-check:
+    name: Build Olake-UI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          check-latest: "true"
+          go-version: "1.24.x"
+      - name: Run build
+        run: make build
