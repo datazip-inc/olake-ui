@@ -9,8 +9,8 @@ import (
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
 	_ "github.com/lib/pq"                                     // required for registering driver
 
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 func Init(uri string) error {
@@ -49,6 +49,18 @@ func Init(uri string) error {
 	err = orm.RunSyncdb("default", false, true)
 	if err != nil {
 		return fmt.Errorf("failed to sync database schema: %s", err)
+	}
+	// Add session table if sessions are enabled
+	if web.BConfig.WebConfig.Session.SessionOn {
+		_, err = orm.NewOrm().Raw(`CREATE TABLE IF NOT EXISTS session (
+    session_key VARCHAR(64) PRIMARY KEY,
+    session_data BYTEA,
+    session_expiry TIMESTAMP WITH TIME ZONE
+);`).Exec()
+
+		if err != nil {
+			return fmt.Errorf("failed to create session table: %s", err)
+		}
 	}
 	return nil
 }

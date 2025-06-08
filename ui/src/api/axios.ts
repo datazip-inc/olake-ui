@@ -1,65 +1,70 @@
-import axios from "axios"
+import axios, {
+	AxiosError,
+	InternalAxiosRequestConfig,
+	AxiosResponse,
+} from "axios"
+import { API_CONFIG } from "./config"
+import {
+	ERROR_MESSAGES,
+	HTTP_STATUS,
+	LOCALSTORAGE_TOKEN_KEY,
+} from "../utils/constants"
 
-// Create axios instance with default config
+/**
+ * Creates and configures an axios instance with default settings
+ */
 const api = axios.create({
-	baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api",
+	baseURL: API_CONFIG.BASE_URL,
 	headers: {
 		"Content-Type": "application/json",
+		Accept: "application/json",
 	},
-	timeout: 10000, // 10 seconds
+	timeout: 10000,
+	withCredentials: true,
 })
 
-// Request interceptor
+/**
+ * Request interceptor to add authentication token to requests
+ */
 api.interceptors.request.use(
-	config => {
-		// Get token from localStorage
-		const token = localStorage.getItem("token")
-
-		// If token exists, add to headers
-		if (token) {
+	(config: InternalAxiosRequestConfig) => {
+		const token = localStorage.getItem(LOCALSTORAGE_TOKEN_KEY)
+		if (token && config.headers) {
 			config.headers.Authorization = `Bearer ${token}`
 		}
-
 		return config
 	},
-	error => {
+	(error: AxiosError) => {
 		return Promise.reject(error)
 	},
 )
 
-// Response interceptor
+/**
+ * Response interceptor to handle common error cases
+ */
 api.interceptors.response.use(
-	response => {
+	(response: AxiosResponse) => {
 		return response
 	},
-	error => {
-		// Handle common errors
+	(error: AxiosError) => {
 		if (error.response) {
-			// Server responded with a status code outside of 2xx range
 			const { status } = error.response
 
-			if (status === 401) {
-				// Unauthorized - clear token and redirect to login
-				localStorage.removeItem("token")
-				// You can add redirect logic here if needed
-			}
-
-			if (status === 403) {
-				// Forbidden - user doesn't have permission
-				console.error("You do not have permission to access this resource")
-			}
-
-			if (status === 500) {
-				// Server error
-				console.error("Server error occurred. Please try again later.")
+			switch (status) {
+				case HTTP_STATUS.UNAUTHORIZED:
+					localStorage.removeItem(LOCALSTORAGE_TOKEN_KEY)
+					window.location.href = "/login"
+					break
+				case HTTP_STATUS.FORBIDDEN:
+					console.error(ERROR_MESSAGES.NO_PERMISSION)
+					break
+				case HTTP_STATUS.SERVER_ERROR:
+					console.error(ERROR_MESSAGES.SERVER_ERROR)
+					break
 			}
 		} else if (error.request) {
-			// Request was made but no response received
-			console.error(
-				"No response received from server. Please check your connection.",
-			)
+			console.error(ERROR_MESSAGES.NO_RESPONSE)
 		} else {
-			// Something else happened while setting up the request
 			console.error("Error setting up request:", error.message)
 		}
 

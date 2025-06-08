@@ -3,9 +3,12 @@ on:
   push:
     branches:
       - "master"
+      - "*"
+      - "feat/bff-api"
   pull_request:
     branches:
       - "*"
+      - "feat/bff-api"
   workflow_dispatch:
     inputs:
       logLevel:
@@ -26,9 +29,9 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          working-directory: ./server
           version: latest
-
+          working-directory: ./server
+          args: --out-format=colored-line-number
   build-check:
     name: Build Olake-App
     runs-on: ubuntu-latest

@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - "master"
+      - "feat/bff-api"
   pull_request:
     branches:
       - "*"
+      - "feat/bff-api"
   workflow_dispatch:
     inputs:
       logLevel:
@@ -45,7 +47,7 @@ jobs:
 
   trivy:
     name: trivy
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3

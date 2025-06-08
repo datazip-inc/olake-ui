@@ -8,10 +8,10 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/datazip/olake-server/internal/constants"
-	"github.com/datazip/olake-server/internal/database"
-	"github.com/datazip/olake-server/internal/models"
-	"github.com/datazip/olake-server/utils"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type AuthHandler struct {
@@ -51,9 +51,8 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
-		Message: "Login successful",
-		Success: true,
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+		"username": user.Username,
 	})
 }
 
@@ -101,7 +100,7 @@ func (c *AuthHandler) Signup() {
 	}
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"message": "User created successfully",
-		"user_id": req.ID,
+		"email":    req.Email,
+		"username": req.Username,
 	})
 }

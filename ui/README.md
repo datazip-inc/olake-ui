@@ -63,15 +63,40 @@ pnpx npkill
 │   ├── api  // AXIOS setup and mockdata
 |       ├── services // API services for Jobs , Sources , Destinations
 │   ├── modules  // Contains all modules of App
-│   │   ├── common // Common components
+|   |   ├── auth // auth components
+│   │   ├── common
+|   |   |   ├── components // common components
+|   |   |   ├── Modals // Modals used throughout the app
 │   │   └── destinations // All destinations related  components
 |   |   ├── sources // All sources related components
 |   |   ├── jobs  // All jobs related components
 |	|
-│   │
+│   ├── routes // routes
+|   |
 │   ├── store  // Contains all state management files
+|   |   ├── authStore // auth specific states
+|   |   ├── destinationStore // Destination specific states
+|   |   ├── jobStore // Job specific states
+|   |   ├── modalStore // Modals specific states
+|   |   ├── selectionStore // state file for managing the selected entities
+|   |   ├── sourceStore // Source specific states
+|   |   ├── taskStore // Task specific states
+|   |   ├── index // states root file
 │   │
-│   ├── types // Contains TYPES
+│   ├── types
+|   |   ├── apiTypes // api specific types
+|   |   ├── authTypes // auth specific types
+|   |   ├── commonTypes // common types used across different files
+|   |   ├── entityTypes // entity(source/destination) specific types
+|   |   ├── streamTypes // stream specific types
+|   |   ├── jobTypes // Job specific types
+|   |   ├── destinationTypes //Destination specific types
+|   |   ├── sourceTypes // Source specific types
+|   |   ├── formTypes // Form specific types
+|   |   ├── errorTypes //Error specific Types
+|   |   ├── index  //types root file
+|   |
+|   ├── utils // common functions and constants
 │   │
 │   ├── main.tsx // Root File of App which has all providers
 │   │

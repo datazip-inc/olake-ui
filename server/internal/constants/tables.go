@@ -9,4 +9,5 @@ const (
 	DestinationTable
 	JobTable
 	CatalogTable
+	SessionTable
 )

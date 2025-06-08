@@ -1,649 +1,264 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Button, Select, Switch, message, Table } from "antd"
-import { Check, GenderNeuter, Notebook } from "@phosphor-icons/react"
+import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
+import { GenderNeuter, Notebook, ArrowLeft } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
 import type { ColumnsType } from "antd/es/table"
-import { SourceJob } from "../../../types"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
-import DynamicSchemaForm from "../../common/components/DynamicSchemaForm"
-import type { RJSFSchema } from "@rjsf/utils"
+import FixedSchemaForm from "../../../utils/FormFix"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
-
-interface SourceEditProps {
-	fromJobFlow?: boolean
-	stepNumber?: string | number
-	stepTitle?: string
-	initialData?: any
-}
+import {
+	getConnectorImage,
+	getConnectorInLowerCase,
+	getStatusClass,
+	getStatusLabel,
+} from "../../../utils/utils"
+import { sourceService } from "../../../api"
+import { formatDistanceToNow } from "date-fns"
+import { jobService } from "../../../api"
+import { Entity, SourceEditProps, SourceJob } from "../../../types"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import connectorOptions from "../components/connectorOptions"
+import EntityEditModal from "../../common/Modals/EntityEditModal"
+import { getStatusIcon } from "../../../utils/statusIcons"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
 	stepNumber,
 	stepTitle,
 	initialData,
+	onNameChange,
+	onConnectorChange,
+	onFormDataChange,
+	onVersionChange,
 }) => {
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
-	const isNewSource = sourceId === "new"
 	const [activeTab, setActiveTab] = useState("config")
-	const [connector, setConnector] = useState("MongoDB")
+	const [connector, setConnector] = useState<string | null>(null)
+	const [selectedVersion, setSelectedVersion] = useState("")
+	const [availableVersions, setAvailableVersions] = useState<
+		{ label: string; value: string }[]
+	>([])
 	const [sourceName, setSourceName] = useState("")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
-	const [formData, setFormData] = useState<any>({})
+	const [formData, setFormData] = useState<Record<string, any>>({})
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
-	const [mockAssociatedJobs, setMockAssociatedJobs] = useState<any[]>([])
+	const [source, setSource] = useState<Entity | null>(null)
+	const [loading, setLoading] = useState(false)
+	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 
-	// Mock data for each connector type
-	const mockData = {
-		MongoDB: {
-			hosts: ["localhost:27017"],
-			username: "admin",
-			password: "password",
-			authdb: "admin",
-			"replica-set": "rs01",
-			"read-preference": "secondaryPreferred",
-			srv: false,
-			"server-ram": 16,
-			database: "test_db",
-			collection: "test_collection",
-			max_threads: 50,
-			default_mode: "cdc",
-			backoff_retry_count: 3,
-			partition_strategy: "",
-		},
-		PostgreSQL: {
-			host: "localhost",
-			port: 5432,
-			database: "test_db",
-			username: "postgres",
-			password: "password",
-			jdbc_url_params: "connectTimeout=30",
-			schema: "public",
-			table: "test_table",
-			ssl: {
-				mode: "disable",
-				client_cert: "",
-				client_key: "",
-				server_ca: "",
-			},
-			update_method: {
-				replication_slot: "test_slot",
-				intial_wait_time: 10,
-			},
-		},
-		MySQL: {
-			hosts: "localhost",
-			port: 3306,
-			database: "test_db",
-			username: "root",
-			password: "password",
-			table: "test_table",
-			tls_skip_verify: true,
-			update_method: {
-				intial_wait_time: 10,
-			},
-			server_id: 1,
-			binlog_position: "mysql-bin.000001:1234",
-			max_threads: 10,
-			backoff_retry_count: 2,
-			default_mode: "cdc",
-		},
-	}
+	const {
+		sources,
+		fetchSources,
+		updateSource,
+		setShowEditSourceModal,
+		setShowTestingModal,
+		setShowSuccessModal,
+		setShowFailureModal,
+		setSourceTestConnectionError,
+	} = useAppStore()
 
-	// Schema definitions for each connector
-	const schemas = {
-		MongoDB: {
-			type: "object",
-			properties: {
-				hosts: {
-					type: "array",
-					title: "MongoDB Hosts",
-					description: "List of MongoDB hosts. Use DNS SRV if srv = true.",
-					items: {
-						type: "string",
-						title: null,
-						pattern: "^[^\\s]+:\\d+$",
-						errorMessage: {
-							pattern: 'must match pattern "^[^\\s]+:\\d+$"',
-						},
-					},
-					minItems: 1,
-					uniqueItems: true,
-					default: ["localhost:27017"],
-				},
-				username: {
-					type: "string",
-					title: "Username",
-					description: "Credentials for MongoDB authentication",
-				},
-				password: {
-					type: "string",
-					title: "Password",
-					description: "Credentials for MongoDB authentication",
-					format: "password",
-				},
-				authdb: {
-					type: "string",
-					title: "Auth Database",
-					description: "Authentication database (often admin)",
-					default: "admin",
-				},
-				"replica-set": {
-					type: "string",
-					title: "Replica Set",
-					description: "Name of the replica set, if applicable",
-				},
-				"read-preference": {
-					type: "string",
-					title: "Read Preference",
-					description: "Which node to read from (e.g., secondaryPreferred)",
-					enum: [
-						"primary",
-						"primaryPreferred",
-						"secondary",
-						"secondaryPreferred",
-						"nearest",
-					],
-					default: "secondaryPreferred",
-				},
-				srv: {
-					type: "boolean",
-					title: "SRV",
-					description:
-						"If using DNS SRV connection strings, set to true. When true, there can only be 1 host in hosts field.",
-					default: false,
-				},
-				"server-ram": {
-					type: "integer",
-					title: "Server RAM",
-					description: "Memory management hint for the OLake container",
-					default: 16,
-				},
-				database: {
-					type: "string",
-					title: "Database",
-					description: "The MongoDB database name to replicate",
-				},
-				max_threads: {
-					type: "integer",
-					title: "Max Threads",
-					description: "Maximum parallel threads for chunk-based snapshotting",
-					default: 50,
-				},
-				default_mode: {
-					type: "string",
-					title: "Default Mode",
-					description: "Default sync mode",
-					enum: ["cdc", "full_refresh", "incremental"],
-					default: "cdc",
-				},
-				backoff_retry_count: {
-					type: "integer",
-					title: "Backoff Retry Count",
-					description:
-						"Retries attempt to establish sync again if it fails, increases exponentially (in minutes - 1, 2,4,8,16... depending upon the backoff_retry_count value)",
-					default: 3,
-				},
-				partition_strategy: {
-					type: "string",
-					title: "Partition Strategy",
-					description: "The partition strategy for backfill",
-					enum: ["timestamp", ""],
-					default: "",
-				},
-			},
-			required: ["hosts", "username", "password", "database", "collection"],
-		},
-		PostgreSQL: {
-			type: "object",
-			properties: {
-				host: {
-					type: "string",
-					title: "Host",
-					description: "PostgreSQL server host",
-				},
-				port: {
-					type: "integer",
-					title: "Port",
-					description: "PostgreSQL server port",
-					default: 5432,
-				},
-				database: {
-					type: "string",
-					title: "Database",
-					description: "Name of the database to connect to",
-				},
-				username: {
-					type: "string",
-					title: "Username",
-					description: "Database user credentials",
-				},
-				password: {
-					type: "string",
-					title: "Password",
-					description: "Database user password",
-					format: "password",
-				},
-				jdbc_url_params: {
-					type: "string",
-					title: "JDBC URL Parameters",
-					description: "Additional connection parameters",
-					default: "",
-				},
-				ssl: {
-					type: "object",
-					title: "SSL Configuration",
-					properties: {
-						mode: {
-							type: "string",
-							title: "SSL Mode",
-							description: "SSL connection mode",
-							enum: ["disable", "require", "verify-ca", "verify-full"],
-							default: "disable",
-						},
-						client_cert: {
-							type: "string",
-							title: "Client Certificate",
-							description: "Path to client certificate file",
-						},
-						client_key: {
-							type: "string",
-							title: "Client Key",
-							description: "Path to client key file",
-						},
-						server_ca: {
-							type: "string",
-							title: "Server CA",
-							description: "Path to server CA certificate",
-						},
-					},
-				},
-				schema: {
-					type: "string",
-					title: "Schema",
-					description: "Database schema to use",
-					default: "public",
-				},
-				table: {
-					type: "string",
-					title: "Table",
-					description: "Table to sync",
-				},
-				update_method: {
-					type: "object",
-					title: "Update Method Configuration",
-					properties: {
-						replication_slot: {
-							type: "string",
-							title: "Replication Slot",
-							description: "Name of the replication slot",
-						},
-						intial_wait_time: {
-							type: "integer",
-							title: "Initial Wait Time",
-							description: "Time to wait before starting replication (seconds)",
-							default: 10,
-						},
-					},
-				},
-				publication: {
-					type: "string",
-					title: "Publication",
-					description: "Name of the publication",
-				},
-			},
-			required: [
-				"host",
-				"port",
-				"database",
-				"username",
-				"password",
-				"schema",
-				"table",
-			],
-		},
-		MySQL: {
-			type: "object",
-			properties: {
-				hosts: {
-					type: "string",
-					title: "Hosts",
-					description: "MySQL server host",
-				},
-				port: {
-					type: "integer",
-					title: "Port",
-					description: "MySQL server port",
-					default: 3306,
-				},
-				database: {
-					type: "string",
-					title: "Database",
-					description: "Name of the database to connect to",
-				},
-				username: {
-					type: "string",
-					title: "Username",
-					description: "Database user credentials",
-				},
-				password: {
-					type: "string",
-					title: "Password",
-					description: "Database user password",
-					format: "password",
-				},
-				table: {
-					type: "string",
-					title: "Table",
-					description: "Table to sync",
-				},
-				tls_skip_verify: {
-					type: "boolean",
-					title: "Skip TLS Verification",
-					description: "Skip verification of TLS certificate",
-					default: true,
-				},
-				update_method: {
-					type: "object",
-					title: "Update Method Configuration",
-					properties: {
-						intial_wait_time: {
-							type: "integer",
-							title: "Initial Wait Time",
-							description: "Time to wait before starting replication (seconds)",
-							default: 10,
-						},
-					},
-				},
-				server_id: {
-					type: "integer",
-					title: "Server ID",
-					description: "MySQL server ID for replication",
-				},
-				binlog_position: {
-					type: "string",
-					title: "Binlog Position",
-					description: "Position in binary log to start reading from",
-				},
-				max_threads: {
-					type: "integer",
-					title: "Max Threads",
-					description: "Maximum number of threads for parallel operations",
-					default: 10,
-				},
-				backoff_retry_count: {
-					type: "integer",
-					title: "Backoff Retry Count",
-					description: "Number of retries before giving up",
-					default: 2,
-				},
-				default_mode: {
-					type: "string",
-					title: "Default Mode",
-					description: "Default synchronization mode",
-					enum: ["cdc", "incremental", "full_refresh"],
-					default: "cdc",
-				},
-			},
-			required: ["hosts", "port", "database", "username", "password", "table"],
-		},
-	}
-
-	// UI Schema for better form layout
-	const uiSchema = {
-		"ui:className":
-			"mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm",
-		password: {
-			"ui:widget": "password",
-		},
-		hosts: {
-			"ui:options": {
-				orderable: false,
-				label: false,
-			},
-			items: {
-				"ui:title": "",
-				"ui:placeholder": "Enter host:port (e.g. localhost:27017)",
-			},
-		},
-		srv: {
-			"ui:widget": "checkbox",
-		},
-		tls_skip_verify: {
-			"ui:widget": "checkbox",
-		},
-		"read-preference": {
-			"ui:widget": "select",
-		},
-		default_mode: {
-			"ui:widget": "select",
-		},
-		partition_strategy: {
-			"ui:widget": "select",
-		},
-		ssl: {
-			"ui:options": {
-				className: "grid grid-cols-1 gap-4",
-			},
-		},
-		update_method: {
-			"ui:options": {
-				className: "grid grid-cols-1 gap-4",
-			},
-		},
-	}
-
-	// Connector-specific UI order
-	const uiOrderByConnector = {
-		MongoDB: [
-			"hosts",
-			"username",
-			"password",
-			"authdb",
-			"replica-set",
-			"read-preference",
-			"srv",
-			"server-ram",
-			"database",
-			"collection",
-			"max_threads",
-			"default_mode",
-			"backoff_retry_count",
-			"partition_strategy",
-		],
-		PostgreSQL: [
-			"host",
-			"port",
-			"database",
-			"username",
-			"password",
-			"jdbc_url_params",
-			"ssl",
-			"schema",
-			"table",
-			"update_method",
-			"publication",
-		],
-		MySQL: [
-			"hosts",
-			"port",
-			"database",
-			"username",
-			"password",
-			"table",
-			"tls_skip_verify",
-			"update_method",
-			"server_id",
-			"binlog_position",
-			"max_threads",
-			"backoff_retry_count",
-			"default_mode",
-		],
-	}
-
-	const { sources, jobs, fetchSources, fetchJobs, addSource, updateSource } =
-		useAppStore()
-
-	// Load source data when editing
 	useEffect(() => {
-		if (!sources.length) {
-			fetchSources()
-		}
+		fetchSources()
+	}, [])
 
-		if (!jobs.length) {
-			fetchJobs()
-		}
-
-		if (!isNewSource && sourceId) {
-			const source = sources.find(s => s.id === sourceId)
+	useEffect(() => {
+		if (sourceId) {
+			const source = sources.find(s => s.id?.toString() === sourceId)
 			if (source) {
+				setSource(source)
 				setSourceName(source.name)
-
-				// Normalize connector type to match schema keys
-				// This addresses case sensitivity issues
 				let normalizedType = source.type
 				if (source.type.toLowerCase() === "mongodb") normalizedType = "MongoDB"
-				if (source.type.toLowerCase() === "postgresql")
-					normalizedType = "PostgreSQL"
+				if (source.type.toLowerCase() === "postgres")
+					normalizedType = "Postgres"
 				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
-
 				setConnector(normalizedType)
-				setMockAssociatedJobs(source?.associatedJobs || [])
-
-				// Use the actual config data from the source when editing
-				if (source.config) {
-					setFormData(source.config)
-				} else {
-					const mockFormData =
-						mockData[normalizedType as keyof typeof mockData] || {}
-					setFormData(mockFormData)
-				}
+				setSelectedVersion(source.version)
+				setFormData(
+					typeof source.config === "string"
+						? JSON.parse(source.config)
+						: source.config,
+				)
 			} else {
-				// If source isn't found, redirect to sources page or show error
-				message.error("Source not found")
 				navigate("/sources")
 			}
 		}
-	}, [
-		sourceId,
-		isNewSource,
-		sources,
-		fetchSources,
-		jobs.length,
-		fetchJobs,
-		navigate,
-	])
+	}, [sourceId, sources, fetchSources])
 
-	// Load initial data when provided (for job edit flow)
 	useEffect(() => {
 		if (initialData) {
 			setSourceName(initialData.name || "")
+			let normalizedType = initialData.type
+			if (initialData.type?.toLowerCase() === "mongodb")
+				normalizedType = "MongoDB"
+			if (initialData.type?.toLowerCase() === "postgres")
+				normalizedType = "Postgres"
+			if (initialData.type?.toLowerCase() === "mysql") normalizedType = "MySQL"
+			setConnector(normalizedType)
+			setSelectedVersion(initialData.version || "latest")
 
-			// Make sure to set the connector before setting form data
-			if (initialData.type) {
-				setConnector(initialData.type)
-			}
-
-			// If we have config data, set it to form data
+			// Set form data from initialData
 			if (initialData.config) {
-				// Set a timeout to ensure the connector is set first
-				setTimeout(() => {
+				if (typeof initialData.config === "string") {
+					try {
+						const parsedConfig = JSON.parse(initialData.config)
+						setFormData(parsedConfig)
+					} catch (error) {
+						console.error("Error parsing source config:", error)
+						setFormData({})
+					}
+				} else {
 					setFormData(initialData.config)
-				}, 100)
+				}
 			}
 		}
 	}, [initialData])
 
-	// Use a more direct approach to update form data when connector changes
 	useEffect(() => {
-		// If initialData is present, update form data again
-		if (initialData?.config && Object.keys(initialData.config).length > 0) {
-			setFormData(initialData.config)
-		} else if (!isNewSource && !initialData) {
-			// When editing an existing source and connector changes,
-			// load the appropriate mock data if actual data not available
-			const mockFormData = mockData[connector as keyof typeof mockData] || {}
-			setFormData(mockFormData)
+		const fetchSourceSpec = async () => {
+			try {
+				setLoading(true)
+				const response = await sourceService.getSourceSpec(
+					connector as string,
+					selectedVersion,
+				)
+				if (response.success && response.data?.spec) {
+					setSchema(response.data.spec)
+				} else {
+					console.error("Failed to get source spec:", response.message)
+				}
+			} catch (error) {
+				console.error("Error fetching source spec:", error)
+			} finally {
+				setLoading(false)
+			}
 		}
-	}, [connector, initialData, isNewSource])
 
-	// For new sources, set initial mock data based on the default connector
+		if (connector) {
+			fetchSourceSpec()
+		}
+
+		return () => {
+			setLoading(false)
+		}
+	}, [connector, selectedVersion])
+
 	useEffect(() => {
-		if (isNewSource && Object.keys(formData).length === 0) {
-			const mockFormData = mockData[connector as keyof typeof mockData] || {}
-			setFormData(mockFormData)
+		const fetchVersions = async () => {
+			if (!connector) return
+			try {
+				const response = await sourceService.getSourceVersions(
+					getConnectorInLowerCase(connector),
+				)
+				if (response.success && response.data?.version) {
+					const versions = response.data.version.map((version: string) => ({
+						label: version,
+						value: version,
+					}))
+					setAvailableVersions([...versions])
+					if (
+						source?.type !== getConnectorInLowerCase(connector) &&
+						versions.length > 0 &&
+						!initialData
+					) {
+						setSelectedVersion(versions[0].value)
+						if (onVersionChange) {
+							onVersionChange(versions[0].value)
+						}
+					} else if (initialData) {
+						if (
+							initialData?.type != getConnectorInLowerCase(connector) &&
+							initialData.version
+						) {
+							setSelectedVersion(initialData.version)
+							if (onVersionChange) {
+								onVersionChange(initialData.version)
+							}
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Error fetching versions:", error)
+				message.error("Failed to fetch versions")
+			}
 		}
-	}, [isNewSource, connector, formData])
 
-	// Mock associated jobs for the source
-	const associatedJobs = jobs.slice(0, 5).map(job => ({
-		...job,
-		state: Math.random() > 0.7 ? "Inactive" : "Active",
-		lastRuntime: "3 hours ago",
-		lastRuntimeStatus: "Success",
-		destination: {
-			name: "Production S3 Data Lake",
-			type: "Amazon S3",
-			config: {
-				s3_bucket: "prod-data-lake",
-				s3_region: "us-west-2",
-				writer: "parquet",
-			},
-		},
-		paused: false,
-	}))
+		fetchVersions()
+	}, [connector])
 
-	// Additional jobs that will be shown when "View all" is clicked
-	const additionalJobs = jobs.slice(5, 10).map(job => ({
-		...job,
-		state: Math.random() > 0.7 ? "Inactive" : "Active",
-		lastRuntime: "3 hours ago",
-		lastRuntimeStatus: "Success",
-		destination: {
-			name: "Analytics Data Warehouse",
-			type: "AWS Glue Catalog",
-			config: {
-				database: "analytics_db",
-				region: "us-west-2",
-			},
-		},
-		paused: false,
-	}))
+	const transformJobs = (jobs: any[]): SourceJob[] => {
+		return jobs.map(job => ({
+			id: job.id,
+			name: job.name || job.job_name,
+			destination_type: job.destination_type || "",
+			destination_name: job.destination_name || "",
+			last_run_time: job.last_runtime || job.last_run_time || "-",
+			last_run_state: job.last_run_state || "-",
+			activate: job.activate || false,
+		}))
+	}
 
 	const displayedJobs = showAllJobs
-		? [...associatedJobs, ...additionalJobs]
-		: associatedJobs
+		? transformJobs(source?.jobs || [])
+		: transformJobs((source?.jobs || []).slice(0, 5))
 
-	const handleSave = () => {
-		// Ensure we have the proper structure before saving
-		let configToSave = { ...formData }
+	const getSourceData = () => {
+		const configStr =
+			typeof formData === "string" ? formData : JSON.stringify(formData)
 
 		const sourceData = {
-			name:
-				sourceName || `${connector}_source_${Math.floor(Math.random() * 1000)}`,
-			type: connector,
+			id: source?.id || 0,
+			name: sourceName,
+			type: connector || "MongoDB",
+			version: selectedVersion,
 			status: "active" as const,
-			config: configToSave,
+			config: configStr,
+			created_at: source?.created_at || new Date().toISOString(),
+			updated_at: source?.updated_at || new Date().toISOString(),
+			created_by: source?.created_by || "",
+			updated_by: source?.updated_by || "",
+			jobs: source?.jobs || [],
+		}
+		return sourceData
+	}
+
+	const handleSave = async () => {
+		if (!source) return
+
+		if (displayedJobs.length > 0) {
+			setSelectedSource(getSourceData())
+			setShowEditSourceModal(true)
+			return
 		}
 
-		if (isNewSource) {
-			addSource(sourceData)
-				.then(() => {
-					message.success("Source created successfully")
-					// Show the entity saved modal
-					useAppStore.getState().setShowEntitySavedModal(true)
-					navigate("/sources")
-				})
-				.catch(error => {
-					message.error("Failed to create source")
-					console.error(error)
-				})
-		} else if (sourceId) {
-			updateSource(sourceId, sourceData)
+		setShowTestingModal(true)
+		const testResult = await sourceService.testSourceConnection(getSourceData())
+		if (testResult.data?.status === "SUCCEEDED") {
+			setTimeout(() => {
+				setShowTestingModal(false)
+				setShowSuccessModal(true)
+			}, 1000)
+
+			setTimeout(() => {
+				setShowSuccessModal(false)
+				saveSource()
+			}, 2000)
+		} else {
+			setShowTestingModal(false)
+			setSourceTestConnectionError(testResult.data?.message || "")
+			setShowFailureModal(true)
+		}
+	}
+
+	const saveSource = () => {
+		if (sourceId) {
+			updateSource(sourceId, getSourceData())
 				.then(() => {
 					message.success("Source updated successfully")
 					navigate("/sources")
@@ -656,35 +271,49 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	const handleDelete = () => {
-		// Create source object from the current data
-		const sourceToDelete = {
-			id: sourceId || "",
-			name: sourceName || "",
-			type: connector,
-			...formData,
-			associatedJobs: mockAssociatedJobs,
-		}
-		// Set the current source as selected in the store
-		setSelectedSource(sourceToDelete as any)
-		// Show the delete modal
-		setShowDeleteModal(true)
-	}
+		if (!source) return
 
-	const handleTestConnection = () => {
-		message.success("Connection test successful")
+		const sourceToDelete = {
+			...source,
+			name: sourceName || source.name,
+			type: connector || source.type,
+		}
+
+		setSelectedSource(sourceToDelete)
+		setShowDeleteModal(true)
 	}
 
 	const handleViewAllJobs = () => {
 		setShowAllJobs(true)
 	}
 
-	const handlePauseAllJobs = (checked: boolean) => {
-		message.info(`${checked ? "Pausing" : "Resuming"} all jobs for this source`)
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+			// Refetch sources to update the UI with the latest source details
+			await fetchSources()
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+		}
 	}
 
-	const handlePauseJob = (jobId: string, checked: boolean) => {
-		message.info(`${checked ? "Pausing" : "Resuming"} job ${jobId}`)
-	}
+	// const handlePauseAllJobs = async (checked: boolean) => {
+	// 	try {
+	// 		// We're working with a custom job format, so we need to extract IDs
+	// 		const allJobs = displayedJobs.map(job => String(job.id))
+	// 		await Promise.all(
+	// 			allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
+	// 		)
+	// 		message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
+	// 	} catch (error) {
+	// 		console.error("Error toggling all jobs status:", error)
+	// 		message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
+	// 	}
+	// }
 
 	const toggleDocsPanel = () => {
 		setDocsMinimized(!docsMinimized)
@@ -698,88 +327,90 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		},
 		{
 			title: "State",
-			dataIndex: "state",
-			key: "state",
-			render: (state: string) => (
+			dataIndex: "activate",
+			key: "activate",
+			render: (activate: boolean) => (
 				<span
 					className={`rounded px-2 py-1 text-xs ${
-						state === "Inactive"
+						!activate
 							? "bg-[#FFF1F0] text-[#F5222D]"
 							: "bg-[#E6F4FF] text-[#0958D9]"
 					}`}
 				>
-					{state}
+					{activate ? "Active" : "Inactive"}
 				</span>
 			),
 		},
 		{
 			title: "Last runtime",
-			dataIndex: "lastRuntime",
-			key: "lastRuntime",
+			dataIndex: "last_run_time",
+			render: (text: string) => {
+				if (text != "-") {
+					return formatDistanceToNow(new Date(text), { addSuffix: true })
+				}
+				return "-"
+			},
 		},
 		{
 			title: "Last runtime status",
-			dataIndex: "lastRuntimeStatus",
-			key: "lastRuntimeStatus",
-			render: (status: string) => (
-				<button className="flex items-center gap-2 rounded bg-[#F6FFED] px-2 text-[#389E0D]">
-					<Check className="size-4" />
-					{status}
-				</button>
-			),
-		},
-		{
-			title: "Destination",
-			dataIndex: "destination",
-			key: "destination",
-			render: (destination: any) => (
-				<div className="flex items-center">
-					<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
-						<span>
-							{destination.type === "AWS S3" ? "S" : destination.type.charAt(0)}
-						</span>
-					</div>
-					{destination.name}
+			dataIndex: "last_run_state",
+			key: "last_run_state",
+			render: (last_run_state: string) => (
+				<div
+					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
+				>
+					{getStatusIcon(last_run_state.toLowerCase())}
+					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
 				</div>
 			),
 		},
 		{
-			title: "Pause job",
-			dataIndex: "id",
+			title: "Destination",
+			dataIndex: "destination_name",
+			key: "destination_name",
+			render: (destination_name: string, record: SourceJob) => (
+				<div className="flex items-center">
+					<img
+						src={getConnectorImage(record.destination_type || "")}
+						alt={record.destination_type || ""}
+						className="mr-2 size-6"
+					/>
+					{destination_name}
+				</div>
+			),
+		},
+		{
+			title: "Running status",
+			dataIndex: "activate",
 			key: "pause",
-			render: (_: string, record: SourceJob) => (
+			render: (activate: boolean, record: SourceJob) => (
 				<Switch
-					checked={record.paused}
-					onChange={checked => handlePauseJob(record.id, checked)}
-					className={record.paused ? "bg-blue-600" : "bg-gray-200"}
+					checked={activate}
+					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
+					className={activate ? "bg-blue-600" : "bg-gray-200"}
 				/>
 			),
 		},
 	]
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
 			{/* Header */}
 			{!fromJobFlow && (
-				<div className="flex gap-2 px-6 pb-0 pt-6">
+				<div className="flex items-center gap-2 px-6 pb-0 pt-6">
 					<Link
 						to="/sources"
-						className="mb-4 flex items-center"
+						className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
 					>
 						<ArrowLeft className="size-5" />
 					</Link>
 
-					<div className="mb-4 flex items-center">
-						<h1 className="text-2xl font-bold">
-							{isNewSource
-								? "Create New Source"
-								: sourceName || "MongoDB_Source_1"}
-						</h1>
+					<div className="flex items-center">
+						<h1 className="text-2xl font-bold">{sourceName}</h1>
 					</div>
 				</div>
 			)}
 
-			{/* Main content */}
 			<div className="mt-2 flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
 				{/* Left content */}
 				<div
@@ -809,18 +440,17 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								>
 									Config
 								</button>
-								{!isNewSource && (
-									<button
-										className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-											activeTab === "jobs"
-												? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-												: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-										}`}
-										onClick={() => setActiveTab("jobs")}
-									>
-										Associated jobs
-									</button>
-								)}
+
+								<button
+									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
+										activeTab === "jobs"
+											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+									}`}
+									onClick={() => setActiveTab("jobs")}
+								>
+									Associated jobs
+								</button>
 							</div>
 						</div>
 					)}
@@ -839,26 +469,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											Connector:
 										</label>
 										<div className="flex items-center">
-											<div className="mr-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-white">
-												<span>M</span>
-											</div>
 											<Select
 												value={connector}
 												onChange={value => {
 													setConnector(value)
-													// Load mock data for the selected connector if not editing existing
-													if (isNewSource) {
-														const mockFormData =
-															mockData[value as keyof typeof mockData] || {}
-														setFormData(mockFormData)
+													if (onConnectorChange) {
+														onConnectorChange(value)
 													}
 												}}
 												className="h-8 w-full"
-												options={[
-													{ value: "MongoDB", label: "MongoDB" },
-													{ value: "PostgreSQL", label: "PostgreSQL" },
-													{ value: "MySQL", label: "MySQL" },
-												]}
+												options={connectorOptions}
 											/>
 										</div>
 									</div>
@@ -866,12 +486,36 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
 											Name of your source:
+											<span className="text-red-500">*</span>
 										</label>
 										<Input
 											placeholder="Enter the name of your source"
 											value={sourceName}
-											onChange={e => setSourceName(e.target.value)}
+											onChange={e => {
+												setSourceName(e.target.value)
+												if (onNameChange) {
+													onNameChange(e.target.value)
+												}
+											}}
 											className="h-8"
+										/>
+									</div>
+
+									<div>
+										<label className="mb-2 block text-sm font-medium text-gray-700">
+											Version:
+											<span className="text-red-500">*</span>
+										</label>
+										<Select
+											value={selectedVersion}
+											onChange={value => {
+												setSelectedVersion(value)
+												if (onVersionChange) {
+													onVersionChange(value)
+												}
+											}}
+											className="h-8 w-full"
+											options={availableVersions}
 										/>
 									</div>
 								</div>
@@ -882,22 +526,25 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<GenderNeuter className="size-6" />
 									<div className="text-lg font-medium">Endpoint config</div>
 								</div>
-
-								<DynamicSchemaForm
-									schema={
-										schemas[connector as keyof typeof schemas] as RJSFSchema
-									}
-									uiSchema={{
-										...uiSchema,
-										"ui:order":
-											uiOrderByConnector[
-												connector as keyof typeof uiOrderByConnector
-											],
-									}}
-									formData={formData}
-									onChange={setFormData}
-									hideSubmit={true}
-								/>
+								{loading ? (
+									<div className="flex h-32 items-center justify-center">
+										<Spin tip="Loading schema..." />
+									</div>
+								) : (
+									schema && (
+										<FixedSchemaForm
+											schema={schema}
+											formData={formData}
+											onChange={(updatedFormData: Record<string, any>) => {
+												setFormData(updatedFormData)
+												if (onFormDataChange) {
+													onFormDataChange(updatedFormData)
+												}
+											}}
+											hideSubmit={true}
+										/>
+									)
+								)}
 							</div>
 						</div>
 					) : (
@@ -913,7 +560,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								rowClassName={() => "custom-row"}
 							/>
 
-							{!showAllJobs && additionalJobs.length > 0 && (
+							{!showAllJobs && source?.jobs && source.jobs.length > 5 && (
 								<div className="mt-6 flex justify-center">
 									<Button
 										type="default"
@@ -925,24 +572,28 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								</div>
 							)}
 
-							<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
+							{/* <div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
 								<span className="font-medium">Pause all associated jobs</span>
 								<Switch
 									onChange={handlePauseAllJobs}
 									className="bg-gray-200"
 								/>
-							</div>
+							</div> */}
 						</div>
 					)}
 				</div>
 
 				<DocumentationPanel
-					docUrl="https://olake.io/docs/category/mongodb"
+					docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}/config`}
 					isMinimized={docsMinimized}
 					onToggle={toggleDocsPanel}
 					showResizer={true}
 				/>
 			</div>
+
+			<TestConnectionModal />
+			<TestConnectionSuccessModal />
+			<TestConnectionFailureModal />
 
 			{/* Delete Modal */}
 			<DeleteModal fromSource={true} />
@@ -951,31 +602,26 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			{!fromJobFlow && (
 				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 					<div>
-						{!isNewSource && (
-							<button
-								className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-								onClick={handleDelete}
-							>
-								Delete
-							</button>
-						)}
+						<button
+							className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+							onClick={handleDelete}
+						>
+							Delete
+						</button>
 					</div>
 					<div className="flex space-x-4">
-						<button
-							onClick={handleTestConnection}
-							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
-						>
-							Test connection
-						</button>
 						<button
 							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 							onClick={handleSave}
 						>
-							{isNewSource ? "Create source" : "Save changes"}
+							Save changes
 						</button>
 					</div>
 				</div>
 			)}
+
+			{/* Entity Edit Modal */}
+			<EntityEditModal entityType="source" />
 		</div>
 	)
 }

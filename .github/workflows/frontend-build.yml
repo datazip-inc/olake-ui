@@ -2,9 +2,13 @@ name: Frontend Build And Lint
 on:
   push:
     branches:
-      - "master"
+      - master
+      - staging
+      - "*"
   pull_request:
     branches:
+      - master
+      - staging
       - "*"
 
 jobs:

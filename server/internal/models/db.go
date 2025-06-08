@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/datazip/olake-server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/constants"
 )
 
 // BaseModel with common fields
@@ -28,14 +28,15 @@ func (u *User) TableName() string {
 
 // Source entity referencing User for auditing fields
 type Source struct {
-	BaseModel  `orm:"embedded"`
-	ID         int    `json:"id" orm:"column(id);pk;auto"`
-	Name       string `json:"name"`
-	ProjectID  uint   `json:"project_id" orm:"column(project_id)"`
-	Config     string `json:"config" orm:"type(jsonb)"`
-	CreatedBy  *User  `json:"created_by" orm:"rel(fk)"`
-	UpdatedBy  *User  `json:"updated_by" orm:"rel(fk)"`
-	SourceType string `json:"source_type"`
+	BaseModel `orm:"embedded"`
+	ID        int    `json:"id" orm:"column(id);pk;auto"`
+	Name      string `json:"name"`
+	ProjectID string `json:"project_id" orm:"column(project_id)"`
+	Config    string `json:"config" orm:"type(jsonb)"`
+	Version   string `json:"version"`
+	CreatedBy *User  `json:"created_by" orm:"rel(fk)"`
+	UpdatedBy *User  `json:"updated_by" orm:"rel(fk)"`
+	Type      string `json:"type"`
 }
 
 func (s *Source) TableName() string {
@@ -47,8 +48,9 @@ type Destination struct {
 	BaseModel `orm:"embedded"`
 	ID        int    `json:"id" orm:"column(id);pk;auto"`
 	Name      string `json:"name"`
-	ProjectID int    `json:"project_id" orm:"column(project_id)"`
+	ProjectID string `json:"project_id" orm:"column(project_id)"`
 	DestType  string `json:"type"`
+	Version   string `json:"version"`
 	Config    string `json:"config" orm:"type(jsonb)"`
 	CreatedBy *User  `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy *User  `json:"updated_by" orm:"rel(fk)"`
@@ -71,6 +73,7 @@ type Job struct {
 	State         string       `json:"state" orm:"type(jsonb)"`
 	CreatedBy     *User        `json:"created_by" orm:"rel(fk)"`
 	UpdatedBy     *User        `json:"updated_by" orm:"rel(fk)"`
+	ProjectID     string       `json:"project_id" orm:"column(project_id)"`
 }
 
 func (j *Job) TableName() string {
@@ -88,4 +91,14 @@ type Catalog struct {
 
 func (c *Catalog) TableName() string {
 	return constants.TableNameMap[constants.CatalogTable]
+}
+
+type Session struct {
+	SessionKey    string    `json:"session_key" orm:"column(session_key);pk;size(64)"`
+	SessionData   string    `json:"session_data" orm:"column(session_data);type(text)"`
+	SessionExpiry time.Time `json:"session_expiry" orm:"column(session_expiry)"`
+}
+
+func (s *Session) TableName() string {
+	return constants.TableNameMap[constants.SessionTable]
 }

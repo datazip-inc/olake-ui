@@ -2,18 +2,10 @@ import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
-import { JobCreationSteps } from "../../../types"
-
-interface EntitySavedModalProps {
-	type: JobCreationSteps
-	onComplete?: () => void
-	fromJobFlow: boolean
-	entityName?: string
-}
+import { EntitySavedModalProps } from "../../../types"
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	type,
-	onComplete,
 	fromJobFlow,
 	entityName = "",
 }) => {
@@ -42,7 +34,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 						? "Source is connected and saved successfully"
 						: type === "destination"
 							? "Destination is connected and saved successfully"
-							: "Your job is running successfully"}
+							: "Your job is created successfully"}
 				</div>
 				<div className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-[#D9D9D9] px-4 py-2">
 					<div className="flex items-center gap-1">
@@ -68,32 +60,20 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					</div>
 				</div>
 				<div className="flex space-x-4">
-					{type !== "config" && (
+					{type !== "config" && !fromJobFlow && (
 						<Button
 							type={fromJobFlow ? "primary" : "default"}
 							className="border border-[#D9D9D9]"
 							onClick={() => {
 								setShowEntitySavedModal(false)
-								if (fromJobFlow) {
-									if (onComplete) {
-										onComplete()
-									} else {
-										navigate("/jobs/new")
-									}
+								if (type === "source") {
+									navigate("/sources")
 								} else {
-									if (type === "source") {
-										navigate("/sources")
-									} else {
-										navigate("/destinations")
-									}
+									navigate("/destinations")
 								}
 							}}
 						>
-							{fromJobFlow
-								? "Next →"
-								: type === "source"
-									? "Sources"
-									: "Destinations"}
+							{type === "source" ? "Sources" : "Destinations"}
 						</Button>
 					)}
 					{!fromJobFlow && (

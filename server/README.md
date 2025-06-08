@@ -1,7 +1,9 @@
 # Olake Server
+
 Olake Server is a RESTful API service built with the Beego framework that manages data sources, destinations, jobs, and users for data ingestion workflows.
 
 ## Prerequisites
+
 - Go 1.23 or later
 - PostgreSQL 12 or later
 - Git
@@ -9,9 +11,11 @@ Olake Server is a RESTful API service built with the Beego framework that manage
 ## Setup Instructions
 
 ### 1. Clone the Repository
+
     ```bash
     git clone https://github.com/datazip-inc/olake-frontend.git
     ```
+
 ### 2. Configure Application Settings (Auth only works when session enabled)
 
 Review and update the configuration in `conf/app.conf` as needed:
@@ -26,7 +30,9 @@ postgresdb = postgres://postgres:testing@testing-postgres.postgres.database.azur
 # Session configuration
 sessionon = true
 ```
+
 #### If session enabled, then manually run following command on your postgres db
+
 ```bash
 CREATE TABLE session (
     session_key VARCHAR(64) PRIMARY KEY,
@@ -34,16 +40,25 @@ CREATE TABLE session (
     session_expiry TIMESTAMP WITH TIME ZONE
 );
 ```
+
 ### 3. Run the Application
 
 ```bash
 go mod tidy
-bee run 
+bee run
 # or
 make run
 ```
 
 The server will start on port 8080 (or the port specified in your configuration).
+
+### 4. Create a User
+
+Create a user to login via frontend:
+
+```bash
+make create-user username=admin password=yourpassword email=admin@example.com
+```
 
 ## Project Structure
 
@@ -55,7 +70,9 @@ The server will start on port 8080 (or the port specified in your configuration)
 - **main.go** - Application entry point
 
 ## API Endpoints
+
 All API Endpoints: [Postman](https://solar-capsule-662043.postman.co/workspace/Olake-Server~ad9c900c-0376-42e2-adf2-e3137b92b325/collection/24907154-6eaf11b3-4e36-4ec3-a05a-3fa3720125ee?action=share&creator=24907154&active-environment=24907154-dcc91e95-6699-48cb-bbe0-e0e92b9800bd)
+
 ### Authentication
 
 - POST `/login` - User login
