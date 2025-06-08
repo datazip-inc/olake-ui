@@ -10,29 +10,31 @@ import (
 )
 
 func Init() {
-	// auth routes
-	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
-	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
-	web.Router("/auth/check", &handlers.AuthHandler{}, "get:CheckAuth")
-
-	// Apply custom CORS filter before router
-	// Then CORS
-	// Get allowed origins from env, comma-separated (e.g., http://localhost:3000,https://myapp.com)
+	// Apply CORS middleware first, before any routes
 	originsEnv := os.Getenv("CORS_ALLOW_ORIGINS")
 	allowedOrigins := []string{"*"} // default fallback
 
 	if originsEnv != "" {
 		allowedOrigins = strings.Split(originsEnv, ",")
 	}
+
+	// Insert CORS filter at the very beginning
 	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
+		AllowAllOrigins:  len(allowedOrigins) == 1 && allowedOrigins[0] == "*",
 		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"*"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Content-Type", "X-Requested-With"},
+		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
 		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
-	// Then auth middleware
+	// Auth routes (no auth middleware applied to these)
+	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
+	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
+	web.Router("/auth/check", &handlers.AuthHandler{}, "get:CheckAuth")
+
+	// Apply auth middleware to all API v1 routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
 
 	// User routes

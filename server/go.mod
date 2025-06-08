@@ -5,7 +5,7 @@ go 1.24.2
 require github.com/beego/beego/v2 v2.3.8
 
 require (
-	github.com/lib/pq v1.10.5
+	github.com/lib/pq v1.10.9
 	github.com/oklog/ulid v1.3.1
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
@@ -35,7 +35,7 @@ require (
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
-	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02 // indirect
+	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect

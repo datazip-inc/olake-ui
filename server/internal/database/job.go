@@ -44,7 +44,7 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	// Query sources in the project
 	sourceTable := constants.TableNameMap[constants.SourceTable]
 	sources := []int{}
-	_, err := r.ormer.Raw(fmt.Sprintf(`SELECT id FROM "%q" WHERE project_id = ?`, sourceTable), projectID).QueryRows(&sources)
+	_, err := r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, sourceTable), projectID).QueryRows(&sources)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	// Query destinations in the project
 	destTable := constants.TableNameMap[constants.DestinationTable]
 	destinations := []int{}
-	_, err = r.ormer.Raw(fmt.Sprintf(`SELECT id FROM "%q" WHERE project_id = ?`, destTable), projectID).QueryRows(&destinations)
+	_, err = r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, destTable), projectID).QueryRows(&destinations)
 	if err != nil {
 		return nil, err
 	}

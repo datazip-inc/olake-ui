@@ -1,5 +1,4 @@
-name: CI/CD Pipeline
-
+name: Frontend Build And Lint
 on:
   push:
     branches:
