@@ -1,5 +1,5 @@
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath   /tmp/olake-config
+  host_persistence_path: &hostPersistencePath   /your/chosen/host/path/olake-data
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
@@ -11,14 +11,13 @@ x-signup-defaults:
   email: &defaultEmail "admin@example.com"
 
 services:
-  olake-app:
+  olake-ui:
     image: olakego/ui:dev-latest
     pull_policy: always
-    container_name: olake-app
+    container_name: olake-ui
     environment:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
-      CORS_ALLOW_ORIGINS: "http://localhost:8000,http://localhost:5173"
     ports:
       - "8000:8000"  # Expose UI port
       - "8080:8080"  # Expose backend API port
@@ -32,7 +31,7 @@ services:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
-    healthcheck: # Updated healthcheck for olake-app
+    healthcheck: # Updated healthcheck for olake-ui
       test: ["CMD-SHELL", "nc -z localhost 8080"] # Check if port 8080 is listening
       interval: 15s
       timeout: 5s
@@ -45,24 +44,24 @@ services:
     networks:
       - temporal-network
     depends_on:
-      olake-app:
-        condition: service_healthy # Wait for olake-app to be healthy
+      olake-ui:
+        condition: service_healthy # Wait for olake-ui to be healthy
     environment:
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
       EMAIL: *defaultEmail
-      OLAKE_APP_URL: "http://olake-app:8080/signup"
+      OLAKE_APP_URL: "http://olake-ui:8080/signup"
     command: >
       sh -c "
         echo 'signup-init: Initializing user setup...'
-        # The depends_on condition: service_healthy should handle the waiting for olake-app.
+        # The depends_on condition: service_healthy should handle the waiting for olake-ui.
 
         JSON_PAYLOAD=$$(printf '{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\"}' \"$${USERNAME}\" \"$${PASSWORD}\" \"$${EMAIL}\")
         echo \"signup-init: Attempting to create user '$${USERNAME}' via $${OLAKE_APP_URL}\"
 
         HTTP_RESPONSE_CODE=$$(/usr/bin/curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d \"$${JSON_PAYLOAD}\" \"$${OLAKE_APP_URL}\")
 
-        # The actual response body from olake-app will be printed to stderr by the '-o /dev/stderr' curl option.
+        # The actual response body from olake-ui will be printed to stderr by the '-o /dev/stderr' curl option.
         # A newline after stderr output from curl can make logs cleaner.
         echo '' 
 
@@ -96,7 +95,7 @@ services:
     depends_on:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
-      olake-app:
+      olake-ui:
         condition: service_healthy
     restart: unless-stopped
 

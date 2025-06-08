@@ -26,7 +26,6 @@ jobs:
       DOCKER_LOGIN: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
-      DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
       ENVIRONMENT: ${{ github.event.inputs.environment }}
       VERSION: ${{ github.event.inputs.version }}
 
@@ -40,19 +39,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-          # cache: "pnpm"
-          # cache-dependency-path: "ui/pnpm-lock.yaml"
+          cache: "pnpm"
+          cache-dependency-path: "ui/pnpm-lock.yaml"
 
       - name: Install pnpm
         run: npm install -g pnpm
-
-      - name: Cache pnpm store
-        uses: actions/cache@v3
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('ui/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
 
       - name: Setup environment variables
         run: |

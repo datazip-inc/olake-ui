@@ -33,7 +33,7 @@ jobs:
           working-directory: ./server
           args: --out-format=colored-line-number
   build-check:
-    name: Build Olake-App
+    name: Build Olake-UI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
