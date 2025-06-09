@@ -12,7 +12,7 @@ x-signup-defaults:
 
 services:
   olake-ui:
-    image: olakego/ui:dev-latest
+    image: olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -82,7 +82,7 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: olakego/ui-worker:dev-latest
+    image: olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
