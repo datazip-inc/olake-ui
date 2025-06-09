@@ -523,7 +523,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       12,
 				},
 			},
-			"required": []string{"hosts", "username", "password", "database"},
+			"required": []string{"hosts", "username", "password", "database", "authdb"},
 		}
 
 	default:
