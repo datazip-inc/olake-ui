@@ -40,8 +40,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: "ui/pnpm-lock.yaml"
+          # cache: "pnpm"
+          # cache-dependency-path: "ui/pnpm-lock.yaml"
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -52,14 +52,7 @@ jobs:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-pnpm-${{ hashFiles('ui/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-
-
-      - name: Setup Node.js cache
-        uses: actions/setup-node@v3
-        with:
-          node-version: "20"
-          cache: "pnpm"
-          cache-dependency-path: "ui/pnpm-lock.yaml"
+            ${{ runner.os }}-pnpm-store-
 
       - name: Setup environment variables
         run: |
