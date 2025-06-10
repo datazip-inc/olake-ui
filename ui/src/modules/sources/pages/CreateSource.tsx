@@ -468,7 +468,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 				<TestConnectionModal />
 				<TestConnectionSuccessModal />
-				<TestConnectionFailureModal />
+				<TestConnectionFailureModal fromSources={true} />
 				<EntitySavedModal
 					type="source"
 					onComplete={onComplete}
