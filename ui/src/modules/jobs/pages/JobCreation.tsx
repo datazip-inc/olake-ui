@@ -24,6 +24,7 @@ import {
 	getReplicationFrequency,
 } from "../../../utils/utils"
 import { destinationService, sourceService } from "../../../api"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -46,6 +47,7 @@ const JobCreation: React.FC = () => {
 		useState("1")
 	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+	const [isFromSources, setIsFromSources] = useState(true)
 
 	const [hitBack, setHitBack] = useState(false)
 
@@ -100,6 +102,7 @@ const JobCreation: React.FC = () => {
 						setCurrentStep("destination")
 					}, 1000)
 				} else {
+					setIsFromSources(true)
 					setSourceTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
@@ -136,13 +139,14 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.success) {
+				if (testResult.data?.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep("schema")
 					}, 1000)
 				} else {
+					setIsFromSources(false)
 					setDestinationTestConnectionError(testResult.data?.message || "")
 					setShowFailureModal(true)
 				}
@@ -436,6 +440,7 @@ const JobCreation: React.FC = () => {
 										: ""
 						}
 					/>
+					<TestConnectionFailureModal fromSources={isFromSources} />
 					<EntityCancelModal
 						type="job"
 						navigateTo="jobs"

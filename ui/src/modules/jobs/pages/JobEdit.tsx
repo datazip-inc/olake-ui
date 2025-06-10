@@ -131,6 +131,7 @@ const JobEdit: React.FC = () => {
 		useState("1")
 	const [job, setJob] = useState<Job | null>(null)
 	const [savedJobId, setSavedJobId] = useState<string | null>(null)
+	const [isFromSources, setIsFromSources] = useState(true)
 
 	useEffect(() => {
 		fetchJobs()
@@ -410,6 +411,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("destination")
 						}, 1000)
 					} else {
+						setIsFromSources(true)
 						setShowTestingModal(false)
 						setSourceTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
@@ -444,6 +446,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("schema")
 						}, 2000)
 					} else {
+						setIsFromSources(false)
 						setDestinationTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
 					}
@@ -645,7 +648,7 @@ const JobEdit: React.FC = () => {
 			</div>
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
-			<TestConnectionFailureModal />
+			<TestConnectionFailureModal fromSources={isFromSources} />
 		</div>
 	)
 }

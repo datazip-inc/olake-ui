@@ -625,7 +625,7 @@ const CreateDestination = forwardRef<
 
 				<TestConnectionModal />
 				<TestConnectionSuccessModal />
-				<TestConnectionFailureModal />
+				<TestConnectionFailureModal fromSources={false} />
 				<EntitySavedModal
 					type="destination"
 					onComplete={onComplete}

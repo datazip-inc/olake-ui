@@ -692,7 +692,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			<DeleteModal fromSource={false} />
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
-			<TestConnectionFailureModal />
+			<TestConnectionFailureModal fromSources={false} />
 			<EntityEditModal entityType="destination" />
 
 			{/* Footer with buttons */}

@@ -593,7 +593,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
-			<TestConnectionFailureModal />
+			<TestConnectionFailureModal fromSources={true} />
 
 			{/* Delete Modal */}
 			<DeleteModal fromSource={true} />
