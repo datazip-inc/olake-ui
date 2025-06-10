@@ -393,7 +393,7 @@ func (c *DestHandler) GetDestinationSpec() {
 						"order":       9,
 					},
 				},
-				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "aws_access_key", "aws_secret_key", "iceberg_db"},
+				"required": []string{"catalog_type", "iceberg_s3_path", "aws_region", "iceberg_db"},
 			}
 			catalogUISchema = map[string]interface{}{
 				"catalog_type": map[string]interface{}{

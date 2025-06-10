@@ -1,5 +1,5 @@
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath /your/chosen/host/path/olake-data
+  host_persistence_path: &hostPersistencePath /tmp/olake
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
@@ -12,13 +12,15 @@ x-signup-defaults:
 
 services:
   olake-ui:
-    image: olakego/ui:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     pull_policy: always
     container_name: olake-ui
     environment:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
-      CORS_ALLOW_ORIGINS: "http://localhost:8000,http://localhost:5173"
+      CORS_ALLOW_ORIGINS: "http://localhost:8000,http://localhost:5173,http://ui.olake.io:8000"
     ports:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port
@@ -82,8 +84,9 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: olakego/ui-worker:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: worker.Dockerfile
     container_name: olake-temporal-worker
     networks:
       - temporal-network
@@ -93,9 +96,11 @@ services:
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
       PERSISTENT_DIR: *hostPersistencePath
+      AWS_CONFIG_PATH: "/home/testing-server-1/.aws/config"
+      AWS_CREDS_SCRIPT_PATH: "/opt/olake_azure_aws_credentials.sh"
     depends_on:
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_started
       olake-ui:
         condition: service_healthy
     restart: unless-stopped

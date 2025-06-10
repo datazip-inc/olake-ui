@@ -116,12 +116,33 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 	dockerArgs := []string{
 		"run", "--pull=always",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
-		r.GetDockerImageName(sourceType, version),
-		string(command),
-		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	}
 
-	return append(dockerArgs, additionalArgs...)
+	// Add AWS credentials mounts if available
+	if awsConfig := os.Getenv("AWS_CONFIG_PATH"); awsConfig != "" {
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/root/.aws/config:ro", awsConfig))
+		// Set AWS environment variables for Java SDK
+		dockerArgs = append(dockerArgs, "-e", "AWS_CONFIG_FILE=/root/.aws/config")
+		dockerArgs = append(dockerArgs, "-e", "AWS_SDK_LOAD_CONFIG=true")
+		dockerArgs = append(dockerArgs, "-e", "AWS_PROFILE=default")
+		dockerArgs = append(dockerArgs, "-e", "AWS_DEFAULT_PROFILE=default")
+	}
+	if awsCredsScript := os.Getenv("AWS_CREDS_SCRIPT_PATH"); awsCredsScript != "" {
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/opt/azure_aws_credentials.sh:ro", awsCredsScript))
+	}
+
+	// Override entrypoint to install tools and then run the command
+	dockerArgs = append(dockerArgs, "--entrypoint", "sh")
+	dockerArgs = append(dockerArgs, r.GetDockerImageName(sourceType, version))
+	// Create a command that installs tools and runs the original command
+	installAndRunCmd := fmt.Sprintf(`
+		apk add --no-cache aws-cli bash jq curl &&
+		/home/olake %s --%s /mnt/config/%s %s
+	`, string(command), flag, filepath.Base(configPath), strings.Join(additionalArgs, " "))
+	
+	dockerArgs = append(dockerArgs, "-c", installAndRunCmd)
+
+	return dockerArgs
 }
 
 // getHostOutputDir determines the host output directory path
