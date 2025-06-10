@@ -18,7 +18,6 @@ services:
     environment:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
-      CORS_ALLOW_ORIGINS: "http://localhost:8000,http://localhost:5173"
     ports:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port

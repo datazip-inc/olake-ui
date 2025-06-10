@@ -1,41 +1,61 @@
 package routes
 
 import (
-	"os"
+	"net/http"
 	"strings"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/beego/beego/v2/server/web/filter/cors"
+	"github.com/beego/beego/v2/server/web/context"
 	"github.com/datazip/olake-frontend/server/internal/handlers"
 )
 
-func Init() {
-	// Apply CORS middleware first, before any routes
-	originsEnv := os.Getenv("CORS_ALLOW_ORIGINS")
-	allowedOrigins := []string{"*"} // default fallback
+// writeDefaultCorsHeaders sets common CORS headers
+func writeDefaultCorsHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+	w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization, Content-Type, Accept")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+}
 
-	if originsEnv != "" {
-		allowedOrigins = strings.Split(originsEnv, ",")
+// CustomCorsFilter handles CORS for different route patterns
+func CustomCorsFilter(ctx *context.Context) {
+	r := ctx.Request
+	w := ctx.ResponseWriter
+
+	writeDefaultCorsHeaders(w)
+
+	path := r.URL.Path
+	requestOrigin := r.Header.Get("Origin")
+
+	// API and auth routes - reflect origin
+	if strings.HasPrefix(path, "/api/v1/") ||
+		path == "/login" ||
+		path == "/signup" ||
+		path == "/auth/check" {
+
+		if requestOrigin != "" {
+			// TODO: Validate against allowed origins list in production
+			w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+		}
 	}
+	// Handle preflight OPTIONS requests
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+}
 
-	// Insert CORS filter at the very beginning
-	web.InsertFilter("*", web.BeforeRouter, cors.Allow(&cors.Options{
-		AllowAllOrigins:  len(allowedOrigins) == 1 && allowedOrigins[0] == "*",
-		AllowOrigins:     allowedOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Content-Type", "X-Requested-With"},
-		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin"},
-		AllowCredentials: true,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	}))
+func Init() {
+	// Apply CORS filter first
+	web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 
-	// Auth routes (no auth middleware applied to these)
+	// Apply auth middleware to protected routes
+	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
+
+	// Auth routes
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
 	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
 	web.Router("/auth/check", &handlers.AuthHandler{}, "get:CheckAuth")
-
-	// Apply auth middleware to all API v1 routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
 
 	// User routes
 	web.Router("/api/v1/users", &handlers.UserHandler{}, "post:CreateUser")
