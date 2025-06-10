@@ -2,9 +2,13 @@ import { Modal } from "antd"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
 import { useAppStore } from "../../../store"
 import { Info } from "@phosphor-icons/react"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
-const TestConnectionFailureModal = () => {
+const TestConnectionFailureModal = ({
+	fromSources,
+}: {
+	fromSources: boolean
+}) => {
 	const {
 		showFailureModal,
 		setShowFailureModal,
@@ -12,9 +16,6 @@ const TestConnectionFailureModal = () => {
 		destinationTestConnectionError,
 	} = useAppStore()
 	const navigate = useNavigate()
-	const location = useLocation()
-
-	const isFromSources = location.pathname.includes("/sources")
 
 	const handleCancel = () => {
 		setShowFailureModal(false)
@@ -22,7 +23,7 @@ const TestConnectionFailureModal = () => {
 
 	const handleBackToPath = () => {
 		setShowFailureModal(false)
-		if (isFromSources) {
+		if (fromSources) {
 			navigate("/sources")
 		} else {
 			navigate("/destinations")
@@ -56,9 +57,9 @@ const TestConnectionFailureModal = () => {
 							weight="bold"
 							className="size-4 text-[#f5222d]"
 						/>
-						{sourceTestConnectionError || destinationTestConnectionError
-							? sourceTestConnectionError || destinationTestConnectionError
-							: "Error : Please check your parameters"}
+						{fromSources
+							? sourceTestConnectionError
+							: destinationTestConnectionError}
 					</div>
 				</div>
 				<div className="flex items-center gap-4">
@@ -66,9 +67,7 @@ const TestConnectionFailureModal = () => {
 						onClick={handleBackToPath}
 						className="w-fit rounded-md border border-[#d9d9d9] px-4 py-2 text-black"
 					>
-						{isFromSources
-							? "Back to Sources Page"
-							: "Back to Destinations Page"}
+						{fromSources ? "Back to Sources Page" : "Back to Destinations Page"}
 					</button>
 					<button
 						onClick={handleCancel}
