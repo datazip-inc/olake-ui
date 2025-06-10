@@ -121,6 +121,7 @@ func (c *Client) CreateSync(ctx context.Context, frequency, projectIDStr string,
 		if err := c.handleSchedule(ctx, scheduleHandle, frequency, scheduleExists, currentSchedule, id, scheduleID, jobID); err != nil {
 			return nil, err
 		}
+		return map[string]interface{}{"message": "Schedule created/updated successfully"}, nil
 	}
 
 	// Handle immediate run
