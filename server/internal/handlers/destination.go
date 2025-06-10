@@ -195,6 +195,12 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
+	if result == nil {
+		result = map[string]interface{}{
+			"message": "Connection test failed: Please check your configuration and try again",
+			"status":  "failed",
+		}
+	}
 	utils.SuccessResponse(&c.Controller, result)
 }
 

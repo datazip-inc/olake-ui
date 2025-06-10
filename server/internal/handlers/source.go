@@ -193,6 +193,12 @@ func (c *SourceHandler) TestConnection() {
 		return
 	}
 	result, _ := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
+	if result == nil {
+		result = map[string]interface{}{
+			"message": "Connection test failed: Please check your configuration and try again",
+			"status":  "failed",
+		}
+	}
 	utils.SuccessResponse(&c.Controller, result)
 }
 
