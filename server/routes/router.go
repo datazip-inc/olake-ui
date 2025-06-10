@@ -21,18 +21,14 @@ func writeDefaultCorsHeaders(w http.ResponseWriter) {
 func CustomCorsFilter(ctx *context.Context) {
 	r := ctx.Request
 	w := ctx.ResponseWriter
-
 	writeDefaultCorsHeaders(w)
-
 	path := r.URL.Path
 	requestOrigin := r.Header.Get("Origin")
-
 	// API and auth routes - reflect origin
 	if strings.HasPrefix(path, "/api/v1/") ||
 		path == "/login" ||
 		path == "/signup" ||
 		path == "/auth/check" {
-
 		if requestOrigin != "" {
 			// TODO: Validate against allowed origins list in production
 			w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
