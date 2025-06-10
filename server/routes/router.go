@@ -2,7 +2,6 @@ package routes
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
@@ -22,18 +21,9 @@ func CustomCorsFilter(ctx *context.Context) {
 	r := ctx.Request
 	w := ctx.ResponseWriter
 	writeDefaultCorsHeaders(w)
-	path := r.URL.Path
 	requestOrigin := r.Header.Get("Origin")
 	// API and auth routes - reflect origin
-	if strings.HasPrefix(path, "/api/v1/") ||
-		path == "/login" ||
-		path == "/signup" ||
-		path == "/auth/check" {
-		if requestOrigin != "" {
-			// TODO: Validate against allowed origins list in production
-			w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
-		}
-	}
+	w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
 	// Handle preflight OPTIONS requests
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusOK)
