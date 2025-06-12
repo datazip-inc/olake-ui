@@ -25,6 +25,7 @@ server/olake-server
 /bin/
 /tmp/
 /dist/
+olake-data/
 
 # ----------------------------
 # Node-Related Files
