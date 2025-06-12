@@ -470,8 +470,7 @@ func (c *JobHandler) GetTaskLogs() {
 	// Read the log file
 
 	// Get home directory
-	homeDir := docker.GetDefaultConfigDir()
-	mainSyncDir := filepath.Join(homeDir, syncFolderName)
+	mainSyncDir := filepath.Join(docker.DefaultConfigDir, syncFolderName)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
 		return

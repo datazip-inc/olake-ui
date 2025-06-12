@@ -1,8 +1,6 @@
 package database
 
 import (
-	"time"
-
 	"github.com/beego/beego/v2/client/orm"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
@@ -23,6 +21,7 @@ func NewDestinationORM() *DestinationORM {
 }
 
 func (r *DestinationORM) Create(destination *models.Destination) error {
+	// ORM will automatically set CreatedAt and UpdatedAt due to auto_now_add and auto_now tags
 	_, err := r.ormer.Insert(destination)
 	return err
 }
@@ -46,13 +45,15 @@ func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 }
 
 func (r *DestinationORM) Update(destination *models.Destination) error {
-	destination.UpdatedAt = time.Now()
+	// ORM will automatically update UpdatedAt due to auto_now tag
 	_, err := r.ormer.Update(destination)
 	return err
 }
 
 func (r *DestinationORM) Delete(id int) error {
 	destination := &models.Destination{ID: id}
+	// Use ORM's Delete method which will automatically handle the soft delete
+	// by setting the DeletedAt field due to the ORM tags in BaseModel
 	_, err := r.ormer.Delete(destination)
 	return err
 }

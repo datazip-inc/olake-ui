@@ -16,7 +16,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 		"workflowID", params.WorkflowID)
 
 	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	runner := docker.NewRunner(docker.DefaultConfigDir)
 
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Running sync command")
@@ -45,7 +45,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 // TestConnectionActivity runs the check command to test connection
 func TestConnectionActivity(_ context.Context, params *ActivityParams) (map[string]interface{}, error) {
 	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	runner := docker.NewRunner(docker.DefaultConfigDir)
 	resp, err := runner.TestConnection(params.Flag, params.SourceType, params.Version, params.Config, params.WorkflowID)
 	return resp, err
 }
@@ -58,7 +58,7 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 		"jobId", params.JobID,
 		"workflowID", params.WorkflowID)
 	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	runner := docker.NewRunner(docker.DefaultConfigDir)
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Running sync command")
 	// Execute the sync operation
