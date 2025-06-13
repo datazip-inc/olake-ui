@@ -34,7 +34,7 @@ We ❤️ contributions big or small check our [Bounty Program](https://olake.io
 
 ## Running with Docker Compose
 
-You can run the entire Olake stack (UI, backend, Temporal worker, Temporal services, and dependencies) using Docker Compose. This is the recommended way to get started for local development or evaluation.
+This Docker Compose setup provides a comprehensive environment(UI, backend, Temporal worker, Temporal services, and dependencies) for demonstrating and exploring Olake's capabilities. This is the recommended way to get started for local development or evaluation.
 
 ### Prerequisites
 
@@ -74,15 +74,15 @@ You can run the entire Olake stack (UI, backend, Temporal worker, Temporal servi
 
 ### Notes
 
-- The first time you run, Docker will pull all required images.
-- Data and configuration are persisted in the directory you set in `docker-compose.yml`.
+- On first run, this docker will pull all required images.
+- Data and configuration are persisted in the directory set in `docker-compose.yml`.
 - The Temporal worker requires access to the Docker socket to launch containers for jobs. This is handled by the volume mount in the compose file.
 
 ### Optional Configuration
 
 **Custom Admin User:**
 
-The stack automatically creates an initial admin user on first startup. To change the default credentials, edit the `x-signup-defaults` section in your `docker-compose.yml`:
+The stack automatically creates an initial admin user on first startup. To change the default credentials, edit the `x-signup-defaults` section in `docker-compose.yml`:
 
 ```yaml
 x-signup-defaults:
@@ -105,13 +105,12 @@ Make sure the directory exists and is writable.
 
 ### Troubleshooting
 
-- If you see errors about file permissions, ensure your host persistence/config directory is writable by Docker.
-- For more logs, use:
+- If there are any file permission error, ensure the host persistence/config directory is writable by Docker.
+- For complete logs, use:
   ```bash
   docker-compose logs -f
   ```
-- If you change the code or configuration, you may need to rebuild images:
+- For logs specific to a service, use:
   ```bash
-  docker-compose build
-  docker-compose up -d
+  docker compose logs -f <service_name>
   ```
