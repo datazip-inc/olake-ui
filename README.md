@@ -38,7 +38,7 @@ This Docker Compose setup provides a comprehensive environment(UI, backend, Temp
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) installed (Docker Desktop recommended for Mac/Windows)
+- [Docker](https://docs.docker.com/get-docker/) installed and running (Docker Desktop recommended for Mac/Windows)
 - [Docker Compose](https://docs.docker.com/compose/) (comes with Docker Desktop)
 
 ### Quick Start
@@ -74,7 +74,7 @@ This Docker Compose setup provides a comprehensive environment(UI, backend, Temp
 
 ### Notes
 
-- On first run, this docker will pull all required images.
+- On first run, docker will pull all required images.
 - Data and configuration are persisted in the directory set in `docker-compose.yml`.
 - The Temporal worker requires access to the Docker socket to launch containers for jobs. This is handled by the volume mount in the compose file.
 
