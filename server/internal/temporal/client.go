@@ -199,7 +199,7 @@ func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, sc
 }
 
 // updateSchedule updates an existing schedule
-func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, scheduleID, frequency string) (map[string]interface{}, error) {
+func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, frequency string) (map[string]interface{}, error) {
 	cronSpec := utils.ToCron(frequency)
 
 	// Check if update is needed
