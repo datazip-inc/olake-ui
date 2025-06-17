@@ -130,6 +130,12 @@ const CreateDestination = forwardRef<
 		}, [destinations.length, fetchDestinations])
 
 		useEffect(() => {
+			if (setupType === SETUP_TYPES.EXISTING) {
+				fetchDestinations()
+			}
+		}, [setupType, fetchDestinations])
+
+		useEffect(() => {
 			if (initialConfig) {
 				setDestinationName(initialConfig.name)
 				setConnector(initialConfig.type as ConnectorType)

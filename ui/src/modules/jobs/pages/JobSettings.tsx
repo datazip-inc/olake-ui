@@ -22,7 +22,7 @@ const JobSettings: React.FC = () => {
 		fetchJobs,
 		setShowDeleteJobModal,
 		setSelectedJobId,
-		setShowClearDestinationAndSyncModal,
+		// setShowClearDestinationAndSyncModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -74,9 +74,9 @@ const JobSettings: React.FC = () => {
 		}
 	}, [job])
 
-	const handleClearDestinationAndSync = () => {
-		setShowClearDestinationAndSyncModal(true)
-	}
+	// const handleClearDestinationAndSync = () => {
+	// 	setShowClearDestinationAndSyncModal(true)
+	// }
 
 	const handleDeleteJob = () => {
 		if (jobId) {
@@ -235,8 +235,8 @@ const JobSettings: React.FC = () => {
 								</div>
 							</div>
 
-							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
-								<div className="mb-3 border-gray-200">
+							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
+								{/* <div className="mb-3 border-gray-200">
 									<div className="flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">
@@ -254,7 +254,7 @@ const JobSettings: React.FC = () => {
 											Clear destination and sync
 										</Button>
 									</div>
-								</div>
+								</div> */}
 
 								<div className="border-gray-200 pt-4">
 									<div className="mb-2 flex items-center justify-between">

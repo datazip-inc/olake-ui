@@ -5,6 +5,7 @@ import StreamsSchema from "./StreamsSchema"
 import {
 	ColumnsPlusRight,
 	GridFour,
+	Info,
 	SlidersHorizontal,
 } from "@phosphor-icons/react"
 import { CARD_STYLE, TAB_STYLES } from "../../../../utils/constants"
@@ -22,7 +23,7 @@ const StreamConfiguration = ({
 	const [syncMode, setSyncMode] = useState(
 		stream.stream.sync_mode === "full_refresh" ? "full" : "cdc",
 	)
-	const [enableBackfill, setEnableBackfill] = useState(false)
+	// const [enableBackfill, setEnableBackfill] = useState(false)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
 	const [partitionRegex, setPartitionRegex] = useState("")
@@ -48,7 +49,7 @@ const StreamConfiguration = ({
 			setSyncMode("cdc")
 			initialEnableBackfillForSwitch = false
 		}
-		setEnableBackfill(initialEnableBackfillForSwitch)
+		// setEnableBackfill(initialEnableBackfillForSwitch)
 		setNormalisation(initialNormalization)
 
 		// Handle initial partition regex
@@ -84,7 +85,7 @@ const StreamConfiguration = ({
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
-		setEnableBackfill(newEnableBackfillState)
+		// setEnableBackfill(newEnableBackfillState)
 		onSyncModeChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "default",
@@ -98,31 +99,31 @@ const StreamConfiguration = ({
 		})
 	}
 
-	const handleEnableBackfillChange = (checked: boolean) => {
-		setEnableBackfill(checked)
-		let finalApiSyncMode = stream.stream.sync_mode
+	// const handleEnableBackfillChange = (checked: boolean) => {
+	// 	setEnableBackfill(checked)
+	// 	let finalApiSyncMode = stream.stream.sync_mode
 
-		if (syncMode === "cdc") {
-			if (checked) {
-				finalApiSyncMode = "cdc"
-				stream.stream.sync_mode = "cdc"
-				onSyncModeChange?.(
-					stream.stream.name,
-					stream.stream.namespace || "default",
-					"cdc",
-				)
-			} else {
-				finalApiSyncMode = "strict_cdc"
-				stream.stream.sync_mode = "strict_cdc"
-			}
-		}
+	// 	if (syncMode === "cdc") {
+	// 		if (checked) {
+	// 			finalApiSyncMode = "cdc"
+	// 			stream.stream.sync_mode = "cdc"
+	// 			onSyncModeChange?.(
+	// 				stream.stream.name,
+	// 				stream.stream.namespace || "default",
+	// 				"cdc",
+	// 			)
+	// 		} else {
+	// 			finalApiSyncMode = "strict_cdc"
+	// 			stream.stream.sync_mode = "strict_cdc"
+	// 		}
+	// 	}
 
-		setFormData({
-			...formData,
-			backfill: checked,
-			sync_mode: finalApiSyncMode,
-		})
-	}
+	// 	setFormData({
+	// 		...formData,
+	// 		backfill: checked,
+	// 		sync_mode: finalApiSyncMode,
+	// 	})
+	// }
 
 	const handleNormalizationChange = (checked: boolean) => {
 		setNormalisation(checked)
@@ -235,23 +236,34 @@ const StreamConfiguration = ({
 				</div>
 				<div className={CARD_STYLE}>
 					<div className="flex items-center justify-between">
-						<label className="font-medium">Enable backfill</label>
+						<label className="text-[#c1c1c1]">Enable backfill</label>
 						<Switch
-							checked={enableBackfill}
-							onChange={handleEnableBackfillChange}
-							disabled={syncMode === "full"}
+							// className="text-[#c1c1c1]"
+							// checked={enableBackfill}
+							// onChange={handleEnableBackfillChange}
+							// disabled={syncMode === "full"}
+							checked={true}
+							disabled={true}
 						/>
 					</div>
 				</div>
-				{isSelected && (
-					<div className={`mb-4 ${CARD_STYLE}`}>
-						<div className="flex items-center justify-between">
-							<label className="font-medium">Normalisation</label>
-							<Switch
-								checked={normalisation}
-								onChange={handleNormalizationChange}
-							/>
-						</div>
+
+				<div
+					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE}`}
+				>
+					<div className="flex items-center justify-between">
+						<label>Normalisation</label>
+						<Switch
+							checked={normalisation}
+							onChange={handleNormalizationChange}
+							disabled={!isSelected}
+						/>
+					</div>
+				</div>
+				{!isSelected && (
+					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
+						<Info className="size-4" />
+						Select a valid stream to configure Normalisation
 					</div>
 				)}
 			</div>
@@ -267,47 +279,50 @@ const StreamConfiguration = ({
 	const renderPartitioningRegexContent = () => (
 		<>
 			<div className="text-[#575757]">Partitioning regex:</div>
-			{isSelected ? (
-				<>
-					<Input
-						placeholder="Enter your partition regex"
-						className="w-full"
-						value={partitionRegex}
-						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={partitionInfo.length > 0}
-					/>
-					<Button
-						className="w-20 bg-[#203FDD] py-3 font-light text-white"
-						onClick={handleAddPartitionRegex}
-						disabled={!partitionRegex || partitionInfo.length > 0}
-					>
-						Partition
-					</Button>
-					{partitionInfo.length > 0 && (
-						<div className="mt-4">
-							<div className="text-sm text-[#575757]">Added partitions:</div>
-							{partitionInfo.map((regex, index) => (
-								<div
-									key={index}
-									className="mt-2 flex items-center justify-between text-sm"
+			<>
+				<Input
+					placeholder="Enter your partition regex"
+					className="w-full"
+					value={partitionRegex}
+					onChange={e => setPartitionRegex(e.target.value)}
+					disabled={partitionInfo.length > 0 || !isSelected}
+				/>
+				<Button
+					className="w-20 bg-[#203FDD] py-3 font-light text-white"
+					onClick={handleAddPartitionRegex}
+					disabled={!partitionRegex || partitionInfo.length > 0 || !isSelected}
+				>
+					Partition
+				</Button>
+				{partitionInfo.length > 0 && (
+					<div className="mt-4">
+						<div className="text-sm text-[#575757]">Added partitions:</div>
+						{partitionInfo.map((regex, index) => (
+							<div
+								key={index}
+								className="mt-2 flex items-center justify-between text-sm"
+							>
+								<span>{regex}</span>
+								<Button
+									type="text"
+									danger
+									size="small"
+									onClick={() => handleDeletePartition(index)}
 								>
-									<span>{regex}</span>
-									<Button
-										type="text"
-										danger
-										size="small"
-										onClick={() => handleDeletePartition(index)}
-									>
-										Delete
-									</Button>
-								</div>
-							))}
-						</div>
-					)}
-				</>
-			) : (
-				<div className="text-sm text-gray-500">
-					Select the stream to configure Partitioning
+									Delete
+								</Button>
+							</div>
+						))}
+					</div>
+				)}
+			</>
+			{!isSelected && (
+				<div className="flex items-center gap-1 text-sm text-[#686868]">
+					<Info className="size-4" />
+					<div className="text">
+						{" "}
+						Select the stream to configure Partitioning
+					</div>
 				</div>
 			)}
 		</>

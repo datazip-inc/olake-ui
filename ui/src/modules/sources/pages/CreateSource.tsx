@@ -90,6 +90,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		useEffect(() => {
 			if (setupType === "existing") {
+				fetchSources()
 				setFilteredSources(
 					sources.filter(source => source.type === connector.toLowerCase()),
 				)
