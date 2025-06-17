@@ -1,111 +1,64 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
+	"strconv"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/internal/services"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type SourceHandler struct {
 	web.Controller
-	sourceORM  *database.SourceORM
-	userORM    *database.UserORM
-	jobORM     *database.JobORM
-	tempClient *temporal.Client
+	sourceService *services.SourceService
 }
 
 func (c *SourceHandler) Prepare() {
-	c.sourceORM = database.NewSourceORM()
-	c.userORM = database.NewUserORM()
-	c.jobORM = database.NewJobORM()
-
-	// Initialize Temporal client
 	var err error
-	c.tempClient, err = temporal.NewClient()
+	c.sourceService, err = services.NewSourceService()
 	if err != nil {
-		logs.Error("Failed to create Temporal client: %v", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to initialize source service")
+		return
 	}
 }
 
 // @router /project/:projectid/sources [get]
 func (c *SourceHandler) GetAllSources() {
-	sources, err := c.sourceORM.GetAll()
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+
+	sources, err := c.sourceService.GetAllSources(projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources")
 		return
 	}
 
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	sourceItems := make([]models.SourceDataItem, 0, len(sources))
-
-	for _, source := range sources {
-		item := models.SourceDataItem{
-			ID:        source.ID,
-			Name:      source.Name,
-			Type:      source.Type,
-			Version:   source.Version,
-			Config:    source.Config,
-			CreatedAt: source.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
-		}
-
-		setUsernames(&item.CreatedBy, &item.UpdatedBy, source.CreatedBy, source.UpdatedBy)
-
-		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		var success bool
-		item.Jobs, success = buildJobDataItems(jobs, err, projectIDStr, "source", c.tempClient, &c.Controller)
-		if !success {
-			return // Error occurred in buildJobDataItems
-		}
-
-		sourceItems = append(sourceItems, item)
-	}
-
-	utils.SuccessResponse(&c.Controller, sourceItems)
+	utils.SuccessResponse(&c.Controller, sources)
 }
 
 // @router /project/:projectid/sources [post]
 func (c *SourceHandler) CreateSource() {
+	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req models.CreateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	// Convert request to Source model
-	source := &models.Source{
-		Name:    req.Name,
-		Type:    req.Type,
-		Version: req.Version,
-		Config:  req.Config,
-	}
-
-	// Get project ID if needed
-	source.ProjectID = c.Ctx.Input.Param(":projectid")
-
-	// Set created by if user is logged in
-	userID := c.GetSession(constants.SessionUserID)
-	if userID != nil {
-		user, err := c.userORM.GetByID(userID.(int))
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get user")
-			return
+	// Get user ID from session
+	var userID *int
+	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
+		if uid, ok := sessionUserID.(int); ok {
+			userID = &uid
 		}
-		source.CreatedBy = user
-		source.UpdatedBy = user
 	}
-	if err := c.sourceORM.Create(source); err != nil {
+
+	if err := c.sourceService.CreateSource(req, projectID, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create source: %s", err))
 		return
 	}
@@ -115,34 +68,28 @@ func (c *SourceHandler) CreateSource() {
 
 // @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
-	id := GetIDFromPath(&c.Controller)
+	id, err := c.getIDFromPath()
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
+		return
+	}
+
 	var req models.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	// Get existing source
-	existingSource, err := c.sourceORM.GetByID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
-		return
+
+	// Get user ID from session
+	var userID *int
+	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
+		if uid, ok := sessionUserID.(int); ok {
+			userID = &uid
+		}
 	}
 
-	// Update fields
-	existingSource.Name = req.Name
-	existingSource.Config = req.Config
-	existingSource.Type = req.Type
-	existingSource.Version = req.Version
-	existingSource.UpdatedAt = time.Now()
-
-	userID := c.GetSession(constants.SessionUserID)
-	if userID != nil {
-		user := &models.User{ID: userID.(int)}
-		existingSource.UpdatedBy = user
-	}
-
-	if err := c.sourceORM.Update(existingSource); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update source")
+	if err := c.sourceService.UpdateSource(id, req, userID); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update source: %s", err))
 		return
 	}
 
@@ -151,38 +98,23 @@ func (c *SourceHandler) UpdateSource() {
 
 // @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
-	id := GetIDFromPath(&c.Controller)
-	source, err := c.sourceORM.GetByID(id)
+	id, err := c.getIDFromPath()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
 		return
 	}
 
-	// Get all jobs using this source
-	jobs, err := c.jobORM.GetBySourceID(id)
+	response, err := c.sourceService.DeleteSource(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs for source")
-		return
-	}
-
-	// Deactivate all jobs using this source
-	for _, job := range jobs {
-		job.Active = false
-		if err := c.jobORM.Update(job); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this source")
-			return
+		if err.Error() == "source not found: " {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		} else {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to delete source: %s", err))
 		}
-	}
-
-	// Delete the source
-	if err := c.sourceORM.Delete(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
-		Name: source.Name,
-	})
+	utils.SuccessResponse(&c.Controller, response)
 }
 
 // @router /project/:projectid/sources/test [post]
@@ -192,13 +124,13 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	result, _ := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
-	if result == nil {
-		result = map[string]interface{}{
-			"message": "Connection test failed: Please check your configuration and try again",
-			"status":  "failed",
-		}
+
+	result, err := c.sourceService.TestConnection(req)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to test connection: %s", err))
+		return
 	}
+
 	utils.SuccessResponse(&c.Controller, result)
 }
 
@@ -209,42 +141,34 @@ func (c *SourceHandler) GetSourceCatalog() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var catalog map[string]interface{}
-	var err error
-	// Try to use Temporal if available
-	if c.tempClient != nil {
-		// Execute the workflow using Temporal
-		catalog, err = c.tempClient.GetCatalog(
-			c.Ctx.Request.Context(),
-			req.Type,
-			req.Version,
-			req.Config,
-		)
-	}
+
+	catalog, err := c.sourceService.GetSourceCatalog(req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
+
 	utils.SuccessResponse(&c.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
 func (c *SourceHandler) GetSourceJobs() {
-	id := GetIDFromPath(&c.Controller)
-	// Check if source exists
-	_, err := c.sourceORM.GetByID(id)
+	id, err := c.getIDFromPath()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
 		return
 	}
 
-	// Create a job ORM and get jobs by source ID
-	jobs, err := c.jobORM.GetBySourceID(id)
+	jobs, err := c.sourceService.GetSourceJobs(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
+		if err.Error() == "source not found: " {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		} else {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
+		}
 		return
 	}
-	// Format as required by API contract
+
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"jobs": jobs,
 	})
@@ -252,24 +176,27 @@ func (c *SourceHandler) GetSourceJobs() {
 
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
-	// Get source type from query parameter
 	sourceType := c.GetString("type")
-	if sourceType == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
-		return
-	}
 
-	// Get versions from Docker Hub
-	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
-
-	versions, err := utils.GetDockerHubTags(imageName)
+	versions, err := c.sourceService.GetSourceVersions(sourceType)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
+		if err.Error() == "source type is required" {
+			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
+		} else {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
+		}
 		return
 	}
+
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,
 	})
+}
+
+// Helper method to extract ID from path
+func (c *SourceHandler) getIDFromPath() (int, error) {
+	idStr := c.Ctx.Input.Param(":id")
+	return strconv.Atoi(idStr)
 }
 
 // @router /project/:projectid/sources/spec [get]

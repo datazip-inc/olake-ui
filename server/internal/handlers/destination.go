@@ -1,77 +1,45 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/internal/services"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type DestHandler struct {
 	web.Controller
-	destORM    *database.DestinationORM
-	jobORM     *database.JobORM
-	tempClient *temporal.Client
+	destService *services.DestinationService
 }
 
 func (c *DestHandler) Prepare() {
-	c.destORM = database.NewDestinationORM()
-	c.jobORM = database.NewJobORM()
 	var err error
-	c.tempClient, err = temporal.NewClient()
+	c.destService, err = services.NewDestinationService()
 	if err != nil {
-		logs.Error("Failed to create Temporal client: %v", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service")
+		return
 	}
 }
 
 // @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	destinations, err := c.destORM.GetAllByProjectID(projectIDStr)
+	projectID := c.Ctx.Input.Param(":projectid")
+
+	destinations, err := c.destService.GetAllDestinations(projectID)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve destinations")
 		return
 	}
-	destItems := make([]models.DestinationDataItem, 0, len(destinations))
-	for _, dest := range destinations {
-		item := models.DestinationDataItem{
-			ID:        dest.ID,
-			Name:      dest.Name,
-			Type:      dest.DestType,
-			Version:   dest.Version,
-			Config:    dest.Config,
-			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
-		}
 
-		setUsernames(&item.CreatedBy, &item.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
-
-		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		var success bool
-		item.Jobs, success = buildJobDataItems(jobs, err, projectIDStr, "destination", c.tempClient, &c.Controller)
-		if !success {
-			return // Error occurred in buildJobDataItems
-		}
-
-		destItems = append(destItems, item)
-	}
-
-	utils.SuccessResponse(&c.Controller, destItems)
+	utils.SuccessResponse(&c.Controller, destinations)
 }
 
 // @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
-	// Get project ID from path
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 
 	var req models.CreateDestinationRequest
@@ -80,25 +48,16 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
-	// Convert request to Destination model
-	destination := &models.Destination{
-		Name:      req.Name,
-		DestType:  req.Type,
-		Version:   req.Version,
-		Config:    req.Config,
-		ProjectID: projectIDStr,
+	// Get user ID from session
+	var userID *int
+	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
+		if uid, ok := sessionUserID.(int); ok {
+			userID = &uid
+		}
 	}
 
-	// Set created by if user is logged in
-	userID := c.GetSession(constants.SessionUserID)
-	if userID != nil {
-		user := &models.User{ID: userID.(int)}
-		destination.CreatedBy = user
-		destination.UpdatedBy = user
-	}
-
-	if err := c.destORM.Create(destination); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create destination: %s", err))
+	if err := c.destService.CreateDestination(req, projectIDStr, userID); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -107,7 +66,6 @@ func (c *DestHandler) CreateDestination() {
 
 // @router /project/:projectid/destinations/:id [put]
 func (c *DestHandler) UpdateDestination() {
-	// Get destination ID from path
 	id := GetIDFromPath(&c.Controller)
 
 	var req models.UpdateDestinationRequest
@@ -116,29 +74,20 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
-	// Get existing destination
-	existingDest, err := c.destORM.GetByID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
-		return
+	// Get user ID from session
+	var userID *int
+	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
+		if uid, ok := sessionUserID.(int); ok {
+			userID = &uid
+		}
 	}
 
-	// Update fields
-	existingDest.Name = req.Name
-	existingDest.DestType = req.Type
-	existingDest.Version = req.Version
-	existingDest.Config = req.Config
-	existingDest.UpdatedAt = time.Now()
-
-	// Update user who made changes
-	userID := c.GetSession(constants.SessionUserID)
-	if userID != nil {
-		user := &models.User{ID: userID.(int)}
-		existingDest.UpdatedBy = user
-	}
-
-	if err := c.destORM.Update(existingDest); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination")
+	if err := c.destService.UpdateDestination(id, req, userID); err != nil {
+		if err.Error() == "destination not found: " {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		} else {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination")
+		}
 		return
 	}
 
@@ -147,82 +96,52 @@ func (c *DestHandler) UpdateDestination() {
 
 // @router /project/:projectid/destinations/:id [delete]
 func (c *DestHandler) DeleteDestination() {
-	// Get destination ID from path
 	id := GetIDFromPath(&c.Controller)
-	// Get the name for the response
-	dest, err := c.destORM.GetByID(id)
+
+	response, err := c.destService.DeleteDestination(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
-		return
-	}
-	jobs, err := c.jobORM.GetByDestinationID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
-	}
-	for _, job := range jobs {
-		job.Active = false
-		if err := c.jobORM.Update(job); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this destination")
-			return
+		if err.Error() == "destination not found: " {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		} else {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		}
-	}
-	if err := c.destORM.Delete(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
-		Name: dest.Name,
-	})
+	utils.SuccessResponse(&c.Controller, response)
 }
 
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
-	// Will be used for multi-tenant filtering in the future
 	var req models.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+	result, err := c.destService.TestConnection(req)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if req.Version == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
-		return
-	}
-	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
-	if result == nil {
-		result = map[string]interface{}{
-			"message": "Connection test failed: Please check your configuration and try again",
-			"status":  "failed",
-		}
-	}
 	utils.SuccessResponse(&c.Controller, result)
 }
 
 // @router /destinations/:id/jobs [get]
 func (c *DestHandler) GetDestinationJobs() {
 	id := GetIDFromPath(&c.Controller)
-	// Check if destination exists
-	_, err := c.destORM.GetByID(id)
+
+	jobs, err := c.destService.GetDestinationJobs(id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		if err.Error() == "destination not found: " {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		} else {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		}
 		return
 	}
 
-	// Create a job ORM and get jobs by destination ID
-	jobORM := database.NewJobORM()
-	jobs, err := jobORM.GetByDestinationID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
-		return
-	}
-
-	// Format as required by API contract
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"jobs": jobs,
 	})
@@ -230,19 +149,13 @@ func (c *DestHandler) GetDestinationJobs() {
 
 // @router /project/:projectid/destinations/versions [get]
 func (c *DestHandler) GetDestinationVersions() {
-	// Get destination type from query parameter
 	destType := c.GetString("type")
-	if destType == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+
+	versions, err := c.destService.GetDestinationVersions(destType)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	// In a real implementation, we would query for available versions
-	// based on the destination type and project ID
-	// For now, we'll return a mock response
-
-	// Mock available versions (this would be replaced with actual DB query)
-	versions := []string{"latest"}
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,

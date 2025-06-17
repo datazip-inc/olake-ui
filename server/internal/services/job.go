@@ -43,7 +43,7 @@ func NewJobService() (*JobService, error) {
 func (s *JobService) GetAllJobsByProject(projectID string) ([]models.JobResponse, error) {
 	jobs, err := s.jobORM.GetAllByProjectID(projectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve jobs by project ID: %w", err)
+		return nil, fmt.Errorf("%s jobs by project ID: %s", ErrFailedToRetrieve, err)
 	}
 
 	jobResponses := make([]models.JobResponse, 0, len(jobs))
@@ -59,13 +59,13 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 	// Find or create source
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process source: %w", err)
+		return fmt.Errorf("failed to process source: %s", err)
 	}
 
 	// Find or create destination
 	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process destination: %w", err)
+		return fmt.Errorf("failed to process destination: %s", err)
 	}
 
 	// Create job model
@@ -89,7 +89,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 
 	// Create job in database
 	if err := s.jobORM.Create(job); err != nil {
-		return fmt.Errorf("failed to create job: %w", err)
+		return fmt.Errorf("%s job: %s", ErrFailedToCreate, err)
 	}
 
 	// Create Temporal workflow if client is available
@@ -97,7 +97,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 		logs.Info("Creating Temporal workflow for sync job")
 		_, err = s.tempClient.CreateSync(ctx, job.Frequency, job.ProjectID, job.ID, false)
 		if err != nil {
-			logs.Error("Temporal workflow execution failed: %v", err)
+			logs.Error("%s: %v", ErrWorkflowExecutionFailed, err)
 		} else {
 			logs.Info("Successfully created sync job via Temporal")
 		}
@@ -110,19 +110,19 @@ func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest
 	// Get existing job
 	existingJob, err := s.jobORM.GetByID(jobID)
 	if err != nil {
-		return fmt.Errorf("job not found: %w", err)
+		return fmt.Errorf("job not found: %s", err)
 	}
 
 	// Find or create source
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process source: %w", err)
+		return fmt.Errorf("failed to process source: %s", err)
 	}
 
 	// Find or create destination
 	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process destination: %w", err)
+		return fmt.Errorf("failed to process destination: %s", err)
 	}
 
 	// Update fields
@@ -143,7 +143,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest
 
 	// Update job in database
 	if err := s.jobORM.Update(existingJob); err != nil {
-		return fmt.Errorf("failed to update job: %w", err)
+		return fmt.Errorf("failed to update job: %s", err)
 	}
 
 	// Update Temporal workflow if client is available
@@ -151,7 +151,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest
 		logs.Info("Updating Temporal workflow for sync job")
 		_, err = s.tempClient.CreateSync(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID, false)
 		if err != nil {
-			return fmt.Errorf("temporal workflow execution failed: %w", err)
+			return fmt.Errorf("temporal workflow execution failed: %s", err)
 		}
 	}
 
@@ -162,14 +162,14 @@ func (s *JobService) DeleteJob(jobID int) (string, error) {
 	// Get job name for response
 	job, err := s.jobORM.GetByID(jobID)
 	if err != nil {
-		return "", fmt.Errorf("job not found: %w", err)
+		return "", fmt.Errorf("job not found: %s", err)
 	}
 
 	jobName := job.Name
 
 	// Delete job
 	if err := s.jobORM.Delete(jobID); err != nil {
-		return "", fmt.Errorf("failed to delete job: %w", err)
+		return "", fmt.Errorf("failed to delete job: %s", err)
 	}
 
 	return jobName, nil
@@ -179,7 +179,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	// Check if job exists
 	job, err := s.jobORM.GetByID(jobID)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %w", err)
+		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
 	// Validate source and destination exist
@@ -191,7 +191,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		logs.Info("Using Temporal workflow for sync job")
 		resp, err := s.tempClient.CreateSync(ctx, job.Frequency, projectID, job.ID, true)
 		if err != nil {
-			return nil, fmt.Errorf("temporal execution failed: %w", err)
+			return nil, fmt.Errorf("temporal execution failed: %s", err)
 		}
 		return resp, nil
 	}
@@ -203,7 +203,7 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 	// Get existing job
 	job, err := s.jobORM.GetByID(jobID)
 	if err != nil {
-		return fmt.Errorf("job not found: %w", err)
+		return fmt.Errorf("job not found: %s", err)
 	}
 
 	// Update activation status
@@ -218,7 +218,7 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 
 	// Update job in database
 	if err := s.jobORM.Update(job); err != nil {
-		return fmt.Errorf("failed to update job activation status: %w", err)
+		return fmt.Errorf("failed to update job activation status: %s", err)
 	}
 
 	return nil
@@ -228,7 +228,7 @@ func (s *JobService) GetJobTasks(projectID string, jobID int) ([]models.JobTask,
 	// Get job to verify it exists
 	job, err := s.jobORM.GetByID(jobID)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %w", err)
+		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
 	if s.tempClient == nil {
@@ -244,7 +244,7 @@ func (s *JobService) GetJobTasks(projectID string, jobID int) ([]models.JobTask,
 		Query: query,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list workflows: %w", err)
+		return nil, fmt.Errorf("failed to list workflows: %s", err)
 	}
 
 	for _, execution := range resp.Executions {
@@ -271,7 +271,7 @@ func (s *JobService) GetTaskLogs(jobID int, filePath string) ([]map[string]inter
 	// Verify job exists
 	_, err := s.jobORM.GetByID(jobID)
 	if err != nil {
-		return nil, fmt.Errorf("job not found: %w", err)
+		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))

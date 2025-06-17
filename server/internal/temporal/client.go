@@ -134,7 +134,7 @@ func (c *Client) CreateSync(ctx context.Context, frequency, projectIDStr string,
 			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to trigger schedule manually: %w", err)
+			return nil, fmt.Errorf("failed to trigger schedule manually: %s", err)
 		}
 
 		return map[string]interface{}{
@@ -169,7 +169,7 @@ func (c *Client) handleSchedule(ctx context.Context, scheduleHandle client.Sched
 				DoUpdate: updateSchedule,
 			})
 			if err != nil {
-				return fmt.Errorf("failed to update schedule: %w", err)
+				return fmt.Errorf("failed to update schedule: %s", err)
 			}
 		}
 	} else {
@@ -191,7 +191,7 @@ func (c *Client) handleSchedule(ctx context.Context, scheduleHandle client.Sched
 			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to create schedule: %w", err)
+			return fmt.Errorf("failed to create schedule: %s", err)
 		}
 	}
 

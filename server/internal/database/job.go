@@ -149,3 +149,25 @@ func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
 
 	return jobs, err
 }
+func (r *JobORM) GetBySourceIDs(sourceIDs []int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	if len(sourceIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := r.ormer.QueryTable(r.TableName).Filter("source_id__in", sourceIDs).RelatedSel().All(&jobs)
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	if len(destIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := r.ormer.QueryTable(r.TableName).Filter("destination_id__in", destIDs).RelatedSel().All(&jobs)
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
