@@ -165,12 +165,12 @@ func (c *JobHandler) CreateJob() {
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
-		_, err = c.tempClient.CreateSync(
+		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
-			job.Frequency,
 			job.ProjectID,
 			job.ID,
-			false,
+			job.Frequency,
+			temporal.ActionCreate,
 		)
 		if err != nil {
 			fmt.Printf("Temporal workflow execution failed: %v", err)
@@ -240,12 +240,12 @@ func (c *JobHandler) UpdateJob() {
 	}
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
-		_, err = c.tempClient.CreateSync(
+		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
-			existingJob.Frequency,
 			existingJob.ProjectID,
 			existingJob.ID,
-			false,
+			existingJob.Frequency,
+			temporal.ActionUpdate,
 		)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
@@ -272,13 +272,24 @@ func (c *JobHandler) DeleteJob() {
 	}
 
 	jobName := job.Name
-
+	if c.tempClient != nil {
+		logs.Info("Using Temporal workflow for sync job")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			job.ProjectID,
+			job.ID,
+			job.Frequency,
+			temporal.ActionDelete,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
+		}
+	}
 	// Delete job
 	if err := c.jobORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete job")
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
 	})
@@ -318,8 +329,6 @@ func (c *JobHandler) SyncJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
-
-	projectIDStr := c.Ctx.Input.Param(":projectid")
 	// Check if job exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
@@ -335,19 +344,16 @@ func (c *JobHandler) SyncJob() {
 
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
-		resp, err := c.tempClient.CreateSync(
+		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
-			job.Frequency,
-			projectIDStr,
+			job.ProjectID,
 			job.ID,
-			true,
+			job.Frequency,
+			temporal.ActionTrigger,
 		)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal execution failed: %v", err))
-			return
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
 		}
-		utils.SuccessResponse(&c.Controller, resp)
-		return
 	}
 	utils.SuccessResponse(&c.Controller, nil)
 }
