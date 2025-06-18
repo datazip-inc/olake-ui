@@ -12,16 +12,20 @@ x-signup-defaults:
 
 services:
   olake-ui:
-    image: olakego/ui:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     pull_policy: always
     container_name: olake-ui
     environment:
+      TEMPORAL_ADDRESS: "temporal:7233"
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
     ports:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     networks:
       - temporal-network
@@ -79,25 +83,6 @@ services:
         echo 'signup-init: User setup process complete.';
       "
     restart: "no"
-
-  temporal-worker:
-    image: olakego/ui-worker:latest
-    pull_policy: always
-    container_name: olake-temporal-worker
-    networks:
-      - temporal-network
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - <<: *workerConfigVolumeDetails
-    environment:
-      TEMPORAL_ADDRESS: "temporal:7233"
-      PERSISTENT_DIR: *hostPersistencePath
-    depends_on:
-      temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
-      olake-ui:
-        condition: service_healthy
-    restart: unless-stopped
 
   postgresql:
     container_name: temporal-postgresql
