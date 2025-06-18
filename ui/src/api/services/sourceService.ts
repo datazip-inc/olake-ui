@@ -129,6 +129,7 @@ export const sourceService = {
 		type: string,
 		version: string,
 		config: string,
+		job_id?: number,
 	) => {
 		try {
 			const response = await api.post<APIResponse<Record<string, unknown>>>(
@@ -136,6 +137,7 @@ export const sourceService = {
 				{
 					name,
 					type,
+					job_id: job_id ? job_id : -1,
 					version: version === "" ? "latest" : version,
 					config,
 				},
