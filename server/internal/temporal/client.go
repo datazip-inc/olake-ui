@@ -52,13 +52,14 @@ func (c *Client) Close() {
 }
 
 // GetCatalog runs a workflow to discover catalog data
-func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config string, jobID, sourceID int) (map[string]interface{}, error) {
+func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string, jobID, sourceID int) (map[string]interface{}, error) {
 	params := &ActivityParams{
-		SourceType: sourceType,
-		Version:    version,
-		Config:     config,
-		WorkflowID: fmt.Sprintf("discover-catalog-%s-%d-%d", sourceType, jobID, sourceID),
-		Command:    docker.Discover,
+		SourceType:    sourceType,
+		Version:       version,
+		Config:        config,
+		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d-%d", sourceType, jobID, sourceID),
+		Command:       docker.Discover,
+		StreamsConfig: streamsConfig,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{

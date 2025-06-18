@@ -284,8 +284,15 @@ func (c *JobHandler) DeleteJob() {
 	})
 }
 
-// @router /project/:projectid/jobs/:id/streams [get]
+// @router /project/:projectid/jobs/:id/streams [post]
 func (c *JobHandler) GetJobStreams() {
+	var req struct {
+		Config string `json:"config"`
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
 	// Get job
 	id := GetIDFromPath(&c.Controller)
 	job, err := c.jobORM.GetByID(id)
@@ -301,7 +308,8 @@ func (c *JobHandler) GetJobStreams() {
 			c.Ctx.Request.Context(),
 			job.SourceID.Type,
 			job.SourceID.Version,
-			job.SourceID.Config,
+			req.Config,
+			job.StreamsConfig,
 			job.ID,
 			job.SourceID.ID,
 		)
