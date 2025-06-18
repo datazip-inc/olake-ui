@@ -284,43 +284,6 @@ func (c *JobHandler) DeleteJob() {
 	})
 }
 
-// @router /project/:projectid/jobs/:id/streams [post]
-func (c *JobHandler) GetJobStreams() {
-	var req struct {
-		Config string `json:"config"`
-	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-	// Get job
-	id := GetIDFromPath(&c.Controller)
-	job, err := c.jobORM.GetByID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
-		return
-	}
-	var catalog map[string]interface{}
-	// Try to use Temporal if available
-	if c.tempClient != nil {
-		// Execute the workflow using Temporal
-		catalog, err = c.tempClient.GetCatalog(
-			c.Ctx.Request.Context(),
-			job.SourceID.Type,
-			job.SourceID.Version,
-			req.Config,
-			job.StreamsConfig,
-			job.ID,
-			job.SourceID.ID,
-		)
-	}
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
-		return
-	}
-	utils.SuccessResponse(&c.Controller, catalog)
-}
-
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
 	idStr := c.Ctx.Input.Param(":id")

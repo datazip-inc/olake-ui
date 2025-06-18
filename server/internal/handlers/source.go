@@ -204,31 +204,47 @@ func (c *SourceHandler) TestConnection() {
 
 // @router /sources/streams[post]
 func (c *SourceHandler) GetSourceCatalog() {
-	var req models.CreateSourceRequest
+	var req models.StreamsRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var catalog map[string]interface{}
+
+	jobID := req.JobID
+	sourceID := int(time.Now().Unix())
+	catalog := ""
+
+	// Load job details if JobID is provided
+	if req.JobID != -1 {
+		job, err := c.jobORM.GetByID(req.JobID)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+			return
+		}
+		jobID = job.ID
+		sourceID = job.SourceID.ID
+		catalog = job.StreamsConfig
+	}
+
+	// Use Temporal client to get the catalog
+	var streams map[string]interface{}
 	var err error
-	// Try to use Temporal if available
 	if c.tempClient != nil {
-		// Execute the workflow using Temporal
-		catalog, err = c.tempClient.GetCatalog(
+		streams, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),
 			req.Type,
 			req.Version,
 			req.Config,
-			"",
-			0,
-			int(time.Now().Unix()),
+			catalog,
+			jobID,
+			sourceID,
 		)
 	}
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
 		return
 	}
-	utils.SuccessResponse(&c.Controller, catalog)
+	utils.SuccessResponse(&c.Controller, streams)
 }
 
 // @router /sources/:id/jobs [get]
