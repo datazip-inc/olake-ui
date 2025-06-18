@@ -125,3 +125,10 @@ export const catalogOptions: CatalogOption[] = [
 	{ value: "JDBC Catalog", label: "JDBC Catalog" },
 	{ value: "HIVE Catalog", label: "Hive Catalog" },
 ]
+
+export const JOB_TABS = [
+	{ key: "active", label: "Active jobs" },
+	// { key: "inactive", label: "Inactive jobs" },
+	{ key: "saved", label: "Saved jobs" },
+	{ key: "failed", label: "Failed jobs" },
+]

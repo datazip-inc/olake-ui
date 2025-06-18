@@ -7,9 +7,7 @@ import {
 	ClockCounterClockwise,
 	DotsThree,
 	Gear,
-	Pause,
 	PencilSimple,
-	Play,
 	Trash,
 } from "@phosphor-icons/react"
 import {
@@ -38,7 +36,7 @@ const JobTable: React.FC<JobTableProps> = ({
 	jobType,
 	onSync,
 	onEdit,
-	onPause,
+	// onPause,
 	onDelete,
 }) => {
 	const [searchText, setSearchText] = useState("")
@@ -89,16 +87,16 @@ const JobTable: React.FC<JobTableProps> = ({
 									label: "Edit",
 									onClick: () => onEdit(record.id.toString()),
 								},
-								{
-									key: "pause",
-									icon: record.activate ? (
-										<Pause className="size-4" />
-									) : (
-										<Play className="size-4" />
-									),
-									label: record.activate ? "Pause job" : "Resume job",
-									onClick: () => onPause(record.id.toString(), record.activate),
-								},
+								// {
+								// 	key: "pause",
+								// 	icon: record.activate ? (
+								// 		<Pause className="size-4" />
+								// 	) : (
+								// 		<Play className="size-4" />
+								// 	),
+								// 	label: record.activate ? "Pause job" : "Resume job",
+								// 	onClick: () => onPause(record.id.toString(), record.activate),
+								// },
 								{
 									key: "history",
 									icon: <ClockCounterClockwise className="size-4" />,

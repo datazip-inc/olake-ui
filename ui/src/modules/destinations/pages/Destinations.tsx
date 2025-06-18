@@ -58,17 +58,13 @@ const Destinations: React.FC = () => {
 	const filteredDestinations = (): Entity[] => {
 		if (activeTab === "active") {
 			return destinations.filter(
-				destination =>
-					destination?.jobs &&
-					destination.jobs.length > 0 &&
-					destination.jobs.some(job => job.activate === true),
+				destination => destination?.jobs && destination.jobs.length > 0,
+				// destination.jobs.some(job => job.activate === true),
 			)
 		} else if (activeTab === "inactive") {
 			return destinations.filter(
-				destination =>
-					!destination?.jobs ||
-					destination.jobs.length === 0 ||
-					destination.jobs.every(job => job.activate === false),
+				destination => !destination?.jobs || destination.jobs.length === 0,
+				// destination.jobs.every(job => job.activate === false),
 			)
 		}
 		return []

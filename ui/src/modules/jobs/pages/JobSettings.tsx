@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Switch, message, Select } from "antd"
+import { Input, Button, message, Select } from "antd"
 import { ArrowRight } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { ArrowLeft } from "@phosphor-icons/react"
@@ -33,20 +33,20 @@ const JobSettings: React.FC = () => {
 
 	const job = jobs.find(j => j.id.toString() === jobId)
 
-	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
+	// const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
 
-	const handlePauseJob = async (jobId: string, checked: boolean) => {
-		try {
-			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
-			await fetchJobs()
-		} catch (error) {
-			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
-		}
-	}
+	// const handlePauseJob = async (jobId: string, checked: boolean) => {
+	// 	try {
+	// 		await jobService.activateJob(jobId, !checked)
+	// 		message.success(
+	// 			`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+	// 		)
+	// 		await fetchJobs()
+	// 	} catch (error) {
+	// 		console.error("Error toggling job status:", error)
+	// 		message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+	// 	}
+	// }
 
 	const [replicationFrequency, setReplicationFrequency] = useState(
 		job?.frequency ? job.frequency.split("-")[1] : "minutes",
@@ -66,9 +66,9 @@ const JobSettings: React.FC = () => {
 			setReplicationFrequencyValue("1")
 			setReplicationFrequency("minutes")
 		}
-		if (job) {
-			setPauseJob(!job.activate)
-		}
+		// if (job) {
+		// 	setPauseJob(!job.activate)
+		// }
 		if (job?.name) {
 			setJobName(job.name)
 		}
@@ -221,7 +221,7 @@ const JobSettings: React.FC = () => {
 									</div>
 								</div>
 
-								<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-4">
+								{/* <div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-4">
 									<span className="font-medium">Pause your job</span>
 									<Switch
 										checked={pauseJob}
@@ -232,7 +232,7 @@ const JobSettings: React.FC = () => {
 										}}
 										className={pauseJob ? "bg-blue-600" : ""}
 									/>
-								</div>
+								</div> */}
 							</div>
 
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">

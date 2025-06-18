@@ -99,22 +99,22 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				dataIndex: "name",
 				key: "name",
 			},
-			{
-				title: "Status",
-				dataIndex: "activate",
-				key: "activate",
-				render: (activate: boolean) => (
-					<span
-						className={`rounded px-2 py-1 text-xs ${
-							!activate
-								? "bg-[#FFF1F0] text-[#F5222D]"
-								: "bg-[#E6F4FF] text-[#0958D9]"
-						}`}
-					>
-						{activate ? "Active" : "Inactive"}
-					</span>
-				),
-			},
+			// {
+			// 	title: "Status",
+			// 	dataIndex: "activate",
+			// 	key: "activate",
+			// 	render: (activate: boolean) => (
+			// 		<span
+			// 			className={`rounded px-2 py-1 text-xs ${
+			// 				!activate
+			// 					? "bg-[#FFF1F0] text-[#F5222D]"
+			// 					: "bg-[#E6F4FF] text-[#0958D9]"
+			// 			}`}
+			// 		>
+			// 			{activate ? "Active" : "Inactive"}
+			// 		</span>
+			// 	),
+			// },
 			{
 				title: "Last runtime",
 				dataIndex: "last_run_time",
