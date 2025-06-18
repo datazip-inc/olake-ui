@@ -284,31 +284,34 @@ func (c *JobHandler) DeleteJob() {
 	})
 }
 
-// no need any more
 // @router /project/:projectid/jobs/:id/streams [get]
-// func (c *JobHandler) GetJobStreams() {
-// 	idStr := c.Ctx.Input.Param(":id")
-// 	id, err := strconv.Atoi(idStr)
-// 	if err != nil {
-// 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-// 		return
-// 	}
-
-// 	// Get job
-// 	job, err := c.jobORM.GetByID(id)
-// 	if err != nil {
-// 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
-// 		return
-// 	}
-
-// 	utils.SuccessResponse(&c.Controller,
-// 		struct {
-// 			StreamsConfig string `json:"streams_config"`
-// 		}{
-// 			StreamsConfig: job.StreamsConfig,
-// 		},
-// 	)
-// }
+func (c *JobHandler) GetJobStreams() {
+	// Get job
+	id := GetIDFromPath(&c.Controller)
+	job, err := c.jobORM.GetByID(id)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		return
+	}
+	var catalog map[string]interface{}
+	// Try to use Temporal if available
+	if c.tempClient != nil {
+		// Execute the workflow using Temporal
+		catalog, err = c.tempClient.GetCatalog(
+			c.Ctx.Request.Context(),
+			job.SourceID.Type,
+			job.SourceID.Version,
+			job.SourceID.Config,
+			job.ID,
+			job.SourceID.ID,
+		)
+	}
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
+		return
+	}
+	utils.SuccessResponse(&c.Controller, catalog)
+}
 
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {

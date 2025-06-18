@@ -189,8 +189,13 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 
 	configPath := filepath.Join(workDir, "config.json")
 	catalogPath := filepath.Join(workDir, "streams.json")
-
-	_, err = r.ExecuteDockerCommand("config", Discover, sourceType, version, configPath)
+	var catalogsArgs []string
+	if _, err := os.Stat(catalogPath); err == nil {
+		catalogsArgs = []string{
+			"--catalog", "/mnt/config/streams.json",
+		}
+	}
+	_, err = r.ExecuteDockerCommand("config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {
 		return nil, err
 	}

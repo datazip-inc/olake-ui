@@ -203,30 +203,31 @@ func (c *SourceHandler) TestConnection() {
 }
 
 // @router /sources/streams[post]
-func (c *SourceHandler) GetSourceCatalog() {
-	var req models.CreateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-	var catalog map[string]interface{}
-	var err error
-	// Try to use Temporal if available
-	if c.tempClient != nil {
-		// Execute the workflow using Temporal
-		catalog, err = c.tempClient.GetCatalog(
-			c.Ctx.Request.Context(),
-			req.Type,
-			req.Version,
-			req.Config,
-		)
-	}
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
-		return
-	}
-	utils.SuccessResponse(&c.Controller, catalog)
-}
+// func (c *SourceHandler) GetSourceCatalog() {
+// 	var req models.CreateSourceRequest
+// 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+// 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+// 		return
+// 	}
+// 	var catalog map[string]interface{}
+// 	var err error
+// 	// Try to use Temporal if available
+// 	if c.tempClient != nil {
+// 		// Execute the workflow using Temporal
+// 		catalog, err = c.tempClient.GetCatalog(
+// 			c.Ctx.Request.Context(),
+// 			req.Type,
+// 			req.Version,
+// 			req.Config,
+
+// 		)
+// 	}
+// 	if err != nil {
+// 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
+// 		return
+// 	}
+// 	utils.SuccessResponse(&c.Controller, catalog)
+// }
 
 // @router /sources/:id/jobs [get]
 func (c *SourceHandler) GetSourceJobs() {
