@@ -209,42 +209,34 @@ func (c *SourceHandler) GetSourceCatalog() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
-	jobID := req.JobID
-	sourceID := int(time.Now().Unix())
-	catalog := ""
-
+	oldStreams := ""
 	// Load job details if JobID is provided
-	if req.JobID != -1 {
+	if req.JobID >= 0 {
 		job, err := c.jobORM.GetByID(req.JobID)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 			return
 		}
-		jobID = job.ID
-		sourceID = job.SourceID.ID
-		catalog = job.StreamsConfig
+		oldStreams = job.StreamsConfig
 	}
 
 	// Use Temporal client to get the catalog
-	var streams map[string]interface{}
+	var newStreams map[string]interface{}
 	var err error
 	if c.tempClient != nil {
-		streams, err = c.tempClient.GetCatalog(
+		newStreams, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),
 			req.Type,
 			req.Version,
 			req.Config,
-			catalog,
-			jobID,
-			sourceID,
+			oldStreams,
 		)
 	}
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get catalog: %v", err))
 		return
 	}
-	utils.SuccessResponse(&c.Controller, streams)
+	utils.SuccessResponse(&c.Controller, newStreams)
 }
 
 // @router /sources/:id/jobs [get]
@@ -379,12 +371,6 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"description": "Maximum batch size for read operations",
 					"order":       9,
 				},
-				"default_mode": map[string]interface{}{
-					"type":        "string",
-					"title":       "Default Mode",
-					"description": "Default sync mode (e.g., CDC — Change Data Capture OR Full_Refresh)",
-					"order":       10,
-				},
 				"max_threads": map[string]interface{}{
 					"type":        "integer",
 					"title":       "Max Threads",
@@ -440,12 +426,6 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 						},
 					},
 					"order": 6,
-				},
-				"default_mode": map[string]interface{}{
-					"type":        "string",
-					"title":       "Default Mode",
-					"description": "Default sync mode (e.g., CDC — Change Data Capture OR Full_Refresh)",
-					"order":       7,
 				},
 				"max_threads": map[string]interface{}{
 					"type":        "integer",
@@ -528,12 +508,6 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"title":       "Max Threads",
 					"description": "Max parallel threads for chunk snapshotting",
 					"order":       9,
-				},
-				"default_mode": map[string]interface{}{
-					"type":        "string",
-					"title":       "Default Mode",
-					"description": "Default sync mode (e.g., CDC — Change Data Capture OR Full_Refresh)",
-					"order":       10,
 				},
 				"backoff_retry_count": map[string]interface{}{
 					"type":        "integer",
