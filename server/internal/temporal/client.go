@@ -125,7 +125,9 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 	handle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
 	currentSchedule, err := handle.Describe(ctx)
 	scheduleExists := err == nil
-
+	if action != ActionCreate && !scheduleExists {
+		return nil, fmt.Errorf("schedule does not exist")
+	}
 	switch action {
 	case ActionCreate:
 		if frequency == "" {
@@ -140,28 +142,19 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 		if frequency == "" {
 			return nil, fmt.Errorf("frequency is required for updating schedule")
 		}
-		if !scheduleExists {
-			return nil, fmt.Errorf("schedule does not exist")
-		}
 		return c.updateSchedule(ctx, handle, currentSchedule, scheduleID, frequency)
 
 	case ActionDelete:
-		if !scheduleExists {
-			return nil, fmt.Errorf("schedule does not exist")
-		}
 		if err := handle.Delete(ctx); err != nil {
-			return nil, fmt.Errorf("failed to delete schedule: %w", err)
+			return nil, fmt.Errorf("failed to delete schedule: %s", err)
 		}
 		return map[string]interface{}{"message": "Schedule deleted successfully"}, nil
 
 	case ActionTrigger:
-		if !scheduleExists {
-			return nil, fmt.Errorf("schedule does not exist")
-		}
 		if err := handle.Trigger(ctx, client.ScheduleTriggerOptions{
 			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 		}); err != nil {
-			return nil, fmt.Errorf("failed to trigger schedule: %w", err)
+			return nil, fmt.Errorf("failed to trigger schedule: %s", err)
 		}
 		return map[string]interface{}{"message": "Schedule triggered successfully"}, nil
 
@@ -189,7 +182,7 @@ func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, sc
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to create schedule: %w", err)
+		return nil, fmt.Errorf("failed to create schedule: %s", err)
 	}
 
 	return map[string]interface{}{
@@ -220,7 +213,7 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to update schedule: %w", err)
+		return nil, fmt.Errorf("failed to update schedule: %s", err)
 	}
 	return map[string]interface{}{
 		"message": "Schedule updated successfully",

@@ -273,7 +273,7 @@ func (c *JobHandler) DeleteJob() {
 
 	jobName := job.Name
 	if c.tempClient != nil {
-		logs.Info("Using Temporal workflow for sync job")
+		logs.Info("Using Temporal workflow for delete job schedule")
 		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
 			job.ProjectID,
@@ -282,7 +282,7 @@ func (c *JobHandler) DeleteJob() {
 			temporal.ActionDelete,
 		)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
 		}
 	}
 	// Delete job
