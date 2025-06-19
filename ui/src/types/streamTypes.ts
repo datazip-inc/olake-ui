@@ -109,6 +109,8 @@ export interface SchemaConfigurationProps {
 	sourceVersion: string
 	sourceConfig: string
 	initialStreamsData?: CombinedStreamsData
+	fromJobEditFlow?: boolean
+	jobId?: number
 }
 
 export interface ExtendedStreamConfigurationProps
