@@ -107,10 +107,8 @@ func (c *JobHandler) trackSourcesAndDestinationsStatus(ctx context.Context, user
 		"inactive_sources": inactiveSources,
 		"total_sources":    activeSources + inactiveSources,
 	}
-	if userProps != nil {
-		for k, v := range userProps {
-			sourceProps[k] = v
-		}
+	for k, v := range userProps {
+		sourceProps[k] = v
 	}
 	if err := telemetry.TrackEvent(ctx, constants.EventSourcesUpdated, sourceProps); err != nil {
 		return err
@@ -122,10 +120,8 @@ func (c *JobHandler) trackSourcesAndDestinationsStatus(ctx context.Context, user
 		"inactive_destinations": inactiveDestinations,
 		"total_destinations":    activeDestinations + inactiveDestinations,
 	}
-	if userProps != nil {
-		for k, v := range userProps {
-			destProps[k] = v
-		}
+	for k, v := range userProps {
+		destProps[k] = v
 	}
 	return telemetry.TrackEvent(ctx, constants.EventDestinationsUpdated, destProps)
 }
@@ -244,7 +240,7 @@ func (c *JobHandler) CreateJob() {
 		user := &models.User{ID: userID.(int)}
 		job.CreatedBy = user
 		job.UpdatedBy = user
-		
+
 		// Get full user details for username
 		if fullUser, err := c.userORM.GetByID(userID.(int)); err == nil {
 			username = fullUser.Username

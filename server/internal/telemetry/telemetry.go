@@ -18,8 +18,6 @@ import (
 	analytics "github.com/segmentio/analytics-go/v3"
 )
 
-
-
 var (
 	client           analytics.Client
 	idLock           sync.Mutex
@@ -56,11 +54,11 @@ func loadTelemetryConfig() error {
 	// Hardcoded telemetry configuration
 	telemetryEnabled = true
 	segmentAPIKey = "1gZZyBlRTkwWnyJPanBYnQ5E4cQwS6T6"
-	
+
 	if telemetryEnabled && segmentAPIKey == "" {
 		return fmt.Errorf("segment API key is required when telemetry is enabled")
 	}
-	
+
 	return nil
 }
 
@@ -158,7 +156,7 @@ func getOutboundIP() string {
 }
 
 func getLocationFromIP(ctx context.Context, ip string) (LocationInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://ipinfo.io/%s/json", ip), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://ipinfo.io/%s/json", ip), http.NoBody)
 	if err != nil {
 		return LocationInfo{}, err
 	}
@@ -203,12 +201,12 @@ func (t *Telemetry) getLocationWithTimeout() interface{} {
 }
 
 // TrackEvent sends a custom event to Segment
-func TrackEvent(ctx context.Context, eventName string, properties map[string]interface{}) error {
+func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
 	if instance == nil || !instance.enabled {
 		return nil
 	}
 
-	if properties == nil {	
+	if properties == nil {
 		properties = make(map[string]interface{})
 	}
 
@@ -233,4 +231,4 @@ func Flush() {
 	if instance != nil && instance.client != nil {
 		instance.client.Close()
 	}
-} 
+}

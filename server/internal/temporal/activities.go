@@ -78,9 +78,9 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 
 	// Track sync start event
 	properties := map[string]interface{}{
-		"job_id":       params.JobID,
-		"workflow_id":  params.WorkflowID,
-		"started_at":   time.Now().UTC().Format(time.RFC3339),
+		"job_id":      params.JobID,
+		"workflow_id": params.WorkflowID,
+		"started_at":  time.Now().UTC().Format(time.RFC3339),
 	}
 	if job != nil {
 		properties["job_name"] = job.Name
@@ -101,7 +101,6 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 			properties["destination_name"] = job.DestID.Name
 		}
 	}
-	
 
 	if err := telemetry.TrackEvent(ctx, constants.EventSyncStarted, properties); err != nil {
 		logger.Error("Failed to track sync start event", "error", err)

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -35,7 +36,7 @@ func (r *DestinationORM) Create(destination *models.Destination) error {
 		"destination_id":   destination.ID,
 		"destination_name": destination.Name,
 		"destination_type": destination.DestType,
-		"version":         destination.Version,
+		"version":          destination.Version,
 	}
 
 	// Parse config to get catalog_type
@@ -64,7 +65,7 @@ func (r *DestinationORM) Create(destination *models.Destination) error {
 		properties["created_at"] = destination.CreatedAt.Format(time.RFC3339)
 	}
 
-	if err := telemetry.TrackEvent(nil, constants.EventDestinationCreated, properties); err != nil {
+	if err := telemetry.TrackEvent(context.TODO(), constants.EventDestinationCreated, properties); err != nil {
 		orm.DebugLog.Println("Failed to track destination creation event:", err)
 	}
 

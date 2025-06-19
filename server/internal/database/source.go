@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
@@ -46,7 +47,7 @@ func (r *SourceORM) Create(source *models.Source) error {
 		properties["created_at"] = source.CreatedAt.Format(time.RFC3339)
 	}
 
-	if err := telemetry.TrackEvent(nil, constants.EventSourceCreated, properties); err != nil {
+	if err := telemetry.TrackEvent(context.TODO(), constants.EventSourceCreated, properties); err != nil {
 		orm.DebugLog.Println("Failed to track source creation event:", err)
 	}
 

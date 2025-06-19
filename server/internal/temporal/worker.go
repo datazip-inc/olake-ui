@@ -17,7 +17,9 @@ type Worker struct {
 // NewWorker creates a new Temporal worker
 func NewWorker() (*Worker, error) {
 	// Initialize telemetry for the worker process
-	telemetry.InitTelemetry()
+	if err := telemetry.InitTelemetry(); err != nil {
+		return nil, fmt.Errorf("failed to initialize telemetry: %v", err)
+	}
 
 	c, err := client.Dial(client.Options{
 		HostPort: TemporalAddress,

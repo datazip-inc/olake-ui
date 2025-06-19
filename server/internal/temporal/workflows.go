@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -103,16 +103,16 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	if err != nil {
 		// Track sync failure event
 		properties := map[string]interface{}{
-			"job_id":            jobID,
-			"workflow_id":       params.WorkflowID,
-			"ended_at":          time.Now().UTC().Format(time.RFC3339),
-			"job_name":          params.JobName,
-			"created_by":        params.CreatedBy,
-			"created_at":        params.CreatedAt,
-			"source_type":       params.SourceType,
-			"source_name":       params.SourceName,
-			"destination_type":  params.DestinationType,
-			"destination_name":  params.DestinationName,
+			"job_id":           jobID,
+			"workflow_id":      params.WorkflowID,
+			"ended_at":         time.Now().UTC().Format(time.RFC3339),
+			"job_name":         params.JobName,
+			"created_by":       params.CreatedBy,
+			"created_at":       params.CreatedAt,
+			"source_type":      params.SourceType,
+			"source_name":      params.SourceName,
+			"destination_type": params.DestinationType,
+			"destination_name": params.DestinationName,
 		}
 		if err := workflow.ExecuteActivity(ctx, TrackEventActivity, constants.EventSyncFailed, properties).Get(ctx, nil); err != nil {
 			workflow.GetLogger(ctx).Error("Failed to track sync failure event", "error", err)
@@ -122,16 +122,16 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 
 	// Track sync completion event
 	properties := map[string]interface{}{
-		"job_id":            jobID,
-		"workflow_id":       params.WorkflowID,
-		"ended_at":          time.Now().UTC().Format(time.RFC3339),
-		"job_name":          params.JobName,
-		"created_by":        params.CreatedBy,
-		"created_at":        params.CreatedAt,
-		"source_type":       params.SourceType,
-		"source_name":       params.SourceName,
-		"destination_type":  params.DestinationType,
-		"destination_name":  params.DestinationName,
+		"job_id":           jobID,
+		"workflow_id":      params.WorkflowID,
+		"ended_at":         time.Now().UTC().Format(time.RFC3339),
+		"job_name":         params.JobName,
+		"created_by":       params.CreatedBy,
+		"created_at":       params.CreatedAt,
+		"source_type":      params.SourceType,
+		"source_name":      params.SourceName,
+		"destination_type": params.DestinationType,
+		"destination_name": params.DestinationName,
 	}
 
 	// Read stats.json file
@@ -139,8 +139,8 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	homeDir := docker.GetDefaultConfigDir()
 	mainSyncDir := filepath.Join(homeDir, syncFolderName)
 	statsPath := filepath.Join(mainSyncDir, "stats.json")
-	
-	if statsData, err := ioutil.ReadFile(statsPath); err == nil {
+
+	if statsData, err := os.ReadFile(statsPath); err == nil {
 		var stats map[string]interface{}
 		if err := json.Unmarshal(statsData, &stats); err == nil {
 			// Add stats properties to the event
@@ -158,13 +158,13 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 
 	// Read streams.json if exists
 	streamsPath := filepath.Join(mainSyncDir, "streams.json")
-	if streamsData, err := ioutil.ReadFile(streamsPath); err == nil {
+	if streamsData, err := os.ReadFile(streamsPath); err == nil {
 		var streamsConfig struct {
 			Streams []struct {
 				Stream struct {
-					Name              string   `json:"name"`
-					Namespace         string   `json:"namespace"`
-					SyncMode         string   `json:"sync_mode"`
+					Name               string   `json:"name"`
+					Namespace          string   `json:"namespace"`
+					SyncMode           string   `json:"sync_mode"`
 					SupportedSyncModes []string `json:"supported_sync_modes"`
 				} `json:"stream"`
 			} `json:"streams"`
@@ -174,12 +174,12 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 				PartitionRegex string `json:"partition_regex"`
 			} `json:"selected_streams"`
 		}
-		
+
 		if err := json.Unmarshal(streamsData, &streamsConfig); err == nil {
 			// Count normalized streams
 			normalizedCount := 0
 			partitionedCount := 0
-			
+
 			// Count normalized and partitioned streams from selected_streams
 			for _, streams := range streamsConfig.SelectedStreams {
 				for _, stream := range streams {
@@ -191,9 +191,7 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 					}
 				}
 			}
-			
-			
-			
+
 			properties["normalized_streams_count"] = normalizedCount
 			properties["partitioned_streams_count"] = partitionedCount
 		} else {

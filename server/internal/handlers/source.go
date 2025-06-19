@@ -80,10 +80,8 @@ func (c *SourceHandler) trackSourcesStatus(ctx context.Context, userID interface
 	}
 
 	// Add user properties if available
-	if userProps != nil {
-		for k, v := range userProps {
-			props[k] = v
-		}
+	for k, v := range userProps {
+		props[k] = v
 	}
 
 	return telemetry.TrackEvent(ctx, constants.EventSourcesUpdated, props)
