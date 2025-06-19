@@ -3,6 +3,7 @@ package constants
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/server/web"
@@ -19,6 +20,28 @@ var (
 	DefaultUsername = "olake"
 	DefaultPassword = "password"
 	TableNameMap    = map[TableType]string{}
+)
+
+// Telemetry event constants
+const (
+	EventUserLogin           = "user_login"
+	EventJobCreated         = "job_created"
+	EventSyncStarted        = "sync_started"
+	EventSyncCompleted      = "sync_completed"
+	EventSyncFailed         = "sync_failed"
+	EventSourceCreated      = "source_created"
+	EventDestinationCreated = "destination_created"
+	EventSourcesUpdated     = "sources_updated"
+	EventDestinationsUpdated = "destinations_updated"
+)
+
+// Telemetry configuration constants
+const (
+	TelemetryAnonymousIDFile       = "telemetry_id"
+	TelemetryVersion              = "0.0.1"
+	TelemetryIPNotFoundPlaceholder = "NA"
+	TelemetryConfigTimeout        = time.Second
+	TelemetryLocationTimeout      = 200 * time.Millisecond
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}

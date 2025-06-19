@@ -7,6 +7,7 @@ import { DownloadSimple, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
+import analyticsService from "../../../api/services/analyticsService"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -29,6 +30,7 @@ const Destinations: React.FC = () => {
 	}, [fetchDestinations])
 
 	const handleCreateDestination = () => {
+		analyticsService.trackEvent("create_destination_clicked")
 		navigate("/destinations/new")
 	}
 

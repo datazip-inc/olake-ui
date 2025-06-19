@@ -13,6 +13,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -21,17 +22,69 @@ type DestHandler struct {
 	web.Controller
 	destORM    *database.DestinationORM
 	jobORM     *database.JobORM
+	userORM    *database.UserORM
 	tempClient *temporal.Client
 }
 
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 	c.jobORM = database.NewJobORM()
+	c.userORM = database.NewUserORM()
 	var err error
 	c.tempClient, err = temporal.NewClient()
 	if err != nil {
 		logs.Error("Failed to create Temporal client: %v", err)
 	}
+}
+
+// trackDestinationsStatus logs telemetry about active and inactive destinations
+func (c *DestHandler) trackDestinationsStatus(ctx context.Context, userID interface{}) error {
+	destinations, err := c.destORM.GetAll()
+	if err != nil {
+		return err
+	}
+
+	activeDestinations := 0
+	inactiveDestinations := 0
+
+	for _, dest := range destinations {
+		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
+		if err != nil {
+			return err
+		}
+		if len(jobs) > 0 {
+			activeDestinations++
+		} else {
+			inactiveDestinations++
+		}
+	}
+
+	// Get user properties if available
+	var userProps map[string]interface{}
+	if userID != nil {
+		if user, err := c.userORM.GetByID(userID.(int)); err == nil {
+			userProps = map[string]interface{}{
+				"user_id":    user.ID,
+				"user_email": user.Email,
+			}
+		}
+	}
+
+	// Prepare telemetry properties
+	props := map[string]interface{}{
+		"active_destinations":   activeDestinations,
+		"inactive_destinations": inactiveDestinations,
+		"total_destinations":    activeDestinations + inactiveDestinations,
+	}
+
+	// Add user properties if available
+	if userProps != nil {
+		for k, v := range userProps {
+			props[k] = v
+		}
+	}
+
+	return telemetry.TrackEvent(ctx, constants.EventDestinationsUpdated, props)
 }
 
 // @router /project/:projectid/destinations [get]
@@ -102,6 +155,11 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
+	// Track destinations status after creation
+	if err := c.trackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track destinations status: %v", err)
+	}
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -142,6 +200,11 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
+	// Track destinations status after update
+	if err := c.trackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track destinations status: %v", err)
+	}
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -155,6 +218,10 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
+
+	// Get user ID before deletion for telemetry
+	userID := c.GetSession(constants.SessionUserID)
+
 	jobs, err := c.jobORM.GetByDestinationID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
@@ -169,6 +236,11 @@ func (c *DestHandler) DeleteDestination() {
 	if err := c.destORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
 		return
+	}
+
+	// Track destinations status after deletion
+	if err := c.trackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track destinations status: %v", err)
 	}
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{

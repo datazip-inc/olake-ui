@@ -3,6 +3,7 @@ package temporal
 import (
 	"fmt"
 
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
@@ -15,6 +16,9 @@ type Worker struct {
 
 // NewWorker creates a new Temporal worker
 func NewWorker() (*Worker, error) {
+	// Initialize telemetry for the worker process
+	telemetry.InitTelemetry()
+
 	c, err := client.Dial(client.Options{
 		HostPort: TemporalAddress,
 	})
@@ -34,6 +38,7 @@ func NewWorker() (*Worker, error) {
 	w.RegisterActivity(DiscoverCatalogActivity)
 	w.RegisterActivity(TestConnectionActivity)
 	w.RegisterActivity(SyncActivity)
+	w.RegisterActivity(TrackEventActivity)
 
 	return &Worker{
 		temporalClient: c,
@@ -50,4 +55,5 @@ func (w *Worker) Start() error {
 func (w *Worker) Stop() {
 	w.worker.Stop()
 	w.temporalClient.Close()
+	telemetry.Flush()
 }

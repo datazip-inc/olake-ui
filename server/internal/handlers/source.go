@@ -13,6 +13,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -36,6 +37,56 @@ func (c *SourceHandler) Prepare() {
 	if err != nil {
 		logs.Error("Failed to create Temporal client: %v", err)
 	}
+}
+
+// trackSourcesStatus logs telemetry about active and inactive sources
+func (c *SourceHandler) trackSourcesStatus(ctx context.Context, userID interface{}) error {
+	sources, err := c.sourceORM.GetAll()
+	if err != nil {
+		return err
+	}
+
+	activeSources := 0
+	inactiveSources := 0
+
+	for _, source := range sources {
+		jobs, err := c.jobORM.GetBySourceID(source.ID)
+		if err != nil {
+			return err
+		}
+		if len(jobs) > 0 {
+			activeSources++
+		} else {
+			inactiveSources++
+		}
+	}
+
+	// Get user properties if available
+	var userProps map[string]interface{}
+	if userID != nil {
+		if user, err := c.userORM.GetByID(userID.(int)); err == nil {
+			userProps = map[string]interface{}{
+				"user_id":    user.ID,
+				"user_email": user.Email,
+			}
+		}
+	}
+
+	// Prepare telemetry properties
+	props := map[string]interface{}{
+		"active_sources":   activeSources,
+		"inactive_sources": inactiveSources,
+		"total_sources":    activeSources + inactiveSources,
+	}
+
+	// Add user properties if available
+	if userProps != nil {
+		for k, v := range userProps {
+			props[k] = v
+		}
+	}
+
+	return telemetry.TrackEvent(ctx, constants.EventSourcesUpdated, props)
 }
 
 // @router /project/:projectid/sources [get]
@@ -110,6 +161,11 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
+	// Track sources status after creation
+	if err := c.trackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track sources status: %v", err)
+	}
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -146,6 +202,11 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 
+	// Track sources status after update
+	if err := c.trackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track sources status: %v", err)
+	}
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -165,6 +226,9 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
+	// Get user ID before deletion for telemetry
+	userID := c.GetSession(constants.SessionUserID)
+
 	// Deactivate all jobs using this source
 	for _, job := range jobs {
 		job.Active = false
@@ -178,6 +242,11 @@ func (c *SourceHandler) DeleteSource() {
 	if err := c.sourceORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source")
 		return
+	}
+
+	// Track sources status after deletion
+	if err := c.trackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track sources status: %v", err)
 	}
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{

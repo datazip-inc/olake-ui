@@ -11,6 +11,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -49,6 +50,15 @@ func (c *AuthHandler) Login() {
 	// check if session is enabled
 	if web.BConfig.WebConfig.Session.SessionOn {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
+	}
+
+	properties := map[string]interface{}{
+		"username": user.Username,
+		"user_id":  user.ID,
+		"email":    user.Email,
+	}
+	if err := telemetry.TrackEvent(c.Ctx.Request.Context(), constants.EventUserLogin, properties); err != nil {
+		c.Ctx.Input.SetData("telemetry_error", err)
 	}
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{

@@ -18,6 +18,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 	"go.temporal.io/api/workflowservice/v1"
@@ -28,6 +29,7 @@ type JobHandler struct {
 	jobORM     *database.JobORM
 	sourceORM  *database.SourceORM
 	destORM    *database.DestinationORM
+	userORM    *database.UserORM
 	tempClient *temporal.Client
 }
 
@@ -36,11 +38,96 @@ func (c *JobHandler) Prepare() {
 	c.jobORM = database.NewJobORM()
 	c.sourceORM = database.NewSourceORM()
 	c.destORM = database.NewDestinationORM()
+	c.userORM = database.NewUserORM()
 	var err error
 	c.tempClient, err = temporal.NewClient()
 	if err != nil {
 		logs.Error("Failed to create Temporal client: %v", err)
 	}
+}
+
+// trackSourcesAndDestinationsStatus logs telemetry about active and inactive sources and destinations
+func (c *JobHandler) trackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) error {
+	// Track sources status
+	sources, err := c.sourceORM.GetAll()
+	if err != nil {
+		return err
+	}
+
+	activeSources := 0
+	inactiveSources := 0
+
+	for _, source := range sources {
+		jobs, err := c.jobORM.GetBySourceID(source.ID)
+		if err != nil {
+			return err
+		}
+		if len(jobs) > 0 {
+			activeSources++
+		} else {
+			inactiveSources++
+		}
+	}
+
+	// Track destinations status
+	destinations, err := c.destORM.GetAll()
+	if err != nil {
+		return err
+	}
+
+	activeDestinations := 0
+	inactiveDestinations := 0
+
+	for _, dest := range destinations {
+		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
+		if err != nil {
+			return err
+		}
+		if len(jobs) > 0 {
+			activeDestinations++
+		} else {
+			inactiveDestinations++
+		}
+	}
+
+	// Get user properties if available
+	var userProps map[string]interface{}
+	if userID != nil {
+		if user, err := c.userORM.GetByID(userID.(int)); err == nil {
+			userProps = map[string]interface{}{
+				"user_id":    user.ID,
+				"user_email": user.Email,
+			}
+		}
+	}
+
+	// Track sources status
+	sourceProps := map[string]interface{}{
+		"active_sources":   activeSources,
+		"inactive_sources": inactiveSources,
+		"total_sources":    activeSources + inactiveSources,
+	}
+	if userProps != nil {
+		for k, v := range userProps {
+			sourceProps[k] = v
+		}
+	}
+	if err := telemetry.TrackEvent(ctx, constants.EventSourcesUpdated, sourceProps); err != nil {
+		return err
+	}
+
+	// Track destinations status
+	destProps := map[string]interface{}{
+		"active_destinations":   activeDestinations,
+		"inactive_destinations": inactiveDestinations,
+		"total_destinations":    activeDestinations + inactiveDestinations,
+	}
+	if userProps != nil {
+		for k, v := range userProps {
+			destProps[k] = v
+		}
+	}
+	return telemetry.TrackEvent(ctx, constants.EventDestinationsUpdated, destProps)
 }
 
 // @router /project/:projectid/jobs [get]
@@ -149,18 +236,52 @@ func (c *JobHandler) CreateJob() {
 		State:         "{}",
 		ProjectID:     projectIDStr,
 	}
-	// Set user information
+
+	// Get user information from session
+	var username string
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
 		user := &models.User{ID: userID.(int)}
 		job.CreatedBy = user
 		job.UpdatedBy = user
+		
+		// Get full user details for username
+		if fullUser, err := c.userORM.GetByID(userID.(int)); err == nil {
+			username = fullUser.Username
+		}
 	}
 
-	// Create job in database
 	if err := c.jobORM.Create(job); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create job: %s", err))
 		return
+	}
+
+	// Track job creation event
+	properties := map[string]interface{}{
+		"job_id":           job.ID,
+		"job_name":         job.Name,
+		"project_id":       projectIDStr,
+		"source_type":      source.Type,
+		"source_name":      source.Name,
+		"destination_type": dest.DestType,
+		"destination_name": dest.Name,
+		"frequency":        job.Frequency,
+		"active":           job.Active,
+	}
+	if username != "" {
+		properties["created_by"] = username
+	}
+	if !job.CreatedAt.IsZero() {
+		properties["created_at"] = job.CreatedAt.Format(time.RFC3339)
+	}
+
+	if err := telemetry.TrackEvent(c.Ctx.Request.Context(), constants.EventJobCreated, properties); err != nil {
+		c.Ctx.Input.SetData("telemetry_error", err)
+	}
+
+	// Track sources and destinations status after job creation
+	if err := c.trackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track sources and destinations status: %v", err)
 	}
 
 	if c.tempClient != nil {
@@ -238,6 +359,12 @@ func (c *JobHandler) UpdateJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
 		return
 	}
+
+	// Track sources and destinations status after job update
+	if err := c.trackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track sources and destinations status: %v", err)
+	}
+
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
 		_, err = c.tempClient.ManageSync(
@@ -285,11 +412,20 @@ func (c *JobHandler) DeleteJob() {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
 		}
 	}
+	// Get user ID before deletion for telemetry
+	userID := c.GetSession(constants.SessionUserID)
+
 	// Delete job
 	if err := c.jobORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete job")
 		return
 	}
+
+	// Track sources and destinations status after job deletion
+	if err := c.trackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+		logs.Error("Failed to track sources and destinations status: %v", err)
+	}
+
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
 	})

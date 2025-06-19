@@ -7,9 +7,15 @@ require github.com/beego/beego/v2 v2.3.8
 require (
 	github.com/lib/pq v1.10.9
 	github.com/oklog/ulid v1.3.1
+	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
 	golang.org/x/crypto v0.35.0
+)
+
+require (
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
+	github.com/segmentio/backo-go v1.0.0 // indirect
 )
 
 require (

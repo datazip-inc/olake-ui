@@ -25,6 +25,7 @@ import {
 } from "../../../utils/utils"
 import { destinationService, sourceService } from "../../../api"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import analyticsService from "../../../api/services/analyticsService"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -249,6 +250,7 @@ const JobCreation: React.FC = () => {
 		)
 		existingSavedJobs.push(savedJob)
 		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
+		analyticsService.trackEvent("save_job_clicked")
 		message.success("Job saved successfully!")
 		navigate("/jobs")
 	}

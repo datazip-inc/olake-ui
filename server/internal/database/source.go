@@ -7,6 +7,7 @@ import (
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 )
 
 // SourceORM handles database operations for sources
@@ -24,7 +25,32 @@ func NewSourceORM() *SourceORM {
 
 func (r *SourceORM) Create(source *models.Source) error {
 	_, err := r.ormer.Insert(source)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Track source creation event
+	properties := map[string]interface{}{
+		"source_id":   source.ID,
+		"source_name": source.Name,
+		"source_type": source.Type,
+		"version":     source.Version,
+	}
+	if source.CreatedBy != nil {
+		userORM := NewUserORM()
+		if fullUser, err := userORM.GetByID(source.CreatedBy.ID); err == nil {
+			properties["created_by"] = fullUser.Username
+		}
+	}
+	if !source.CreatedAt.IsZero() {
+		properties["created_at"] = source.CreatedAt.Format(time.RFC3339)
+	}
+
+	if err := telemetry.TrackEvent(nil, constants.EventSourceCreated, properties); err != nil {
+		orm.DebugLog.Println("Failed to track source creation event:", err)
+	}
+
+	return nil
 }
 
 func (r *SourceORM) GetAll() ([]*models.Source, error) {

@@ -7,6 +7,7 @@ import { GitCommit, Plus } from "@phosphor-icons/react"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import { jobService } from "../../../api"
 import JobEmptyState from "../components/JobEmptyState"
+import analyticsService from "../../../api/services/analyticsService"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -27,7 +28,8 @@ const Jobs: React.FC = () => {
 		})
 	}, [fetchJobs])
 
-	const handleCreateJob = () => {
+	const handleCreateJob = async () => {
+		await analyticsService.trackEvent("create_job_clicked")
 		navigate("/jobs/new")
 	}
 
