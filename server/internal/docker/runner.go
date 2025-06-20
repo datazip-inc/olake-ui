@@ -173,7 +173,7 @@ func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID st
 }
 
 // GetCatalog runs the discover command and returns catalog data
-func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) GetCatalog(sourceType, version, config, workflowID, streamsConfig string) (map[string]interface{}, error) {
 	workDir, err := r.setupWorkDirectory(workflowID)
 	if err != nil {
 		return nil, err
@@ -181,6 +181,7 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 	logs.Info("working directory path %s\n", workDir)
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
+		{Name: "streams.json", Data: streamsConfig},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -189,8 +190,13 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 
 	configPath := filepath.Join(workDir, "config.json")
 	catalogPath := filepath.Join(workDir, "streams.json")
-
-	_, err = r.ExecuteDockerCommand("config", Discover, sourceType, version, configPath)
+	var catalogsArgs []string
+	if streamsConfig != "" {
+		catalogsArgs = []string{
+			"--catalog", "/mnt/config/streams.json",
+		}
+	}
+	_, err = r.ExecuteDockerCommand("config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {
 		return nil, err
 	}
