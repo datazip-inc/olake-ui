@@ -7,7 +7,6 @@ import { GitCommit, Plus } from "@phosphor-icons/react"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import { jobService } from "../../../api"
 import JobEmptyState from "../components/JobEmptyState"
-import { JOB_TABS } from "../../../utils/constants"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -48,14 +47,14 @@ const Jobs: React.FC = () => {
 		navigate(`/jobs/${id}/edit`)
 	}
 
-	// const handlePauseJob = async (id: string, checked: boolean) => {
-	// 	const job = jobs.find(j => j.id.toString() === id)
-	// 	await jobService.activateJob(id, !checked)
-	// 	message.success(
-	// 		`Successfully ${checked ? "paused" : "resumed"} ${job?.name || id}`,
-	// 	)
-	// 	await fetchJobs()
-	// }
+	const handlePauseJob = async (id: string, checked: boolean) => {
+		const job = jobs.find(j => j.id.toString() === id)
+		await jobService.activateJob(id, !checked)
+		message.success(
+			`Successfully ${checked ? "paused" : "resumed"} ${job?.name || id}`,
+		)
+		await fetchJobs()
+	}
 
 	const handleDeleteJob = (id: string) => {
 		if (activeTab === "saved") {
@@ -90,11 +89,9 @@ const Jobs: React.FC = () => {
 	const updateJobsList = () => {
 		if (activeTab === "active") {
 			setFilteredJobs(jobs.filter(job => job.activate === true))
-		}
-		// else if (activeTab === "inactive") {
-		// 	setFilteredJobs(jobs.filter(job => job.activate === false))
-		// }
-		else if (activeTab === "saved") {
+		} else if (activeTab === "inactive") {
+			setFilteredJobs(jobs.filter(job => job.activate === false))
+		} else if (activeTab === "saved") {
 			setFilteredJobs(savedJobs)
 		} else if (activeTab === "failed") {
 			setFilteredJobs(
@@ -104,6 +101,13 @@ const Jobs: React.FC = () => {
 	}
 
 	const showEmpty = !isLoadingJobs && jobs.length === 0
+
+	const tabItems = [
+		{ key: "active", label: "Active jobs" },
+		{ key: "inactive", label: "Inactive jobs" },
+		{ key: "saved", label: "Saved jobs" },
+		{ key: "failed", label: "Failed jobs" },
+	]
 
 	if (jobsError) {
 		return (
@@ -142,7 +146,7 @@ const Jobs: React.FC = () => {
 			<Tabs
 				activeKey={activeTab}
 				onChange={setActiveTab}
-				items={JOB_TABS.map(tab => ({
+				items={tabItems.map(tab => ({
 					key: tab.key,
 					label: tab.label,
 					children: isLoadingJobs ? (
@@ -167,7 +171,7 @@ const Jobs: React.FC = () => {
 							jobType={activeTab as "active" | "inactive" | "saved" | "failed"}
 							onSync={handleSyncJob}
 							onEdit={handleEditJob}
-							// onPause={handlePauseJob}
+							onPause={handlePauseJob}
 							onDelete={handleDeleteJob}
 						/>
 					),

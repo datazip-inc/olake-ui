@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Select, message, Spin, Table } from "antd"
+import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { ArrowLeft, Notebook } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
+import { jobService } from "../../../api"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import {
@@ -362,18 +363,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	// 	}
 	// }
 
-	// const handlePauseJob = async (jobId: string, checked: boolean) => {
-	// 	try {
-	// 		await jobService.activateJob(jobId, !checked)
-	// 		message.success(
-	// 			`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-	// 		)
-	// 		await fetchDestinations()
-	// 	} catch (error) {
-	// 		console.error("Error toggling job status:", error)
-	// 		message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
-	// 	}
-	// }
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+			await fetchDestinations()
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+		}
+	}
 
 	const toggleDocsPanel = () => {
 		setDocsMinimized(!docsMinimized)
@@ -406,22 +407,22 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			dataIndex: "name",
 			key: "name",
 		},
-		// {
-		// 	title: "State",
-		// 	dataIndex: "activate",
-		// 	key: "activate",
-		// 	render: (activate: boolean) => (
-		// 		<span
-		// 			className={`rounded px-2 py-1 text-xs ${
-		// 				!activate
-		// 					? "bg-[#FFF1F0] text-[#F5222D]"
-		// 					: "bg-[#E6F4FF] text-[#0958D9]"
-		// 			}`}
-		// 		>
-		// 			{activate ? "Active" : "Inactive"}
-		// 		</span>
-		// 	),
-		// },
+		{
+			title: "State",
+			dataIndex: "activate",
+			key: "activate",
+			render: (activate: boolean) => (
+				<span
+					className={`rounded px-2 py-1 text-xs ${
+						!activate
+							? "bg-[#FFF1F0] text-[#F5222D]"
+							: "bg-[#E6F4FF] text-[#0958D9]"
+					}`}
+				>
+					{activate ? "Active" : "Inactive"}
+				</span>
+			),
+		},
 		{
 			title: "Last runtime",
 			dataIndex: "last_run_time",
@@ -460,18 +461,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				</div>
 			),
 		},
-		// {
-		// 	title: "Running status",
-		// 	dataIndex: "activate",
-		// 	key: "pause",
-		// 	render: (activate: boolean, record: DestinationJob) => (
-		// 		<Switch
-		// 			checked={activate}
-		// 			onChange={checked => handlePauseJob(record.id.toString(), !checked)}
-		// 			className={activate ? "bg-blue-600" : "bg-gray-200"}
-		// 		/>
-		// 	),
-		// },
+		{
+			title: "Running status",
+			dataIndex: "activate",
+			key: "pause",
+			render: (activate: boolean, record: DestinationJob) => (
+				<Switch
+					checked={activate}
+					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
+					className={activate ? "bg-blue-600" : "bg-gray-200"}
+				/>
+			),
+		},
 	]
 
 	const renderConfigTab = () => (

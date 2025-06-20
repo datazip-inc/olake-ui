@@ -263,7 +263,7 @@ const StreamConfiguration = ({
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 						<Info className="size-4" />
-						Select the stream to configure Normalisation
+						Select a valid stream to configure Normalisation
 					</div>
 				)}
 			</div>

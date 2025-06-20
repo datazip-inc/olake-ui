@@ -58,13 +58,17 @@ const Sources: React.FC = () => {
 	const filteredSources = (): Entity[] => {
 		if (activeTab === "active") {
 			return sources.filter(
-				source => source?.jobs && source.jobs.length > 0,
-				// source.jobs.some(job => job.activate === true),
+				source =>
+					source?.jobs &&
+					source.jobs.length > 0 &&
+					source.jobs.some(job => job.activate === true),
 			)
 		} else if (activeTab === "inactive") {
 			return sources.filter(
-				source => !source?.jobs || source.jobs.length === 0,
-				// source.jobs.every(job => job.activate === false),
+				source =>
+					!source?.jobs ||
+					source.jobs.length === 0 ||
+					source.jobs.every(job => job.activate === false),
 			)
 		}
 		return []

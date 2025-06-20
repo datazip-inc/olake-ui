@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Input, Button, Select, message, Table, Spin } from "antd"
+import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
 import { GenderNeuter, Notebook, ArrowLeft } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import type { ColumnsType } from "antd/es/table"
@@ -16,6 +16,7 @@ import {
 } from "../../../utils/utils"
 import { sourceService } from "../../../api"
 import { formatDistanceToNow } from "date-fns"
+import { jobService } from "../../../api"
 import { Entity, SourceEditProps, SourceJob } from "../../../types"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
@@ -199,7 +200,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			destination_name: job.destination_name || "",
 			last_run_time: job.last_runtime || job.last_run_time || "-",
 			last_run_state: job.last_run_state || "-",
-			activate: job.activate || true,
+			activate: job.activate || false,
 		}))
 	}
 
@@ -286,19 +287,19 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		setShowAllJobs(true)
 	}
 
-	// const handlePauseJob = async (jobId: string, checked: boolean) => {
-	// 	try {
-	// 		await jobService.activateJob(jobId, !checked)
-	// 		message.success(
-	// 			`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-	// 		)
-	// 		// Refetch sources to update the UI with the latest source details
-	// 		await fetchSources()
-	// 	} catch (error) {
-	// 		console.error("Error toggling job status:", error)
-	// 		message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
-	// 	}
-	// }
+	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		try {
+			await jobService.activateJob(jobId, !checked)
+			message.success(
+				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
+			)
+			// Refetch sources to update the UI with the latest source details
+			await fetchSources()
+		} catch (error) {
+			console.error("Error toggling job status:", error)
+			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+		}
+	}
 
 	// const handlePauseAllJobs = async (checked: boolean) => {
 	// 	try {
@@ -324,22 +325,22 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			dataIndex: "name",
 			key: "name",
 		},
-		// {
-		// 	title: "State",
-		// 	dataIndex: "activate",
-		// 	key: "activate",
-		// 	render: (activate: boolean) => (
-		// 		<span
-		// 			className={`rounded px-2 py-1 text-xs ${
-		// 				!activate
-		// 					? "bg-[#FFF1F0] text-[#F5222D]"
-		// 					: "bg-[#E6F4FF] text-[#0958D9]"
-		// 			}`}
-		// 		>
-		// 			{activate ? "Active" : "Inactive"}
-		// 		</span>
-		// 	),
-		// },
+		{
+			title: "State",
+			dataIndex: "activate",
+			key: "activate",
+			render: (activate: boolean) => (
+				<span
+					className={`rounded px-2 py-1 text-xs ${
+						!activate
+							? "bg-[#FFF1F0] text-[#F5222D]"
+							: "bg-[#E6F4FF] text-[#0958D9]"
+					}`}
+				>
+					{activate ? "Active" : "Inactive"}
+				</span>
+			),
+		},
 		{
 			title: "Last runtime",
 			dataIndex: "last_run_time",
@@ -378,18 +379,18 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				</div>
 			),
 		},
-		// {
-		// 	title: "Running status",
-		// 	dataIndex: "activate",
-		// 	key: "pause",
-		// 	render: (activate: boolean, record: SourceJob) => (
-		// 		<Switch
-		// 			checked={activate}
-		// 			onChange={checked => handlePauseJob(record.id.toString(), !checked)}
-		// 			className={activate ? "bg-blue-600" : "bg-gray-200"}
-		// 		/>
-		// 	),
-		// },
+		{
+			title: "Running status",
+			dataIndex: "activate",
+			key: "pause",
+			render: (activate: boolean, record: SourceJob) => (
+				<Switch
+					checked={activate}
+					onChange={checked => handlePauseJob(record.id.toString(), !checked)}
+					className={activate ? "bg-blue-600" : "bg-gray-200"}
+				/>
+			),
+		},
 	]
 
 	return (
