@@ -403,14 +403,12 @@ func (c *JobHandler) GetJobTasks() {
 		return
 	}
 	for _, execution := range resp.Executions {
-		var runTime time.Duration
-		var endTime time.Time
 		startTime := execution.StartTime.AsTime()
-
+		endTime := time.Now()
 		if execution.CloseTime != nil {
 			endTime = execution.CloseTime.AsTime()
-			runTime = endTime.Sub(startTime)
 		}
+		runTime := endTime.Sub(startTime)
 		tasks = append(tasks, models.JobTask{
 			Runtime:   runTime.String(),
 			StartTime: startTime.UTC().Format(time.RFC3339),
@@ -500,12 +498,13 @@ func (c *JobHandler) GetTaskLogs() {
 		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
 			continue
 		}
-
-		logs = append(logs, map[string]interface{}{
-			"level":   logEntry.Level,
-			"time":    logEntry.Time.UTC().Format(time.RFC3339),
-			"message": logEntry.Message,
-		})
+		if logEntry.Level != "debug" {
+			logs = append(logs, map[string]interface{}{
+				"level":   logEntry.Level,
+				"time":    logEntry.Time.UTC().Format(time.RFC3339),
+				"message": logEntry.Message,
+			})
+		}
 	}
 
 	utils.SuccessResponse(&c.Controller, logs)
