@@ -358,6 +358,7 @@ const JobEdit: React.FC = () => {
 		if (currentStep === "source") {
 			if (isSavedJob && sourceData) {
 				setShowTestingModal(true)
+				setIsFromSources(true)
 				try {
 					const testData = {
 						name: sourceData.name,
@@ -401,6 +402,7 @@ const JobEdit: React.FC = () => {
 						version: sourceData.version || "latest",
 					}
 					setShowTestingModal(true)
+					setIsFromSources(true)
 					const testResult =
 						await sourceService.testSourceConnection(newSourceData)
 					if (testResult.data?.status === "SUCCEEDED") {
@@ -411,7 +413,6 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("destination")
 						}, 1000)
 					} else {
-						setIsFromSources(true)
 						setShowTestingModal(false)
 						setSourceTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
@@ -421,6 +422,7 @@ const JobEdit: React.FC = () => {
 		} else if (currentStep === "destination") {
 			if (isSavedJob && destinationData) {
 				setShowTestingModal(true)
+				setIsFromSources(false)
 				try {
 					const testData = {
 						name: destinationData.name,
@@ -434,10 +436,8 @@ const JobEdit: React.FC = () => {
 					const testResult =
 						await destinationService.testDestinationConnection(testData)
 
-					setTimeout(() => {
-						setShowTestingModal(false)
-					}, 1000)
 					if (testResult.data?.status === "SUCCEEDED") {
+						setShowTestingModal(false)
 						setTimeout(() => {
 							setShowSuccessModal(true)
 						}, 1000)
@@ -446,7 +446,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("schema")
 						}, 2000)
 					} else {
-						setIsFromSources(false)
+						setShowTestingModal(false)
 						setDestinationTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
 					}
@@ -467,6 +467,7 @@ const JobEdit: React.FC = () => {
 						version: destinationData.version || "latest",
 					}
 					setShowTestingModal(true)
+					setIsFromSources(false)
 					const testResult =
 						await destinationService.testDestinationConnection(
 							newDestinationData,

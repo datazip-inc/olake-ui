@@ -95,7 +95,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					sources.filter(source => source.type === connector.toLowerCase()),
 				)
 			}
-		}, [connector, setupType, sources])
+		}, [connector, setupType, fetchSources])
 
 		useEffect(() => {
 			const fetchVersions = async () => {
