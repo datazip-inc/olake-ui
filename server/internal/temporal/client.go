@@ -28,6 +28,8 @@ const (
 	ActionUpdate  SyncAction = "update"
 	ActionDelete  SyncAction = "delete"
 	ActionTrigger SyncAction = "trigger"
+	ActionPause   SyncAction = "pause"
+	ActionUnpause SyncAction = "unpause"
 )
 
 func init() {
@@ -61,13 +63,14 @@ func (c *Client) Close() {
 }
 
 // GetCatalog runs a workflow to discover catalog data
-func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config string) (map[string]interface{}, error) {
+func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
 	params := &ActivityParams{
-		SourceType: sourceType,
-		Version:    version,
-		Config:     config,
-		WorkflowID: fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
-		Command:    docker.Discover,
+		SourceType:    sourceType,
+		Version:       version,
+		Config:        config,
+		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
+		Command:       docker.Discover,
+		StreamsConfig: streamsConfig,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
@@ -157,6 +160,21 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 			return nil, fmt.Errorf("failed to trigger schedule: %s", err)
 		}
 		return map[string]interface{}{"message": "Schedule triggered successfully"}, nil
+	case ActionPause:
+		if err := handle.Pause(ctx, client.SchedulePauseOptions{
+			Note: "Paused via API",
+		}); err != nil {
+			return nil, fmt.Errorf("failed to pause schedule: %s", err)
+		}
+		return map[string]interface{}{"message": "Schedule paused successfully"}, nil
+
+	case ActionUnpause:
+		if err := handle.Unpause(ctx, client.ScheduleUnpauseOptions{
+			Note: "Unpaused via API",
+		}); err != nil {
+			return nil, fmt.Errorf("failed to unpause schedule: %s", err)
+		}
+		return map[string]interface{}{"message": "Schedule unpaused successfully"}, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported action: %s", action)

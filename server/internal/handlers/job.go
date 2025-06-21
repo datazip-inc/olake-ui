@@ -295,32 +295,6 @@ func (c *JobHandler) DeleteJob() {
 	})
 }
 
-// no need any more
-// @router /project/:projectid/jobs/:id/streams [get]
-// func (c *JobHandler) GetJobStreams() {
-// 	idStr := c.Ctx.Input.Param(":id")
-// 	id, err := strconv.Atoi(idStr)
-// 	if err != nil {
-// 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-// 		return
-// 	}
-
-// 	// Get job
-// 	job, err := c.jobORM.GetByID(id)
-// 	if err != nil {
-// 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
-// 		return
-// 	}
-
-// 	utils.SuccessResponse(&c.Controller,
-// 		struct {
-// 			StreamsConfig string `json:"streams_config"`
-// 		}{
-// 			StreamsConfig: job.StreamsConfig,
-// 		},
-// 	)
-// }
-
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
 	idStr := c.Ctx.Input.Param(":id")
@@ -360,12 +334,7 @@ func (c *JobHandler) SyncJob() {
 
 // @router /project/:projectid/jobs/:id/activate [post]
 func (c *JobHandler) ActivateJob() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 
 	// Parse request body
 	var req models.JobStatus
@@ -380,7 +349,23 @@ func (c *JobHandler) ActivateJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
+	action := temporal.ActionUnpause
+	if !req.Activate {
+		action = temporal.ActionPause
+	}
+	if c.tempClient != nil {
+		logs.Info("Using Temporal workflow for activate job schedule")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			job.ProjectID,
+			job.ID,
+			job.Frequency,
+			action,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for activate job schedule: %s", err))
+		}
+	}
 	// Update activation status
 	job.Active = req.Activate
 	job.UpdatedAt = time.Now()
