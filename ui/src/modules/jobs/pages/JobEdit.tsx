@@ -118,8 +118,6 @@ const JobEdit: React.FC = () => {
 		selected_streams: {},
 		streams: [],
 	})
-	const [initialStreamsData, setInitialStreamsData] =
-		useState<StreamsDataStructure | null>(null)
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
@@ -193,7 +191,6 @@ const JobEdit: React.FC = () => {
 
 					if (streamsData) {
 						setSelectedStreams(streamsData)
-						setInitialStreamsData(streamsData)
 					}
 				}
 			} catch (e) {
@@ -580,7 +577,8 @@ const JobEdit: React.FC = () => {
 									sourceConnector={sourceData?.type.toLowerCase() || ""}
 									sourceVersion={sourceData?.version || "latest"}
 									sourceConfig={JSON.stringify(sourceData?.config || {})}
-									initialStreamsData={initialStreamsData as any}
+									fromJobEditFlow={true}
+									jobId={jobId ? parseInt(jobId) : -1}
 								/>
 							</div>
 						)}
