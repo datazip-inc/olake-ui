@@ -415,11 +415,12 @@ func (c *JobHandler) GetJobTasks() {
 	}
 	for _, execution := range resp.Executions {
 		startTime := execution.StartTime.AsTime()
-		endTime := time.Now()
+		var runTime time.Duration
 		if execution.CloseTime != nil {
-			endTime = execution.CloseTime.AsTime()
+			runTime = execution.CloseTime.AsTime().Sub(startTime)
+		} else {
+			runTime = time.Since(startTime)
 		}
-		runTime := endTime.Sub(startTime)
 		tasks = append(tasks, models.JobTask{
 			Runtime:   runTime.String(),
 			StartTime: startTime.UTC().Format(time.RFC3339),
