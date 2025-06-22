@@ -103,7 +103,10 @@ func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, 
 	logs.Info("Docker command output: %s\n", string(output))
 
 	if err != nil {
-		return nil, fmt.Errorf("docker command failed: %v, output: %s", err, string(output))
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("docker command failed with exit status %d", exitErr.ExitCode())
+		}
+		return nil, err
 	}
 
 	return output, nil
@@ -114,7 +117,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	dockerArgs := []string{
-		"run", "--pull=missing",
+		"run",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		r.GetDockerImageName(sourceType, version),
 		string(command),

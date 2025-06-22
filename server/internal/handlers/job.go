@@ -414,16 +414,16 @@ func (c *JobHandler) GetJobTasks() {
 		return
 	}
 	for _, execution := range resp.Executions {
-		startTime := execution.StartTime.AsTime()
+		startTime := execution.StartTime.AsTime().UTC()
 		var runTime time.Duration
 		if execution.CloseTime != nil {
-			runTime = execution.CloseTime.AsTime().Sub(startTime)
+			runTime = execution.CloseTime.AsTime().UTC().Sub(startTime)
 		} else {
 			runTime = time.Since(startTime)
 		}
 		tasks = append(tasks, models.JobTask{
 			Runtime:   runTime.String(),
-			StartTime: startTime.UTC().Format(time.RFC3339),
+			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
 		})
