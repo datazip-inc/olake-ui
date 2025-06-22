@@ -114,7 +114,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	dockerArgs := []string{
-		"run", "--pull=always",
+		"run", "--pull=missing",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
