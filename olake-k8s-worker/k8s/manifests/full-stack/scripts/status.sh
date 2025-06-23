@@ -38,14 +38,14 @@ echo -e "\n${YELLOW}🔗 Service URLs:${NC}"
 MINIKUBE_IP=$(minikube ip 2>/dev/null || echo "localhost")
 
 echo -e "${GREEN}📱 OLake UI:${NC}         http://$MINIKUBE_IP:30082"
-echo -e "${GREEN}🚀 OLake Server:${NC}    http://$MINIKUBE_IP:30081"
+echo -e "${GREEN}🚀 OLake Backend:${NC}    http://$MINIKUBE_IP:30081"
 echo -e "${GREEN}⏰ Temporal UI:${NC}     http://$MINIKUBE_IP:30080"
 
 # Check individual service health
 echo -e "\n${YELLOW}🏥 Health Checks:${NC}"
 
 # Check if services are responding
-services=("30082:OLake UI" "30081:OLake Server" "30080:Temporal UI")
+services=("30082:OLake UI" "30081:OLake Backend" "30080:Temporal UI")
 
 for service in "${services[@]}"; do
     port=$(echo $service | cut -d: -f1)

@@ -27,17 +27,18 @@ wait_for_deployment() {
     fi
 }
 
-# Function to wait for pods
-wait_for_pods() {
+# Function to wait for job completion
+wait_for_job() {
     local namespace=$1
-    local label=$2
+    local job=$2
     local timeout=${3:-300}
     
-    echo -e "${YELLOW}⏳ Waiting for pods with label $label to be ready...${NC}"
-    if kubectl wait --for=condition=ready --timeout=${timeout}s pod -l $label -n $namespace; then
-        echo -e "${GREEN}✅ Pods with label $label are ready!${NC}"
+    echo -e "${YELLOW}⏳ Waiting for $job to complete...${NC}"
+    if kubectl wait --for=condition=complete --timeout=${timeout}s job/$job -n $namespace; then
+        echo -e "${GREEN}✅ $job completed successfully!${NC}"
     else
-        echo -e "${RED}❌ Pods with label $label failed to become ready within ${timeout}s${NC}"
+        echo -e "${RED}❌ $job failed to complete within ${timeout}s${NC}"
+        kubectl logs job/$job -n $namespace
         exit 1
     fi
 }
@@ -55,16 +56,16 @@ kubectl apply -f 02-temporal/
 wait_for_deployment olake temporal 600
 wait_for_deployment olake temporal-ui 300
 
-echo -e "${BLUE}🚀 Deploying 03-olake-server...${NC}"
-kubectl apply -f 03-olake-server/
-wait_for_deployment olake olake-server 300
+echo -e "${BLUE}�� Deploying 03-olake (Backend + Frontend)...${NC}"
+kubectl apply -f 03-olake/
+wait_for_deployment olake olake 300
 
-echo -e "${BLUE}🌐 Deploying 04-olake-ui...${NC}"
-kubectl apply -f 04-olake-ui/
-wait_for_deployment olake olake-ui 300
+echo -e "${BLUE}👤 Running signup initialization...${NC}"
+kubectl apply -f 03-olake/init-job.yaml
+wait_for_job olake olake-signup-init 120
 
-echo -e "${BLUE}⚡ Deploying 05-olake-worker...${NC}"
-kubectl apply -f 05-olake-worker/
+echo -e "${BLUE}⚡ Deploying 04-olake-worker...${NC}"
+kubectl apply -f 04-olake-worker/
 wait_for_deployment olake olake-k8s-worker 300
 
 echo -e "${GREEN}🎉 Full stack deployment completed successfully!${NC}"
@@ -75,13 +76,14 @@ echo -e "\n${YELLOW}🔗 Service URLs (using minikube ip):${NC}"
 MINIKUBE_IP=$(minikube ip 2>/dev/null || echo "localhost")
 
 echo -e "${GREEN}📱 OLake UI:${NC}         http://$MINIKUBE_IP:30082"
-echo -e "${GREEN}🚀 OLake Server:${NC}    http://$MINIKUBE_IP:30081"
+echo -e "${GREEN}🚀 OLake Backend:${NC}    http://$MINIKUBE_IP:30081"
 echo -e "${GREEN}⏰ Temporal UI:${NC}     http://$MINIKUBE_IP:30080"
 
 echo -e "\n${YELLOW}📋 Useful commands:${NC}"
 echo -e "${BLUE}kubectl get pods -n olake${NC}                    # Check all pods"
 echo -e "${BLUE}kubectl logs -f deployment/olake-k8s-worker -n olake${NC}  # Worker logs"
-echo -e "${BLUE}kubectl logs -f deployment/temporal -n olake${NC}          # Temporal logs"
+echo -e "${BLUE}kubectl logs -f deployment/olake -n olake${NC}              # OLake logs"
+echo -e "${BLUE}kubectl logs -f deployment/temporal -n olake${NC}           # Temporal logs"
 echo -e "${BLUE}kubectl get svc -n olake${NC}                     # Check services"
 
 echo -e "\n${GREEN}✨ OLake is ready to use!${NC}"

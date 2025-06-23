@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: olake-server-config
+  name: olake-config
   namespace: olake
 data:
   app.conf: |
-    # OLake Server Configuration
-    appname = olake-server
+    # OLake Configuration (Backend + Frontend combined)
+    appname = olake
     httpport = 8080
     runmode = dev
     autorender = false
@@ -31,3 +31,7 @@ data:
     
     # Logging
     LOG_LEVEL = info
+    
+    # Frontend Configuration
+    FRONTEND_PORT = 8000
+    API_BASE_URL = http://localhost:8080

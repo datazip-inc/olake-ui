@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: olake-signup-init
+  namespace: olake
+  labels:
+    app: olake
+    component: signup-init
+spec:
+  template:
+    spec:
+      containers:
+      - name: signup-init
+        image: curlimages/curl:latest
+        env:
+        - name: USERNAME
+          value: "admin"
+        - name: PASSWORD
+          value: "password"
+        - name: EMAIL
+          value: "admin@example.com"
+        - name: OLAKE_APP_URL
+          value: "http://olake.olake.svc.cluster.local:8080/signup"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo 'signup-init: Initializing user setup...'
+          
+          # Wait for olake service to be ready
+          echo "Waiting for OLake service to be ready..."
+          until curl -f http://olake.olake.svc.cluster.local:8080/health >/dev/null 2>&1; do
+            echo "OLake service not ready yet, waiting..."
+            sleep 5
+          done
+          
+          JSON_PAYLOAD=$(printf '{"username":"%s","password":"%s","email":"%s"}' "$USERNAME" "$PASSWORD" "$EMAIL")
+          echo "signup-init: Attempting to create user '$USERNAME' via $OLAKE_APP_URL"
+          
+          HTTP_RESPONSE_CODE=$(curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "$JSON_PAYLOAD" "$OLAKE_APP_URL")
+          
+          echo ''
+          
+          if ! [ "$HTTP_RESPONSE_CODE" -eq "$HTTP_RESPONSE_CODE" ] 2>/dev/null; then
+              echo "signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$HTTP_RESPONSE_CODE'"
+              exit 1
+          fi
+          
+          if [ "$HTTP_RESPONSE_CODE" -ge 200 ] && [ "$HTTP_RESPONSE_CODE" -lt 300 ]; then
+            echo "signup-init: User '$USERNAME' creation request successful (HTTP $HTTP_RESPONSE_CODE)."
+          else
+            echo "signup-init: User '$USERNAME' creation request FAILED (HTTP $HTTP_RESPONSE_CODE). Server response body above."
+            exit 1
+          fi
+          echo 'signup-init: User setup process complete.'
+      restartPolicy: Never
+  backoffLimit: 3

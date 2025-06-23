@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: olake
+  namespace: olake
+  labels:
+    app: olake
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: olake
+  template:
+    metadata:
+      labels:
+        app: olake
+    spec:
+      containers:
+      - name: olake
+        image: olakego/ui:latest
+        imagePullPolicy: Always
+        ports:
+        - name: backend
+          containerPort: 8080
+          protocol: TCP
+        - name: frontend
+          containerPort: 8000
+          protocol: TCP
+        env:
+        - name: APP_CONF
+          value: "/opt/backend/conf/app.conf"
+        - name: PERSISTENT_DIR
+          value: "/tmp/olake-config"
+        - name: POSTGRES_DB
+          value: "postgres://olake:olake@postgresql.olake.svc.cluster.local:5432/olake"
+        volumeMounts:
+        - name: olake-config
+          mountPath: /opt/backend/conf
+        - name: olake-data
+          mountPath: /tmp/olake-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: backend
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: backend
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1001
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: olake-config
+        configMap:
+          name: olake-config
+      - name: olake-data
+        emptyDir: {}

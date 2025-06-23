@@ -25,14 +25,11 @@ safe_delete() {
 }
 
 # Delete in reverse order
-echo -e "${BLUE}⚡ Deleting 05-olake-worker...${NC}"
-kubectl delete -f 05-olake-worker/ --ignore-not-found=true
+echo -e "${BLUE}⚡ Deleting 04-olake-worker...${NC}"
+kubectl delete -f 04-olake-worker/ --ignore-not-found=true
 
-echo -e "${BLUE}🌐 Deleting 04-olake-ui...${NC}"
-kubectl delete -f 04-olake-ui/ --ignore-not-found=true
-
-echo -e "${BLUE}🚀 Deleting 03-olake-server...${NC}"
-kubectl delete -f 03-olake-server/ --ignore-not-found=true
+echo -e "${BLUE}🚀 Deleting 03-olake...${NC}"
+kubectl delete -f 03-olake/ --ignore-not-found=true
 
 echo -e "${BLUE}⏰ Deleting 02-temporal...${NC}"
 kubectl delete -f 02-temporal/ --ignore-not-found=true
