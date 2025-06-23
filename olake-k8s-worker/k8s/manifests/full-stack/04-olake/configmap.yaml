@@ -6,13 +6,16 @@ metadata:
 data:
   app.conf: |
     # OLake Configuration (Backend + Frontend combined)
-    appname = olake
+    appname = olake-server
     httpport = 8080
     runmode = dev
     autorender = false
     copyrequestbody = true
     EnableDocs = true
-
+    postgresdb = postgres://temporal:temporal@postgresql.olake.svc.cluster.local:5432/postgres?sslmode=disable
+    logsdir = ./logger/logs
+    sessionon = true
+    
     # Deployment Mode
     DEPLOYMENT_MODE = kubernetes
     
@@ -28,13 +31,12 @@ data:
     TEMPORAL_ADDRESS = temporal.olake.svc.cluster.local:7233
     TEMPORAL_TASK_QUEUE = OLAKE_K8S_TASK_QUEUE
     
-    # Session Configuration
-    SESSION_SECRET = your-secret-key
-    SESSION_TIMEOUT = 3600
-    
     # Logging
     LOG_LEVEL = info
     
     # Frontend Configuration
     FRONTEND_PORT = 8000
     API_BASE_URL = http://localhost:8080
+
+    # Environment Variables for the application
+    PERSISTENT_DIR = /tmp/olake-config

@@ -27,12 +27,10 @@ spec:
           containerPort: 8000
           protocol: TCP
         env:
-        - name: APP_CONF
-          value: "/opt/backend/conf/app.conf"
         - name: PERSISTENT_DIR
           value: "/tmp/olake-config"
         - name: POSTGRES_DB
-          value: "postgres://olake:olake@postgresql.olake.svc.cluster.local:5432/olake"
+          value: "postgres://temporal:temporal@postgresql.olake.svc.cluster.local:5432/postgres"
         volumeMounts:
         - name: olake-config
           mountPath: /opt/backend/conf
@@ -46,29 +44,15 @@ spec:
             memory: "1Gi"
             cpu: "1000m"
         livenessProbe:
-          httpGet:
-            path: /health
+          tcpSocket:
             port: backend
           initialDelaySeconds: 60
           periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
         readinessProbe:
-          httpGet:
-            path: /health
+          tcpSocket:
             port: backend
           initialDelaySeconds: 30
           periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          runAsNonRoot: true
-          runAsUser: 1001
-          capabilities:
-            drop:
-            - ALL
       volumes:
       - name: olake-config
         configMap:

@@ -28,8 +28,8 @@ spec:
         fsGroup: 1001
       containers:
       - name: olake-k8s-worker
-        image: olakego/olake-k8s-worker:latest
-        imagePullPolicy: IfNotPresent
+        image: olake-k8s-worker:local
+        imagePullPolicy: Never
         ports:
         - name: health
           containerPort: 8090

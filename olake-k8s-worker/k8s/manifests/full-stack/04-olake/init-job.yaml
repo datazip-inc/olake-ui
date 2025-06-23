@@ -26,19 +26,18 @@ spec:
         - -c
         - |
           echo 'signup-init: Initializing user setup...'
+          # The deploy-all.sh script ensures olake deployment is ready before running this job
           
-          # Wait for olake service to be ready
-          echo "Waiting for OLake service to be ready..."
-          until curl -f http://olake.olake.svc.cluster.local:8080/health >/dev/null 2>&1; do
-            echo "OLake service not ready yet, waiting..."
-            sleep 5
-          done
+          echo 'signup-init: Waiting 45 seconds for OLake to fully start up...'
+          sleep 45
           
           JSON_PAYLOAD=$(printf '{"username":"%s","password":"%s","email":"%s"}' "$USERNAME" "$PASSWORD" "$EMAIL")
           echo "signup-init: Attempting to create user '$USERNAME' via $OLAKE_APP_URL"
           
           HTTP_RESPONSE_CODE=$(curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "$JSON_PAYLOAD" "$OLAKE_APP_URL")
           
+          # The actual response body from olake-ui will be printed to stderr by the '-o /dev/stderr' curl option.
+          # A newline after stderr output from curl can make logs cleaner.
           echo ''
           
           if ! [ "$HTTP_RESPONSE_CODE" -eq "$HTTP_RESPONSE_CODE" ] 2>/dev/null; then

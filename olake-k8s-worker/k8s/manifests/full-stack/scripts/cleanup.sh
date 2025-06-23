@@ -24,18 +24,29 @@ safe_delete() {
     fi
 }
 
-# Delete in reverse order
-echo -e "${BLUE}⚡ Deleting 04-olake-worker...${NC}"
-kubectl delete -f 04-olake-worker/ --ignore-not-found=true
+# Delete in reverse order (opposite of deployment order)
+echo -e "${BLUE}⚡ Deleting 05-olake-worker...${NC}"
+kubectl delete -f 05-olake-worker/ --ignore-not-found=true
 
-echo -e "${BLUE}🚀 Deleting 03-olake...${NC}"
-kubectl delete -f 03-olake/ --ignore-not-found=true
+echo -e "${BLUE}🚀 Deleting 04-olake...${NC}"
+kubectl delete -f 04-olake/ --ignore-not-found=true
 
-echo -e "${BLUE}⏰ Deleting 02-temporal...${NC}"
-kubectl delete -f 02-temporal/ --ignore-not-found=true
+echo -e "${BLUE}⏰ Deleting 03-temporal...${NC}"
+# Delete temporal resources individually (no configmap to delete)
+kubectl delete -f 03-temporal/deployment.yaml --ignore-not-found=true
+kubectl delete -f 03-temporal/ui-deployment.yaml --ignore-not-found=true
+kubectl delete -f 03-temporal/service.yaml --ignore-not-found=true
+kubectl delete -f 03-temporal/ui-service.yaml --ignore-not-found=true
+
+echo -e "${BLUE}🔍 Deleting 02-elasticsearch...${NC}"
+kubectl delete -f 02-elasticsearch/deployment.yaml --ignore-not-found=true
+kubectl delete -f 02-elasticsearch/service.yaml --ignore-not-found=true
 
 echo -e "${BLUE}🐘 Deleting 01-postgres...${NC}"
-kubectl delete -f 01-postgres/ --ignore-not-found=true
+# Delete postgres resources individually (no configmap to delete)
+kubectl delete -f 01-postgres/deployment.yaml --ignore-not-found=true
+kubectl delete -f 01-postgres/service.yaml --ignore-not-found=true
+kubectl delete -f 01-postgres/secret.yaml --ignore-not-found=true
 
 echo -e "${BLUE}📁 Deleting 00-namespace...${NC}"
 kubectl delete -f 00-namespace/ --ignore-not-found=true

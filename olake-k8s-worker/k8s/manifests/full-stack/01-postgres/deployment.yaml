@@ -17,14 +17,12 @@ spec:
     spec:
       containers:
       - name: postgresql
-        image: postgres:15
+        image: postgres:13
         ports:
         - containerPort: 5432
         env:
-        - name: POSTGRES_DB
-          value: "postgres"
         - name: POSTGRES_USER
-          value: "postgres"
+          value: "temporal"
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
@@ -35,8 +33,6 @@ spec:
         volumeMounts:
         - name: postgresql-storage
           mountPath: /var/lib/postgresql/data
-        - name: initdb
-          mountPath: /docker-entrypoint-initdb.d
         resources:
           requests:
             memory: "256Mi"
@@ -47,6 +43,3 @@ spec:
       volumes:
       - name: postgresql-storage
         emptyDir: {}
-      - name: initdb
-        configMap:
-          name: postgresql-initdb

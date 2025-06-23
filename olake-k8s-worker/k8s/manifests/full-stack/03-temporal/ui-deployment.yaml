@@ -17,14 +17,14 @@ spec:
     spec:
       containers:
       - name: temporal-ui
-        image: temporalio/ui:2.21.3
+        image: temporalio/ui:2.16.2
         ports:
-        - containerPort: 8080
+        - containerPort: 8081
         env:
         - name: TEMPORAL_ADDRESS
           value: "temporal.olake.svc.cluster.local:7233"
-        - name: TEMPORAL_CORS_ORIGINS
-          value: "http://localhost:3000"
+        - name: TEMPORAL_UI_PORT
+          value: "8081"
         resources:
           requests:
             memory: "128Mi"
@@ -32,15 +32,3 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 10
