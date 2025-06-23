@@ -139,7 +139,10 @@ wait_for_deployment olake temporal 600
 wait_for_deployment olake temporal-ui 300
 
 echo -e "${BLUE}🚀 Deploying 04-olake (OLake UI - Backend + Frontend)...${NC}"
-kubectl apply -f 04-olake/
+# Apply OLake resources individually, excluding init-job
+kubectl apply -f 04-olake/configmap.yaml
+kubectl apply -f 04-olake/deployment.yaml
+kubectl apply -f 04-olake/service.yaml
 wait_for_deployment olake olake-ui 300
 
 echo -e "${BLUE}👤 Running signup initialization...${NC}"

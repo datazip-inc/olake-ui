@@ -47,10 +47,10 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 
 	// Create Job specification
 	jobSpec := &JobSpec{
-		Name:          fmt.Sprintf("discover-%s", params.WorkflowID),
+		Name:          params.WorkflowID,
 		Image:         jobManager.GetDockerImageName(params.SourceType, params.Version),
-		Command:       []string{string(shared.Discover)},
-		Args:          []string{"--config", "/mnt/config/config.json"},
+		Command:       []string{},
+		Args:          []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
 		ConfigMapName: configMapName,
 		Operation:     shared.Discover,
 	}
@@ -123,10 +123,14 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 
 	// Create Job specification
 	jobSpec := &JobSpec{
-		Name:          params.WorkflowID,
-		Image:         jobManager.GetDockerImageName(params.SourceType, params.Version),
-		Command:       []string{},
-		Args:          []string{string(shared.Check), fmt.Sprintf("--%s", params.Flag), "/mnt/config/config.json"},
+		Name:    params.WorkflowID,
+		Image:   jobManager.GetDockerImageName(params.SourceType, params.Version),
+		Command: []string{},
+		Args: []string{
+			string(shared.Check),
+			fmt.Sprintf("--%s", params.Flag),
+			"/mnt/config/config.json",
+		},
 		ConfigMapName: configMapName,
 		Operation:     shared.Check,
 	}
@@ -208,10 +212,11 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 
 	// Create Job specification for sync
 	jobSpec := &JobSpec{
-		Name:    fmt.Sprintf("sync-%s", params.WorkflowID),
+		Name:    params.WorkflowID,
 		Image:   jobManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
-		Command: []string{string(shared.Sync)},
+		Command: []string{},
 		Args: []string{
+			string(shared.Sync),
 			"--config", "/mnt/config/config.json",
 			"--catalog", "/mnt/config/streams.json",
 			"--destination", "/mnt/config/writer.json",
