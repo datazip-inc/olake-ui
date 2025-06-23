@@ -28,7 +28,7 @@ safe_delete() {
 echo -e "${BLUE}⚡ Deleting 05-olake-worker...${NC}"
 kubectl delete -f 05-olake-worker/ --ignore-not-found=true
 
-echo -e "${BLUE}🚀 Deleting 04-olake...${NC}"
+echo -e "${BLUE}🚀 Deleting 04-olake (OLake UI)...${NC}"
 kubectl delete -f 04-olake/ --ignore-not-found=true
 
 echo -e "${BLUE}⏰ Deleting 03-temporal...${NC}"

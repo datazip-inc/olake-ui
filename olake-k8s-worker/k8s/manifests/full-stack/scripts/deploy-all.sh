@@ -79,18 +79,24 @@ wait_for_elasticsearch() {
     exit 1
 }
 
-# Build K8s worker image locally
-echo -e "${BLUE}🔨 Building OLake K8s Worker image...${NC}"
-cd ../../..  # Go to olake-k8s-worker directory (not the main project root)
-
 # Use minikube's Docker daemon
 echo -e "${YELLOW}🐳 Setting up minikube Docker environment...${NC}"
 eval $(minikube docker-env)
 
-# Build the image
+# Build OLake UI image (main project)
+echo -e "${BLUE}🔨 Building OLake UI image (Backend + Frontend)...${NC}"
+cd ../../../../  # Go to main project root (olake-ui) - 6 levels up from scripts/
+echo -e "${YELLOW}📍 Current directory: $(pwd)${NC}"
+echo -e "${YELLOW}🏗️  Building olake-ui:local...${NC}"
+docker build -t olake-ui:local .
+echo -e "${GREEN}✅ OLake UI image built successfully!${NC}"
+
+# Build K8s worker image
+echo -e "${BLUE}🔨 Building OLake K8s Worker image...${NC}"
+cd olake-k8s-worker  # Go to olake-k8s-worker directory
+echo -e "${YELLOW}📍 Current directory: $(pwd)${NC}"
 echo -e "${YELLOW}🏗️  Building olake-k8s-worker:local...${NC}"
 docker build -t olake-k8s-worker:local .
-
 echo -e "${GREEN}✅ K8s worker image built successfully!${NC}"
 
 # Go back to manifests directory
@@ -132,9 +138,9 @@ sleep 30
 wait_for_deployment olake temporal 600
 wait_for_deployment olake temporal-ui 300
 
-echo -e "${BLUE}🚀 Deploying 04-olake (Backend + Frontend)...${NC}"
+echo -e "${BLUE}🚀 Deploying 04-olake (OLake UI - Backend + Frontend)...${NC}"
 kubectl apply -f 04-olake/
-wait_for_deployment olake olake 300
+wait_for_deployment olake olake-ui 300
 
 echo -e "${BLUE}👤 Running signup initialization...${NC}"
 # Check if init job already exists and delete it
@@ -165,7 +171,7 @@ kubectl get pods -n olake
 echo -e "\n${YELLOW}📋 Useful commands:${NC}"
 echo -e "${BLUE}kubectl get pods -n olake${NC}                    # Check all pods"
 echo -e "${BLUE}kubectl logs -f deployment/olake-k8s-worker -n olake${NC}  # Worker logs"
-echo -e "${BLUE}kubectl logs -f deployment/olake -n olake${NC}              # OLake logs"
+echo -e "${BLUE}kubectl logs -f deployment/olake-ui -n olake${NC}           # OLake logs"
 echo -e "${BLUE}kubectl logs -f deployment/temporal -n olake${NC}           # Temporal logs"
 echo -e "${BLUE}kubectl logs -f deployment/elasticsearch -n olake${NC}      # Elasticsearch logs"
 echo -e "${BLUE}kubectl get svc -n olake${NC}                     # Check services"

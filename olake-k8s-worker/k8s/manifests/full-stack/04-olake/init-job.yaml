@@ -4,7 +4,7 @@ metadata:
   name: olake-signup-init
   namespace: olake
   labels:
-    app: olake
+    app: olake-ui
     component: signup-init
 spec:
   # Ensure job runs only once
@@ -24,7 +24,7 @@ spec:
         - name: EMAIL
           value: "admin@example.com"
         - name: OLAKE_APP_URL
-          value: "http://olake.olake.svc.cluster.local:8080/signup"
+          value: "http://olake-ui.olake.svc.cluster.local:8080/signup"
         command:
         - /bin/sh
         - -c
@@ -37,7 +37,7 @@ spec:
           
           # Check if user already exists before attempting signup
           echo "signup-init: Checking if user '$USERNAME' already exists..."
-          EXISTING_USER_CHECK=$(curl -s -w '%{http_code}' -o /dev/null -X GET "http://olake.olake.svc.cluster.local:8080/api/user/$USERNAME" || echo "000")
+          EXISTING_USER_CHECK=$(curl -s -w '%{http_code}' -o /dev/null -X GET "http://olake-ui.olake.svc.cluster.local:8080/api/user/$USERNAME" || echo "000")
           
           if [ "$EXISTING_USER_CHECK" = "200" ]; then
             echo "signup-init: User '$USERNAME' already exists. Skipping signup."

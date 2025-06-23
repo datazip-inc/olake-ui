@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: olake
+  name: olake-ui
   namespace: olake
   labels:
-    app: olake
+    app: olake-ui
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: olake
+      app: olake-ui
   template:
     metadata:
       labels:
-        app: olake
+        app: olake-ui
     spec:
       containers:
-      - name: olake
-        image: olakego/ui:latest
-        imagePullPolicy: Always
+      - name: olake-ui
+        image: olake-ui:local
+        imagePullPolicy: Never
         ports:
         - name: backend
           containerPort: 8080
