@@ -12,6 +12,9 @@ data:
     autorender = false
     copyrequestbody = true
     EnableDocs = true
+
+    # Deployment Mode
+    DEPLOYMENT_MODE = kubernetes
     
     # Database Configuration
     DB_HOST = postgresql.olake.svc.cluster.local
@@ -23,7 +26,7 @@ data:
     
     # Temporal Configuration
     TEMPORAL_ADDRESS = temporal.olake.svc.cluster.local:7233
-    TEMPORAL_TASK_QUEUE = OLAKE_DOCKER_TASK_QUEUE
+    TEMPORAL_TASK_QUEUE = OLAKE_K8S_TASK_QUEUE
     
     # Session Configuration
     SESSION_SECRET = your-secret-key
