@@ -5,6 +5,7 @@ go 1.23.0
 toolchain go1.24.2
 
 require (
+	github.com/lib/pq v1.10.9
 	github.com/rs/zerolog v1.32.0
 	go.temporal.io/sdk v1.25.1
 	k8s.io/api v0.28.4

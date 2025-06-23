@@ -7,6 +7,7 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	"olake-k8s-worker/database"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
 )
@@ -259,25 +260,44 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 	return result, nil
 }
 
-// Helper functions that will need to be implemented
+// GetJobData fetches job configuration from database
 func GetJobData(jobID int) (*JobData, error) {
-	// TODO: Implement database access to get job configuration
-	// This will need to connect to the same database as the server
-	logger.Warnf("GetJobData not implemented for jobID: %d", jobID)
-	return nil, fmt.Errorf("not implemented")
+	db, err := database.NewDB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	jobData, err := db.GetJobData(jobID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job data: %w", err)
+	}
+
+	// Convert database JobData to activity JobData
+	return &JobData{
+		SourceType:    jobData.SourceType,
+		SourceVersion: jobData.SourceVersion,
+		SourceConfig:  jobData.SourceConfig,
+		DestConfig:    jobData.DestConfig,
+		StreamsConfig: jobData.StreamsConfig,
+		State:         jobData.State,
+	}, nil
 }
 
+// UpdateJobState updates job state in database
 func UpdateJobState(jobID int, state map[string]interface{}) error {
-	// TODO: Implement database update for job state
-	logger.Warnf("UpdateJobState not implemented for jobID: %d", jobID)
-	return fmt.Errorf("not implemented")
+	db, err := database.NewDB()
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	return db.UpdateJobState(jobID, state)
 }
 
+// ParseJobOutput extracts JSON from Kubernetes job logs
 func ParseJobOutput(output string) (map[string]interface{}, error) {
-	// TODO: Implement log parsing similar to Docker implementation
-	// Extract JSON from container logs
-	logger.Warn("ParseJobOutput not implemented")
-	return nil, fmt.Errorf("not implemented")
+	return database.ParseJobOutput(output)
 }
 
 type JobData struct {
