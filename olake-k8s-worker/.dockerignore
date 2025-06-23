@@ -1,0 +1,38 @@
+# olake-k8s-worker/.dockerignore
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Kubernetes manifests
+k8s/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+olake-k8s-worker
+*.exe
+
+# Logs
+*.log
+
+# Test files
+*_test.go
+coverage.out
+
+# Local development
+.env
+.env.local
+
+# Temporary files
+tmp/
+temp/
