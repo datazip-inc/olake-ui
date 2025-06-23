@@ -123,10 +123,10 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 
 	// Create Job specification
 	jobSpec := &JobSpec{
-		Name:          fmt.Sprintf("test-%s", params.WorkflowID),
+		Name:          params.WorkflowID,
 		Image:         jobManager.GetDockerImageName(params.SourceType, params.Version),
-		Command:       []string{string(shared.Check)},
-		Args:          []string{fmt.Sprintf("--%s", params.Flag), "/mnt/config/config.json"},
+		Command:       []string{},
+		Args:          []string{string(shared.Check), fmt.Sprintf("--%s", params.Flag), "/mnt/config/config.json"},
 		ConfigMapName: configMapName,
 		Operation:     shared.Check,
 	}

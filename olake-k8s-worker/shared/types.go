@@ -19,23 +19,25 @@ func (c Command) String() string {
 }
 
 // ActivityParams contains parameters for Kubernetes Job activities
+// Must match server/internal/temporal/types.go exactly (no JSON tags)
 type ActivityParams struct {
-	SourceType   string  `json:"source_type"`
-	Version      string  `json:"version"`
-	Config       string  `json:"config"`
-	SourceID     int     `json:"source_id"`
-	Command      Command `json:"command"`
-	DestConfig   string  `json:"dest_config,omitempty"`
-	DestID       int     `json:"dest_id,omitempty"`
-	WorkflowID   string  `json:"workflow_id"`
-	StreamConfig string  `json:"stream_config,omitempty"`
-	Flag         string  `json:"flag,omitempty"`
+	SourceType   string
+	Version      string
+	Config       string
+	SourceID     int
+	Command      Command
+	DestConfig   string
+	DestID       int
+	WorkflowID   string
+	StreamConfig string
+	Flag         string
 }
 
 // SyncParams contains parameters for sync activities
+// Must match server/internal/temporal/types.go exactly (no JSON tags)
 type SyncParams struct {
-	JobID      int    `json:"job_id"`
-	WorkflowID string `json:"workflow_id"`
+	JobID      int
+	WorkflowID string
 }
 
 // JobConfig represents configuration files for a Kubernetes Job

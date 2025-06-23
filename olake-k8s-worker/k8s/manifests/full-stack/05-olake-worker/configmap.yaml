@@ -31,10 +31,10 @@ data:
   ACTIVITY_TIMEOUT_SYNC: "4h"
   
   # Kubernetes Configuration
-  K8S_NAMESPACE: "olake"
-  K8S_IMAGE_REGISTRY: "olakego"
-  K8S_IMAGE_PULL_POLICY: "IfNotPresent"
-  K8S_SERVICE_ACCOUNT: "olake-k8s-worker"
+  WORKER_NAMESPACE: "olake"
+  IMAGE_REGISTRY: "olakego"
+  IMAGE_PULL_POLICY: "IfNotPresent"
+  SERVICE_ACCOUNT: "olake-k8s-worker"
   
   # Job Configuration
   JOB_TTL_SECONDS: "0"  # 0 = no timeout for long-running sync jobs
@@ -49,8 +49,8 @@ data:
   JOB_MEMORY_LIMIT: "2Gi"
   
   # Worker Configuration
-  WORKER_MAX_CONCURRENT_ACTIVITIES: "10"
-  WORKER_MAX_CONCURRENT_WORKFLOWS: "5"
+  MAX_CONCURRENT_ACTIVITIES: "10"
+  MAX_CONCURRENT_WORKFLOWS: "5"
   
   # Health Check Configuration
   HEALTH_CHECK_PORT: "8090"

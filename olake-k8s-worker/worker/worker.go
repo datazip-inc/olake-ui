@@ -12,8 +12,6 @@ import (
 	"olake-k8s-worker/activities"
 	"olake-k8s-worker/config"
 	"olake-k8s-worker/logger"
-	"olake-k8s-worker/shared"
-	"olake-k8s-worker/utils"
 	"olake-k8s-worker/workflows"
 )
 
@@ -25,43 +23,7 @@ type K8sWorker struct {
 	startTime      time.Time
 }
 
-func NewK8sWorker() (*K8sWorker, error) {
-	// Get Temporal address from environment variable
-	temporalAddr := utils.GetEnv("TEMPORAL_ADDRESS", shared.DefaultTemporalAddress)
-
-	logger.Infof("Connecting to Temporal at: %s", temporalAddr)
-
-	// Connect to Temporal
-	c, err := client.Dial(client.Options{
-		HostPort: temporalAddr,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
-	}
-
-	// Create worker - HARDCODED to K8s task queue only
-	w := worker.New(c, shared.TaskQueue, worker.Options{})
-
-	logger.Infof("Registering workflows and activities for task queue: %s", shared.TaskQueue)
-
-	// Register workflows
-	w.RegisterWorkflow(workflows.DiscoverCatalogWorkflow)
-	w.RegisterWorkflow(workflows.TestConnectionWorkflow)
-	w.RegisterWorkflow(workflows.RunSyncWorkflow)
-
-	// Register activities
-	w.RegisterActivity(activities.DiscoverCatalogActivity)
-	w.RegisterActivity(activities.TestConnectionActivity)
-	w.RegisterActivity(activities.SyncActivity)
-
-	logger.Info("Successfully registered all workflows and activities")
-
-	return &K8sWorker{
-		temporalClient: c,
-		worker:         w,
-	}, nil
-}
-
+// NewK8sWorkerWithConfig creates a new K8s worker with full configuration
 func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
 
@@ -77,12 +39,14 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
 	}
 
-	// Create worker with config
+	// Create worker with config - HARDCODED to K8s task queue only
 	w := worker.New(c, cfg.Temporal.TaskQueue, worker.Options{
 		MaxConcurrentActivityExecutionSize:     cfg.Worker.MaxConcurrentActivities,
 		MaxConcurrentWorkflowTaskExecutionSize: cfg.Worker.MaxConcurrentWorkflows,
 		Identity:                               cfg.Worker.WorkerIdentity,
 	})
+
+	logger.Infof("Registering workflows and activities for task queue: %s", cfg.Temporal.TaskQueue)
 
 	// Log timeout configuration
 	logger.Infof("Activity timeouts configured - Discover: %v, Test: %v, Sync: %v",
@@ -90,14 +54,17 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 		cfg.GetActivityTimeout("test"),
 		cfg.GetActivityTimeout("sync"))
 
-	// Register workflows and activities (same as before)
+	// Register workflows - these will set WorkflowID from Temporal execution context
 	w.RegisterWorkflow(workflows.DiscoverCatalogWorkflow)
 	w.RegisterWorkflow(workflows.TestConnectionWorkflow)
 	w.RegisterWorkflow(workflows.RunSyncWorkflow)
 
+	// Register activities - these receive WorkflowID from workflows
 	w.RegisterActivity(activities.DiscoverCatalogActivity)
 	w.RegisterActivity(activities.TestConnectionActivity)
 	w.RegisterActivity(activities.SyncActivity)
+
+	logger.Info("Successfully registered all workflows and activities")
 
 	k8sWorker := &K8sWorker{
 		temporalClient: c,
@@ -107,9 +74,21 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	}
 
 	// Create health server
-	k8sWorker.healthServer = NewHealthServer(k8sWorker, 8090) // Fixed port from 8080 to 8090
+	k8sWorker.healthServer = NewHealthServer(k8sWorker, 8090)
 
 	return k8sWorker, nil
+}
+
+// NewK8sWorker creates a new K8s worker with default configuration (for backward compatibility)
+func NewK8sWorker() (*K8sWorker, error) {
+	// Load configuration
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %v", err)
+	}
+
+	// Use the full configuration constructor
+	return NewK8sWorkerWithConfig(cfg)
 }
 
 func (w *K8sWorker) Start() error {
@@ -117,13 +96,19 @@ func (w *K8sWorker) Start() error {
 
 	// Start health server in background
 	go func() {
+		logger.Info("Starting health check server on :8090")
 		if err := w.healthServer.Start(); err != nil && err != http.ErrServerClosed {
 			logger.Errorf("Health server failed: %v", err)
 		}
 	}()
 
 	// Start temporal worker
-	return w.worker.Start()
+	if err := w.worker.Start(); err != nil {
+		return fmt.Errorf("failed to start Temporal worker: %v", err)
+	}
+
+	logger.Info("K8s Worker started successfully")
+	return nil
 }
 
 func (w *K8sWorker) Stop() {
@@ -141,4 +126,20 @@ func (w *K8sWorker) Stop() {
 	w.worker.Stop()
 	w.temporalClient.Close()
 	logger.Info("Temporal worker stopped")
+}
+
+// GetConfig returns the worker configuration
+func (w *K8sWorker) GetConfig() *config.Config {
+	return w.config
+}
+
+// GetUptime returns how long the worker has been running
+func (w *K8sWorker) GetUptime() time.Duration {
+	return time.Since(w.startTime)
+}
+
+// IsHealthy returns true if the worker is healthy
+func (w *K8sWorker) IsHealthy() bool {
+	// Could add more sophisticated health checks here
+	return w.temporalClient != nil && w.worker != nil
 }

@@ -27,11 +27,10 @@ rules:
 - apiGroups: [""]
   resources: ["pods/log"]
   verbs: ["get", "list"]
-# ConfigMaps and Secrets in same namespace
+# ConfigMaps and Secrets - removed resourceNames restriction
 - apiGroups: [""]
   resources: ["configmaps", "secrets"]
   verbs: ["create", "get", "list", "update", "delete"]
-  resourceNames: ["olake-*"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
