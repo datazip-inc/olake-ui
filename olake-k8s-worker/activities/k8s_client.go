@@ -88,7 +88,7 @@ func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.
 				"app":       "olake-sync",
 				"type":      "connector-job",
 				"cleanup":   "auto",
-				"operation": string(spec.Command),
+				"operation": string(spec.Operation),
 			},
 		},
 		Spec: batchv1.JobSpec{
@@ -262,7 +262,7 @@ type JobSpec struct {
 	Command       []string
 	Args          []string
 	ConfigMapName string
-	Command       shared.Command
+	Operation     shared.Command
 }
 
 // Utility functions

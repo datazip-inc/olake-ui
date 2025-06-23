@@ -44,7 +44,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 		Command:       []string{string(shared.Discover)},
 		Args:          []string{"--config", "/mnt/config/config.json"},
 		ConfigMapName: configMapName,
-		Command:       shared.Discover,
+		Operation:     shared.Discover,
 	}
 
 	// Create and run the Job
@@ -107,7 +107,7 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 		Command:       []string{string(shared.Check)},
 		Args:          []string{fmt.Sprintf("--%s", params.Flag), "/mnt/config/config.json"},
 		ConfigMapName: configMapName,
-		Command:       shared.Check,
+		Operation:     shared.Check,
 	}
 
 	// Create and run the Job
@@ -184,7 +184,7 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 			"--state", "/mnt/config/state.json",
 		},
 		ConfigMapName: configMapName,
-		Command:       shared.Sync,
+		Operation:     shared.Sync,
 	}
 
 	// Create and run the Job
