@@ -7,19 +7,24 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
 )
 
 // DiscoverCatalogActivity runs the discover command using Kubernetes Jobs
 func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
-	logger := activity.GetLogger(ctx)
-	logger.Info("Starting K8s discover catalog activity",
+	activityLogger := activity.GetLogger(ctx)
+	activityLogger.Info("Starting K8s discover catalog activity",
 		"sourceType", params.SourceType,
 		"workflowID", params.WorkflowID)
+
+	logger.Infof("Starting discover catalog activity for sourceType: %s, version: %s, workflowID: %s",
+		params.SourceType, params.Version, params.WorkflowID)
 
 	// Create K8s Job manager
 	jobManager, err := NewK8sJobManager()
 	if err != nil {
+		logger.Errorf("Failed to create K8s job manager: %v", err)
 		return nil, fmt.Errorf("failed to create K8s job manager: %v", err)
 	}
 
@@ -32,8 +37,10 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 		{Name: "config.json", Data: params.Config},
 	}
 
+	logger.Debugf("Creating ConfigMap %s with configuration files", configMapName)
 	_, err = jobManager.CreateConfigMap(ctx, configMapName, configs)
 	if err != nil {
+		logger.Errorf("Failed to create ConfigMap: %v", err)
 		return nil, fmt.Errorf("failed to create configmap: %v", err)
 	}
 
@@ -47,18 +54,23 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 		Operation:     shared.Discover,
 	}
 
+	logger.Infof("Creating discover job with image: %s", jobSpec.Image)
+
 	// Create and run the Job
 	job, err := jobManager.CreateJob(ctx, jobSpec)
 	if err != nil {
+		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
 	}
 
-	logger.Info("Created Kubernetes Job", "jobName", job.Name)
+	activityLogger.Info("Created Kubernetes Job", "jobName", job.Name)
+	logger.Infof("Successfully created Kubernetes Job: %s", job.Name)
 
 	// Wait for completion
 	result, err := jobManager.WaitForJobCompletion(ctx, job.Name, 5*time.Minute)
 	if err != nil {
-		logger.Error("Job failed", "error", err)
+		activityLogger.Error("Job failed", "error", err)
+		logger.Errorf("Discover job failed: %v", err)
 		// Cleanup even on failure
 		jobManager.CleanupJob(ctx, job.Name, configMapName)
 		return nil, fmt.Errorf("discover job failed: %v", err)
@@ -66,23 +78,29 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 
 	// Cleanup resources
 	if cleanupErr := jobManager.CleanupJob(ctx, job.Name, configMapName); cleanupErr != nil {
-		logger.Warn("Failed to cleanup resources", "error", cleanupErr)
+		activityLogger.Warn("Failed to cleanup resources", "error", cleanupErr)
+		logger.Warnf("Failed to cleanup resources: %v", cleanupErr)
 	}
 
+	activityLogger.Info("Catalog discovery completed successfully")
 	logger.Info("Catalog discovery completed successfully")
 	return result, nil
 }
 
 // TestConnectionActivity runs the check command using Kubernetes Jobs
 func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
-	logger := activity.GetLogger(ctx)
-	logger.Info("Starting K8s test connection activity",
+	activityLogger := activity.GetLogger(ctx)
+	activityLogger.Info("Starting K8s test connection activity",
 		"sourceType", params.SourceType,
 		"workflowID", params.WorkflowID)
+
+	logger.Infof("Starting test connection activity for sourceType: %s, version: %s, workflowID: %s",
+		params.SourceType, params.Version, params.WorkflowID)
 
 	// Create K8s Job manager
 	jobManager, err := NewK8sJobManager()
 	if err != nil {
+		logger.Errorf("Failed to create K8s job manager: %v", err)
 		return nil, fmt.Errorf("failed to create K8s job manager: %v", err)
 	}
 
@@ -95,8 +113,10 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 		{Name: "config.json", Data: params.Config},
 	}
 
+	logger.Debugf("Creating ConfigMap %s for connection test", configMapName)
 	_, err = jobManager.CreateConfigMap(ctx, configMapName, configs)
 	if err != nil {
+		logger.Errorf("Failed to create ConfigMap: %v", err)
 		return nil, fmt.Errorf("failed to create configmap: %v", err)
 	}
 
@@ -110,18 +130,23 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 		Operation:     shared.Check,
 	}
 
+	logger.Infof("Creating test connection job with image: %s", jobSpec.Image)
+
 	// Create and run the Job
 	job, err := jobManager.CreateJob(ctx, jobSpec)
 	if err != nil {
+		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
 	}
 
-	logger.Info("Created Kubernetes Job", "jobName", job.Name)
+	activityLogger.Info("Created Kubernetes Job", "jobName", job.Name)
+	logger.Infof("Successfully created Kubernetes Job: %s", job.Name)
 
 	// Wait for completion
 	result, err := jobManager.WaitForJobCompletion(ctx, job.Name, 5*time.Minute)
 	if err != nil {
-		logger.Error("Job failed", "error", err)
+		activityLogger.Error("Job failed", "error", err)
+		logger.Errorf("Test connection job failed: %v", err)
 		// Cleanup even on failure
 		jobManager.CleanupJob(ctx, job.Name, configMapName)
 		return nil, fmt.Errorf("test connection job failed: %v", err)
@@ -129,23 +154,28 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 
 	// Cleanup resources
 	if cleanupErr := jobManager.CleanupJob(ctx, job.Name, configMapName); cleanupErr != nil {
-		logger.Warn("Failed to cleanup resources", "error", cleanupErr)
+		activityLogger.Warn("Failed to cleanup resources", "error", cleanupErr)
+		logger.Warnf("Failed to cleanup resources: %v", cleanupErr)
 	}
 
+	activityLogger.Info("Connection test completed successfully")
 	logger.Info("Connection test completed successfully")
 	return result, nil
 }
 
 // SyncActivity runs the sync command using Kubernetes Jobs
 func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]interface{}, error) {
-	logger := activity.GetLogger(ctx)
-	logger.Info("Starting K8s sync activity",
+	activityLogger := activity.GetLogger(ctx)
+	activityLogger.Info("Starting K8s sync activity",
 		"jobId", params.JobID,
 		"workflowID", params.WorkflowID)
+
+	logger.Infof("Starting sync activity for jobID: %d, workflowID: %s", params.JobID, params.WorkflowID)
 
 	// Create K8s Job manager
 	jobManager, err := NewK8sJobManager()
 	if err != nil {
+		logger.Errorf("Failed to create K8s job manager: %v", err)
 		return nil, fmt.Errorf("failed to create K8s job manager: %v", err)
 	}
 
@@ -155,6 +185,7 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 	// Get job details from database (we'll need to adapt this)
 	jobData, err := GetJobData(params.JobID)
 	if err != nil {
+		logger.Errorf("Failed to get job data for jobID %d: %v", params.JobID, err)
 		return nil, fmt.Errorf("failed to get job data: %v", err)
 	}
 
@@ -167,8 +198,10 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 		{Name: "state.json", Data: jobData.State},
 	}
 
+	logger.Debugf("Creating ConfigMap %s with all sync configuration files", configMapName)
 	_, err = jobManager.CreateConfigMap(ctx, configMapName, configs)
 	if err != nil {
+		logger.Errorf("Failed to create ConfigMap: %v", err)
 		return nil, fmt.Errorf("failed to create configmap: %v", err)
 	}
 
@@ -187,18 +220,23 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 		Operation:     shared.Sync,
 	}
 
+	logger.Infof("Creating sync job with image: %s", jobSpec.Image)
+
 	// Create and run the Job
 	job, err := jobManager.CreateJob(ctx, jobSpec)
 	if err != nil {
+		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
 	}
 
-	logger.Info("Created Kubernetes Job", "jobName", job.Name)
+	activityLogger.Info("Created Kubernetes Job", "jobName", job.Name)
+	logger.Infof("Successfully created Kubernetes Job: %s", job.Name)
 
 	// Wait for completion (longer timeout for sync operations)
 	result, err := jobManager.WaitForJobCompletion(ctx, job.Name, 15*time.Minute)
 	if err != nil {
-		logger.Error("Job failed", "error", err)
+		activityLogger.Error("Job failed", "error", err)
+		logger.Errorf("Sync job failed: %v", err)
 		// Cleanup even on failure
 		jobManager.CleanupJob(ctx, job.Name, configMapName)
 		return nil, fmt.Errorf("sync job failed: %v", err)
@@ -206,14 +244,17 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 
 	// Update job state in database
 	if updateErr := UpdateJobState(params.JobID, result); updateErr != nil {
-		logger.Warn("Failed to update job state", "error", updateErr)
+		activityLogger.Warn("Failed to update job state", "error", updateErr)
+		logger.Warnf("Failed to update job state for jobID %d: %v", params.JobID, updateErr)
 	}
 
 	// Cleanup resources
 	if cleanupErr := jobManager.CleanupJob(ctx, job.Name, configMapName); cleanupErr != nil {
-		logger.Warn("Failed to cleanup resources", "error", cleanupErr)
+		activityLogger.Warn("Failed to cleanup resources", "error", cleanupErr)
+		logger.Warnf("Failed to cleanup resources: %v", cleanupErr)
 	}
 
+	activityLogger.Info("Data sync completed successfully")
 	logger.Info("Data sync completed successfully")
 	return result, nil
 }
@@ -222,17 +263,20 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 func GetJobData(jobID int) (*JobData, error) {
 	// TODO: Implement database access to get job configuration
 	// This will need to connect to the same database as the server
+	logger.Warnf("GetJobData not implemented for jobID: %d", jobID)
 	return nil, fmt.Errorf("not implemented")
 }
 
 func UpdateJobState(jobID int, state map[string]interface{}) error {
 	// TODO: Implement database update for job state
+	logger.Warnf("UpdateJobState not implemented for jobID: %d", jobID)
 	return fmt.Errorf("not implemented")
 }
 
 func ParseJobOutput(output string) (map[string]interface{}, error) {
 	// TODO: Implement log parsing similar to Docker implementation
 	// Extract JSON from container logs
+	logger.Warn("ParseJobOutput not implemented")
 	return nil, fmt.Errorf("not implemented")
 }
 

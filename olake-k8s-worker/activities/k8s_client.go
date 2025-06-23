@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
 )
 
@@ -40,6 +41,8 @@ func NewK8sJobManager() (*K8sJobManager, error) {
 	if ns := GetEnv("WORKER_NAMESPACE", ""); ns != "" {
 		namespace = ns
 	}
+
+	logger.Infof("Initialized K8s job manager for namespace: %s", namespace)
 
 	return &K8sJobManager{
 		clientset: clientset,
@@ -75,7 +78,15 @@ func (k *K8sJobManager) CreateConfigMap(ctx context.Context, name string, config
 		Data: data,
 	}
 
-	return k.clientset.CoreV1().ConfigMaps(k.namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	logger.Debugf("Creating ConfigMap %s in namespace %s", name, k.namespace)
+	result, err := k.clientset.CoreV1().ConfigMaps(k.namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	if err != nil {
+		logger.Errorf("Failed to create ConfigMap %s: %v", name, err)
+		return nil, err
+	}
+
+	logger.Infof("Successfully created ConfigMap %s", name)
+	return result, nil
 }
 
 // CreateJob creates a Kubernetes Job for running sync operations
@@ -137,11 +148,20 @@ func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.
 		},
 	}
 
-	return k.clientset.BatchV1().Jobs(k.namespace).Create(ctx, job, metav1.CreateOptions{})
+	logger.Infof("Creating Job %s with image %s", spec.Name, spec.Image)
+	result, err := k.clientset.BatchV1().Jobs(k.namespace).Create(ctx, job, metav1.CreateOptions{})
+	if err != nil {
+		logger.Errorf("Failed to create Job %s: %v", spec.Name, err)
+		return nil, err
+	}
+
+	logger.Infof("Successfully created Job %s", spec.Name)
+	return result, nil
 }
 
 // WaitForJobCompletion waits for a Job to complete and returns the result
 func (k *K8sJobManager) WaitForJobCompletion(ctx context.Context, jobName string, timeout time.Duration) (map[string]interface{}, error) {
+	logger.Infof("Waiting for Job %s to complete (timeout: %v)", jobName, timeout)
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
@@ -152,12 +172,14 @@ func (k *K8sJobManager) WaitForJobCompletion(ctx context.Context, jobName string
 
 		// Check if job completed successfully
 		if job.Status.Succeeded > 0 {
+			logger.Infof("Job %s completed successfully", jobName)
 			// Get pod logs to extract results
 			return k.getJobResults(ctx, jobName)
 		}
 
 		// Check if job failed
 		if job.Status.Failed > 0 {
+			logger.Errorf("Job %s failed", jobName)
 			logs, _ := k.getJobLogs(ctx, jobName)
 			return nil, fmt.Errorf("job failed: %s", logs)
 		}
@@ -166,6 +188,7 @@ func (k *K8sJobManager) WaitForJobCompletion(ctx context.Context, jobName string
 		time.Sleep(5 * time.Second)
 	}
 
+	logger.Errorf("Job %s timed out after %v", jobName, timeout)
 	return nil, fmt.Errorf("job timed out after %v", timeout)
 }
 
@@ -184,6 +207,7 @@ func (k *K8sJobManager) getJobResults(ctx context.Context, jobName string) (map[
 	}
 
 	podName := pods.Items[0].Name
+	logger.Debugf("Getting results from pod %s for job %s", podName, jobName)
 
 	// Get pod logs
 	logs, err := k.getPodLogs(ctx, podName)
@@ -197,21 +221,26 @@ func (k *K8sJobManager) getJobResults(ctx context.Context, jobName string) (map[
 
 // CleanupJob removes a job and its associated ConfigMap
 func (k *K8sJobManager) CleanupJob(ctx context.Context, jobName, configMapName string) error {
+	logger.Infof("Cleaning up Job %s and ConfigMap %s", jobName, configMapName)
+
 	// Delete job
 	propagationPolicy := metav1.DeletePropagationForeground
 	err := k.clientset.BatchV1().Jobs(k.namespace).Delete(ctx, jobName, metav1.DeleteOptions{
 		PropagationPolicy: &propagationPolicy,
 	})
 	if err != nil {
+		logger.Errorf("Failed to delete job %s: %v", jobName, err)
 		return fmt.Errorf("failed to delete job: %v", err)
 	}
 
 	// Delete ConfigMap
 	err = k.clientset.CoreV1().ConfigMaps(k.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
 	if err != nil {
+		logger.Errorf("Failed to delete ConfigMap %s: %v", configMapName, err)
 		return fmt.Errorf("failed to delete configmap: %v", err)
 	}
 
+	logger.Infof("Successfully cleaned up Job %s and ConfigMap %s", jobName, configMapName)
 	return nil
 }
 
