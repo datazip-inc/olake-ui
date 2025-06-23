@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: olake-k8s-worker
+  namespace: olake
+  labels:
+    app.kubernetes.io/name: olake-k8s-worker
+    app.kubernetes.io/instance: olake
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/version: "latest"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: olake-k8s-worker
+      app.kubernetes.io/instance: olake
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: olake-k8s-worker
+        app.kubernetes.io/instance: olake
+        app.kubernetes.io/component: worker
+      annotations:
+        configmap/checksum: "" # Will be populated by Helm later
+    spec:
+      serviceAccountName: olake-k8s-worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: worker
+        image: olakego/olake-k8s-worker:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: olake-k8s-worker-config
+        - secretRef:
+            name: olake-k8s-worker-secrets
+            optional: true
+        env:
+        # Database password from secret
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: olake-db-secret
+              key: password
+              optional: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
