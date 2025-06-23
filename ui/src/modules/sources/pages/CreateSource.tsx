@@ -233,6 +233,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setFormData({})
+			setSchema(null)
 			setConnector(value)
 			if (onConnectorChange) {
 				onConnectorChange(value)
@@ -309,7 +311,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 					<div className="w-1/3">
 						<label className="mb-2 block text-sm font-medium text-gray-700">
-							Version:
+							OLake Version:
 						</label>
 						<Select
 							value={selectedVersion}

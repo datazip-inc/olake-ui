@@ -96,7 +96,9 @@ export const destinationService = {
 					type:
 						destination.type.toLowerCase() === "apache iceberg"
 							? "iceberg"
-							: destination.type.toLowerCase(),
+							: destination.type.toLowerCase() === "amazon s3"
+								? "s3"
+								: destination.type.toLowerCase(),
 					version: destination.version,
 					config: destination.config,
 				},

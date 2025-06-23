@@ -37,6 +37,7 @@ const DirectFormField = ({
 
 	const validateField = (value: any): string | null => {
 		const hasDefault = schema.default !== undefined
+		// This will help to understand whether the user has modified the field or not ,if it is empty and optional this field will be removed
 		const isEmpty =
 			value === undefined ||
 			value === null ||

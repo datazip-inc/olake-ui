@@ -25,7 +25,6 @@ export interface ExtendedDestination extends Destination {
 
 export interface CreateDestinationProps {
 	fromJobFlow?: boolean
-	hitBack?: boolean
 	onComplete?: () => void
 	stepNumber?: number
 	stepTitle?: string
