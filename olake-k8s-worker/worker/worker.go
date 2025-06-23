@@ -1,7 +1,10 @@
 package worker
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"time"
 
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
@@ -18,6 +21,8 @@ type K8sWorker struct {
 	temporalClient client.Client
 	worker         worker.Worker
 	config         *config.Config
+	healthServer   *HealthServer
+	startTime      time.Time
 }
 
 func NewK8sWorker() (*K8sWorker, error) {
@@ -84,20 +89,45 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	w.RegisterActivity(activities.TestConnectionActivity)
 	w.RegisterActivity(activities.SyncActivity)
 
-	return &K8sWorker{
+	k8sWorker := &K8sWorker{
 		temporalClient: c,
 		worker:         w,
-		config:         cfg, // Store config in struct
-	}, nil
+		config:         cfg,
+		startTime:      time.Now(),
+	}
+
+	// Create health server
+	k8sWorker.healthServer = NewHealthServer(k8sWorker, 8080)
+
+	return k8sWorker, nil
 }
 
 func (w *K8sWorker) Start() error {
 	logger.Info("Starting Temporal worker...")
+
+	// Start health server in background
+	go func() {
+		if err := w.healthServer.Start(); err != nil && err != http.ErrServerClosed {
+			logger.Errorf("Health server failed: %v", err)
+		}
+	}()
+
+	// Start temporal worker
 	return w.worker.Start()
 }
 
 func (w *K8sWorker) Stop() {
 	logger.Info("Stopping Temporal worker...")
+
+	// Stop health server
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := w.healthServer.Stop(ctx); err != nil {
+		logger.Errorf("Failed to stop health server: %v", err)
+	}
+
+	// Stop temporal worker
 	w.worker.Stop()
 	w.temporalClient.Close()
 	logger.Info("Temporal worker stopped")
