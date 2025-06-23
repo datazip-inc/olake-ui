@@ -9,6 +9,7 @@ import (
 
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
+	"olake-k8s-worker/utils"
 	"olake-k8s-worker/worker"
 )
 
@@ -29,10 +30,7 @@ func main() {
 	logger.Info("Starting OLake K8s Worker...")
 
 	// Log configuration
-	temporalAddr := os.Getenv("TEMPORAL_ADDRESS")
-	if temporalAddr == "" {
-		temporalAddr = shared.DefaultTemporalAddress
-	}
+	temporalAddr := utils.GetEnv("TEMPORAL_ADDRESS", shared.DefaultTemporalAddress)
 
 	logger.Infof("Temporal Address: %s", temporalAddr)
 	logger.Infof("Task Queue: %s", shared.TaskQueue)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"olake-k8s-worker/logger"
+	"olake-k8s-worker/utils"
 )
 
 // Database operations for activities
@@ -13,7 +14,7 @@ func ParseJobOutput(output string) (map[string]interface{}, error) {
 	result := make(map[string]interface{})
 
 	// Try to find JSON in the output (similar to Docker implementation)
-	lines := splitLines(output)
+	lines := utils.SplitLines(output)
 
 	for _, line := range lines {
 		// Try to parse each line as JSON

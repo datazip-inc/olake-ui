@@ -2,7 +2,6 @@ package worker
 
 import (
 	"fmt"
-	"os"
 
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
@@ -10,6 +9,7 @@ import (
 	"olake-k8s-worker/activities"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
+	"olake-k8s-worker/utils"
 	"olake-k8s-worker/workflows"
 )
 
@@ -20,10 +20,7 @@ type K8sWorker struct {
 
 func NewK8sWorker() (*K8sWorker, error) {
 	// Get Temporal address from environment variable
-	temporalAddr := os.Getenv("TEMPORAL_ADDRESS")
-	if temporalAddr == "" {
-		temporalAddr = shared.DefaultTemporalAddress
-	}
+	temporalAddr := utils.GetEnv("TEMPORAL_ADDRESS", shared.DefaultTemporalAddress)
 
 	logger.Infof("Connecting to Temporal at: %s", temporalAddr)
 

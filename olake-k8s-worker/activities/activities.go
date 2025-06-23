@@ -33,7 +33,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Job for catalog discovery")
 
 	// Create ConfigMap with source configuration
-	configMapName := fmt.Sprintf("discover-config-%s", params.WorkflowID)
+	configMapName := fmt.Sprintf("config-%s", params.WorkflowID)
 	configs := []shared.JobConfig{
 		{Name: "config.json", Data: params.Config},
 	}
@@ -109,7 +109,7 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Job for connection test")
 
 	// Create ConfigMap with source configuration
-	configMapName := fmt.Sprintf("test-config-%s", params.WorkflowID)
+	configMapName := fmt.Sprintf("config-%s", params.WorkflowID)
 	configs := []shared.JobConfig{
 		{Name: "config.json", Data: params.Config},
 	}
@@ -191,7 +191,7 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 	}
 
 	// Create ConfigMap with all necessary configuration files
-	configMapName := fmt.Sprintf("sync-config-%s", params.WorkflowID)
+	configMapName := fmt.Sprintf("config-%s", params.WorkflowID)
 	configs := []shared.JobConfig{
 		{Name: "config.json", Data: jobData.SourceConfig},
 		{Name: "streams.json", Data: jobData.StreamsConfig},

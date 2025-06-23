@@ -3,18 +3,17 @@ package activities
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
+	"olake-k8s-worker/utils"
 )
 
 // K8sJobManager handles Kubernetes Job operations
@@ -37,10 +36,7 @@ func NewK8sJobManager() (*K8sJobManager, error) {
 	}
 
 	// Get namespace from environment or use default
-	namespace := "default"
-	if ns := GetEnv("WORKER_NAMESPACE", ""); ns != "" {
-		namespace = ns
-	}
+	namespace := utils.GetEnv("WORKER_NAMESPACE", "default")
 
 	logger.Infof("Initialized K8s job manager for namespace: %s", namespace)
 
@@ -121,12 +117,12 @@ func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: ParseQuantity("256Mi"),
-									corev1.ResourceCPU:    ParseQuantity("100m"),
+									corev1.ResourceMemory: utils.ParseQuantity("256Mi"),
+									corev1.ResourceCPU:    utils.ParseQuantity("100m"),
 								},
 								Limits: corev1.ResourceList{
-									corev1.ResourceMemory: ParseQuantity("1Gi"),
-									corev1.ResourceCPU:    ParseQuantity("500m"),
+									corev1.ResourceMemory: utils.ParseQuantity("1Gi"),
+									corev1.ResourceCPU:    utils.ParseQuantity("500m"),
 								},
 							},
 						},
@@ -292,17 +288,4 @@ type JobSpec struct {
 	Args          []string
 	ConfigMapName string
 	Operation     shared.Command
-}
-
-// Utility functions
-func GetEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func ParseQuantity(s string) resource.Quantity {
-	q, _ := resource.ParseQuantity(s)
-	return q
 }
