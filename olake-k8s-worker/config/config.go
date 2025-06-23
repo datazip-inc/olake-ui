@@ -23,6 +23,9 @@ type Config struct {
 	// Worker configuration
 	Worker WorkerConfig `json:"worker"`
 
+	// Timeout configuration
+	Timeouts TimeoutConfig `json:"timeouts"`
+
 	// Logging configuration
 	Logging LoggingConfig `json:"logging"`
 }
@@ -32,6 +35,29 @@ type TemporalConfig struct {
 	Address   string        `json:"address"`
 	TaskQueue string        `json:"task_queue"`
 	Timeout   time.Duration `json:"timeout"`
+}
+
+// TimeoutConfig contains all timeout-related settings
+type TimeoutConfig struct {
+	// Workflow execution timeouts (client-side)
+	WorkflowExecution WorkflowTimeouts `json:"workflow_execution"`
+
+	// Activity timeouts (workflow-side)
+	Activity ActivityTimeouts `json:"activity"`
+}
+
+// WorkflowTimeouts contains workflow execution timeout settings
+type WorkflowTimeouts struct {
+	Discover time.Duration `json:"discover"`
+	Test     time.Duration `json:"test"`
+	Sync     time.Duration `json:"sync"`
+}
+
+// ActivityTimeouts contains activity execution timeout settings
+type ActivityTimeouts struct {
+	Discover time.Duration `json:"discover"`
+	Test     time.Duration `json:"test"`
+	Sync     time.Duration `json:"sync"`
 }
 
 // DatabaseConfig contains database connection settings
@@ -134,6 +160,18 @@ func LoadConfig() (*Config, error) {
 			HeartbeatInterval:       parseDuration("HEARTBEAT_INTERVAL", "5s"),
 			WorkerIdentity:          generateWorkerIdentity(),
 		},
+		Timeouts: TimeoutConfig{
+			WorkflowExecution: WorkflowTimeouts{
+				Discover: parseDuration("WORKFLOW_TIMEOUT_DISCOVER", "2h"), // 2 hours for discovery workflows
+				Test:     parseDuration("WORKFLOW_TIMEOUT_TEST", "2h"),     // 2 hours for test workflows
+				Sync:     parseDuration("WORKFLOW_TIMEOUT_SYNC", "6h"),     // 6 hours for sync workflows
+			},
+			Activity: ActivityTimeouts{
+				Discover: parseDuration("ACTIVITY_TIMEOUT_DISCOVER", "30m"), // 30 minutes for discovery activities
+				Test:     parseDuration("ACTIVITY_TIMEOUT_TEST", "30m"),     // 30 minutes for test activities
+				Sync:     parseDuration("ACTIVITY_TIMEOUT_SYNC", "4h"),      // 4 hours for sync activities
+			},
+		},
 		Logging: LoggingConfig{
 			Level:      utils.GetEnv("LOG_LEVEL", "info"),
 			Format:     utils.GetEnv("LOG_FORMAT", "console"),
@@ -141,8 +179,9 @@ func LoadConfig() (*Config, error) {
 		},
 	}
 
-	// Validate configuration
-	if err := config.Validate(); err != nil {
+	// Validate configuration using the validator
+	validator := NewConfigValidator()
+	if err := validator.ValidateConfig(config); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
@@ -150,87 +189,56 @@ func LoadConfig() (*Config, error) {
 	return config, nil
 }
 
-// Validate checks if the configuration is valid
-func (c *Config) Validate() error {
-	// Validate Temporal config
-	if c.Temporal.Address == "" {
-		return fmt.Errorf("temporal address is required")
+// GetWorkflowTimeout returns the workflow execution timeout for the given operation
+func (c *Config) GetWorkflowTimeout(operation string) time.Duration {
+	switch operation {
+	case "discover":
+		return c.Timeouts.WorkflowExecution.Discover
+	case "test":
+		return c.Timeouts.WorkflowExecution.Test
+	case "sync":
+		return c.Timeouts.WorkflowExecution.Sync
+	default:
+		return time.Hour * 2 // Safe default
 	}
-	if c.Temporal.TaskQueue == "" {
-		return fmt.Errorf("temporal task queue is required")
-	}
-
-	// Validate Database config
-	if c.Database.URL == "" {
-		if c.Database.Host == "" || c.Database.User == "" || c.Database.Database == "" {
-			return fmt.Errorf("database connection details are incomplete")
-		}
-	}
-
-	// Validate Kubernetes config
-	if c.Kubernetes.Namespace == "" {
-		return fmt.Errorf("kubernetes namespace is required")
-	}
-	if c.Kubernetes.ImageRegistry == "" {
-		return fmt.Errorf("image registry is required")
-	}
-
-	// Validate resource limits
-	if err := c.validateResourceLimits(); err != nil {
-		return fmt.Errorf("invalid resource limits: %w", err)
-	}
-
-	// Validate Worker config
-	if c.Worker.MaxConcurrentActivities <= 0 {
-		return fmt.Errorf("max concurrent activities must be positive")
-	}
-	if c.Worker.MaxConcurrentWorkflows <= 0 {
-		return fmt.Errorf("max concurrent workflows must be positive")
-	}
-
-	return nil
 }
 
-// validateResourceLimits validates Kubernetes resource specifications
-func (c *Config) validateResourceLimits() error {
-	resources := c.Kubernetes.DefaultResources
-
-	// Basic validation - ensure values are not empty
-	if resources.CPURequest == "" || resources.CPULimit == "" {
-		return fmt.Errorf("CPU request and limit must be specified")
+// GetActivityTimeout returns the activity timeout for the given operation
+func (c *Config) GetActivityTimeout(operation string) time.Duration {
+	switch operation {
+	case "discover":
+		return c.Timeouts.Activity.Discover
+	case "test":
+		return c.Timeouts.Activity.Test
+	case "sync":
+		return c.Timeouts.Activity.Sync
+	default:
+		return time.Minute * 30 // Safe default
 	}
-	if resources.MemoryRequest == "" || resources.MemoryLimit == "" {
-		return fmt.Errorf("memory request and limit must be specified")
-	}
-
-	return nil
 }
 
-// GetDatabaseURL constructs the database URL from individual components
+// GetDatabaseURL returns the database connection URL
 func (c *Config) GetDatabaseURL() string {
 	if c.Database.URL != "" {
 		return c.Database.URL
 	}
 
-	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		c.Database.Host,
-		c.Database.Port,
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		c.Database.User,
 		c.Database.Password,
+		c.Database.Host,
+		c.Database.Port,
 		c.Database.Database,
 		c.Database.SSLMode,
 	)
 }
 
-// GetImageName constructs the full image name for a connector
+// GetImageName returns the full Docker image name for a connector
 func (c *Config) GetImageName(connectorType, version string) string {
-	if version == "" {
-		version = "latest"
-	}
-	return fmt.Sprintf("%s/source-%s:%s", c.Kubernetes.ImageRegistry, connectorType, version)
+	return fmt.Sprintf("%s/%s:%s", c.Kubernetes.ImageRegistry, connectorType, version)
 }
 
-// GetJobLabels returns default labels for Kubernetes jobs
+// GetJobLabels returns a copy of the default labels for K8s jobs
 func (c *Config) GetJobLabels() map[string]string {
 	labels := make(map[string]string)
 	for k, v := range c.Kubernetes.Labels {
@@ -245,7 +253,7 @@ func parseDuration(envKey, defaultValue string) time.Duration {
 	value := utils.GetEnv(envKey, defaultValue)
 	duration, err := time.ParseDuration(value)
 	if err != nil {
-		logger.Warnf("Invalid duration for %s: %s, using default: %s", envKey, value, defaultValue)
+		logger.Warnf("Failed to parse duration for %s, using default: %s", envKey, defaultValue)
 		duration, _ = time.ParseDuration(defaultValue)
 	}
 	return duration
@@ -256,17 +264,14 @@ func generateWorkerIdentity() string {
 	if err != nil {
 		hostname = "unknown"
 	}
-
-	pid := os.Getpid()
-	return fmt.Sprintf("olake-k8s-worker-%s-%d", hostname, pid)
+	return fmt.Sprintf("olake-k8s-worker-%s", hostname)
 }
 
-// Helper function for optional TTL
 func getOptionalTTL(envKey string, defaultValue int) *int32 {
-	ttl := utils.GetEnvInt(envKey, defaultValue)
-	if ttl <= 0 {
-		return nil // No TTL
+	value := utils.GetEnvInt(envKey, defaultValue)
+	if value <= 0 {
+		return nil
 	}
-	ttl32 := int32(ttl)
-	return &ttl32
+	ttl := int32(value)
+	return &ttl
 }

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ConfigValidator provides validation utilities for configuration
@@ -15,6 +16,216 @@ type ConfigValidator struct{}
 // NewConfigValidator creates a new configuration validator
 func NewConfigValidator() *ConfigValidator {
 	return &ConfigValidator{}
+}
+
+// ValidateConfig validates the entire configuration
+func (v *ConfigValidator) ValidateConfig(config *Config) error {
+	// Validate Temporal config
+	if err := v.ValidateTemporalConfig(&config.Temporal); err != nil {
+		return fmt.Errorf("temporal configuration error: %w", err)
+	}
+
+	// Validate Database config
+	if err := v.ValidateDatabaseConfig(&config.Database); err != nil {
+		return fmt.Errorf("database configuration error: %w", err)
+	}
+
+	// Validate Kubernetes config
+	if err := v.ValidateKubernetesConfig(&config.Kubernetes); err != nil {
+		return fmt.Errorf("kubernetes configuration error: %w", err)
+	}
+
+	// Validate Worker config
+	if err := v.ValidateWorkerConfig(&config.Worker); err != nil {
+		return fmt.Errorf("worker configuration error: %w", err)
+	}
+
+	// Validate Timeout config
+	if err := v.ValidateTimeoutConfig(&config.Timeouts); err != nil {
+		return fmt.Errorf("timeout configuration error: %w", err)
+	}
+
+	return nil
+}
+
+// ValidateTemporalConfig validates Temporal configuration
+func (v *ConfigValidator) ValidateTemporalConfig(config *TemporalConfig) error {
+	if err := v.ValidateTemporalAddress(config.Address); err != nil {
+		return err
+	}
+
+	if config.TaskQueue == "" {
+		return fmt.Errorf("temporal task queue is required")
+	}
+
+	return nil
+}
+
+// ValidateDatabaseConfig validates database configuration
+func (v *ConfigValidator) ValidateDatabaseConfig(config *DatabaseConfig) error {
+	if config.URL != "" {
+		return v.ValidateDatabaseURL(config.URL)
+	}
+
+	if config.Host == "" || config.User == "" || config.Database == "" {
+		return fmt.Errorf("database connection details are incomplete")
+	}
+
+	return nil
+}
+
+// ValidateKubernetesConfig validates Kubernetes configuration
+func (v *ConfigValidator) ValidateKubernetesConfig(config *KubernetesConfig) error {
+	if err := v.ValidateKubernetesNamespace(config.Namespace); err != nil {
+		return err
+	}
+
+	if err := v.ValidateImageRegistry(config.ImageRegistry); err != nil {
+		return err
+	}
+
+	if err := v.ValidateResourceLimits(&config.DefaultResources); err != nil {
+		return fmt.Errorf("invalid resource limits: %w", err)
+	}
+
+	if err := v.ValidateLabels(config.Labels); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ValidateWorkerConfig validates worker configuration
+func (v *ConfigValidator) ValidateWorkerConfig(config *WorkerConfig) error {
+	if config.MaxConcurrentActivities <= 0 {
+		return fmt.Errorf("max concurrent activities must be positive")
+	}
+
+	if config.MaxConcurrentWorkflows <= 0 {
+		return fmt.Errorf("max concurrent workflows must be positive")
+	}
+
+	return nil
+}
+
+// ValidateTimeoutConfig validates timeout configuration
+func (v *ConfigValidator) ValidateTimeoutConfig(config *TimeoutConfig) error {
+	// Validate workflow timeouts
+	if err := v.ValidateWorkflowTimeouts(&config.WorkflowExecution); err != nil {
+		return fmt.Errorf("workflow timeout error: %w", err)
+	}
+
+	// Validate activity timeouts
+	if err := v.ValidateActivityTimeouts(&config.Activity); err != nil {
+		return fmt.Errorf("activity timeout error: %w", err)
+	}
+
+	// Validate that activity timeouts are less than workflow timeouts
+	if err := v.ValidateTimeoutRelationships(config); err != nil {
+		return fmt.Errorf("timeout relationship error: %w", err)
+	}
+
+	return nil
+}
+
+// ValidateWorkflowTimeouts validates workflow execution timeouts
+func (v *ConfigValidator) ValidateWorkflowTimeouts(timeouts *WorkflowTimeouts) error {
+	if timeouts.Discover <= 0 {
+		return fmt.Errorf("workflow discover timeout must be positive")
+	}
+	if timeouts.Test <= 0 {
+		return fmt.Errorf("workflow test timeout must be positive")
+	}
+	if timeouts.Sync <= 0 {
+		return fmt.Errorf("workflow sync timeout must be positive")
+	}
+
+	// Check for reasonable minimums
+	minTimeout := time.Minute * 5
+	if timeouts.Discover < minTimeout {
+		return fmt.Errorf("workflow discover timeout too short (minimum %v)", minTimeout)
+	}
+	if timeouts.Test < minTimeout {
+		return fmt.Errorf("workflow test timeout too short (minimum %v)", minTimeout)
+	}
+	if timeouts.Sync < minTimeout {
+		return fmt.Errorf("workflow sync timeout too short (minimum %v)", minTimeout)
+	}
+
+	return nil
+}
+
+// ValidateActivityTimeouts validates activity execution timeouts
+func (v *ConfigValidator) ValidateActivityTimeouts(timeouts *ActivityTimeouts) error {
+	if timeouts.Discover <= 0 {
+		return fmt.Errorf("activity discover timeout must be positive")
+	}
+	if timeouts.Test <= 0 {
+		return fmt.Errorf("activity test timeout must be positive")
+	}
+	if timeouts.Sync <= 0 {
+		return fmt.Errorf("activity sync timeout must be positive")
+	}
+
+	// Check for reasonable minimums
+	minTimeout := time.Minute * 1
+	if timeouts.Discover < minTimeout {
+		return fmt.Errorf("activity discover timeout too short (minimum %v)", minTimeout)
+	}
+	if timeouts.Test < minTimeout {
+		return fmt.Errorf("activity test timeout too short (minimum %v)", minTimeout)
+	}
+	if timeouts.Sync < minTimeout {
+		return fmt.Errorf("activity sync timeout too short (minimum %v)", minTimeout)
+	}
+
+	return nil
+}
+
+// ValidateTimeoutRelationships validates timeout relationships
+func (v *ConfigValidator) ValidateTimeoutRelationships(config *TimeoutConfig) error {
+	// Activity timeouts should be less than workflow timeouts
+	if config.Activity.Discover >= config.WorkflowExecution.Discover {
+		return fmt.Errorf("activity discover timeout (%v) must be less than workflow discover timeout (%v)",
+			config.Activity.Discover, config.WorkflowExecution.Discover)
+	}
+	if config.Activity.Test >= config.WorkflowExecution.Test {
+		return fmt.Errorf("activity test timeout (%v) must be less than workflow test timeout (%v)",
+			config.Activity.Test, config.WorkflowExecution.Test)
+	}
+	if config.Activity.Sync >= config.WorkflowExecution.Sync {
+		return fmt.Errorf("activity sync timeout (%v) must be less than workflow sync timeout (%v)",
+			config.Activity.Sync, config.WorkflowExecution.Sync)
+	}
+
+	return nil
+}
+
+// ValidateResourceLimits validates Kubernetes resource specifications
+func (v *ConfigValidator) ValidateResourceLimits(resources *ResourceLimits) error {
+	// Basic validation - ensure values are not empty
+	if resources.CPURequest == "" || resources.CPULimit == "" {
+		return fmt.Errorf("CPU request and limit must be specified")
+	}
+	if resources.MemoryRequest == "" || resources.MemoryLimit == "" {
+		return fmt.Errorf("memory request and limit must be specified")
+	}
+
+	// Validate each resource quantity format
+	if err := v.ValidateResourceQuantity(resources.CPURequest); err != nil {
+		return fmt.Errorf("invalid CPU request: %w", err)
+	}
+	if err := v.ValidateResourceQuantity(resources.CPULimit); err != nil {
+		return fmt.Errorf("invalid CPU limit: %w", err)
+	}
+	if err := v.ValidateResourceQuantity(resources.MemoryRequest); err != nil {
+		return fmt.Errorf("invalid memory request: %w", err)
+	}
+	if err := v.ValidateResourceQuantity(resources.MemoryLimit); err != nil {
+		return fmt.Errorf("invalid memory limit: %w", err)
+	}
+
+	return nil
 }
 
 // ValidateTemporalAddress validates Temporal server address
