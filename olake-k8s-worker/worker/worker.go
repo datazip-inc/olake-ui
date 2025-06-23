@@ -65,6 +65,10 @@ func NewK8sWorker() (*K8sWorker, error) {
 func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
 
+	// Set global config for workflows to use
+	workflows.SetConfig(cfg)
+	logger.Info("Set global configuration for workflows")
+
 	// Connect to Temporal
 	c, err := client.Dial(client.Options{
 		HostPort: cfg.Temporal.Address,
@@ -79,6 +83,12 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 		MaxConcurrentWorkflowTaskExecutionSize: cfg.Worker.MaxConcurrentWorkflows,
 		Identity:                               cfg.Worker.WorkerIdentity,
 	})
+
+	// Log timeout configuration
+	logger.Infof("Activity timeouts configured - Discover: %v, Test: %v, Sync: %v",
+		cfg.GetActivityTimeout("discover"),
+		cfg.GetActivityTimeout("test"),
+		cfg.GetActivityTimeout("sync"))
 
 	// Register workflows and activities (same as before)
 	w.RegisterWorkflow(workflows.DiscoverCatalogWorkflow)
@@ -97,7 +107,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	}
 
 	// Create health server
-	k8sWorker.healthServer = NewHealthServer(k8sWorker, 8080)
+	k8sWorker.healthServer = NewHealthServer(k8sWorker, 8090) // Fixed port from 8080 to 8090
 
 	return k8sWorker, nil
 }

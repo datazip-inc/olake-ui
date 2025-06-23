@@ -15,9 +15,20 @@ data:
   # Database Configuration
   DB_HOST: "postgresql.olake.svc.cluster.local"
   DB_PORT: "5432"
-  DB_NAME: "olake"
-  DB_USER: "olake"
+  DB_NAME: "postgres"
+  DB_USER: "temporal"
   DB_SSLMODE: "disable"
+  
+  # Timeout Configuration
+  # Workflow execution timeouts (client-side)
+  WORKFLOW_TIMEOUT_DISCOVER: "2h"
+  WORKFLOW_TIMEOUT_TEST: "2h"
+  WORKFLOW_TIMEOUT_SYNC: "6h"
+  
+  # Activity timeouts (workflow-side)
+  ACTIVITY_TIMEOUT_DISCOVER: "30m"
+  ACTIVITY_TIMEOUT_TEST: "30m"
+  ACTIVITY_TIMEOUT_SYNC: "4h"
   
   # Kubernetes Configuration
   K8S_NAMESPACE: "olake"

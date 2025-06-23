@@ -1,23 +1,55 @@
 package workflows
 
 import (
+	"time"
+
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
 	"olake-k8s-worker/activities"
+	"olake-k8s-worker/config"
 	"olake-k8s-worker/shared"
 )
 
-// No timeout retry policy for long-running operations
+// Retry policy matching server-side configuration
 var DefaultRetryPolicy = &temporal.RetryPolicy{
-	MaximumAttempts: 1, // No retries for data operations
+	InitialInterval:    time.Second * 5,
+	BackoffCoefficient: 2.0,
+	MaximumInterval:    time.Minute * 5,
+	MaximumAttempts:    1,
+}
+
+// Global config instance (set during worker initialization)
+var globalConfig *config.Config
+
+// SetConfig sets the global configuration for workflows
+func SetConfig(cfg *config.Config) {
+	globalConfig = cfg
+}
+
+// getActivityTimeout returns activity timeout from config or fallback
+func getActivityTimeout(operation string) time.Duration {
+	if globalConfig != nil {
+		return globalConfig.GetActivityTimeout(operation)
+	}
+	// Fallback defaults if config not available
+	switch operation {
+	case "discover":
+		return time.Minute * 30
+	case "test":
+		return time.Minute * 30
+	case "sync":
+		return time.Hour * 4
+	default:
+		return time.Minute * 30
+	}
 }
 
 // DiscoverCatalogWorkflow is a workflow for discovering catalogs using K8s Jobs
 func DiscoverCatalogWorkflow(ctx workflow.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		// No StartToCloseTimeout - let it run as long as needed
-		RetryPolicy: DefaultRetryPolicy,
+		StartToCloseTimeout: getActivityTimeout("discover"),
+		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -29,8 +61,8 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *shared.ActivityParams
 // TestConnectionWorkflow is a workflow for testing connections using K8s Jobs
 func TestConnectionWorkflow(ctx workflow.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		// No timeout - connection tests can also be slow for large databases
-		RetryPolicy: DefaultRetryPolicy,
+		StartToCloseTimeout: getActivityTimeout("test"),
+		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
@@ -42,8 +74,8 @@ func TestConnectionWorkflow(ctx workflow.Context, params *shared.ActivityParams)
 // RunSyncWorkflow is a workflow for running data synchronization using K8s Jobs
 func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		// No timeout - sync operations can take hours for large datasets
-		RetryPolicy: DefaultRetryPolicy,
+		StartToCloseTimeout: getActivityTimeout("sync"),
+		RetryPolicy:         DefaultRetryPolicy,
 	}
 	params := shared.SyncParams{
 		JobID:      jobID,
