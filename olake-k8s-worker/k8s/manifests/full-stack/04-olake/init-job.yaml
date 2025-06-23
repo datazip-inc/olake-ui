@@ -7,6 +7,10 @@ metadata:
     app: olake
     component: signup-init
 spec:
+  # Ensure job runs only once
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0  # Don't retry on failure
   template:
     spec:
       containers:
@@ -31,6 +35,16 @@ spec:
           echo 'signup-init: Waiting 45 seconds for OLake to fully start up...'
           sleep 45
           
+          # Check if user already exists before attempting signup
+          echo "signup-init: Checking if user '$USERNAME' already exists..."
+          EXISTING_USER_CHECK=$(curl -s -w '%{http_code}' -o /dev/null -X GET "http://olake.olake.svc.cluster.local:8080/api/user/$USERNAME" || echo "000")
+          
+          if [ "$EXISTING_USER_CHECK" = "200" ]; then
+            echo "signup-init: User '$USERNAME' already exists. Skipping signup."
+            echo 'signup-init: User setup process complete (user already exists).'
+            exit 0
+          fi
+          
           JSON_PAYLOAD=$(printf '{"username":"%s","password":"%s","email":"%s"}' "$USERNAME" "$PASSWORD" "$EMAIL")
           echo "signup-init: Attempting to create user '$USERNAME' via $OLAKE_APP_URL"
           
@@ -47,10 +61,13 @@ spec:
           
           if [ "$HTTP_RESPONSE_CODE" -ge 200 ] && [ "$HTTP_RESPONSE_CODE" -lt 300 ]; then
             echo "signup-init: User '$USERNAME' creation request successful (HTTP $HTTP_RESPONSE_CODE)."
+          elif [ "$HTTP_RESPONSE_CODE" = "409" ] || [ "$HTTP_RESPONSE_CODE" = "400" ]; then
+            echo "signup-init: User '$USERNAME' may already exist (HTTP $HTTP_RESPONSE_CODE). This is okay."
           else
             echo "signup-init: User '$USERNAME' creation request FAILED (HTTP $HTTP_RESPONSE_CODE). Server response body above."
             exit 1
           fi
           echo 'signup-init: User setup process complete.'
       restartPolicy: Never
-  backoffLimit: 3
+  # Automatically clean up completed jobs after 1 hour
+  ttlSecondsAfterFinished: 3600
