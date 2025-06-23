@@ -29,42 +29,31 @@ spec:
         - /bin/sh
         - -c
         - |
-          echo 'signup-init: Initializing user setup...'
-          # The deploy-all.sh script ensures olake deployment is ready before running this job
+          echo 'signup-init: Starting signup initialization...'
+          echo "signup-init: Target URL: $OLAKE_APP_URL"
           
-          echo 'signup-init: Waiting 45 seconds for OLake to fully start up...'
-          sleep 45
+          echo 'signup-init: Attempting to create admin user...'
           
-          # Check if user already exists before attempting signup
-          echo "signup-init: Checking if user '$USERNAME' already exists..."
-          EXISTING_USER_CHECK=$(curl -s -w '%{http_code}' -o /dev/null -X GET "http://olake-ui.olake.svc.cluster.local:8080/api/user/$USERNAME" || echo "000")
-          
-          if [ "$EXISTING_USER_CHECK" = "200" ]; then
-            echo "signup-init: User '$USERNAME' already exists. Skipping signup."
-            echo 'signup-init: User setup process complete (user already exists).'
-            exit 0
-          fi
-          
-          JSON_PAYLOAD=$(printf '{"username":"%s","password":"%s","email":"%s"}' "$USERNAME" "$PASSWORD" "$EMAIL")
-          echo "signup-init: Attempting to create user '$USERNAME' via $OLAKE_APP_URL"
-          
-          HTTP_RESPONSE_CODE=$(curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d "$JSON_PAYLOAD" "$OLAKE_APP_URL")
+          response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
+            -X POST "$OLAKE_APP_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"email\":\"$EMAIL\"}")
           
           # The actual response body from olake-ui will be printed to stderr by the '-o /dev/stderr' curl option.
           # A newline after stderr output from curl can make logs cleaner.
           echo ''
           
-          if ! [ "$HTTP_RESPONSE_CODE" -eq "$HTTP_RESPONSE_CODE" ] 2>/dev/null; then
-              echo "signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$HTTP_RESPONSE_CODE'"
+          if ! [ "$response" -eq "$response" ] 2>/dev/null; then
+              echo "signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$response'"
               exit 1
           fi
           
-          if [ "$HTTP_RESPONSE_CODE" -ge 200 ] && [ "$HTTP_RESPONSE_CODE" -lt 300 ]; then
-            echo "signup-init: User '$USERNAME' creation request successful (HTTP $HTTP_RESPONSE_CODE)."
-          elif [ "$HTTP_RESPONSE_CODE" = "409" ] || [ "$HTTP_RESPONSE_CODE" = "400" ]; then
-            echo "signup-init: User '$USERNAME' may already exist (HTTP $HTTP_RESPONSE_CODE). This is okay."
+          if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
+            echo "signup-init: User '$USERNAME' creation request successful (HTTP $response)."
+          elif [ "$response" = "409" ] || [ "$response" = "400" ]; then
+            echo "signup-init: User '$USERNAME' may already exist (HTTP $response). This is okay."
           else
-            echo "signup-init: User '$USERNAME' creation request FAILED (HTTP $HTTP_RESPONSE_CODE). Server response body above."
+            echo "signup-init: User '$USERNAME' creation request FAILED (HTTP $response). Server response body above."
             exit 1
           fi
           echo 'signup-init: User setup process complete.'
