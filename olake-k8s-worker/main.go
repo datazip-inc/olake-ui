@@ -5,11 +5,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"k8s.io/client-go/rest"
-
+	"olake-k8s-worker/config"
 	"olake-k8s-worker/logger"
-	"olake-k8s-worker/shared"
-	"olake-k8s-worker/utils"
 	"olake-k8s-worker/worker"
 )
 
@@ -17,26 +14,24 @@ func main() {
 	// Initialize logger first
 	logger.Init()
 
-	logger.Info("OLake K8s Worker - Basic Setup Test")
+	logger.Info("OLake K8s Worker starting...")
 
-	// Try to create a basic k8s config (this will fail outside cluster, but tests imports)
-	_, err := rest.InClusterConfig()
+	// Load configuration
+	cfg, err := config.LoadConfig()
 	if err != nil {
-		logger.Warnf("Not running in cluster (expected): %v", err)
+		logger.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	logger.Info("K8s imports working!")
+	// Apply environment-specific overrides
+	cfg.ApplyEnvironmentOverrides()
 
-	logger.Info("Starting OLake K8s Worker...")
+	logger.Infof("Temporal Address: %s", cfg.Temporal.Address)
+	logger.Infof("Task Queue: %s", cfg.Temporal.TaskQueue)
+	logger.Infof("Namespace: %s", cfg.Kubernetes.Namespace)
+	logger.Infof("Environment: %s", cfg.Database.RunMode)
 
-	// Log configuration
-	temporalAddr := utils.GetEnv("TEMPORAL_ADDRESS", shared.DefaultTemporalAddress)
-
-	logger.Infof("Temporal Address: %s", temporalAddr)
-	logger.Infof("Task Queue: %s", shared.TaskQueue)
-
-	// Create K8s worker
-	w, err := worker.NewK8sWorker()
+	// Create K8s worker with configuration
+	w, err := worker.NewK8sWorkerWithConfig(cfg)
 	if err != nil {
 		logger.Fatalf("Failed to create K8s worker: %v", err)
 	}

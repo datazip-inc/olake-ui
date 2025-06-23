@@ -7,6 +7,7 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"olake-k8s-worker/activities"
+	"olake-k8s-worker/config"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
 	"olake-k8s-worker/utils"
@@ -16,6 +17,7 @@ import (
 type K8sWorker struct {
 	temporalClient client.Client
 	worker         worker.Worker
+	config         *config.Config
 }
 
 func NewK8sWorker() (*K8sWorker, error) {
@@ -52,6 +54,40 @@ func NewK8sWorker() (*K8sWorker, error) {
 	return &K8sWorker{
 		temporalClient: c,
 		worker:         w,
+	}, nil
+}
+
+func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
+	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
+
+	// Connect to Temporal
+	c, err := client.Dial(client.Options{
+		HostPort: cfg.Temporal.Address,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
+	}
+
+	// Create worker with config
+	w := worker.New(c, cfg.Temporal.TaskQueue, worker.Options{
+		MaxConcurrentActivityExecutionSize:     cfg.Worker.MaxConcurrentActivities,
+		MaxConcurrentWorkflowTaskExecutionSize: cfg.Worker.MaxConcurrentWorkflows,
+		Identity:                               cfg.Worker.WorkerIdentity,
+	})
+
+	// Register workflows and activities (same as before)
+	w.RegisterWorkflow(workflows.DiscoverCatalogWorkflow)
+	w.RegisterWorkflow(workflows.TestConnectionWorkflow)
+	w.RegisterWorkflow(workflows.RunSyncWorkflow)
+
+	w.RegisterActivity(activities.DiscoverCatalogActivity)
+	w.RegisterActivity(activities.TestConnectionActivity)
+	w.RegisterActivity(activities.SyncActivity)
+
+	return &K8sWorker{
+		temporalClient: c,
+		worker:         w,
+		config:         cfg, // Store config in struct
 	}, nil
 }
 
