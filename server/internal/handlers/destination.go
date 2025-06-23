@@ -194,10 +194,10 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
-	result, _ := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
+	result, err := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
 	if result == nil {
 		result = map[string]interface{}{
-			"message": "Connection test failed: Please check your configuration and try again",
+			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
