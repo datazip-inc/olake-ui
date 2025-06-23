@@ -45,16 +45,16 @@ RUN chown -R olake:olake /app
 USER 1001
 
 # Expose health check port
-EXPOSE 8080
+EXPOSE 8090
 
 # Set default environment variables
 ENV TEMPORAL_ADDRESS="temporal.default.svc.cluster.local:7233"
 ENV LOG_LEVEL="info"
-ENV HEALTH_CHECK_PORT="8080"
+ENV HEALTH_CHECK_PORT="8090"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8090/health || exit 1
 
 # Run the worker
 CMD ["./olake-k8s-worker"]

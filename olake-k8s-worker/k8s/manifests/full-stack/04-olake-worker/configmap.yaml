@@ -42,7 +42,7 @@ data:
   WORKER_MAX_CONCURRENT_WORKFLOWS: "5"
   
   # Health Check Configuration
-  HEALTH_CHECK_PORT: "8080"
+  HEALTH_CHECK_PORT: "8090"
   
   # Logging Configuration
   LOG_LEVEL: "info"

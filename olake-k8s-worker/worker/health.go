@@ -30,7 +30,7 @@ func NewHealthServer(worker *K8sWorker, port int) *HealthServer {
 	hs := &HealthServer{
 		worker: worker,
 		server: &http.Server{
-			Addr:    fmt.Sprintf(":%d", port),
+			Addr:    fmt.Sprintf(":%d", 8090),
 			Handler: mux,
 		},
 	}
