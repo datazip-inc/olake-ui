@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-initdb
+  namespace: olake
+data:
+  init.sql: |
+    -- Create temporal database and user
+    CREATE DATABASE temporal;
+    CREATE USER temporal WITH ENCRYPTED PASSWORD 'temporal';
+    GRANT ALL PRIVILEGES ON DATABASE temporal TO temporal;
+    
+    -- Create olake database and user
+    CREATE DATABASE olake;
+    CREATE USER olake WITH ENCRYPTED PASSWORD 'olake';
+    GRANT ALL PRIVILEGES ON DATABASE olake TO olake;
+    
+    -- Grant connection privileges
+    ALTER USER temporal CREATEDB;
+    ALTER USER olake CREATEDB;

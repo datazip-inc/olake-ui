@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: olake-server-config
+  namespace: olake
+data:
+  app.conf: |
+    # OLake Server Configuration
+    appname = olake-server
+    httpport = 8080
+    runmode = dev
+    autorender = false
+    copyrequestbody = true
+    EnableDocs = true
+    
+    # Database Configuration
+    DB_HOST = postgresql.olake.svc.cluster.local
+    DB_PORT = 5432
+    DB_USER = olake
+    DB_PASSWORD = olake
+    DB_NAME = olake
+    DB_SSLMODE = disable
+    
+    # Temporal Configuration
+    TEMPORAL_ADDRESS = temporal.olake.svc.cluster.local:7233
+    TEMPORAL_TASK_QUEUE = OLAKE_DOCKER_TASK_QUEUE
+    
+    # Session Configuration
+    SESSION_SECRET = your-secret-key
+    SESSION_TIMEOUT = 3600
+    
+    # Logging
+    LOG_LEVEL = info
