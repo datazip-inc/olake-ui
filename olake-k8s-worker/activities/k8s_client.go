@@ -87,6 +87,9 @@ func (k *K8sJobManager) CreateConfigMap(ctx context.Context, name string, config
 
 // CreateJob creates a Kubernetes Job for running sync operations
 func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.Job, error) {
+	// Get TTL from environment
+	ttlSeconds := utils.GetEnvInt("JOB_TTL_SECONDS", 0)
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      spec.Name,
@@ -99,7 +102,9 @@ func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.
 			},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: &[]int32{1}[0], // Match Temporal retry policy
+			BackoffLimit: &[]int32{1}[0],
+			// Only set TTL if > 0
+			TTLSecondsAfterFinished: getTTLPointer(ttlSeconds),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy: corev1.RestartPolicyNever,
@@ -288,4 +293,13 @@ type JobSpec struct {
 	Args          []string
 	ConfigMapName string
 	Operation     shared.Command
+}
+
+// Helper function to return TTL pointer only if > 0
+func getTTLPointer(ttlSeconds int) *int32 {
+	if ttlSeconds <= 0 {
+		return nil // No TTL - job persists indefinitely
+	}
+	ttl := int32(ttlSeconds)
+	return &ttl
 }

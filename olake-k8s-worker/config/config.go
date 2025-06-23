@@ -57,7 +57,7 @@ type KubernetesConfig struct {
 	ImageRegistry    string            `json:"image_registry"`
 	ImagePullPolicy  string            `json:"image_pull_policy"`
 	ServiceAccount   string            `json:"service_account"`
-	JobTTL           int32             `json:"job_ttl_seconds"`
+	JobTTL           *int32            `json:"job_ttl_seconds"`
 	DefaultResources ResourceLimits    `json:"default_resources"`
 	JobTimeout       time.Duration     `json:"job_timeout"`
 	CleanupPolicy    string            `json:"cleanup_policy"`
@@ -113,7 +113,7 @@ func LoadConfig() (*Config, error) {
 			ImageRegistry:   utils.GetEnv("IMAGE_REGISTRY", "olakego"),
 			ImagePullPolicy: utils.GetEnv("IMAGE_PULL_POLICY", "IfNotPresent"),
 			ServiceAccount:  utils.GetEnv("SERVICE_ACCOUNT", "olake-worker"),
-			JobTTL:          int32(utils.GetEnvInt("JOB_TTL_SECONDS", 3600)), // 1 hour
+			JobTTL:          getOptionalTTL("JOB_TTL_SECONDS", 0),
 			JobTimeout:      parseDuration("JOB_TIMEOUT", "15m"),
 			CleanupPolicy:   utils.GetEnv("CLEANUP_POLICY", "auto"),
 			DefaultResources: ResourceLimits{
@@ -259,4 +259,14 @@ func generateWorkerIdentity() string {
 
 	pid := os.Getpid()
 	return fmt.Sprintf("olake-k8s-worker-%s-%d", hostname, pid)
+}
+
+// Helper function for optional TTL
+func getOptionalTTL(envKey string, defaultValue int) *int32 {
+	ttl := utils.GetEnvInt(envKey, defaultValue)
+	if ttl <= 0 {
+		return nil // No TTL
+	}
+	ttl32 := int32(ttl)
+	return &ttl32
 }
