@@ -10,6 +10,7 @@ import (
 	"olake-k8s-worker/database"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
+	"olake-k8s-worker/utils"
 )
 
 // DiscoverCatalogActivity runs the discover command using Kubernetes Jobs
@@ -157,6 +158,10 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 		return nil, fmt.Errorf("test connection job failed: %v", err)
 	}
 
+	// Add delay to ensure logs are fully available
+	logger.Debugf("Waiting 5 seconds before cleanup to ensure logs are fully retrieved")
+	time.Sleep(5 * time.Second)
+
 	// Cleanup resources
 	if cleanupErr := jobManager.CleanupJob(ctx, job.Name, configMapName); cleanupErr != nil {
 		activityLogger.Warn("Failed to cleanup resources", "error", cleanupErr)
@@ -302,7 +307,8 @@ func UpdateJobState(jobID int, state map[string]interface{}) error {
 
 // ParseJobOutput extracts JSON from Kubernetes job logs
 func ParseJobOutput(output string) (map[string]interface{}, error) {
-	return database.ParseJobOutput(output)
+	// For connection tests, use specific parser
+	return utils.ParseConnectionTestOutput(output)
 }
 
 type JobData struct {

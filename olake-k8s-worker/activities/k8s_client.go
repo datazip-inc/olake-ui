@@ -216,8 +216,8 @@ func (k *K8sJobManager) getJobResults(ctx context.Context, jobName string) (map[
 		return nil, fmt.Errorf("failed to get pod logs: %v", err)
 	}
 
-	// Parse the logs to extract results (similar to Docker implementation)
-	return ParseJobOutput(logs)
+	// For connection tests, use specific parser
+	return utils.ParseConnectionTestOutput(logs)
 }
 
 // CleanupJob removes a job and its associated ConfigMap

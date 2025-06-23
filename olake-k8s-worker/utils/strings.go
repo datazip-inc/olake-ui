@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -16,6 +17,59 @@ func SplitLines(text string) []string {
 		}
 	}
 	return lines
+}
+
+// ParseConnectionTestOutput specifically parses connection test results like Docker worker
+// Matches the logic from server/utils/utils.go ExtractAndParseLastLogMessage
+func ParseConnectionTestOutput(output string) (map[string]interface{}, error) {
+	outputStr := strings.TrimSpace(output)
+	if outputStr == "" {
+		return nil, fmt.Errorf("empty output")
+	}
+
+	lines := strings.Split(outputStr, "\n")
+
+	// Find the last non-empty line
+	var lastLine string
+	for i := len(lines) - 1; i >= 0; i-- {
+		if trimmed := strings.TrimSpace(lines[i]); trimmed != "" {
+			lastLine = trimmed
+			break
+		}
+	}
+
+	if lastLine == "" {
+		return nil, fmt.Errorf("no log lines found")
+	}
+
+	// Extract JSON part (everything after the first "{")
+	start := strings.Index(lastLine, "{")
+	if start == -1 {
+		return nil, fmt.Errorf("no JSON found in log line")
+	}
+	jsonStr := lastLine[start:]
+
+	// Parse the JSON as LogMessage
+	var logMessage struct {
+		ConnectionStatus *struct {
+			Message string `json:"message"`
+			Status  string `json:"status"`
+		} `json:"connectionStatus,omitempty"`
+		Type string `json:"type,omitempty"`
+	}
+
+	if err := json.Unmarshal([]byte(jsonStr), &logMessage); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON: %v", err)
+	}
+
+	if logMessage.ConnectionStatus == nil {
+		return nil, fmt.Errorf("connection status not found")
+	}
+
+	return map[string]interface{}{
+		"message": logMessage.ConnectionStatus.Message,
+		"status":  logMessage.ConnectionStatus.Status,
+	}, nil
 }
 
 // GenerateJobName creates a Kubernetes-compatible job name
