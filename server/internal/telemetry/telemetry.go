@@ -36,6 +36,7 @@ type Telemetry struct {
 	locationMutex sync.Mutex
 	locationChan  chan struct{}
 	anonymousID   string
+	wg            sync.WaitGroup
 }
 
 type LocationInfo struct {
@@ -214,16 +215,26 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		properties[key] = value
 	}
 
-	return instance.client.Enqueue(analytics.Track{
-		UserId:     instance.anonymousID,
-		Event:      eventName,
-		Properties: properties,
-	})
+	instance.wg.Add(1)
+	go func() {
+		defer instance.wg.Done()
+		if err := instance.client.Enqueue(analytics.Track{
+			UserId:     instance.anonymousID,
+			Event:      eventName,
+			Properties: properties,
+		}); err != nil {
+			// Log error but don't return it since we're in a goroutine
+			fmt.Printf("Failed to send telemetry event %s: %v\n", eventName, err)
+		}
+	}()
+
+	return nil
 }
 
 // Flush ensures all events are sent before shutdown
 func Flush() {
 	if instance != nil && instance.client != nil {
+		instance.wg.Wait() // Wait for all tracking goroutines to complete
 		instance.client.Close()
 	}
 }
