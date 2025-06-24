@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"go.temporal.io/sdk/activity"
@@ -56,7 +57,10 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 		Operation:     shared.Discover,
 	}
 
+	// Log the command that will be executed
+	commandStr := strings.Join(jobSpec.Args, " ")
 	logger.Infof("Creating discover job with image: %s", jobSpec.Image)
+	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
 	job, err := jobManager.CreateJob(ctx, jobSpec)
@@ -136,7 +140,10 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 		Operation:     shared.Check,
 	}
 
+	// Log the command that will be executed
+	commandStr := strings.Join(jobSpec.Args, " ")
 	logger.Infof("Creating test connection job with image: %s", jobSpec.Image)
+	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
 	job, err := jobManager.CreateJob(ctx, jobSpec)
@@ -231,7 +238,10 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 		Operation:     shared.Sync,
 	}
 
+	// Log the command that will be executed
+	commandStr := strings.Join(jobSpec.Args, " ")
 	logger.Infof("Creating sync job with image: %s", jobSpec.Image)
+	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
 	job, err := jobManager.CreateJob(ctx, jobSpec)
@@ -307,8 +317,8 @@ func UpdateJobState(jobID int, state map[string]interface{}) error {
 
 // ParseJobOutput extracts JSON from Kubernetes job logs
 func ParseJobOutput(output string) (map[string]interface{}, error) {
-	// For connection tests, use specific parser
-	return utils.ParseConnectionTestOutput(output)
+	// Use the flexible parser that can handle different output formats
+	return utils.ParseJobOutput(output)
 }
 
 type JobData struct {

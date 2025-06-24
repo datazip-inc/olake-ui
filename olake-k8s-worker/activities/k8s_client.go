@@ -216,8 +216,10 @@ func (k *K8sJobManager) getJobResults(ctx context.Context, jobName string) (map[
 		return nil, fmt.Errorf("failed to get pod logs: %v", err)
 	}
 
-	// For connection tests, use specific parser
-	return utils.ParseConnectionTestOutput(logs)
+	logger.Debugf("Raw pod logs for job %s:\n%s", jobName, logs)
+
+	// Use flexible parsing that can handle different output formats
+	return utils.ParseJobOutput(logs)
 }
 
 // CleanupJob removes a job and its associated ConfigMap

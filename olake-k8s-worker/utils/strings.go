@@ -19,9 +19,59 @@ func SplitLines(text string) []string {
 	return lines
 }
 
-// ParseConnectionTestOutput specifically parses connection test results like Docker worker
+// ParseJobOutput extracts meaningful information from job output logs
+// This is a flexible parser that can handle different types of outputs
+func ParseJobOutput(output string) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	outputStr := strings.TrimSpace(output)
+
+	if outputStr == "" {
+		return nil, fmt.Errorf("empty output")
+	}
+
+	// Special handling for connection test outputs
+	if strings.Contains(outputStr, "connectionStatus") {
+		return parseConnectionTestOutput(outputStr)
+	}
+
+	// Try to find JSON in the output (similar to Docker implementation)
+	lines := SplitLines(outputStr)
+
+	for _, line := range lines {
+		// Try to parse each line as JSON
+		var jsonData map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &jsonData); err == nil {
+			// Found valid JSON, merge with result
+			for k, v := range jsonData {
+				result[k] = v
+			}
+		} else {
+			// Try to extract JSON part from the line (everything after the first "{")
+			start := strings.Index(line, "{")
+			if start != -1 {
+				jsonStr := line[start:]
+				if err := json.Unmarshal([]byte(jsonStr), &jsonData); err == nil {
+					// Found valid JSON after prefix, merge with result
+					for k, v := range jsonData {
+						result[k] = v
+					}
+				}
+			}
+		}
+	}
+
+	// If no JSON found, return basic info
+	if len(result) == 0 {
+		result["raw_output"] = outputStr
+		result["status"] = "completed"
+	}
+
+	return result, nil
+}
+
+// parseConnectionTestOutput is a private helper function for connection test parsing
 // Matches the logic from server/utils/utils.go ExtractAndParseLastLogMessage
-func ParseConnectionTestOutput(output string) (map[string]interface{}, error) {
+func parseConnectionTestOutput(output string) (map[string]interface{}, error) {
 	outputStr := strings.TrimSpace(output)
 	if outputStr == "" {
 		return nil, fmt.Errorf("empty output")
