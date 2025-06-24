@@ -123,9 +123,9 @@ func LoadConfig() (*Config, error) {
 		},
 		Database: DatabaseConfig{
 			URL:             utils.GetEnv("DATABASE_URL", ""),
-			Host:            utils.GetEnv("DB_HOST", "postgres.default.svc.cluster.local"),
+			Host:            utils.GetEnv("DB_HOST", "postgres.olake.svc.cluster.local"),
 			Port:            utils.GetEnv("DB_PORT", "5432"),
-			User:            utils.GetEnv("DB_USER", "olake"),
+			User:            utils.GetEnv("DB_USER", "postgres"),
 			Password:        utils.GetEnv("DB_PASSWORD", "password"),
 			Database:        utils.GetEnv("DB_NAME", "olake"),
 			SSLMode:         utils.GetEnv("DB_SSLMODE", "disable"),

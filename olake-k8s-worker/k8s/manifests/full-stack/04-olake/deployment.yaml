@@ -34,7 +34,7 @@ spec:
         volumeMounts:
         - name: olake-config
           mountPath: /opt/backend/conf
-        - name: olake-data
+        - name: job-storage
           mountPath: /tmp/olake-config
         resources:
           requests:
@@ -53,9 +53,16 @@ spec:
             port: backend
           initialDelaySeconds: 30
           periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+          capabilities:
+            drop:
+            - ALL
       volumes:
       - name: olake-config
         configMap:
           name: olake-config
-      - name: olake-data
-        emptyDir: {}
+      - name: job-storage
+        persistentVolumeClaim:
+          claimName: olake-jobs-pvc

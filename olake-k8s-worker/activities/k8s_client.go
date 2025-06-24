@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -211,9 +212,9 @@ func (k *K8sJobManager) getJobResults(ctx context.Context, jobName string) (map[
 	return utils.ParseJobOutput(logs)
 }
 
-// CleanupJob removes a job and its associated ConfigMap
-func (k *K8sJobManager) CleanupJob(ctx context.Context, jobName, configMapName string) error {
-	logger.Infof("Cleaning up Job %s and ConfigMap %s", jobName, configMapName)
+// CleanupJob removes a job (no ConfigMap cleanup needed)
+func (k *K8sJobManager) CleanupJob(ctx context.Context, jobName string) error {
+	logger.Infof("Cleaning up Job %s", jobName)
 
 	// Delete job
 	propagationPolicy := metav1.DeletePropagationForeground
@@ -225,14 +226,7 @@ func (k *K8sJobManager) CleanupJob(ctx context.Context, jobName, configMapName s
 		return fmt.Errorf("failed to delete job: %v", err)
 	}
 
-	// Delete ConfigMap
-	err = k.clientset.CoreV1().ConfigMaps(k.namespace).Delete(ctx, configMapName, metav1.DeleteOptions{})
-	if err != nil {
-		logger.Errorf("Failed to delete ConfigMap %s: %v", configMapName, err)
-		return fmt.Errorf("failed to delete configmap: %v", err)
-	}
-
-	logger.Infof("Successfully cleaned up Job %s and ConfigMap %s", jobName, configMapName)
+	logger.Infof("Successfully cleaned up Job %s", jobName)
 	return nil
 }
 
@@ -278,11 +272,12 @@ func (k *K8sJobManager) getJobLogs(ctx context.Context, jobName string) (string,
 
 // JobSpec defines the specification for creating a Kubernetes Job
 type JobSpec struct {
-	Name      string
-	Image     string
-	Command   []string
-	Args      []string
-	Operation shared.Command
+	Name               string
+	Image              string
+	Command            []string
+	Args               []string
+	Operation          shared.Command
+	OriginalWorkflowID string
 }
 
 // Helper function to return TTL pointer only if > 0
@@ -296,10 +291,17 @@ func getTTLPointer(ttlSeconds int) *int32 {
 
 // CreateJobWithPV creates a Kubernetes Job for running sync operations with PV
 func (k *K8sJobManager) CreateJobWithPV(ctx context.Context, spec *JobSpec, configs []shared.JobConfig) (*batchv1.Job, error) {
-	// Create unique directory for this workflow
-	workflowDir := spec.Name // e.g., "sync-mysql-1234567890"
+	// Match Docker directory strategy exactly:
+	var workflowDir string
+	if spec.Operation == shared.Sync {
+		// Sync: use SHA256 hash (like Docker does)
+		workflowDir = fmt.Sprintf("%x", sha256.Sum256([]byte(spec.OriginalWorkflowID)))
+	} else {
+		// Test/Discover: use WorkflowID directly (like Docker does)
+		workflowDir = spec.OriginalWorkflowID
+	}
 
-	// Write config files to PV (similar to Docker implementation)
+	// Write config files to PV using ORIGINAL workflow ID
 	if err := k.setupWorkDirectory(workflowDir); err != nil {
 		return nil, fmt.Errorf("failed to setup work directory: %v", err)
 	}
