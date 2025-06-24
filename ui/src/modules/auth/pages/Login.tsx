@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Form, Input, Button, Card, Alert } from "antd"
+import { Form, Input, Button, Card, message } from "antd"
 import { User, LockKey } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { useNavigate } from "react-router-dom"
@@ -9,23 +9,24 @@ const Login: React.FC = () => {
 	const { login } = useAppStore()
 	const navigate = useNavigate()
 	const [loading, setLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
+	const [form] = Form.useForm()
 
 	const onFinish = async (values: LoginArgs) => {
-		setLoading(true)
-		setError(null)
 		try {
+			setLoading(true)
 			await login(values.username, values.password)
 			navigate("/jobs")
 		} catch (err) {
 			const errorMessage =
-				err instanceof Error
-					? err.message
-					: "Failed to login. Please try again."
-			setError(errorMessage)
-		} finally {
-			setLoading(false)
+				err instanceof Error ? err.message : "An unexpected error occurred"
+			message.error({
+				content: errorMessage,
+				duration: 3,
+				className: "font-medium",
+			})
+			form.resetFields()
 		}
+		setLoading(false)
 	}
 
 	return (
@@ -38,17 +39,8 @@ const Login: React.FC = () => {
 					</div>
 				</div>
 
-				{error && (
-					<Alert
-						message="Login Failed"
-						description={error}
-						type="error"
-						showIcon
-						className="mb-4"
-					/>
-				)}
-
 				<Form
+					form={form}
 					name="login"
 					initialValues={{ remember: true }}
 					onFinish={onFinish}

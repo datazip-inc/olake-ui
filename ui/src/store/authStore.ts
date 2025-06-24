@@ -43,7 +43,6 @@ export const createAuthSlice: StateCreator<
 			}
 		},
 		login: async (username: string, password: string) => {
-			set({ isAuthLoading: true })
 			try {
 				await authService.login({ username, password })
 				set({ isAuthenticated: true, isAuthLoading: false })

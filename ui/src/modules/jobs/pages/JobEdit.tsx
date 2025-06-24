@@ -25,6 +25,7 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import {
+	getConnectorInLowerCase,
 	getFrequencyValue,
 	removeSavedJobFromLocalStorage,
 } from "../../../utils/utils"
@@ -45,7 +46,13 @@ const JobSourceEdit = ({
 				stepTitle="Source Config"
 				initialData={sourceData}
 				onNameChange={name => updateSourceData({ ...sourceData, name })}
-				onConnectorChange={type => updateSourceData({ ...sourceData, type })}
+				onConnectorChange={type => {
+					updateSourceData({
+						...sourceData,
+						type,
+						config: {},
+					})
+				}}
 				onVersionChange={version =>
 					updateSourceData({ ...sourceData, version })
 				}
@@ -76,9 +83,13 @@ const JobDestinationEdit = ({
 				onNameChange={name =>
 					updateDestinationData({ ...destinationData, name })
 				}
-				onConnectorChange={type =>
-					updateDestinationData({ ...destinationData, type })
-				}
+				onConnectorChange={type => {
+					updateDestinationData({
+						...destinationData,
+						type,
+						config: {},
+					})
+				}}
 				onVersionChange={version =>
 					updateDestinationData({ ...destinationData, version })
 				}
@@ -118,8 +129,6 @@ const JobEdit: React.FC = () => {
 		selected_streams: {},
 		streams: [],
 	})
-	const [initialStreamsData, setInitialStreamsData] =
-		useState<StreamsDataStructure | null>(null)
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
@@ -193,7 +202,6 @@ const JobEdit: React.FC = () => {
 
 					if (streamsData) {
 						setSelectedStreams(streamsData)
-						setInitialStreamsData(streamsData)
 					}
 				}
 			} catch (e) {
@@ -296,6 +304,37 @@ const JobEdit: React.FC = () => {
 		return null
 	}
 
+	const getjobUpdatePayLoad = () => {
+		let jobUpdateRequestPayload: JobBase = {
+			name: jobName,
+			source: {
+				name: sourceData?.name || "",
+				type: getConnectorInLowerCase(sourceData?.type || ""),
+				config:
+					typeof sourceData?.config === "string"
+						? sourceData?.config
+						: JSON.stringify(sourceData?.config),
+				version: sourceData?.version || "latest",
+			},
+			destination: {
+				name: destinationData?.name || "",
+				type: getConnectorInLowerCase(destinationData?.type || ""),
+				config:
+					typeof destinationData?.config === "string"
+						? destinationData?.config
+						: JSON.stringify(destinationData?.config),
+				version: destinationData?.version || "latest",
+			},
+			streams_config:
+				typeof selectedStreams === "string"
+					? selectedStreams
+					: JSON.stringify(selectedStreams),
+			frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
+			activate: job?.activate,
+		}
+		return jobUpdateRequestPayload
+	}
+
 	// Handle job submission
 	const handleJobSubmit = async () => {
 		if (!sourceData || !destinationData) {
@@ -307,33 +346,7 @@ const JobEdit: React.FC = () => {
 
 		try {
 			// Create the job update payload
-			const jobUpdatePayload: JobBase = {
-				name: jobName,
-				source: {
-					name: sourceData.name,
-					type: sourceData.type,
-					config:
-						typeof sourceData.config === "string"
-							? sourceData.config
-							: JSON.stringify(sourceData.config),
-					version: sourceData.version || "latest",
-				},
-				destination: {
-					name: destinationData.name,
-					type: destinationData.type,
-					config:
-						typeof destinationData.config === "string"
-							? destinationData.config
-							: JSON.stringify(destinationData.config),
-					version: destinationData.version || "latest",
-				},
-				streams_config:
-					typeof selectedStreams === "string"
-						? selectedStreams
-						: JSON.stringify(selectedStreams),
-				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
-				activate: job?.activate || true,
-			}
+			const jobUpdatePayload = getjobUpdatePayLoad()
 
 			if (jobId && !isSavedJob) {
 				await jobService.updateJob(jobId, jobUpdatePayload)
@@ -358,6 +371,7 @@ const JobEdit: React.FC = () => {
 		if (currentStep === "source") {
 			if (isSavedJob && sourceData) {
 				setShowTestingModal(true)
+				setIsFromSources(true)
 				try {
 					const testData = {
 						name: sourceData.name,
@@ -401,6 +415,7 @@ const JobEdit: React.FC = () => {
 						version: sourceData.version || "latest",
 					}
 					setShowTestingModal(true)
+					setIsFromSources(true)
 					const testResult =
 						await sourceService.testSourceConnection(newSourceData)
 					if (testResult.data?.status === "SUCCEEDED") {
@@ -411,7 +426,6 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("destination")
 						}, 1000)
 					} else {
-						setIsFromSources(true)
 						setShowTestingModal(false)
 						setSourceTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
@@ -421,6 +435,7 @@ const JobEdit: React.FC = () => {
 		} else if (currentStep === "destination") {
 			if (isSavedJob && destinationData) {
 				setShowTestingModal(true)
+				setIsFromSources(false)
 				try {
 					const testData = {
 						name: destinationData.name,
@@ -434,10 +449,8 @@ const JobEdit: React.FC = () => {
 					const testResult =
 						await destinationService.testDestinationConnection(testData)
 
-					setTimeout(() => {
-						setShowTestingModal(false)
-					}, 1000)
 					if (testResult.data?.status === "SUCCEEDED") {
+						setShowTestingModal(false)
 						setTimeout(() => {
 							setShowSuccessModal(true)
 						}, 1000)
@@ -446,7 +459,7 @@ const JobEdit: React.FC = () => {
 							setCurrentStep("schema")
 						}, 2000)
 					} else {
-						setIsFromSources(false)
+						setShowTestingModal(false)
 						setDestinationTestConnectionError(testResult.data?.message || "")
 						setShowFailureModal(true)
 					}
@@ -467,6 +480,7 @@ const JobEdit: React.FC = () => {
 						version: destinationData.version || "latest",
 					}
 					setShowTestingModal(true)
+					setIsFromSources(false)
 					const testResult =
 						await destinationService.testDestinationConnection(
 							newDestinationData,
@@ -486,6 +500,11 @@ const JobEdit: React.FC = () => {
 				}
 			}
 		} else if (currentStep === "schema") {
+			if (jobId && !isSavedJob) {
+				const jobUpdatePayload = getjobUpdatePayLoad()
+				await jobService.updateJob(jobId, jobUpdatePayload)
+				fetchJobs()
+			}
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
 			if (isSavedJob) {
@@ -495,10 +514,15 @@ const JobEdit: React.FC = () => {
 		}
 	}
 
-	const handleBack = () => {
+	const handleBack = async () => {
 		if (currentStep === "destination") {
 			setCurrentStep("source")
 		} else if (currentStep === "schema") {
+			if (jobId && !isSavedJob) {
+				const jobUpdatePayload = getjobUpdatePayLoad()
+				await jobService.updateJob(jobId, jobUpdatePayload)
+				fetchJobs()
+			}
 			setCurrentStep("destination")
 		} else if (currentStep === "config") {
 			setCurrentStep("schema")
@@ -580,7 +604,8 @@ const JobEdit: React.FC = () => {
 									sourceConnector={sourceData?.type.toLowerCase() || ""}
 									sourceVersion={sourceData?.version || "latest"}
 									sourceConfig={JSON.stringify(sourceData?.config || {})}
-									initialStreamsData={initialStreamsData as any}
+									fromJobEditFlow={true}
+									jobId={jobId ? parseInt(jobId) : -1}
 								/>
 							</div>
 						)}

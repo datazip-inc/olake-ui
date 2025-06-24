@@ -31,7 +31,7 @@ func Init(uri string) error {
 		web.BConfig.WebConfig.Session.SessionName = "olake-session"
 		web.BConfig.WebConfig.Session.SessionProvider = "postgresql"
 		web.BConfig.WebConfig.Session.SessionProviderConfig = uri
-		web.BConfig.WebConfig.Session.SessionCookieLifeTime = 10800 // 3 hour
+		web.BConfig.WebConfig.Session.SessionCookieLifeTime = 30 * 24 * 60 * 60 // 30 days
 	}
 
 	// register session user

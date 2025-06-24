@@ -1,7 +1,7 @@
 import { Button, Modal, Table } from "antd"
 import { useAppStore } from "../../../store"
 import { getConnectorImage } from "../../../utils/utils"
-import { CheckCircle, Warning } from "@phosphor-icons/react"
+import { Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
 import { message } from "antd"
 import { formatDistanceToNow } from "date-fns"
@@ -16,7 +16,6 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 		setShowEditSourceModal,
 		showEditDestinationModal,
 		setShowEditDestinationModal,
-		showSuccessModal,
 		setShowSuccessModal,
 		selectedSource,
 		selectedDestination,
@@ -79,6 +78,7 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				setTimeout(async () => {
 					setShowSuccessModal(false)
 					await updateEntity(selectedEntity.id.toString(), selectedEntity)
+					message.success(`${entityType} updated successfully`)
 					navigate(navigatePath)
 				}, 2000)
 			} else {
@@ -202,25 +202,6 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 						rowKey="key"
 						scroll={{ y: 300 }}
 					/>
-				</div>
-			</Modal>
-
-			{/* Success Modal */}
-			<Modal
-				open={showSuccessModal}
-				footer={null}
-				closable={false}
-				centered
-				width={400}
-			>
-				<div className="flex flex-col items-center justify-center gap-7 py-6">
-					<CheckCircle
-						weight="fill"
-						className="size-16 text-[#13AA52]"
-					/>
-					<div className="flex flex-col items-center text-xl font-medium">
-						Changes are saved successfully
-					</div>
 				</div>
 			</Modal>
 		</>

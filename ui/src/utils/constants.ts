@@ -125,3 +125,10 @@ export const catalogOptions: CatalogOption[] = [
 	{ value: "JDBC Catalog", label: "JDBC Catalog" },
 	{ value: "HIVE Catalog", label: "Hive Catalog" },
 ]
+
+export const JobTutorialYTLink =
+	"https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP"
+export const SourceTutorialYTLink =
+	"https://youtu.be/ndCHGlK5NCM?si=jvPy-aMrpEXCQA-8"
+export const DestinationTutorialYTLink =
+	"https://youtu.be/Ub1pcLg0WsM?si=V2tEtXvx54wDoa8Y"

@@ -37,6 +37,7 @@ const DirectFormField = ({
 
 	const validateField = (value: any): string | null => {
 		const hasDefault = schema.default !== undefined
+		// This will help to understand whether the user has modified the field or not ,if it is empty and optional this field will be removed
 		const isEmpty =
 			value === undefined ||
 			value === null ||
@@ -357,22 +358,60 @@ export const DirectInputForm = ({
 	}
 
 	const handleFieldChange = (fieldName: string, fieldValue: any) => {
-		onChange({
-			...formData,
-			[fieldName]: fieldValue,
-		})
+		const isRequired = schema.required?.includes(fieldName)
+		const isEmpty =
+			fieldValue === undefined ||
+			fieldValue === null ||
+			fieldValue === "" ||
+			(Array.isArray(fieldValue) && fieldValue.length === 0)
+
+		const newFormData = { ...formData }
+
+		if (isEmpty && !isRequired) {
+			delete newFormData[fieldName]
+		} else {
+			newFormData[fieldName] = fieldValue
+		}
+
+		onChange(newFormData)
 	}
 
 	const handleNestedFieldChange = (
 		parentField: string,
 		fieldData: Record<string, any>,
 	) => {
+		const parentSchema = schema.properties?.[parentField] as RJSFSchema
+		const isParentRequired = schema.required?.includes(parentField)
+
+		// If the nested object is empty and not required, remove the entire parent field
+		if (!isParentRequired && Object.keys(fieldData).length === 0) {
+			const newFormData = { ...formData }
+			delete newFormData[parentField]
+			onChange(newFormData)
+			return
+		}
+
+		// Filter out empty optional fields from the nested object
+		const filteredFieldData = Object.entries(fieldData).reduce(
+			(acc, [key, value]) => {
+				const isRequired = parentSchema?.required?.includes(key)
+				const isEmpty =
+					value === undefined ||
+					value === null ||
+					value === "" ||
+					(Array.isArray(value) && value.length === 0)
+
+				if (!isEmpty || isRequired) {
+					acc[key] = value
+				}
+				return acc
+			},
+			{} as Record<string, any>,
+		)
+
 		onChange({
 			...formData,
-			[parentField]: {
-				...formData?.[parentField],
-				...fieldData,
-			},
+			[parentField]: filteredFieldData,
 		})
 	}
 

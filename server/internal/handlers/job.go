@@ -165,12 +165,12 @@ func (c *JobHandler) CreateJob() {
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
-		_, err = c.tempClient.CreateSync(
+		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
-			job.Frequency,
 			job.ProjectID,
 			job.ID,
-			false,
+			job.Frequency,
+			temporal.ActionCreate,
 		)
 		if err != nil {
 			fmt.Printf("Temporal workflow execution failed: %v", err)
@@ -240,12 +240,12 @@ func (c *JobHandler) UpdateJob() {
 	}
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
-		_, err = c.tempClient.CreateSync(
+		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
-			existingJob.Frequency,
 			existingJob.ProjectID,
 			existingJob.ID,
-			false,
+			existingJob.Frequency,
+			temporal.ActionUpdate,
 		)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
@@ -272,43 +272,28 @@ func (c *JobHandler) DeleteJob() {
 	}
 
 	jobName := job.Name
-
+	if c.tempClient != nil {
+		logs.Info("Using Temporal workflow for delete job schedule")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			job.ProjectID,
+			job.ID,
+			job.Frequency,
+			temporal.ActionDelete,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
+		}
+	}
 	// Delete job
 	if err := c.jobORM.Delete(id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete job")
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
 	})
 }
-
-// no need any more
-// @router /project/:projectid/jobs/:id/streams [get]
-// func (c *JobHandler) GetJobStreams() {
-// 	idStr := c.Ctx.Input.Param(":id")
-// 	id, err := strconv.Atoi(idStr)
-// 	if err != nil {
-// 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-// 		return
-// 	}
-
-// 	// Get job
-// 	job, err := c.jobORM.GetByID(id)
-// 	if err != nil {
-// 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
-// 		return
-// 	}
-
-// 	utils.SuccessResponse(&c.Controller,
-// 		struct {
-// 			StreamsConfig string `json:"streams_config"`
-// 		}{
-// 			StreamsConfig: job.StreamsConfig,
-// 		},
-// 	)
-// }
 
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
@@ -318,8 +303,6 @@ func (c *JobHandler) SyncJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
-
-	projectIDStr := c.Ctx.Input.Param(":projectid")
 	// Check if job exists
 	job, err := c.jobORM.GetByID(id)
 	if err != nil {
@@ -335,31 +318,23 @@ func (c *JobHandler) SyncJob() {
 
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
-		resp, err := c.tempClient.CreateSync(
+		_, err = c.tempClient.ManageSync(
 			c.Ctx.Request.Context(),
-			job.Frequency,
-			projectIDStr,
+			job.ProjectID,
 			job.ID,
-			true,
+			job.Frequency,
+			temporal.ActionTrigger,
 		)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("temporal execution failed: %v", err))
-			return
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
 		}
-		utils.SuccessResponse(&c.Controller, resp)
-		return
 	}
 	utils.SuccessResponse(&c.Controller, nil)
 }
 
 // @router /project/:projectid/jobs/:id/activate [post]
 func (c *JobHandler) ActivateJob() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 
 	// Parse request body
 	var req models.JobStatus
@@ -374,7 +349,23 @@ func (c *JobHandler) ActivateJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
+	action := temporal.ActionUnpause
+	if !req.Activate {
+		action = temporal.ActionPause
+	}
+	if c.tempClient != nil {
+		logs.Info("Using Temporal workflow for activate job schedule")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			job.ProjectID,
+			job.ID,
+			job.Frequency,
+			action,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for activate job schedule: %s", err))
+		}
+	}
 	// Update activation status
 	job.Active = req.Activate
 	job.UpdatedAt = time.Now()
@@ -423,17 +414,16 @@ func (c *JobHandler) GetJobTasks() {
 		return
 	}
 	for _, execution := range resp.Executions {
-		var runTime time.Duration
-		var endTime time.Time
-		startTime := execution.StartTime.AsTime()
-
+		startTime := execution.StartTime.AsTime().UTC()
+		var runTime string
 		if execution.CloseTime != nil {
-			endTime = execution.CloseTime.AsTime()
-			runTime = endTime.Sub(startTime)
+			runTime = execution.CloseTime.AsTime().UTC().Sub(startTime).Round(time.Second).String()
+		} else {
+			runTime = time.Since(startTime).Round(time.Second).String()
 		}
 		tasks = append(tasks, models.JobTask{
-			Runtime:   runTime.String(),
-			StartTime: startTime.UTC().Format(time.RFC3339),
+			Runtime:   runTime,
+			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
 		})
@@ -520,12 +510,13 @@ func (c *JobHandler) GetTaskLogs() {
 		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
 			continue
 		}
-
-		logs = append(logs, map[string]interface{}{
-			"level":   logEntry.Level,
-			"time":    logEntry.Time.UTC().Format(time.RFC3339),
-			"message": logEntry.Message,
-		})
+		if logEntry.Level != "debug" {
+			logs = append(logs, map[string]interface{}{
+				"level":   logEntry.Level,
+				"time":    logEntry.Time.UTC().Format(time.RFC3339),
+				"message": logEntry.Message,
+			})
+		}
 	}
 
 	utils.SuccessResponse(&c.Controller, logs)

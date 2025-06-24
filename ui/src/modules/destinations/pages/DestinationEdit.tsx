@@ -14,6 +14,7 @@ import {
 	getCatalogName,
 	getConnectorImage,
 	getConnectorName,
+	getDestinationType,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
@@ -150,26 +151,30 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			) {
 				connectorType = "Apache Iceberg"
 			}
-			setConnector(connectorType)
-			setSelectedVersion(initialData.version || "latest")
-			if (initialData.config) {
-				let parsedConfig = initialData.config
-				if (typeof initialData.config === "string") {
-					try {
-						parsedConfig = JSON.parse(initialData.config)
-					} catch (error) {
-						console.error("Error parsing destination config:", error)
-						parsedConfig = {}
+
+			// Only set connector if it's not already set or if it's the same as initialData
+			if (!connector || connector === connectorType) {
+				setConnector(connectorType)
+				setSelectedVersion(initialData.version || "latest")
+				if (initialData.config) {
+					let parsedConfig = initialData.config
+					if (typeof initialData.config === "string") {
+						try {
+							parsedConfig = JSON.parse(initialData.config)
+						} catch (error) {
+							console.error("Error parsing destination config:", error)
+							parsedConfig = {}
+						}
 					}
-				}
-				setFormData(parsedConfig)
-				setInitialFormData(parsedConfig)
-				if (connectorType === "Apache Iceberg") {
-					let writerCatalogType = parsedConfig.writer.catalog_type
-					setCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
-					setInitialCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
-				} else {
-					setInitialCatalog("s3")
+					setFormData(parsedConfig)
+					setInitialFormData(parsedConfig)
+					if (connectorType === "Apache Iceberg") {
+						let writerCatalogType = parsedConfig?.writer?.catalog_type
+						setCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+						setInitialCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+					} else {
+						setInitialCatalog("s3")
+					}
 				}
 			}
 		}
@@ -244,7 +249,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						) {
 							setFormData({})
 						} else {
-							if (initialFormData) {
+							if (
+								initialFormData &&
+								getDestinationType(connector) === initialFormData?.type
+							) {
 								setFormData(initialFormData)
 							}
 						}
@@ -381,7 +389,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const updateConnector = (value: string) => {
+		setFormData({})
+		setSchema(null)
+		setUiSchema(null)
 		setConnector(value)
+
+		if (onFormDataChange) {
+			onFormDataChange({})
+		}
 		if (onConnectorChange) {
 			onConnectorChange(value)
 		}

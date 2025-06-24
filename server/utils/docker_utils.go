@@ -38,7 +38,7 @@ func GetDockerHubTags(imageName string) ([]string, error) {
 
 	tags := make([]string, 0, len(responseData.Results))
 	for _, tagData := range responseData.Results {
-		if !strings.Contains(tagData.Name, "stag") && !strings.Contains(tagData.Name, "latest") && !strings.Contains(tagData.Name, "dev") {
+		if !strings.Contains(tagData.Name, "stag") && !strings.Contains(tagData.Name, "latest") && !strings.Contains(tagData.Name, "dev") && tagData.Name >= "v0.1.0" {
 			tags = append(tags, tagData.Name)
 		}
 	}

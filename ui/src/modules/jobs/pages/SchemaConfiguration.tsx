@@ -23,6 +23,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	sourceVersion,
 	sourceConfig,
 	initialStreamsData,
+	fromJobEditFlow = false,
+	jobId = -1,
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
@@ -69,6 +71,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConnector,
 					sourceVersion,
 					sourceConfig,
+					fromJobEditFlow ? jobId : -1,
 				)
 
 				const rawApiResponse = response.data as any
