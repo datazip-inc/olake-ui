@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-frontend/server/internal/kms"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
@@ -92,4 +95,109 @@ func setJobWorkflowInfo(jobInfo *models.JobDataItem, jobID int, projectIDStr str
 		jobInfo.LastRunState = ""
 	}
 	return true
+}
+
+// EncryptJSONValues encrypts each value in the JSON object separately
+func EncryptJSONValues(rawConfig string) (string, error) {
+	// Unmarshal to map
+	var configMap map[string]interface{}
+	if err := json.Unmarshal([]byte(rawConfig), &configMap); err != nil {
+		return "", fmt.Errorf("invalid JSON: %v", err)
+	}
+
+	// Encrypt values
+	encryptedMap := make(map[string]interface{})
+	for k, v := range configMap {
+		encryptedBytes, err := kms.Encrypt(fmt.Sprintf("%v", v))
+		if err != nil {
+			return "", fmt.Errorf("encryption failed for key '%s': %v", k, err)
+		}
+		// Base64 encode encrypted value to keep JSON valid
+		encryptedMap[k] = base64.StdEncoding.EncodeToString(encryptedBytes)
+	}
+
+	// Marshal back to JSON
+	encryptedJSON, err := json.Marshal(encryptedMap)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal encrypted JSON: %v", err)
+	}
+
+	return string(encryptedJSON), nil
+}
+
+// EncryptJSONString encrypts the entire JSON string as a single value
+func EncryptJSONString(rawConfig string) (string, error) {
+	return EncryptJSONAsObject(rawConfig)
+}
+
+// EncryptJSONAsObject encrypts the JSON string and returns it as a structured JSON object
+// The output will be in the format: {"encrypted_data": "base64-encoded-encrypted-json"}
+func EncryptJSONAsObject(rawConfig string) (string, error) {
+	// Encrypt the entire config string
+	encryptedBytes, err := kms.Encrypt(rawConfig)
+	if err != nil {
+		return "", fmt.Errorf("encryption failed: %v", err)
+	}
+
+	// Create a structured object with the encrypted data
+	encryptedObj := struct {
+		EncryptedData string `json:"encrypted_data"`
+	}{
+		EncryptedData: base64.StdEncoding.EncodeToString(encryptedBytes),
+	}
+
+	// Marshal to JSON
+	encryptedJSON, err := json.Marshal(encryptedObj)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal encrypted data: %v", err)
+	}
+
+	return string(encryptedJSON), nil
+}
+
+// DecryptJSONObject decrypts a JSON object in the format {"encrypted_data": "base64-encoded-encrypted-json"}
+// and returns the original JSON string
+func DecryptJSONString(encryptedObjStr string) (string, error) {
+	// Unmarshal the encrypted object
+	var encryptedObj struct {
+		EncryptedData string `json:"encrypted_data"`
+	}
+
+	if err := json.Unmarshal([]byte(encryptedObjStr), &encryptedObj); err != nil {
+		// If it's not in the expected format, try to decrypt it directly
+		// (for backward compatibility with old format)
+		return decryptRawString(encryptedObjStr)
+	}
+
+	// Decode the base64-encoded encrypted data
+	encryptedData, err := base64.StdEncoding.DecodeString(encryptedObj.EncryptedData)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 data: %v", err)
+	}
+
+	// Decrypt the data
+	decrypted, err := kms.Decrypt(encryptedData)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt data: %v", err)
+	}
+
+	return string(decrypted), nil
+}
+
+// decryptRawString is a helper function to handle backward compatibility with old format
+func decryptRawString(encryptedStr string) (string, error) {
+	// Try to decode as base64 first
+	encryptedData, err := base64.StdEncoding.DecodeString(encryptedStr)
+	if err != nil {
+		// If not base64, try to use it as is
+		encryptedData = []byte(encryptedStr)
+	}
+
+	// Try to decrypt
+	decrypted, err := kms.Decrypt(encryptedData)
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt data: %v", err)
+	}
+
+	return string(decrypted), nil
 }

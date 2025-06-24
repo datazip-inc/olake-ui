@@ -526,12 +526,18 @@ func (c *JobHandler) GetTaskLogs() {
 
 // getOrCreateSource finds or creates a source based on the provided config
 func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDStr string) (*models.Source, error) {
+	// Encrypt the source configuration
+	encryptedConfig, err := EncryptJSONValues(config.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt source config: %w", err)
+	}
+
 	// Try to find an existing source matching the criteria
 	sources, err := c.sourceORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(sources) > 0 {
 		// Update the existing source if found
 		source := sources[0]
-		source.Config = config.Config
+		source.Config = encryptedConfig
 		source.Version = config.Version
 
 		// Get user info for update
@@ -542,7 +548,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 		}
 
 		if err := c.sourceORM.Update(source); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update source: %w", err)
 		}
 
 		return source, nil
@@ -552,7 +558,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 	source := &models.Source{
 		Name:      config.Name,
 		Type:      config.Type,
-		Config:    config.Config,
+		Config:    encryptedConfig,
 		Version:   config.Version,
 		ProjectID: projectIDStr,
 	}
@@ -566,7 +572,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 	}
 
 	if err := c.sourceORM.Create(source); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create source: %w", err)
 	}
 
 	return source, nil
@@ -574,12 +580,18 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 
 // getOrCreateDestination finds or creates a destination based on the provided config
 func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
+	// Encrypt the destination configuration
+	encryptedConfig, err := EncryptJSONValues(config.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt destination config: %w", err)
+	}
+
 	// Try to find an existing destination matching the criteria
 	destinations, err := c.destORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(destinations) > 0 {
 		// Update the existing destination if found
 		dest := destinations[0]
-		dest.Config = config.Config
+		dest.Config = encryptedConfig
 		dest.Version = config.Version
 
 		// Get user info for update
@@ -590,7 +602,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 		}
 
 		if err := c.destORM.Update(dest); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update destination: %w", err)
 		}
 
 		return dest, nil
@@ -600,7 +612,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	dest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,
-		Config:    config.Config,
+		Config:    encryptedConfig,
 		Version:   config.Version,
 		ProjectID: projectIDStr,
 	}
@@ -614,7 +626,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	if err := c.destORM.Create(dest); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create destination: %w", err)
 	}
 
 	return dest, nil

@@ -83,17 +83,27 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
+	encryptedJSON, err := EncryptJSONString(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+		return
+	}
+	logs.Info("Successfully encrypted source config %+v", encryptedJSON)
+	decryptedJSON, err := DecryptJSONString(encryptedJSON)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
+		return
+	}
+	logs.Info("Successfully decrypted source config %+v", decryptedJSON)
+
 	// Convert request to Source model
 	source := &models.Source{
 		Name:    req.Name,
 		Type:    req.Type,
 		Version: req.Version,
-		Config:  req.Config,
+		Config:  encryptedJSON,
 	}
-
-	// Get project ID if needed
-	source.ProjectID = c.Ctx.Input.Param(":projectid")
-
+	logs.Info("Successfully encrypted source config %+v", source.Config)
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
@@ -127,10 +137,16 @@ func (c *SourceHandler) UpdateSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
+	// Encrypt the source configuration
+	encryptedConfig, err := EncryptJSONString(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+		return
+	}
 
 	// Update fields
 	existingSource.Name = req.Name
-	existingSource.Config = req.Config
+	existingSource.Config = encryptedConfig
 	existingSource.Type = req.Type
 	existingSource.Version = req.Version
 	existingSource.UpdatedAt = time.Now()
