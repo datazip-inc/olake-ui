@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/utils"
 	analytics "github.com/segmentio/analytics-go/v3"
 )
 
@@ -29,19 +30,12 @@ var (
 type Telemetry struct {
 	client        analytics.Client
 	enabled       bool
-	platform      platformInfo
+	platform      utils.PlatformInfo
 	ipAddress     string
 	locationInfo  *LocationInfo
 	locationMutex sync.Mutex
 	locationChan  chan struct{}
-}
-
-type platformInfo struct {
-	OS           string
-	Arch         string
-	Environment  string
-	OlakeVersion string
-	DeviceCPU    string
+	anonymousID   string
 }
 
 type LocationInfo struct {
@@ -51,9 +45,8 @@ type LocationInfo struct {
 }
 
 func loadTelemetryConfig() error {
-	// Hardcoded telemetry configuration
-	telemetryEnabled = true
-	segmentAPIKey = "1gZZyBlRTkwWnyJPanBYnQ5E4cQwS6T6"
+	telemetryEnabled = constants.TelemetryEnabled
+	segmentAPIKey = constants.TelemetrySegmentAPIKey
 
 	if telemetryEnabled && segmentAPIKey == "" {
 		return fmt.Errorf("segment API key is required when telemetry is enabled")
@@ -73,12 +66,16 @@ func InitTelemetry() error {
 		client = analytics.New(segmentAPIKey)
 	}
 
+	// Generate anonymous ID during initialization
+	anonymousID := generateStoredAnonymousID()
+
 	instance = &Telemetry{
 		client:       client,
 		enabled:      telemetryEnabled,
 		platform:     getPlatformInfo(),
 		ipAddress:    ip,
 		locationChan: make(chan struct{}),
+		anonymousID:  anonymousID,
 	}
 
 	if instance.enabled && ip != constants.TelemetryIPNotFoundPlaceholder {
@@ -100,7 +97,8 @@ func InitTelemetry() error {
 	return nil
 }
 
-func GetAnonymousID() string {
+// generateStoredAnonymousID generates or retrieves a stored anonymous ID
+func generateStoredAnonymousID() string {
 	idLock.Lock()
 	defer idLock.Unlock()
 
@@ -129,8 +127,8 @@ func generateUUID() string {
 	return hex.EncodeToString(hash.Sum(nil))[:32]
 }
 
-func getPlatformInfo() platformInfo {
-	return platformInfo{
+func getPlatformInfo() utils.PlatformInfo {
+	return utils.PlatformInfo{
 		OS:           runtime.GOOS,
 		Arch:         runtime.GOARCH,
 		OlakeVersion: constants.TelemetryVersion,
@@ -210,17 +208,14 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		properties = make(map[string]interface{})
 	}
 
-	// Add essential properties
-	properties["olake_version"] = instance.platform.OlakeVersion
-	properties["os"] = instance.platform.OS
-	properties["arch"] = instance.platform.Arch
-	properties["device_cpu"] = instance.platform.DeviceCPU
-	properties["ip_address"] = instance.ipAddress
-	properties["location"] = instance.getLocationWithTimeout()
-	properties["timestamp"] = time.Now().UTC().Format(time.RFC3339)
+	// Add common properties that needs to be sent with every event
+	essentialProps := utils.GetTelemetryCommonProperties(instance.platform, instance.ipAddress, instance.getLocationWithTimeout())
+	for key, value := range essentialProps {
+		properties[key] = value
+	}
 
 	return instance.client.Enqueue(analytics.Track{
-		UserId:     GetAnonymousID(),
+		UserId:     instance.anonymousID,
 		Event:      eventName,
 		Properties: properties,
 	})

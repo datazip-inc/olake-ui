@@ -14,10 +14,11 @@ import (
 
 func main() {
 	// TODO: check if we have to create a new config file for docker compatibility
-	// Initialize telemetry
-	if err := telemetry.InitTelemetry(); err != nil {
-		logs.Error("Failed to initialize telemetry: %v", err)
-	}
+	go func() {
+		if err := telemetry.InitTelemetry(); err != nil {
+			logs.Error("Failed to initialize telemetry: %v", err)
+		}
+	}()
 	defer telemetry.Flush() // Ensure all events are sent before shutdown
 
 	// check constants

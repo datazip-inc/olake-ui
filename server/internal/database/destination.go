@@ -39,20 +39,15 @@ func (r *DestinationORM) Create(destination *models.Destination) error {
 		"version":          destination.Version,
 	}
 
-	// Parse config to get catalog_type
+	properties["catalog"] = "none"
 	var config map[string]interface{}
+	// parse config to get catalog_type
 	if err := json.Unmarshal([]byte(destination.Config), &config); err == nil {
 		if writer, exists := config["writer"].(map[string]interface{}); exists {
 			if catalogType, exists := writer["catalog_type"]; exists {
 				properties["catalog"] = catalogType
-			} else {
-				properties["catalog"] = "none"
 			}
-		} else {
-			properties["catalog"] = "none"
 		}
-	} else {
-		properties["catalog"] = "none"
 	}
 
 	if destination.CreatedBy != nil {

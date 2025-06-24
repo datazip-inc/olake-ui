@@ -42,6 +42,8 @@ const (
 	TelemetryIPNotFoundPlaceholder = "NA"
 	TelemetryConfigTimeout         = time.Second
 	TelemetryLocationTimeout       = 200 * time.Millisecond
+	TelemetryEnabled               = true
+	TelemetrySegmentAPIKey         = "1gZZyBlRTkwWnyJPanBYnQ5E4cQwS6T6"
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
