@@ -58,7 +58,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[s
 func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
 		// Using large duration (e.g., 10 years)
-		StartToCloseTimeout: time.Hour * 24 * 365 * 10, // 10 years
+		StartToCloseTimeout: time.Hour * 24 * 30, // 30 days
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	params := SyncParams{
