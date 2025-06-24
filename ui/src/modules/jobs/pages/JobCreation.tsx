@@ -296,6 +296,7 @@ const JobCreation: React.FC = () => {
 								}}
 								initialFormData={sourceFormData}
 								initialName={sourceName}
+								initialVersion={sourceVersion}
 								onVersionChange={setSourceVersion}
 								onComplete={() => {
 									setCurrentStep("destination")

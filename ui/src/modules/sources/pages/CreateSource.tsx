@@ -34,6 +34,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			initialFormData,
 			initialName,
 			initialConnector,
+			initialVersion,
 			onSourceNameChange,
 			onConnectorChange,
 			onFormDataChange,
@@ -44,7 +45,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
-		const [selectedVersion, setSelectedVersion] = useState("latest")
+		const [selectedVersion, setSelectedVersion] = useState(
+			initialVersion || "latest",
+		)
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<any>({})
@@ -98,6 +101,16 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}, [connector, setupType, fetchSources])
 
 		useEffect(() => {
+			if (
+				initialVersion &&
+				initialVersion !== "latest" &&
+				initialConnector === connector
+			) {
+				setSelectedVersion(initialVersion)
+			}
+		}, [initialVersion, initialConnector, connector])
+
+		useEffect(() => {
 			const fetchVersions = async () => {
 				setLoadingVersions(true)
 				try {
@@ -106,7 +119,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					)
 					if (response.data && response.data.version) {
 						setVersions(response.data.version)
-						if (response.data.version.length > 0) {
+						if (
+							response.data.version.length > 0 &&
+							(!initialVersion ||
+								connector !== initialConnector ||
+								initialVersion === "latest")
+						) {
 							const defaultVersion = response.data.version[0]
 							setSelectedVersion(defaultVersion)
 							if (onVersionChange) {
@@ -122,7 +140,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 
 			fetchVersions()
-		}, [connector, onVersionChange])
+		}, [connector, onVersionChange, initialVersion, initialConnector])
 
 		useEffect(() => {
 			const fetchSourceSpec = async () => {
