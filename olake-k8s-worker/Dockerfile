@@ -34,9 +34,6 @@ COPY --from=builder /app/olake-k8s-worker .
 # Change ownership to non-root user
 RUN chown -R olake:olake /app
 
-# Switch to non-root user
-USER 1001
-
 # Expose health check port
 EXPOSE 8090
 

@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -128,18 +129,6 @@ func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.
 								Limits: corev1.ResourceList{
 									corev1.ResourceMemory: utils.ParseQuantity("1Gi"),
 									corev1.ResourceCPU:    utils.ParseQuantity("500m"),
-								},
-							},
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "config",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: spec.ConfigMapName,
-									},
 								},
 							},
 						},
@@ -289,12 +278,11 @@ func (k *K8sJobManager) getJobLogs(ctx context.Context, jobName string) (string,
 
 // JobSpec defines the specification for creating a Kubernetes Job
 type JobSpec struct {
-	Name          string
-	Image         string
-	Command       []string
-	Args          []string
-	ConfigMapName string
-	Operation     shared.Command
+	Name      string
+	Image     string
+	Command   []string
+	Args      []string
+	Operation shared.Command
 }
 
 // Helper function to return TTL pointer only if > 0
@@ -304,4 +292,109 @@ func getTTLPointer(ttlSeconds int) *int32 {
 	}
 	ttl := int32(ttlSeconds)
 	return &ttl
+}
+
+// CreateJobWithPV creates a Kubernetes Job for running sync operations with PV
+func (k *K8sJobManager) CreateJobWithPV(ctx context.Context, spec *JobSpec, configs []shared.JobConfig) (*batchv1.Job, error) {
+	// Create unique directory for this workflow
+	workflowDir := spec.Name // e.g., "sync-mysql-1234567890"
+
+	// Write config files to PV (similar to Docker implementation)
+	if err := k.setupWorkDirectory(workflowDir); err != nil {
+		return nil, fmt.Errorf("failed to setup work directory: %v", err)
+	}
+
+	if err := k.writeConfigFiles(workflowDir, configs); err != nil {
+		return nil, fmt.Errorf("failed to write config files: %v", err)
+	}
+
+	// Create Job with PV mount instead of ConfigMap
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      spec.Name,
+			Namespace: k.namespace,
+			Labels: map[string]string{
+				"app":       "olake-sync",
+				"type":      "connector-job",
+				"cleanup":   "auto",
+				"operation": string(spec.Operation),
+			},
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: &[]int32{1}[0],
+			// Only set TTL if > 0
+			TTLSecondsAfterFinished: getTTLPointer(utils.GetEnvInt("JOB_TTL_SECONDS", 0)),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:    "connector",
+							Image:   spec.Image,
+							Command: spec.Command,
+							Args:    spec.Args,
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "job-storage",
+									MountPath: "/mnt/config",
+									SubPath:   workflowDir, // Mount specific workflow directory
+								},
+							},
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceMemory: utils.ParseQuantity("256Mi"),
+									corev1.ResourceCPU:    utils.ParseQuantity("100m"),
+								},
+								Limits: corev1.ResourceList{
+									corev1.ResourceMemory: utils.ParseQuantity("1Gi"),
+									corev1.ResourceCPU:    utils.ParseQuantity("500m"),
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "job-storage",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "olake-jobs-pvc",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	logger.Infof("Creating Job %s with image %s", spec.Name, spec.Image)
+	result, err := k.clientset.BatchV1().Jobs(k.namespace).Create(ctx, job, metav1.CreateOptions{})
+	if err != nil {
+		logger.Errorf("Failed to create Job %s: %v", spec.Name, err)
+		return nil, err
+	}
+
+	logger.Infof("Successfully created Job %s", spec.Name)
+	return result, nil
+}
+
+func (k *K8sJobManager) setupWorkDirectory(workflowDir string) error {
+	// Use similar logic to Docker runner
+	basePath := "/data/olake-jobs" // PV mount point on worker pod
+	workDir := filepath.Join(basePath, workflowDir)
+
+	return utils.CreateDirectory(workDir, 0755)
+}
+
+func (k *K8sJobManager) writeConfigFiles(workflowDir string, configs []shared.JobConfig) error {
+	basePath := "/data/olake-jobs"
+	workDir := filepath.Join(basePath, workflowDir)
+
+	for _, config := range configs {
+		filePath := filepath.Join(workDir, config.Name)
+		if err := utils.WriteFile(filePath, []byte(config.Data), 0644); err != nil {
+			return fmt.Errorf("failed to write %s: %v", config.Name, err)
+		}
+	}
+	return nil
 }

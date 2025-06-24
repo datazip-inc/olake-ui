@@ -49,12 +49,11 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 
 	// Create Job specification
 	jobSpec := &JobSpec{
-		Name:          params.WorkflowID,
-		Image:         jobManager.GetDockerImageName(params.SourceType, params.Version),
-		Command:       []string{},
-		Args:          []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
-		ConfigMapName: configMapName,
-		Operation:     shared.Discover,
+		Name:      params.WorkflowID,
+		Image:     jobManager.GetDockerImageName(params.SourceType, params.Version),
+		Command:   []string{},
+		Args:      []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
+		Operation: shared.Discover,
 	}
 
 	// Log the command that will be executed
@@ -63,7 +62,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
-	job, err := jobManager.CreateJob(ctx, jobSpec)
+	job, err := jobManager.CreateJobWithPV(ctx, jobSpec, configs)
 	if err != nil {
 		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
@@ -136,8 +135,7 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 			fmt.Sprintf("--%s", params.Flag),
 			"/mnt/config/config.json",
 		},
-		ConfigMapName: configMapName,
-		Operation:     shared.Check,
+		Operation: shared.Check,
 	}
 
 	// Log the command that will be executed
@@ -146,7 +144,7 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
-	job, err := jobManager.CreateJob(ctx, jobSpec)
+	job, err := jobManager.CreateJobWithPV(ctx, jobSpec, configs)
 	if err != nil {
 		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
@@ -234,8 +232,7 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 			"--destination", "/mnt/config/writer.json",
 			"--state", "/mnt/config/state.json",
 		},
-		ConfigMapName: configMapName,
-		Operation:     shared.Sync,
+		Operation: shared.Sync,
 	}
 
 	// Log the command that will be executed
@@ -244,7 +241,7 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
-	job, err := jobManager.CreateJob(ctx, jobSpec)
+	job, err := jobManager.CreateJobWithPV(ctx, jobSpec, configs)
 	if err != nil {
 		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)

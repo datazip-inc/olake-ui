@@ -143,6 +143,7 @@ echo -e "${BLUE}🚀 Deploying 04-olake (OLake UI - Backend + Frontend)...${NC}"
 kubectl apply -f 04-olake/configmap.yaml
 kubectl apply -f 04-olake/deployment.yaml
 kubectl apply -f 04-olake/service.yaml
+kubectl apply -f 04-olake/persistent-volume.yaml
 wait_for_deployment olake olake-ui 300
 
 echo -e "${BLUE}👤 Running signup initialization...${NC}"

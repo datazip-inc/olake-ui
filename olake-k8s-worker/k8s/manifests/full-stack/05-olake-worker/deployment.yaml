@@ -23,9 +23,8 @@ spec:
     spec:
       serviceAccountName: olake-k8s-worker
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 1001
-        fsGroup: 1001
+        runAsUser: 0
+        fsGroup: 0
       containers:
       - name: olake-k8s-worker
         image: olake-k8s-worker:local
@@ -68,9 +67,14 @@ spec:
           failureThreshold: 3
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 1001
+          runAsUser: 0
           capabilities:
             drop:
             - ALL
+        volumeMounts:
+          - name: job-storage
+            mountPath: /data/olake-jobs
+      volumes:
+      - name: job-storage
+        persistentVolumeClaim:
+          claimName: olake-jobs-pvc
