@@ -49,8 +49,6 @@ const JobCreation: React.FC = () => {
 	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
 	const [isFromSources, setIsFromSources] = useState(true)
 
-	const [hitBack, setHitBack] = useState(false)
-
 	const {
 		setShowEntitySavedModal,
 		setShowSourceCancelModal,
@@ -66,7 +64,6 @@ const JobCreation: React.FC = () => {
 	const destinationRef = useRef<CreateDestinationHandle>(null)
 
 	const handleNext = async () => {
-		setHitBack(false)
 		if (currentStep === "source") {
 			if (sourceRef.current) {
 				const isValid = await sourceRef.current.validateSource()
@@ -197,7 +194,6 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleBack = () => {
-		setHitBack(true)
 		if (currentStep === "destination") {
 			setCurrentStep("source")
 		} else if (currentStep === "schema") {
@@ -300,6 +296,7 @@ const JobCreation: React.FC = () => {
 								}}
 								initialFormData={sourceFormData}
 								initialName={sourceName}
+								initialVersion={sourceVersion}
 								onVersionChange={setSourceVersion}
 								onComplete={() => {
 									setCurrentStep("destination")
@@ -313,12 +310,19 @@ const JobCreation: React.FC = () => {
 						<div className="w-full">
 							<CreateDestination
 								fromJobFlow={true}
-								hitBack={hitBack}
 								stepNumber={2}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
-								initialConnector={destinationConnector}
+								initialConnector={
+									destinationConnector.toLowerCase() === "s3" ||
+									destinationConnector.toLowerCase() === "amazon s3"
+										? "s3"
+										: destinationConnector.toLowerCase() === "apache iceberg" ||
+											  destinationConnector.toLowerCase() === "iceberg"
+											? "iceberg"
+											: destinationConnector.toLowerCase()
+								}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}

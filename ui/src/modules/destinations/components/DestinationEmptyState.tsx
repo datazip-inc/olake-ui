@@ -2,6 +2,7 @@ import { PlayCircle, Plus } from "@phosphor-icons/react"
 import FirstDestination from "../../../assets/FirstDestination.svg"
 import DestinationTutorial from "../../../assets/DestinationTutorial.svg"
 import { Button } from "antd"
+import { DestinationTutorialYTLink } from "../../../utils/constants"
 
 const DestinationEmptyState = ({
 	handleCreateDestination,
@@ -32,11 +33,18 @@ const DestinationEmptyState = ({
 			</Button>
 			<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-4 shadow-sm">
 				<div className="flex items-center gap-4">
-					<img
-						src={DestinationTutorial}
-						alt="Job Tutorial"
-						className="rounded-lg"
-					/>
+					<a
+						href={DestinationTutorialYTLink}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="cursor-pointer"
+					>
+						<img
+							src={DestinationTutorial}
+							alt="Job Tutorial"
+							className="rounded-lg transition-opacity hover:opacity-80"
+						/>
+					</a>
 					<div className="flex-1">
 						<div className="mb-1 flex items-center gap-1 text-xs">
 							<PlayCircle color="#9f9f9f" />

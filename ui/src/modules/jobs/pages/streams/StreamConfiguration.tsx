@@ -5,6 +5,7 @@ import StreamsSchema from "./StreamsSchema"
 import {
 	ColumnsPlusRight,
 	GridFour,
+	Info,
 	SlidersHorizontal,
 } from "@phosphor-icons/react"
 import { CARD_STYLE, TAB_STYLES } from "../../../../utils/constants"
@@ -22,15 +23,17 @@ const StreamConfiguration = ({
 	const [syncMode, setSyncMode] = useState(
 		stream.stream.sync_mode === "full_refresh" ? "full" : "cdc",
 	)
-	const [enableBackfill, setEnableBackfill] = useState(false)
+	// const [enableBackfill, setEnableBackfill] = useState(false)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
 	const [partitionRegex, setPartitionRegex] = useState("")
-	const [partitionInfo, setPartitionInfo] = useState<string[]>([])
+	const [activePartitionRegex, setActivePartitionRegex] = useState(
+		initialPartitionRegex || "",
+	)
 	const [formData, setFormData] = useState<any>({
 		sync_mode: stream.stream.sync_mode,
 		backfill: false,
-		partition_regex: "",
+		partition_regex: initialPartitionRegex || "",
 	})
 
 	useEffect(() => {
@@ -48,18 +51,10 @@ const StreamConfiguration = ({
 			setSyncMode("cdc")
 			initialEnableBackfillForSwitch = false
 		}
-		setEnableBackfill(initialEnableBackfillForSwitch)
+		// setEnableBackfill(initialEnableBackfillForSwitch)
 		setNormalisation(initialNormalization)
-
-		// Handle initial partition regex
-		if (initialPartitionRegex) {
-			const partitions = initialPartitionRegex.split(",").filter(p => p.trim())
-			setPartitionInfo(partitions)
-			setPartitionRegex("")
-		} else {
-			setPartitionInfo([])
-			setPartitionRegex("")
-		}
+		setActivePartitionRegex(initialPartitionRegex || "")
+		setPartitionRegex("")
 
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
@@ -84,7 +79,7 @@ const StreamConfiguration = ({
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
-		setEnableBackfill(newEnableBackfillState)
+		// setEnableBackfill(newEnableBackfillState)
 		onSyncModeChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "default",
@@ -98,31 +93,31 @@ const StreamConfiguration = ({
 		})
 	}
 
-	const handleEnableBackfillChange = (checked: boolean) => {
-		setEnableBackfill(checked)
-		let finalApiSyncMode = stream.stream.sync_mode
+	// const handleEnableBackfillChange = (checked: boolean) => {
+	// 	setEnableBackfill(checked)
+	// 	let finalApiSyncMode = stream.stream.sync_mode
 
-		if (syncMode === "cdc") {
-			if (checked) {
-				finalApiSyncMode = "cdc"
-				stream.stream.sync_mode = "cdc"
-				onSyncModeChange?.(
-					stream.stream.name,
-					stream.stream.namespace || "default",
-					"cdc",
-				)
-			} else {
-				finalApiSyncMode = "strict_cdc"
-				stream.stream.sync_mode = "strict_cdc"
-			}
-		}
+	// 	if (syncMode === "cdc") {
+	// 		if (checked) {
+	// 			finalApiSyncMode = "cdc"
+	// 			stream.stream.sync_mode = "cdc"
+	// 			onSyncModeChange?.(
+	// 				stream.stream.name,
+	// 				stream.stream.namespace || "default",
+	// 				"cdc",
+	// 			)
+	// 		} else {
+	// 			finalApiSyncMode = "strict_cdc"
+	// 			stream.stream.sync_mode = "strict_cdc"
+	// 		}
+	// 	}
 
-		setFormData({
-			...formData,
-			backfill: checked,
-			sync_mode: finalApiSyncMode,
-		})
-	}
+	// 	setFormData({
+	// 		...formData,
+	// 		backfill: checked,
+	// 		sync_mode: finalApiSyncMode,
+	// 	})
+	// }
 
 	const handleNormalizationChange = (checked: boolean) => {
 		setNormalisation(checked)
@@ -137,42 +132,33 @@ const StreamConfiguration = ({
 		})
 	}
 
-	const handleAddPartitionRegex = () => {
+	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			const newPartitionInfo = [...partitionInfo, partitionRegex]
-			setPartitionInfo(newPartitionInfo)
+			setActivePartitionRegex(partitionRegex)
 			setPartitionRegex("")
-
-			const newPartitionRegexString = newPartitionInfo.join(",")
 			onPartitionRegexChange(
 				stream.stream.name,
 				stream.stream.namespace || "default",
-				newPartitionRegexString,
+				partitionRegex,
 			)
-
 			setFormData({
 				...formData,
-				partition_regex: newPartitionRegexString,
+				partition_regex: partitionRegex,
 			})
 		}
 	}
 
-	const handleDeletePartition = (indexToDelete: number) => {
-		const newPartitionInfo = partitionInfo.filter(
-			(_, index) => index !== indexToDelete,
-		)
-		setPartitionInfo(newPartitionInfo)
-
-		const newPartitionRegexString = newPartitionInfo.join(",")
+	const handleClearPartitionRegex = () => {
+		setActivePartitionRegex("")
+		setPartitionRegex("")
 		onPartitionRegexChange(
 			stream.stream.name,
 			stream.stream.namespace || "default",
-			newPartitionRegexString,
+			"",
 		)
-
 		setFormData({
 			...formData,
-			partition_regex: newPartitionRegexString,
+			partition_regex: "",
 		})
 	}
 
@@ -235,23 +221,34 @@ const StreamConfiguration = ({
 				</div>
 				<div className={CARD_STYLE}>
 					<div className="flex items-center justify-between">
-						<label className="font-medium">Enable backfill</label>
+						<label className="text-[#c1c1c1]">Enable backfill</label>
 						<Switch
-							checked={enableBackfill}
-							onChange={handleEnableBackfillChange}
-							disabled={syncMode === "full"}
+							// className="text-[#c1c1c1]"
+							// checked={enableBackfill}
+							// onChange={handleEnableBackfillChange}
+							// disabled={syncMode === "full"}
+							checked={true}
+							disabled={true}
 						/>
 					</div>
 				</div>
-				{isSelected && (
-					<div className={`mb-4 ${CARD_STYLE}`}>
-						<div className="flex items-center justify-between">
-							<label className="font-medium">Normalisation</label>
-							<Switch
-								checked={normalisation}
-								onChange={handleNormalizationChange}
-							/>
-						</div>
+
+				<div
+					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE}`}
+				>
+					<div className="flex items-center justify-between">
+						<label>Normalisation</label>
+						<Switch
+							checked={normalisation}
+							onChange={handleNormalizationChange}
+							disabled={!isSelected}
+						/>
+					</div>
+				</div>
+				{!isSelected && (
+					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
+						<Info className="size-4" />
+						Select the stream to configure Normalisation
 					</div>
 				)}
 			</div>
@@ -274,39 +271,39 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={partitionInfo.length > 0}
+						disabled={!!activePartitionRegex}
 					/>
-					<Button
-						className="w-20 bg-[#203FDD] py-3 font-light text-white"
-						onClick={handleAddPartitionRegex}
-						disabled={!partitionRegex || partitionInfo.length > 0}
-					>
-						Partition
-					</Button>
-					{partitionInfo.length > 0 && (
+					{!activePartitionRegex ? (
+						<Button
+							className="mt-2 w-fit bg-[#203FDD] px-1 py-3 font-light text-white"
+							onClick={handleSetPartitionRegex}
+							disabled={!partitionRegex}
+						>
+							Set Partition
+						</Button>
+					) : (
 						<div className="mt-4">
-							<div className="text-sm text-[#575757]">Added partitions:</div>
-							{partitionInfo.map((regex, index) => (
-								<div
-									key={index}
-									className="mt-2 flex items-center justify-between text-sm"
+							<div className="text-sm text-[#575757]">
+								Active partition regex:
+							</div>
+							<div className="mt-2 flex items-center justify-between text-sm">
+								<span>{activePartitionRegex}</span>
+								<Button
+									type="text"
+									danger
+									size="small"
+									className="rounded-[6px] py-1 text-sm"
+									onClick={handleClearPartitionRegex}
 								>
-									<span>{regex}</span>
-									<Button
-										type="text"
-										danger
-										size="small"
-										onClick={() => handleDeletePartition(index)}
-									>
-										Delete
-									</Button>
-								</div>
-							))}
+									Delete Partition
+								</Button>
+							</div>
 						</div>
 					)}
 				</>
 			) : (
-				<div className="text-sm text-gray-500">
+				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
+					<Info className="size-4" />
 					Select the stream to configure Partitioning
 				</div>
 			)}

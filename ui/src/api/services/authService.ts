@@ -33,10 +33,16 @@ export const authService = {
 				return response.data.data
 			}
 
-			throw new Error(response.data.message || "Login failed")
+			throw new Error(response.data.message)
 		} catch (error: any) {
-			console.error("Login error:", error)
-			throw new Error(error?.message || "Login failed")
+			// Handle 400 status code specifically
+			if (error.response?.status === 400) {
+				throw new Error(error.response.data.message || "Invalid credentials")
+			}
+			// Handle other errors
+			throw new Error(
+				error.response?.data?.message || error.message || "Login failed",
+			)
 		}
 	},
 

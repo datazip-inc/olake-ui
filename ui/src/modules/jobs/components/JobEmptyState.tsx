@@ -2,6 +2,7 @@ import { GitCommit, PlayCircle } from "@phosphor-icons/react"
 import FirstJob from "../../../assets/FirstJob.svg"
 import JobsTutorial from "../../../assets/JobsTutorial.svg"
 import { Button } from "antd"
+import { JobTutorialYTLink } from "../../../utils/constants"
 
 const JobEmptyState = ({
 	handleCreateJob,
@@ -30,11 +31,18 @@ const JobEmptyState = ({
 			</Button>
 			<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-6 shadow-sm">
 				<div className="flex items-center gap-4">
-					<img
-						src={JobsTutorial}
-						alt="Job Tutorial"
-						className="rounded-lg"
-					/>
+					<a
+						href={JobTutorialYTLink}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="cursor-pointer"
+					>
+						<img
+							src={JobsTutorial}
+							alt="Job Tutorial"
+							className="rounded-lg transition-opacity hover:opacity-80"
+						/>
+					</a>
 					<div className="flex-1">
 						<div className="mb-1 flex items-center gap-1 text-xs">
 							<PlayCircle color="#9f9f9f" />
