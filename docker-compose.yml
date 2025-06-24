@@ -4,6 +4,10 @@ x-app-defaults:
     type: bind
     source: *hostPersistencePath
     target: /tmp/olake-config
+  telemetry_volume_details: &telemetryVolumeDetails
+    type: volume
+    source: telemetry-data
+    target: /tmp/olake
 
 x-signup-defaults:
   username: &defaultUsername "admin"
@@ -23,6 +27,7 @@ services:
       - "8080:8080" # Expose backend API port
     volumes:
       - <<: *workerConfigVolumeDetails
+      - <<: *telemetryVolumeDetails
     networks:
       - temporal-network
     depends_on:
@@ -89,6 +94,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
+      - <<: *telemetryVolumeDetails
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
       PERSISTENT_DIR: *hostPersistencePath
@@ -200,4 +206,6 @@ volumes:
   olake-config-data:
     driver: local
   temporal-elasticsearch-data:
+    driver: local
+  telemetry-data:
     driver: local
