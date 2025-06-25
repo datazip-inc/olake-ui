@@ -52,6 +52,9 @@ func InitEncryption() error {
 }
 
 func Encrypt(plaintext string) ([]byte, error) {
+	if err := InitEncryption(); err != nil {
+		return nil, fmt.Errorf("encryption failed: %w", err)
+	}
 	if useKMS {
 		out, err := kmsClient.Encrypt(context.Background(), &kms.EncryptInput{
 			KeyId:     &keyId,
@@ -83,6 +86,9 @@ func Encrypt(plaintext string) ([]byte, error) {
 }
 
 func Decrypt(cipherData []byte) (string, error) {
+	if err := InitEncryption(); err != nil {
+		return "", fmt.Errorf("decryption failed: %w", err)
+	}
 	if useKMS {
 		out, err := kmsClient.Decrypt(context.Background(), &kms.DecryptInput{
 			CiphertextBlob: cipherData,

@@ -115,15 +115,15 @@ func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, 
 // buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
-
+	encryptionKey := os.Getenv("ENCRYPTION_KEY")
 	dockerArgs := []string{
 		"run",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
+		fmt.Sprintf("--encryption-key %s", encryptionKey),
 	}
-
 	return append(dockerArgs, additionalArgs...)
 }
 
