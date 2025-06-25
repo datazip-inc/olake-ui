@@ -44,12 +44,17 @@ func (c *DestHandler) GetAllDestinations() {
 	}
 	destItems := make([]models.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
+		decryptedConfig, err := DecryptJSONString(dest.Config)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt destination config: "+err.Error())
+			return
+		}
 		item := models.DestinationDataItem{
 			ID:        dest.ID,
 			Name:      dest.Name,
 			Type:      dest.DestType,
 			Version:   dest.Version,
-			Config:    dest.Config,
+			Config:    decryptedConfig,
 			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
@@ -80,7 +85,7 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 	// Encrypt the destination configuration
-	encryptedConfig, err := EncryptJSONValues(req.Config)
+	encryptedConfig, err := EncryptJSONString(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
@@ -129,7 +134,7 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 	// Encrypt the destination configuration
-	encryptedConfig, err := EncryptJSONValues(req.Config)
+	encryptedConfig, err := EncryptJSONString(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return

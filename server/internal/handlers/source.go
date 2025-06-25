@@ -50,12 +50,17 @@ func (c *SourceHandler) GetAllSources() {
 	sourceItems := make([]models.SourceDataItem, 0, len(sources))
 
 	for _, source := range sources {
+		decryptedConfig, err := DecryptJSONString(source.Config)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
+			return
+		}
 		item := models.SourceDataItem{
 			ID:        source.ID,
 			Name:      source.Name,
 			Type:      source.Type,
 			Version:   source.Version,
-			Config:    source.Config,
+			Config:    decryptedConfig,
 			CreatedAt: source.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
 		}

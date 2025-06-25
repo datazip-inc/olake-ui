@@ -527,7 +527,7 @@ func (c *JobHandler) GetTaskLogs() {
 // getOrCreateSource finds or creates a source based on the provided config
 func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDStr string) (*models.Source, error) {
 	// Encrypt the source configuration
-	encryptedConfig, err := EncryptJSONValues(config.Config)
+	encryptedConfig, err := EncryptJSONString(config.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt source config: %w", err)
 	}
@@ -581,7 +581,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 // getOrCreateDestination finds or creates a destination based on the provided config
 func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
 	// Encrypt the destination configuration
-	encryptedConfig, err := EncryptJSONValues(config.Config)
+	encryptedConfig, err := EncryptJSONString(config.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt destination config: %w", err)
 	}
