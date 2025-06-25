@@ -20,11 +20,12 @@ import (
 )
 
 var (
-	kmsClient *kms.Client
-	keyID     string
-	localKey  []byte
-	useKMS    bool
-	once      sync.Once
+	kmsClient          *kms.Client
+	keyID              string
+	localKey           []byte
+	useKMS             bool
+	once               sync.Once
+	encryptionDisabled bool
 )
 
 // InitEncryption initializes encryption based on KMS key or passphrase
@@ -33,6 +34,10 @@ func InitEncryption() error {
 	var initErr error
 
 	once.Do(func() {
+		if strings.TrimSpace(key) == "" {
+			encryptionDisabled = true
+			return
+		}
 		if strings.HasPrefix(key, "arn:aws:kms:") {
 			cfg, err := config.LoadDefaultConfig(context.Background())
 			if err != nil {
@@ -132,6 +137,9 @@ type cryptoObj struct {
 
 // EncryptJSONString encrypts the entire JSON string as a single value
 func EncryptJSONString(rawConfig string) (string, error) {
+	if encryptionDisabled {
+		return rawConfig, nil
+	}
 	// Encrypt the entire config string
 	encryptedBytes, err := Encrypt(rawConfig)
 	if err != nil {
@@ -152,6 +160,9 @@ func EncryptJSONString(rawConfig string) (string, error) {
 // DecryptJSONObject decrypts a JSON object in the format {"encrypted_data": "base64-encoded-encrypted-json"}
 // and returns the original JSON string
 func DecryptJSONString(encryptedObjStr string) (string, error) {
+	if encryptionDisabled {
+		return encryptedObjStr, nil
+	}
 	// Unmarshal the encrypted object
 	cryptoObj := cryptoObj{}
 	if err := json.Unmarshal([]byte(encryptedObjStr), &cryptoObj); err != nil {
@@ -167,6 +178,5 @@ func DecryptJSONString(encryptedObjStr string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to decrypt data: %v", err)
 	}
-
 	return string(decrypted), nil
 }

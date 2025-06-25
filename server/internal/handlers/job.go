@@ -66,22 +66,30 @@ func (c *JobHandler) GetAllJobs() {
 			UpdatedAt:     job.UpdatedAt.Format(time.RFC3339),
 			Activate:      job.Active,
 		}
-
+		decryptedConfig, err := crypto.DecryptJSONString(job.SourceID.Config)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+			return
+		}
 		// Set source and destination details
 		if job.SourceID != nil {
 			jobResp.Source = models.JobSourceConfig{
 				Name:    job.SourceID.Name,
 				Type:    job.SourceID.Type,
-				Config:  job.SourceID.Config,
+				Config:  decryptedConfig,
 				Version: job.SourceID.Version,
 			}
 		}
-
+		decryptedConfig, err = crypto.DecryptJSONString(job.DestID.Config)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
+			return
+		}
 		if job.DestID != nil {
 			jobResp.Destination = models.JobDestinationConfig{
 				Name:    job.DestID.Name,
 				Type:    job.DestID.DestType,
-				Config:  job.DestID.Config,
+				Config:  decryptedConfig,
 				Version: job.DestID.Version,
 			}
 		}

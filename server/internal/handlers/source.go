@@ -94,14 +94,6 @@ func (c *SourceHandler) CreateSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
 		return
 	}
-	logs.Info("Successfully encrypted source config %+v", encryptedJSON)
-	decryptedJSON, err := crypto.DecryptJSONString(encryptedJSON)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
-		return
-	}
-	logs.Info("Successfully decrypted source config %+v", decryptedJSON)
-
 	// Convert request to Source model
 	source := &models.Source{
 		Name:    req.Name,
@@ -109,7 +101,6 @@ func (c *SourceHandler) CreateSource() {
 		Version: req.Version,
 		Config:  encryptedJSON,
 	}
-	logs.Info("Successfully encrypted source config %+v", source.Config)
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
@@ -214,7 +205,12 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
+	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+		return
+	}
+	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -241,16 +237,19 @@ func (c *SourceHandler) GetSourceCatalog() {
 		}
 		oldStreams = job.StreamsConfig
 	}
-
+	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+		return
+	}
 	// Use Temporal client to get the catalog
 	var newStreams map[string]interface{}
-	var err error
 	if c.tempClient != nil {
 		newStreams, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),
 			req.Type,
 			req.Version,
-			req.Config,
+			encryptedConfig,
 			oldStreams,
 		)
 	}

@@ -212,7 +212,12 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
+	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
+		return
+	}
+	result, err := c.tempClient.TestConnection(context.Background(), "destination", req.Type, req.Version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
