@@ -147,7 +147,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(text?.type)}
-						className="mr-2 h-4 w-4"
+						className="mr-2 h-5 w-5"
 						alt={`${text?.name} connector`}
 					/>
 					{text?.name}
@@ -162,7 +162,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(text?.type)}
-						className="mr-2 h-4 w-4"
+						className="mr-2 h-5 w-5"
 						alt={`${text?.name} connector`}
 					/>
 					{text?.name}

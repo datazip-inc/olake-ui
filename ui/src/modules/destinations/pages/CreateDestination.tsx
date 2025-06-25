@@ -51,7 +51,6 @@ const CreateDestination = forwardRef<
 	(
 		{
 			fromJobFlow = false,
-			hitBack = false,
 			onComplete,
 			stepNumber,
 			stepTitle,
@@ -72,7 +71,8 @@ const CreateDestination = forwardRef<
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
 				? CONNECTOR_TYPES.AMAZON_S3
-				: initialConnector === "s3"
+				: initialConnector === "s3" ||
+					  initialConnector.toLowerCase() === "amazon s3"
 					? CONNECTOR_TYPES.AMAZON_S3
 					: CONNECTOR_TYPES.APACHE_ICEBERG,
 		)
@@ -128,6 +128,12 @@ const CreateDestination = forwardRef<
 				fetchDestinations()
 			}
 		}, [destinations.length, fetchDestinations])
+
+		useEffect(() => {
+			if (setupType === SETUP_TYPES.EXISTING) {
+				fetchDestinations()
+			}
+		}, [setupType, fetchDestinations])
 
 		useEffect(() => {
 			if (initialConfig) {
@@ -266,9 +272,6 @@ const CreateDestination = forwardRef<
 			if (!fromJobFlow) {
 				setFormData({})
 			}
-			if (fromJobFlow && !hitBack) {
-				setFormData({})
-			}
 		}, [connector, catalog])
 
 		const handleCancel = () => {
@@ -370,6 +373,9 @@ const CreateDestination = forwardRef<
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setFormData({})
+			setSchema(null)
+			setUiSchema(null)
 			setConnector(value as ConnectorType)
 			if (onConnectorChange) {
 				onConnectorChange(value)

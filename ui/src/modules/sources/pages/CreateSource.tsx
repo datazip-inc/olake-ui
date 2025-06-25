@@ -34,6 +34,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			initialFormData,
 			initialName,
 			initialConnector,
+			initialVersion,
 			onSourceNameChange,
 			onConnectorChange,
 			onFormDataChange,
@@ -44,7 +45,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
-		const [selectedVersion, setSelectedVersion] = useState("latest")
+		const [selectedVersion, setSelectedVersion] = useState(
+			initialVersion || "latest",
+		)
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<any>({})
@@ -90,11 +93,22 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		useEffect(() => {
 			if (setupType === "existing") {
+				fetchSources()
 				setFilteredSources(
 					sources.filter(source => source.type === connector.toLowerCase()),
 				)
 			}
-		}, [connector, setupType, sources])
+		}, [connector, setupType, fetchSources])
+
+		useEffect(() => {
+			if (
+				initialVersion &&
+				initialVersion !== "latest" &&
+				initialConnector === connector
+			) {
+				setSelectedVersion(initialVersion)
+			}
+		}, [initialVersion, initialConnector, connector])
 
 		useEffect(() => {
 			const fetchVersions = async () => {
@@ -105,7 +119,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					)
 					if (response.data && response.data.version) {
 						setVersions(response.data.version)
-						if (response.data.version.length > 0) {
+						if (
+							response.data.version.length > 0 &&
+							(!initialVersion ||
+								connector !== initialConnector ||
+								initialVersion === "latest")
+						) {
 							const defaultVersion = response.data.version[0]
 							setSelectedVersion(defaultVersion)
 							if (onVersionChange) {
@@ -121,7 +140,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 
 			fetchVersions()
-		}, [connector, onVersionChange])
+		}, [connector, onVersionChange, initialVersion, initialConnector])
 
 		useEffect(() => {
 			const fetchSourceSpec = async () => {
@@ -232,6 +251,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setFormData({})
+			setSchema(null)
 			setConnector(value)
 			if (onConnectorChange) {
 				onConnectorChange(value)
@@ -308,7 +329,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 					<div className="w-1/3">
 						<label className="mb-2 block text-sm font-medium text-gray-700">
-							Version:
+							OLake Version:
 						</label>
 						<Select
 							value={selectedVersion}

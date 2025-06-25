@@ -215,7 +215,10 @@ const JobLogs: React.FC = () => {
 												<td className="w-24 px-4 py-3 text-sm text-gray-500">
 													{/* Extract time from ISO timestamp if possible */}
 													{taskLog.time
-														? new Date(taskLog.time).toLocaleTimeString()
+														? new Date(taskLog.time).toLocaleTimeString(
+																"en-US",
+																{ timeZone: "UTC", hour12: false },
+															)
 														: ""}
 												</td>
 												<td className="w-24 px-4 py-3 text-sm">

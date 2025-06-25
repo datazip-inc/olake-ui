@@ -19,9 +19,9 @@ import (
 var (
 	// DefaultRetryPolicy is used for standard operations like discovery and testing connections
 	DefaultRetryPolicy = &temporal.RetryPolicy{
-		InitialInterval:    time.Second * 5,
+		InitialInterval:    time.Second * 15,
 		BackoffCoefficient: 2.0,
-		MaximumInterval:    time.Minute * 5,
+		MaximumInterval:    time.Minute * 10,
 		MaximumAttempts:    1,
 	}
 )
@@ -30,7 +30,7 @@ var (
 func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[string]interface{}, error) {
 	// Execute the DiscoverCatalogActivity directly
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute * 5,
+		StartToCloseTimeout: time.Minute * 10,
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
@@ -48,7 +48,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[string]interface{}, error) {
 	// Execute the TestConnectionActivity directly
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute * 5,
+		StartToCloseTimeout: time.Minute * 10,
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
@@ -65,7 +65,8 @@ func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[s
 // RunSyncWorkflow is a workflow for running data synchronization
 func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute * 15, // Longer timeout for sync operations
+		// Using large duration (e.g., 10 years)
+		StartToCloseTimeout: time.Hour * 24 * 30, // 30 days
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	params := SyncParams{

@@ -38,12 +38,12 @@ func (c *AuthHandler) Login() {
 		if strings.Contains(err.Error(), "no row found") {
 			ErrorResponse = "user not found, sign up first"
 		}
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, ErrorResponse)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, ErrorResponse)
 		return
 	}
 
 	if err := c.userORM.ComparePassword(user.Password, req.Password); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid credentials")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid credentials")
 		return
 	}
 

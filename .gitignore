@@ -26,6 +26,7 @@ server/olake-server
 /tmp/
 /dist/
 olake-data/
+/server/temporal-worker/
 
 # ----------------------------
 # Node-Related Files
