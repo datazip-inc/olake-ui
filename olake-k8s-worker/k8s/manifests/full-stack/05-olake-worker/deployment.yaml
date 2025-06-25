@@ -28,7 +28,7 @@ spec:
       containers:
       - name: olake-k8s-worker
         image: dzipstagingacr.azurecr.io/olake-k8s-worker:latest
-        imagePullPolicy: Never
+        imagePullPolicy: Always
         ports:
         - name: health
           containerPort: 8090
@@ -72,10 +72,9 @@ spec:
             drop:
             - ALL
         volumeMounts:
-          - name: nfs-shared-storage
+          - name: shared-storage
             mountPath: /data/olake-jobs
       volumes:
-      - name: nfs-shared-storage
-        nfs:
-          server: nfs-server
-          path: /exports
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: olake-jobs-pvc

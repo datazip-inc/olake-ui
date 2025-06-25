@@ -20,7 +20,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
-  storageClassName: olake-jobs
+  storageClassName: azurefile
   resources:
     requests:
       storage: 10Gi

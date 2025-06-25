@@ -84,7 +84,6 @@ echo -e "${BLUE}📁 Deploying 00-namespace...${NC}"
 kubectl apply -f 00-namespace/
 
 echo -e "${BLUE}🐘 Deploying 01-postgres...${NC}"
-# Apply postgres resources individually (no configmap)
 kubectl apply -f 01-postgres/secret.yaml
 kubectl apply -f 01-postgres/deployment.yaml
 kubectl apply -f 01-postgres/service.yaml
@@ -98,17 +97,14 @@ wait_for_deployment olake elasticsearch 300
 wait_for_elasticsearch
 
 echo -e "${BLUE}⏰ Deploying 03-temporal...${NC}"
-# Clean up any existing temporal resources first
 kubectl delete deployment temporal temporal-ui -n olake --ignore-not-found=true
 kubectl delete job temporal-schema-setup -n olake --ignore-not-found=true
 
-# Apply temporal resources individually (no configmap)
 kubectl apply -f 03-temporal/deployment.yaml
 kubectl apply -f 03-temporal/ui-deployment.yaml
 kubectl apply -f 03-temporal/service.yaml
 kubectl apply -f 03-temporal/ui-service.yaml
 
-# Wait longer for temporal auto-setup to complete
 echo -e "${YELLOW}⏳ Waiting extra time for Temporal auto-setup to initialize database...${NC}"
 sleep 30
 
@@ -116,14 +112,14 @@ wait_for_deployment olake temporal 600
 wait_for_deployment olake temporal-ui 300
 
 echo -e "${BLUE}🚀 Deploying 04-olake (OLake UI - Backend + Frontend)...${NC}"
-# Apply OLake resources individually, excluding init-job
+# Apply Azure Files PVC first
+kubectl apply -f 04-olake/persistent-volume.yaml
 kubectl apply -f 04-olake/configmap.yaml
 kubectl apply -f 04-olake/deployment.yaml
 kubectl apply -f 04-olake/service.yaml
 wait_for_deployment olake olake-ui 300
 
 echo -e "${BLUE}👤 Running signup initialization...${NC}"
-# Check if init job already exists and delete it
 kubectl delete job olake-signup-init -n olake --ignore-not-found=true
 kubectl apply -f 04-olake/init-job.yaml
 wait_for_job olake olake-signup-init 120
@@ -142,8 +138,8 @@ kubectl get services -n olake
 echo -e "\n${YELLOW}📍 Service endpoints:${NC}"
 echo -e "${GREEN}🔍 Check NodePort services:${NC} kubectl get svc -n olake"
 echo -e "${GREEN}🚀 Port forwarding examples:${NC}"
-echo -e "${BLUE}kubectl port-forward svc/olake-ui 8082:80 -n olake${NC}      # OLake UI"
-echo -e "${BLUE}kubectl port-forward svc/olake-backend 8081:8080 -n olake${NC} # OLake Backend"
+echo -e "${BLUE}kubectl port-forward svc/olake-ui 8082:8000 -n olake${NC}      # OLake Frontend"
+echo -e "${BLUE}kubectl port-forward svc/olake-ui 8081:8080 -n olake${NC}     # OLake Backend"
 echo -e "${BLUE}kubectl port-forward svc/temporal-ui 8080:8080 -n olake${NC}   # Temporal UI"
 echo -e "${BLUE}kubectl port-forward svc/elasticsearch 9200:9200 -n olake${NC} # Elasticsearch"
 
