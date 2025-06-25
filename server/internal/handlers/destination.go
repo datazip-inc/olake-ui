@@ -217,7 +217,7 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "destination", req.Type, req.Version, encryptedConfig)
+	result, err := c.tempClient.TestConnection(context.Background(), "destination", "mysql", "latest", encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),

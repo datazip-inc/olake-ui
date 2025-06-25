@@ -122,7 +122,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 		r.GetDockerImageName(sourceType, version),
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-		fmt.Sprintf("--encryption-key %s", encryptionKey),
+		"--encryption-key", encryptionKey,
 	}
 	return append(dockerArgs, additionalArgs...)
 }
