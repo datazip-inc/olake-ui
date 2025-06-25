@@ -132,17 +132,14 @@ type cryptoObj struct {
 
 // EncryptJSONString encrypts the entire JSON string as a single value
 func EncryptJSONString(rawConfig string) (string, error) {
-
 	// Encrypt the entire config string
 	encryptedBytes, err := Encrypt(rawConfig)
 	if err != nil {
 		return "", fmt.Errorf("encryption failed: %v", err)
 	}
 	cryptoObj := cryptoObj{}
-
 	// Create a structured object with the encrypted data
 	cryptoObj.EncryptedData = base64.StdEncoding.EncodeToString(encryptedBytes)
-
 	// Marshal to JSON
 	encryptedJSON, err := json.Marshal(cryptoObj)
 	if err != nil {
@@ -157,17 +154,14 @@ func EncryptJSONString(rawConfig string) (string, error) {
 func DecryptJSONString(encryptedObjStr string) (string, error) {
 	// Unmarshal the encrypted object
 	cryptoObj := cryptoObj{}
-
 	if err := json.Unmarshal([]byte(encryptedObjStr), &cryptoObj); err != nil {
 		return "", fmt.Errorf("failed to unmarshal encrypted data: %v", err)
 	}
-
 	// Decode the base64-encoded encrypted data
 	encryptedData, err := base64.StdEncoding.DecodeString(cryptoObj.EncryptedData)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode base64 data: %v", err)
 	}
-
 	// Decrypt the data
 	decrypted, err := Decrypt(encryptedData)
 	if err != nil {
