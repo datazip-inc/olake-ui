@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
@@ -21,8 +19,8 @@ func main() {
 			logs.Error("Failed to initialize telemetry: %v", err)
 		}
 	}()
-	defer time.Sleep(5 * time.Second)
 
+	defer telemetry.Flush()
 	// check constants
 	constants.Init()
 

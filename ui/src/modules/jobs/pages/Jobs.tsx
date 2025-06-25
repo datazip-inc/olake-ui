@@ -28,8 +28,8 @@ const Jobs: React.FC = () => {
 		})
 	}, [fetchJobs])
 
-	const handleCreateJob = async () => {
-		await analyticsService.trackEvent("create_job_clicked")
+	const handleCreateJob = () => {
+		analyticsService.trackEvent("create_job_clicked")
 		navigate("/jobs/new")
 	}
 

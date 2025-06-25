@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
@@ -22,7 +21,6 @@ func main() {
 			logs.Error("Failed to initialize telemetry: %v", err)
 		}
 	}()
-	defer time.Sleep(5 * time.Second)
 
 	// check constants
 	constants.Init()
@@ -66,5 +64,6 @@ func main() {
 
 	// Stop the worker
 	worker.Stop()
+	telemetry.Flush()
 	logs.Info("Worker stopped. Goodbye!")
 }

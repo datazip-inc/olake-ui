@@ -37,7 +37,6 @@ type Telemetry struct {
 	locationChan  chan struct{}
 	anonymousID   string
 	username      string
-	wg            sync.WaitGroup
 }
 
 type LocationInfo struct {
@@ -229,20 +228,21 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		properties[key] = value
 	}
 
-	instance.wg.Add(1)
-	go func() {
-		defer func() {
-			instance.client.Close()
-		}()
-		if err := instance.client.Enqueue(analytics.Track{
-			UserId:     instance.anonymousID,
-			Event:      eventName,
-			Properties: properties,
-		}); err != nil {
-			// Log error but don't return it since we're in a goroutine
-			fmt.Printf("Failed to send telemetry event %s: %v\n", eventName, err)
-		}
-	}()
+	if err := instance.client.Enqueue(analytics.Track{
+		UserId:     instance.anonymousID,
+		Event:      eventName,
+		Properties: properties,
+	}); err != nil {
+		// Log error but don't return it since we're in a goroutine
+		fmt.Printf("Failed to send telemetry event %s: %v\n", eventName, err)
+	}
 
 	return nil
+}
+
+func Flush() {
+	if instance != nil {
+		time.Sleep(5 * time.Second)
+		instance.client.Close()
+	}
 }
