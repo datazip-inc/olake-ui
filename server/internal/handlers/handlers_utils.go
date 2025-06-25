@@ -2,15 +2,12 @@ package handlers
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
@@ -95,55 +92,4 @@ func setJobWorkflowInfo(jobInfo *models.JobDataItem, jobID int, projectIDStr str
 		jobInfo.LastRunState = ""
 	}
 	return true
-}
-
-type cryptoObj struct {
-	EncryptedData string `json:"encrypted_data"`
-}
-
-// EncryptJSONString encrypts the entire JSON string as a single value
-func EncryptJSONString(rawConfig string) (string, error) {
-
-	// Encrypt the entire config string
-	encryptedBytes, err := crypto.Encrypt(rawConfig)
-	if err != nil {
-		return "", fmt.Errorf("encryption failed: %v", err)
-	}
-	cryptoObj := cryptoObj{}
-
-	// Create a structured object with the encrypted data
-	cryptoObj.EncryptedData = base64.StdEncoding.EncodeToString(encryptedBytes)
-
-	// Marshal to JSON
-	encryptedJSON, err := json.Marshal(cryptoObj)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal encrypted data: %v", err)
-	}
-
-	return string(encryptedJSON), nil
-}
-
-// DecryptJSONObject decrypts a JSON object in the format {"encrypted_data": "base64-encoded-encrypted-json"}
-// and returns the original JSON string
-func DecryptJSONString(encryptedObjStr string) (string, error) {
-	// Unmarshal the encrypted object
-	cryptoObj := cryptoObj{}
-
-	if err := json.Unmarshal([]byte(encryptedObjStr), &cryptoObj); err != nil {
-		return "", fmt.Errorf("failed to unmarshal encrypted data: %v", err)
-	}
-
-	// Decode the base64-encoded encrypted data
-	encryptedData, err := base64.StdEncoding.DecodeString(cryptoObj.EncryptedData)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 data: %v", err)
-	}
-
-	// Decrypt the data
-	decrypted, err := crypto.Decrypt(encryptedData)
-	if err != nil {
-		return "", fmt.Errorf("failed to decrypt data: %v", err)
-	}
-
-	return string(decrypted), nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
@@ -50,7 +51,7 @@ func (c *SourceHandler) GetAllSources() {
 	sourceItems := make([]models.SourceDataItem, 0, len(sources))
 
 	for _, source := range sources {
-		decryptedConfig, err := DecryptJSONString(source.Config)
+		decryptedConfig, err := crypto.DecryptJSONString(source.Config)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
 			return
@@ -88,13 +89,13 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
-	encryptedJSON, err := EncryptJSONString(req.Config)
+	encryptedJSON, err := crypto.EncryptJSONString(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
 		return
 	}
 	logs.Info("Successfully encrypted source config %+v", encryptedJSON)
-	decryptedJSON, err := DecryptJSONString(encryptedJSON)
+	decryptedJSON, err := crypto.DecryptJSONString(encryptedJSON)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
 		return
@@ -143,7 +144,7 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 	// Encrypt the source configuration
-	encryptedConfig, err := EncryptJSONString(req.Config)
+	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
 		return

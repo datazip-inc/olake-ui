@@ -11,6 +11,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
@@ -44,7 +45,7 @@ func (c *DestHandler) GetAllDestinations() {
 	}
 	destItems := make([]models.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
-		decryptedConfig, err := DecryptJSONString(dest.Config)
+		decryptedConfig, err := crypto.DecryptJSONString(dest.Config)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt destination config: "+err.Error())
 			return
@@ -85,7 +86,7 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 	// Encrypt the destination configuration
-	encryptedConfig, err := EncryptJSONString(req.Config)
+	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
@@ -134,7 +135,7 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 	// Encrypt the destination configuration
-	encryptedConfig, err := EncryptJSONString(req.Config)
+	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
