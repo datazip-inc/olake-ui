@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: olake-ui
-        image: olake-ui:local
+        image: dzipstagingacr.azurecr.io/olake-ui:latest
         imagePullPolicy: Never
         ports:
         - name: backend
@@ -34,7 +34,7 @@ spec:
         volumeMounts:
         - name: olake-config
           mountPath: /opt/backend/conf
-        - name: job-storage
+        - name: nfs-shared-storage
           mountPath: /tmp/olake-config
         resources:
           requests:
@@ -63,6 +63,7 @@ spec:
       - name: olake-config
         configMap:
           name: olake-config
-      - name: job-storage
-        persistentVolumeClaim:
-          claimName: olake-jobs-pvc
+      - name: nfs-shared-storage
+        nfs:
+          server: nfs-server
+          path: /exports
