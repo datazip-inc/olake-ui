@@ -36,6 +36,7 @@ type Telemetry struct {
 	locationMutex sync.Mutex
 	locationChan  chan struct{}
 	anonymousID   string
+	username      string
 	wg            sync.WaitGroup
 }
 
@@ -199,14 +200,27 @@ func (t *Telemetry) getLocationWithTimeout() interface{} {
 	return constants.TelemetryIPNotFoundPlaceholder
 }
 
+// SetUsername sets the username for telemetry tracking
+func SetUsername(username string) {
+	if instance != nil {
+		instance.username = username
+	}
+}
+
 // TrackEvent sends a custom event to Segment
 func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
+	fmt.Println("track event started", eventName)
 	if instance == nil || !instance.enabled {
 		return nil
 	}
 
 	if properties == nil {
 		properties = make(map[string]interface{})
+	}
+
+	// Add username to properties if available
+	if instance.username != "" {
+		properties["username"] = instance.username
 	}
 
 	// Add common properties that needs to be sent with every event
@@ -217,7 +231,9 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 
 	instance.wg.Add(1)
 	go func() {
-		defer instance.wg.Done()
+		defer func() {
+			instance.client.Close()
+		}()
 		if err := instance.client.Enqueue(analytics.Track{
 			UserId:     instance.anonymousID,
 			Event:      eventName,
@@ -229,12 +245,4 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 	}()
 
 	return nil
-}
-
-// Flush ensures all events are sent before shutdown
-func Flush() {
-	if instance != nil && instance.client != nil {
-		instance.wg.Wait() // Wait for all tracking goroutines to complete
-		instance.client.Close()
-	}
 }

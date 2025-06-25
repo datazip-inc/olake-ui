@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
@@ -19,7 +21,7 @@ func main() {
 			logs.Error("Failed to initialize telemetry: %v", err)
 		}
 	}()
-	defer telemetry.Flush() // Ensure all events are sent before shutdown
+	defer time.Sleep(5 * time.Second)
 
 	// check constants
 	constants.Init()

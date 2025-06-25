@@ -4,16 +4,26 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/logger"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 )
 
 func main() {
+	// Initialize telemetry
+	go func() {
+		if err := telemetry.InitTelemetry(); err != nil {
+			logs.Error("Failed to initialize telemetry: %v", err)
+		}
+	}()
+	defer time.Sleep(5 * time.Second)
+
 	// check constants
 	constants.Init()
 

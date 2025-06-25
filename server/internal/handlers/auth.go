@@ -52,14 +52,14 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	properties := map[string]interface{}{
-		"username": user.Username,
-		"user_id":  user.ID,
-		"email":    user.Email,
-	}
-	if err := telemetry.TrackEvent(c.Ctx.Request.Context(), constants.EventUserLogin, properties); err != nil {
-		c.Ctx.Input.SetData("telemetry_error", err)
-	}
+	// Set username in telemetry
+	telemetry.SetUsername(user.Username)
+
+	go func() {
+		if err := telemetry.TrackUserLogin(c.Ctx.Request.Context(), user.ID, user.Email); err != nil {
+			c.Ctx.Input.SetData("telemetry_error", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,

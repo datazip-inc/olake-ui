@@ -46,86 +46,6 @@ func (c *JobHandler) Prepare() {
 	}
 }
 
-// trackSourcesAndDestinationsStatus logs telemetry about active and inactive sources and destinations
-func (c *JobHandler) trackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) error {
-	// Track sources status
-	sources, err := c.sourceORM.GetAll()
-	if err != nil {
-		return err
-	}
-
-	activeSources := 0
-	inactiveSources := 0
-
-	for _, source := range sources {
-		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		if err != nil {
-			return err
-		}
-		if len(jobs) > 0 {
-			activeSources++
-		} else {
-			inactiveSources++
-		}
-	}
-
-	// Track destinations status
-	destinations, err := c.destORM.GetAll()
-	if err != nil {
-		return err
-	}
-
-	activeDestinations := 0
-	inactiveDestinations := 0
-
-	for _, dest := range destinations {
-		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		if err != nil {
-			return err
-		}
-		if len(jobs) > 0 {
-			activeDestinations++
-		} else {
-			inactiveDestinations++
-		}
-	}
-
-	// Get user properties if available
-	var userProps map[string]interface{}
-	if userID != nil {
-		if user, err := c.userORM.GetByID(userID.(int)); err == nil {
-			userProps = map[string]interface{}{
-				"user_id":    user.ID,
-				"user_email": user.Email,
-			}
-		}
-	}
-
-	// Track sources status
-	sourceProps := map[string]interface{}{
-		"active_sources":   activeSources,
-		"inactive_sources": inactiveSources,
-		"total_sources":    activeSources + inactiveSources,
-	}
-	for k, v := range userProps {
-		sourceProps[k] = v
-	}
-	if err := telemetry.TrackEvent(ctx, constants.EventSourcesUpdated, sourceProps); err != nil {
-		return err
-	}
-
-	// Track destinations status
-	destProps := map[string]interface{}{
-		"active_destinations":   activeDestinations,
-		"inactive_destinations": inactiveDestinations,
-		"total_destinations":    activeDestinations + inactiveDestinations,
-	}
-	for k, v := range userProps {
-		destProps[k] = v
-	}
-	return telemetry.TrackEvent(ctx, constants.EventDestinationsUpdated, destProps)
-}
-
 // @router /project/:projectid/jobs [get]
 func (c *JobHandler) GetAllJobs() {
 	projectIDStr := c.Ctx.Input.Param(":projectid")
@@ -234,17 +154,11 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	// Get user information from session
-	var username string
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
 		user := &models.User{ID: userID.(int)}
 		job.CreatedBy = user
 		job.UpdatedBy = user
-
-		// Get full user details for username
-		if fullUser, err := c.userORM.GetByID(userID.(int)); err == nil {
-			username = fullUser.Username
-		}
 	}
 
 	if err := c.jobORM.Create(job); err != nil {
@@ -253,32 +167,31 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	// Track job creation event
-	properties := map[string]interface{}{
-		"job_id":           job.ID,
-		"job_name":         job.Name,
-		"project_id":       projectIDStr,
-		"source_type":      source.Type,
-		"source_name":      source.Name,
-		"destination_type": dest.DestType,
-		"destination_name": dest.Name,
-		"frequency":        job.Frequency,
-		"active":           job.Active,
-	}
-	if username != "" {
-		properties["created_by"] = username
-	}
-	if !job.CreatedAt.IsZero() {
-		properties["created_at"] = job.CreatedAt.Format(time.RFC3339)
-	}
-
-	if err := telemetry.TrackEvent(c.Ctx.Request.Context(), constants.EventJobCreated, properties); err != nil {
-		c.Ctx.Input.SetData("telemetry_error", err)
-	}
+	go func() {
+		if err := telemetry.TrackJobCreation(
+			c.Ctx.Request.Context(),
+			job.ID,
+			job.Name,
+			projectIDStr,
+			source.Type,
+			source.Name,
+			dest.DestType,
+			dest.Name,
+			job.Frequency,
+			job.Active,
+			userID,
+			job.CreatedAt,
+		); err != nil {
+			c.Ctx.Input.SetData("telemetry_error", err)
+		}
+	}()
 
 	// Track sources and destinations status after job creation
-	if err := c.trackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track sources and destinations status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track sources and destinations status: %v", err)
+		}
+	}()
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
@@ -357,9 +270,11 @@ func (c *JobHandler) UpdateJob() {
 	}
 
 	// Track sources and destinations status after job update
-	if err := c.trackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track sources and destinations status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track sources and destinations status: %v", err)
+		}
+	}()
 
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
@@ -418,9 +333,11 @@ func (c *JobHandler) DeleteJob() {
 	}
 
 	// Track sources and destinations status after job deletion
-	if err := c.trackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track sources and destinations status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track sources and destinations status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
@@ -701,6 +618,19 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 		return nil, err
 	}
 
+	go func() {
+		if err := telemetry.TrackSourceCreation(
+			context.Background(),
+			source.ID,
+			source.Name,
+			source.Type,
+			source.Version,
+			source.CreatedAt,
+		); err != nil {
+			logs.Error("Failed to track source creation event: %v", err)
+		}
+	}()
+
 	return source, nil
 }
 
@@ -748,6 +678,21 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	if err := c.destORM.Create(dest); err != nil {
 		return nil, err
 	}
+
+	// Track destination creation event
+	go func() {
+		if err := telemetry.TrackDestinationCreation(
+			context.Background(),
+			dest.ID,
+			dest.Name,
+			dest.DestType,
+			dest.Version,
+			dest.Config,
+			dest.CreatedAt,
+		); err != nil {
+			logs.Error("Failed to track destination creation event: %v", err)
+		}
+	}()
 
 	return dest, nil
 }

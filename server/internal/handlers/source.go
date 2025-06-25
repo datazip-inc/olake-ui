@@ -39,54 +39,6 @@ func (c *SourceHandler) Prepare() {
 	}
 }
 
-// trackSourcesStatus logs telemetry about active and inactive sources
-func (c *SourceHandler) trackSourcesStatus(ctx context.Context, userID interface{}) error {
-	sources, err := c.sourceORM.GetAll()
-	if err != nil {
-		return err
-	}
-
-	activeSources := 0
-	inactiveSources := 0
-
-	for _, source := range sources {
-		jobs, err := c.jobORM.GetBySourceID(source.ID)
-		if err != nil {
-			return err
-		}
-		if len(jobs) > 0 {
-			activeSources++
-		} else {
-			inactiveSources++
-		}
-	}
-
-	// Get user properties if available
-	var userProps map[string]interface{}
-	if userID != nil {
-		if user, err := c.userORM.GetByID(userID.(int)); err == nil {
-			userProps = map[string]interface{}{
-				"user_id":    user.ID,
-				"user_email": user.Email,
-			}
-		}
-	}
-
-	// Prepare telemetry properties
-	props := map[string]interface{}{
-		"active_sources":   activeSources,
-		"inactive_sources": inactiveSources,
-		"total_sources":    activeSources + inactiveSources,
-	}
-
-	// Add user properties if available
-	for k, v := range userProps {
-		props[k] = v
-	}
-
-	return telemetry.TrackEvent(ctx, constants.EventSourcesUpdated, props)
-}
-
 // @router /project/:projectid/sources [get]
 func (c *SourceHandler) GetAllSources() {
 	sources, err := c.sourceORM.GetAll()
@@ -159,10 +111,26 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
+	// Track source creation event
+	go func() {
+		if err := telemetry.TrackSourceCreation(
+			c.Ctx.Request.Context(),
+			source.ID,
+			source.Name,
+			source.Type,
+			source.Version,
+			source.CreatedAt,
+		); err != nil {
+			logs.Error("Failed to track source creation event: %v", err)
+		}
+	}()
+
 	// Track sources status after creation
-	if err := c.trackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track sources status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track sources status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -201,9 +169,11 @@ func (c *SourceHandler) UpdateSource() {
 	}
 
 	// Track sources status after update
-	if err := c.trackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track sources status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track sources status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -243,9 +213,11 @@ func (c *SourceHandler) DeleteSource() {
 	}
 
 	// Track sources status after deletion
-	if err := c.trackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track sources status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track sources status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
 		Name: source.Name,

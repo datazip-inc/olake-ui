@@ -37,54 +37,6 @@ func (c *DestHandler) Prepare() {
 	}
 }
 
-// trackDestinationsStatus logs telemetry about active and inactive destinations
-func (c *DestHandler) trackDestinationsStatus(ctx context.Context, userID interface{}) error {
-	destinations, err := c.destORM.GetAll()
-	if err != nil {
-		return err
-	}
-
-	activeDestinations := 0
-	inactiveDestinations := 0
-
-	for _, dest := range destinations {
-		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		if err != nil {
-			return err
-		}
-		if len(jobs) > 0 {
-			activeDestinations++
-		} else {
-			inactiveDestinations++
-		}
-	}
-
-	// Get user properties if available
-	var userProps map[string]interface{}
-	if userID != nil {
-		if user, err := c.userORM.GetByID(userID.(int)); err == nil {
-			userProps = map[string]interface{}{
-				"user_id":    user.ID,
-				"user_email": user.Email,
-			}
-		}
-	}
-
-	// Prepare telemetry properties
-	props := map[string]interface{}{
-		"active_destinations":   activeDestinations,
-		"inactive_destinations": inactiveDestinations,
-		"total_destinations":    activeDestinations + inactiveDestinations,
-	}
-
-	// Add user properties if available
-	for k, v := range userProps {
-		props[k] = v
-	}
-
-	return telemetry.TrackEvent(ctx, constants.EventDestinationsUpdated, props)
-}
-
 // @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
 	projectIDStr := c.Ctx.Input.Param(":projectid")
@@ -153,10 +105,27 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
+	// Track destination creation event
+	go func() {
+		if err := telemetry.TrackDestinationCreation(
+			c.Ctx.Request.Context(),
+			destination.ID,
+			destination.Name,
+			destination.DestType,
+			destination.Version,
+			destination.Config,
+			destination.CreatedAt,
+		); err != nil {
+			logs.Error("Failed to track destination creation event: %v", err)
+		}
+	}()
+
 	// Track destinations status after creation
-	if err := c.trackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track destinations status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track destinations status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -199,9 +168,11 @@ func (c *DestHandler) UpdateDestination() {
 	}
 
 	// Track destinations status after update
-	if err := c.trackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track destinations status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track destinations status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -237,9 +208,11 @@ func (c *DestHandler) DeleteDestination() {
 	}
 
 	// Track destinations status after deletion
-	if err := c.trackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-		logs.Error("Failed to track destinations status: %v", err)
-	}
+	go func() {
+		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
+			logs.Error("Failed to track destinations status: %v", err)
+		}
+	}()
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
 		Name: dest.Name,
