@@ -124,12 +124,8 @@ func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: utils.ParseQuantity("256Mi"),
-									corev1.ResourceCPU:    utils.ParseQuantity("100m"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceMemory: utils.ParseQuantity("1Gi"),
-									corev1.ResourceCPU:    utils.ParseQuantity("500m"),
+									corev1.ResourceMemory: utils.ParseQuantity("1024Mi"),
+									corev1.ResourceCPU:    utils.ParseQuantity("1000m"),
 								},
 							},
 						},
@@ -198,9 +194,6 @@ func (k *K8sJobManager) getJobResults(ctx context.Context, jobName string) (map[
 	}
 
 	podName := pods.Items[0].Name
-	logger.Debugf("Getting results from pod %s for job %s", podName, jobName)
-
-	// Get pod logs
 	logs, err := k.getPodLogs(ctx, podName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod logs: %v", err)
@@ -344,12 +337,8 @@ func (k *K8sJobManager) CreateJobWithPV(ctx context.Context, spec *JobSpec, conf
 							},
 							Resources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: utils.ParseQuantity("256Mi"),
-									corev1.ResourceCPU:    utils.ParseQuantity("100m"),
-								},
-								Limits: corev1.ResourceList{
-									corev1.ResourceMemory: utils.ParseQuantity("1Gi"),
-									corev1.ResourceCPU:    utils.ParseQuantity("500m"),
+									corev1.ResourceMemory: utils.ParseQuantity("1024Mi"),
+									corev1.ResourceCPU:    utils.ParseQuantity("1000m"),
 								},
 							},
 						},
