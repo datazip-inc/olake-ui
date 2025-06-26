@@ -119,12 +119,11 @@ func (c *AuthHandler) Signup() {
 
 // @router /telemetry-id [get]
 func (c *AuthHandler) GetTelemetryID() {
-	// read from /tmp/olake/telemetry_id 
+	// read from /tmp/olake/telemetry_id
 	telemetryID, err := os.ReadFile(filepath.Join(os.TempDir(), "olake", "telemetry_id"))
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve telemetry ID")
 		return
-		
 	}
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{

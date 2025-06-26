@@ -20,10 +20,9 @@ import (
 )
 
 var (
-	client           analytics.Client
-	idLock           sync.Mutex
-	segmentAPIKey    string
-	instance         *Telemetry
+	client   analytics.Client
+	idLock   sync.Mutex
+	instance *Telemetry
 )
 
 type Telemetry struct {
@@ -98,7 +97,6 @@ func generateStoredAnonymousID() string {
 func getConfigDir() string {
 	return filepath.Join(os.TempDir(), "olake")
 }
-
 
 func generateUUID() string {
 	hash := sha256.New()
@@ -202,7 +200,6 @@ func Flush() {
 		}
 	}
 }
-
 
 // GetStoredAnonymousID returns the stored anonymous ID from the config directory
 func GetStoredAnonymousID() string {
