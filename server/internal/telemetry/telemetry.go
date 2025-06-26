@@ -243,6 +243,8 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 func Flush() {
 	if instance != nil {
 		time.Sleep(5 * time.Second)
-		instance.client.Close()
+		if err := instance.client.Close(); err != nil {
+			fmt.Printf("Warning: Failed to close telemetry client: %v\n", err)
+		}
 	}
 }
