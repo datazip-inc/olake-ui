@@ -1,4 +1,5 @@
 import { AnalyticsBrowser } from "@segment/analytics-next"
+import api from "../axios"
 
 const analytics = AnalyticsBrowser.load({
 	writeKey: "e2lmlXGqXwqBBkSAnP7BxsjBpAGZNbWk",
@@ -44,6 +45,36 @@ const getSystemInfo = async () => {
 	}
 }
 
+const getTelemetryID = async (): Promise<string> => {
+	try {
+		const response = await api.get("/telemetry-id")
+		return response.data.data.telemetry_id
+	} catch (error) {
+		console.error("Error fetching telemetry ID:", error)
+		return ""
+	}
+}
+
+export const identifyUser = async () => {
+	try {
+		const username = localStorage.getItem("username")
+		const systemInfo = await getSystemInfo()
+		const telemetryId = await getTelemetryID()
+
+		if (telemetryId) {
+			await analytics.identify(telemetryId, {
+				username,
+				...systemInfo,
+			})
+			return true
+		}
+		return false
+	} catch (error) {
+		console.error("Error identifying user:", error)
+		return false
+	}
+}
+
 export const trackEvent = async (
 	eventName: string,
 	properties?: Record<string, any>,
@@ -65,4 +96,5 @@ export const trackEvent = async (
 
 export default {
 	trackEvent,
+	identifyUser,
 }

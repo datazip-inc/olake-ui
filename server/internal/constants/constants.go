@@ -2,6 +2,8 @@ package constants
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -83,4 +85,15 @@ func checkForRequiredVariables(vars []string) {
 			panic("Required config variable not found: ," + v)
 		}
 	}
+}
+
+// GetStoredAnonymousID returns the stored anonymous ID from the config directory
+func GetStoredAnonymousID() string {
+	configDir := filepath.Join(os.TempDir(), "olake")
+	idPath := filepath.Join(configDir, TelemetryAnonymousIDFile)
+
+	if idBytes, err := os.ReadFile(idPath); err == nil {
+		return string(idBytes)
+	}
+	return ""
 }

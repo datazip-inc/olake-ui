@@ -22,21 +22,17 @@ import (
 var (
 	client           analytics.Client
 	idLock           sync.Mutex
-	telemetryEnabled bool
 	segmentAPIKey    string
 	instance         *Telemetry
 )
 
 type Telemetry struct {
-	client        analytics.Client
-	enabled       bool
-	platform      utils.PlatformInfo
-	ipAddress     string
-	locationInfo  *LocationInfo
-	locationMutex sync.Mutex
-	locationChan  chan struct{}
-	anonymousID   string
-	username      string
+	client       analytics.Client
+	platform     utils.PlatformInfo
+	ipAddress    string
+	locationInfo *LocationInfo
+	anonymousID  string
+	username     string
 }
 
 type LocationInfo struct {
@@ -45,55 +41,36 @@ type LocationInfo struct {
 	City    string `json:"city"`
 }
 
-func loadTelemetryConfig() error {
-	telemetryEnabled = constants.TelemetryEnabled
-	segmentAPIKey = constants.TelemetrySegmentAPIKey
-
-	if telemetryEnabled && segmentAPIKey == "" {
-		return fmt.Errorf("segment API key is required when telemetry is enabled")
-	}
-
-	return nil
-}
-
 func InitTelemetry() error {
-	if err := loadTelemetryConfig(); err != nil {
-		return fmt.Errorf("failed to initialize telemetry: %w", err)
-	}
-
 	ip := getOutboundIP()
-
-	if telemetryEnabled {
-		client = analytics.New(segmentAPIKey)
-	}
-
+	client = analytics.New(constants.TelemetrySegmentAPIKey)
 	// Generate anonymous ID during initialization
 	anonymousID := generateStoredAnonymousID()
 
 	instance = &Telemetry{
-		client:       client,
-		enabled:      telemetryEnabled,
-		platform:     getPlatformInfo(),
-		ipAddress:    ip,
-		locationChan: make(chan struct{}),
-		anonymousID:  anonymousID,
+		client:      client,
+		platform:    getPlatformInfo(),
+		ipAddress:   ip,
+		anonymousID: anonymousID,
 	}
 
-	if instance.enabled && ip != constants.TelemetryIPNotFoundPlaceholder {
-		go func() {
+	go func() {
+		if ip != constants.TelemetryIPNotFoundPlaceholder {
 			ctx, cancel := context.WithTimeout(context.Background(), constants.TelemetryConfigTimeout)
 			defer cancel()
-			location, err := getLocationFromIP(ctx, ip)
+			loc, err := getLocationFromIP(ctx, ip)
 			if err == nil {
-				instance.locationMutex.Lock()
-				instance.locationInfo = &location
-				instance.locationMutex.Unlock()
+				instance.locationInfo = &loc
+			} else {
+				fmt.Printf("Failed to fetch location for IP %s: %v\n", ip, err)
+				instance.locationInfo = &LocationInfo{
+					Country: "NA",
+					Region:  "NA",
+					City:    "NA",
+				}
 			}
-			close(instance.locationChan)
-		}()
-	} else {
-		close(instance.locationChan)
-	}
+		}
+	}()
 
 	return nil
 }
@@ -121,6 +98,7 @@ func generateStoredAnonymousID() string {
 func getConfigDir() string {
 	return filepath.Join(os.TempDir(), "olake")
 }
+
 
 func generateUUID() string {
 	hash := sha256.New()
@@ -184,32 +162,9 @@ func getLocationFromIP(ctx context.Context, ip string) (LocationInfo, error) {
 	}, nil
 }
 
-func (t *Telemetry) getLocationWithTimeout() interface{} {
-	select {
-	case <-t.locationChan: // Returns immediately if channel already closed
-	case <-time.After(constants.TelemetryLocationTimeout):
-	}
-
-	t.locationMutex.Lock()
-	defer t.locationMutex.Unlock()
-
-	if t.locationInfo != nil {
-		return t.locationInfo
-	}
-	return constants.TelemetryIPNotFoundPlaceholder
-}
-
-// SetUsername sets the username for telemetry tracking
-func SetUsername(username string) {
-	if instance != nil {
-		instance.username = username
-	}
-}
-
 // TrackEvent sends a custom event to Segment
 func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
-	fmt.Println("track event started", eventName)
-	if instance == nil || !instance.enabled {
+	if instance == nil {
 		return nil
 	}
 
@@ -223,7 +178,7 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 	}
 
 	// Add common properties that needs to be sent with every event
-	essentialProps := utils.GetTelemetryCommonProperties(instance.platform, instance.ipAddress, instance.getLocationWithTimeout())
+	essentialProps := utils.GetTelemetryCommonProperties(instance.platform, instance.ipAddress, instance.locationInfo)
 	for key, value := range essentialProps {
 		properties[key] = value
 	}
@@ -233,7 +188,6 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		Event:      eventName,
 		Properties: properties,
 	}); err != nil {
-		// Log error but don't return it since we're in a goroutine
 		fmt.Printf("Failed to send telemetry event %s: %v\n", eventName, err)
 	}
 
@@ -246,5 +200,24 @@ func Flush() {
 		if err := instance.client.Close(); err != nil {
 			fmt.Printf("Warning: Failed to close telemetry client: %v\n", err)
 		}
+	}
+}
+
+
+// GetStoredAnonymousID returns the stored anonymous ID from the config directory
+func GetStoredAnonymousID() string {
+	configDir := filepath.Join(os.TempDir(), "olake")
+	idPath := filepath.Join(configDir, constants.TelemetryAnonymousIDFile)
+
+	if idBytes, err := os.ReadFile(idPath); err == nil {
+		return string(idBytes)
+	}
+	return ""
+}
+
+// SetUsername sets the username for telemetry tracking
+func SetUsername(username string) {
+	if instance != nil {
+		instance.username = username
 	}
 }

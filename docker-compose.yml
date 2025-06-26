@@ -12,7 +12,10 @@ x-signup-defaults:
 
 services:
   olake-ui:
-    image: olakego/ui:latest
+    # image: olakego/ui:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -82,7 +85,10 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: olakego/ui-worker:latest
+    # image: olakego/ui-worker:latest
+    build:
+      context: .
+      dockerfile: worker.Dockerfile
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
@@ -90,6 +96,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
+      - telemetry-data:/tmp/olake
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
       PERSISTENT_DIR: *hostPersistencePath

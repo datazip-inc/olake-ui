@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -145,8 +146,15 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 		return nil, err
 	}
 
+	// Get anonymousID from constants, default to empty string if there's an error
+	anonymousID := ""
+	if id := constants.GetStoredAnonymousID(); id != "" {
+		anonymousID = id
+	}
+
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
+		{Name: "user_id.txt", Data: anonymousID},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -183,9 +191,17 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 		return nil, err
 	}
 	logs.Info("working directory path %s\n", workDir)
+
+	// Get anonymousID from constants, default to empty string if there's an error
+	anonymousID := ""
+	if id := constants.GetStoredAnonymousID(); id != "" {
+		anonymousID = id
+	}
+
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
+		{Name: "user_id.txt", Data: anonymousID},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -224,12 +240,19 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		return nil, err
 	}
 
+	// Get anonymousID from constants, default to empty string if there's an error
+	anonymousID := ""
+	if id := constants.GetStoredAnonymousID(); id != "" {
+		anonymousID = id
+	}
+
 	// Prepare all configuration files
 	configs := []FileConfig{
 		{Name: "config.json", Data: job.SourceID.Config},
 		{Name: "streams.json", Data: job.StreamsConfig},
 		{Name: "writer.json", Data: job.DestID.Config},
 		{Name: "state.json", Data: job.State},
+		{Name: "user_id.txt", Data: anonymousID},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {

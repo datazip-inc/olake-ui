@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/beego/beego/v2/server/web"
@@ -112,5 +114,20 @@ func (c *AuthHandler) Signup() {
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
+	})
+}
+
+// @router /telemetry-id [get]
+func (c *AuthHandler) GetTelemetryID() {
+	// read from /tmp/olake/telemetry_id 
+	telemetryID, err := os.ReadFile(filepath.Join(os.TempDir(), "olake", "telemetry_id"))
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve telemetry ID")
+		return
+		
+	}
+
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+		"telemetry_id": string(telemetryID),
 	})
 }
