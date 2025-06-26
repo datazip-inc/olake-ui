@@ -8,7 +8,11 @@ import (
 )
 
 // TrackUserLogin tracks when a user logs in to  olake-ui
-func TrackUserLogin(ctx context.Context, userID int, email string) error {
+func TrackUserLogin(ctx context.Context, userID int, email, username string) error {
+	if instance != nil {
+		instance.username = username
+	}
+
 	properties := map[string]interface{}{
 		"user_id": userID,
 		"email":   email,

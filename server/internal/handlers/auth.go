@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"golang.org/x/crypto/bcrypt"
 
@@ -54,12 +55,9 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	// Set username in telemetry
-	telemetry.SetUsername(user.Username)
-
 	go func() {
-		if err := telemetry.TrackUserLogin(c.Ctx.Request.Context(), user.ID, user.Email); err != nil {
-			c.Ctx.Input.SetData("telemetry_error", err)
+		if err := telemetry.TrackUserLogin(c.Ctx.Request.Context(), user.ID, user.Email, user.Username); err != nil {
+			logs.Error("Failed to track user login: %v", err)
 		}
 	}()
 

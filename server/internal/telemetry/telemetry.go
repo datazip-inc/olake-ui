@@ -53,23 +53,21 @@ func InitTelemetry() error {
 		anonymousID: anonymousID,
 	}
 
-	go func() {
-		if ip != constants.TelemetryIPNotFoundPlaceholder {
-			ctx, cancel := context.WithTimeout(context.Background(), constants.TelemetryConfigTimeout)
-			defer cancel()
-			loc, err := getLocationFromIP(ctx, ip)
-			if err == nil {
-				instance.locationInfo = &loc
-			} else {
-				fmt.Printf("Failed to fetch location for IP %s: %v\n", ip, err)
-				instance.locationInfo = &LocationInfo{
-					Country: "NA",
-					Region:  "NA",
-					City:    "NA",
-				}
+	if ip != constants.TelemetryIPNotFoundPlaceholder {
+		ctx, cancel := context.WithTimeout(context.Background(), constants.TelemetryConfigTimeout)
+		defer cancel()
+		loc, err := getLocationFromIP(ctx, ip)
+		if err == nil {
+			instance.locationInfo = &loc
+		} else {
+			fmt.Printf("Failed to fetch location for IP %s: %v\n", ip, err)
+			instance.locationInfo = &LocationInfo{
+				Country: "NA",
+				Region:  "NA",
+				City:    "NA",
 			}
 		}
-	}()
+	}
 
 	return nil
 }
