@@ -56,37 +56,6 @@ func (k *K8sJobManager) GetDockerImageName(sourceType, version string) string {
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
-// CreateConfigMap creates a ConfigMap with job configuration files
-func (k *K8sJobManager) CreateConfigMap(ctx context.Context, name string, configs []shared.JobConfig) (*corev1.ConfigMap, error) {
-	data := make(map[string]string)
-	for _, config := range configs {
-		data[config.Name] = config.Data
-	}
-
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: k.namespace,
-			Labels: map[string]string{
-				"app":     "olake-sync",
-				"type":    "job-config",
-				"cleanup": "auto",
-			},
-		},
-		Data: data,
-	}
-
-	logger.Debugf("Creating ConfigMap %s in namespace %s", name, k.namespace)
-	result, err := k.clientset.CoreV1().ConfigMaps(k.namespace).Create(ctx, configMap, metav1.CreateOptions{})
-	if err != nil {
-		logger.Errorf("Failed to create ConfigMap %s: %v", name, err)
-		return nil, err
-	}
-
-	logger.Infof("Successfully created ConfigMap %s", name)
-	return result, nil
-}
-
 // CreateJob creates a Kubernetes Job for running sync operations
 func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.Job, error) {
 	// Get TTL from environment
