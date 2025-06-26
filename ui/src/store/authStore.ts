@@ -32,6 +32,7 @@ export const createAuthSlice: StateCreator<
 					return
 				}
 				set({ isAuthenticated: true, isAuthLoading: false })
+				// Identify user for analytics when returning with an existing session
 				await identifyUser()
 			} catch (error) {
 				set({
@@ -48,7 +49,8 @@ export const createAuthSlice: StateCreator<
 			try {
 				await authService.login({ username, password })
 				set({ isAuthenticated: true, isAuthLoading: false })
-				// Run analytics in background without blocking login
+				// Identify user for analytics after new login
+				// Run in background without blocking to provide faster login experience
 				identifyUser().catch(console.error)
 			} catch (error) {
 				set({ isAuthLoading: false })

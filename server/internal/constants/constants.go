@@ -43,8 +43,6 @@ const (
 	TelemetryVersion               = "0.0.1"
 	TelemetryIPNotFoundPlaceholder = "NA"
 	TelemetryConfigTimeout         = time.Second
-	TelemetryLocationTimeout       = 200 * time.Millisecond
-	TelemetryEnabled               = true
 	TelemetrySegmentAPIKey         = "AiWKKeaOKQvsOotHj5iGANpNhYG6OaM3"
 )
 
