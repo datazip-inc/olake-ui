@@ -169,7 +169,7 @@ func LoadConfig() (*Config, error) {
 			Activity: ActivityTimeouts{
 				Discover: parseDuration("ACTIVITY_TIMEOUT_DISCOVER", "30m"), // 30 minutes for discovery activities
 				Test:     parseDuration("ACTIVITY_TIMEOUT_TEST", "30m"),     // 30 minutes for test activities
-				Sync:     parseDuration("ACTIVITY_TIMEOUT_SYNC", "4h"),      // 4 hours for sync activities
+				Sync:     parseDuration("ACTIVITY_TIMEOUT_SYNC", "0"),       // No timeout for sync activities (can run indefinitely)
 			},
 		},
 		Logging: LoggingConfig{

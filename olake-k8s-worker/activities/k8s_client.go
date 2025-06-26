@@ -56,65 +56,6 @@ func (k *K8sJobManager) GetDockerImageName(sourceType, version string) string {
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
-// CreateJob creates a Kubernetes Job for running sync operations
-func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec) (*batchv1.Job, error) {
-	// Get TTL from environment
-	ttlSeconds := utils.GetEnvInt("JOB_TTL_SECONDS", 0)
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      spec.Name,
-			Namespace: k.namespace,
-			Labels: map[string]string{
-				"app":       "olake-sync",
-				"type":      "connector-job",
-				"cleanup":   "auto",
-				"operation": string(spec.Operation),
-			},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit: &[]int32{1}[0],
-			// Only set TTL if > 0
-			TTLSecondsAfterFinished: getTTLPointer(ttlSeconds),
-			Template: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
-					Containers: []corev1.Container{
-						{
-							Name:    "connector",
-							Image:   spec.Image,
-							Command: spec.Command,
-							Args:    spec.Args,
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "config",
-									MountPath: "/mnt/config",
-								},
-							},
-							Resources: corev1.ResourceRequirements{
-								Requests: corev1.ResourceList{
-									corev1.ResourceMemory: utils.ParseQuantity("1024Mi"),
-									corev1.ResourceCPU:    utils.ParseQuantity("1000m"),
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	logger.Infof("Creating Job %s with image %s", spec.Name, spec.Image)
-	result, err := k.clientset.BatchV1().Jobs(k.namespace).Create(ctx, job, metav1.CreateOptions{})
-	if err != nil {
-		logger.Errorf("Failed to create Job %s: %v", spec.Name, err)
-		return nil, err
-	}
-
-	logger.Infof("Successfully created Job %s", spec.Name)
-	return result, nil
-}
-
 // WaitForJobCompletion waits for a Job to complete and returns the result
 func (k *K8sJobManager) WaitForJobCompletion(ctx context.Context, jobName string, timeout time.Duration) (map[string]interface{}, error) {
 	logger.Infof("Waiting for Job %s to complete (timeout: %v)", jobName, timeout)
@@ -251,8 +192,8 @@ func getTTLPointer(ttlSeconds int) *int32 {
 	return &ttl
 }
 
-// CreateJobWithPV creates a Kubernetes Job for running sync operations with PV
-func (k *K8sJobManager) CreateJobWithPV(ctx context.Context, spec *JobSpec, configs []shared.JobConfig) (*batchv1.Job, error) {
+// CreateJob creates a Kubernetes Job for running sync operations with PV
+func (k *K8sJobManager) CreateJob(ctx context.Context, spec *JobSpec, configs []shared.JobConfig) (*batchv1.Job, error) {
 	// Match Docker directory strategy exactly:
 	var workflowDir string
 	if spec.Operation == shared.Sync {

@@ -28,7 +28,7 @@ data:
   # Activity timeouts (workflow-side)
   ACTIVITY_TIMEOUT_DISCOVER: "30m"
   ACTIVITY_TIMEOUT_TEST: "30m"
-  ACTIVITY_TIMEOUT_SYNC: "4h"
+  ACTIVITY_TIMEOUT_SYNC: "0"  # 0 means no timeout (infinite)
   
   # Kubernetes Configuration
   WORKER_NAMESPACE: "olake"

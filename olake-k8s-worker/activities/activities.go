@@ -43,7 +43,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 	}
 
 	// Create and run the Job (this will write config files to PV)
-	job, err := jobManager.CreateJobWithPV(ctx, jobSpec, configs)
+	job, err := jobManager.CreateJob(ctx, jobSpec, configs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
-	job, err := jobManager.CreateJobWithPV(ctx, jobSpec, configs)
+	job, err := jobManager.CreateJob(ctx, jobSpec, configs)
 	if err != nil {
 		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
@@ -215,7 +215,7 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 	logger.Infof("Pod command: %s", commandStr)
 
 	// Create and run the Job
-	job, err := jobManager.CreateJobWithPV(ctx, jobSpec, configs)
+	job, err := jobManager.CreateJob(ctx, jobSpec, configs)
 	if err != nil {
 		logger.Errorf("Failed to create job: %v", err)
 		return nil, fmt.Errorf("failed to create job: %v", err)
