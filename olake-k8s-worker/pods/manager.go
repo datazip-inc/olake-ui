@@ -1,4 +1,4 @@
-package activities
+package pods
 
 import (
 	"fmt"

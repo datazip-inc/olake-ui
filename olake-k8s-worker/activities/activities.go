@@ -9,17 +9,18 @@ import (
 
 	"olake-k8s-worker/database/service"
 	"olake-k8s-worker/logger"
+	"olake-k8s-worker/pods"
 	"olake-k8s-worker/shared"
 )
 
 // Activities holds the dependencies for activity functions
 type Activities struct {
 	jobService service.JobDataService
-	podManager *K8sPodManager
+	podManager *pods.K8sPodManager
 }
 
 // NewActivities creates a new Activities instance with injected dependencies
-func NewActivities(jobService service.JobDataService, podManager *K8sPodManager) *Activities {
+func NewActivities(jobService service.JobDataService, podManager *pods.K8sPodManager) *Activities {
 	return &Activities{
 		jobService: jobService,
 		podManager: podManager,
@@ -34,7 +35,7 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 	// Use injected pod manager
 
 	// Execute pod activity using common workflow
-	request := PodActivityRequest{
+	request := pods.PodActivityRequest{
 		WorkflowID: params.WorkflowID,
 		Operation:  shared.Discover,
 		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
@@ -62,7 +63,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for connection test")
 
 	// Execute pod activity using common workflow
-	request := PodActivityRequest{
+	request := pods.PodActivityRequest{
 		WorkflowID: params.WorkflowID,
 		Operation:  shared.Check,
 		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
@@ -107,7 +108,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	}
 
 	// Execute pod activity using common workflow
-	request := PodActivityRequest{
+	request := pods.PodActivityRequest{
 		WorkflowID: params.WorkflowID,
 		Operation:  shared.Sync,
 		Image:      a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),

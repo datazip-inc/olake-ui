@@ -13,6 +13,7 @@ import (
 	"olake-k8s-worker/config"
 	"olake-k8s-worker/database/service"
 	"olake-k8s-worker/logger"
+	"olake-k8s-worker/pods"
 	"olake-k8s-worker/workflows"
 )
 
@@ -22,7 +23,7 @@ type K8sWorker struct {
 	config         *config.Config
 	healthServer   *HealthServer
 	jobService     service.JobDataService
-	podManager     *activities.K8sPodManager
+	podManager     *pods.K8sPodManager
 	startTime      time.Time
 }
 
@@ -42,7 +43,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	logger.Info("Created database job service")
 
 	// Create pod manager
-	podManager, err := activities.NewK8sPodManager()
+	podManager, err := pods.NewK8sPodManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pod manager: %v", err)
 	}
