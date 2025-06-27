@@ -11,7 +11,6 @@ import (
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
@@ -51,17 +50,12 @@ func (c *SourceHandler) GetAllSources() {
 	sourceItems := make([]models.SourceDataItem, 0, len(sources))
 
 	for _, source := range sources {
-		decryptedConfig, err := crypto.DecryptJSONString(source.Config)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
-			return
-		}
 		item := models.SourceDataItem{
 			ID:        source.ID,
 			Name:      source.Name,
 			Type:      source.Type,
 			Version:   source.Version,
-			Config:    decryptedConfig,
+			Config:    source.Config, // Already decrypted by EncryptedORM
 			CreatedAt: source.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
 		}
@@ -89,17 +83,12 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
-	encryptedJSON, err := crypto.EncryptJSONString(req.Config)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
-		return
-	}
 	// Convert request to Source model
 	source := &models.Source{
 		Name:    req.Name,
 		Type:    req.Type,
 		Version: req.Version,
-		Config:  encryptedJSON,
+		Config:  req.Config, // Will be automatically encrypted by EncryptedORM
 	}
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
@@ -134,16 +123,9 @@ func (c *SourceHandler) UpdateSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
-	// Encrypt the source configuration
-	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
-		return
-	}
-
 	// Update fields
 	existingSource.Name = req.Name
-	existingSource.Config = encryptedConfig
+	existingSource.Config = req.Config // Will be automatically encrypted by EncryptedORM
 	existingSource.Type = req.Type
 	existingSource.Version = req.Version
 	existingSource.UpdatedAt = time.Now()
@@ -205,7 +187,7 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
+	encryptedConfig, err := encryptConfigForExternalService(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
 		return
@@ -237,7 +219,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 		}
 		oldStreams = job.StreamsConfig
 	}
-	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
+	encryptedConfig, err := encryptConfigForExternalService(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
 		return
