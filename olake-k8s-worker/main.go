@@ -22,8 +22,6 @@ func main() {
 		logger.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	// Apply environment-specific overrides
-	cfg.ApplyEnvironmentOverrides()
 
 	logger.Infof("Temporal Address: %s", cfg.Temporal.Address)
 	logger.Infof("Task Queue: %s", cfg.Temporal.TaskQueue)
