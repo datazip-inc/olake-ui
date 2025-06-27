@@ -524,6 +524,74 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 			},
 			"required": []string{"hosts", "username", "password", "database", "authdb"},
 		}
+	case "oracle":
+		spec = map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"host": map[string]interface{}{
+					"type":        "string",
+					"title":       "Host",
+					"description": "Hostname or IP address of the Oracle database server.",
+					"order":       1,
+				},
+				"port": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Port",
+					"description": "Port number on which the Oracle database is listening.",
+					"order":       2,
+				},
+				"service_name": map[string]interface{}{
+					"type":        "string",
+					"title":       "Service Name",
+					"description": "The Oracle database service name to connect to.",
+					"order":       3,
+				},
+				"username": map[string]interface{}{
+					"type":        "string",
+					"title":       "Username",
+					"description": "Username for authenticating with the Oracle database.",
+					"order":       4,
+				},
+				"password": map[string]interface{}{
+					"type":        "string",
+					"title":       "Password",
+					"description": "Password for the Oracle database user.",
+					"format":      "password",
+					"order":       5,
+				},
+				"jdbc_url_params": map[string]interface{}{
+					"type":        "string",
+					"title":       "JDBC URL Parameters",
+					"description": "Additional JDBC URL parameters for connection tuning (optional)",
+					"order":       6,
+				},
+				"ssl": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"mode": map[string]interface{}{
+							"type":        "string",
+							"title":       "SSL Mode",
+							"description": "Database connection SSL configuration (e.g., SSL mode)",
+							"enum":        []string{"disable", "require", "verify-ca", "verify-full"},
+						},
+					},
+					"order": 7,
+				},
+				"max_threads": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Max Threads",
+					"description": "Max parallel threads for chunk snapshotting",
+					"order":       8,
+				},
+				"backoff_retry_count": map[string]interface{}{
+					"type":        "integer",
+					"title":       "Retry Count",
+					"description": "Number of sync retry attempts using exponential backoff",
+					"order":       9,
+				},
+			},
+			"required": []string{"host", "port", "service_name", "username", "password"},
+		}
 
 	default:
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Unsupported source type")
