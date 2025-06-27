@@ -13,8 +13,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	analytics "github.com/segmentio/analytics-go/v3"
 )
 
@@ -40,7 +39,7 @@ type LocationInfo struct {
 
 func InitTelemetry() error {
 	ip := getOutboundIP()
-	client = analytics.New(constants.TelemetrySegmentAPIKey)
+	client = analytics.New(utils.TelemetrySegmentAPIKey)
 	// Generate anonymous ID during initialization
 	anonymousID := generateStoredAnonymousID()
 
@@ -51,8 +50,8 @@ func InitTelemetry() error {
 		anonymousID: anonymousID,
 	}
 
-	if ip != constants.TelemetryIPNotFoundPlaceholder {
-		ctx, cancel := context.WithTimeout(context.Background(), constants.TelemetryConfigTimeout)
+	if ip != utils.TelemetryIPNotFoundPlaceholder {
+		ctx, cancel := context.WithTimeout(context.Background(), utils.TelemetryConfigTimeout)
 		defer cancel()
 		loc, err := getLocationFromIP(ctx, ip)
 		if err == nil {
@@ -73,7 +72,7 @@ func InitTelemetry() error {
 // generateStoredAnonymousID generates or retrieves a stored anonymous ID
 func generateStoredAnonymousID() string {
 	configDir := getConfigDir()
-	idPath := filepath.Join(configDir, constants.TelemetryAnonymousIDFile)
+	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
 
 	if idBytes, err := os.ReadFile(idPath); err == nil {
 		return string(idBytes)
@@ -101,13 +100,13 @@ func getPlatformInfo() utils.PlatformInfo {
 	return utils.PlatformInfo{
 		OS:           runtime.GOOS,
 		Arch:         runtime.GOARCH,
-		OlakeVersion: constants.TelemetryVersion,
+		OlakeVersion: utils.TelemetryVersion,
 		DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
 	}
 }
 
 func getOutboundIP() string {
-	ip := []byte(constants.TelemetryIPNotFoundPlaceholder)
+	ip := []byte(utils.TelemetryIPNotFoundPlaceholder)
 	resp, err := http.Get("https://api.ipify.org?format=text")
 
 	if err != nil {
@@ -197,7 +196,7 @@ func Flush() {
 // GetStoredAnonymousID returns the stored anonymous ID from the config directory
 func GetStoredAnonymousID() string {
 	configDir := filepath.Join(os.TempDir(), "olake")
-	idPath := filepath.Join(configDir, constants.TelemetryAnonymousIDFile)
+	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
 
 	if idBytes, err := os.ReadFile(idPath); err == nil {
 		return string(idBytes)

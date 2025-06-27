@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -69,48 +68,13 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 		WorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
 	}
 
-	// Get job details from database
-	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID)
-	if err != nil {
-		workflow.GetLogger(ctx).Error("Failed to get job details", "error", err)
-	} else if job != nil {
-		params.JobName = job.Name
-		params.CreatedAt = job.CreatedAt.Format(time.RFC3339)
-		if job.CreatedBy != nil {
-			userORM := database.NewUserORM()
-			if fullUser, err := userORM.GetByID(job.CreatedBy.ID); err == nil {
-				params.CreatedBy = fullUser.Username
-			}
-		}
-		if job.SourceID != nil {
-			params.SourceType = job.SourceID.Type
-			params.SourceName = job.SourceID.Name
-		}
-		if job.DestID != nil {
-			params.DestinationType = job.DestID.DestType
-			params.DestinationName = job.DestID.Name
-		}
-	}
-
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var result map[string]interface{}
-	err = workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
+	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event
 		go func() {
-			createdAt, _ := time.Parse(time.RFC3339, params.CreatedAt)
-			if err := telemetry.TrackSyncFailed(
-				context.Background(),
-				jobID,
-				params.WorkflowID,
-				params.JobName,
-				createdAt,
-				params.SourceType,
-				params.SourceName,
-				params.DestinationType,
-				params.DestinationName,
-			); err != nil {
+			if err := telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID); err != nil {
 				workflow.GetLogger(ctx).Error("Failed to track sync failure event", "error", err)
 			}
 		}()

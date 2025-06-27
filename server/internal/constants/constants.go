@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	"github.com/spf13/viper"
 )
 
@@ -22,28 +22,6 @@ var (
 	DefaultUsername = "olake"
 	DefaultPassword = "password"
 	TableNameMap    = map[TableType]string{}
-)
-
-// Telemetry event constants
-const (
-	EventUserLogin           = "user_login"
-	EventJobCreated          = "job_created"
-	EventSyncStarted         = "sync_started"
-	EventSyncCompleted       = "sync_completed"
-	EventSyncFailed          = "sync_failed"
-	EventSourceCreated       = "source_created"
-	EventDestinationCreated  = "destination_created"
-	EventSourcesUpdated      = "sources_updated"
-	EventDestinationsUpdated = "destinations_updated"
-)
-
-// Telemetry configuration constants
-const (
-	TelemetryAnonymousIDFile       = "telemetry_id"
-	TelemetryVersion               = "0.0.1"
-	TelemetryIPNotFoundPlaceholder = "NA"
-	TelemetryConfigTimeout         = time.Second
-	TelemetrySegmentAPIKey         = "AiWKKeaOKQvsOotHj5iGANpNhYG6OaM3"
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
@@ -88,7 +66,7 @@ func checkForRequiredVariables(vars []string) {
 // GetStoredAnonymousID returns the stored anonymous ID from the config directory
 func GetStoredAnonymousID() string {
 	configDir := filepath.Join(os.TempDir(), "olake")
-	idPath := filepath.Join(configDir, TelemetryAnonymousIDFile)
+	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
 
 	if idBytes, err := os.ReadFile(idPath); err == nil {
 		return string(idBytes)

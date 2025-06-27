@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties
@@ -22,11 +22,14 @@ func TrackDestinationCreation(ctx context.Context, destinationID int, destinatio
 	properties["catalog"] = "none"
 	var configMap map[string]interface{}
 	// parse config to get catalog_type
-	if err := json.Unmarshal([]byte(config), &configMap); err == nil {
-		if writer, exists := configMap["writer"].(map[string]interface{}); exists {
-			if catalogType, exists := writer["catalog_type"]; exists {
-				properties["catalog"] = catalogType
-			}
+	if err := json.Unmarshal([]byte(config), &configMap); err != nil {
+		logs.Error("Failed to unmarshal config: %v", err)
+		return err
+	}
+
+	if writer, exists := configMap["writer"].(map[string]interface{}); exists {
+		if catalogType, exists := writer["catalog_type"]; exists {
+			properties["catalog"] = catalogType
 		}
 	}
 
@@ -34,7 +37,7 @@ func TrackDestinationCreation(ctx context.Context, destinationID int, destinatio
 		properties["created_at"] = createdAt.Format(time.RFC3339)
 	}
 
-	if err := TrackEvent(ctx, constants.EventDestinationCreated, properties); err != nil {
+	if err := TrackEvent(ctx, utils.EventDestinationCreated, properties); err != nil {
 		logs.Error("Failed to track destination creation event: %v", err)
 		return err
 	}
@@ -90,5 +93,5 @@ func TrackDestinationsStatus(ctx context.Context, userID interface{}) error {
 		props[k] = v
 	}
 
-	return TrackEvent(ctx, constants.EventDestinationsUpdated, props)
+	return TrackEvent(ctx, utils.EventDestinationsUpdated, props)
 }

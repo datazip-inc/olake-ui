@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 )
 
 // TrackSourceCreation tracks the creation of a new source with relevant properties
@@ -22,7 +22,7 @@ func TrackSourceCreation(ctx context.Context, sourceID int, sourceName, sourceTy
 		properties["created_at"] = createdAt.Format(time.RFC3339)
 	}
 
-	if err := TrackEvent(ctx, constants.EventSourceCreated, properties); err != nil {
+	if err := TrackEvent(ctx, utils.EventSourceCreated, properties); err != nil {
 		logs.Error("Failed to track source creation event: %v", err)
 		return err
 	}
@@ -78,5 +78,5 @@ func TrackSourcesStatus(ctx context.Context, userID interface{}) error {
 		props[k] = v
 	}
 
-	return TrackEvent(ctx, constants.EventSourcesUpdated, props)
+	return TrackEvent(ctx, utils.EventSourcesUpdated, props)
 }

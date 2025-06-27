@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 )
 
 // TrackJobCreation tracks the creation of a new job with relevant properties
@@ -31,7 +31,7 @@ func TrackJobCreation(ctx context.Context, jobID int, jobName, projectID, source
 		properties["created_at"] = createdAt.Format(time.RFC3339)
 	}
 
-	if err := TrackEvent(ctx, constants.EventJobCreated, properties); err != nil {
+	if err := TrackEvent(ctx, utils.EventJobCreated, properties); err != nil {
 		logs.Error("Failed to track job creation event: %v", err)
 		return err
 	}
@@ -108,7 +108,7 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 	for k, v := range userProps {
 		sourceProps[k] = v
 	}
-	if err := TrackEvent(ctx, constants.EventSourcesUpdated, sourceProps); err != nil {
+	if err := TrackEvent(ctx, utils.EventSourcesUpdated, sourceProps); err != nil {
 		return err
 	}
 
@@ -121,5 +121,5 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 	for k, v := range userProps {
 		destProps[k] = v
 	}
-	return TrackEvent(ctx, constants.EventDestinationsUpdated, destProps)
+	return TrackEvent(ctx, utils.EventDestinationsUpdated, destProps)
 }
