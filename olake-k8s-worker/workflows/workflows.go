@@ -6,7 +6,6 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
-	"olake-k8s-worker/activities"
 	"olake-k8s-worker/config"
 	"olake-k8s-worker/shared"
 )
@@ -54,7 +53,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *shared.ActivityParams
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var result map[string]interface{}
-	err := workflow.ExecuteActivity(ctx, activities.DiscoverCatalogActivity, params).Get(ctx, &result)
+	err := workflow.ExecuteActivity(ctx, "DiscoverCatalogActivity", params).Get(ctx, &result)
 	return result, err
 }
 
@@ -67,7 +66,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params *shared.ActivityParams)
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var result map[string]interface{}
-	err := workflow.ExecuteActivity(ctx, activities.TestConnectionActivity, params).Get(ctx, &result)
+	err := workflow.ExecuteActivity(ctx, "TestConnectionActivity", params).Get(ctx, &result)
 	return result, err
 }
 
@@ -84,6 +83,6 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	ctx = workflow.WithActivityOptions(ctx, options)
 
 	var result map[string]interface{}
-	err := workflow.ExecuteActivity(ctx, activities.SyncActivity, params).Get(ctx, &result)
+	err := workflow.ExecuteActivity(ctx, "SyncActivity", params).Get(ctx, &result)
 	return result, err
 }

@@ -11,6 +11,7 @@ import (
 
 	"olake-k8s-worker/activities"
 	"olake-k8s-worker/config"
+	"olake-k8s-worker/database/service"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/workflows"
 )
@@ -20,6 +21,7 @@ type K8sWorker struct {
 	worker         worker.Worker
 	config         *config.Config
 	healthServer   *HealthServer
+	jobService     service.JobDataService
 	startTime      time.Time
 }
 
@@ -30,6 +32,13 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	// Set global config for workflows to use
 	workflows.SetConfig(cfg)
 	logger.Info("Set global configuration for workflows")
+
+	// Create database service
+	jobService, err := service.NewPostgresJobService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create job service: %v", err)
+	}
+	logger.Info("Created database job service")
 
 	// Connect to Temporal
 	c, err := client.Dial(client.Options{
@@ -59,10 +68,13 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	w.RegisterWorkflow(workflows.TestConnectionWorkflow)
 	w.RegisterWorkflow(workflows.RunSyncWorkflow)
 
+	// Create activities with injected dependencies
+	activitiesInstance := activities.NewActivities(jobService)
+
 	// Register activities - these receive WorkflowID from workflows
-	w.RegisterActivity(activities.DiscoverCatalogActivity)
-	w.RegisterActivity(activities.TestConnectionActivity)
-	w.RegisterActivity(activities.SyncActivity)
+	w.RegisterActivity(activitiesInstance.DiscoverCatalogActivity)
+	w.RegisterActivity(activitiesInstance.TestConnectionActivity)
+	w.RegisterActivity(activitiesInstance.SyncActivity)
 
 	logger.Info("Successfully registered all workflows and activities")
 
@@ -70,6 +82,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 		temporalClient: c,
 		worker:         w,
 		config:         cfg,
+		jobService:     jobService,
 		startTime:      time.Now(),
 	}
 
@@ -120,6 +133,11 @@ func (w *K8sWorker) Stop() {
 
 	if err := w.healthServer.Stop(ctx); err != nil {
 		logger.Errorf("Failed to stop health server: %v", err)
+	}
+
+	// Close job service
+	if err := w.jobService.Close(); err != nil {
+		logger.Errorf("Failed to close job service: %v", err)
 	}
 
 	// Stop temporal worker
