@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
@@ -92,4 +93,10 @@ func setJobWorkflowInfo(jobInfo *models.JobDataItem, jobID int, projectIDStr str
 		jobInfo.LastRunState = ""
 	}
 	return true
+}
+
+// encryptConfigForExternalService encrypts a config for external service calls
+// This is needed when passing configs to Temporal or other external services
+func encryptConfigForExternalService(config string) (string, error) {
+	return crypto.EncryptJSONString(config)
 }

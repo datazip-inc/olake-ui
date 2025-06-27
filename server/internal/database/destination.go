@@ -3,21 +3,19 @@ package database
 import (
 	"time"
 
-	"github.com/beego/beego/v2/client/orm"
-
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // DestinationORM handles database operations for destinations
 type DestinationORM struct {
-	ormer     orm.Ormer
+	ormer     *EncryptedORM
 	TableName string
 }
 
 func NewDestinationORM() *DestinationORM {
 	return &DestinationORM{
-		ormer:     orm.NewOrm(),
+		ormer:     NewEncryptedORM(),
 		TableName: constants.TableNameMap[constants.DestinationTable],
 	}
 }

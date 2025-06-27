@@ -43,6 +43,27 @@ func (s *Source) TableName() string {
 	return constants.TableNameMap[constants.SourceTable]
 }
 
+// EncryptableModel interface implementation
+func (s *Source) GetEncryptableFields() []string {
+	return []string{"Config"}
+}
+
+func (s *Source) SetEncryptedField(fieldName, encryptedValue string) error {
+	switch fieldName {
+	case "Config":
+		s.Config = encryptedValue
+	}
+	return nil
+}
+
+func (s *Source) GetEncryptedField(fieldName string) string {
+	switch fieldName {
+	case "Config":
+		return s.Config
+	}
+	return ""
+}
+
 // Destination entity referencing User
 type Destination struct {
 	BaseModel `orm:"embedded"`
@@ -58,6 +79,27 @@ type Destination struct {
 
 func (d *Destination) TableName() string {
 	return constants.TableNameMap[constants.DestinationTable]
+}
+
+// EncryptableModel interface implementation
+func (d *Destination) GetEncryptableFields() []string {
+	return []string{"Config"}
+}
+
+func (d *Destination) SetEncryptedField(fieldName, encryptedValue string) error {
+	switch fieldName {
+	case "Config":
+		d.Config = encryptedValue
+	}
+	return nil
+}
+
+func (d *Destination) GetEncryptedField(fieldName string) string {
+	switch fieldName {
+	case "Config":
+		return d.Config
+	}
+	return ""
 }
 
 // Job represents a synchronization job

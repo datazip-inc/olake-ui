@@ -3,21 +3,19 @@ package database
 import (
 	"time"
 
-	"github.com/beego/beego/v2/client/orm"
-
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // SourceORM handles database operations for sources
 type SourceORM struct {
-	ormer     orm.Ormer
+	ormer     *EncryptedORM
 	TableName string
 }
 
 func NewSourceORM() *SourceORM {
 	return &SourceORM{
-		ormer:     orm.NewOrm(),
+		ormer:     NewEncryptedORM(),
 		TableName: constants.TableNameMap[constants.SourceTable],
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -66,30 +65,20 @@ func (c *JobHandler) GetAllJobs() {
 			UpdatedAt:     job.UpdatedAt.Format(time.RFC3339),
 			Activate:      job.Active,
 		}
-		decryptedConfig, err := crypto.DecryptJSONString(job.SourceID.Config)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
-			return
-		}
 		// Set source and destination details
 		if job.SourceID != nil {
 			jobResp.Source = models.JobSourceConfig{
 				Name:    job.SourceID.Name,
 				Type:    job.SourceID.Type,
-				Config:  decryptedConfig,
+				Config:  job.SourceID.Config, // Already decrypted by EncryptedORM
 				Version: job.SourceID.Version,
 			}
-		}
-		decryptedConfig, err = crypto.DecryptJSONString(job.DestID.Config)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
-			return
 		}
 		if job.DestID != nil {
 			jobResp.Destination = models.JobDestinationConfig{
 				Name:    job.DestID.Name,
 				Type:    job.DestID.DestType,
-				Config:  decryptedConfig,
+				Config:  job.DestID.Config, // Already decrypted by EncryptedORM
 				Version: job.DestID.Version,
 			}
 		}
@@ -535,18 +524,12 @@ func (c *JobHandler) GetTaskLogs() {
 
 // getOrCreateSource finds or creates a source based on the provided config
 func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDStr string) (*models.Source, error) {
-	// Encrypt the source configuration
-	encryptedConfig, err := crypto.EncryptJSONString(config.Config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt source config: %w", err)
-	}
-
 	// Try to find an existing source matching the criteria
 	sources, err := c.sourceORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(sources) > 0 {
 		// Update the existing source if found
 		source := sources[0]
-		source.Config = encryptedConfig
+		source.Config = config.Config // Will be automatically encrypted by EncryptedORM
 		source.Version = config.Version
 
 		// Get user info for update
@@ -567,7 +550,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 	source := &models.Source{
 		Name:      config.Name,
 		Type:      config.Type,
-		Config:    encryptedConfig,
+		Config:    config.Config, // Will be automatically encrypted by EncryptedORM
 		Version:   config.Version,
 		ProjectID: projectIDStr,
 	}
@@ -589,18 +572,12 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 
 // getOrCreateDestination finds or creates a destination based on the provided config
 func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
-	// Encrypt the destination configuration
-	encryptedConfig, err := crypto.EncryptJSONString(config.Config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt destination config: %w", err)
-	}
-
 	// Try to find an existing destination matching the criteria
 	destinations, err := c.destORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(destinations) > 0 {
 		// Update the existing destination if found
 		dest := destinations[0]
-		dest.Config = encryptedConfig
+		dest.Config = config.Config // Will be automatically encrypted by EncryptedORM
 		dest.Version = config.Version
 
 		// Get user info for update
@@ -621,7 +598,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	dest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,
-		Config:    encryptedConfig,
+		Config:    config.Config, // Will be automatically encrypted by EncryptedORM
 		Version:   config.Version,
 		ProjectID: projectIDStr,
 	}
