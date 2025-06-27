@@ -330,12 +330,13 @@ func (k *K8sJobManager) CreatePod(ctx context.Context, spec *JobSpec, configs []
 				"app":                  "olake-connector",
 				"type":                 "sync-pod",
 				"operation":            string(spec.Operation),
-				"olake.io/workflow-id": spec.OriginalWorkflowID,
+				"olake.io/workflow-id": utils.SanitizeK8sName(spec.OriginalWorkflowID),
 				"olake.io/autoscaling": "enabled",
 			},
 			Annotations: map[string]string{
-				"olake.io/created-by": "olake-k8s-worker",
-				"olake.io/created-at": time.Now().Format(time.RFC3339),
+				"olake.io/created-by":           "olake-k8s-worker",
+				"olake.io/created-at":           time.Now().Format(time.RFC3339),
+				"olake.io/original-workflow-id": spec.OriginalWorkflowID,
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -444,19 +445,16 @@ func (k *K8sJobManager) CleanupPod(ctx context.Context, podName string) error {
 
 // getPodResults extracts results from completed pod by reading the output file
 func (k *K8sJobManager) getPodResults(ctx context.Context, podName string) (map[string]interface{}, error) {
-	// For discover operations, read the streams.json file instead of parsing logs
-	// This matches the Docker implementation behavior
-
 	// Get the pod to find the workflow directory
 	pod, err := k.clientset.CoreV1().Pods(k.namespace).Get(ctx, podName, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod: %v", err)
 	}
 
-	// Extract workflow ID from pod labels
-	workflowID := pod.Labels["olake.io/workflow-id"]
+	// Extract ORIGINAL workflow ID from pod annotations (for directory path)
+	workflowID := pod.Annotations["olake.io/original-workflow-id"]
 	if workflowID == "" {
-		return nil, fmt.Errorf("workflow ID not found in pod labels")
+		return nil, fmt.Errorf("original workflow ID not found in pod annotations")
 	}
 
 	// Determine the operation type
@@ -464,11 +462,12 @@ func (k *K8sJobManager) getPodResults(ctx context.Context, podName string) (map[
 
 	if operation == "discover" {
 		// For discover operations, read streams.json file (like Docker does)
+		// Use the SAME directory logic as setupWorkDirectory
 		var workflowDir string
 		if operation == "sync" {
 			workflowDir = fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 		} else {
-			workflowDir = workflowID
+			workflowDir = workflowID // ← Use original unsanitized workflow ID
 		}
 
 		catalogPath := fmt.Sprintf("/data/olake-jobs/%s/streams.json", workflowDir)
