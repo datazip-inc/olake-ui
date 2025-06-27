@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
@@ -21,7 +20,6 @@ import (
 
 var (
 	client   analytics.Client
-	idLock   sync.Mutex
 	instance *Telemetry
 )
 
@@ -74,9 +72,6 @@ func InitTelemetry() error {
 
 // generateStoredAnonymousID generates or retrieves a stored anonymous ID
 func generateStoredAnonymousID() string {
-	idLock.Lock()
-	defer idLock.Unlock()
-
 	configDir := getConfigDir()
 	idPath := filepath.Join(configDir, constants.TelemetryAnonymousIDFile)
 
