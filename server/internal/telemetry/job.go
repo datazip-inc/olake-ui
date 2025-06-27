@@ -91,11 +91,14 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 	// Get user properties if available
 	var userProps map[string]interface{}
 	if userID != nil {
-		if user, err := userORM.GetByID(userID.(int)); err == nil {
-			userProps = map[string]interface{}{
-				"user_id":    user.ID,
-				"user_email": user.Email,
-			}
+		user, err := userORM.GetByID(userID.(int))
+		if err != nil {
+			logs.Error("Failed to get user details for telemetry: %v", err)
+			return err
+		}
+		userProps = map[string]interface{}{
+			"user_id":    user.ID,
+			"user_email": user.Email,
 		}
 	}
 

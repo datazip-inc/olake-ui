@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/core/config"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	"github.com/spf13/viper"
@@ -68,8 +69,10 @@ func GetStoredAnonymousID() string {
 	configDir := filepath.Join(os.TempDir(), "olake")
 	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
 
-	if idBytes, err := os.ReadFile(idPath); err == nil {
-		return string(idBytes)
+	idBytes, err := os.ReadFile(idPath)
+	if err != nil {
+		logs.Error("Failed to read telemetry anonymous ID file: %v", err)
+		return ""
 	}
-	return ""
+	return string(idBytes)
 }

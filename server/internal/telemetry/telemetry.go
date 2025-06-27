@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	analytics "github.com/segmentio/analytics-go/v3"
 )
@@ -54,9 +55,8 @@ func InitTelemetry() error {
 		ctx, cancel := context.WithTimeout(context.Background(), utils.TelemetryConfigTimeout)
 		defer cancel()
 		loc, err := getLocationFromIP(ctx, ip)
-		if err == nil {
-			instance.locationInfo = &loc
-		} else {
+
+		if err != nil {
 			fmt.Printf("Failed to fetch location for IP %s: %v\n", ip, err)
 			instance.locationInfo = &LocationInfo{
 				Country: "NA",
@@ -64,8 +64,8 @@ func InitTelemetry() error {
 				City:    "NA",
 			}
 		}
+		instance.locationInfo = &loc
 	}
-
 	return nil
 }
 
@@ -74,16 +74,17 @@ func generateStoredAnonymousID() string {
 	configDir := getConfigDir()
 	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
 
-	if idBytes, err := os.ReadFile(idPath); err == nil {
-		return string(idBytes)
-	}
+	idBytes, err := os.ReadFile(idPath)
 
-	newID := generateUUID()
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err != nil {
+		newID := generateUUID()
+		if err := os.MkdirAll(configDir, 0755); err != nil {
+			return newID
+		}
+		_ = os.WriteFile(idPath, []byte(newID), 0600)
 		return newID
 	}
-	_ = os.WriteFile(idPath, []byte(newID), 0600)
-	return newID
+	return string(idBytes)
 }
 
 func getConfigDir() string {
@@ -198,10 +199,12 @@ func GetStoredAnonymousID() string {
 	configDir := filepath.Join(os.TempDir(), "olake")
 	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
 
-	if idBytes, err := os.ReadFile(idPath); err == nil {
-		return string(idBytes)
+	idBytes, err := os.ReadFile(idPath)
+	if err != nil {
+		logs.Error("Failed to read telemetry anonymous ID file: %v", err)
+		return ""
 	}
-	return ""
+	return string(idBytes)
 }
 
 // SetUsername sets the username for telemetry tracking
