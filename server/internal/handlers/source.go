@@ -589,6 +589,12 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"description": "Number of sync retry attempts using exponential backoff",
 					"order":       9,
 				},
+				"sid": map[string]interface{}{
+					"type":        "string",
+					"title":       "SID",
+					"description": "The Oracle database SID to connect to.",
+					"order":       10,
+				},
 			},
 			"required": []string{"host", "port", "service_name", "username", "password"},
 		}
