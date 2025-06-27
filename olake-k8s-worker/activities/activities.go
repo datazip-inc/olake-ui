@@ -15,12 +15,14 @@ import (
 // Activities holds the dependencies for activity functions
 type Activities struct {
 	jobService service.JobDataService
+	podManager *K8sPodManager
 }
 
 // NewActivities creates a new Activities instance with injected dependencies
-func NewActivities(jobService service.JobDataService) *Activities {
+func NewActivities(jobService service.JobDataService, podManager *K8sPodManager) *Activities {
 	return &Activities{
 		jobService: jobService,
+		podManager: podManager,
 	}
 }
 
@@ -29,17 +31,13 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 	activityLogger := activity.GetLogger(ctx)
 	activityLogger.Info("Starting K8s discover catalog activity")
 
-	// Create K8s Pod manager
-	podManager, err := NewK8sPodManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create K8s pod manager: %v", err)
-	}
+	// Use injected pod manager
 
 	// Execute pod activity using common workflow
 	request := PodActivityRequest{
 		WorkflowID: params.WorkflowID,
 		Operation:  shared.Discover,
-		Image:      podManager.GetDockerImageName(params.SourceType, params.Version),
+		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args:       []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
@@ -47,7 +45,7 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 		Timeout: 5 * time.Minute,
 	}
 
-	return podManager.ExecutePodActivity(ctx, request)
+	return a.podManager.ExecutePodActivity(ctx, request)
 }
 
 // TestConnectionActivity tests data source connection using Kubernetes Pod
@@ -60,13 +58,6 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 	logger.Infof("Starting test connection activity for sourceType: %s, version: %s, workflowID: %s",
 		params.SourceType, params.Version, params.WorkflowID)
 
-	// Create K8s Pod manager
-	podManager, err := NewK8sPodManager()
-	if err != nil {
-		logger.Errorf("Failed to create K8s pod manager: %v", err)
-		return nil, fmt.Errorf("failed to create K8s pod manager: %v", err)
-	}
-
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for connection test")
 
@@ -74,7 +65,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 	request := PodActivityRequest{
 		WorkflowID: params.WorkflowID,
 		Operation:  shared.Check,
-		Image:      podManager.GetDockerImageName(params.SourceType, params.Version),
+		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args: []string{
 			string(shared.Check),
 			fmt.Sprintf("--%s", params.Flag),
@@ -86,7 +77,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Timeout: 5 * time.Minute,
 	}
 
-	return podManager.ExecutePodActivity(ctx, request)
+	return a.podManager.ExecutePodActivity(ctx, request)
 }
 
 // SyncActivity syncs data using Kubernetes Pod
@@ -97,13 +88,6 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		"workflowID", params.WorkflowID)
 
 	logger.Infof("Starting sync activity for jobID: %d, workflowID: %s", params.JobID, params.WorkflowID)
-
-	// Create K8s Pod manager
-	podManager, err := NewK8sPodManager()
-	if err != nil {
-		logger.Errorf("Failed to create K8s pod manager: %v", err)
-		return nil, fmt.Errorf("failed to create K8s pod manager: %v", err)
-	}
 
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
@@ -126,7 +110,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	request := PodActivityRequest{
 		WorkflowID: params.WorkflowID,
 		Operation:  shared.Sync,
-		Image:      podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
+		Image:      a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
 		Args: []string{
 			string(shared.Sync),
 			"--config", "/mnt/config/config.json",
@@ -143,6 +127,6 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		Timeout: 15 * time.Minute,
 	}
 
-	return podManager.ExecutePodActivity(ctx, request)
+	return a.podManager.ExecutePodActivity(ctx, request)
 }
 

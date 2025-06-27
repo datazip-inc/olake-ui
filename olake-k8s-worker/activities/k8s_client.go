@@ -189,16 +189,19 @@ func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string
 
 // CleanupPod removes a pod (but keeps work directory for UI access)
 func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
-	logger.Infof("Cleaning up Pod %s", podName)
+	logger.Infof("Cleaning up Pod %s in namespace %s", podName, k.namespace)
 
 	// Delete the pod only
 	err := k.clientset.CoreV1().Pods(k.namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 	if err != nil {
-		logger.Errorf("Failed to delete pod %s: %v", podName, err)
-		return fmt.Errorf("failed to delete pod: %v", err)
+		// Enhanced error logging with more context
+		logger.Errorf("Failed to delete pod %s in namespace %s: %v (error type: %T)", 
+			podName, k.namespace, err, err)
+		return fmt.Errorf("failed to delete pod %s in namespace %s: %v", podName, k.namespace, err)
 	}
 
-	logger.Infof("Successfully cleaned up Pod %s (directory preserved)", podName)
+	logger.Infof("Successfully cleaned up Pod %s in namespace %s (directory preserved for UI access)", 
+		podName, k.namespace)
 	return nil
 }
 
@@ -290,7 +293,10 @@ func (k *K8sPodManager) ExecutePodActivity(ctx context.Context, req PodActivityR
 	// Always cleanup pod when done
 	defer func() {
 		if err := k.CleanupPod(ctx, pod.Name); err != nil {
-			logger.Errorf("Failed to cleanup pod %s: %v", pod.Name, err)
+			logger.Errorf("Failed to cleanup pod %s for %s operation (workflow: %s): %v", 
+				pod.Name, req.Operation, req.WorkflowID, err)
+			// Note: We continue execution despite cleanup failure as the core operation may have succeeded
+			// and cleanup failures shouldn't invalidate successful work results
 		}
 	}()
 

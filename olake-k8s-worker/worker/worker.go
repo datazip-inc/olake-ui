@@ -22,6 +22,7 @@ type K8sWorker struct {
 	config         *config.Config
 	healthServer   *HealthServer
 	jobService     service.JobDataService
+	podManager     *activities.K8sPodManager
 	startTime      time.Time
 }
 
@@ -39,6 +40,13 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 		return nil, fmt.Errorf("failed to create job service: %v", err)
 	}
 	logger.Info("Created database job service")
+
+	// Create pod manager
+	podManager, err := activities.NewK8sPodManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pod manager: %v", err)
+	}
+	logger.Info("Created K8s pod manager")
 
 	// Connect to Temporal
 	c, err := client.Dial(client.Options{
@@ -69,7 +77,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	w.RegisterWorkflow(workflows.RunSyncWorkflow)
 
 	// Create activities with injected dependencies
-	activitiesInstance := activities.NewActivities(jobService)
+	activitiesInstance := activities.NewActivities(jobService, podManager)
 
 	// Register activities - these receive WorkflowID from workflows
 	w.RegisterActivity(activitiesInstance.DiscoverCatalogActivity)
@@ -83,6 +91,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 		worker:         w,
 		config:         cfg,
 		jobService:     jobService,
+		podManager:     podManager,
 		startTime:      time.Now(),
 	}
 
