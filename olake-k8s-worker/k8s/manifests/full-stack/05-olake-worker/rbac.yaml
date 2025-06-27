@@ -9,42 +9,41 @@ metadata:
     app.kubernetes.io/component: worker
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
+  namespace: olake
   name: olake-k8s-worker
   labels:
     app.kubernetes.io/name: olake-k8s-worker
     app.kubernetes.io/instance: olake
     app.kubernetes.io/component: worker
 rules:
-# Jobs permissions - need cluster-wide access for job creation
-- apiGroups: ["batch"]
-  resources: ["jobs"]
-  verbs: ["create", "get", "list", "watch", "delete"]
+# Pod permissions - needed for Pod creation
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["create", "get", "list", "watch", "delete"]
 - apiGroups: [""]
   resources: ["pods/log"]
   verbs: ["get", "list"]
-# ConfigMaps and Secrets - removed resourceNames restriction
+# ConfigMaps and Secrets
 - apiGroups: [""]
   resources: ["configmaps", "secrets"]
   verbs: ["create", "get", "list", "update", "delete"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: olake-k8s-worker
+  namespace: olake
   labels:
     app.kubernetes.io/name: olake-k8s-worker
     app.kubernetes.io/instance: olake
     app.kubernetes.io/component: worker
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: olake-k8s-worker
 subjects:
 - kind: ServiceAccount
   name: olake-k8s-worker
   namespace: olake
+roleRef:
+  kind: Role
+  name: olake-k8s-worker
+  apiGroup: rbac.authorization.k8s.io

@@ -164,12 +164,12 @@ func LoadConfig() (*Config, error) {
 			WorkflowExecution: WorkflowTimeouts{
 				Discover: parseDuration("WORKFLOW_TIMEOUT_DISCOVER", "2h"), // 2 hours for discovery workflows
 				Test:     parseDuration("WORKFLOW_TIMEOUT_TEST", "2h"),     // 2 hours for test workflows
-				Sync:     parseDuration("WORKFLOW_TIMEOUT_SYNC", "6h"),     // 6 hours for sync workflows
+				Sync:     parseDuration("WORKFLOW_TIMEOUT_SYNC", "720h"),   // 30 days for sync workflows
 			},
 			Activity: ActivityTimeouts{
 				Discover: parseDuration("ACTIVITY_TIMEOUT_DISCOVER", "30m"), // 30 minutes for discovery activities
 				Test:     parseDuration("ACTIVITY_TIMEOUT_TEST", "30m"),     // 30 minutes for test activities
-				Sync:     parseDuration("ACTIVITY_TIMEOUT_SYNC", "0"),       // No timeout for sync activities (can run indefinitely)
+				Sync:     parseDuration("ACTIVITY_TIMEOUT_SYNC", "700h"),    // 29 days for sync activities (effectively infinite)
 			},
 		},
 		Logging: LoggingConfig{

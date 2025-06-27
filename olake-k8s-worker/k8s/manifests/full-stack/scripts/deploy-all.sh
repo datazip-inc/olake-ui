@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🚀 Deploying OLake Full Stack to Kubernetes..."
+echo "🚀 Deploying OLake Full Stack to Minikube..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -79,6 +79,29 @@ wait_for_elasticsearch() {
     exit 1
 }
 
+# Use minikube's Docker daemon
+echo -e "${YELLOW}🐳 Setting up minikube Docker environment...${NC}"
+eval $(minikube docker-env)
+
+# Build OLake UI image (main project)
+echo -e "${BLUE}🔨 Building OLake UI image (Backend + Frontend)...${NC}"
+cd ../../../../  # Go to main project root (olake-ui) - 4 levels up from scripts/
+echo -e "${YELLOW}📍 Current directory: $(pwd)${NC}"
+echo -e "${YELLOW}🏗️  Building olake-ui:local...${NC}"
+docker build -t olake-ui:local .
+echo -e "${GREEN}✅ OLake UI image built successfully!${NC}"
+
+# Build K8s worker image
+echo -e "${BLUE}🔨 Building OLake K8s Worker image...${NC}"
+cd olake-k8s-worker  # Go to olake-k8s-worker directory
+echo -e "${YELLOW}📍 Current directory: $(pwd)${NC}"
+echo -e "${YELLOW}🏗️  Building olake-k8s-worker:local...${NC}"
+docker build -t olake-k8s-worker:local .
+echo -e "${GREEN}✅ K8s worker image built successfully!${NC}"
+
+# Go back to manifests directory
+cd k8s/manifests/full-stack
+
 # Deploy in order
 echo -e "${BLUE}📁 Deploying 00-namespace...${NC}"
 kubectl apply -f 00-namespace/
@@ -131,17 +154,13 @@ wait_for_deployment olake olake-k8s-worker 300
 echo -e "${GREEN}🎉 Full stack deployment completed successfully!${NC}"
 echo -e "${BLUE}📊 Getting service information...${NC}"
 
-# Show service information
-echo -e "\n${YELLOW}🔗 Services in the cluster:${NC}"
-kubectl get services -n olake
+# Show service URLs
+echo -e "\n${YELLOW}🔗 Service URLs (using minikube ip):${NC}"
+MINIKUBE_IP=$(minikube ip 2>/dev/null || echo "localhost")
 
-echo -e "\n${YELLOW}📍 Service endpoints:${NC}"
-echo -e "${GREEN}🔍 Check NodePort services:${NC} kubectl get svc -n olake"
-echo -e "${GREEN}🚀 Port forwarding examples:${NC}"
-echo -e "${BLUE}kubectl port-forward svc/olake-ui 8082:8000 -n olake${NC}      # OLake Frontend"
-echo -e "${BLUE}kubectl port-forward svc/olake-ui 8081:8080 -n olake${NC}     # OLake Backend"
-echo -e "${BLUE}kubectl port-forward svc/temporal-ui 8080:8080 -n olake${NC}   # Temporal UI"
-echo -e "${BLUE}kubectl port-forward svc/elasticsearch 9200:9200 -n olake${NC} # Elasticsearch"
+echo -e "${GREEN}📱 OLake UI:${NC}         http://$MINIKUBE_IP:30082"
+echo -e "${GREEN}🚀 OLake Backend:${NC}    http://$MINIKUBE_IP:30081"
+echo -e "${GREEN}⏰ Temporal UI:${NC}     http://$MINIKUBE_IP:30080"
 
 # Show pod status
 echo -e "\n${YELLOW}📦 Final Pod Status:${NC}"

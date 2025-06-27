@@ -299,3 +299,187 @@ func (k *K8sJobManager) writeConfigFiles(workflowDir string, configs []shared.Jo
 	}
 	return nil
 }
+
+// CreatePod creates a Kubernetes Pod for running sync operations (for autoscaling)
+func (k *K8sJobManager) CreatePod(ctx context.Context, spec *JobSpec, configs []shared.JobConfig) (*corev1.Pod, error) {
+	// Match Docker directory strategy exactly:
+	var workflowDir string
+	if spec.Operation == shared.Sync {
+		// Sync: use SHA256 hash (like Docker does)
+		workflowDir = fmt.Sprintf("%x", sha256.Sum256([]byte(spec.OriginalWorkflowID)))
+	} else {
+		// Test/Discover: use WorkflowID directly (like Docker does)
+		workflowDir = spec.OriginalWorkflowID
+	}
+
+	// Write config files to PV using ORIGINAL workflow ID
+	if err := k.setupWorkDirectory(workflowDir); err != nil {
+		return nil, fmt.Errorf("failed to setup work directory: %v", err)
+	}
+
+	if err := k.writeConfigFiles(workflowDir, configs); err != nil {
+		return nil, fmt.Errorf("failed to write config files: %v", err)
+	}
+
+	// Create Pod with PV mount
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      spec.Name,
+			Namespace: k.namespace,
+			Labels: map[string]string{
+				"app":                  "olake-connector",
+				"type":                 "sync-pod",
+				"operation":            string(spec.Operation),
+				"olake.io/workflow-id": spec.OriginalWorkflowID,
+				"olake.io/autoscaling": "enabled",
+			},
+			Annotations: map[string]string{
+				"olake.io/created-by": "olake-k8s-worker",
+				"olake.io/created-at": time.Now().Format(time.RFC3339),
+			},
+		},
+		Spec: corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			Containers: []corev1.Container{
+				{
+					Name:    "connector",
+					Image:   spec.Image,
+					Command: spec.Command,
+					Args:    spec.Args,
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "job-storage",
+							MountPath: "/mnt/config",
+							SubPath:   workflowDir,
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: utils.ParseQuantity("256Mi"),
+							corev1.ResourceCPU:    utils.ParseQuantity("100m"),
+						},
+						// No limits for autoscaling flexibility
+					},
+					Env: []corev1.EnvVar{
+						{
+							Name:  "OLAKE_WORKFLOW_ID",
+							Value: spec.OriginalWorkflowID,
+						},
+						{
+							Name:  "OLAKE_OPERATION",
+							Value: string(spec.Operation),
+						},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "job-storage",
+					VolumeSource: corev1.VolumeSource{
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "olake-jobs-pvc",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	logger.Infof("Creating Pod %s with image %s", spec.Name, spec.Image)
+	result, err := k.clientset.CoreV1().Pods(k.namespace).Create(ctx, pod, metav1.CreateOptions{})
+	if err != nil {
+		logger.Errorf("Failed to create Pod %s: %v", spec.Name, err)
+		return nil, err
+	}
+
+	logger.Infof("Successfully created Pod %s", spec.Name)
+	return result, nil
+}
+
+// WaitForPodCompletion waits for a Pod to complete and returns the result
+func (k *K8sJobManager) WaitForPodCompletion(ctx context.Context, podName string, timeout time.Duration) (map[string]interface{}, error) {
+	logger.Infof("Waiting for Pod %s to complete (timeout: %v)", podName, timeout)
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		pod, err := k.clientset.CoreV1().Pods(k.namespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get pod status: %v", err)
+		}
+
+		// Check if pod completed successfully
+		if pod.Status.Phase == corev1.PodSucceeded {
+			logger.Infof("Pod %s completed successfully", podName)
+			return k.getPodResults(ctx, podName)
+		}
+
+		// Check if pod failed
+		if pod.Status.Phase == corev1.PodFailed {
+			logger.Errorf("Pod %s failed", podName)
+			logs, _ := k.getPodLogs(ctx, podName)
+			return nil, fmt.Errorf("pod failed: %s", logs)
+		}
+
+		// Wait before checking again
+		time.Sleep(5 * time.Second)
+	}
+
+	logger.Errorf("Pod %s timed out after %v", podName, timeout)
+	return nil, fmt.Errorf("pod timed out after %v", timeout)
+}
+
+// CleanupPod removes a pod
+func (k *K8sJobManager) CleanupPod(ctx context.Context, podName string) error {
+	logger.Infof("Cleaning up Pod %s", podName)
+
+	err := k.clientset.CoreV1().Pods(k.namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+	if err != nil {
+		logger.Errorf("Failed to delete pod %s: %v", podName, err)
+		return fmt.Errorf("failed to delete pod: %v", err)
+	}
+
+	logger.Infof("Successfully cleaned up Pod %s", podName)
+	return nil
+}
+
+// getPodResults extracts results from completed pod by reading the output file
+func (k *K8sJobManager) getPodResults(ctx context.Context, podName string) (map[string]interface{}, error) {
+	// For discover operations, read the streams.json file instead of parsing logs
+	// This matches the Docker implementation behavior
+
+	// Get the pod to find the workflow directory
+	pod, err := k.clientset.CoreV1().Pods(k.namespace).Get(ctx, podName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pod: %v", err)
+	}
+
+	// Extract workflow ID from pod labels
+	workflowID := pod.Labels["olake.io/workflow-id"]
+	if workflowID == "" {
+		return nil, fmt.Errorf("workflow ID not found in pod labels")
+	}
+
+	// Determine the operation type
+	operation := pod.Labels["operation"]
+
+	if operation == "discover" {
+		// For discover operations, read streams.json file (like Docker does)
+		var workflowDir string
+		if operation == "sync" {
+			workflowDir = fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+		} else {
+			workflowDir = workflowID
+		}
+
+		catalogPath := fmt.Sprintf("/data/olake-jobs/%s/streams.json", workflowDir)
+		return utils.ParseJSONFile(catalogPath)
+	} else {
+		// For other operations (check, sync), parse logs as before
+		logs, err := k.getPodLogs(ctx, podName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get pod logs: %v", err)
+		}
+		logger.Debugf("Raw pod logs for pod %s:\n%s", podName, logs)
+		return utils.ParseJobOutput(logs)
+	}
+}

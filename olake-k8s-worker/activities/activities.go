@@ -3,21 +3,18 @@ package activities
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"go.temporal.io/sdk/activity"
 
-	"crypto/sha256"
 	"olake-k8s-worker/database"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
 	"olake-k8s-worker/utils"
 )
 
-// DiscoverCatalogActivity - SIMPLIFIED VERSION
-func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
+// DiscoverCatalogActivity - Convert to Pod
+func DiscoverCatalogActivity(ctx context.Context, params shared.ActivityParams) (map[string]interface{}, error) {
 	activityLogger := activity.GetLogger(ctx)
 	activityLogger.Info("Starting K8s discover catalog activity")
 
@@ -42,39 +39,25 @@ func DiscoverCatalogActivity(ctx context.Context, params *shared.ActivityParams)
 		Operation:          shared.Discover,
 	}
 
-	// Create and run the Job (this will write config files to PV)
-	job, err := jobManager.CreateJob(ctx, jobSpec, configs)
+	// Create Pod instead of Job
+	pod, err := jobManager.CreatePod(ctx, jobSpec, configs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create job: %v", err)
+		return nil, fmt.Errorf("failed to create pod: %v", err)
 	}
 
-	// Wait for completion
-	result, err := jobManager.WaitForJobCompletion(ctx, job.Name, 5*time.Minute)
-	if err != nil {
-		// Cleanup only needs to delete the Job (no ConfigMap)
-		jobManager.CleanupJob(ctx, job.Name)
-		return nil, fmt.Errorf("discover job failed: %v", err)
-	}
+	// DISABLED: Always cleanup pod when done
+	// defer func() {
+	// 	if err := jobManager.CleanupPod(ctx, pod.Name); err != nil {
+	// 		logger.Errorf("Failed to cleanup pod %s: %v", pod.Name, err)
+	// 	}
+	// }()
 
-	// ✅ ADD BACK: Read the streams.json file from the PV (like Docker does)
-	workflowDir := params.WorkflowID // Use original WorkflowID for directory
-	streamsPath := filepath.Join("/data/olake-jobs", workflowDir, "streams.json")
-	catalogData, err := utils.ParseJSONFile(streamsPath)
-	if err != nil {
-		logger.Errorf("Failed to read streams.json: %v", err)
-		return result, nil // Return the parsed pod logs as fallback
-	}
-
-	// Cleanup resources
-	if cleanupErr := jobManager.CleanupJob(ctx, job.Name); cleanupErr != nil {
-		logger.Warnf("Failed to cleanup job: %v", cleanupErr)
-	}
-
-	return catalogData, nil // ✅ Return the actual catalog data from streams.json
+	// Wait for pod completion
+	return jobManager.WaitForPodCompletion(ctx, pod.Name, 5*time.Minute)
 }
 
-// TestConnectionActivity runs the check command using Kubernetes Jobs
-func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
+// TestConnectionActivity - Convert to Pod
+func TestConnectionActivity(ctx context.Context, params shared.ActivityParams) (map[string]interface{}, error) {
 	activityLogger := activity.GetLogger(ctx)
 	activityLogger.Info("Starting K8s test connection activity",
 		"sourceType", params.SourceType,
@@ -112,48 +95,25 @@ func TestConnectionActivity(ctx context.Context, params *shared.ActivityParams) 
 		Operation: shared.Check,
 	}
 
-	// Log the command that will be executed
-	commandStr := strings.Join(jobSpec.Args, " ")
-	logger.Infof("Creating test connection job with image: %s", jobSpec.Image)
-	logger.Infof("Pod command: %s", commandStr)
-
-	// Create and run the Job
-	job, err := jobManager.CreateJob(ctx, jobSpec, configs)
+	// Create Pod instead of Job
+	pod, err := jobManager.CreatePod(ctx, jobSpec, configs)
 	if err != nil {
-		logger.Errorf("Failed to create job: %v", err)
-		return nil, fmt.Errorf("failed to create job: %v", err)
+		return nil, fmt.Errorf("failed to create pod: %v", err)
 	}
 
-	activityLogger.Info("Created Kubernetes Job", "jobName", job.Name)
-	logger.Infof("Successfully created Kubernetes Job: %s", job.Name)
+	// DISABLED: Always cleanup pod when done
+	// defer func() {
+	// 	if err := jobManager.CleanupPod(ctx, pod.Name); err != nil {
+	// 		logger.Errorf("Failed to cleanup pod %s: %v", pod.Name, err)
+	// 	}
+	// }()
 
-	// Wait for completion
-	result, err := jobManager.WaitForJobCompletion(ctx, job.Name, 5*time.Minute)
-	if err != nil {
-		activityLogger.Error("Job failed", "error", err)
-		logger.Errorf("Test connection job failed: %v", err)
-		// Cleanup even on failure
-		jobManager.CleanupJob(ctx, job.Name)
-		return nil, fmt.Errorf("test connection job failed: %v", err)
-	}
-
-	// Add delay to ensure logs are fully available
-	logger.Debugf("Waiting 5 seconds before cleanup to ensure logs are fully retrieved")
-	time.Sleep(5 * time.Second)
-
-	// Cleanup resources
-	if cleanupErr := jobManager.CleanupJob(ctx, job.Name); cleanupErr != nil {
-		activityLogger.Warn("Failed to cleanup resources", "error", cleanupErr)
-		logger.Warnf("Failed to cleanup resources: %v", cleanupErr)
-	}
-
-	activityLogger.Info("Connection test completed successfully")
-	logger.Info("Connection test completed successfully")
-	return result, nil
+	// Wait for pod completion
+	return jobManager.WaitForPodCompletion(ctx, pod.Name, 5*time.Minute)
 }
 
-// SyncActivity runs the sync command using Kubernetes Jobs
-func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]interface{}, error) {
+// SyncActivity - Convert to Pod
+func SyncActivity(ctx context.Context, params shared.SyncParams) (map[string]interface{}, error) {
 	activityLogger := activity.GetLogger(ctx)
 	activityLogger.Info("Starting K8s sync activity",
 		"jobId", params.JobID,
@@ -209,54 +169,21 @@ func SyncActivity(ctx context.Context, params *shared.SyncParams) (map[string]in
 		Operation: shared.Sync,
 	}
 
-	// Log the command that will be executed
-	commandStr := strings.Join(jobSpec.Args, " ")
-	logger.Infof("Creating sync job with image: %s", jobSpec.Image)
-	logger.Infof("Pod command: %s", commandStr)
-
-	// Create and run the Job
-	job, err := jobManager.CreateJob(ctx, jobSpec, configs)
+	// Create Pod instead of Job
+	pod, err := jobManager.CreatePod(ctx, jobSpec, configs)
 	if err != nil {
-		logger.Errorf("Failed to create job: %v", err)
-		return nil, fmt.Errorf("failed to create job: %v", err)
+		return nil, fmt.Errorf("failed to create pod: %v", err)
 	}
 
-	activityLogger.Info("Created Kubernetes Job", "jobName", job.Name)
-	logger.Infof("Successfully created Kubernetes Job: %s", job.Name)
+	// DISABLED: Always cleanup pod when done
+	// defer func() {
+	// 	if err := jobManager.CleanupPod(ctx, pod.Name); err != nil {
+	// 		logger.Errorf("Failed to cleanup pod %s: %v", pod.Name, err)
+	// 	}
+	// }()
 
-	// Wait for completion (longer timeout for sync operations)
-	result, err := jobManager.WaitForJobCompletion(ctx, job.Name, 15*time.Minute)
-	if err != nil {
-		activityLogger.Error("Job failed", "error", err)
-		logger.Errorf("Sync job failed: %v", err)
-		// Cleanup even on failure
-		jobManager.CleanupJob(ctx, job.Name)
-		return nil, fmt.Errorf("sync job failed: %v", err)
-	}
-
-	// ✅ ADD: Read updated state from PV (like Docker does)
-	workflowDir := fmt.Sprintf("%x", sha256.Sum256([]byte(params.WorkflowID)))
-	statePath := filepath.Join("/data/olake-jobs", workflowDir, "state.json")
-	updatedState, err := utils.ParseJSONFile(statePath)
-	if err != nil {
-		logger.Warnf("Failed to read updated state file: %v", err)
-		updatedState = result // Fallback to pod logs
-	}
-
-	// ✅ ADD: Update job state in database with updated state
-	if updateErr := UpdateJobState(params.JobID, updatedState); updateErr != nil {
-		logger.Warnf("Failed to update job state for jobID %d: %v", params.JobID, updateErr)
-	}
-
-	// Cleanup resources
-	if cleanupErr := jobManager.CleanupJob(ctx, job.Name); cleanupErr != nil {
-		activityLogger.Warn("Failed to cleanup resources", "error", cleanupErr)
-		logger.Warnf("Failed to cleanup resources: %v", cleanupErr)
-	}
-
-	activityLogger.Info("Data sync completed successfully")
-	logger.Info("Data sync completed successfully")
-	return result, nil
+	// Wait for pod completion
+	return jobManager.WaitForPodCompletion(ctx, pod.Name, 15*time.Minute)
 }
 
 // GetJobData fetches job configuration from database

@@ -27,8 +27,8 @@ spec:
         fsGroup: 0
       containers:
       - name: olake-k8s-worker
-        image: dzipstagingacr.azurecr.io/olake-k8s-worker:latest
-        imagePullPolicy: Always
+        image: olake-k8s-worker:local
+        imagePullPolicy: Never
         ports:
         - name: health
           containerPort: 8090

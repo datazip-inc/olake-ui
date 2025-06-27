@@ -23,12 +23,12 @@ data:
   # Workflow execution timeouts (client-side)
   WORKFLOW_TIMEOUT_DISCOVER: "2h"
   WORKFLOW_TIMEOUT_TEST: "2h"
-  WORKFLOW_TIMEOUT_SYNC: "6h"
+  WORKFLOW_TIMEOUT_SYNC: "720h"    # 30 days
   
   # Activity timeouts (workflow-side)
   ACTIVITY_TIMEOUT_DISCOVER: "30m"
   ACTIVITY_TIMEOUT_TEST: "30m"
-  ACTIVITY_TIMEOUT_SYNC: "0"  # 0 means no timeout (infinite)
+  ACTIVITY_TIMEOUT_SYNC: "700h"    # ~29 days (slightly less than workflow)
   
   # Kubernetes Configuration
   WORKER_NAMESPACE: "olake"

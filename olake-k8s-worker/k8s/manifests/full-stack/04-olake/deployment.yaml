@@ -17,8 +17,8 @@ spec:
     spec:
       containers:
       - name: olake-ui
-        image: dzipstagingacr.azurecr.io/olake-ui:latest
-        imagePullPolicy: Always
+        image: olake-ui:local
+        imagePullPolicy: Never
         ports:
         - name: backend
           containerPort: 8080

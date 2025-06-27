@@ -19,8 +19,8 @@ metadata:
   namespace: olake
 spec:
   accessModes:
-    - ReadWriteMany
-  storageClassName: azurefile
+    - ReadWriteOnce
+  storageClassName: standard
   resources:
     requests:
       storage: 10Gi
