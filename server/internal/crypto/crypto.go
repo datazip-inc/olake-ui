@@ -28,6 +28,17 @@ var (
 	encryptionDisabled bool
 )
 
+// Package crypto provides encryption and decryption functionality using either AWS KMS or local AES-256-GCM.
+//
+// Configuration:
+// - Set ENCRYPTION_KEY environment variable to enable encryption
+// - For AWS KMS: Set ENCRYPTION_KEY to a KMS ARN (e.g., "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012")
+// - For local AES: Set ENCRYPTION_KEY to any non-empty string (will be hashed to 256-bit key)
+// - For no encryption: Leave ENCRYPTION_KEY empty (not recommended for production)
+//
+// Data Format:
+// - Encrypted data is stored as JSON: {"encrypted_data": "base64-encoded-encrypted-data"}
+// - Supports backward compatibility with unencrypted JSON data
 // InitEncryption initializes encryption based on KMS key or passphrase
 func InitEncryption() error {
 	key := os.Getenv("ENCRYPTION_KEY")
@@ -71,7 +82,7 @@ func Encrypt(plaintext string) ([]byte, error) {
 			Plaintext: []byte(plaintext),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("encryption failed: %w", err)
+			return nil, fmt.Errorf("KMS encryption failed: %w", err)
 		}
 		return out.CiphertextBlob, nil
 	}
@@ -148,9 +159,9 @@ func EncryptJSONString(rawConfig string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("encryption failed: %v", err)
 	}
-	cryptoObj := cryptoObj{}
-	// Create a structured object with the encrypted data
-	cryptoObj.EncryptedData = base64.StdEncoding.EncodeToString(encryptedBytes)
+	cryptoObj := cryptoObj{
+		EncryptedData: base64.StdEncoding.EncodeToString(encryptedBytes),
+	}
 	// Marshal to JSON
 	encryptedJSON, err := json.Marshal(cryptoObj)
 	if err != nil {
