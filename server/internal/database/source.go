@@ -29,7 +29,7 @@ func (r *SourceORM) encryptSourceConfig(source *models.Source) error {
 	if source.Config != "" {
 		encryptedConfig, err := utils.EncryptConfig(source.Config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to encrypt source config: %s", err)
 		}
 		source.Config = encryptedConfig
 	}
@@ -41,7 +41,7 @@ func (r *SourceORM) decryptSourceConfig(source *models.Source) error {
 	if source.Config != "" {
 		decryptedConfig, err := utils.DecryptConfig(source.Config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to decrypt source config: %s", err)
 		}
 		source.Config = decryptedConfig
 	}
