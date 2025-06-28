@@ -51,17 +51,12 @@ func (c *SourceHandler) GetAllSources() {
 	sourceItems := make([]models.SourceDataItem, 0, len(sources))
 
 	for _, source := range sources {
-		decryptedConfig, err := crypto.DecryptJSONString(source.Config)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt source config: "+err.Error())
-			return
-		}
 		item := models.SourceDataItem{
 			ID:        source.ID,
 			Name:      source.Name,
 			Type:      source.Type,
 			Version:   source.Version,
-			Config:    decryptedConfig,
+			Config:    source.Config,
 			CreatedAt: source.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
 		}
@@ -88,18 +83,12 @@ func (c *SourceHandler) CreateSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
-	encryptedJSON, err := crypto.EncryptJSONString(req.Config)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
-		return
-	}
 	// Convert request to Source model
 	source := &models.Source{
 		Name:    req.Name,
 		Type:    req.Type,
 		Version: req.Version,
-		Config:  encryptedJSON,
+		Config:  req.Config,
 	}
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
@@ -134,16 +123,10 @@ func (c *SourceHandler) UpdateSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
 		return
 	}
-	// Encrypt the source configuration
-	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
-		return
-	}
 
 	// Update fields
 	existingSource.Name = req.Name
-	existingSource.Config = encryptedConfig
+	existingSource.Config = req.Config
 	existingSource.Type = req.Type
 	existingSource.Version = req.Version
 	existingSource.UpdatedAt = time.Now()
@@ -207,10 +190,10 @@ func (c *SourceHandler) TestConnection() {
 	}
 	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
+	result, err := c.tempClient.TestConnection(context.Background(), "config", "mysql", "latest", encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -230,7 +213,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 	oldStreams := ""
 	// Load job details if JobID is provided
 	if req.JobID >= 0 {
-		job, err := c.jobORM.GetByID(req.JobID)
+		job, err := c.jobORM.GetByID(req.JobID, true)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 			return
@@ -239,7 +222,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 	}
 	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt source config: "+err.Error())
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return
 	}
 	// Use Temporal client to get the catalog

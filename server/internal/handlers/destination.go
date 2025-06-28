@@ -45,17 +45,12 @@ func (c *DestHandler) GetAllDestinations() {
 	}
 	destItems := make([]models.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
-		decryptedConfig, err := crypto.DecryptJSONString(dest.Config)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to decrypt destination config: "+err.Error())
-			return
-		}
 		item := models.DestinationDataItem{
 			ID:        dest.ID,
 			Name:      dest.Name,
 			Type:      dest.DestType,
 			Version:   dest.Version,
-			Config:    decryptedConfig,
+			Config:    dest.Config,
 			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
@@ -85,19 +80,13 @@ func (c *DestHandler) CreateDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	// Encrypt the destination configuration
-	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
-		return
-	}
 
 	// Convert request to Destination model
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
 		Version:   req.Version,
-		Config:    encryptedConfig,
+		Config:    req.Config,
 		ProjectID: projectIDStr,
 	}
 
@@ -134,18 +123,11 @@ func (c *DestHandler) UpdateDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
-	// Encrypt the destination configuration
-	encryptedConfig, err := crypto.EncryptJSONString(req.Config)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
-		return
-	}
-
 	// Update fields
 	existingDest.Name = req.Name
 	existingDest.DestType = req.Type
 	existingDest.Version = req.Version
-	existingDest.Config = encryptedConfig
+	existingDest.Config = req.Config
 	existingDest.UpdatedAt = time.Now()
 
 	// Update user who made changes

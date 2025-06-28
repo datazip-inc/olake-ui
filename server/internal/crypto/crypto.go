@@ -62,6 +62,9 @@ func Encrypt(plaintext string) ([]byte, error) {
 	if err := InitEncryption(); err != nil {
 		return nil, fmt.Errorf("encryption failed: %w", err)
 	}
+	if encryptionDisabled {
+		return []byte(plaintext), nil
+	}
 	if useKMS {
 		out, err := kmsClient.Encrypt(context.Background(), &kms.EncryptInput{
 			KeyId:     &keyID,
@@ -95,6 +98,9 @@ func Encrypt(plaintext string) ([]byte, error) {
 func Decrypt(cipherData []byte) (string, error) {
 	if err := InitEncryption(); err != nil {
 		return "", fmt.Errorf("decryption failed: %w", err)
+	}
+	if encryptionDisabled {
+		return string(cipherData), nil
 	}
 	if useKMS {
 		out, err := kmsClient.Decrypt(context.Background(), &kms.DecryptInput{
@@ -137,9 +143,6 @@ type cryptoObj struct {
 
 // EncryptJSONString encrypts the entire JSON string as a single value
 func EncryptJSONString(rawConfig string) (string, error) {
-	if encryptionDisabled {
-		return rawConfig, nil
-	}
 	// Encrypt the entire config string
 	encryptedBytes, err := Encrypt(rawConfig)
 	if err != nil {
@@ -160,9 +163,6 @@ func EncryptJSONString(rawConfig string) (string, error) {
 // DecryptJSONObject decrypts a JSON object in the format {"encrypted_data": "base64-encoded-encrypted-json"}
 // and returns the original JSON string
 func DecryptJSONString(encryptedObjStr string) (string, error) {
-	if encryptionDisabled {
-		return encryptedObjStr, nil
-	}
 	// Unmarshal the encrypted object
 	cryptoObj := cryptoObj{}
 	if err := json.Unmarshal([]byte(encryptedObjStr), &cryptoObj); err != nil {

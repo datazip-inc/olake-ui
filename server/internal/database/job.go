@@ -7,6 +7,7 @@ import (
 	"github.com/beego/beego/v2/client/orm"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
@@ -24,6 +25,39 @@ func NewJobORM() *JobORM {
 	}
 }
 
+// decryptRelatedEntities decrypts Config fields in related Source and Destination
+func (r *JobORM) decryptRelatedEntities(job *models.Job) error {
+	// Decrypt Source Config if loaded
+	if job.SourceID != nil && job.SourceID.Config != "" {
+		decryptedConfig, err := crypto.DecryptJSONString(job.SourceID.Config)
+		if err != nil {
+			return err
+		}
+		job.SourceID.Config = decryptedConfig
+	}
+
+	// Decrypt Destination Config if loaded
+	if job.DestID != nil && job.DestID.Config != "" {
+		decryptedConfig, err := crypto.DecryptJSONString(job.DestID.Config)
+		if err != nil {
+			return err
+		}
+		job.DestID.Config = decryptedConfig
+	}
+
+	return nil
+}
+
+// decryptJobSliceRelatedEntities decrypts related entities for a slice of jobs
+func (r *JobORM) decryptJobSliceRelatedEntities(jobs []*models.Job) error {
+	for _, job := range jobs {
+		if err := r.decryptRelatedEntities(job); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Create a new job
 func (r *JobORM) Create(job *models.Job) error {
 	_, err := r.ormer.Insert(job)
@@ -34,11 +68,20 @@ func (r *JobORM) Create(job *models.Job) error {
 func (r *JobORM) GetAll() ([]*models.Job, error) {
 	var jobs []*models.Job
 	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&jobs)
-	return jobs, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt related Source and Destination configs
+	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
 }
 
 // GetAllByProjectID retrieves all jobs for a specific project
-func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
+func (r *JobORM) GetAllByProjectID(projectID string, decrypt bool) ([]*models.Job, error) {
 	var jobs []*models.Job
 
 	// Query sources in the project
@@ -75,11 +118,20 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 
 	// Add RelatedSel to load the related Source and Destination objects
 	_, err = qs.RelatedSel().All(&jobs)
-	return jobs, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt related Source and Destination configs
+	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
 }
 
 // GetByID retrieves a job by ID
-func (r *JobORM) GetByID(id int) (*models.Job, error) {
+func (r *JobORM) GetByID(id int, decrypt bool) (*models.Job, error) {
 	job := &models.Job{ID: id}
 	err := r.ormer.Read(job)
 	if err != nil {
@@ -94,6 +146,13 @@ func (r *JobORM) GetByID(id int) (*models.Job, error) {
 	_, err = r.ormer.LoadRelated(job, "DestID")
 	if err != nil {
 		return nil, err
+	}
+
+	// Decrypt related Source and Destination configs
+	if decrypt {
+		if err := r.decryptRelatedEntities(job); err != nil {
+			return nil, err
+		}
 	}
 
 	return job, nil
@@ -122,8 +181,16 @@ func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
 		Filter("source_id", source).
 		RelatedSel().
 		All(&jobs)
+	if err != nil {
+		return nil, err
+	}
 
-	return jobs, err
+	// Decrypt related Source and Destination configs
+	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
 }
 
 // GetByDestinationID retrieves all jobs associated with a destination ID
@@ -135,6 +202,14 @@ func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
 		Filter("dest_id", dest).
 		RelatedSel().
 		All(&jobs)
+	if err != nil {
+		return nil, err
+	}
 
-	return jobs, err
+	// Decrypt related Source and Destination configs
+	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+		return nil, err
+	}
+
+	return jobs, nil
 }
