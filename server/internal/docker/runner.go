@@ -218,7 +218,7 @@ func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, 
 	logs.Info("working directory path %s\n", workDir)
 	// Get current job state
 	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID)
+	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
 		return nil, err
 	}
