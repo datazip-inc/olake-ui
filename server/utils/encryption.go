@@ -69,7 +69,7 @@ func Encrypt(plaintext string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to encrypt with KMS: %s", err)
 		}
-		return fmt.Sprintf("\"%s\"", base64.StdEncoding.EncodeToString(result.CiphertextBlob)), nil
+		return fmt.Sprintf("%q", base64.StdEncoding.EncodeToString(result.CiphertextBlob)), nil
 	}
 
 	// Local AES-GCM encryption
@@ -89,7 +89,7 @@ func Encrypt(plaintext string) (string, error) {
 	}
 
 	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
-	return fmt.Sprintf("\"%s\"", base64.StdEncoding.EncodeToString(ciphertext)), nil
+	return fmt.Sprintf("%q", base64.StdEncoding.EncodeToString(ciphertext)), nil
 }
 
 func Decrypt(encryptedText string) (string, error) {
