@@ -150,6 +150,7 @@ func EncryptConfig(config string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("encryption failed: %v", err)
 	}
+	//TODO: check if this is needed
 	return `"` + base64.URLEncoding.EncodeToString(encryptedBytes) + `"`, nil
 }
 
@@ -164,7 +165,7 @@ func DecryptConfig(encryptedConfig string) (string, error) {
 	var unquotedString string
 	err := json.Unmarshal([]byte(encryptedConfig), &unquotedString)
 	if err != nil {
-		return "", fmt.Errorf("failed to unquote JSON string: %v", err)
+		return "", fmt.Errorf("failed to unmarshal JSON string: %v", err)
 	}
 
 	encryptedData, err := base64.URLEncoding.DecodeString(unquotedString)

@@ -28,7 +28,7 @@ func NewJobORM() *JobORM {
 // decryptJobConfig decrypts Config fields in related Source and Destination
 func (r *JobORM) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
-	//TODO: check if sourceID can be nil
+	// TODO: verify why source_id and dest_id coming nil, it must not nil
 	if job.SourceID != nil {
 		decryptedConfig, err := utils.DecryptConfig(job.SourceID.Config)
 		if err != nil {
@@ -38,7 +38,6 @@ func (r *JobORM) decryptJobConfig(job *models.Job) error {
 	}
 
 	// Decrypt Destination Config if loaded
-	//TODO: check if destID can be nil
 	if job.DestID != nil {
 		decryptedConfig, err := utils.DecryptConfig(job.DestID.Config)
 		if err != nil {
@@ -91,7 +90,7 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	sources := []int{}
 	_, err := r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, sourceTable), projectID).QueryRows(&sources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all jobs by project ID: %s", err)
+		return nil, fmt.Errorf("failed to get sources for project ID %s: %s", projectID, err)
 	}
 
 	// Query destinations in the project
@@ -99,7 +98,7 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	destinations := []int{}
 	_, err = r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, destTable), projectID).QueryRows(&destinations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all jobs by project ID: %s", err)
+		return nil, fmt.Errorf("failed to get destinations for project ID %s: %s", projectID, err)
 	}
 
 	// If no sources or destinations in the project, return empty array
@@ -121,7 +120,7 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	// Add RelatedSel to load the related Source and Destination objects
 	_, err = qs.RelatedSel().All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all jobs by project ID: %s", err)
+		return nil, fmt.Errorf("failed to get jobs with related data for project ID %s: %s", projectID, err)
 	}
 
 	// Decrypt related Source and Destination configs
