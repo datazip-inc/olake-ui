@@ -26,107 +26,124 @@ import (
 // - For local AES: Set ENCRYPTION_KEY to any non-empty string (will be hashed to 256-bit key)
 // - For no encryption: Leave ENCRYPTION_KEY empty (not recommended for production)
 
-func getEncryptionConfig() (kmsClient *kms.Client, keyID string, localKey []byte, useKMS, disabled bool, err error) {
+// EncryptionConfig holds the configuration for encryption operations
+type EncryptionConfig struct {
+	KMSClient *kms.Client
+	KeyID     string
+	LocalKey  []byte
+	UseKMS    bool
+	Disabled  bool
+}
+
+func getEncryptionConfig() (*EncryptionConfig, error) {
 	key := os.Getenv("ENCRYPTION_KEY")
 
 	if strings.TrimSpace(key) == "" {
-		return nil, "", nil, false, true, nil
+		return &EncryptionConfig{
+			Disabled: true,
+		}, nil
 	}
 
 	if strings.HasPrefix(key, "arn:aws:kms:") {
 		cfg, err := config.LoadDefaultConfig(context.Background())
 		if err != nil {
-			return nil, "", nil, false, false, fmt.Errorf("failed to load AWS config: %w", err)
+			return nil, fmt.Errorf("failed to load AWS config: %w", err)
 		}
-		client := kms.NewFromConfig(cfg)
-		return client, key, nil, true, false, nil
+		return &EncryptionConfig{
+			KMSClient: kms.NewFromConfig(cfg),
+			KeyID:     key,
+			UseKMS:    true,
+		}, nil
 	}
 
 	// Local AES-GCM Mode with SHA-256 derived key
 	hash := sha256.Sum256([]byte(key))
-	return nil, "", hash[:], false, false, nil
+	return &EncryptionConfig{
+		LocalKey: hash[:],
+	}, nil
 }
 
 func Encrypt(plaintext string) ([]byte, error) {
-	kmsClient, keyID, localKey, useKMS, disabled, err := getEncryptionConfig()
+	config, err := getEncryptionConfig()
 	if err != nil {
-		return nil, fmt.Errorf("encryption failed: %w", err)
+		return nil, err
 	}
 
-	if disabled {
+	if config.Disabled {
 		return []byte(plaintext), nil
 	}
 
-	if useKMS {
-		out, err := kmsClient.Encrypt(context.Background(), &kms.EncryptInput{
-			KeyId:     &keyID,
+	if config.UseKMS {
+		result, err := config.KMSClient.Encrypt(context.Background(), &kms.EncryptInput{
+			KeyId:     &config.KeyID,
 			Plaintext: []byte(plaintext),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("KMS encryption failed: %w", err)
+			return nil, fmt.Errorf("failed to encrypt with KMS: %w", err)
 		}
-		return out.CiphertextBlob, nil
+		return result.CiphertextBlob, nil
 	}
 
-	block, err := aes.NewCipher(localKey)
+	// Local AES-GCM encryption
+	block, err := aes.NewCipher(config.LocalKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
 
-	aead, err := cipher.NewGCM(block)
+	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create GCM: %w", err)
 	}
 
-	nonce := make([]byte, aead.NonceSize())
+	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
 	}
 
-	ciphertext := aead.Seal(nonce, nonce, []byte(plaintext), nil)
+	ciphertext := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 	return ciphertext, nil
 }
 
 func Decrypt(cipherData []byte) (string, error) {
-	kmsClient, _, localKey, useKMS, disabled, err := getEncryptionConfig()
+	config, err := getEncryptionConfig()
 	if err != nil {
-		return "", fmt.Errorf("decryption failed: %w", err)
+		return "", err
 	}
 
-	if disabled {
+	if config.Disabled {
 		return string(cipherData), nil
 	}
 
-	if useKMS {
-		out, err := kmsClient.Decrypt(context.Background(), &kms.DecryptInput{
+	var plaintext []byte
+
+	if config.UseKMS {
+		result, err := config.KMSClient.Decrypt(context.Background(), &kms.DecryptInput{
 			CiphertextBlob: cipherData,
 		})
 		if err != nil {
-			return "", fmt.Errorf("decryption failed: %w", err)
+			return "", fmt.Errorf("failed to decrypt with KMS: %w", err)
 		}
-		return string(out.Plaintext), nil
-	}
+		plaintext = result.Plaintext
+	} else {
+		// Local AES-GCM decryption
+		block, err := aes.NewCipher(config.LocalKey)
+		if err != nil {
+			return "", fmt.Errorf("failed to create cipher: %w", err)
+		}
 
-	block, err := aes.NewCipher(localKey)
-	if err != nil {
-		return "", err
-	}
+		gcm, err := cipher.NewGCM(block)
+		if err != nil {
+			return "", fmt.Errorf("failed to create GCM: %w", err)
+		}
 
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
+		if len(cipherData) < gcm.NonceSize() {
+			return "", errors.New("ciphertext too short")
+		}
 
-	nonceSize := aead.NonceSize()
-	if len(cipherData) < nonceSize {
-		return "", errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := cipherData[:nonceSize], cipherData[nonceSize:]
-
-	plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return "", fmt.Errorf("decryption failed: %w", err)
+		plaintext, err = gcm.Open(nil, cipherData[:gcm.NonceSize()], cipherData[gcm.NonceSize():], nil)
+		if err != nil {
+			return "", fmt.Errorf("failed to decrypt: %w", err)
+		}
 	}
 
 	return string(plaintext), nil
