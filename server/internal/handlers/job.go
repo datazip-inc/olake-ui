@@ -47,7 +47,7 @@ func (c *JobHandler) Prepare() {
 func (c *JobHandler) GetAllJobs() {
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 	// Get jobs with optional filtering
-	jobs, err := c.jobORM.GetAllByProjectID(projectIDStr, true)
+	jobs, err := c.jobORM.GetAllByProjectID(projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID")
 		return

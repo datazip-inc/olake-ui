@@ -81,7 +81,7 @@ func (r *JobORM) GetAll() ([]*models.Job, error) {
 }
 
 // GetAllByProjectID retrieves all jobs for a specific project
-func (r *JobORM) GetAllByProjectID(projectID string, decrypt bool) ([]*models.Job, error) {
+func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
 	// Query sources in the project
