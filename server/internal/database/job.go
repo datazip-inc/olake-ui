@@ -7,8 +7,8 @@ import (
 	"github.com/beego/beego/v2/client/orm"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 // JobORM handles database operations for jobs
@@ -25,22 +25,22 @@ func NewJobORM() *JobORM {
 	}
 }
 
-// decryptRelatedEntities decrypts Config fields in related Source and Destination
-func (r *JobORM) decryptRelatedEntities(job *models.Job) error {
+// decryptJobConfig decrypts Config fields in related Source and Destination
+func (r *JobORM) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
 	if job.SourceID != nil && job.SourceID.Config != "" {
-		decryptedConfig, err := crypto.DecryptJSONString(job.SourceID.Config)
+		decryptedConfig, err := utils.DecryptConfig(job.SourceID.Config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to decrypt source config: %s", err)
 		}
 		job.SourceID.Config = decryptedConfig
 	}
 
 	// Decrypt Destination Config if loaded
 	if job.DestID != nil && job.DestID.Config != "" {
-		decryptedConfig, err := crypto.DecryptJSONString(job.DestID.Config)
+		decryptedConfig, err := utils.DecryptConfig(job.DestID.Config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to decrypt destination config: %s", err)
 		}
 		job.DestID.Config = decryptedConfig
 	}
@@ -48,11 +48,11 @@ func (r *JobORM) decryptRelatedEntities(job *models.Job) error {
 	return nil
 }
 
-// decryptJobSliceRelatedEntities decrypts related entities for a slice of jobs
-func (r *JobORM) decryptJobSliceRelatedEntities(jobs []*models.Job) error {
+// decryptJobSliceConfig decrypts related entities for a slice of jobs
+func (r *JobORM) decryptJobSliceConfig(jobs []*models.Job) error {
 	for _, job := range jobs {
-		if err := r.decryptRelatedEntities(job); err != nil {
-			return err
+		if err := r.decryptJobConfig(job); err != nil {
+			return fmt.Errorf("failed to decrypt job config: %s", err)
 		}
 	}
 	return nil
@@ -73,8 +73,8 @@ func (r *JobORM) GetAll() ([]*models.Job, error) {
 	}
 
 	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
-		return nil, err
+	if err := r.decryptJobSliceConfig(jobs); err != nil {
+		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
 	}
 
 	return jobs, nil
@@ -123,7 +123,7 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	}
 
 	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+	if err := r.decryptJobSliceConfig(jobs); err != nil {
 		return nil, err
 	}
 
@@ -150,7 +150,7 @@ func (r *JobORM) GetByID(id int, decrypt bool) (*models.Job, error) {
 
 	// Decrypt related Source and Destination configs
 	if decrypt {
-		if err := r.decryptRelatedEntities(job); err != nil {
+		if err := r.decryptJobConfig(job); err != nil {
 			return nil, err
 		}
 	}
@@ -186,7 +186,7 @@ func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
 	}
 
 	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+	if err := r.decryptJobSliceConfig(jobs); err != nil {
 		return nil, err
 	}
 
@@ -207,7 +207,7 @@ func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
 	}
 
 	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceRelatedEntities(jobs); err != nil {
+	if err := r.decryptJobSliceConfig(jobs); err != nil {
 		return nil, err
 	}
 

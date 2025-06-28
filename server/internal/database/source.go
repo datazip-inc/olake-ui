@@ -1,13 +1,14 @@
 package database
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 // SourceORM handles database operations for sources
@@ -26,7 +27,7 @@ func NewSourceORM() *SourceORM {
 // encryptSourceConfig encrypts the config field before saving
 func (r *SourceORM) encryptSourceConfig(source *models.Source) error {
 	if source.Config != "" {
-		encryptedConfig, err := crypto.EncryptJSONString(source.Config)
+		encryptedConfig, err := utils.EncryptConfig(source.Config)
 		if err != nil {
 			return err
 		}
@@ -38,7 +39,7 @@ func (r *SourceORM) encryptSourceConfig(source *models.Source) error {
 // decryptSourceConfig decrypts the config field after reading
 func (r *SourceORM) decryptSourceConfig(source *models.Source) error {
 	if source.Config != "" {
-		decryptedConfig, err := crypto.DecryptJSONString(source.Config)
+		decryptedConfig, err := utils.DecryptConfig(source.Config)
 		if err != nil {
 			return err
 		}
@@ -51,7 +52,7 @@ func (r *SourceORM) decryptSourceConfig(source *models.Source) error {
 func (r *SourceORM) decryptSourceSliceConfigs(sources []*models.Source) error {
 	for _, source := range sources {
 		if err := r.decryptSourceConfig(source); err != nil {
-			return err
+			return fmt.Errorf("failed to decrypt source config: %s", err)
 		}
 	}
 	return nil
@@ -60,7 +61,7 @@ func (r *SourceORM) decryptSourceSliceConfigs(sources []*models.Source) error {
 func (r *SourceORM) Create(source *models.Source) error {
 	// Encrypt config before saving
 	if err := r.encryptSourceConfig(source); err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt source config: %s", err)
 	}
 	_, err := r.ormer.Insert(source)
 	return err
@@ -70,12 +71,12 @@ func (r *SourceORM) GetAll() ([]*models.Source, error) {
 	var sources []*models.Source
 	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&sources)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get all sources: %s", err)
 	}
 
 	// Decrypt config after reading
 	if err := r.decryptSourceSliceConfigs(sources); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt source config: %s", err)
 	}
 
 	return sources, nil
@@ -90,7 +91,7 @@ func (r *SourceORM) GetByID(id int) (*models.Source, error) {
 
 	// Decrypt config after reading
 	if err := r.decryptSourceConfig(source); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt source config: %s", err)
 	}
 
 	return source, nil
@@ -101,7 +102,7 @@ func (r *SourceORM) Update(source *models.Source) error {
 
 	// Encrypt config before saving
 	if err := r.encryptSourceConfig(source); err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt source config: %s", err)
 	}
 
 	_, err := r.ormer.Update(source)

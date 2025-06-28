@@ -1,13 +1,14 @@
 package database
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/crypto"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 // DestinationORM handles database operations for destinations
@@ -26,9 +27,9 @@ func NewDestinationORM() *DestinationORM {
 // encryptDestinationConfig encrypts the config field before saving
 func (r *DestinationORM) encryptDestinationConfig(destination *models.Destination) error {
 	if destination.Config != "" {
-		encryptedConfig, err := crypto.EncryptJSONString(destination.Config)
+		encryptedConfig, err := utils.EncryptConfig(destination.Config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to encrypt destination config: %s", err)
 		}
 		destination.Config = encryptedConfig
 	}
@@ -38,9 +39,9 @@ func (r *DestinationORM) encryptDestinationConfig(destination *models.Destinatio
 // decryptDestinationConfig decrypts the config field after reading
 func (r *DestinationORM) decryptDestinationConfig(destination *models.Destination) error {
 	if destination.Config != "" {
-		decryptedConfig, err := crypto.DecryptJSONString(destination.Config)
+		decryptedConfig, err := utils.DecryptConfig(destination.Config)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to decrypt destination config: %s", err)
 		}
 		destination.Config = decryptedConfig
 	}
