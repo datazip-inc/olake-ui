@@ -11,7 +11,7 @@ x-signup-defaults:
   email: &defaultEmail "admin@example.com"
 
 x-encryption:
-  key: &encryptionKey ""  # TODO: Change this to a secure key or arn of kms key
+  key: &encryptionKey "" 
 
 services:
   olake-ui:
@@ -21,7 +21,7 @@ services:
     environment:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
-      ENCRYPTION_KEY: *encryptionKey
+      OLAKE_SECRET_KEY: *encryptionKey
     ports:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port
@@ -95,7 +95,7 @@ services:
       - <<: *workerConfigVolumeDetails
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
-      ENCRYPTION_KEY: *encryptionKey
+      OLAKE_SECRET_KEY: *encryptionKey
       PERSISTENT_DIR: *hostPersistencePath
     depends_on:
       temporal:

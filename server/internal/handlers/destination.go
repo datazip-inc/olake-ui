@@ -122,6 +122,7 @@ func (c *DestHandler) UpdateDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
+
 	// Update fields
 	existingDest.Name = req.Name
 	existingDest.DestType = req.Type
@@ -193,12 +194,13 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
-	encryptedConfig, err := utils.EncryptConfig(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "destination", "mysql", "latest", encryptedConfig)
+	// TODO: use context provided by request
+	result, err := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),

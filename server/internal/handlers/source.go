@@ -82,6 +82,7 @@ func (c *SourceHandler) CreateSource() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
+
 	// Convert request to Source model
 	source := &models.Source{
 		Name:    req.Name,
@@ -89,6 +90,10 @@ func (c *SourceHandler) CreateSource() {
 		Version: req.Version,
 		Config:  req.Config,
 	}
+
+	// Get project ID if needed
+	source.ProjectID = c.Ctx.Input.Param(":projectid")
+
 	// Set created by if user is logged in
 	userID := c.GetSession(constants.SessionUserID)
 	if userID != nil {
@@ -187,12 +192,12 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	encryptedConfig, err := utils.EncryptConfig(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", "mysql", "latest", encryptedConfig)
+	result, err := c.tempClient.TestConnection(context.Background(), "config", "postgres", "latest", encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -219,7 +224,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 		}
 		oldStreams = job.StreamsConfig
 	}
-	encryptedConfig, err := utils.EncryptConfig(req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return

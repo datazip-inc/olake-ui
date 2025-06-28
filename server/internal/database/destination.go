@@ -24,43 +24,26 @@ func NewDestinationORM() *DestinationORM {
 	}
 }
 
-// encryptDestinationConfig encrypts the config field before saving
-func (r *DestinationORM) encryptDestinationConfig(destination *models.Destination) error {
-	encryptedConfig, err := utils.EncryptConfig(destination.Config)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt destination config: %s", err)
-	}
-	destination.Config = encryptedConfig
-	return nil
-}
-
-// decryptDestinationConfig decrypts the config field after reading
-func (r *DestinationORM) decryptDestinationConfig(destination *models.Destination) error {
-	decryptedConfig, err := utils.DecryptConfig(destination.Config)
-	if err != nil {
-		return fmt.Errorf("failed to decrypt destination config: %s", err)
-	}
-	destination.Config = decryptedConfig
-	return nil
-}
-
 // decryptDestinationSliceConfigs decrypts config fields for a slice of destinations
 func (r *DestinationORM) decryptDestinationSliceConfigs(destinations []*models.Destination) error {
 	for _, dest := range destinations {
-		if err := r.decryptDestinationConfig(dest); err != nil {
+		dConfig, err := utils.Decrypt(dest.Config)
+		if err != nil {
 			return fmt.Errorf("failed to decrypt destination config: %s", err)
 		}
+		dest.Config = dConfig
 	}
 	return nil
 }
 
 func (r *DestinationORM) Create(destination *models.Destination) error {
 	// Encrypt config before saving
-	if err := r.encryptDestinationConfig(destination); err != nil {
+	eConfig, err := utils.Encrypt(destination.Config)
+	if err != nil {
 		return fmt.Errorf("failed to encrypt destination config: %s", err)
 	}
-
-	_, err := r.ormer.Insert(destination)
+	destination.Config = eConfig
+	_, err = r.ormer.Insert(destination)
 	return err
 }
 
@@ -83,7 +66,7 @@ func (r *DestinationORM) GetAllByProjectID(projectID string) ([]*models.Destinat
 	var destinations []*models.Destination
 	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().All(&destinations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all destinations by project ID: %s", err)
+		return nil, fmt.Errorf("failed to get all destinations by project_id[%s]: %s", projectID, err)
 	}
 
 	// Decrypt config after reading
@@ -102,10 +85,11 @@ func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 	}
 
 	// Decrypt config after reading
-	if err := r.decryptDestinationConfig(destination); err != nil {
-		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
+	dConfig, err := utils.Decrypt(destination.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt config for destination[%d]: %s", destination.ID, err)
 	}
-
+	destination.Config = dConfig
 	return destination, nil
 }
 
@@ -113,11 +97,12 @@ func (r *DestinationORM) Update(destination *models.Destination) error {
 	destination.UpdatedAt = time.Now()
 
 	// Encrypt config before saving
-	if err := r.encryptDestinationConfig(destination); err != nil {
+	eConfig, err := utils.Encrypt(destination.Config)
+	if err != nil {
 		return fmt.Errorf("failed to encrypt destination config: %s", err)
 	}
-
-	_, err := r.ormer.Update(destination)
+	destination.Config = eConfig
+	_, err = r.ormer.Update(destination)
 	return err
 }
 
@@ -127,16 +112,16 @@ func (r *DestinationORM) Delete(id int) error {
 	return err
 }
 
-// GetByNameAndType retrieves destinations by name, type, and project ID
-func (r *DestinationORM) GetByNameAndType(name, destType, projectIDStr string) ([]*models.Destination, error) {
+// GetByNameAndType retrieves destinations by name, destType, and project ID
+func (r *DestinationORM) GetByNameAndType(name, destType, projectID string) ([]*models.Destination, error) {
 	var destinations []*models.Destination
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("name", name).
 		Filter("dest_type", destType).
-		Filter("project_id", projectIDStr).
+		Filter("project_id", projectID).
 		All(&destinations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get destination by name and type: %s", err)
+		return nil, fmt.Errorf("failed to get destination in project[%s] by name[%s] and type[%s]: %s", projectID, name, destType, err)
 	}
 
 	// Decrypt config after reading

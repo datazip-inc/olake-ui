@@ -24,43 +24,26 @@ func NewSourceORM() *SourceORM {
 	}
 }
 
-// encryptSourceConfig encrypts the config field before saving
-func (r *SourceORM) encryptSourceConfig(source *models.Source) error {
-	encryptedConfig, err := utils.EncryptConfig(source.Config)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt source config: %s", err)
-	}
-	source.Config = encryptedConfig
-	return nil
-}
-
-// decryptSourceConfig decrypts the config field after reading
-func (r *SourceORM) decryptSourceConfig(source *models.Source) error {
-	decryptedConfig, err := utils.DecryptConfig(source.Config)
-	if err != nil {
-		return fmt.Errorf("failed to decrypt source config: %s", err)
-	}
-	source.Config = decryptedConfig
-
-	return nil
-}
-
 // decryptSourceSliceConfigs decrypts config fields for a slice of sources
 func (r *SourceORM) decryptSourceSliceConfigs(sources []*models.Source) error {
 	for _, source := range sources {
-		if err := r.decryptSourceConfig(source); err != nil {
+		dConfig, err := utils.Decrypt(source.Config)
+		if err != nil {
 			return fmt.Errorf("failed to decrypt source config: %s", err)
 		}
+		source.Config = dConfig
 	}
 	return nil
 }
 
 func (r *SourceORM) Create(source *models.Source) error {
 	// Encrypt config before saving
-	if err := r.encryptSourceConfig(source); err != nil {
+	eConfig, err := utils.Encrypt(source.Config)
+	if err != nil {
 		return fmt.Errorf("failed to encrypt source config: %s", err)
 	}
-	_, err := r.ormer.Insert(source)
+	source.Config = eConfig
+	_, err = r.ormer.Insert(source)
 	return err
 }
 
@@ -83,26 +66,28 @@ func (r *SourceORM) GetByID(id int) (*models.Source, error) {
 	source := &models.Source{ID: id}
 	err := r.ormer.Read(source)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get source by ID: %s", err)
+		return nil, fmt.Errorf("failed to get source by id[%d]: %s", id, err)
 	}
 
 	// Decrypt config after reading
-	if err := r.decryptSourceConfig(source); err != nil {
-		return nil, fmt.Errorf("failed to decrypt source config: %s, id: %d", err, source.ID)
+	dConfig, err := utils.Decrypt(source.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt source config by id[%d]: %s", source.ID, err)
 	}
-
+	source.Config = dConfig
 	return source, nil
 }
 
 func (r *SourceORM) Update(source *models.Source) error {
+	// TODO: remove all code managed db timestamps
 	source.UpdatedAt = time.Now()
-
 	// Encrypt config before saving
-	if err := r.encryptSourceConfig(source); err != nil {
+	eConfig, err := utils.Encrypt(source.Config)
+	if err != nil {
 		return fmt.Errorf("failed to encrypt source config: %s", err)
 	}
-
-	_, err := r.ormer.Update(source)
+	source.Config = eConfig
+	_, err = r.ormer.Update(source)
 	return err
 }
 

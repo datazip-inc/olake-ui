@@ -112,7 +112,7 @@ x-encryption:
   key: &encryptionKey "arn:aws:kms:..."
   
   # 2. For local AES-256 (any other non-empty string):
-  # key: &encryptionKey "your-passphrase"  # Auto-hashed to 256-bit key
+  # key: &encryptionKey "secret-key"  # Auto-hashed to 256-bit key
   
   # 3. For no encryption (not recommended for production):
   # key: &encryptionKey ""

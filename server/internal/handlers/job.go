@@ -65,6 +65,7 @@ func (c *JobHandler) GetAllJobs() {
 			UpdatedAt:     job.UpdatedAt.Format(time.RFC3339),
 			Activate:      job.Active,
 		}
+
 		// Set source and destination details
 		if job.SourceID != nil {
 			jobResp.Source = models.JobSourceConfig{
@@ -74,6 +75,7 @@ func (c *JobHandler) GetAllJobs() {
 				Version: job.SourceID.Version,
 			}
 		}
+
 		if job.DestID != nil {
 			jobResp.Destination = models.JobDestinationConfig{
 				Name:    job.DestID.Name,
@@ -564,7 +566,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 	}
 
 	if err := c.sourceORM.Create(source); err != nil {
-		return nil, fmt.Errorf("failed to create source: %w", err)
+		return nil, fmt.Errorf("failed to create source: %s", err)
 	}
 
 	return source, nil
@@ -588,7 +590,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 		}
 
 		if err := c.destORM.Update(dest); err != nil {
-			return nil, fmt.Errorf("failed to update destination: %w", err)
+			return nil, fmt.Errorf("failed to update destination: %s", err)
 		}
 
 		return dest, nil
@@ -612,7 +614,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	if err := c.destORM.Create(dest); err != nil {
-		return nil, fmt.Errorf("failed to create destination: %w", err)
+		return nil, fmt.Errorf("failed to create destination: %s", err)
 	}
 
 	return dest, nil

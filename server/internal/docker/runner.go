@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -115,7 +116,6 @@ func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, 
 // buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
-	encryptionKey := os.Getenv("ENCRYPTION_KEY")
 	dockerArgs := []string{
 		"run",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
@@ -123,9 +123,11 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	}
-	if encryptionKey != "" {
+
+	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
 		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
 	}
+
 	return append(dockerArgs, additionalArgs...)
 }
 

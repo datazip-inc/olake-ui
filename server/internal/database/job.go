@@ -30,7 +30,7 @@ func (r *JobORM) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
 	// TODO: verify why source_id and dest_id coming nil, it must not nil
 	if job.SourceID != nil {
-		decryptedConfig, err := utils.DecryptConfig(job.SourceID.Config)
+		decryptedConfig, err := utils.Decrypt(job.SourceID.Config)
 		if err != nil {
 			return fmt.Errorf("failed to decrypt source config: %s", err)
 		}
@@ -39,7 +39,7 @@ func (r *JobORM) decryptJobConfig(job *models.Job) error {
 
 	// Decrypt Destination Config if loaded
 	if job.DestID != nil {
-		decryptedConfig, err := utils.DecryptConfig(job.DestID.Config)
+		decryptedConfig, err := utils.Decrypt(job.DestID.Config)
 		if err != nil {
 			return fmt.Errorf("failed to decrypt destination config: %s", err)
 		}
