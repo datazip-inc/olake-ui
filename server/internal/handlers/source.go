@@ -197,7 +197,7 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", "postgres", "latest", encryptedConfig)
+	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
