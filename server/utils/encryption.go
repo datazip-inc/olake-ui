@@ -26,56 +26,46 @@ import (
 // - For local AES: Set ENCRYPTION_KEY to any non-empty string (will be hashed to 256-bit key)
 // - For no encryption: Leave ENCRYPTION_KEY empty (not recommended for production)
 
-// EncryptionConfig holds the configuration for encryption operations
-type EncryptionConfig struct {
-	KMSClient *kms.Client
-	KeyID     string
-	LocalKey  []byte
-	UseKMS    bool
-	Disabled  bool
-}
-
-func getEncryptionConfig() (*EncryptionConfig, error) {
-	key := os.Getenv("ENCRYPTION_KEY")
-
-	if strings.TrimSpace(key) == "" {
-		return &EncryptionConfig{
-			Disabled: true,
-		}, nil
+// getSecretKey returns the encryption key, KMS client (if using KMS), and any error
+// If the key is empty, encryption is considered disabled
+// key: encryption/decryption key (local key or KMS key ID)
+// kmsClient: non-nil if using AWS KMS
+// error: any error that occurred during initialization
+func getSecretKey() (key []byte, kmsClient *kms.Client, err error) {
+	envKey := os.Getenv("ENCRYPTION_KEY")
+	if strings.TrimSpace(envKey) == "" {
+		return nil, nil, nil // Encryption is disabled
 	}
 
-	if strings.HasPrefix(key, "arn:aws:kms:") {
+	if strings.HasPrefix(envKey, "arn:aws:kms:") {
 		cfg, err := config.LoadDefaultConfig(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf("failed to load AWS config: %w", err)
+			return nil, nil, fmt.Errorf("failed to load AWS config: %w", err)
 		}
-		return &EncryptionConfig{
-			KMSClient: kms.NewFromConfig(cfg),
-			KeyID:     key,
-			UseKMS:    true,
-		}, nil
+		return []byte(envKey), kms.NewFromConfig(cfg), nil
 	}
 
 	// Local AES-GCM Mode with SHA-256 derived key
-	hash := sha256.Sum256([]byte(key))
-	return &EncryptionConfig{
-		LocalKey: hash[:],
-	}, nil
+	hash := sha256.Sum256([]byte(envKey))
+	return hash[:], nil, nil
 }
 
 func Encrypt(plaintext string) ([]byte, error) {
-	config, err := getEncryptionConfig()
+	key, kmsClient, err := getSecretKey()
 	if err != nil {
 		return nil, err
 	}
 
-	if config.Disabled {
+	// If key is empty, encryption is disabled
+	if key == nil {
 		return []byte(plaintext), nil
 	}
 
-	if config.UseKMS {
-		result, err := config.KMSClient.Encrypt(context.Background(), &kms.EncryptInput{
-			KeyId:     &config.KeyID,
+	// Use KMS if client is provided
+	if kmsClient != nil {
+		keyID := string(key)
+		result, err := kmsClient.Encrypt(context.Background(), &kms.EncryptInput{
+			KeyId:     &keyID,
 			Plaintext: []byte(plaintext),
 		})
 		if err != nil {
@@ -85,7 +75,7 @@ func Encrypt(plaintext string) ([]byte, error) {
 	}
 
 	// Local AES-GCM encryption
-	block, err := aes.NewCipher(config.LocalKey)
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cipher: %w", err)
 	}
@@ -105,19 +95,21 @@ func Encrypt(plaintext string) ([]byte, error) {
 }
 
 func Decrypt(cipherData []byte) (string, error) {
-	config, err := getEncryptionConfig()
+	key, kmsClient, err := getSecretKey()
 	if err != nil {
 		return "", err
 	}
 
-	if config.Disabled {
+	// If key is empty, decryption is disabled
+	if key == nil {
 		return string(cipherData), nil
 	}
 
 	var plaintext []byte
 
-	if config.UseKMS {
-		result, err := config.KMSClient.Decrypt(context.Background(), &kms.DecryptInput{
+	// Use KMS if client is provided
+	if kmsClient != nil {
+		result, err := kmsClient.Decrypt(context.Background(), &kms.DecryptInput{
 			CiphertextBlob: cipherData,
 		})
 		if err != nil {
@@ -126,7 +118,7 @@ func Decrypt(cipherData []byte) (string, error) {
 		plaintext = result.Plaintext
 	} else {
 		// Local AES-GCM decryption
-		block, err := aes.NewCipher(config.LocalKey)
+		block, err := aes.NewCipher(key)
 		if err != nil {
 			return "", fmt.Errorf("failed to create cipher: %w", err)
 		}
@@ -151,6 +143,9 @@ func Decrypt(cipherData []byte) (string, error) {
 
 // EncryptConfig encrypts data and returns base64 encoded string for direct DB storage
 func EncryptConfig(config string) (string, error) {
+	if config == "" {
+		return "", nil
+	}
 	encryptedBytes, err := Encrypt(config)
 	if err != nil {
 		return "", fmt.Errorf("encryption failed: %v", err)
@@ -160,11 +155,16 @@ func EncryptConfig(config string) (string, error) {
 
 // DecryptConfig decrypts base64 encoded encrypted data
 func DecryptConfig(encryptedConfig string) (string, error) {
-	// Use json.Unmarshal to properly handle JSON string unquoting
+	// Check for empty or whitespace-only input
+	if strings.TrimSpace(encryptedConfig) == "" {
+		return "", fmt.Errorf("cannot decrypt empty or whitespace-only input")
+	}
+
+	// Try to unquote JSON string, if it fails use the input as is
 	var unquotedString string
-	if err := json.Unmarshal([]byte(encryptedConfig), &unquotedString); err != nil {
-		// If unmarshal fails, assume it's already unquoted
-		unquotedString = encryptedConfig
+	err := json.Unmarshal([]byte(encryptedConfig), &unquotedString)
+	if err != nil {
+		return "", fmt.Errorf("failed to unquote JSON string: %v", err)
 	}
 
 	encryptedData, err := base64.URLEncoding.DecodeString(unquotedString)

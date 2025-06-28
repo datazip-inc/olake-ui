@@ -540,7 +540,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 		}
 
 		if err := c.sourceORM.Update(source); err != nil {
-			return nil, fmt.Errorf("failed to update source: %w", err)
+			return nil, fmt.Errorf("failed to update source: %s", err)
 		}
 
 		return source, nil

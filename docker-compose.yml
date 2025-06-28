@@ -11,7 +11,7 @@ x-signup-defaults:
   email: &defaultEmail "admin@example.com"
 
 x-encryption:
-  key: &encryptionKey "test"  # TODO: Change this to a secure key or kms key
+  key: &encryptionKey ""  # TODO: Change this to a secure key or arn of kms key
 
 services:
   olake-ui:

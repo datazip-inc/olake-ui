@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/client/orm"
+	"github.com/beego/beego/v2/core/logs"
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -26,25 +27,22 @@ func NewSourceORM() *SourceORM {
 
 // encryptSourceConfig encrypts the config field before saving
 func (r *SourceORM) encryptSourceConfig(source *models.Source) error {
-	if source.Config != "" {
-		encryptedConfig, err := utils.EncryptConfig(source.Config)
-		if err != nil {
-			return fmt.Errorf("failed to encrypt source config: %s", err)
-		}
-		source.Config = encryptedConfig
+	encryptedConfig, err := utils.EncryptConfig(source.Config)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt source config: %s", err)
 	}
+	source.Config = encryptedConfig
 	return nil
 }
 
 // decryptSourceConfig decrypts the config field after reading
 func (r *SourceORM) decryptSourceConfig(source *models.Source) error {
-	if source.Config != "" {
-		decryptedConfig, err := utils.DecryptConfig(source.Config)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt source config: %s", err)
-		}
-		source.Config = decryptedConfig
+	decryptedConfig, err := utils.DecryptConfig(source.Config)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt source config: %s", err)
 	}
+	source.Config = decryptedConfig
+
 	return nil
 }
 
@@ -63,6 +61,11 @@ func (r *SourceORM) Create(source *models.Source) error {
 	if err := r.encryptSourceConfig(source); err != nil {
 		return fmt.Errorf("failed to encrypt source config: %s", err)
 	}
+	logs.Info("Source config encrypted: %s", source.Config)
+	if err := r.decryptSourceConfig(source); err != nil {
+		return fmt.Errorf("failed to decrypt source config: %s", err)
+	}
+	logs.Info("Source config decrypted: %s", source.Config)
 	_, err := r.ormer.Insert(source)
 	return err
 }
@@ -86,7 +89,7 @@ func (r *SourceORM) GetByID(id int) (*models.Source, error) {
 	source := &models.Source{ID: id}
 	err := r.ormer.Read(source)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get source by ID: %s", err)
 	}
 
 	// Decrypt config after reading
@@ -124,12 +127,12 @@ func (r *SourceORM) GetByNameAndType(name, sourceType, projectIDStr string) ([]*
 		Filter("project_id", projectIDStr).
 		All(&sources)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get source by name and type: %s", err)
 	}
 
 	// Decrypt config after reading
 	if err := r.decryptSourceSliceConfigs(sources); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt source config: %s", err)
 	}
 
 	return sources, nil

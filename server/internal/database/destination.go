@@ -26,25 +26,21 @@ func NewDestinationORM() *DestinationORM {
 
 // encryptDestinationConfig encrypts the config field before saving
 func (r *DestinationORM) encryptDestinationConfig(destination *models.Destination) error {
-	if destination.Config != "" {
-		encryptedConfig, err := utils.EncryptConfig(destination.Config)
-		if err != nil {
-			return fmt.Errorf("failed to encrypt destination config: %s", err)
-		}
-		destination.Config = encryptedConfig
+	encryptedConfig, err := utils.EncryptConfig(destination.Config)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt destination config: %s", err)
 	}
+	destination.Config = encryptedConfig
 	return nil
 }
 
 // decryptDestinationConfig decrypts the config field after reading
 func (r *DestinationORM) decryptDestinationConfig(destination *models.Destination) error {
-	if destination.Config != "" {
-		decryptedConfig, err := utils.DecryptConfig(destination.Config)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt destination config: %s", err)
-		}
-		destination.Config = decryptedConfig
+	decryptedConfig, err := utils.DecryptConfig(destination.Config)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt destination config: %s", err)
 	}
+	destination.Config = decryptedConfig
 	return nil
 }
 
@@ -52,7 +48,7 @@ func (r *DestinationORM) decryptDestinationConfig(destination *models.Destinatio
 func (r *DestinationORM) decryptDestinationSliceConfigs(destinations []*models.Destination) error {
 	for _, dest := range destinations {
 		if err := r.decryptDestinationConfig(dest); err != nil {
-			return err
+			return fmt.Errorf("failed to decrypt destination config: %s", err)
 		}
 	}
 	return nil
@@ -61,7 +57,7 @@ func (r *DestinationORM) decryptDestinationSliceConfigs(destinations []*models.D
 func (r *DestinationORM) Create(destination *models.Destination) error {
 	// Encrypt config before saving
 	if err := r.encryptDestinationConfig(destination); err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt destination config: %s", err)
 	}
 
 	_, err := r.ormer.Insert(destination)
@@ -72,12 +68,12 @@ func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 	var destinations []*models.Destination
 	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&destinations)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get all destinations: %s", err)
 	}
 
 	// Decrypt config after reading
 	if err := r.decryptDestinationSliceConfigs(destinations); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
 	}
 
 	return destinations, nil
@@ -87,12 +83,12 @@ func (r *DestinationORM) GetAllByProjectID(projectID string) ([]*models.Destinat
 	var destinations []*models.Destination
 	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().All(&destinations)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get all destinations by project ID: %s", err)
 	}
 
 	// Decrypt config after reading
 	if err := r.decryptDestinationSliceConfigs(destinations); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
 	}
 
 	return destinations, nil
@@ -102,12 +98,12 @@ func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 	destination := &models.Destination{ID: id}
 	err := r.ormer.Read(destination)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get destination by ID: %s", err)
 	}
 
 	// Decrypt config after reading
 	if err := r.decryptDestinationConfig(destination); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
 	}
 
 	return destination, nil
@@ -118,7 +114,7 @@ func (r *DestinationORM) Update(destination *models.Destination) error {
 
 	// Encrypt config before saving
 	if err := r.encryptDestinationConfig(destination); err != nil {
-		return err
+		return fmt.Errorf("failed to encrypt destination config: %s", err)
 	}
 
 	_, err := r.ormer.Update(destination)
@@ -140,12 +136,12 @@ func (r *DestinationORM) GetByNameAndType(name, destType, projectIDStr string) (
 		Filter("project_id", projectIDStr).
 		All(&destinations)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get destination by name and type: %s", err)
 	}
 
 	// Decrypt config after reading
 	if err := r.decryptDestinationSliceConfigs(destinations); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
 	}
 
 	return destinations, nil
