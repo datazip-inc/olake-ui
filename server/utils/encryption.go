@@ -19,12 +19,14 @@ import (
 )
 
 // this file provides encryption and decryption functionality using either AWS KMS or local AES-256-GCM.
+//
+// Configuration:
 // - Set ENCRYPTION_KEY environment variable to enable encryption
 // - For AWS KMS: Set ENCRYPTION_KEY to a KMS ARN (e.g., "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012")
 // - For local AES: Set ENCRYPTION_KEY to any non-empty string (will be hashed to 256-bit key)
 // - For no encryption: Leave ENCRYPTION_KEY empty (not recommended for production)
 
-func getEncryptionConfig() (kmsClient *kms.Client, keyID string, localKey []byte, useKMS bool, disabled bool, err error) {
+func getEncryptionConfig() (kmsClient *kms.Client, keyID string, localKey []byte, useKMS, disabled bool, err error) {
 	key := os.Getenv("ENCRYPTION_KEY")
 
 	if strings.TrimSpace(key) == "" {
