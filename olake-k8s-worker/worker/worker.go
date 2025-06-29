@@ -43,7 +43,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	logger.Info("Created database job service")
 
 	// Create pod manager
-	podManager, err := pods.NewK8sPodManager()
+	podManager, err := pods.NewK8sPodManager(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pod manager: %v", err)
 	}

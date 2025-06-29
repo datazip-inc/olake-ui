@@ -6,6 +6,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	"olake-k8s-worker/config"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/utils/env"
 	"olake-k8s-worker/utils/filesystem"
@@ -16,10 +17,11 @@ type K8sPodManager struct {
 	clientset        kubernetes.Interface
 	namespace        string
 	filesystemHelper *filesystem.Helper
+	config           *config.Config
 }
 
 // NewK8sPodManager creates a new Kubernetes Pod manager
-func NewK8sPodManager() (*K8sPodManager, error) {
+func NewK8sPodManager(cfg *config.Config) (*K8sPodManager, error) {
 	// Use in-cluster configuration
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -40,6 +42,7 @@ func NewK8sPodManager() (*K8sPodManager, error) {
 		clientset:        clientset,
 		namespace:        namespace,
 		filesystemHelper: filesystem.NewHelper(),
+		config:           cfg,
 	}, nil
 }
 

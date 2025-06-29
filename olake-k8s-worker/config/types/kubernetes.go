@@ -4,14 +4,15 @@ import "time"
 
 // KubernetesConfig contains K8s-related settings
 type KubernetesConfig struct {
-	Namespace        string                   `json:"namespace"`
-	ImageRegistry    string                   `json:"image_registry"`
-	ImagePullPolicy  string                   `json:"image_pull_policy"`
-	ServiceAccount   string                   `json:"service_account"`
-	JobTTL           *int32                   `json:"job_ttl_seconds"`
-	JobTimeout       time.Duration            `json:"job_timeout"`
-	CleanupPolicy    string                   `json:"cleanup_policy"`
-	Labels           map[string]string        `json:"labels"`
+	Namespace       string            `json:"namespace"`
+	ImageRegistry   string            `json:"image_registry"`
+	ImagePullPolicy string            `json:"image_pull_policy"`
+	ServiceAccount  string            `json:"service_account"`
+	PVCName         string            `json:"storage_pvc_name"`
+	JobTTL          *int32            `json:"job_ttl_seconds"`
+	JobTimeout      time.Duration     `json:"job_timeout"`
+	CleanupPolicy   string            `json:"cleanup_policy"`
+	Labels          map[string]string `json:"labels"`
 }
 
 // KubernetesResourceLimits defines CPU and memory limits for K8s jobs

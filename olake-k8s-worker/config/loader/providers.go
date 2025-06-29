@@ -101,6 +101,7 @@ func (p *defaultKubernetesProvider) LoadKubernetes() (types.KubernetesConfig, er
 		ImageRegistry:   env.GetEnv("IMAGE_REGISTRY", "olakego"),
 		ImagePullPolicy: env.GetEnv("IMAGE_PULL_POLICY", "IfNotPresent"),
 		ServiceAccount:  env.GetEnv("SERVICE_ACCOUNT", "olake-worker"),
+		PVCName:         env.GetEnv("OLAKE_STORAGE_PVC_NAME", "olake-jobs-pvc"),
 		JobTTL:          getOptionalTTL("JOB_TTL_SECONDS", 0),
 		JobTimeout:      ParseDuration("JOB_TIMEOUT", "15m"),
 		CleanupPolicy:   env.GetEnv("CLEANUP_POLICY", "auto"),

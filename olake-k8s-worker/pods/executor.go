@@ -94,7 +94,7 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 					Name: "job-storage",
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "olake-jobs-pvc",
+							ClaimName: k.config.Kubernetes.PVCName,
 						},
 					},
 				},
