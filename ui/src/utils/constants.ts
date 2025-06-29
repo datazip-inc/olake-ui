@@ -132,3 +132,10 @@ export const SourceTutorialYTLink =
 	"https://youtu.be/ndCHGlK5NCM?si=jvPy-aMrpEXCQA-8"
 export const DestinationTutorialYTLink =
 	"https://youtu.be/Ub1pcLg0WsM?si=V2tEtXvx54wDoa8Y"
+
+export const connectorTypeMap: Record<string, string> = {
+	mongodb: "MongoDB",
+	postgres: "Postgres",
+	mysql: "MySQL",
+	oracle: "Oracle",
+}

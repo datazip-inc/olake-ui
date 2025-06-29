@@ -23,7 +23,7 @@ func GetDockerHubTags(imageName string) ([]string, error) {
 	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/tags/?page_size=100", imageName)
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch tags: %w", err)
+		return nil, fmt.Errorf("failed to fetch tags: %s", err)
 	}
 	defer resp.Body.Close()
 
@@ -33,7 +33,7 @@ func GetDockerHubTags(imageName string) ([]string, error) {
 
 	var responseData DockerHubTagsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf("failed to decode response: %s", err)
 	}
 
 	tags := make([]string, 0, len(responseData.Results))

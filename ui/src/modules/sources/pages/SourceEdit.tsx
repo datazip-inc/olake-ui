@@ -24,6 +24,7 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import connectorOptions from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
+import { connectorTypeMap } from "../../../utils/constants"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -73,11 +74,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			if (source) {
 				setSource(source)
 				setSourceName(source.name)
-				let normalizedType = source.type
-				if (source.type.toLowerCase() === "mongodb") normalizedType = "MongoDB"
-				if (source.type.toLowerCase() === "postgres")
-					normalizedType = "Postgres"
-				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
+				let normalizedType =
+					connectorTypeMap[source.type.toLowerCase()] || source.type
 				setConnector(normalizedType)
 				setSelectedVersion(source.version)
 				setFormData(
@@ -94,12 +92,14 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		if (initialData) {
 			setSourceName(initialData.name || "")
-			let normalizedType = initialData.type
-			if (initialData.type?.toLowerCase() === "mongodb")
-				normalizedType = "MongoDB"
-			if (initialData.type?.toLowerCase() === "postgres")
-				normalizedType = "Postgres"
-			if (initialData.type?.toLowerCase() === "mysql") normalizedType = "MySQL"
+			const connectorTypeMap: Record<string, string> = {
+				mongodb: "MongoDB",
+				postgres: "Postgres",
+				mysql: "MySQL",
+				oracle: "Oracle",
+			}
+			let normalizedType =
+				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
 
 			// Only set connector if it's not already set or if it's the same as initialData
 			if (!connector || connector === normalizedType) {
