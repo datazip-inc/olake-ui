@@ -44,7 +44,7 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 			Namespace: k.namespace,
 			Labels: map[string]string{
 				"app":                  "olake-connector",
-				"type":                 "sync-pod",
+				"type":                 string(spec.Operation) + "-pod",
 				"operation":            string(spec.Operation),
 				"olake.io/workflow-id": k8s.SanitizeName(spec.OriginalWorkflowID),
 				"olake.io/autoscaling": "enabled",
