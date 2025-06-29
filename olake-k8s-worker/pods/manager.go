@@ -7,14 +7,15 @@ import (
 	"k8s.io/client-go/rest"
 
 	"olake-k8s-worker/logger"
-	"olake-k8s-worker/utils"
+	"olake-k8s-worker/utils/env"
+	"olake-k8s-worker/utils/filesystem"
 )
 
 // K8sPodManager handles Kubernetes Pod operations only
 type K8sPodManager struct {
 	clientset        kubernetes.Interface
 	namespace        string
-	filesystemHelper *utils.FilesystemHelper
+	filesystemHelper *filesystem.Helper
 }
 
 // NewK8sPodManager creates a new Kubernetes Pod manager
@@ -31,14 +32,14 @@ func NewK8sPodManager() (*K8sPodManager, error) {
 	}
 
 	// Get namespace from environment or use default
-	namespace := utils.GetEnv("WORKER_NAMESPACE", "default")
+	namespace := env.GetEnv("WORKER_NAMESPACE", "default")
 
 	logger.Infof("Initialized K8s pod manager for namespace: %s", namespace)
 
 	return &K8sPodManager{
 		clientset:        clientset,
 		namespace:        namespace,
-		filesystemHelper: utils.NewFilesystemHelper(),
+		filesystemHelper: filesystem.NewHelper(),
 	}, nil
 }
 

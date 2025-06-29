@@ -10,7 +10,7 @@ import (
 
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
-	"olake-k8s-worker/utils"
+	"olake-k8s-worker/utils/k8s"
 )
 
 // PodSpec defines the specification for creating a Kubernetes Pod
@@ -46,7 +46,7 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 				"app":                  "olake-connector",
 				"type":                 "sync-pod",
 				"operation":            string(spec.Operation),
-				"olake.io/workflow-id": utils.SanitizeK8sName(spec.OriginalWorkflowID),
+				"olake.io/workflow-id": k8s.SanitizeName(spec.OriginalWorkflowID),
 				"olake.io/autoscaling": "enabled",
 			},
 			Annotations: map[string]string{
@@ -72,8 +72,8 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 					},
 					Resources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
-							corev1.ResourceMemory: utils.ParseQuantity("256Mi"),
-							corev1.ResourceCPU:    utils.ParseQuantity("100m"),
+							corev1.ResourceMemory: k8s.ParseQuantity("256Mi"),
+							corev1.ResourceCPU:    k8s.ParseQuantity("100m"),
 						},
 						// No limits for autoscaling flexibility
 					},

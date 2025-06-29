@@ -7,7 +7,7 @@ import (
 
 	"olake-k8s-worker/config/types"
 	"olake-k8s-worker/logger"
-	"olake-k8s-worker/utils"
+	"olake-k8s-worker/utils/env"
 )
 
 // Provider interfaces for different configuration sections
@@ -73,7 +73,7 @@ func NewLoggingProvider() LoggingProvider {
 
 func (p *defaultTemporalProvider) LoadTemporal() (types.TemporalConfig, error) {
 	return types.TemporalConfig{
-		Address:   utils.GetEnv("TEMPORAL_ADDRESS", "temporal.default.svc.cluster.local:7233"),
+		Address:   env.GetEnv("TEMPORAL_ADDRESS", "temporal.default.svc.cluster.local:7233"),
 		TaskQueue: "OLAKE_K8S_TASK_QUEUE", // Hardcoded as per requirement
 		Timeout:   ParseDuration("TEMPORAL_TIMEOUT", "30s"),
 	}, nil
@@ -81,41 +81,41 @@ func (p *defaultTemporalProvider) LoadTemporal() (types.TemporalConfig, error) {
 
 func (p *defaultDatabaseProvider) LoadDatabase() (types.DatabaseConfig, error) {
 	return types.DatabaseConfig{
-		URL:             utils.GetEnv("DATABASE_URL", ""),
-		Host:            utils.GetEnv("DB_HOST", "postgres.olake.svc.cluster.local"),
-		Port:            utils.GetEnv("DB_PORT", "5432"),
-		User:            utils.GetEnv("DB_USER", "postgres"),
-		Password:        utils.GetEnv("DB_PASSWORD", "password"),
-		Database:        utils.GetEnv("DB_NAME", "olake"),
-		SSLMode:         utils.GetEnv("DB_SSLMODE", "disable"),
-		RunMode:         utils.GetEnv("RUN_MODE", "production"),
-		MaxOpenConns:    utils.GetEnvInt("DB_MAX_OPEN_CONNS", 25),
-		MaxIdleConns:    utils.GetEnvInt("DB_MAX_IDLE_CONNS", 5),
+		URL:             env.GetEnv("DATABASE_URL", ""),
+		Host:            env.GetEnv("DB_HOST", "postgres.olake.svc.cluster.local"),
+		Port:            env.GetEnv("DB_PORT", "5432"),
+		User:            env.GetEnv("DB_USER", "postgres"),
+		Password:        env.GetEnv("DB_PASSWORD", "password"),
+		Database:        env.GetEnv("DB_NAME", "olake"),
+		SSLMode:         env.GetEnv("DB_SSLMODE", "disable"),
+		RunMode:         env.GetEnv("RUN_MODE", "production"),
+		MaxOpenConns:    env.GetEnvInt("DB_MAX_OPEN_CONNS", 25),
+		MaxIdleConns:    env.GetEnvInt("DB_MAX_IDLE_CONNS", 5),
 		ConnMaxLifetime: ParseDuration("DB_CONN_MAX_LIFETIME", "5m"),
 	}, nil
 }
 
 func (p *defaultKubernetesProvider) LoadKubernetes() (types.KubernetesConfig, error) {
 	return types.KubernetesConfig{
-		Namespace:       utils.GetEnv("WORKER_NAMESPACE", "default"),
-		ImageRegistry:   utils.GetEnv("IMAGE_REGISTRY", "olakego"),
-		ImagePullPolicy: utils.GetEnv("IMAGE_PULL_POLICY", "IfNotPresent"),
-		ServiceAccount:  utils.GetEnv("SERVICE_ACCOUNT", "olake-worker"),
+		Namespace:       env.GetEnv("WORKER_NAMESPACE", "default"),
+		ImageRegistry:   env.GetEnv("IMAGE_REGISTRY", "olakego"),
+		ImagePullPolicy: env.GetEnv("IMAGE_PULL_POLICY", "IfNotPresent"),
+		ServiceAccount:  env.GetEnv("SERVICE_ACCOUNT", "olake-worker"),
 		JobTTL:          getOptionalTTL("JOB_TTL_SECONDS", 0),
 		JobTimeout:      ParseDuration("JOB_TIMEOUT", "15m"),
-		CleanupPolicy:   utils.GetEnv("CLEANUP_POLICY", "auto"),
+		CleanupPolicy:   env.GetEnv("CLEANUP_POLICY", "auto"),
 		Labels: map[string]string{
 			"app":        "olake-sync",
 			"managed-by": "olake-k8s-worker",
-			"version":    utils.GetEnv("WORKER_VERSION", "latest"),
+			"version":    env.GetEnv("WORKER_VERSION", "latest"),
 		},
 	}, nil
 }
 
 func (p *defaultWorkerProvider) LoadWorker() (types.WorkerConfig, error) {
 	return types.WorkerConfig{
-		MaxConcurrentActivities: utils.GetEnvInt("MAX_CONCURRENT_ACTIVITIES", 10),
-		MaxConcurrentWorkflows:  utils.GetEnvInt("MAX_CONCURRENT_WORKFLOWS", 5),
+		MaxConcurrentActivities: env.GetEnvInt("MAX_CONCURRENT_ACTIVITIES", 10),
+		MaxConcurrentWorkflows:  env.GetEnvInt("MAX_CONCURRENT_WORKFLOWS", 5),
 		HeartbeatInterval:       ParseDuration("HEARTBEAT_INTERVAL", "5s"),
 		WorkerIdentity:          generateWorkerIdentity(),
 	}, nil
@@ -138,9 +138,9 @@ func (p *defaultTimeoutProvider) LoadTimeouts() (types.TimeoutConfig, error) {
 
 func (p *defaultLoggingProvider) LoadLogging() (types.LoggingConfig, error) {
 	return types.LoggingConfig{
-		Level:      utils.GetEnv("LOG_LEVEL", "info"),
-		Format:     utils.GetEnv("LOG_FORMAT", "console"),
-		Structured: utils.GetEnvBool("LOG_STRUCTURED", false),
+		Level:      env.GetEnv("LOG_LEVEL", "info"),
+		Format:     env.GetEnv("LOG_FORMAT", "console"),
+		Structured: env.GetEnvBool("LOG_STRUCTURED", false),
 	}, nil
 }
 
@@ -155,7 +155,7 @@ func generateWorkerIdentity() string {
 }
 
 func getOptionalTTL(envKey string, defaultValue int) *int32 {
-	value := utils.GetEnvInt(envKey, defaultValue)
+	value := env.GetEnvInt(envKey, defaultValue)
 	if value <= 0 {
 		return nil
 	}
@@ -165,7 +165,7 @@ func getOptionalTTL(envKey string, defaultValue int) *int32 {
 
 // ParseDuration parses a duration string with error handling and fallback
 func ParseDuration(envKey, defaultValue string) time.Duration {
-	value := utils.GetEnv(envKey, defaultValue)
+	value := env.GetEnv(envKey, defaultValue)
 	duration, err := time.ParseDuration(value)
 	if err != nil {
 		logger.Warnf("Failed to parse duration for %s, using default: %s", envKey, defaultValue)

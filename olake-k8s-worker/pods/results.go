@@ -10,7 +10,9 @@ import (
 
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
-	"olake-k8s-worker/utils"
+	"olake-k8s-worker/utils/json"
+	"olake-k8s-worker/utils/k8s"
+	"olake-k8s-worker/utils/parser"
 )
 
 // getPodLogs retrieves logs from a completed pod
@@ -58,7 +60,7 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string) (map[
 		// For discover operations, read streams.json file (like Docker does)
 		workflowDir := k.filesystemHelper.GetWorkflowDirectory(operation, workflowID)
 		catalogPath := k.filesystemHelper.GetFilePath(workflowDir, "streams.json")
-		return utils.ParseJSONFile(catalogPath)
+		return json.ParseJSONFile(catalogPath)
 	} else {
 		// For other operations (check, sync), parse logs as before
 		logs, err := k.getPodLogs(ctx, podName)
@@ -66,7 +68,7 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string) (map[
 			return nil, fmt.Errorf("failed to get pod logs: %v", err)
 		}
 		logger.Debugf("Raw pod logs for pod %s:\n%s", podName, logs)
-		return utils.ParseJobOutput(logs)
+		return parser.ParseJobOutput(logs)
 	}
 }
 
@@ -84,7 +86,7 @@ type PodActivityRequest struct {
 func (k *K8sPodManager) ExecutePodActivity(ctx context.Context, req PodActivityRequest) (map[string]interface{}, error) {
 	// Create Pod specification
 	podSpec := &PodSpec{
-		Name:               utils.SanitizeK8sName(req.WorkflowID),
+		Name:               k8s.SanitizeName(req.WorkflowID),
 		OriginalWorkflowID: req.WorkflowID,
 		Image:              req.Image,
 		Command:            []string{},

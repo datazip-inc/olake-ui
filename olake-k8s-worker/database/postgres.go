@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"olake-k8s-worker/logger"
-	"olake-k8s-worker/utils"
+	"olake-k8s-worker/utils/env"
 
 	_ "github.com/lib/pq"
 )
@@ -68,12 +68,12 @@ func getDBURL() string {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		// Fallback to individual components
-		host := utils.GetEnv("DB_HOST", "localhost")
-		port := utils.GetEnv("DB_PORT", "5432")
-		user := utils.GetEnv("DB_USER", "olake")
-		password := utils.GetEnv("DB_PASSWORD", "password")
-		dbname := utils.GetEnv("DB_NAME", "olake")
-		sslmode := utils.GetEnv("DB_SSLMODE", "disable")
+		host := env.GetEnv("DB_HOST", "localhost")
+		port := env.GetEnv("DB_PORT", "5432")
+		user := env.GetEnv("DB_USER", "olake")
+		password := env.GetEnv("DB_PASSWORD", "password")
+		dbname := env.GetEnv("DB_NAME", "olake")
+		sslmode := env.GetEnv("DB_SSLMODE", "disable")
 
 		dbURL = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 			host, port, user, password, dbname, sslmode)
@@ -83,7 +83,7 @@ func getDBURL() string {
 
 func getTableNames() map[string]string {
 	// Get environment mode (development, production, etc.)
-	runMode := utils.GetEnv("RUN_MODE", "development")
+	runMode := env.GetEnv("RUN_MODE", "development")
 
 	// Table name patterns matching server implementation
 	tableNames := map[string]string{

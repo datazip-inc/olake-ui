@@ -1,0 +1,60 @@
+package k8s
+
+import (
+	"fmt"
+	"strings"
+	"time"
+
+	"k8s.io/apimachinery/pkg/api/resource"
+)
+
+// ParseQuantity parses Kubernetes resource quantity string
+func ParseQuantity(s string) resource.Quantity {
+	q, _ := resource.ParseQuantity(s)
+	return q
+}
+
+// ParseQuantityWithDefault parses quantity with fallback
+func ParseQuantityWithDefault(s, defaultValue string) resource.Quantity {
+	if s == "" {
+		s = defaultValue
+	}
+	q, err := resource.ParseQuantity(s)
+	if err != nil {
+		q, _ = resource.ParseQuantity(defaultValue)
+	}
+	return q
+}
+
+// SanitizeName converts a string to a valid Kubernetes resource name
+// Consolidates SanitizeK8sName and SanitizeKubernetesName functions
+func SanitizeName(name string) string {
+	// Convert to lowercase
+	name = strings.ToLower(name)
+
+	// Replace invalid characters with hyphens
+	name = strings.ReplaceAll(name, "_", "-")
+	name = strings.ReplaceAll(name, ".", "-")
+	name = strings.ReplaceAll(name, ":", "-")
+
+	// Remove leading/trailing hyphens
+	name = strings.Trim(name, "-")
+
+	// Truncate if too long (max 63 characters for Kubernetes)
+	if len(name) > 63 {
+		name = name[:63]
+		name = strings.TrimSuffix(name, "-")
+	}
+
+	return name
+}
+
+// GenerateJobName creates a Kubernetes-compatible job name
+func GenerateJobName(prefix string, identifier string) string {
+	return fmt.Sprintf("%s-%s-%d", prefix, identifier, time.Now().Unix())
+}
+
+// GenerateWorkflowID generates a unique workflow ID
+func GenerateWorkflowID(prefix string, jobID int) string {
+	return fmt.Sprintf("%s-%d-%d", prefix, jobID, time.Now().Unix())
+}
