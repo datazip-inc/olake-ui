@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
@@ -13,7 +15,9 @@ import (
 
 func main() {
 	// TODO: check if we have to create a new config file for docker compatibility
-
+	if key := os.Getenv(constants.EncryptionKey); key == "" {
+		logs.Warning("Encryption key is not set. This is not recommended for production environments.")
+	}
 	// check constants
 	constants.Init()
 

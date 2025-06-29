@@ -192,7 +192,12 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
+		return
+	}
+	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -212,23 +217,26 @@ func (c *SourceHandler) GetSourceCatalog() {
 	oldStreams := ""
 	// Load job details if JobID is provided
 	if req.JobID >= 0 {
-		job, err := c.jobORM.GetByID(req.JobID)
+		job, err := c.jobORM.GetByID(req.JobID, true)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 			return
 		}
 		oldStreams = job.StreamsConfig
 	}
-
+	encryptedConfig, err := utils.Encrypt(req.Config)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
+		return
+	}
 	// Use Temporal client to get the catalog
 	var newStreams map[string]interface{}
-	var err error
 	if c.tempClient != nil {
 		newStreams, err = c.tempClient.GetCatalog(
 			c.Ctx.Request.Context(),
 			req.Type,
 			req.Version,
-			req.Config,
+			encryptedConfig,
 			oldStreams,
 		)
 	}
