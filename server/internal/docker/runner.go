@@ -117,13 +117,18 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 // buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
-	dockerArgs := []string{
-		"run",
+	dockerArgs := []string{"run"}
+
+	if version == "latest" {
+		dockerArgs = append(dockerArgs, "--pull=always")
+	}
+
+	dockerArgs = append(dockerArgs,
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-	}
+	)
 
 	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
 		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
