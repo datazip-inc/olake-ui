@@ -1,0 +1,23 @@
+{{- if .Values.olakeWorker.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: olake-k8s-worker
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: olake-worker
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: worker
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.olakeWorker.service.type }}
+  ports:
+  - port: {{ .Values.olakeWorker.service.port }}
+    targetPort: health
+    protocol: TCP
+    name: health
+  selector:
+    app.kubernetes.io/name: olake-worker
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: worker
+{{- end }}

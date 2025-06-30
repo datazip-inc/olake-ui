@@ -73,7 +73,7 @@ func NewLoggingProvider() LoggingProvider {
 
 func (p *defaultTemporalProvider) LoadTemporal() (types.TemporalConfig, error) {
 	return types.TemporalConfig{
-		Address:   env.GetEnv("TEMPORAL_ADDRESS", "temporal.default.svc.cluster.local:7233"),
+		Address:   env.GetEnv("TEMPORAL_ADDRESS", "temporal.olake.svc.cluster.local:7233"),
 		TaskQueue: "OLAKE_K8S_TASK_QUEUE", // Hardcoded as per requirement
 		Timeout:   ParseDuration("TEMPORAL_TIMEOUT", "30s"),
 	}, nil
@@ -97,7 +97,7 @@ func (p *defaultDatabaseProvider) LoadDatabase() (types.DatabaseConfig, error) {
 
 func (p *defaultKubernetesProvider) LoadKubernetes() (types.KubernetesConfig, error) {
 	return types.KubernetesConfig{
-		Namespace:       env.GetEnv("WORKER_NAMESPACE", "default"),
+		Namespace:       env.GetEnv("WORKER_NAMESPACE", "olake"),
 		ImageRegistry:   env.GetEnv("IMAGE_REGISTRY", "olakego"),
 		ImagePullPolicy: env.GetEnv("IMAGE_PULL_POLICY", "IfNotPresent"),
 		ServiceAccount:  env.GetEnv("SERVICE_ACCOUNT", "olake-worker"),

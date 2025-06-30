@@ -1,0 +1,27 @@
+{{- if .Values.elasticsearch.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: search
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.elasticsearch.service.type }}
+  ports:
+  - port: {{ .Values.elasticsearch.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9300
+    targetPort: transport
+    protocol: TCP
+    name: transport
+  selector:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: search
+{{- end }}

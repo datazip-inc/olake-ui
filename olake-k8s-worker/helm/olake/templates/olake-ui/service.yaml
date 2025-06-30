@@ -1,0 +1,33 @@
+{{- if .Values.olakeUI.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: olake-ui
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ui
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.olakeUI.service.type }}
+  ports:
+  - port: {{ .Values.olakeUI.service.ports.backend }}
+    targetPort: backend
+    protocol: TCP
+    name: backend
+    {{- if and (eq .Values.olakeUI.service.type "NodePort") .Values.olakeUI.service.nodePorts.backend }}
+    nodePort: {{ .Values.olakeUI.service.nodePorts.backend }}
+    {{- end }}
+  - port: {{ .Values.olakeUI.service.ports.frontend }}
+    targetPort: frontend
+    protocol: TCP
+    name: frontend
+    {{- if and (eq .Values.olakeUI.service.type "NodePort") .Values.olakeUI.service.nodePorts.frontend }}
+    nodePort: {{ .Values.olakeUI.service.nodePorts.frontend }}
+    {{- end }}
+  selector:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ui
+{{- end }}

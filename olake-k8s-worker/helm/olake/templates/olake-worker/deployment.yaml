@@ -1,0 +1,77 @@
+{{- if .Values.olakeWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: olake-k8s-worker
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: olake-worker
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: worker
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.olakeWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: olake-worker
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: olake-worker
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+      - name: olake-k8s-worker
+        image: "{{ .Values.olakeWorker.image.repository }}:{{ .Values.olakeWorker.image.tag }}"
+        imagePullPolicy: {{ .Values.olakeWorker.image.pullPolicy }}
+        ports:
+        - name: health
+          containerPort: {{ .Values.olakeWorker.config.healthCheck.port }}
+          protocol: TCP
+        env:
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: olake-k8s-worker-secret
+              key: DB_PASSWORD
+        envFrom:
+        - configMapRef:
+            name: olake-k8s-worker-config
+        resources:
+          {{- toYaml .Values.olakeWorker.resources | nindent 10 }}
+        {{- with .Values.olakeWorker.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.olakeWorker.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        volumeMounts:
+        - name: shared-storage
+          mountPath: /data/olake-jobs
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.persistentVolumeClaim.name }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

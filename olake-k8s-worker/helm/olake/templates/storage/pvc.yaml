@@ -1,0 +1,18 @@
+{{- if .Values.storage.persistentVolumeClaim.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.storage.persistentVolumeClaim.name }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.persistentVolumeClaim.accessModes | nindent 4 }}
+  {{- if .Values.storage.persistentVolumeClaim.storageClassName }}
+  storageClassName: {{ .Values.storage.persistentVolumeClaim.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.persistentVolumeClaim.size }}
+{{- end }}

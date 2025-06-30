@@ -1,0 +1,17 @@
+{{- if .Values.storage.persistentVolume.enabled }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.storage.persistentVolume.name }}
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.storage.persistentVolume.capacity }}
+  accessModes:
+    {{- toYaml .Values.storage.persistentVolume.accessModes | nindent 4 }}
+  persistentVolumeReclaimPolicy: {{ .Values.storage.persistentVolume.reclaimPolicy }}
+  storageClassName: {{ .Values.storage.persistentVolume.storageClassName }}
+  hostPath:
+    path: {{ .Values.storage.persistentVolume.hostPath }}
+{{- end }}

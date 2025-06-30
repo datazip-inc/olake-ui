@@ -34,7 +34,7 @@ func NewK8sPodManager(cfg *config.Config) (*K8sPodManager, error) {
 	}
 
 	// Get namespace from environment or use default
-	namespace := env.GetEnv("WORKER_NAMESPACE", "default")
+	namespace := env.GetEnv("WORKER_NAMESPACE", "olake")
 
 	logger.Infof("Initialized K8s pod manager for namespace: %s", namespace)
 

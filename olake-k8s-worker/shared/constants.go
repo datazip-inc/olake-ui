@@ -5,12 +5,12 @@ const (
 	TaskQueue = "OLAKE_K8S_TASK_QUEUE"
 
 	// Default FQDN for Temporal service in K8s cluster
-	DefaultTemporalAddress = "temporal.default.svc.cluster.local:7233"
+	DefaultTemporalAddress = "temporal.olake.svc.cluster.local:7233"
 )
 
 // Kubernetes constants
 const (
-	DefaultNamespace       = "default"
+	DefaultNamespace       = "olake"
 	DefaultImageRegistry   = "olakego"
 	DefaultImagePullPolicy = "IfNotPresent"
 	DefaultServiceAccount  = "olake-worker"

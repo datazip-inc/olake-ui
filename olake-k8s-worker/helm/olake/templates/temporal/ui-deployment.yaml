@@ -1,0 +1,57 @@
+{{- if and .Values.temporal.enabled .Values.temporal.ui.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-ui
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: temporal-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: workflow-ui
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: temporal-ui
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: workflow-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: temporal-ui
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: workflow-ui
+    spec:
+      containers:
+      - name: temporal-ui
+        image: "{{ .Values.temporal.ui.image.repository }}:{{ .Values.temporal.ui.image.tag }}"
+        imagePullPolicy: {{ .Values.temporal.ui.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.temporal.ui.service.port }}
+          protocol: TCP
+        env:
+        {{- range .Values.temporal.ui.env }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.temporal.ui.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+{{- end }}

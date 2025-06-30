@@ -1,0 +1,28 @@
+{{- if .Values.olakeUI.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: olake-ui-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: ui
+    {{- include "olake.labels" . | nindent 4 }}
+data:
+  # Database Configuration
+  DB_HOST: {{ .Values.olakeUI.config.database.host | quote }}
+  DB_PORT: {{ .Values.olakeUI.config.database.port | quote }}
+  DB_NAME: {{ .Values.olakeUI.config.database.name | quote }}
+  DB_USER: {{ .Values.olakeUI.config.database.user | quote }}
+  DB_PASSWORD: {{ .Values.olakeUI.config.database.password | quote }}
+  
+  # Temporal Configuration
+  TEMPORAL_HOST: {{ .Values.olakeUI.config.temporal.host | quote }}
+  TEMPORAL_PORT: {{ .Values.olakeUI.config.temporal.port | quote }}
+  TEMPORAL_TASK_QUEUE: {{ .Values.olakeUI.config.temporal.taskQueue | quote }}
+  
+  # Application Configuration
+  PORT: "8080"
+  FRONTEND_PORT: "3000"
+{{- end }}

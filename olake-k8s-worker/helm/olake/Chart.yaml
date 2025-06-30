@@ -1,0 +1,22 @@
+apiVersion: v2
+name: olake
+description: A Helm chart for OLake - Fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+home: https://github.com/datazip-inc/olake-ui
+sources:
+  - https://github.com/datazip-inc/olake-ui
+keywords:
+  - data-pipeline
+  - elt
+  - kubernetes
+  - workflow
+  - olake
+maintainers:
+  - name: Schitiz Sharma
+    email: schitiz@datazip.io
+dependencies: []
+annotations:
+  category: Data Processing
+  licenses: Apache-2.0

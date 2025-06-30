@@ -1,0 +1,55 @@
+{{- if .Values.olakeWorker.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: olake-k8s-worker-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app.kubernetes.io/name: olake-worker
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: worker
+    {{- include "olake.labels" . | nindent 4 }}
+data:
+  # Temporal Configuration
+  TEMPORAL_ADDRESS: {{ .Values.olakeWorker.config.temporal.address | quote }}
+  TEMPORAL_TASK_QUEUE: {{ .Values.olakeWorker.config.temporal.taskQueue | quote }}
+  
+  # Database Configuration
+  DB_HOST: {{ .Values.olakeWorker.config.database.host | quote }}
+  DB_PORT: {{ .Values.olakeWorker.config.database.port | quote }}
+  DB_NAME: {{ .Values.olakeWorker.config.database.name | quote }}
+  DB_USER: {{ .Values.olakeWorker.config.database.user | quote }}
+  DB_SSLMODE: {{ .Values.olakeWorker.config.database.sslMode | quote }}
+  
+  # Timeout Configuration
+  WORKFLOW_TIMEOUT_DISCOVER: {{ .Values.olakeWorker.config.timeouts.workflow.discover | quote }}
+  WORKFLOW_TIMEOUT_TEST: {{ .Values.olakeWorker.config.timeouts.workflow.test | quote }}
+  WORKFLOW_TIMEOUT_SYNC: {{ .Values.olakeWorker.config.timeouts.workflow.sync | quote }}
+  ACTIVITY_TIMEOUT_DISCOVER: {{ .Values.olakeWorker.config.timeouts.activity.discover | quote }}
+  ACTIVITY_TIMEOUT_TEST: {{ .Values.olakeWorker.config.timeouts.activity.test | quote }}
+  ACTIVITY_TIMEOUT_SYNC: {{ .Values.olakeWorker.config.timeouts.activity.sync | quote }}
+  
+  # Kubernetes Configuration
+  WORKER_NAMESPACE: {{ .Values.olakeWorker.config.kubernetes.namespace | quote }}
+  IMAGE_REGISTRY: {{ .Values.olakeWorker.config.kubernetes.imageRegistry | quote }}
+  IMAGE_PULL_POLICY: {{ .Values.olakeWorker.config.kubernetes.imagePullPolicy | quote }}
+  SERVICE_ACCOUNT: {{ .Values.olakeWorker.config.kubernetes.serviceAccount | quote }}
+  OLAKE_STORAGE_PVC_NAME: {{ .Values.olakeWorker.config.kubernetes.storagePvcName | quote }}
+  
+  # Job Configuration
+  JOB_TTL_SECONDS: {{ .Values.olakeWorker.config.job.ttlSeconds | quote }}
+  JOB_BACKOFF_LIMIT: {{ .Values.olakeWorker.config.job.backoffLimit | quote }}
+  JOB_PARALLELISM: {{ .Values.olakeWorker.config.job.parallelism | quote }}
+  JOB_COMPLETIONS: {{ .Values.olakeWorker.config.job.completions | quote }}
+  
+  # Worker Configuration
+  MAX_CONCURRENT_ACTIVITIES: {{ .Values.olakeWorker.config.worker.maxConcurrentActivities | quote }}
+  MAX_CONCURRENT_WORKFLOWS: {{ .Values.olakeWorker.config.worker.maxConcurrentWorkflows | quote }}
+  
+  # Health Check Configuration
+  HEALTH_CHECK_PORT: {{ .Values.olakeWorker.config.healthCheck.port | quote }}
+  
+  # Logging Configuration
+  LOG_LEVEL: {{ .Values.olakeWorker.config.logging.level | quote }}
+  LOG_FORMAT: {{ .Values.olakeWorker.config.logging.format | quote }}
+{{- end }}
