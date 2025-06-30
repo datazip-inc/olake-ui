@@ -29,7 +29,7 @@ type jobDetails struct {
 // getJobDetails fetches common job information from the database
 func getJobDetails(jobID int) (*jobDetails, error) {
 	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID)
+	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job details: %v", err)
 	}
