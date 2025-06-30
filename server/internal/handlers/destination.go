@@ -449,14 +449,14 @@ func (c *DestHandler) GetDestinationSpec() {
 						"description": "Enable AWS Signature Version 4 for REST request signing",
 						"order":       5,
 					},
-					"rest_token": map[string]interface{}{
+					"token": map[string]interface{}{
 						"type":        "string",
 						"title":       "REST Token",
 						"description": "Optional token used for authenticating with the REST catalog",
 						"format":      "password",
 						"order":       6,
 					},
-					"rest_oauth_uri": map[string]interface{}{
+					"oauth2_uri": map[string]interface{}{
 						"type":        "string",
 						"title":       "OAuth2 URI",
 						"description": "OAuth2 authorization URI for obtaining access tokens",
@@ -468,13 +468,13 @@ func (c *DestHandler) GetDestinationSpec() {
 						"description": "Type of authentication to use with the REST catalog (e.g., 'token', 'oauth2', 'aws_sigv4')",
 						"order":       8,
 					},
-					"rest_scope": map[string]interface{}{
+					"scope": map[string]interface{}{
 						"type":        "string",
 						"title":       "REST Scope",
 						"description": "OAuth2 scope to be used during token acquisition",
 						"order":       9,
 					},
-					"rest_credential": map[string]interface{}{
+					"credential": map[string]interface{}{
 						"type":        "string",
 						"title":       "REST Credential",
 						"description": "Optional credential used for authenticating REST requests",
