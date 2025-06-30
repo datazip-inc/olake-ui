@@ -22,9 +22,10 @@ postgresql:
     pullPolicy: IfNotPresent
   
   auth:
-    database: postgres
+    postgresPassword: temporal
     username: temporal
-    password: temporal123
+    password: temporal
+    database: temporal
   
   service:
     type: ClusterIP
@@ -101,7 +102,7 @@ temporal:
       - name: POSTGRES_USER
         value: temporal
       - name: POSTGRES_PWD
-        value: temporal123
+        value: temporal
       - name: POSTGRES_SEEDS
         value: postgresql.olake.svc.cluster.local
       - name: DYNAMIC_CONFIG_FILE_PATH
@@ -170,7 +171,7 @@ olakeUI:
       port: 5432
       name: postgres
       user: temporal
-      password: temporal123
+      password: temporal
     temporal:
       host: temporal.olake.svc.cluster.local
       port: 7233
@@ -219,90 +220,20 @@ olakeWorker:
     name: olake-k8s-worker
     annotations: {}
   
-  # RBAC permissions
+  # RBAC permissions - PODS ONLY
   rbac:
     create: true
     rules:
       - apiGroups: [""]
         resources: ["pods", "pods/log"]
         verbs: ["get", "list", "create", "delete", "watch"]
-      - apiGroups: ["batch"]
-        resources: ["jobs"]
-        verbs: ["get", "list", "create", "delete", "watch"]
   
   config:
-    # Temporal Configuration
-    temporal:
-      address: temporal.olake.svc.cluster.local:7233
-      taskQueue: OLAKE_K8S_TASK_QUEUE
-    
-    # Database Configuration
-    database:
-      host: postgresql.olake.svc.cluster.local
-      port: 5432
-      name: postgres
-      user: temporal
-      password: temporal123
-      sslMode: disable
-    
-    # Kubernetes Configuration
     kubernetes:
       namespace: olake
       imageRegistry: olakego
       imagePullPolicy: IfNotPresent
       serviceAccount: olake-k8s-worker
-      storagePvcName: olake-jobs-pvc
-    
-    # Timeout Configuration
-    timeouts:
-      workflow:
-        discover: 2h
-        test: 2h
-        sync: 720h  # 30 days
-      activity:
-        discover: 30m
-        test: 30m
-        sync: 700h  # ~29 days
-    
-    # Job Configuration
-    job:
-      ttlSeconds: 0  # No timeout for long-running sync jobs
-      backoffLimit: 3
-      parallelism: 1
-      completions: 1
-    
-    # Worker Configuration
-    worker:
-      maxConcurrentActivities: 10
-      maxConcurrentWorkflows: 5
-    
-    # Health Check Configuration
-    healthCheck:
-      port: 8090
-    
-    # Logging Configuration
-    logging:
-      level: info
-      format: json
-  
-  # Health checks
-  livenessProbe:
-    httpGet:
-      path: /health
-      port: 8090
-    initialDelaySeconds: 30
-    periodSeconds: 30
-    timeoutSeconds: 5
-    failureThreshold: 3
-  
-  readinessProbe:
-    httpGet:
-      path: /ready
-      port: 8090
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 3
-    failureThreshold: 3
 
 # Storage configuration
 storage:
