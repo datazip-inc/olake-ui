@@ -16,6 +16,8 @@ namespace:
 # PostgreSQL configuration
 postgresql:
   enabled: true
+  replicaCount: 1
+  
   image:
     repository: postgres
     tag: "14-alpine"
@@ -27,9 +29,44 @@ postgresql:
     password: temporal
     database: temporal
   
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podAnnotations: {}
+  podLabels: {}
+  
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - exec pg_isready -U "temporal" -h 127.0.0.1 -p 5432
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - exec pg_isready -U "temporal" -h 127.0.0.1 -p 5432
+  
   service:
     type: ClusterIP
     port: 5432
+    targetPort: 5432
+    annotations: {}
   
   resources:
     requests:
@@ -43,18 +80,53 @@ postgresql:
     enabled: true
     storageClass: ""
     size: 8Gi
+    accessModes:
+      - ReadWriteOnce
 
 # Elasticsearch configuration
 elasticsearch:
   enabled: true
+  replicaCount: 1
+  
   image:
     repository: docker.elastic.co/elasticsearch/elasticsearch
     tag: "8.8.0"
     pullPolicy: IfNotPresent
   
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podAnnotations: {}
+  podLabels: {}
+  
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+    httpGet:
+      path: /_cluster/health?local=true
+      port: 9200
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+    httpGet:
+      path: /_cluster/health?local=true
+      port: 9200
+  
   service:
     type: ClusterIP
     port: 9200
+    targetPort: 9200
+    annotations: {}
   
   resources:
     requests:
@@ -77,14 +149,45 @@ temporal:
   enabled: true
   
   server:
+    replicaCount: 1
+    
     image:
       repository: temporalio/auto-setup
       tag: "1.22.0"
       pullPolicy: IfNotPresent
     
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    
+    podAnnotations: {}
+    podLabels: {}
+    
+    livenessProbe:
+      enabled: true
+      initialDelaySeconds: 150
+      periodSeconds: 60
+      timeoutSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+      tcpSocket:
+        port: 7233
+    
+    readinessProbe:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+      tcpSocket:
+        port: 7233
+    
     service:
       type: ClusterIP
       port: 7233
+      targetPort: 7233
+      annotations: {}
     
     resources:
       requests:
@@ -116,15 +219,48 @@ temporal:
   
   ui:
     enabled: true
+    replicaCount: 1
+    
     image:
       repository: temporalio/ui
       tag: "2.21.3"
       pullPolicy: IfNotPresent
     
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    
+    podAnnotations: {}
+    podLabels: {}
+    
+    livenessProbe:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 30
+      timeoutSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+      httpGet:
+        path: /
+        port: 8080
+    
+    readinessProbe:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+      httpGet:
+        path: /
+        port: 8080
+    
     service:
       type: NodePort
       port: 8080
+      targetPort: 8080
       nodePort: 30080
+      annotations: {}
     
     resources:
       requests:
@@ -143,10 +279,41 @@ temporal:
 # OLake UI (Main Application) configuration
 olakeUI:
   enabled: true
+  replicaCount: 1
+  
   image:
     repository: olake-ui
     tag: local
     pullPolicy: Never
+  
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podAnnotations: {}
+  podLabels: {}
+  
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+    httpGet:
+      path: /health
+      port: 8080
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+    httpGet:
+      path: /health
+      port: 8080
   
   service:
     type: NodePort
@@ -156,6 +323,24 @@ olakeUI:
     nodePorts:
       backend: 30081
       frontend: 30082
+    annotations: {}
+  
+  # Ingress configuration
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+      # kubernetes.io/ingress.class: nginx
+      # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: olake.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+    #  - secretName: olake-tls
+    #    hosts:
+    #      - olake.local
   
   resources:
     requests:
@@ -195,16 +380,47 @@ olakeUI:
 # OLake K8s Worker configuration
 olakeWorker:
   enabled: true
+  replicaCount: 1
+  
   image:
     repository: olake-k8s-worker
     tag: local
     pullPolicy: Never
   
-  replicaCount: 1
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podAnnotations: {}
+  podLabels: {}
+  
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+    httpGet:
+      path: /health
+      port: 8090
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+    httpGet:
+      path: /health
+      port: 8090
   
   service:
     type: ClusterIP
     port: 8090
+    targetPort: 8090
+    annotations: {}
   
   resources:
     requests:
@@ -234,6 +450,33 @@ olakeWorker:
       imageRegistry: olakego
       imagePullPolicy: IfNotPresent
       serviceAccount: olake-k8s-worker
+      storagePvcName: olake-jobs-pvc
+    
+    temporal:
+      address: temporal.olake.svc.cluster.local:7233
+      taskQueue: OLAKE_K8S_TASK_QUEUE
+    
+    database:
+      host: postgresql.olake.svc.cluster.local
+      port: "5432"
+      user: temporal
+      password: temporal
+      name: postgres
+      sslmode: disable
+    
+    worker:
+      maxConcurrentActivities: 10
+      maxConcurrentWorkflows: 5
+    
+    timeouts:
+      workflow:
+        discover: 2h
+        test: 2h
+        sync: 720h  # 30 days
+      activity:
+        discover: 30m
+        test: 30m
+        sync: 700h  # 29 days
 
 # Storage configuration
 storage:

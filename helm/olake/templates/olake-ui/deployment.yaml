@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: ui
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.olakeUI.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: olake-ui
@@ -18,11 +18,30 @@ spec:
       app.kubernetes.io/component: ui
   template:
     metadata:
+      annotations:
+        {{- with .Values.olakeUI.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: olake-ui
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: ui
+        {{- with .Values.olakeUI.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.olakeUI.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeUI.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeUI.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: olake-ui
         image: "{{ .Values.olakeUI.image.repository }}:{{ .Values.olakeUI.image.tag }}"
@@ -39,20 +58,28 @@ spec:
             name: olake-ui-config
         resources:
           {{- toYaml .Values.olakeUI.resources | nindent 10 }}
+        {{- if .Values.olakeUI.readinessProbe.enabled }}
         readinessProbe:
+          initialDelaySeconds: {{ .Values.olakeUI.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.olakeUI.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.olakeUI.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.olakeUI.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.olakeUI.readinessProbe.successThreshold }}
+          {{- with .Values.olakeUI.readinessProbe.httpGet }}
           httpGet:
-            path: /health
-            port: backend
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.olakeUI.livenessProbe.enabled }}
         livenessProbe:
+          initialDelaySeconds: {{ .Values.olakeUI.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.olakeUI.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.olakeUI.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.olakeUI.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.olakeUI.livenessProbe.successThreshold }}
+          {{- with .Values.olakeUI.livenessProbe.httpGet }}
           httpGet:
-            path: /health
-            port: backend
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
 {{- end }}

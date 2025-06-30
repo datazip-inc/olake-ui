@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: database
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.postgresql.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: postgresql
@@ -18,11 +18,30 @@ spec:
       app.kubernetes.io/component: database
   template:
     metadata:
+      annotations:
+        {{- with .Values.postgresql.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: postgresql
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: database
+        {{- with .Values.postgresql.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.postgresql.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgresql.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgresql.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: postgresql
         image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
@@ -34,6 +53,30 @@ spec:
         envFrom:
         - secretRef:
             name: postgresql-secret
+        {{- if .Values.postgresql.livenessProbe.enabled }}
+        livenessProbe:
+          initialDelaySeconds: {{ .Values.postgresql.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.postgresql.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.postgresql.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.postgresql.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.postgresql.livenessProbe.successThreshold }}
+          {{- with .Values.postgresql.livenessProbe.exec }}
+          exec:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.postgresql.readinessProbe.enabled }}
+        readinessProbe:
+          initialDelaySeconds: {{ .Values.postgresql.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.postgresql.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.postgresql.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.postgresql.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.postgresql.readinessProbe.successThreshold }}
+          {{- with .Values.postgresql.readinessProbe.exec }}
+          exec:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
         resources:
           {{- toYaml .Values.postgresql.resources | nindent 10 }}
         {{- if .Values.postgresql.persistence.enabled }}

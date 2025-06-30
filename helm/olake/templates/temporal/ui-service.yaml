@@ -9,11 +9,15 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: workflow-ui
     {{- include "olake.labels" . | nindent 4 }}
+  {{- with .Values.temporal.ui.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.temporal.ui.service.type }}
   ports:
   - port: {{ .Values.temporal.ui.service.port }}
-    targetPort: http
+    targetPort: {{ .Values.temporal.ui.service.targetPort }}
     protocol: TCP
     name: http
     {{- if and (eq .Values.temporal.ui.service.type "NodePort") .Values.temporal.ui.service.nodePort }}

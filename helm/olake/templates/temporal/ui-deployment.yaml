@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: workflow-ui
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.temporal.ui.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: temporal-ui
@@ -18,11 +18,30 @@ spec:
       app.kubernetes.io/component: workflow-ui
   template:
     metadata:
+      annotations:
+        {{- with .Values.temporal.ui.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: temporal-ui
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: workflow-ui
+        {{- with .Values.temporal.ui.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.temporal.ui.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.temporal.ui.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.temporal.ui.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: temporal-ui
         image: "{{ .Values.temporal.ui.image.repository }}:{{ .Values.temporal.ui.image.tag }}"
@@ -38,20 +57,28 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.temporal.ui.resources | nindent 10 }}
+        {{- if .Values.temporal.ui.readinessProbe.enabled }}
         readinessProbe:
+          initialDelaySeconds: {{ .Values.temporal.ui.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.temporal.ui.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.temporal.ui.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.temporal.ui.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.temporal.ui.readinessProbe.successThreshold }}
+          {{- with .Values.temporal.ui.readinessProbe.httpGet }}
           httpGet:
-            path: /
-            port: http
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.temporal.ui.livenessProbe.enabled }}
         livenessProbe:
+          initialDelaySeconds: {{ .Values.temporal.ui.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.temporal.ui.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.temporal.ui.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.temporal.ui.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.temporal.ui.livenessProbe.successThreshold }}
+          {{- with .Values.temporal.ui.livenessProbe.httpGet }}
           httpGet:
-            path: /
-            port: http
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
 {{- end }}

@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: workflow-engine
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.temporal.server.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: temporal
@@ -18,11 +18,30 @@ spec:
       app.kubernetes.io/component: workflow-engine
   template:
     metadata:
+      annotations:
+        {{- with .Values.temporal.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: temporal
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: workflow-engine
+        {{- with .Values.temporal.server.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.temporal.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.temporal.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.temporal.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: temporal
         image: "{{ .Values.temporal.server.image.repository }}:{{ .Values.temporal.server.image.tag }}"
@@ -38,18 +57,28 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.temporal.server.resources | nindent 10 }}
+        {{- if .Values.temporal.server.readinessProbe.enabled }}
         readinessProbe:
+          initialDelaySeconds: {{ .Values.temporal.server.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.temporal.server.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.temporal.server.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.temporal.server.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.temporal.server.readinessProbe.successThreshold }}
+          {{- with .Values.temporal.server.readinessProbe.tcpSocket }}
           tcpSocket:
-            port: grpc
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.temporal.server.livenessProbe.enabled }}
         livenessProbe:
+          initialDelaySeconds: {{ .Values.temporal.server.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.temporal.server.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.temporal.server.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.temporal.server.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.temporal.server.livenessProbe.successThreshold }}
+          {{- with .Values.temporal.server.livenessProbe.tcpSocket }}
           tcpSocket:
-            port: grpc
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
 {{- end }}

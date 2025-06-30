@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/component: search
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.elasticsearch.replicaCount }}
   selector:
     matchLabels:
       app.kubernetes.io/name: elasticsearch
@@ -18,11 +18,30 @@ spec:
       app.kubernetes.io/component: search
   template:
     metadata:
+      annotations:
+        {{- with .Values.elasticsearch.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: elasticsearch
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: search
+        {{- with .Values.elasticsearch.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.elasticsearch.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.elasticsearch.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.elasticsearch.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: elasticsearch
         image: "{{ .Values.elasticsearch.image.repository }}:{{ .Values.elasticsearch.image.tag }}"
@@ -41,20 +60,28 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.elasticsearch.resources | nindent 10 }}
+        {{- if .Values.elasticsearch.readinessProbe.enabled }}
         readinessProbe:
+          initialDelaySeconds: {{ .Values.elasticsearch.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.elasticsearch.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.elasticsearch.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.elasticsearch.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.elasticsearch.readinessProbe.successThreshold }}
+          {{- with .Values.elasticsearch.readinessProbe.httpGet }}
           httpGet:
-            path: /_cluster/health?wait_for_status=yellow&timeout=5s
-            port: http
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.elasticsearch.livenessProbe.enabled }}
         livenessProbe:
+          initialDelaySeconds: {{ .Values.elasticsearch.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.elasticsearch.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.elasticsearch.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.elasticsearch.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.elasticsearch.livenessProbe.successThreshold }}
+          {{- with .Values.elasticsearch.livenessProbe.httpGet }}
           httpGet:
-            path: /_cluster/health
-            port: http
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10
-          failureThreshold: 3
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
 {{- end }}

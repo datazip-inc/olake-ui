@@ -9,11 +9,15 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: workflow-engine
     {{- include "olake.labels" . | nindent 4 }}
+  {{- with .Values.temporal.server.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.temporal.server.service.type }}
   ports:
   - port: {{ .Values.temporal.server.service.port }}
-    targetPort: grpc
+    targetPort: {{ .Values.temporal.server.service.targetPort }}
     protocol: TCP
     name: grpc
   selector:

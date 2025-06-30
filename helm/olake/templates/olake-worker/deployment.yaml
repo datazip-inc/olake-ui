@@ -18,11 +18,30 @@ spec:
       app.kubernetes.io/component: worker
   template:
     metadata:
+      annotations:
+        {{- with .Values.olakeWorker.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: olake-worker
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: worker
+        {{- with .Values.olakeWorker.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
+      {{- with .Values.olakeWorker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeWorker.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeWorker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
@@ -45,13 +64,29 @@ spec:
             name: olake-k8s-worker-config
         resources:
           {{- toYaml .Values.olakeWorker.resources | nindent 10 }}
-        {{- with .Values.olakeWorker.livenessProbe }}
+        {{- if .Values.olakeWorker.livenessProbe.enabled }}
         livenessProbe:
-          {{- toYaml . | nindent 10 }}
+          initialDelaySeconds: {{ .Values.olakeWorker.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.olakeWorker.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.olakeWorker.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.olakeWorker.livenessProbe.failureThreshold }}
+          successThreshold: {{ .Values.olakeWorker.livenessProbe.successThreshold }}
+          {{- with .Values.olakeWorker.livenessProbe.httpGet }}
+          httpGet:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         {{- end }}
-        {{- with .Values.olakeWorker.readinessProbe }}
+        {{- if .Values.olakeWorker.readinessProbe.enabled }}
         readinessProbe:
-          {{- toYaml . | nindent 10 }}
+          initialDelaySeconds: {{ .Values.olakeWorker.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.olakeWorker.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.olakeWorker.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.olakeWorker.readinessProbe.failureThreshold }}
+          successThreshold: {{ .Values.olakeWorker.readinessProbe.successThreshold }}
+          {{- with .Values.olakeWorker.readinessProbe.httpGet }}
+          httpGet:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         {{- end }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
@@ -62,16 +97,4 @@ spec:
       - name: shared-storage
         persistentVolumeClaim:
           claimName: {{ .Values.storage.persistentVolumeClaim.name }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
 {{- end }}

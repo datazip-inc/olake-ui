@@ -9,11 +9,15 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: search
     {{- include "olake.labels" . | nindent 4 }}
+  {{- with .Values.elasticsearch.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.elasticsearch.service.type }}
   ports:
   - port: {{ .Values.elasticsearch.service.port }}
-    targetPort: http
+    targetPort: {{ .Values.elasticsearch.service.targetPort }}
     protocol: TCP
     name: http
   - port: 9300

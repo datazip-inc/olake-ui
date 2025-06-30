@@ -9,11 +9,15 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: database
     {{- include "olake.labels" . | nindent 4 }}
+  {{- with .Values.postgresql.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.postgresql.service.type }}
   ports:
   - port: {{ .Values.postgresql.service.port }}
-    targetPort: postgres
+    targetPort: {{ .Values.postgresql.service.targetPort }}
     protocol: TCP
     name: postgres
   selector:

@@ -9,6 +9,10 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: ui
     {{- include "olake.labels" . | nindent 4 }}
+  {{- with .Values.olakeUI.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.olakeUI.service.type }}
   ports:
