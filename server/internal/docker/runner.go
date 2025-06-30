@@ -117,13 +117,16 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 // buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
-
 	dockerArgs := []string{
 		"run",
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
+	}
+
+	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
+		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
 	}
 
 	return append(dockerArgs, additionalArgs...)
@@ -235,7 +238,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	logs.Info("working directory path %s\n", workDir)
 	// Get current job state
 	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID)
+	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
 		return nil, err
 	}

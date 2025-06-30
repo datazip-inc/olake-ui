@@ -102,6 +102,25 @@ x-app-defaults:
 
 Make sure the directory exists and is writable.
 
+**Encryption Modes:**
+
+Configure encryption in `docker-compose.yml`:
+
+```yaml
+x-encryption:
+  # 1. For AWS KMS (starts with 'arn:aws:kms:'):
+  key: &encryptionKey "arn:aws:kms:..."
+  
+  # 2. For local AES-256 (any other non-empty string):
+  # key: &encryptionKey "secret-key"  # Auto-hashed to 256-bit key
+  
+  # 3. For no encryption (not recommended for production):
+  # key: &encryptionKey ""
+```
+
+- KMS: Uses AWS Key Management Service for encryption/decryption
+- Local: Uses AES-256-GCM with key derived from your passphrase
+- Empty: No encryption (for development only)
 
 ### Troubleshooting
 

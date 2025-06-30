@@ -1,6 +1,7 @@
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
+import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 
@@ -13,6 +14,8 @@ export const getConnectorImage = (connector: string) => {
 		return Postgres
 	} else if (lowerConnector === "mysql") {
 		return MySQL
+	} else if (lowerConnector === "oracle") {
+		return Oracle
 	} else if (lowerConnector === "s3" || lowerConnector === "amazon") {
 		return AWSS3
 	} else if (
@@ -70,6 +73,8 @@ export const getConnectorInLowerCase = (connector: string) => {
 		return "postgres"
 	} else if (connector.toLowerCase() === "mysql") {
 		return "mysql"
+	} else if (connector.toLowerCase() === "oracle") {
+		return "oracle"
 	} else {
 		return connector.toLowerCase()
 	}
@@ -117,6 +122,9 @@ export const getConnectorLabel = (type: string): string => {
 		case "mysql":
 		case "MySQL":
 			return "MySQL"
+		case "oracle":
+		case "Oracle":
+			return "Oracle"
 		default:
 			return "MongoDB"
 	}

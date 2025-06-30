@@ -10,6 +10,9 @@ x-signup-defaults:
   password: &defaultPassword "password"
   email: &defaultEmail "admin@example.com"
 
+x-encryption:
+  key: &encryptionKey "" 
+
 services:
   olake-ui:
     image: olakego/ui:latest
@@ -18,6 +21,7 @@ services:
     environment:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
+      OLAKE_SECRET_KEY: *encryptionKey
     ports:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port
@@ -93,6 +97,7 @@ services:
       - telemetry-data:/tmp/olake
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
+      OLAKE_SECRET_KEY: *encryptionKey
       PERSISTENT_DIR: *hostPersistencePath
     depends_on:
       temporal:

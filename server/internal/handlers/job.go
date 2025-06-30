@@ -226,7 +226,7 @@ func (c *JobHandler) UpdateJob() {
 	}
 
 	// Get existing job
-	existingJob, err := c.jobORM.GetByID(id)
+	existingJob, err := c.jobORM.GetByID(id, true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -303,7 +303,7 @@ func (c *JobHandler) DeleteJob() {
 	}
 
 	// Get job name for response
-	job, err := c.jobORM.GetByID(id)
+	job, err := c.jobORM.GetByID(id, true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -353,7 +353,7 @@ func (c *JobHandler) SyncJob() {
 		return
 	}
 	// Check if job exists
-	job, err := c.jobORM.GetByID(id)
+	job, err := c.jobORM.GetByID(id, true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -393,7 +393,7 @@ func (c *JobHandler) ActivateJob() {
 	}
 
 	// Get existing job
-	job, err := c.jobORM.GetByID(id)
+	job, err := c.jobORM.GetByID(id, true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -446,7 +446,7 @@ func (c *JobHandler) GetJobTasks() {
 	projectIDStr := c.Ctx.Input.Param(":projectid")
 
 	// Get job to verify it exists
-	job, err := c.jobORM.GetByID(id)
+	job, err := c.jobORM.GetByID(id, true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -500,7 +500,7 @@ func (c *JobHandler) GetTaskLogs() {
 	}
 
 	// Verify job exists
-	_, err = c.jobORM.GetByID(id)
+	_, err = c.jobORM.GetByID(id, true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
@@ -591,7 +591,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 		}
 
 		if err := c.sourceORM.Update(source); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update source: %s", err)
 		}
 
 		return source, nil
@@ -615,7 +615,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 	}
 
 	if err := c.sourceORM.Create(source); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create source: %s", err)
 	}
 
 	go func() {
@@ -652,7 +652,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 		}
 
 		if err := c.destORM.Update(dest); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update destination: %s", err)
 		}
 
 		return dest, nil
@@ -676,7 +676,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	if err := c.destORM.Create(dest); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create destination: %s", err)
 	}
 
 	// Track destination creation event
