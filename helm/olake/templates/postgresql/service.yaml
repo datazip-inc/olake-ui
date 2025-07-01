@@ -4,15 +4,18 @@ kind: Service
 metadata:
   name: postgresql
   namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "13"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    {{- with .Values.postgresql.service.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   labels:
     app.kubernetes.io/name: postgresql
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: database
     {{- include "olake.labels" . | nindent 4 }}
-  {{- with .Values.postgresql.service.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
 spec:
   type: {{ .Values.postgresql.service.type }}
   ports:

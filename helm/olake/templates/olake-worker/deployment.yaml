@@ -4,6 +4,10 @@ kind: Deployment
 metadata:
   name: olake-k8s-worker
   namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "55"
+    "helm.sh/hook-delete-policy": before-hook-creation
   labels:
     app.kubernetes.io/name: olake-worker
     app.kubernetes.io/instance: {{ .Release.Name }}

@@ -7,7 +7,7 @@
 # =============================================================================
 
 # -- Override the deployment namespace
-namespaceOverride: ""
+namespaceOverride: "olake"
 
 # -- Provide a name in place of olake for `app:` labels
 nameOverride: ""

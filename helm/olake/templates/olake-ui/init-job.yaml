@@ -4,12 +4,20 @@ kind: Job
 metadata:
   name: olake-signup-init
   namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "41"
+    "helm.sh/hook-delete-policy": before-hook-creation
   labels:
     app.kubernetes.io/name: olake-ui-init
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: init
     {{- include "olake.labels" . | nindent 4 }}
 spec:
+  # Ensure job runs only once
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0  # Don't retry on failure
   template:
     metadata:
       labels:
@@ -17,15 +25,53 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: init
     spec:
-      restartPolicy: OnFailure
+      restartPolicy: Never
       containers:
-      - name: olake-signup-init
-        image: "{{ .Values.olakeUI.initJob.image.repository }}:{{ .Values.olakeUI.initJob.image.tag }}"
-        imagePullPolicy: {{ .Values.olakeUI.initJob.image.pullPolicy }}
-        command: ["./signup"]
-        envFrom:
-        - configMapRef:
-            name: olake-ui-config
+      - name: signup-init
+        image: curlimages/curl:latest
+        env:
+        - name: USERNAME
+          value: "admin"
+        - name: PASSWORD
+          value: "password"
+        - name: EMAIL
+          value: "admin@example.com"
+        - name: OLAKE_APP_URL
+          value: "http://olake-ui.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.olakeUI.service.ports.backend }}/signup"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo 'signup-init: Starting signup initialization...'
+          echo "signup-init: Target URL: $OLAKE_APP_URL"
+          
+          echo 'signup-init: Attempting to create admin user...'
+          
+          response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
+            -X POST "$OLAKE_APP_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"email\":\"$EMAIL\"}")
+          
+          # The actual response body from olake-ui will be printed to stderr by the '-o /dev/stderr' curl option.
+          # A newline after stderr output from curl can make logs cleaner.
+          echo ''
+          
+          if ! [ "$response" -eq "$response" ] 2>/dev/null; then
+              echo "signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$response'"
+              exit 1
+          fi
+          
+          if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
+            echo "signup-init: User '$USERNAME' creation request successful (HTTP $response)."
+          elif [ "$response" = "409" ] || [ "$response" = "400" ]; then
+            echo "signup-init: User '$USERNAME' may already exist (HTTP $response). This is okay."
+          else
+            echo "signup-init: User '$USERNAME' creation request FAILED (HTTP $response). Server response body above."
+            exit 1
+          fi
+          echo 'signup-init: User setup process complete.'
         resources:
           {{- toYaml .Values.olakeUI.initJob.resources | nindent 10 }}
+  # Automatically clean up completed jobs after 1 hour
+  ttlSecondsAfterFinished: 3600
 {{- end }}
