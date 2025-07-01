@@ -566,35 +566,6 @@ olakeWorker:
 
 # Shared storage configuration for job data exchange
 storage:
-  # -- Persistent Volume configuration
-  # Used for sharing data between OLake components and job pods
-  persistentVolume:
-    # -- Enable persistent volume creation
-    enabled: true
-    
-    # -- Persistent volume name
-    name: olake-jobs-pv
-    
-    # -- Storage capacity
-    capacity: 10Gi
-    
-    # -- Access modes
-    # ReadWriteMany allows multiple pods to access the volume simultaneously
-    accessModes:
-      - ReadWriteMany
-    
-    # -- Reclaim policy (Retain, Delete, Recycle)
-    # Retain preserves data when PV is released
-    reclaimPolicy: Retain
-    
-    # -- Storage class name for the PV
-    # Leave empty to use global storage class
-    storageClassName: ""
-    
-    # -- Host path for local storage (development only)
-    # For production, use network storage (NFS, EFS, etc.)
-    hostPath: /data/olake-jobs
-  
   # -- Persistent Volume Claim configuration
   persistentVolumeClaim:
     # -- Enable persistent volume claim creation
@@ -605,7 +576,7 @@ storage:
     
     # -- Access modes
     accessModes:
-      - ReadWriteOnce
+      - ReadWriteMany
     
     # -- Storage class name
     # Leave empty to use global storage class
