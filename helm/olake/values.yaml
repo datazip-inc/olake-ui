@@ -1,515 +1,1207 @@
-# Default values for olake.
+# Default values for OLake.
 # This is a YAML-formatted file.
 # Declare variables to be substituted into your templates.
 
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
+
+# -- Override the deployment namespace
+namespaceOverride: ""
+
+# -- Provide a name in place of olake for `app:` labels
+nameOverride: ""
+
+# -- Provide a name to substitute for the full names of resources
+fullnameOverride: ""
+
+# -- Global configuration that applies to all components
 global:
-  # Global image settings
+  # -- Global image registry to use for all images
+  # Examples:
+  #   registry.example.com
+  #   harbor.company.com/olake
   imageRegistry: ""
+  
+  # -- Global image pull secrets
+  # Examples:
+  #   - name: myRegistryKeySecretName
   imagePullSecrets: []
-  storageClass: "standard"
+  
+  # -- Global storage class for all persistent volumes
+  # Set to "-" to disable dynamic provisioning
+  # Examples: gp2, fast, standard, local-path
+  storageClass: ""
+  
+  # -- Global security context applied to all pods
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
 
-# Namespace configuration
+# =============================================================================
+# NAMESPACE CONFIGURATION
+# =============================================================================
+
+# -- Namespace configuration
 namespace:
+  # -- Name of the namespace where all resources will be deployed
   name: olake
+  
+  # -- Whether to create the namespace if it doesn't exist
   create: true
+  
+  # -- Additional labels for the namespace
+  labels: {}
+  
+  # -- Additional annotations for the namespace
+  annotations: {}
 
-# PostgreSQL configuration
-postgresql:
-  enabled: true
-  replicaCount: 1
-  
-  image:
-    repository: postgres
-    tag: "14-alpine"
-    pullPolicy: IfNotPresent
-  
-  auth:
-    postgresPassword: temporal
-    username: temporal
-    password: temporal
-    database: temporal
-  
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  
-  podAnnotations: {}
-  podLabels: {}
-  
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 6
-    successThreshold: 1
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - exec pg_isready -U "temporal" -h 127.0.0.1 -p 5432
-  
-  readinessProbe:
-    enabled: true
-    initialDelaySeconds: 5
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 6
-    successThreshold: 1
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - exec pg_isready -U "temporal" -h 127.0.0.1 -p 5432
-  
-  service:
-    type: ClusterIP
-    port: 5432
-    targetPort: 5432
-    annotations: {}
-  
-  resources:
-    requests:
-      memory: "256Mi"
-      cpu: "250m"
-    limits:
-      memory: "512Mi"
-      cpu: "500m"
-  
-  persistence:
-    enabled: true
-    storageClass: ""
-    size: 8Gi
-    accessModes:
-      - ReadWriteOnce
+# =============================================================================
+# OLAKE MAIN APPLICATION
+# =============================================================================
 
-# Elasticsearch configuration
-elasticsearch:
-  enabled: true
-  replicaCount: 1
-  
-  image:
-    repository: docker.elastic.co/elasticsearch/elasticsearch
-    tag: "8.8.0"
-    pullPolicy: IfNotPresent
-  
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  
-  podAnnotations: {}
-  podLabels: {}
-  
-  livenessProbe:
-    enabled: true
-    initialDelaySeconds: 90
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
-    httpGet:
-      path: /_cluster/health?local=true
-      port: 9200
-  
-  readinessProbe:
-    enabled: true
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
-    httpGet:
-      path: /_cluster/health?local=true
-      port: 9200
-  
-  service:
-    type: ClusterIP
-    port: 9200
-    targetPort: 9200
-    annotations: {}
-  
-  resources:
-    requests:
-      memory: "1Gi"
-      cpu: "500m"
-    limits:
-      memory: "2Gi"
-      cpu: "1000m"
-  
-  env:
-    - name: discovery.type
-      value: single-node
-    - name: ES_JAVA_OPTS
-      value: "-Xms512m -Xmx512m"
-    - name: xpack.security.enabled
-      value: "false"
-
-# Temporal configuration
-temporal:
-  enabled: true
-  
-  server:
-    replicaCount: 1
-    
-    image:
-      repository: temporalio/auto-setup
-      tag: "1.22.0"
-      pullPolicy: IfNotPresent
-    
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    
-    podAnnotations: {}
-    podLabels: {}
-    
-    livenessProbe:
-      enabled: true
-      initialDelaySeconds: 150
-      periodSeconds: 60
-      timeoutSeconds: 10
-      failureThreshold: 3
-      successThreshold: 1
-      tcpSocket:
-        port: 7233
-    
-    readinessProbe:
-      enabled: true
-      initialDelaySeconds: 10
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
-      successThreshold: 1
-      tcpSocket:
-        port: 7233
-    
-    service:
-      type: ClusterIP
-      port: 7233
-      targetPort: 7233
-      annotations: {}
-    
-    resources:
-      requests:
-        memory: "512Mi"
-        cpu: "500m"
-      limits:
-        memory: "1Gi"
-        cpu: "1000m"
-    
-    env:
-      - name: DB
-        value: postgresql
-      - name: DB_PORT
-        value: "5432"
-      - name: POSTGRES_USER
-        value: temporal
-      - name: POSTGRES_PWD
-        value: temporal
-      - name: POSTGRES_SEEDS
-        value: postgresql.olake.svc.cluster.local
-      - name: DYNAMIC_CONFIG_FILE_PATH
-        value: config/dynamicconfig/development-sql.yaml
-      - name: ENABLE_ES
-        value: "true"
-      - name: ES_SEEDS
-        value: elasticsearch.olake.svc.cluster.local
-      - name: ES_VERSION
-        value: v8
-  
-  ui:
-    enabled: true
-    replicaCount: 1
-    
-    image:
-      repository: temporalio/ui
-      tag: "2.21.3"
-      pullPolicy: IfNotPresent
-    
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    
-    podAnnotations: {}
-    podLabels: {}
-    
-    livenessProbe:
-      enabled: true
-      initialDelaySeconds: 30
-      periodSeconds: 30
-      timeoutSeconds: 10
-      failureThreshold: 3
-      successThreshold: 1
-      httpGet:
-        path: /
-        port: 8080
-    
-    readinessProbe:
-      enabled: true
-      initialDelaySeconds: 10
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
-      successThreshold: 1
-      httpGet:
-        path: /
-        port: 8080
-    
-    service:
-      type: NodePort
-      port: 8080
-      targetPort: 8080
-      nodePort: 30080
-      annotations: {}
-    
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "256Mi"
-        cpu: "200m"
-    
-    env:
-      - name: TEMPORAL_ADDRESS
-        value: temporal.olake.svc.cluster.local:7233
-      - name: TEMPORAL_CORS_ORIGINS
-        value: http://localhost:3000
-
-# OLake UI (Main Application) configuration
+# OLake UI - Main application frontend and backend
 olakeUI:
+  # -- Enable OLake UI deployment
   enabled: true
+  
+  # -- Number of OLake UI replicas
+  # For production, consider 2+ replicas for high availability
   replicaCount: 1
   
+  # -- OLake UI image configuration
   image:
+    # -- OLake UI image repository
     repository: olake-ui
+    
+    # -- OLake UI image tag
+    # Use 'local' for development, specific version for production
     tag: local
+    
+    # -- Image pull policy
+    # Use 'Never' for local development, 'Always' for production
     pullPolicy: Never
   
+  # -- Pod scheduling constraints
   nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
   tolerations: []
+  
+  # -- Affinity settings for pod assignment
   affinity: {}
   
+  # -- Additional pod annotations
   podAnnotations: {}
+  
+  # -- Additional pod labels
   podLabels: {}
   
+  # -- OLake UI liveness probe configuration
   livenessProbe:
+    # -- Enable liveness probe
     enabled: true
+    
+    # -- Initial delay before liveness probe starts
     initialDelaySeconds: 60
+    
+    # -- How often to perform the probe
     periodSeconds: 30
+    
+    # -- Timeout for the probe
     timeoutSeconds: 10
+    
+    # -- Number of failures before pod is restarted
     failureThreshold: 3
+    
+    # -- Number of successes before probe is considered successful
     successThreshold: 1
+    
+    # -- HTTP probe configuration
     httpGet:
       path: /health
       port: 8080
   
+  # -- OLake UI readiness probe configuration
   readinessProbe:
+    # -- Enable readiness probe
     enabled: true
+    
+    # -- Initial delay before readiness probe starts
     initialDelaySeconds: 30
+    
+    # -- How often to perform the probe
     periodSeconds: 10
+    
+    # -- Timeout for the probe
     timeoutSeconds: 5
+    
+    # -- Number of failures before pod is marked unready
     failureThreshold: 3
+    
+    # -- Number of successes before probe is considered successful
     successThreshold: 1
+    
+    # -- HTTP probe configuration
     httpGet:
       path: /health
       port: 8080
   
+  # -- OLake UI service configuration
   service:
+    # -- Service type (ClusterIP, NodePort, LoadBalancer)
+    # Use NodePort or LoadBalancer for external access
     type: NodePort
+    
+    # -- Service ports configuration
     ports:
+      # -- Backend API port
       backend: 8080
+      # -- Frontend port
       frontend: 3000
+    
+    # -- NodePort configuration (when service type is NodePort)
     nodePorts:
+      # -- Backend NodePort
       backend: 30081
+      # -- Frontend NodePort
       frontend: 30082
+    
+    # -- Service annotations
     annotations: {}
   
-  # Ingress configuration
+  # -- Ingress configuration for external access
   ingress:
+    # -- Enable ingress
     enabled: false
+    
+    # -- Ingress class name
+    # Examples: nginx, traefik, alb
     className: ""
+    
+    # -- Ingress annotations
     annotations: {}
+      # nginx.ingress.kubernetes.io/rewrite-target: /
       # kubernetes.io/ingress.class: nginx
       # kubernetes.io/tls-acme: "true"
+      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # -- Ingress hosts configuration
     hosts:
       - host: olake.local
         paths:
           - path: /
             pathType: Prefix
+    
+    # -- TLS configuration
     tls: []
     #  - secretName: olake-tls
     #    hosts:
-    #      - olake.local
+    #      - olake.example.com
   
+  # -- OLake UI resource requirements
   resources:
     requests:
+      # -- Memory request
       memory: "512Mi"
+      # -- CPU request
       cpu: "500m"
     limits:
+      # -- Memory limit
       memory: "1Gi"
+      # -- CPU limit
       cpu: "1000m"
   
+  # -- OLake UI application configuration
   config:
+    # -- Database connection configuration
     database:
-      host: postgresql.olake.svc.cluster.local
-      port: 5432
-      name: postgres
-      user: temporal
-      password: temporal
+      # -- Database host (templated from PostgreSQL service)
+      host: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
+      
+      # -- Database port (templated from PostgreSQL service)
+      port: "{{ .Values.postgresql.service.port }}"
+      
+      # -- Database name (templated from PostgreSQL auth)
+      name: "{{ .Values.postgresql.auth.database }}"
+      
+      # -- Database user (templated from PostgreSQL auth)
+      user: "{{ .Values.postgresql.auth.username }}"
+      
+      # -- Database password (templated from PostgreSQL auth)
+      password: "{{ .Values.postgresql.auth.password }}"
+    
+    # -- Temporal connection configuration
     temporal:
-      host: temporal.olake.svc.cluster.local
-      port: 7233
+      # -- Temporal host (templated from Temporal service)
+      host: "temporal.{{ .Values.namespace.name }}.svc.cluster.local"
+      
+      # -- Temporal port (templated from Temporal service)
+      port: "{{ .Values.temporal.server.service.port }}"
+      
+      # -- Temporal task queue name
       taskQueue: OLAKE_TASK_QUEUE
   
-  # Initialization job for user signup
+  # -- Initialization job configuration
+  # This job runs database migrations and initial setup
   initJob:
+    # -- Enable initialization job
     enabled: true
+    
+    # -- Initialization job image configuration
     image:
+      # -- Image repository (usually same as main app)
       repository: olake-ui
+      
+      # -- Image tag (usually same as main app)
       tag: local
+      
+      # -- Image pull policy
       pullPolicy: Never
+    
+    # -- Initialization job resource requirements
     resources:
       requests:
+        # -- Memory request
         memory: "256Mi"
+        # -- CPU request
         cpu: "250m"
       limits:
+        # -- Memory limit
         memory: "512Mi"
+        # -- CPU limit
         cpu: "500m"
 
-# OLake K8s Worker configuration
+# =============================================================================
+# OLAKE KUBERNETES WORKER
+# =============================================================================
+
+# OLake K8s Worker - Executes data pipeline tasks as Kubernetes pods
 olakeWorker:
+  # -- Enable OLake K8s Worker deployment
   enabled: true
+  
+  # -- Number of OLake Worker replicas
+  # Multiple replicas can handle more concurrent workflows
   replicaCount: 1
   
+  # -- OLake Worker image configuration
   image:
+    # -- OLake Worker image repository
     repository: olake-k8s-worker
+    
+    # -- OLake Worker image tag
+    # Use 'local' for development, specific version for production
     tag: local
+    
+    # -- Image pull policy
+    # Use 'Never' for local development, 'Always' for production
     pullPolicy: Never
   
+  # -- Pod scheduling constraints
   nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
   tolerations: []
+  
+  # -- Affinity settings for pod assignment
   affinity: {}
   
+  # -- Additional pod annotations
   podAnnotations: {}
+  
+  # -- Additional pod labels
   podLabels: {}
   
+  # -- OLake Worker liveness probe configuration
   livenessProbe:
+    # -- Enable liveness probe
     enabled: true
+    
+    # -- Initial delay before liveness probe starts
     initialDelaySeconds: 60
+    
+    # -- How often to perform the probe
     periodSeconds: 30
+    
+    # -- Timeout for the probe
     timeoutSeconds: 10
+    
+    # -- Number of failures before pod is restarted
     failureThreshold: 3
+    
+    # -- Number of successes before probe is considered successful
     successThreshold: 1
+    
+    # -- HTTP probe configuration
     httpGet:
       path: /health
       port: 8090
   
+  # -- OLake Worker readiness probe configuration
   readinessProbe:
+    # -- Enable readiness probe
     enabled: true
+    
+    # -- Initial delay before readiness probe starts
     initialDelaySeconds: 30
+    
+    # -- How often to perform the probe
     periodSeconds: 10
+    
+    # -- Timeout for the probe
     timeoutSeconds: 5
+    
+    # -- Number of failures before pod is marked unready
     failureThreshold: 3
+    
+    # -- Number of successes before probe is considered successful
     successThreshold: 1
+    
+    # -- HTTP probe configuration
     httpGet:
       path: /health
       port: 8090
   
+  # -- OLake Worker service configuration
   service:
+    # -- Service type (usually ClusterIP for internal communication)
     type: ClusterIP
+    
+    # -- Service port
     port: 8090
+    
+    # -- Target port on the pod
     targetPort: 8090
+    
+    # -- Service annotations
     annotations: {}
   
+  # -- OLake Worker resource requirements
   resources:
     requests:
+      # -- Memory request
+      memory: "256Mi"
+      # -- CPU request
+      cpu: "250m"
+    limits:
+      # -- Memory limit
+      memory: "512Mi"
+      # -- CPU limit
+      cpu: "500m"
+  
+  # -- Service Account configuration for Kubernetes API access
+  serviceAccount:
+    # -- Create service account
+    create: true
+    
+    # -- Service account name
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+    
+    # -- Service account annotations
+    annotations: {}
+  
+  # -- RBAC configuration for Kubernetes API permissions
+  rbac:
+    # -- Create RBAC resources
+    create: true
+    
+    # -- RBAC rules for the service account
+    # These permissions allow the worker to manage pods for job execution
+    rules:
+      - apiGroups: [""]
+        resources: ["pods", "pods/log", "pods/status"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: [""]
+        resources: ["configmaps", "secrets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # -- OLake Worker application configuration
+  config:
+    # -- Kubernetes-specific configuration
+    kubernetes:
+      # -- Namespace for job execution (templated)
+      namespace: "{{ .Values.namespace.name }}"
+      
+      # -- Image registry for job containers
+      # This should point to where your connector images are stored
+      imageRegistry: olakego
+      
+      # -- Image pull policy for job containers
+      imagePullPolicy: IfNotPresent
+      
+      # -- Service account for job pods (templated)
+      serviceAccount: "{{ include \"olake.workerServiceAccountName\" . }}"
+      
+      # -- PVC name for shared storage (templated)
+      storagePvcName: "{{ .Values.storage.persistentVolumeClaim.name }}"
+    
+    # -- Temporal connection configuration
+    temporal:
+      # -- Temporal server address (templated)
+      address: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.temporal.server.service.port }}"
+      
+      # -- Temporal task queue name for K8s worker
+      taskQueue: OLAKE_K8S_TASK_QUEUE
+    
+    # -- Database connection configuration
+    database:
+      # -- Database host (templated)
+      host: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
+      
+      # -- Database port (templated)
+      port: "{{ .Values.postgresql.service.port }}"
+      
+      # -- Database user (templated)
+      user: "{{ .Values.postgresql.auth.username }}"
+      
+      # -- Database password (templated)
+      password: "{{ .Values.postgresql.auth.password }}"
+      
+      # -- Database name (templated)
+      name: "{{ .Values.postgresql.auth.database }}"
+      
+      # -- SSL mode for database connection
+      sslmode: disable
+    
+    # -- Worker performance configuration
+    worker:
+      # -- Maximum concurrent activities per worker
+      # Increase for higher throughput, decrease for resource constraints
+      maxConcurrentActivities: 10
+      
+      # -- Maximum concurrent workflows per worker
+      # Usually lower than activities
+      maxConcurrentWorkflows: 5
+    
+    # -- Timeout configuration for different operation types
+    timeouts:
+      # -- Workflow execution timeouts
+      workflow:
+        # -- Timeout for catalog discovery workflows
+        discover: 2h
+        
+        # -- Timeout for connection test workflows
+        test: 2h
+        
+        # -- Timeout for data sync workflows (30 days)
+        sync: 720h
+      
+      # -- Activity execution timeouts
+      activity:
+        # -- Timeout for catalog discovery activities
+        discover: 30m
+        
+        # -- Timeout for connection test activities
+        test: 30m
+        
+        # -- Timeout for data sync activities (29 days, slightly less than workflow)
+        sync: 700h
+
+# =============================================================================
+# STORAGE CONFIGURATION
+# =============================================================================
+
+# Shared storage configuration for job data exchange
+storage:
+  # -- Persistent Volume configuration
+  # Used for sharing data between OLake components and job pods
+  persistentVolume:
+    # -- Enable persistent volume creation
+    enabled: true
+    
+    # -- Persistent volume name
+    name: olake-jobs-pv
+    
+    # -- Storage capacity
+    capacity: 10Gi
+    
+    # -- Access modes
+    # ReadWriteMany allows multiple pods to access the volume simultaneously
+    accessModes:
+      - ReadWriteMany
+    
+    # -- Reclaim policy (Retain, Delete, Recycle)
+    # Retain preserves data when PV is released
+    reclaimPolicy: Retain
+    
+    # -- Storage class name for the PV
+    # Leave empty to use default storage class
+    storageClassName: ""
+    
+    # -- Host path for local storage (development only)
+    # For production, use network storage (NFS, EFS, etc.)
+    hostPath: /data/olake-jobs
+  
+  # -- Persistent Volume Claim configuration
+  persistentVolumeClaim:
+    # -- Enable persistent volume claim creation
+    enabled: true
+    
+    # -- PVC name
+    name: olake-jobs-pvc
+    
+    # -- Access modes
+    accessModes:
+      - ReadWriteOnce
+    
+    # -- Storage class name
+    # Set to "-" to disable dynamic provisioning
+    storageClassName: ""
+    
+    # -- Storage size
+    size: 10Gi
+    
+    # -- Additional annotations for PVC
+    annotations: {}
+
+# =============================================================================
+# TEMPORAL WORKFLOW ENGINE
+# =============================================================================
+
+# Temporal configuration for workflow orchestration
+temporal:
+  # -- Enable Temporal deployment
+  enabled: true
+  
+  # -- Temporal server configuration
+  server:
+    # -- Number of Temporal server replicas
+    # For production, consider 3+ replicas for high availability
+    replicaCount: 1
+    
+    # -- Temporal server image configuration
+    image:
+      # -- Temporal server image repository
+      repository: temporalio/auto-setup
+      
+      # -- Temporal server image tag
+      # Check https://hub.docker.com/r/temporalio/auto-setup/tags for latest versions
+      tag: "1.22.0"
+      
+      # -- Image pull policy
+      pullPolicy: IfNotPresent
+    
+    # -- Pod scheduling constraints
+    nodeSelector: {}
+    
+    # -- Tolerations for pod assignment
+    tolerations: []
+    
+    # -- Affinity settings for pod assignment
+    affinity: {}
+    
+    # -- Additional pod annotations
+    podAnnotations: {}
+    
+    # -- Additional pod labels
+    podLabels: {}
+    
+    # -- Temporal server liveness probe configuration
+    livenessProbe:
+      # -- Enable liveness probe
+      enabled: true
+      
+      # -- Initial delay before liveness probe starts
+      # Temporal takes time to initialize, especially with auto-setup
+      initialDelaySeconds: 150
+      
+      # -- How often to perform the probe
+      periodSeconds: 60
+      
+      # -- Timeout for the probe
+      timeoutSeconds: 10
+      
+      # -- Number of failures before pod is restarted
+      failureThreshold: 3
+      
+      # -- Number of successes before probe is considered successful
+      successThreshold: 1
+      
+      # -- TCP probe configuration
+      tcpSocket:
+        port: 7233
+    
+    # -- Temporal server readiness probe configuration
+    readinessProbe:
+      # -- Enable readiness probe
+      enabled: true
+      
+      # -- Initial delay before readiness probe starts
+      initialDelaySeconds: 10
+      
+      # -- How often to perform the probe
+      periodSeconds: 10
+      
+      # -- Timeout for the probe
+      timeoutSeconds: 5
+      
+      # -- Number of failures before pod is marked unready
+      failureThreshold: 3
+      
+      # -- Number of successes before probe is considered successful
+      successThreshold: 1
+      
+      # -- TCP probe configuration
+      tcpSocket:
+        port: 7233
+    
+    # -- Temporal server service configuration
+    service:
+      # -- Service type (ClusterIP, NodePort, LoadBalancer)
+      type: ClusterIP
+      
+      # -- Service port
+      port: 7233
+      
+      # -- Target port on the pod
+      targetPort: 7233
+      
+      # -- Service annotations
+      annotations: {}
+    
+    # -- Temporal server resource requirements
+    resources:
+      requests:
+        # -- Memory request
+        memory: "512Mi"
+        # -- CPU request
+        cpu: "500m"
+      limits:
+        # -- Memory limit
+        memory: "1Gi"
+        # -- CPU limit
+        cpu: "1000m"
+    
+    # -- Temporal server environment variables
+    env:
+      # -- Database type
+      - name: DB
+        value: postgresql
+      
+      # -- Database port
+      - name: DB_PORT
+        value: "{{ .Values.postgresql.service.port }}"
+      
+      # -- PostgreSQL user (templated from postgresql.auth.username)
+      - name: POSTGRES_USER
+        value: "{{ .Values.postgresql.auth.username }}"
+      
+      # -- PostgreSQL password (templated from postgresql.auth.password)
+      - name: POSTGRES_PWD
+        value: "{{ .Values.postgresql.auth.password }}"
+      
+      # -- PostgreSQL seeds (templated service name)
+      - name: POSTGRES_SEEDS
+        value: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
+      
+      # -- Dynamic configuration file path
+      - name: DYNAMIC_CONFIG_FILE_PATH
+        value: config/dynamicconfig/development-sql.yaml
+      
+      # -- Enable Elasticsearch for advanced visibility
+      - name: ENABLE_ES
+        value: "{{ .Values.elasticsearch.enabled }}"
+      
+      # -- Elasticsearch seeds (templated service name)
+      - name: ES_SEEDS
+        value: "elasticsearch.{{ .Values.namespace.name }}.svc.cluster.local"
+      
+      # -- Elasticsearch version
+      - name: ES_VERSION
+        value: v8
+  
+  # -- Temporal Web UI configuration
+  ui:
+    # -- Enable Temporal Web UI
+    enabled: true
+    
+    # -- Number of Temporal UI replicas
+    replicaCount: 1
+    
+    # -- Temporal UI image configuration
+    image:
+      # -- Temporal UI image repository
+      repository: temporalio/ui
+      
+      # -- Temporal UI image tag
+      # Check https://hub.docker.com/r/temporalio/ui/tags for latest versions
+      tag: "2.21.3"
+      
+      # -- Image pull policy
+      pullPolicy: IfNotPresent
+    
+    # -- Pod scheduling constraints
+    nodeSelector: {}
+    
+    # -- Tolerations for pod assignment
+    tolerations: []
+    
+    # -- Affinity settings for pod assignment
+    affinity: {}
+    
+    # -- Additional pod annotations
+    podAnnotations: {}
+    
+    # -- Additional pod labels
+    podLabels: {}
+    
+    # -- Temporal UI liveness probe configuration
+    livenessProbe:
+      # -- Enable liveness probe
+      enabled: true
+      
+      # -- Initial delay before liveness probe starts
+      initialDelaySeconds: 30
+      
+      # -- How often to perform the probe
+      periodSeconds: 30
+      
+      # -- Timeout for the probe
+      timeoutSeconds: 10
+      
+      # -- Number of failures before pod is restarted
+      failureThreshold: 3
+      
+      # -- Number of successes before probe is considered successful
+      successThreshold: 1
+      
+      # -- HTTP probe configuration
+      httpGet:
+        path: /
+        port: 8080
+    
+    # -- Temporal UI readiness probe configuration
+    readinessProbe:
+      # -- Enable readiness probe
+      enabled: true
+      
+      # -- Initial delay before readiness probe starts
+      initialDelaySeconds: 10
+      
+      # -- How often to perform the probe
+      periodSeconds: 10
+      
+      # -- Timeout for the probe
+      timeoutSeconds: 5
+      
+      # -- Number of failures before pod is marked unready
+      failureThreshold: 3
+      
+      # -- Number of successes before probe is considered successful
+      successThreshold: 1
+      
+      # -- HTTP probe configuration
+      httpGet:
+        path: /
+        port: 8080
+    
+    # -- Temporal UI service configuration
+    service:
+      # -- Service type (ClusterIP, NodePort, LoadBalancer)
+      # Use NodePort or LoadBalancer for external access
+      type: NodePort
+      
+      # -- Service port
+      port: 8080
+      
+      # -- Target port on the pod
+      targetPort: 8080
+      
+      # -- NodePort (when service type is NodePort)
+      nodePort: 30080
+      
+      # -- Service annotations
+      annotations: {}
+    
+    # -- Temporal UI resource requirements
+    resources:
+      requests:
+        # -- Memory request
+        memory: "128Mi"
+        # -- CPU request
+        cpu: "100m"
+      limits:
+        # -- Memory limit
+        memory: "256Mi"
+        # -- CPU limit
+        cpu: "200m"
+    
+    # -- Temporal UI environment variables
+    env:
+      # -- Temporal server address (templated)
+      - name: TEMPORAL_ADDRESS
+        value: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.temporal.server.service.port }}"
+      
+      # -- CORS origins for cross-origin requests
+      - name: TEMPORAL_CORS_ORIGINS
+        value: http://localhost:3000
+
+# =============================================================================
+# POSTGRESQL DATABASE
+# =============================================================================
+
+# PostgreSQL is used as the backend database for Temporal and OLake
+postgresql:
+  # -- Enable PostgreSQL deployment
+  enabled: true
+  
+  # -- Number of PostgreSQL replicas
+  # Note: PostgreSQL clustering requires additional configuration
+  replicaCount: 1
+  
+  # -- PostgreSQL image configuration
+  image:
+    # -- PostgreSQL image repository
+    repository: postgres
+    
+    # -- PostgreSQL image tag
+    # Supported versions: 12, 13, 14, 15
+    tag: "14-alpine"
+    
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+  
+  # -- Authentication configuration
+  auth:
+    # -- PostgreSQL super user password
+    # In production, consider using existingSecret
+    postgresPassword: ""
+    
+    # -- PostgreSQL application user
+    username: ""
+    
+    # -- PostgreSQL application password
+    # In production, consider using existingSecret
+    password: ""
+    
+    # -- PostgreSQL application database
+    database: ""
+    
+    # -- Name of existing secret containing PostgreSQL credentials
+    # Keys: postgres-password, password, username
+    existingSecret: ""
+    
+    # -- Key in existing secret containing PostgreSQL super user password
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+      usernameKey: username
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- PostgreSQL liveness probe configuration
+  livenessProbe:
+    # -- Enable liveness probe
+    enabled: true
+    
+    # -- Initial delay before liveness probe starts
+    initialDelaySeconds: 30
+    
+    # -- How often to perform the probe
+    periodSeconds: 10
+    
+    # -- Timeout for the probe
+    timeoutSeconds: 5
+    
+    # -- Number of failures before pod is restarted
+    failureThreshold: 6
+    
+    # -- Number of successes before probe is considered successful
+    successThreshold: 1
+    
+    # -- Probe command
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - exec pg_isready -U "{{ .Values.postgresql.auth.username | default "postgres" }}" -h 127.0.0.1 -p 5432
+  
+  # -- PostgreSQL readiness probe configuration
+  readinessProbe:
+    # -- Enable readiness probe
+    enabled: true
+    
+    # -- Initial delay before readiness probe starts
+    initialDelaySeconds: 5
+    
+    # -- How often to perform the probe
+    periodSeconds: 10
+    
+    # -- Timeout for the probe
+    timeoutSeconds: 5
+    
+    # -- Number of failures before pod is marked unready
+    failureThreshold: 6
+    
+    # -- Number of successes before probe is considered successful
+    successThreshold: 1
+    
+    # -- Probe command
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - exec pg_isready -U "{{ .Values.postgresql.auth.username | default "postgres" }}" -h 127.0.0.1 -p 5432
+  
+  # -- PostgreSQL service configuration
+  service:
+    # -- Service type (ClusterIP, NodePort, LoadBalancer)
+    type: ClusterIP
+    
+    # -- Service port
+    port: 5432
+    
+    # -- Target port on the pod
+    targetPort: 5432
+    
+    # -- Service annotations
+    annotations: {}
+  
+  # -- PostgreSQL resource requirements
+  # For production workloads, increase these values
+  resources:
+    requests:
+      # -- CPU request
       memory: "256Mi"
       cpu: "250m"
     limits:
+      # -- Memory limit
       memory: "512Mi"
+      # -- CPU limit
       cpu: "500m"
   
-  # Service Account for Kubernetes API access
-  serviceAccount:
-    create: true
-    name: olake-k8s-worker
-    annotations: {}
-  
-  # RBAC permissions - PODS ONLY
-  rbac:
-    create: true
-    rules:
-      - apiGroups: [""]
-        resources: ["pods", "pods/log"]
-        verbs: ["get", "list", "create", "delete", "watch"]
-  
-  config:
-    kubernetes:
-      namespace: olake
-      imageRegistry: olakego
-      imagePullPolicy: IfNotPresent
-      serviceAccount: olake-k8s-worker
-      storagePvcName: olake-jobs-pvc
-    
-    temporal:
-      address: temporal.olake.svc.cluster.local:7233
-      taskQueue: OLAKE_K8S_TASK_QUEUE
-    
-    database:
-      host: postgresql.olake.svc.cluster.local
-      port: "5432"
-      user: temporal
-      password: temporal
-      name: postgres
-      sslmode: disable
-    
-    worker:
-      maxConcurrentActivities: 10
-      maxConcurrentWorkflows: 5
-    
-    timeouts:
-      workflow:
-        discover: 2h
-        test: 2h
-        sync: 720h  # 30 days
-      activity:
-        discover: 30m
-        test: 30m
-        sync: 700h  # 29 days
-
-# Storage configuration
-storage:
-  # Persistent Volume for shared job storage
-  persistentVolume:
+  # -- PostgreSQL persistence configuration
+  persistence:
+    # -- Enable persistent storage
     enabled: true
-    name: olake-jobs-pv
-    capacity: 10Gi
-    accessModes:
-      - ReadWriteMany
-    reclaimPolicy: Retain
-    storageClassName: olake-jobs
-    hostPath: /data/olake-jobs
-  
-  # Persistent Volume Claim
-  persistentVolumeClaim:
-    enabled: true
-    name: olake-jobs-pvc
+    
+    # -- Storage class name
+    # Set to "-" to disable dynamic provisioning
+    storageClass: ""
+    
+    # -- Size of persistent volume
+    size: 8Gi
+    
+    # -- Access modes for persistent volume
     accessModes:
       - ReadWriteOnce
-    storageClassName: standard
-    size: 10Gi
+    
+    # -- Additional annotations for PVC
+    annotations: {}
 
-# Security settings
+# =============================================================================
+# ELASTICSEARCH
+# =============================================================================
+
+# Elasticsearch is used by Temporal for advanced visibility features
+elasticsearch:
+  # -- Enable Elasticsearch deployment
+  # Set to false to disable advanced visibility in Temporal
+  enabled: true
+  
+  # -- Number of Elasticsearch replicas
+  # For production, consider 3+ replicas for high availability
+  replicaCount: 1
+  
+  # -- Elasticsearch image configuration
+  image:
+    # -- Elasticsearch image repository
+    repository: docker.elastic.co/elasticsearch/elasticsearch
+    
+    # -- Elasticsearch image tag
+    # Supported versions: 7.x, 8.x
+    tag: "8.8.0"
+    
+    # -- Image pull policy
+    pullPolicy: IfNotPresent
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- Elasticsearch liveness probe configuration
+  livenessProbe:
+    # -- Enable liveness probe
+    enabled: true
+    
+    # -- Initial delay before liveness probe starts
+    initialDelaySeconds: 90
+    
+    # -- How often to perform the probe
+    periodSeconds: 10
+    
+    # -- Timeout for the probe
+    timeoutSeconds: 5
+    
+    # -- Number of failures before pod is restarted
+    failureThreshold: 3
+    
+    # -- Number of successes before probe is considered successful
+    successThreshold: 1
+    
+    # -- HTTP probe configuration
+    httpGet:
+      path: /_cluster/health?local=true
+      port: 9200
+  
+  # -- Elasticsearch readiness probe configuration
+  readinessProbe:
+    # -- Enable readiness probe
+    enabled: true
+    
+    # -- Initial delay before readiness probe starts
+    initialDelaySeconds: 10
+    
+    # -- How often to perform the probe
+    periodSeconds: 10
+    
+    # -- Timeout for the probe
+    timeoutSeconds: 5
+    
+    # -- Number of failures before pod is marked unready
+    failureThreshold: 3
+    
+    # -- Number of successes before probe is considered successful
+    successThreshold: 1
+    
+    # -- HTTP probe configuration
+    httpGet:
+      path: /_cluster/health?local=true
+      port: 9200
+  
+  # -- Elasticsearch service configuration
+  service:
+    # -- Service type (ClusterIP, NodePort, LoadBalancer)
+    type: ClusterIP
+    
+    # -- Service port
+    port: 9200
+    
+    # -- Target port on the pod
+    targetPort: 9200
+    
+    # -- Service annotations
+    annotations: {}
+  
+  # -- Elasticsearch resource requirements
+  # Elasticsearch requires significant memory for production use
+  resources:
+    requests:
+      # -- Memory request (minimum for Elasticsearch)
+      memory: "1Gi"
+      # -- CPU request
+      cpu: "500m"
+    limits:
+      # -- Memory limit
+      memory: "2Gi"
+      # -- CPU limit
+      cpu: "1000m"
+  
+  # -- Elasticsearch environment variables
+  env:
+    # -- Set Elasticsearch to single-node mode (development only)
+    # For production, configure proper clustering
+    - name: discovery.type
+      value: single-node
+    
+    # -- Java heap size configuration
+    # Should be ~50% of available memory
+    - name: ES_JAVA_OPTS
+      value: "-Xms512m -Xmx512m"
+    
+    # -- Disable X-Pack security (development only)
+    # For production, enable and configure security
+    - name: xpack.security.enabled
+      value: "false"
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+
+# -- Security context configuration
+# Applied to pods that don't override these settings
 securityContext:
-  runAsUser: 0
-  fsGroup: 0
+  # -- Run as non-root user
+  runAsNonRoot: true
+  
+  # -- User ID to run containers
+  runAsUser: 1000
+  
+  # -- Group ID for filesystem permissions
+  fsGroup: 1000
+  
+  # -- Allow privilege escalation
   allowPrivilegeEscalation: false
+  
+  # -- Capabilities to drop
   capabilities:
     drop:
       - ALL
+  
+  # -- Seccomp profile
+  seccompProfile:
+    type: RuntimeDefault
 
-# Node selector and tolerations
+# =============================================================================
+# DEFAULT SCHEDULING CONFIGURATION
+# =============================================================================
+
+# Default scheduling constraints applied to components that don't override them
+
+# -- Node selector for pod assignment
+# Example:
+#   kubernetes.io/arch: amd64
+#   node-type: compute
 nodeSelector: {}
+
+# -- Tolerations for pod assignment
+# Example:
+#   - key: "key1"
+#     operator: "Equal"
+#     value: "value1"
+#     effect: "NoSchedule"
 tolerations: []
+
+# -- Affinity settings for pod assignment
+# Example:
+#   nodeAffinity:
+#     requiredDuringSchedulingIgnoredDuringExecution:
+#       nodeSelectorTerms:
+#       - matchExpressions:
+#         - key: kubernetes.io/arch
+#           operator: In
+#           values:
+#           - amd64
 affinity: {}
