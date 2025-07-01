@@ -81,9 +81,14 @@ spec:
         - name: frontend
           containerPort: {{ .Values.olakeUI.service.ports.frontend }}
           protocol: TCP
-        envFrom:
-        - configMapRef:
-            name: olake-ui-config
+        env:
+        - name: PERSISTENT_DIR
+          value: "/tmp/olake-config"
+        volumeMounts:
+        - name: olake-config
+          mountPath: /opt/backend/conf
+        - name: shared-storage
+          mountPath: /tmp/olake-config
         resources:
           {{- toYaml .Values.olakeUI.resources | nindent 10 }}
         {{- if .Values.olakeUI.readinessProbe.enabled }}
@@ -118,4 +123,11 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         {{- end }}
+      volumes:
+      - name: olake-config
+        configMap:
+          name: olake-ui-config
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ .Values.storage.persistentVolumeClaim.name }}
 {{- end }}

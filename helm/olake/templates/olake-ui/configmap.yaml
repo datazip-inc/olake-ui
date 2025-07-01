@@ -11,22 +11,40 @@ metadata:
     app.kubernetes.io/component: ui
     {{- include "olake.labels" . | nindent 4 }}
 data:
-  # Database Configuration
-  DB_HOST: {{ tpl .Values.olakeUI.config.database.host . | quote }}
-  DB_PORT: {{ tpl .Values.olakeUI.config.database.port . | quote }}
-  DB_NAME: {{ tpl .Values.olakeUI.config.database.name . | quote }}
-  DB_USER: {{ tpl .Values.olakeUI.config.database.user . | quote }}
-  DB_PASSWORD: {{ tpl .Values.olakeUI.config.database.password . | quote }}
-  
-  # PostgreSQL connection string for compatibility
-  POSTGRES_DB: "postgres://temporal:temporal@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/{{ tpl .Values.olakeUI.config.database.name . }}?sslmode=disable"
-  
-  # Temporal Configuration
-  TEMPORAL_HOST: {{ tpl .Values.olakeUI.config.temporal.host . | quote }}
-  TEMPORAL_PORT: {{ tpl .Values.olakeUI.config.temporal.port . | quote }}
-  TEMPORAL_TASK_QUEUE: {{ .Values.olakeUI.config.temporal.taskQueue | quote }}
-  
-  # Application Configuration
-  PORT: "8080"
-  FRONTEND_PORT: "8000"
+  # Beego App Configuration File
+  app.conf: |
+    # OLake Configuration (Backend + Frontend combined)
+    appname = olake-server
+    httpport = 8080
+    runmode = dev
+    autorender = false
+    copyrequestbody = true
+    EnableDocs = true
+    postgresdb = postgres://{{ tpl .Values.olakeUI.config.database.user . }}:{{ tpl .Values.olakeUI.config.database.password . }}@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/{{ tpl .Values.olakeUI.config.database.name . }}?sslmode=disable
+    logsdir = ./logger/logs
+    sessionon = true
+    
+    # Deployment Mode
+    DEPLOYMENT_MODE = kubernetes
+    
+    # Database Configuration
+    DB_HOST = {{ tpl .Values.olakeUI.config.database.host . }}
+    DB_PORT = {{ tpl .Values.olakeUI.config.database.port . }}
+    DB_USER = {{ tpl .Values.olakeUI.config.database.user . }}
+    DB_PASSWORD = {{ tpl .Values.olakeUI.config.database.password . }}
+    DB_NAME = {{ tpl .Values.olakeUI.config.database.name . }}
+    DB_SSLMODE = disable
+    
+    # Temporal Configuration
+    TEMPORAL_ADDRESS = {{ tpl .Values.olakeUI.config.temporal.host . }}:{{ tpl .Values.olakeUI.config.temporal.port . }}
+    
+    # Logging
+    LOG_LEVEL = info
+    
+    # Frontend Configuration
+    FRONTEND_PORT = 8000
+    API_BASE_URL = http://localhost:8080
+
+    # Environment Variables for the application
+    PERSISTENT_DIR = /tmp/olake-config
 {{- end }}

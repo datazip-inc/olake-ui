@@ -249,10 +249,10 @@ olakeUI:
       name: "{{ .Values.postgresql.auth.database }}"
       
       # -- Database user (templated from PostgreSQL auth)
-      user: "{{ .Values.postgresql.auth.username }}"
+      user: "{{ .Values.postgresql.auth.postgresUser }}"
       
       # -- Database password (templated from PostgreSQL auth)
-      password: "{{ .Values.postgresql.auth.password }}"
+      password: "{{ .Values.postgresql.auth.postgresPassword }}"
     
     # -- Temporal connection configuration
     temporal:
@@ -261,9 +261,6 @@ olakeUI:
       
       # -- Temporal port (templated from Temporal service)
       port: "{{ .Values.temporal.server.service.port }}"
-      
-      # -- Temporal task queue name
-      taskQueue: OLAKE_TASK_QUEUE
   
   # -- Initialization job configuration
   # This job runs database migrations and initial setup
@@ -947,12 +944,12 @@ postgresql:
     # In production, consider using existingSecret
     postgresPassword: "temporal"
     
-    # -- PostgreSQL application user
-    username: "olake"
+    # # -- PostgreSQL application user
+    # username: "olake"
     
-    # -- PostgreSQL application password
-    # In production, consider using existingSecret
-    password: "olake"
+    # # -- PostgreSQL application password
+    # # In production, consider using existingSecret
+    # password: "olake"
     
     # -- PostgreSQL application database
     database: "temporal"
