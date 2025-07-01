@@ -18,7 +18,7 @@ func main() {
 	// Initialize telemetry
 	go func() {
 		if err := telemetry.InitTelemetry(); err != nil {
-			logs.Error("Failed to initialize telemetry: %v", err)
+			logs.Error("Failed to initialize telemetry: %s", err)
 		}
 	}()
 

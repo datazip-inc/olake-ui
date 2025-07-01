@@ -17,13 +17,12 @@ func TrackDestinationCreation(ctx context.Context, destinationID int, destinatio
 		"destination_name": destinationName,
 		"destination_type": destinationType,
 		"version":          version,
+		"catalog":          "none",
 	}
-
-	properties["catalog"] = "none"
 	var configMap map[string]interface{}
 	// parse config to get catalog_type
 	if err := json.Unmarshal([]byte(config), &configMap); err != nil {
-		logs.Error("Failed to unmarshal config: %v", err)
+		logs.Error("Failed to unmarshal config: %s", err)
 		return err
 	}
 
@@ -38,7 +37,7 @@ func TrackDestinationCreation(ctx context.Context, destinationID int, destinatio
 	}
 
 	if err := TrackEvent(ctx, utils.EventDestinationCreated, properties); err != nil {
-		logs.Error("Failed to track destination creation event: %v", err)
+		logs.Error("Failed to track destination creation event: %s", err)
 		return err
 	}
 
@@ -57,7 +56,6 @@ func TrackDestinationsStatus(ctx context.Context, userID interface{}) error {
 	}
 
 	activeDestinations := 0
-	inactiveDestinations := 0
 
 	for _, dest := range destinations {
 		jobs, err := jobORM.GetByDestinationID(dest.ID)
@@ -66,35 +64,24 @@ func TrackDestinationsStatus(ctx context.Context, userID interface{}) error {
 		}
 		if len(jobs) > 0 {
 			activeDestinations++
-		} else {
-			inactiveDestinations++
-		}
-	}
-
-	// Get user properties if available
-	var userProps map[string]interface{}
-	if userID != nil {
-		user, err := userORM.GetByID(userID.(int))
-		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %v", err)
-			return err
-		}
-		userProps = map[string]interface{}{
-			"user_id":    user.ID,
-			"user_email": user.Email,
 		}
 	}
 
 	// Prepare telemetry properties
 	props := map[string]interface{}{
 		"active_destinations":   activeDestinations,
-		"inactive_destinations": inactiveDestinations,
-		"total_destinations":    activeDestinations + inactiveDestinations,
+		"inactive_destinations": len(destinations) - activeDestinations,
+		"total_destinations":    len(destinations),
 	}
 
-	for k, v := range userProps {
-		props[k] = v
+	if userID != nil {
+		user, err := userORM.GetByID(userID.(int))
+		if err != nil {
+			logs.Error("Failed to get user details for telemetry: %s", err)
+			return err
+		}
+		props["user_id"] = user.ID
+		props["user_email"] = user.Email
 	}
-
 	return TrackEvent(ctx, utils.EventDestinationsUpdated, props)
 }

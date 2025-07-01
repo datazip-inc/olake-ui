@@ -18,10 +18,10 @@ func TrackUserLogin(ctx context.Context, userID int, email, username string) err
 		"email":   email,
 	}
 
-	if err := TrackEvent(ctx, utils.EventUserLogin, properties); err != nil {
-		logs.Error("Failed to track user login event: %v", err)
+	err := TrackEvent(ctx, utils.EventUserLogin, properties)
+	if err != nil {
+		logs.Error("Failed to track user login event: %s", err)
 		return err
 	}
-
 	return nil
 }

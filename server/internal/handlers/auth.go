@@ -58,7 +58,7 @@ func (c *AuthHandler) Login() {
 
 	go func() {
 		if err := telemetry.TrackUserLogin(c.Ctx.Request.Context(), user.ID, user.Email, user.Username); err != nil {
-			logs.Error("Failed to track user login: %v", err)
+			logs.Error("Failed to track user login: %s", err)
 		}
 	}()
 

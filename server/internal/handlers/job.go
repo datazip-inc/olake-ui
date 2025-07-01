@@ -189,7 +189,7 @@ func (c *JobHandler) CreateJob() {
 	// Track sources and destinations status after job creation
 	go func() {
 		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources and destinations status: %v", err)
+			logs.Error("Failed to track sources and destinations status: %s", err)
 		}
 	}()
 
@@ -272,7 +272,7 @@ func (c *JobHandler) UpdateJob() {
 	// Track sources and destinations status after job update
 	go func() {
 		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources and destinations status: %v", err)
+			logs.Error("Failed to track sources and destinations status: %s", err)
 		}
 	}()
 
@@ -335,7 +335,7 @@ func (c *JobHandler) DeleteJob() {
 	// Track sources and destinations status after job deletion
 	go func() {
 		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources and destinations status: %v", err)
+			logs.Error("Failed to track sources and destinations status: %s", err)
 		}
 	}()
 
@@ -627,7 +627,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 			source.Version,
 			source.CreatedAt,
 		); err != nil {
-			logs.Error("Failed to track source creation event: %v", err)
+			logs.Error("Failed to track source creation event: %s", err)
 		}
 	}()
 
@@ -690,7 +690,7 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 			dest.Config,
 			dest.CreatedAt,
 		); err != nil {
-			logs.Error("Failed to track destination creation event: %v", err)
+			logs.Error("Failed to track destination creation event: %s", err)
 		}
 	}()
 

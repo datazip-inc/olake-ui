@@ -116,14 +116,14 @@ func (c *DestHandler) CreateDestination() {
 			destination.Config,
 			destination.CreatedAt,
 		); err != nil {
-			logs.Error("Failed to track destination creation event: %v", err)
+			logs.Error("Failed to track destination creation event: %s", err)
 		}
 	}()
 
 	// Track destinations status after creation
 	go func() {
 		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track destinations status: %v", err)
+			logs.Error("Failed to track destinations status: %s", err)
 		}
 	}()
 
@@ -170,7 +170,7 @@ func (c *DestHandler) UpdateDestination() {
 	// Track destinations status after update
 	go func() {
 		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track destinations status: %v", err)
+			logs.Error("Failed to track destinations status: %s", err)
 		}
 	}()
 
@@ -210,7 +210,7 @@ func (c *DestHandler) DeleteDestination() {
 	// Track destinations status after deletion
 	go func() {
 		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track destinations status: %v", err)
+			logs.Error("Failed to track destinations status: %s", err)
 		}
 	}()
 

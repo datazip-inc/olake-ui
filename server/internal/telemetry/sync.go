@@ -31,7 +31,7 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get job details: %v", err)
+		return nil, fmt.Errorf("failed to get job details: %s", err)
 	}
 	if job == nil {
 		return nil, fmt.Errorf("job not found")
@@ -46,7 +46,7 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 		userORM := database.NewUserORM()
 		fullUser, err := userORM.GetByID(job.CreatedBy.ID)
 		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %v", err)
+			logs.Error("Failed to get user details for telemetry: %s", err)
 			return nil, err
 		}
 		details.CreatedBy = fullUser.Username
@@ -65,31 +65,34 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	return details, nil
 }
 
+// prepareCommonProperties prepares the common telemetry properties for sync events
+func prepareCommonProperties(jobID int, workflowID string, details *jobDetails) map[string]interface{} {
+	return map[string]interface{}{
+		"job_id":           jobID,
+		"workflow_id":      workflowID,
+		"job_name":         details.JobName,
+		"created_at":       details.CreatedAt.Format(time.RFC3339),
+		"created_by":       details.CreatedBy,
+		"source_type":      details.SourceType,
+		"source_name":      details.SourceName,
+		"destination_type": details.DestinationType,
+		"destination_name": details.DestinationName,
+	}
+}
+
 // TrackSyncStart tracks when a sync job starts with relevant properties
 func TrackSyncStart(ctx context.Context, jobID int, workflowID string) error {
-	properties := map[string]interface{}{
-		"job_id":      jobID,
-		"workflow_id": workflowID,
-		"started_at":  time.Now().UTC().Format(time.RFC3339),
-	}
-
-	// Get job details from database
 	details, err := getJobDetails(jobID)
-
 	if err != nil {
-		logs.Error("Failed to get job details for telemetry: %v", err)
+		logs.Error("Failed to get job details for telemetry: %s", err)
 		return err
 	}
-	properties["job_name"] = details.JobName
-	properties["created_at"] = details.CreatedAt.Format(time.RFC3339)
-	properties["created_by"] = details.CreatedBy
-	properties["source_type"] = details.SourceType
-	properties["source_name"] = details.SourceName
-	properties["destination_type"] = details.DestinationType
-	properties["destination_name"] = details.DestinationName
+
+	properties := prepareCommonProperties(jobID, workflowID, details)
+	properties["started_at"] = time.Now().UTC().Format(time.RFC3339)
 
 	if err := TrackEvent(ctx, utils.EventSyncStarted, properties); err != nil {
-		logs.Error("Failed to track sync start event: %v", err)
+		logs.Error("Failed to track sync start event: %s", err)
 		return err
 	}
 
@@ -98,28 +101,17 @@ func TrackSyncStart(ctx context.Context, jobID int, workflowID string) error {
 
 // TrackSyncFailed tracks when a sync job fails with relevant properties
 func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) error {
-	properties := map[string]interface{}{
-		"job_id":      jobID,
-		"workflow_id": workflowID,
-		"ended_at":    time.Now().UTC().Format(time.RFC3339),
-	}
-
-	// Get job details from database
 	details, err := getJobDetails(jobID)
 	if err != nil {
-		logs.Error("Failed to get job details for telemetry: %v", err)
+		logs.Error("Failed to get job details for telemetry: %s", err)
 		return err
 	}
-	properties["job_name"] = details.JobName
-	properties["created_at"] = details.CreatedAt.Format(time.RFC3339)
-	properties["created_by"] = details.CreatedBy
-	properties["source_type"] = details.SourceType
-	properties["source_name"] = details.SourceName
-	properties["destination_type"] = details.DestinationType
-	properties["destination_name"] = details.DestinationName
+
+	properties := prepareCommonProperties(jobID, workflowID, details)
+	properties["ended_at"] = time.Now().UTC().Format(time.RFC3339)
 
 	if err := TrackEvent(ctx, utils.EventSyncFailed, properties); err != nil {
-		logs.Error("Failed to track sync failure event: %v", err)
+		logs.Error("Failed to track sync failure event: %s", err)
 		return err
 	}
 
@@ -128,25 +120,15 @@ func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) error {
 
 // TrackSyncCompleted tracks when a sync job completes successfully with relevant properties
 func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error {
-	properties := map[string]interface{}{
-		"job_id":      jobID,
-		"workflow_id": workflowID,
-		"ended_at":    time.Now().UTC().Format(time.RFC3339),
-	}
-
-	// Get job details from database
 	details, err := getJobDetails(jobID)
 	if err != nil {
-		logs.Error("Failed to get job details for telemetry: %v", err)
+		logs.Error("Failed to get job details for telemetry: %s", err)
 		return err
 	}
-	properties["job_name"] = details.JobName
-	properties["created_at"] = details.CreatedAt.Format(time.RFC3339)
-	properties["created_by"] = details.CreatedBy
-	properties["source_type"] = details.SourceType
-	properties["source_name"] = details.SourceName
-	properties["destination_type"] = details.DestinationType
-	properties["destination_name"] = details.DestinationName
+
+	properties := prepareCommonProperties(jobID, workflowID, details)
+	properties["ended_at"] = time.Now().UTC().Format(time.RFC3339)
+
 	// Read stats.json file
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 	homeDir := docker.GetDefaultConfigDir()
@@ -155,12 +137,12 @@ func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error
 
 	statsData, err := os.ReadFile(statsPath)
 	if err != nil {
-		logs.Error("Failed to read stats.json: %v", err)
+		logs.Error("Failed to read stats.json: %s", err)
 		return err
 	}
 	var stats map[string]interface{}
 	if err := json.Unmarshal(statsData, &stats); err != nil {
-		logs.Error("Failed to unmarshal stats.json: %v", err)
+		logs.Error("Failed to unmarshal stats.json: %s", err)
 		return err
 	}
 	// Add stats properties to the event
@@ -175,7 +157,7 @@ func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error
 	streamsPath := filepath.Join(mainSyncDir, "streams.json")
 	streamsData, err := os.ReadFile(streamsPath)
 	if err != nil {
-		logs.Error("Failed to read streams.json: %v", err)
+		logs.Error("Failed to read streams.json: %s", err)
 		return err
 	}
 	var streamsConfig struct {
@@ -195,7 +177,7 @@ func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error
 	}
 
 	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
-		logs.Error("Error unmarshalling streams.json: %v", err)
+		logs.Error("Error unmarshalling streams.json: %s", err)
 	}
 	// Count normalized streams
 	normalizedCount := 0
@@ -217,7 +199,7 @@ func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error
 	properties["partitioned_streams_count"] = partitionedCount
 
 	if err := TrackEvent(ctx, utils.EventSyncCompleted, properties); err != nil {
-		logs.Error("Failed to track sync completion event: %v", err)
+		logs.Error("Failed to track sync completion event: %s", err)
 		return err
 	}
 

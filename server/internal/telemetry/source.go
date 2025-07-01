@@ -23,7 +23,7 @@ func TrackSourceCreation(ctx context.Context, sourceID int, sourceName, sourceTy
 	}
 
 	if err := TrackEvent(ctx, utils.EventSourceCreated, properties); err != nil {
-		logs.Error("Failed to track source creation event: %v", err)
+		logs.Error("Failed to track source creation event: %s", err)
 		return err
 	}
 
@@ -42,8 +42,6 @@ func TrackSourcesStatus(ctx context.Context, userID interface{}) error {
 	}
 
 	activeSources := 0
-	inactiveSources := 0
-
 	for _, source := range sources {
 		jobs, err := jobORM.GetBySourceID(source.ID)
 		if err != nil {
@@ -51,34 +49,25 @@ func TrackSourcesStatus(ctx context.Context, userID interface{}) error {
 		}
 		if len(jobs) > 0 {
 			activeSources++
-		} else {
-			inactiveSources++
-		}
-	}
-
-	// Get user properties if available
-	var userProps map[string]interface{}
-	if userID != nil {
-		user, err := userORM.GetByID(userID.(int))
-		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %v", err)
-			return err
-		}
-		userProps = map[string]interface{}{
-			"user_id":    user.ID,
-			"user_email": user.Email,
 		}
 	}
 
 	// Prepare telemetry properties
 	props := map[string]interface{}{
 		"active_sources":   activeSources,
-		"inactive_sources": inactiveSources,
-		"total_sources":    activeSources + inactiveSources,
+		"inactive_sources": len(sources) - activeSources,
+		"total_sources":    len(sources),
 	}
 
-	for k, v := range userProps {
-		props[k] = v
+	// Get user properties if available
+	if userID != nil {
+		user, err := userORM.GetByID(userID.(int))
+		if err != nil {
+			logs.Error("Failed to get user details for telemetry: %s", err)
+			return err
+		}
+		props["user_id"] = user.ID
+		props["user_email"] = user.Email
 	}
 
 	return TrackEvent(ctx, utils.EventSourcesUpdated, props)

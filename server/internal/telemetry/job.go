@@ -32,7 +32,7 @@ func TrackJobCreation(ctx context.Context, jobID int, jobName, projectID, source
 	}
 
 	if err := TrackEvent(ctx, utils.EventJobCreated, properties); err != nil {
-		logs.Error("Failed to track job creation event: %v", err)
+		logs.Error("Failed to track job creation event: %s", err)
 		return err
 	}
 
@@ -53,7 +53,6 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 	}
 
 	activeSources := 0
-	inactiveSources := 0
 
 	for _, source := range sources {
 		jobs, err := jobORM.GetBySourceID(source.ID)
@@ -62,8 +61,6 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 		}
 		if len(jobs) > 0 {
 			activeSources++
-		} else {
-			inactiveSources++
 		}
 	}
 
@@ -74,7 +71,6 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 	}
 
 	activeDestinations := 0
-	inactiveDestinations := 0
 
 	for _, dest := range destinations {
 		jobs, err := jobORM.GetByDestinationID(dest.ID)
@@ -83,30 +79,26 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 		}
 		if len(jobs) > 0 {
 			activeDestinations++
-		} else {
-			inactiveDestinations++
 		}
 	}
 
 	// Get user properties if available
-	var userProps map[string]interface{}
+	userProps := map[string]interface{}{}
 	if userID != nil {
 		user, err := userORM.GetByID(userID.(int))
 		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %v", err)
+			logs.Error("Failed to get user details for telemetry: %s", err)
 			return err
 		}
-		userProps = map[string]interface{}{
-			"user_id":    user.ID,
-			"user_email": user.Email,
-		}
+		userProps["user_id"] = user.ID
+		userProps["user_email"] = user.Email
 	}
 
 	// Track sources status
 	sourceProps := map[string]interface{}{
 		"active_sources":   activeSources,
-		"inactive_sources": inactiveSources,
-		"total_sources":    activeSources + inactiveSources,
+		"inactive_sources": len(sources) - activeSources,
+		"total_sources":    len(sources),
 	}
 	for k, v := range userProps {
 		sourceProps[k] = v
@@ -118,8 +110,8 @@ func TrackSourcesAndDestinationsStatus(ctx context.Context, userID interface{}) 
 	// Track destinations status
 	destProps := map[string]interface{}{
 		"active_destinations":   activeDestinations,
-		"inactive_destinations": inactiveDestinations,
-		"total_destinations":    activeDestinations + inactiveDestinations,
+		"inactive_destinations": len(destinations) - activeDestinations,
+		"total_destinations":    len(destinations),
 	}
 	for k, v := range userProps {
 		destProps[k] = v

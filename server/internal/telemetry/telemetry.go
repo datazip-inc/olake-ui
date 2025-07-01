@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	analytics "github.com/segmentio/analytics-go/v3"
 )
@@ -51,21 +50,23 @@ func InitTelemetry() error {
 		anonymousID: anonymousID,
 	}
 
-	if ip != utils.TelemetryIPNotFoundPlaceholder {
-		ctx, cancel := context.WithTimeout(context.Background(), utils.TelemetryConfigTimeout)
-		defer cancel()
-		loc, err := getLocationFromIP(ctx, ip)
-
-		if err != nil {
-			fmt.Printf("Failed to fetch location for IP %s: %v\n", ip, err)
-			instance.locationInfo = &LocationInfo{
-				Country: "NA",
-				Region:  "NA",
-				City:    "NA",
-			}
-		}
-		instance.locationInfo = &loc
+	if ip == utils.TelemetryIPNotFoundPlaceholder {
+		return nil
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), utils.TelemetryConfigTimeout)
+	defer cancel()
+	loc, err := getLocationFromIP(ctx, ip)
+
+	if err != nil {
+		fmt.Printf("Failed to fetch location for IP %s: %s\n", ip, err)
+		instance.locationInfo = &LocationInfo{
+			Country: "NA",
+			Region:  "NA",
+			City:    "NA",
+		}
+	}
+	instance.locationInfo = &loc
 	return nil
 }
 
@@ -107,20 +108,20 @@ func getPlatformInfo() utils.PlatformInfo {
 }
 
 func getOutboundIP() string {
-	ip := []byte(utils.TelemetryIPNotFoundPlaceholder)
 	resp, err := http.Get("https://api.ipify.org?format=text")
 
 	if err != nil {
-		return string(ip)
+		return utils.TelemetryIPNotFoundPlaceholder
 	}
 
 	defer resp.Body.Close()
+
 	ipBody, err := io.ReadAll(resp.Body)
-	if err == nil {
-		ip = ipBody
+	if err != nil {
+		return utils.TelemetryIPNotFoundPlaceholder
 	}
 
-	return string(ip)
+	return string(ipBody)
 }
 
 func getLocationFromIP(ctx context.Context, ip string) (LocationInfo, error) {
@@ -174,37 +175,28 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		properties[key] = value
 	}
 
-	if err := instance.client.Enqueue(analytics.Track{
+	err := instance.client.Enqueue(analytics.Track{
 		UserId:     instance.anonymousID,
 		Event:      eventName,
 		Properties: properties,
-	}); err != nil {
-		fmt.Printf("Failed to send telemetry event %s: %v\n", eventName, err)
+	})
+
+	if err != nil {
+		fmt.Printf("Failed to send telemetry event %s: %s\n", eventName, err)
 	}
 
 	return nil
 }
 
 func Flush() {
-	if instance != nil {
-		time.Sleep(5 * time.Second)
-		if err := instance.client.Close(); err != nil {
-			fmt.Printf("Warning: Failed to close telemetry client: %v\n", err)
-		}
+	if instance == nil {
+		return
 	}
-}
-
-// GetStoredAnonymousID returns the stored anonymous ID from the config directory
-func GetStoredAnonymousID() string {
-	configDir := filepath.Join(os.TempDir(), "olake")
-	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
-
-	idBytes, err := os.ReadFile(idPath)
+	time.Sleep(5 * time.Second)
+	err := instance.client.Close()
 	if err != nil {
-		logs.Error("Failed to read telemetry anonymous ID file: %v", err)
-		return ""
+		fmt.Printf("Warning: Failed to close telemetry client: %s\n", err)
 	}
-	return string(idBytes)
 }
 
 // SetUsername sets the username for telemetry tracking

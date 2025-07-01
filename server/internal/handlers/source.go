@@ -121,14 +121,14 @@ func (c *SourceHandler) CreateSource() {
 			source.Version,
 			source.CreatedAt,
 		); err != nil {
-			logs.Error("Failed to track source creation event: %v", err)
+			logs.Error("Failed to track source creation event: %s", err)
 		}
 	}()
 
 	// Track sources status after creation
 	go func() {
 		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources status: %v", err)
+			logs.Error("Failed to track sources status: %s", err)
 		}
 	}()
 
@@ -171,7 +171,7 @@ func (c *SourceHandler) UpdateSource() {
 	// Track sources status after update
 	go func() {
 		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources status: %v", err)
+			logs.Error("Failed to track sources status: %s", err)
 		}
 	}()
 
@@ -215,7 +215,7 @@ func (c *SourceHandler) DeleteSource() {
 	// Track sources status after deletion
 	go func() {
 		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources status: %v", err)
+			logs.Error("Failed to track sources status: %s", err)
 		}
 	}()
 
