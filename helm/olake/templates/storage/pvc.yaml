@@ -15,6 +15,8 @@ spec:
     {{- toYaml .Values.storage.persistentVolumeClaim.accessModes | nindent 4 }}
   {{- if .Values.storage.persistentVolumeClaim.storageClassName }}
   storageClassName: {{ .Values.storage.persistentVolumeClaim.storageClassName }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
   {{- end }}
   resources:
     requests:

@@ -31,7 +31,7 @@ global:
   # -- Global storage class for all persistent volumes
   # Set to "-" to disable dynamic provisioning
   # Examples: gp2, fast, standard, local-path
-  storageClass: ""
+  storageClass: "azurefile"
   
   # -- Global security context applied to all pods
   securityContext:
@@ -588,7 +588,7 @@ storage:
     reclaimPolicy: Retain
     
     # -- Storage class name for the PV
-    # Leave empty to use global storage class
+    # Leave empty to use default storage class
     storageClassName: ""
     
     # -- Host path for local storage (development only)
@@ -608,7 +608,7 @@ storage:
       - ReadWriteOnce
     
     # -- Storage class name
-    # Leave empty to use global storage class
+    # Set to "-" to disable dynamic provisioning
     storageClassName: ""
     
     # -- Storage size
@@ -1066,7 +1066,7 @@ postgresql:
     enabled: true
     
     # -- Storage class name
-    # Leave empty to use global storage class
+    # Set to "-" to disable dynamic provisioning
     storageClass: ""
     
     # -- Size of persistent volume

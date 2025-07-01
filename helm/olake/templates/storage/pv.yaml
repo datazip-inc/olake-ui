@@ -15,7 +15,11 @@ spec:
   accessModes:
     {{- toYaml .Values.storage.persistentVolume.accessModes | nindent 4 }}
   persistentVolumeReclaimPolicy: {{ .Values.storage.persistentVolume.reclaimPolicy }}
+  {{- if .Values.storage.persistentVolume.storageClassName }}
   storageClassName: {{ .Values.storage.persistentVolume.storageClassName }}
+  {{- else if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
   hostPath:
     path: {{ .Values.storage.persistentVolume.hostPath }}
 {{- end }}
