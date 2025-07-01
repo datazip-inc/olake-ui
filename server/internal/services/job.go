@@ -95,7 +95,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 	// Create Temporal workflow if client is available
 	if s.tempClient != nil {
 		logs.Info("Creating Temporal workflow for sync job")
-		_, err = s.tempClient.CreateSync(ctx, job.Frequency, job.ProjectID, job.ID, false)
+		_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
 		if err != nil {
 			logs.Error("%s: %v", ErrWorkflowExecutionFailed, err)
 		} else {
@@ -108,7 +108,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 
 func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest, projectID string, jobID int, userID *int) error {
 	// Get existing job
-	existingJob, err := s.jobORM.GetByID(jobID)
+	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
 	}
@@ -149,7 +149,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest
 	// Update Temporal workflow if client is available
 	if s.tempClient != nil {
 		logs.Info("Updating Temporal workflow for sync job")
-		_, err = s.tempClient.CreateSync(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID, false)
+		_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
 		if err != nil {
 			return fmt.Errorf("temporal workflow execution failed: %s", err)
 		}
@@ -160,7 +160,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest
 
 func (s *JobService) DeleteJob(jobID int) (string, error) {
 	// Get job name for response
-	job, err := s.jobORM.GetByID(jobID)
+	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return "", fmt.Errorf("job not found: %s", err)
 	}
@@ -177,7 +177,7 @@ func (s *JobService) DeleteJob(jobID int) (string, error) {
 
 func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
 	// Check if job exists
-	job, err := s.jobORM.GetByID(jobID)
+	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
@@ -189,7 +189,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 
 	if s.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
-		resp, err := s.tempClient.CreateSync(ctx, job.Frequency, projectID, job.ID, true)
+		resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
 		if err != nil {
 			return nil, fmt.Errorf("temporal execution failed: %s", err)
 		}
@@ -201,7 +201,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 
 func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 	// Get existing job
-	job, err := s.jobORM.GetByID(jobID)
+	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
 	}
@@ -226,7 +226,7 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 
 func (s *JobService) GetJobTasks(projectID string, jobID int) ([]models.JobTask, error) {
 	// Get job to verify it exists
-	job, err := s.jobORM.GetByID(jobID)
+	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
@@ -269,7 +269,7 @@ func (s *JobService) GetJobTasks(projectID string, jobID int) ([]models.JobTask,
 
 func (s *JobService) GetTaskLogs(jobID int, filePath string) ([]map[string]interface{}, error) {
 	// Verify job exists
-	_, err := s.jobORM.GetByID(jobID)
+	_, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
