@@ -4,10 +4,7 @@ kind: Deployment
 metadata:
   name: elasticsearch
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "20"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: elasticsearch
     app.kubernetes.io/instance: {{ .Release.Name }}

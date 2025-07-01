@@ -4,10 +4,7 @@ kind: Deployment
 metadata:
   name: olake-k8s-worker
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "55"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: olake-worker
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -47,8 +44,46 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-postgresql
+        image: "{{ .Values.olakeWorker.initImage.repository }}:{{ .Values.olakeWorker.initImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeWorker.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.postgresql.service.port }}; do
+            echo "PostgreSQL is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "PostgreSQL is ready!"
+      - name: wait-for-temporal
+        image: "{{ .Values.olakeWorker.initImage.repository }}:{{ .Values.olakeWorker.initImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeWorker.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Temporal to be ready..."
+          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.temporal.server.service.port }}; do
+            echo "Temporal is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Temporal is ready!"
+      - name: wait-for-olake-ui
+        image: "{{ .Values.olakeWorker.initImage.repository }}:{{ .Values.olakeWorker.initImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeWorker.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for OLake UI to be ready..."
+          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.olakeUI.service.ports.backend }}; do
+            echo "OLake UI is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "OLake UI is ready!"
       containers:
       - name: olake-k8s-worker
         image: "{{ .Values.olakeWorker.image.repository }}:{{ .Values.olakeWorker.image.tag }}"
@@ -92,8 +127,6 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         {{- end }}
-        securityContext:
-          {{- toYaml .Values.securityContext | nindent 10 }}
         volumeMounts:
         - name: shared-storage
           mountPath: /data/olake-jobs

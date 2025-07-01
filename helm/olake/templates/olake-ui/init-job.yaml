@@ -4,10 +4,7 @@ kind: Job
 metadata:
   name: olake-signup-init
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "41"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: olake-ui-init
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -26,9 +23,24 @@ spec:
         app.kubernetes.io/component: init
     spec:
       restartPolicy: Never
+      initContainers:
+      - name: wait-for-olake-ui
+        image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for OLake UI to be ready..."
+          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.olakeUI.service.ports.backend }}; do
+            echo "OLake UI is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "OLake UI is ready!"
       containers:
       - name: signup-init
-        image: curlimages/curl:latest
+        image: "{{ .Values.olakeUI.curlImage.repository }}:{{ .Values.olakeUI.curlImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeUI.curlImage.pullPolicy }}
         env:
         - name: USERNAME
           value: "admin"

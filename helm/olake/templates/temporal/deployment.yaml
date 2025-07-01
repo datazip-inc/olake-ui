@@ -4,10 +4,7 @@ kind: Deployment
 metadata:
   name: temporal
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "30"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: temporal
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -46,6 +43,20 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+      - name: wait-for-postgresql
+        image: "{{ .Values.temporal.server.initImage.repository }}:{{ .Values.temporal.server.initImage.tag }}"
+        imagePullPolicy: {{ .Values.temporal.server.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.postgresql.service.port }}; do
+            echo "PostgreSQL is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "PostgreSQL is ready!"
       containers:
       - name: temporal
         image: "{{ .Values.temporal.server.image.repository }}:{{ .Values.temporal.server.image.tag }}"
@@ -57,7 +68,7 @@ spec:
         env:
         {{- range .Values.temporal.server.env }}
         - name: {{ .name }}
-          value: {{ .value | quote }}
+          value: {{ tpl .value $ | quote }}
         {{- end }}
         resources:
           {{- toYaml .Values.temporal.server.resources | nindent 10 }}

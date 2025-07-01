@@ -4,10 +4,7 @@ kind: ConfigMap
 metadata:
   name: olake-k8s-worker-config
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "54"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: olake-worker
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -15,15 +12,15 @@ metadata:
     {{- include "olake.labels" . | nindent 4 }}
 data:
   # Temporal Configuration
-  TEMPORAL_ADDRESS: {{ .Values.olakeWorker.config.temporal.address | quote }}
+  TEMPORAL_ADDRESS: {{ tpl .Values.olakeWorker.config.temporal.address . | quote }}
   TEMPORAL_TASK_QUEUE: {{ .Values.olakeWorker.config.temporal.taskQueue | quote }}
   
   # Database Configuration
-  DB_HOST: {{ .Values.olakeWorker.config.database.host | quote }}
-  DB_PORT: {{ .Values.olakeWorker.config.database.port | quote }}
-  DB_NAME: {{ .Values.olakeWorker.config.database.name | quote }}
-  DB_USER: {{ .Values.olakeWorker.config.database.user | quote }}
-  DB_SSLMODE: {{ .Values.olakeWorker.config.database.sslMode | quote }}
+  DB_HOST: {{ tpl .Values.olakeWorker.config.database.host . | quote }}
+  DB_PORT: {{ tpl .Values.olakeWorker.config.database.port . | quote }}
+  DB_NAME: {{ tpl .Values.olakeWorker.config.database.name . | quote }}
+  DB_USER: {{ tpl .Values.olakeWorker.config.database.user . | quote }}
+  DB_SSLMODE: {{ .Values.olakeWorker.config.database.sslmode | quote }}
   
   # Timeout Configuration
   WORKFLOW_TIMEOUT_DISCOVER: {{ .Values.olakeWorker.config.timeouts.workflow.discover | quote }}
@@ -34,11 +31,11 @@ data:
   ACTIVITY_TIMEOUT_SYNC: {{ .Values.olakeWorker.config.timeouts.activity.sync | quote }}
   
   # Kubernetes Configuration
-  WORKER_NAMESPACE: {{ .Values.olakeWorker.config.kubernetes.namespace | quote }}
+  WORKER_NAMESPACE: {{ tpl .Values.olakeWorker.config.kubernetes.namespace . | quote }}
   IMAGE_REGISTRY: {{ .Values.olakeWorker.config.kubernetes.imageRegistry | quote }}
   IMAGE_PULL_POLICY: {{ .Values.olakeWorker.config.kubernetes.imagePullPolicy | quote }}
-  SERVICE_ACCOUNT: {{ .Values.olakeWorker.config.kubernetes.serviceAccount | quote }}
-  OLAKE_STORAGE_PVC_NAME: {{ .Values.olakeWorker.config.kubernetes.storagePvcName | quote }}
+  SERVICE_ACCOUNT: {{ tpl .Values.olakeWorker.config.kubernetes.serviceAccount . | quote }}
+  OLAKE_STORAGE_PVC_NAME: {{ tpl .Values.olakeWorker.config.kubernetes.storagePvcName . | quote }}
   
   # Job Configuration
   JOB_TTL_SECONDS: {{ .Values.olakeWorker.config.job.ttlSeconds | quote }}

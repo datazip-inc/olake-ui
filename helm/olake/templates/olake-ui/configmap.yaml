@@ -4,10 +4,7 @@ kind: ConfigMap
 metadata:
   name: olake-ui-config
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "40"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: olake-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -15,18 +12,21 @@ metadata:
     {{- include "olake.labels" . | nindent 4 }}
 data:
   # Database Configuration
-  DB_HOST: {{ .Values.olakeUI.config.database.host | quote }}
-  DB_PORT: {{ .Values.olakeUI.config.database.port | quote }}
-  DB_NAME: {{ .Values.olakeUI.config.database.name | quote }}
-  DB_USER: {{ .Values.olakeUI.config.database.user | quote }}
-  DB_PASSWORD: {{ .Values.olakeUI.config.database.password | quote }}
+  DB_HOST: {{ tpl .Values.olakeUI.config.database.host . | quote }}
+  DB_PORT: {{ tpl .Values.olakeUI.config.database.port . | quote }}
+  DB_NAME: {{ tpl .Values.olakeUI.config.database.name . | quote }}
+  DB_USER: {{ tpl .Values.olakeUI.config.database.user . | quote }}
+  DB_PASSWORD: {{ tpl .Values.olakeUI.config.database.password . | quote }}
+  
+  # PostgreSQL connection string for compatibility
+  POSTGRES_DB: "postgres://temporal:temporal@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/{{ tpl .Values.olakeUI.config.database.name . }}?sslmode=disable"
   
   # Temporal Configuration
-  TEMPORAL_HOST: {{ .Values.olakeUI.config.temporal.host | quote }}
-  TEMPORAL_PORT: {{ .Values.olakeUI.config.temporal.port | quote }}
+  TEMPORAL_HOST: {{ tpl .Values.olakeUI.config.temporal.host . | quote }}
+  TEMPORAL_PORT: {{ tpl .Values.olakeUI.config.temporal.port . | quote }}
   TEMPORAL_TASK_QUEUE: {{ .Values.olakeUI.config.temporal.taskQueue | quote }}
   
   # Application Configuration
   PORT: "8080"
-  FRONTEND_PORT: "3000"
+  FRONTEND_PORT: "8000"
 {{- end }}

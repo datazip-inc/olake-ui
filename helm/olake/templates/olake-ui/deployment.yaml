@@ -4,10 +4,7 @@ kind: Deployment
 metadata:
   name: olake-ui
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "42"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: olake-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -46,6 +43,33 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+      - name: wait-for-postgresql
+        image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.postgresql.service.port }}; do
+            echo "PostgreSQL is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "PostgreSQL is ready!"
+      - name: wait-for-temporal
+        image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
+        imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Temporal to be ready..."
+          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.temporal.server.service.port }}; do
+            echo "Temporal is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Temporal is ready!"
       containers:
       - name: olake-ui
         image: "{{ .Values.olakeUI.image.repository }}:{{ .Values.olakeUI.image.tag }}"
@@ -73,6 +97,10 @@ spec:
           httpGet:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- with .Values.olakeUI.readinessProbe.tcpSocket }}
+          tcpSocket:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         {{- end }}
         {{- if .Values.olakeUI.livenessProbe.enabled }}
         livenessProbe:
@@ -83,6 +111,10 @@ spec:
           successThreshold: {{ .Values.olakeUI.livenessProbe.successThreshold }}
           {{- with .Values.olakeUI.livenessProbe.httpGet }}
           httpGet:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.olakeUI.livenessProbe.tcpSocket }}
+          tcpSocket:
             {{- toYaml . | nindent 12 }}
           {{- end }}
         {{- end }}

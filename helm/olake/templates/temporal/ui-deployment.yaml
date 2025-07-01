@@ -4,10 +4,7 @@ kind: Deployment
 metadata:
   name: temporal-ui
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "32"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: temporal-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -46,6 +43,19 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+      - name: wait-for-temporal
+        image: busybox:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Temporal server to be ready..."
+          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.temporal.server.service.port }}; do
+            echo "Temporal server is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Temporal server is ready!"
       containers:
       - name: temporal-ui
         image: "{{ .Values.temporal.ui.image.repository }}:{{ .Values.temporal.ui.image.tag }}"
@@ -57,7 +67,7 @@ spec:
         env:
         {{- range .Values.temporal.ui.env }}
         - name: {{ .name }}
-          value: {{ .value | quote }}
+          value: {{ tpl .value $ | quote }}
         {{- end }}
         resources:
           {{- toYaml .Values.temporal.ui.resources | nindent 10 }}

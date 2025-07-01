@@ -75,15 +75,15 @@ olakeUI:
   # -- OLake UI image configuration
   image:
     # -- OLake UI image repository
-    repository: olake-ui
+    repository: dzipstagingacr.azurecr.io/olake-ui
     
     # -- OLake UI image tag
     # Use 'local' for development, specific version for production
-    tag: local
+    tag: latest
     
     # -- Image pull policy
     # Use 'Never' for local development, 'Always' for production
-    pullPolicy: Never
+    pullPolicy: Always
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -99,6 +99,28 @@ olakeUI:
   
   # -- Additional pod labels
   podLabels: {}
+  
+  # -- Init container image configuration
+  initImage:
+    # -- Init container image repository
+    repository: busybox
+    
+    # -- Init container image tag
+    tag: latest
+    
+    # -- Init container image pull policy
+    pullPolicy: Always
+  
+  # -- Curl image configuration for init job
+  curlImage:
+    # -- Curl image repository
+    repository: curlimages/curl
+    
+    # -- Curl image tag
+    tag: latest
+    
+    # -- Curl image pull policy
+    pullPolicy: Always
   
   # -- OLake UI liveness probe configuration
   livenessProbe:
@@ -120,9 +142,8 @@ olakeUI:
     # -- Number of successes before probe is considered successful
     successThreshold: 1
     
-    # -- HTTP probe configuration
-    httpGet:
-      path: /health
+    # -- TCP probe configuration
+    tcpSocket:
       port: 8080
   
   # -- OLake UI readiness probe configuration
@@ -145,9 +166,8 @@ olakeUI:
     # -- Number of successes before probe is considered successful
     successThreshold: 1
     
-    # -- HTTP probe configuration
-    httpGet:
-      path: /health
+    # -- TCP probe configuration
+    tcpSocket:
       port: 8080
   
   # -- OLake UI service configuration
@@ -161,7 +181,7 @@ olakeUI:
       # -- Backend API port
       backend: 8080
       # -- Frontend port
-      frontend: 3000
+      frontend: 8000
     
     # -- NodePort configuration (when service type is NodePort)
     nodePorts:
@@ -260,7 +280,7 @@ olakeUI:
       tag: local
       
       # -- Image pull policy
-      pullPolicy: Never
+      pullPolicy: Always
     
     # -- Initialization job resource requirements
     resources:
@@ -291,15 +311,15 @@ olakeWorker:
   # -- OLake Worker image configuration
   image:
     # -- OLake Worker image repository
-    repository: olake-k8s-worker
+    repository: dzipstagingacr.azurecr.io/olake-k8s-worker
     
     # -- OLake Worker image tag
     # Use 'local' for development, specific version for production
-    tag: local
+    tag: latest
     
     # -- Image pull policy
     # Use 'Never' for local development, 'Always' for production
-    pullPolicy: Never
+    pullPolicy: Always
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -315,6 +335,17 @@ olakeWorker:
   
   # -- Additional pod labels
   podLabels: {}
+  
+  # -- Init container image configuration
+  initImage:
+    # -- Init container image repository
+    repository: busybox
+    
+    # -- Init container image tag
+    tag: latest
+    
+    # -- Init container image pull policy
+    pullPolicy: Always
   
   # -- OLake Worker liveness probe configuration
   livenessProbe:
@@ -459,14 +490,14 @@ olakeWorker:
       # -- Database port (templated)
       port: "{{ .Values.postgresql.service.port }}"
       
-      # -- Database user (templated)
-      user: "{{ .Values.postgresql.auth.username }}"
+      # -- Database user (templated from PostgreSQL superuser)
+      user: "{{ .Values.postgresql.auth.postgresUser }}"
       
-      # -- Database password (templated)
-      password: "{{ .Values.postgresql.auth.password }}"
+      # -- Database password (templated from PostgreSQL superuser)
+      password: "{{ .Values.postgresql.auth.postgresPassword }}"
       
-      # -- Database name (templated)
-      name: "{{ .Values.postgresql.auth.database }}"
+      # -- Database name (use default postgres database)
+      name: "postgres"
       
       # -- SSL mode for database connection
       sslmode: disable
@@ -504,6 +535,33 @@ olakeWorker:
         
         # -- Timeout for data sync activities (29 days, slightly less than workflow)
         sync: 700h
+    
+    # -- Job execution configuration
+    job:
+      # -- TTL for completed jobs (seconds)
+      ttlSeconds: 3600
+      
+      # -- Backoff limit for failed jobs
+      backoffLimit: 3
+      
+      # -- Number of parallel job pods
+      parallelism: 1
+      
+      # -- Number of successful completions required
+      completions: 1
+    
+    # -- Health check configuration
+    healthCheck:
+      # -- Port for health check endpoint
+      port: 8090
+    
+    # -- Logging configuration
+    logging:
+      # -- Log level (debug, info, warn, error)
+      level: info
+      
+      # -- Log format (json, text)
+      format: json
 
 # =============================================================================
 # STORAGE CONFIGURATION
@@ -584,10 +642,10 @@ temporal:
       
       # -- Temporal server image tag
       # Check https://hub.docker.com/r/temporalio/auto-setup/tags for latest versions
-      tag: "1.22.0"
+      tag: "1.22.3"
       
       # -- Image pull policy
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
     
     # -- Pod scheduling constraints
     nodeSelector: {}
@@ -603,6 +661,17 @@ temporal:
     
     # -- Additional pod labels
     podLabels: {}
+    
+    # -- Init container image configuration
+    initImage:
+      # -- Init container image repository
+      repository: busybox
+      
+      # -- Init container image tag
+      tag: latest
+      
+      # -- Init container image pull policy
+      pullPolicy: Always
     
     # -- Temporal server liveness probe configuration
     livenessProbe:
@@ -684,31 +753,27 @@ temporal:
     env:
       # -- Database type
       - name: DB
-        value: postgresql
+        value: postgres12
       
       # -- Database port
       - name: DB_PORT
         value: "{{ .Values.postgresql.service.port }}"
       
-      # -- PostgreSQL user (templated from postgresql.auth.username)
+      # -- PostgreSQL user (templated from postgresql.auth.postgresUser)
       - name: POSTGRES_USER
-        value: "{{ .Values.postgresql.auth.username }}"
+        value: "{{ .Values.postgresql.auth.postgresUser }}"
       
-      # -- PostgreSQL password (templated from postgresql.auth.password)
+      # -- PostgreSQL password (templated from postgresql.auth.postgresPassword)
       - name: POSTGRES_PWD
-        value: "{{ .Values.postgresql.auth.password }}"
+        value: "{{ .Values.postgresql.auth.postgresPassword }}"
       
       # -- PostgreSQL seeds (templated service name)
       - name: POSTGRES_SEEDS
         value: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
       
-      # -- Dynamic configuration file path
-      - name: DYNAMIC_CONFIG_FILE_PATH
-        value: config/dynamicconfig/development-sql.yaml
-      
       # -- Enable Elasticsearch for advanced visibility
       - name: ENABLE_ES
-        value: "{{ .Values.elasticsearch.enabled }}"
+        value: "true"
       
       # -- Elasticsearch seeds (templated service name)
       - name: ES_SEEDS
@@ -716,7 +781,7 @@ temporal:
       
       # -- Elasticsearch version
       - name: ES_VERSION
-        value: v8
+        value: v7
   
   # -- Temporal Web UI configuration
   ui:
@@ -733,10 +798,10 @@ temporal:
       
       # -- Temporal UI image tag
       # Check https://hub.docker.com/r/temporalio/ui/tags for latest versions
-      tag: "2.21.3"
+      tag: "2.16.2"
       
       # -- Image pull policy
-      pullPolicy: IfNotPresent
+      pullPolicy: Always
     
     # -- Pod scheduling constraints
     nodeSelector: {}
@@ -776,7 +841,7 @@ temporal:
       # -- HTTP probe configuration
       httpGet:
         path: /
-        port: 8080
+        port: 8081
     
     # -- Temporal UI readiness probe configuration
     readinessProbe:
@@ -801,7 +866,7 @@ temporal:
       # -- HTTP probe configuration
       httpGet:
         path: /
-        port: 8080
+        port: 8081
     
     # -- Temporal UI service configuration
     service:
@@ -810,10 +875,10 @@ temporal:
       type: NodePort
       
       # -- Service port
-      port: 8080
+      port: 8081
       
       # -- Target port on the pod
-      targetPort: 8080
+      targetPort: 8081
       
       # -- NodePort (when service type is NodePort)
       nodePort: 30080
@@ -836,9 +901,13 @@ temporal:
     
     # -- Temporal UI environment variables
     env:
-      # -- Temporal server address (templated)
+      # -- Temporal server address (matching working k8s manifest)
       - name: TEMPORAL_ADDRESS
         value: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.temporal.server.service.port }}"
+      
+      # -- Temporal UI port
+      - name: TEMPORAL_UI_PORT
+        value: "{{ .Values.temporal.ui.service.port }}"
       
       # -- CORS origins for cross-origin requests
       - name: TEMPORAL_CORS_ORIGINS
@@ -867,23 +936,26 @@ postgresql:
     tag: "14-alpine"
     
     # -- Image pull policy
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   
   # -- Authentication configuration
   auth:
+    # -- PostgreSQL super user name
+    postgresUser: "temporal"
+    
     # -- PostgreSQL super user password
     # In production, consider using existingSecret
-    postgresPassword: ""
+    postgresPassword: "temporal"
     
     # -- PostgreSQL application user
-    username: ""
+    username: "olake"
     
     # -- PostgreSQL application password
     # In production, consider using existingSecret
-    password: ""
+    password: "olake"
     
     # -- PostgreSQL application database
-    database: ""
+    database: "temporal"
     
     # -- Name of existing secret containing PostgreSQL credentials
     # Keys: postgres-password, password, username
@@ -1027,14 +1099,14 @@ elasticsearch:
   # -- Elasticsearch image configuration
   image:
     # -- Elasticsearch image repository
-    repository: docker.elastic.co/elasticsearch/elasticsearch
+    repository: elasticsearch
     
     # -- Elasticsearch image tag
     # Supported versions: 7.x, 8.x
-    tag: "8.8.0"
+    tag: "7.17.10"
     
     # -- Image pull policy
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   
   # -- Pod scheduling constraints
   nodeSelector: {}
