@@ -1038,6 +1038,19 @@ postgresql:
     
     # -- Storage class name
     # Leave empty to use global storage class
+    # 
+    # IMPORTANT: PostgreSQL requires block storage that supports POSIX file permissions
+    # and atomic file operations. Do NOT use NFS-based storage classes such as:
+    # - azurefile (Azure Files/SMB)
+    # - efs-sc (AWS EFS)
+    # - nfs-* (any NFS-based storage)
+    # 
+    # These will cause PostgreSQL to fail with permission errors during initialization.
+    # Recommended storage classes for PostgreSQL:
+    # - managed-csi or managed-premium (Azure Disk)
+    # - gp2, gp3, or io1 (AWS EBS)
+    # - standard or ssd (Google Persistent Disk)
+    # - local-path (for development/testing only)
     storageClass: ""
     
     # -- Size of persistent volume

@@ -915,13 +915,6 @@ postgresql:
     # In production, consider using existingSecret
     postgresPassword: "temporal"
     
-    # # -- PostgreSQL application user
-    # username: "olake"
-    
-    # # -- PostgreSQL application password
-    # # In production, consider using existingSecret
-    # password: "olake"
-    
     # -- PostgreSQL application database
     database: "temporal"
     
@@ -1038,7 +1031,7 @@ postgresql:
     
     # -- Storage class name
     # Set to "-" to disable dynamic provisioning
-    storageClass: ""
+    storageClass: "default"
     
     # -- Size of persistent volume
     size: 8Gi

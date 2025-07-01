@@ -20,7 +20,7 @@ data:
     autorender = false
     copyrequestbody = true
     EnableDocs = true
-    postgresdb = postgres://{{ tpl .Values.olakeUI.config.database.user . }}:{{ tpl .Values.olakeUI.config.database.password . }}@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/{{ tpl .Values.olakeUI.config.database.name . }}?sslmode=disable
+    postgresdb = postgres://{{ tpl .Values.olakeUI.config.database.user . }}:{{ tpl .Values.olakeUI.config.database.password . }}@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/postgres?sslmode=disable
     logsdir = ./logger/logs
     sessionon = true
     
@@ -47,4 +47,7 @@ data:
 
     # Environment Variables for the application
     PERSISTENT_DIR = /tmp/olake-config
+
+    # PostgreSQL connection string for compatibility
+    POSTGRES_DB: "postgres://temporal:temporal@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/postgres?sslmode=disable"
 {{- end }}
