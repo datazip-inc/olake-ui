@@ -1,6 +1,7 @@
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
+import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 
@@ -13,6 +14,8 @@ export const getConnectorImage = (connector: string) => {
 		return Postgres
 	} else if (lowerConnector === "mysql") {
 		return MySQL
+	} else if (lowerConnector === "oracle") {
+		return Oracle
 	} else if (lowerConnector === "s3" || lowerConnector === "amazon") {
 		return AWSS3
 	} else if (
@@ -60,16 +63,18 @@ export const getStatusClass = (status: string) => {
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	if (connector === "Amazon S3") {
+	if (connector === "Amazon S3" || connector === "s3") {
 		return "s3"
-	} else if (connector === "Apache Iceberg") {
+	} else if (connector === "Apache Iceberg" || connector === "iceberg") {
 		return "iceberg"
-	} else if (connector === "MongoDB") {
+	} else if (connector.toLowerCase() === "mongodb") {
 		return "mongodb"
-	} else if (connector === "Postgres") {
+	} else if (connector.toLowerCase() === "postgres") {
 		return "postgres"
-	} else if (connector === "MySQL") {
+	} else if (connector.toLowerCase() === "mysql") {
 		return "mysql"
+	} else if (connector.toLowerCase() === "oracle") {
+		return "oracle"
 	} else {
 		return connector.toLowerCase()
 	}
@@ -109,11 +114,17 @@ export const getStatusLabel = (status: string) => {
 export const getConnectorLabel = (type: string): string => {
 	switch (type) {
 		case "mongodb":
+		case "MongoDB":
 			return "MongoDB"
 		case "postgres":
+		case "Postgres":
 			return "Postgres"
 		case "mysql":
+		case "MySQL":
 			return "MySQL"
+		case "oracle":
+		case "Oracle":
+			return "Oracle"
 		default:
 			return "MongoDB"
 	}
@@ -239,5 +250,16 @@ export const getCatalogName = (catalogType: string) => {
 			return "Hive Catalog"
 		default:
 			return null
+	}
+}
+
+export const getDestinationType = (type: string) => {
+	if (type.toLowerCase() === "amazon s3" || type.toLowerCase() === "s3") {
+		return "PARQUET"
+	} else if (
+		type.toLowerCase() === "apache iceberg" ||
+		type.toLowerCase() === "iceberg"
+	) {
+		return "ICEBERG"
 	}
 }

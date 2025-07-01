@@ -3,7 +3,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
 import { useAppStore } from "../../../store"
 import DestinationTable from "../components/DestinationTable"
-import { DownloadSimple, Plus } from "@phosphor-icons/react"
+import { Path, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
@@ -96,7 +96,7 @@ const Destinations: React.FC = () => {
 		<div className="p-6">
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center">
-					<DownloadSimple className="mr-2 size-6" />
+					<Path className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Destinations</h1>
 				</div>
 				<button

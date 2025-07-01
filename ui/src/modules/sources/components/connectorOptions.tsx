@@ -41,6 +41,19 @@ const connectorOptions: ConnectorOption[] = [
 			</div>
 		),
 	},
+	{
+		value: "Oracle",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={getConnectorImage("Oracle")}
+					alt="Oracle"
+					className="mr-2 h-4 w-5"
+				/>
+				<span>Oracle</span>
+			</div>
+		),
+	},
 ]
 
 export default connectorOptions

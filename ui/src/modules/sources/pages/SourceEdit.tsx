@@ -24,6 +24,7 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import connectorOptions from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
+import { connectorTypeMap } from "../../../utils/constants"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -73,11 +74,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			if (source) {
 				setSource(source)
 				setSourceName(source.name)
-				let normalizedType = source.type
-				if (source.type.toLowerCase() === "mongodb") normalizedType = "MongoDB"
-				if (source.type.toLowerCase() === "postgres")
-					normalizedType = "Postgres"
-				if (source.type.toLowerCase() === "mysql") normalizedType = "MySQL"
+				let normalizedType =
+					connectorTypeMap[source.type.toLowerCase()] || source.type
 				setConnector(normalizedType)
 				setSelectedVersion(source.version)
 				setFormData(
@@ -94,27 +92,33 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		if (initialData) {
 			setSourceName(initialData.name || "")
-			let normalizedType = initialData.type
-			if (initialData.type?.toLowerCase() === "mongodb")
-				normalizedType = "MongoDB"
-			if (initialData.type?.toLowerCase() === "postgres")
-				normalizedType = "Postgres"
-			if (initialData.type?.toLowerCase() === "mysql") normalizedType = "MySQL"
-			setConnector(normalizedType)
-			setSelectedVersion(initialData.version || "latest")
+			const connectorTypeMap: Record<string, string> = {
+				mongodb: "MongoDB",
+				postgres: "Postgres",
+				mysql: "MySQL",
+				oracle: "Oracle",
+			}
+			let normalizedType =
+				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
 
-			// Set form data from initialData
-			if (initialData.config) {
-				if (typeof initialData.config === "string") {
-					try {
-						const parsedConfig = JSON.parse(initialData.config)
-						setFormData(parsedConfig)
-					} catch (error) {
-						console.error("Error parsing source config:", error)
-						setFormData({})
+			// Only set connector if it's not already set or if it's the same as initialData
+			if (!connector || connector === normalizedType) {
+				setConnector(normalizedType)
+				setSelectedVersion(initialData.version || "latest")
+
+				// Set form data from initialData only if connector matches
+				if (initialData.config) {
+					if (typeof initialData.config === "string") {
+						try {
+							const parsedConfig = JSON.parse(initialData.config)
+							setFormData(parsedConfig)
+						} catch (error) {
+							console.error("Error parsing source config:", error)
+							setFormData({})
+						}
+					} else {
+						setFormData(initialData.config)
 					}
-				} else {
-					setFormData(initialData.config)
 				}
 			}
 		}
@@ -242,13 +246,16 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		if (testResult.data?.status === "SUCCEEDED") {
 			setTimeout(() => {
 				setShowTestingModal(false)
-				setShowSuccessModal(true)
 			}, 1000)
+
+			setTimeout(() => {
+				setShowSuccessModal(true)
+			}, 1200)
 
 			setTimeout(() => {
 				setShowSuccessModal(false)
 				saveSource()
-			}, 2000)
+			}, 2200)
 		} else {
 			setShowTestingModal(false)
 			setSourceTestConnectionError(testResult.data?.message || "")
@@ -473,6 +480,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												value={connector}
 												onChange={value => {
 													setConnector(value)
+													setFormData({})
+													setSchema(null)
 													if (onConnectorChange) {
 														onConnectorChange(value)
 													}
@@ -503,7 +512,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 									<div>
 										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Version:
+											OLake Version:
 											<span className="text-red-500">*</span>
 										</label>
 										<Select

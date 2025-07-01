@@ -174,7 +174,11 @@ func (s *SourceService) TestConnection(req models.SourceTestConnectionRequest) (
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
-	result, err := s.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt config: %s", err)
+	}
+	result, err := s.tempClient.TestConnection(context.Background(), "config", "postgres", "latest", encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
@@ -189,22 +193,39 @@ func (s *SourceService) TestConnection(req models.SourceTestConnectionRequest) (
 	return result, nil
 }
 
-func (s *SourceService) GetSourceCatalog(req models.CreateSourceRequest) (map[string]interface{}, error) {
+func (s *SourceService) GetSourceCatalog(req models.StreamsRequest) (map[string]interface{}, error) {
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
-
-	catalog, err := s.tempClient.GetCatalog(
-		context.Background(),
-		req.Type,
-		req.Version,
-		req.Config,
-	)
+	oldStreams := ""
+	// Load job details if JobID is provided
+	if req.JobID >= 0 {
+		job, err := s.jobORM.GetByID(req.JobID, true)
+		if err != nil {
+			return nil, fmt.Errorf("job not found: %s", err)
+		}
+		oldStreams = job.StreamsConfig
+	}
+	encryptedConfig, err := utils.Encrypt(req.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt config: %s", err)
+	}
+	// Use Temporal client to get the catalog
+	var newStreams map[string]interface{}
+	if s.tempClient != nil {
+		newStreams, err = s.tempClient.GetCatalog(
+			context.Background(),
+			req.Type,
+			req.Version,
+			encryptedConfig,
+			oldStreams,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)
 	}
 
-	return catalog, nil
+	return newStreams, nil
 }
 
 func (s *SourceService) GetSourceJobs(id int) ([]*models.Job, error) {

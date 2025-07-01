@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -95,7 +97,7 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
-func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
 		return nil, err
@@ -105,13 +107,16 @@ func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, 
 
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 
-	dockerCmd := exec.Command("docker", dockerArgs...)
+	dockerCmd := exec.CommandContext(ctx, "docker", dockerArgs...)
 	output, err := dockerCmd.CombinedOutput()
 
 	logs.Info("Docker command output: %s\n", string(output))
 
 	if err != nil {
-		return nil, fmt.Errorf("docker command failed: %v, output: %s", err, string(output))
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			return nil, fmt.Errorf("docker command failed with exit status %d", exitErr.ExitCode())
+		}
+		return nil, err
 	}
 
 	return output, nil
@@ -120,13 +125,21 @@ func (r *Runner) ExecuteDockerCommand(flag string, command Command, sourceType, 
 // buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
+	dockerArgs := []string{"run"}
 
-	dockerArgs := []string{
-		dockerRunCmd, dockerPullPolicy,
-		dockerVolumeFlag, fmt.Sprintf("%s:%s", hostOutputDir, ContainerMountDir),
+	if version == "latest" {
+		dockerArgs = append(dockerArgs, "--pull=always")
+	}
+
+	dockerArgs = append(dockerArgs,
+		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		r.GetDockerImageName(sourceType, version),
 		string(command),
-		fmt.Sprintf("--%s", flag), fmt.Sprintf("%s/%s", ContainerMountDir, filepath.Base(configPath)),
+		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
+	)
+
+	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
+		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
 	}
 
 	return append(dockerArgs, additionalArgs...)
@@ -143,7 +156,7 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 }
 
 // TestConnection runs the check command and returns connection status
-func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
 	workDir, err := r.setupWorkDirectory(workflowID)
 	if err != nil {
 		return nil, err
@@ -158,7 +171,7 @@ func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID st
 	}
 
 	configPath := filepath.Join(workDir, "config.json")
-	output, err := r.ExecuteDockerCommand(flag, Check, sourceType, version, configPath)
+	output, err := r.ExecuteDockerCommand(ctx, flag, Check, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +194,7 @@ func (r *Runner) TestConnection(flag, sourceType, version, config, workflowID st
 }
 
 // GetCatalog runs the discover command and returns catalog data
-func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, workflowID, streamsConfig string) (map[string]interface{}, error) {
 	workDir, err := r.setupWorkDirectory(workflowID)
 	if err != nil {
 		return nil, err
@@ -189,6 +202,7 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 	logs.Info("working directory path %s\n", workDir)
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
+		{Name: "streams.json", Data: streamsConfig},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -197,8 +211,13 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 
 	configPath := filepath.Join(workDir, "config.json")
 	catalogPath := filepath.Join(workDir, "streams.json")
-
-	_, err = r.ExecuteDockerCommand("config", Discover, sourceType, version, configPath)
+	var catalogsArgs []string
+	if streamsConfig != "" {
+		catalogsArgs = []string{
+			"--catalog", "/mnt/config/streams.json",
+		}
+	}
+	_, err = r.ExecuteDockerCommand(ctx, "config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +227,7 @@ func (r *Runner) GetCatalog(sourceType, version, config, workflowID string) (map
 }
 
 // RunSync runs the sync command to transfer data from source to destination
-func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
 	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
 	if err != nil {
@@ -217,7 +236,7 @@ func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, 
 	logs.Info("working directory path %s\n", workDir)
 	// Get current job state
 	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID)
+	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +257,7 @@ func (r *Runner) RunSync(jobID int, workflowID string) (map[string]interface{}, 
 	statePath := filepath.Join(workDir, "state.json")
 
 	// Execute sync command
-	_, err = r.ExecuteDockerCommand("config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
+	_, err = r.ExecuteDockerCommand(ctx, "config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")

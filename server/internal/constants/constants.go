@@ -18,6 +18,7 @@ var (
 	DefaultTimeZone = "Asia/Kolkata"
 	DefaultUsername = "olake"
 	DefaultPassword = "password"
+	EncryptionKey   = "OLAKE_SECRET_KEY"
 	TableNameMap    = map[TableType]string{}
 )
 

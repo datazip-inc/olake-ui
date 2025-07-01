@@ -9,6 +9,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type DestinationService struct {
@@ -170,8 +171,11 @@ func (s *DestinationService) TestConnection(req models.DestinationTestConnection
 	if req.Version == "" {
 		return nil, fmt.Errorf("destination version is required")
 	}
-
-	result, err := s.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", req.Config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt destination config: %s", err)
+	}
+	result, err := s.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}

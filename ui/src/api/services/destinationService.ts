@@ -93,7 +93,12 @@ export const destinationService = {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
-					type: destination.type.toLowerCase(),
+					type:
+						destination.type.toLowerCase() === "apache iceberg"
+							? "iceberg"
+							: destination.type.toLowerCase() === "amazon s3"
+								? "s3"
+								: destination.type.toLowerCase(),
 					version: destination.version,
 					config: destination.config,
 				},

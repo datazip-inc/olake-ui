@@ -1,5 +1,5 @@
 x-app-defaults:
-  host_persistence_path: &hostPersistencePath /your/chosen/host/path/olake-data
+  host_persistence_path: &hostPersistencePath ${PWD}/olake-data
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
@@ -10,14 +10,18 @@ x-signup-defaults:
   password: &defaultPassword "password"
   email: &defaultEmail "admin@example.com"
 
+x-encryption:
+  key: &encryptionKey "" 
+
 services:
   olake-ui:
-    image: olakego/ui:dev-latest
+    image: olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
       PERSISTENT_DIR: *hostPersistencePath
       POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
+      OLAKE_SECRET_KEY: *encryptionKey
     ports:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port
@@ -81,7 +85,7 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: olakego/ui-worker:dev-latest
+    image: olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
@@ -91,6 +95,7 @@ services:
       - <<: *workerConfigVolumeDetails
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
+      OLAKE_SECRET_KEY: *encryptionKey
       PERSISTENT_DIR: *hostPersistencePath
     depends_on:
       temporal:
