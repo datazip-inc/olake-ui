@@ -1,0 +1,71 @@
+🎉 OLake has been successfully deployed!
+
+{{- if .Values.olakeUI.enabled }}
+
+📋 ACCESS INSTRUCTIONS:
+
+{{- if .Values.olakeUI.ingress.enabled }}
+
+🌐 INGRESS ACCESS:
+{{- range .Values.olakeUI.ingress.hosts }}
+  {{- $host := .host }}
+  {{- range .paths }}
+  - Frontend: http{{- if $.Values.olakeUI.ingress.tls }}s{{- end }}://{{ $host }}{{ .path }}
+  - Backend:  http{{- if $.Values.olakeUI.ingress.tls }}s{{- end }}://{{ $host }}{{ .path }}/api
+  {{- end }}
+{{- end }}
+
+{{- else }}
+
+🔗 PORT-FORWARD ACCESS:
+
+1. Forward OLake UI ports:
+   kubectl port-forward -n {{ .Values.namespace.name }} svc/olake-ui {{ .Values.olakeUI.service.ports.frontend }}:{{ .Values.olakeUI.service.ports.frontend }} {{ .Values.olakeUI.service.ports.backend }}:{{ .Values.olakeUI.service.ports.backend }}
+
+2. Access the application:
+   - Frontend: http://localhost:{{ .Values.olakeUI.service.ports.frontend }}
+   - Backend:  http://localhost:{{ .Values.olakeUI.service.ports.backend }}
+
+{{- if .Values.temporal.ui.enabled }}
+
+3. Forward Temporal UI (optional):
+   kubectl port-forward -n {{ .Values.namespace.name }} svc/temporal-ui {{ .Values.temporal.ui.service.port }}:{{ .Values.temporal.ui.service.port }}
+   - Temporal UI: http://localhost:{{ .Values.temporal.ui.service.port }}
+{{- end }}
+
+{{- end }}
+
+{{- end }}
+
+📊 COMPONENT STATUS:
+{{- if .Values.olakeUI.enabled }}
+- ✅ OLake UI (Frontend & Backend)
+{{- end }}
+{{- if .Values.olakeWorker.enabled }}
+- ✅ OLake Worker
+{{- end }}
+{{- if .Values.postgresql.enabled }}
+- ✅ PostgreSQL Database
+{{- end }}
+{{- if .Values.temporal.enabled }}
+- ✅ Temporal Server
+{{- end }}
+{{- if .Values.temporal.ui.enabled }}
+- ✅ Temporal UI
+{{- end }}
+{{- if .Values.elasticsearch.enabled }}
+- ✅ Elasticsearch
+{{- end }}
+{{- if .Values.nfsServer.enabled }}
+- ✅ NFS Server (Shared Storage)
+{{- end }}
+
+📚 NEXT STEPS:
+
+1. Log into the OLake UI using the admin credentials
+2. Configure data sources and destinations
+3. Setup Jobs to start syncing
+
+For more information, visit: https://olake.io/docs
+
+Happy data processing! 🚀
