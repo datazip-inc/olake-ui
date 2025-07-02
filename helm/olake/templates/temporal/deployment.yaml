@@ -43,6 +43,8 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      securityContext:
+        {{- toYaml .Values.global.securityContext | nindent 8 }}
       initContainers:
       - name: wait-for-postgresql
         image: "{{ .Values.temporal.server.initImage.repository }}:{{ .Values.temporal.server.initImage.tag }}"

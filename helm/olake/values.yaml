@@ -962,13 +962,6 @@ postgresql:
     # In production, consider using existingSecret
     postgresPassword: "temporal"
     
-    # # -- PostgreSQL application user
-    # username: "olake"
-    
-    # # -- PostgreSQL application password
-    # # In production, consider using existingSecret
-    # password: "olake"
-    
     # -- PostgreSQL application database
     database: "temporal"
     
@@ -1228,35 +1221,3 @@ elasticsearch:
     # For production, enable and configure security
     - name: xpack.security.enabled
       value: "false"
-
-# =============================================================================
-# DEFAULT SCHEDULING CONFIGURATION
-# =============================================================================
-
-# Default scheduling constraints applied to components that don't override them
-
-# -- Node selector for pod assignment
-# Example:
-#   kubernetes.io/arch: amd64
-#   node-type: compute
-nodeSelector: {}
-
-# -- Tolerations for pod assignment
-# Example:
-#   - key: "key1"
-#     operator: "Equal"
-#     value: "value1"
-#     effect: "NoSchedule"
-tolerations: []
-
-# -- Affinity settings for pod assignment
-# Example:
-#   nodeAffinity:
-#     requiredDuringSchedulingIgnoredDuringExecution:
-#       nodeSelectorTerms:
-#       - matchExpressions:
-#         - key: kubernetes.io/arch
-#           operator: In
-#           values:
-#           - amd64
-affinity: {}
