@@ -9,8 +9,12 @@ import (
 )
 
 // TrackJobCreation tracks the creation of a new job with relevant properties
-func TrackJobCreation(ctx context.Context, job models.Job) {
+func TrackJobCreation(ctx context.Context, job *models.Job) {
 	go func() {
+		if instance == nil || job == nil {
+			return
+		}
+
 		properties := map[string]interface{}{
 			"job_id":           job.ID,
 			"job_name":         job.Name,

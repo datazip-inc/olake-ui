@@ -83,7 +83,7 @@ func prepareCommonProperties(jobID int, workflowID string, details *jobDetails, 
 	return props
 }
 
-func trackSyncEvent(ctx context.Context, jobID int, workflowID string, eventType string) error {
+func trackSyncEvent(ctx context.Context, jobID int, workflowID, eventType string) error {
 	details, err := getJobDetails(jobID)
 	if err != nil {
 		return err
@@ -138,7 +138,7 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 	streamsPath := filepath.Join(mainSyncDir, "streams.json")
 	streamsData, err := os.ReadFile(streamsPath)
 	if err != nil {
-		return fmt.Errorf("Failed to read streams.json: %s", err)
+		return fmt.Errorf("failed to read streams.json: %s", err)
 	}
 
 	var streamsConfig struct {
@@ -149,7 +149,7 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 	}
 
 	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
-		return fmt.Errorf("Error unmarshalling streams.json: %s", err)
+		return fmt.Errorf("error unmarshalling streams.json: %s", err)
 	}
 
 	normalizedCount, partitionedCount := 0, 0
@@ -171,6 +171,10 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 
 func TrackSyncStart(ctx context.Context, jobID int, workflowID string) {
 	go func() {
+		if instance == nil {
+			return
+		}
+
 		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncStarted)
 		if err != nil {
 			logs.Debug("failed to track sync start event: %s", err)
@@ -180,6 +184,10 @@ func TrackSyncStart(ctx context.Context, jobID int, workflowID string) {
 
 func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) {
 	go func() {
+		if instance == nil {
+			return
+		}
+
 		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncFailed)
 		if err != nil {
 			logs.Debug("failed to track sync failed event: %s", err)
@@ -189,6 +197,10 @@ func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) {
 
 func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) {
 	go func() {
+		if instance == nil {
+			return
+		}
+
 		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncCompleted)
 		if err != nil {
 			logs.Debug("failed to track sync completed event: %s", err)

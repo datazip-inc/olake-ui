@@ -85,13 +85,13 @@ func InitTelemetry() {
 func getOutboundIP() string {
 	resp, err := http.Get(IPUrl)
 	if err != nil {
-		return IpNotFound
+		return IPNotFound
 	}
 	defer resp.Body.Close()
 
 	ipBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return IpNotFound
+		return IPNotFound
 	}
 
 	return string(ipBody)
@@ -104,7 +104,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 		City:    "NA",
 	}
 
-	if ip == IpNotFound || ip == "" {
+	if ip == IPNotFound || ip == "" {
 		return locationInfo
 	}
 

@@ -112,7 +112,7 @@ func (c *SourceHandler) CreateSource() {
 	}
 
 	// Track source creation event
-	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), *source)
+	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), source)
 
 	utils.SuccessResponse(&c.Controller, req)
 }

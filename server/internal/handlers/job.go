@@ -167,7 +167,7 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	// telemetry events
-	telemetry.TrackJobCreation(c.Ctx.Request.Context(), *job)
+	telemetry.TrackJobCreation(c.Ctx.Request.Context(), job)
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
@@ -584,7 +584,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 		return nil, fmt.Errorf("failed to create source: %s", err)
 	}
 
-	telemetry.TrackSourceCreation(context.Background(), *source)
+	telemetry.TrackSourceCreation(context.Background(), source)
 
 	return source, nil
 }
@@ -635,6 +635,6 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	// Track destination creation event
-	telemetry.TrackDestinationCreation(context.Background(), *dest)
+	telemetry.TrackDestinationCreation(context.Background(), dest)
 	return dest, nil
 }

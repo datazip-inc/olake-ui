@@ -106,7 +106,7 @@ func (c *DestHandler) CreateDestination() {
 	}
 
 	// Track destination creation event
-	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), *destination)
+	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), destination)
 	utils.SuccessResponse(&c.Controller, req)
 }
 

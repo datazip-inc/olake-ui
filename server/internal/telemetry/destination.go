@@ -11,8 +11,12 @@ import (
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties
-func TrackDestinationCreation(ctx context.Context, dest models.Destination) {
+func TrackDestinationCreation(ctx context.Context, dest *models.Destination) {
 	go func() {
+		if instance == nil || dest == nil {
+			return
+		}
+
 		properties := map[string]interface{}{
 			"destination_id":   dest.ID,
 			"destination_name": dest.Name,
@@ -44,13 +48,16 @@ func TrackDestinationCreation(ctx context.Context, dest models.Destination) {
 
 		// Track destinations status after creation
 		TrackDestinationsStatus(ctx)
-
 	}()
 }
 
 // TrackDestinationsStatus logs telemetry about active and inactive destinations
 func TrackDestinationsStatus(ctx context.Context) {
 	go func() {
+		if instance == nil {
+			return
+		}
+
 		// TODO: remove creation of orm from here
 		destORM := database.NewDestinationORM()
 		jobORM := database.NewJobORM()

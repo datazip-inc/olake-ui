@@ -6,7 +6,7 @@ import "time"
 const (
 	TelemetryUserIDFile      = "user_id"
 	OlakeVersion             = "0.0.4"
-	IpNotFound               = "NA"
+	IPNotFound               = "NA"
 	TelemetryConfigTimeout   = 30 * time.Second
 	TelemetrySegmentAPIKey   = "AiWKKeaOKQvsOotHj5iGANpNhYG6OaM3"
 	IPUrl                    = "https://api.ipify.org?format=text"

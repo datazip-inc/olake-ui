@@ -10,8 +10,12 @@ import (
 )
 
 // TrackSourceCreation tracks the creation of a new source with relevant properties
-func TrackSourceCreation(ctx context.Context, source models.Source) {
+func TrackSourceCreation(ctx context.Context, source *models.Source) {
 	go func() {
+		if instance == nil || source == nil {
+			return
+		}
+
 		properties := map[string]interface{}{
 			"source_id":   source.ID,
 			"source_name": source.Name,
@@ -35,6 +39,10 @@ func TrackSourceCreation(ctx context.Context, source models.Source) {
 // TrackSourcesStatus logs telemetry about active and inactive sources
 func TrackSourcesStatus(ctx context.Context) {
 	go func() {
+		if instance == nil {
+			return
+		}
+
 		sourceORM := database.NewSourceORM()
 		jobORM := database.NewJobORM()
 
