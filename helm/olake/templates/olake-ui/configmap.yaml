@@ -19,7 +19,7 @@ data:
     autorender = false
     copyrequestbody = true
     EnableDocs = true
-    postgresdb = postgres://{{ tpl .Values.olakeUI.config.database.user . }}:{{ tpl .Values.olakeUI.config.database.password . }}@{{ tpl .Values.olakeUI.config.database.host . }}:{{ tpl .Values.olakeUI.config.database.port . }}/postgres?sslmode=disable
+    postgresdb = postgres://{{ .Values.postgresql.auth.postgresUser }}:{{ .Values.postgresql.auth.postgresPassword }}@postgresql.{{ .Values.namespace.name }}.svc.cluster.local:5432/postgres?sslmode=disable
     logsdir = ./logger/logs
     sessionon = true
     

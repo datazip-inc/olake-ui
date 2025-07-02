@@ -72,8 +72,12 @@ spec:
         - name: {{ .name }}
           value: {{ tpl .value $ | quote }}
         {{- end }}
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "512Mi" "cpu" "500m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.temporal.server.resources | default dict) }}
         resources:
-          {{- toYaml .Values.temporal.server.resources | nindent 10 }}
+          {{- toYaml $resources | nindent 10 }}
         {{- $defaultReadinessProbe := dict 
           "initialDelaySeconds" 10
           "periodSeconds" 10

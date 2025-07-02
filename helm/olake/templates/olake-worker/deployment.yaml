@@ -78,9 +78,13 @@ spec:
               key: DB_PASSWORD
         envFrom:
         - configMapRef:
-            name: olake-k8s-worker-config
+            name: olake-worker-config
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "256Mi" "cpu" "250m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeWorker.resources | default dict) }}
         resources:
-          {{- toYaml .Values.olakeWorker.resources | nindent 10 }}
+          {{- toYaml $resources | nindent 10 }}
         {{- $defaultReadinessProbe := dict 
           "initialDelaySeconds" 30
           "periodSeconds" 10

@@ -163,45 +163,17 @@ olakeUI:
     #    hosts:
     #      - olake.example.com
   
-  # -- OLake UI resource requirements
-  resources:
-    requests:
-      # -- Memory request
-      memory: "512Mi"
-      # -- CPU request
-      cpu: "500m"
-    limits:
-      # -- Memory limit
-      memory: "1Gi"
-      # -- CPU limit
-      cpu: "1000m"
-  
-  # -- OLake UI application configuration
-  config:
-    # -- Database connection configuration
-    database:
-      # -- Database host (templated from PostgreSQL service)
-      host: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
-      
-      # -- Database port
-      port: "5432"
-      
-      # -- Database name (templated from PostgreSQL auth)
-      name: "{{ .Values.postgresql.auth.database }}"
-      
-      # -- Database user (templated from PostgreSQL auth)
-      user: "{{ .Values.postgresql.auth.postgresUser }}"
-      
-      # -- Database password (templated from PostgreSQL auth)
-      password: "{{ .Values.postgresql.auth.postgresPassword }}"
-    
-    # -- Temporal connection configuration
-    temporal:
-      # -- Temporal host (templated from Temporal service)
-      host: "temporal.{{ .Values.namespace.name }}.svc.cluster.local"
-      
-      # -- Temporal port
-      port: "7233"
+  # -- OLake UI resource requirements (optional overrides)
+  # Defaults: requests: memory=512Mi, cpu=500m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "1Gi"
+  #       cpu: "750m"
+  #     limits:
+  #       memory: "2Gi"
+  #       cpu: "1500m"
+  resources: {}
   
   # -- Initialization job configuration
   # This job runs database migrations and initial setup
@@ -298,18 +270,17 @@ olakeWorker:
   service:
     annotations: {}
   
-  # -- OLake Worker resource requirements
-  resources:
-    requests:
-      # -- Memory request
-      memory: "256Mi"
-      # -- CPU request
-      cpu: "250m"
-    limits:
-      # -- Memory limit
-      memory: "512Mi"
-      # -- CPU limit
-      cpu: "500m"
+  # -- OLake Worker resource requirements (optional overrides)
+  # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "512Mi"
+  #       cpu: "500m"
+  #     limits:
+  #       memory: "1Gi"
+  #       cpu: "1000m"
+  resources: {}
   
   # -- Service Account configuration for Kubernetes API access
   serviceAccount:
@@ -583,18 +554,17 @@ temporal:
     service:
       annotations: {}
     
-    # -- Temporal server resource requirements
-    resources:
-      requests:
-        # -- Memory request
-        memory: "512Mi"
-        # -- CPU request
-        cpu: "500m"
-      limits:
-        # -- Memory limit
-        memory: "1Gi"
-        # -- CPU limit
-        cpu: "1000m"
+    # -- Temporal server resource requirements (optional overrides)
+    # Defaults: requests: memory=512Mi, cpu=500m (no limits by default)
+    # Example customizations:
+    #   resources:
+    #     requests:
+    #       memory: "1Gi"
+    #       cpu: "750m"
+    #     limits:
+    #       memory: "2Gi"
+    #       cpu: "1500m"
+    resources: {}
     
     # -- Temporal server environment variables
     env:
@@ -691,18 +661,17 @@ temporal:
       # -- Service annotations
       annotations: {}
     
-    # -- Temporal UI resource requirements
-    resources:
-      requests:
-        # -- Memory request
-        memory: "128Mi"
-        # -- CPU request
-        cpu: "100m"
-      limits:
-        # -- Memory limit
-        memory: "256Mi"
-        # -- CPU limit
-        cpu: "200m"
+    # -- Temporal UI resource requirements (optional overrides)
+    # Defaults: requests: memory=128Mi, cpu=100m (no limits by default)
+    # Example customizations:
+    #   resources:
+    #     requests:
+    #       memory: "256Mi"
+    #       cpu: "200m"
+    #     limits:
+    #       memory: "512Mi"
+    #       cpu: "400m"
+    resources: {}
     
     # -- Temporal UI environment variables
     env:
@@ -800,18 +769,17 @@ postgresql:
   service:
     annotations: {}
   
-  # -- PostgreSQL resource requirements
-  # For production workloads, increase these values
-  resources:
-    requests:
-      # -- CPU request
-      memory: "256Mi"
-      cpu: "250m"
-    limits:
-      # -- Memory limit
-      memory: "512Mi"
-      # -- CPU limit
-      cpu: "500m"
+  # -- PostgreSQL resource requirements (optional overrides)
+  # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "512Mi"
+  #       cpu: "500m"
+  #     limits:
+  #       memory: "1Gi"
+  #       cpu: "1000m"
+  resources: {}
   
   # -- PostgreSQL persistence configuration
   persistence:
@@ -889,19 +857,17 @@ elasticsearch:
   service:
     annotations: {}
   
-  # -- Elasticsearch resource requirements
-  # Elasticsearch requires significant memory for production use
-  resources:
-    requests:
-      # -- Memory request (minimum for Elasticsearch)
-      memory: "1Gi"
-      # -- CPU request
-      cpu: "500m"
-    limits:
-      # -- Memory limit
-      memory: "2Gi"
-      # -- CPU limit
-      cpu: "1000m"
+  # -- Elasticsearch resource requirements (optional overrides)
+  # Defaults: requests: memory=1Gi, cpu=500m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "2Gi"
+  #       cpu: "1000m"
+  #     limits:
+  #       memory: "4Gi"
+  #       cpu: "2000m"
+  resources: {}
   
   # -- Elasticsearch environment variables
   env:

@@ -78,8 +78,12 @@ spec:
           mountPath: /opt/backend/conf
         - name: shared-storage
           mountPath: /tmp/olake-config
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "512Mi" "cpu" "500m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeUI.resources | default dict) }}
         resources:
-          {{- toYaml .Values.olakeUI.resources | nindent 10 }}
+          {{- toYaml $resources | nindent 10 }}
         {{- $defaultReadinessProbe := dict 
           "initialDelaySeconds" 30
           "periodSeconds" 10

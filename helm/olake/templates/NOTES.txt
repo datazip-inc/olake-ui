@@ -20,17 +20,17 @@
 🔗 PORT-FORWARD ACCESS:
 
 1. Forward OLake UI ports:
-   kubectl port-forward -n {{ .Values.namespace.name }} svc/olake-ui {{ .Values.olakeUI.service.ports.frontend }}:{{ .Values.olakeUI.service.ports.frontend }} {{ .Values.olakeUI.service.ports.backend }}:{{ .Values.olakeUI.service.ports.backend }}
+   kubectl port-forward -n {{ .Values.namespace.name }} svc/olake-ui 8000:8000 8080:8080
 
 2. Access the application:
-   - Frontend: http://localhost:{{ .Values.olakeUI.service.ports.frontend }}
-   - Backend:  http://localhost:{{ .Values.olakeUI.service.ports.backend }}
+   - Frontend: http://localhost:8000
+   - Backend:  http://localhost:8080
 
 {{- if .Values.temporal.ui.enabled }}
 
 3. Forward Temporal UI (optional):
-   kubectl port-forward -n {{ .Values.namespace.name }} svc/temporal-ui {{ .Values.temporal.ui.service.port }}:{{ .Values.temporal.ui.service.port }}
-   - Temporal UI: http://localhost:{{ .Values.temporal.ui.service.port }}
+   kubectl port-forward -n {{ .Values.namespace.name }} svc/temporal-ui 8081:8081
+   - Temporal UI: http://localhost:8081
 {{- end }}
 
 {{- end }}

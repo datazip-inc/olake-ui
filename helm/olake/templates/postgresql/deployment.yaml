@@ -59,6 +59,10 @@ spec:
         envFrom:
         - secretRef:
             name: postgresql-secret
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "256Mi" "cpu" "250m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.postgresql.resources | default dict) }}
         {{- $defaultReadinessProbe := dict 
           "initialDelaySeconds" 5
           "periodSeconds" 10
@@ -82,7 +86,7 @@ spec:
         livenessProbe:
           {{- toYaml $livenessProbe | nindent 10 }}
         resources:
-          {{- toYaml .Values.postgresql.resources | nindent 10 }}
+          {{- toYaml $resources | nindent 10 }}
         {{- if .Values.postgresql.persistence.enabled }}
         volumeMounts:
         - name: postgresql-storage
