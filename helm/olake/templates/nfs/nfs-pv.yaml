@@ -17,6 +17,6 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: {{ include "olake.fullname" . }}-nfs
   nfs:
-    server: {{ include "olake.fullname" . }}-nfs-server-0.{{ include "olake.fullname" . }}-nfs-server.{{ .Values.namespace.name }}.svc.cluster.local
-    path: /exports
+    server: "192.168.100.100"
+    path: /
 {{- end }}

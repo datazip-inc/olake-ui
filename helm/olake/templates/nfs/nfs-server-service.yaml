@@ -15,7 +15,7 @@ metadata:
     {{- include "olake.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
-  clusterIP: None  # Headless service
+  clusterIP: "192.168.100.100"
   ports:
   - name: nfs
     port: 2049
