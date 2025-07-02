@@ -53,7 +53,7 @@ spec:
         - -c
         - |
           echo "Waiting for Temporal server to be ready..."
-          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.temporal.server.service.port }}; do
+          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local 7233; do
             echo "Temporal server is not ready yet. Waiting..."
             sleep 5
           done
@@ -64,7 +64,7 @@ spec:
         imagePullPolicy: {{ .Values.temporal.ui.image.pullPolicy }}
         ports:
         - name: http
-          containerPort: {{ .Values.temporal.ui.service.port }}
+          containerPort: 8081
           protocol: TCP
         env:
         {{- range .Values.temporal.ui.env }}
@@ -73,28 +73,26 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.temporal.ui.resources | nindent 10 }}
-        {{- if .Values.temporal.ui.readinessProbe.enabled }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 10
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/" "port" 8081)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.temporal.ui.readinessProbe | default dict) }}
         readinessProbe:
-          initialDelaySeconds: {{ .Values.temporal.ui.readinessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.temporal.ui.readinessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.temporal.ui.readinessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.temporal.ui.readinessProbe.failureThreshold }}
-          successThreshold: {{ .Values.temporal.ui.readinessProbe.successThreshold }}
-          {{- with .Values.temporal.ui.readinessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-        {{- if .Values.temporal.ui.livenessProbe.enabled }}
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 30
+          "periodSeconds" 30
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/" "port" 8081)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.temporal.ui.livenessProbe | default dict) }}
         livenessProbe:
-          initialDelaySeconds: {{ .Values.temporal.ui.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.temporal.ui.livenessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.temporal.ui.livenessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.temporal.ui.livenessProbe.failureThreshold }}
-          successThreshold: {{ .Values.temporal.ui.livenessProbe.successThreshold }}
-          {{- with .Values.temporal.ui.livenessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+          {{- toYaml $livenessProbe | nindent 10 }}
 {{- end }}

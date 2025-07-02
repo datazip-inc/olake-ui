@@ -104,96 +104,33 @@ olakeUI:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- Init container image configuration
-  initImage:
-    # -- Init container image repository
-    repository: busybox
-    
-    # -- Init container image tag
-    tag: latest
-    
-    # -- Init container image pull policy
-    pullPolicy: Always
+  # -- OLake UI readiness probe override (optional)
+  # Defaults: initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5,
+  #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 8080
+  # Example customizations:
+  #   readinessProbe:
+  #     initialDelaySeconds: 45
+  #     httpGet:
+  #       path: /health
+  #       port: 8080
+  readinessProbe: {}
   
-  # -- Curl image configuration for init job
-  curlImage:
-    # -- Curl image repository
-    repository: curlimages/curl
-    
-    # -- Curl image tag
-    tag: latest
-    
-    # -- Curl image pull policy
-    pullPolicy: Always
-  
-  # -- OLake UI liveness probe configuration
-  livenessProbe:
-    # -- Enable liveness probe
-    enabled: true
-    
-    # -- Initial delay before liveness probe starts
-    initialDelaySeconds: 60
-    
-    # -- How often to perform the probe
-    periodSeconds: 30
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 10
-    
-    # -- Number of failures before pod is restarted
-    failureThreshold: 3
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- TCP probe configuration
-    tcpSocket:
-      port: 8080
-  
-  # -- OLake UI readiness probe configuration
-  readinessProbe:
-    # -- Enable readiness probe
-    enabled: true
-    
-    # -- Initial delay before readiness probe starts
-    initialDelaySeconds: 30
-    
-    # -- How often to perform the probe
-    periodSeconds: 10
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 5
-    
-    # -- Number of failures before pod is marked unready
-    failureThreshold: 3
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- TCP probe configuration
-    tcpSocket:
-      port: 8080
+  # -- OLake UI liveness probe override (optional)
+  # Defaults: initialDelaySeconds: 60, periodSeconds: 30, timeoutSeconds: 10,
+  #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 8080
+  # Example customizations:
+  #   livenessProbe:
+  #     periodSeconds: 60
+  #     httpGet:
+  #       path: /health
+  #       port: 8080
+  livenessProbe: {}
   
   # -- OLake UI service configuration
+  # For external access, change type to NodePort or LoadBalancer  
   service:
-    # -- Service type (ClusterIP, NodePort, LoadBalancer)
-    # Use NodePort or LoadBalancer for external access
-    type: NodePort
-    
-    # -- Service ports configuration
-    ports:
-      # -- Backend API port
-      backend: 8080
-      # -- Frontend port
-      frontend: 8000
-    
-    # -- NodePort configuration (when service type is NodePort)
-    nodePorts:
-      # -- Backend NodePort
-      backend: 30081
-      # -- Frontend NodePort
-      frontend: 30082
-    
+    # -- Service type (ClusterIP for internal, NodePort/LoadBalancer for external access)
+    type: ClusterIP
     # -- Service annotations
     annotations: {}
   
@@ -246,8 +183,8 @@ olakeUI:
       # -- Database host (templated from PostgreSQL service)
       host: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
       
-      # -- Database port (templated from PostgreSQL service)
-      port: "{{ .Values.postgresql.service.port }}"
+      # -- Database port
+      port: "5432"
       
       # -- Database name (templated from PostgreSQL auth)
       name: "{{ .Values.postgresql.auth.database }}"
@@ -263,8 +200,8 @@ olakeUI:
       # -- Temporal host (templated from Temporal service)
       host: "temporal.{{ .Values.namespace.name }}.svc.cluster.local"
       
-      # -- Temporal port (templated from Temporal service)
-      port: "{{ .Values.temporal.server.service.port }}"
+      # -- Temporal port
+      port: "7233"
   
   # -- Initialization job configuration
   # This job runs database migrations and initial setup
@@ -337,79 +274,28 @@ olakeWorker:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- Init container image configuration
-  initImage:
-    # -- Init container image repository
-    repository: busybox
-    
-    # -- Init container image tag
-    tag: latest
-    
-    # -- Init container image pull policy
-    pullPolicy: Always
+  # -- OLake Worker readiness probe override (optional)
+  # Defaults: initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5,
+  #           failureThreshold: 3, successThreshold: 1, httpGet: /health on port 8090
+  # Example customizations:
+  #   readinessProbe:
+  #     initialDelaySeconds: 45
+  #     httpGet:
+  #       path: /healthz
+  #       port: 8090
+  readinessProbe: {}
   
-  # -- OLake Worker liveness probe configuration
-  livenessProbe:
-    # -- Enable liveness probe
-    enabled: true
-    
-    # -- Initial delay before liveness probe starts
-    initialDelaySeconds: 60
-    
-    # -- How often to perform the probe
-    periodSeconds: 30
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 10
-    
-    # -- Number of failures before pod is restarted
-    failureThreshold: 3
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- HTTP probe configuration
-    httpGet:
-      path: /health
-      port: 8090
+  # -- OLake Worker liveness probe override (optional)
+  # Defaults: initialDelaySeconds: 60, periodSeconds: 30, timeoutSeconds: 10,
+  #           failureThreshold: 3, successThreshold: 1, httpGet: /health on port 8090
+  # Example customizations:
+  #   livenessProbe:
+  #     periodSeconds: 60
+  livenessProbe: {}
   
-  # -- OLake Worker readiness probe configuration
-  readinessProbe:
-    # -- Enable readiness probe
-    enabled: true
-    
-    # -- Initial delay before readiness probe starts
-    initialDelaySeconds: 30
-    
-    # -- How often to perform the probe
-    periodSeconds: 10
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 5
-    
-    # -- Number of failures before pod is marked unready
-    failureThreshold: 3
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- HTTP probe configuration
-    httpGet:
-      path: /health
-      port: 8090
-  
-  # -- OLake Worker service configuration
+  # -- OLake Worker service annotations (optional)
+  # Example: service.annotations: {"prometheus.io/scrape": "true"}
   service:
-    # -- Service type (usually ClusterIP for internal communication)
-    type: ClusterIP
-    
-    # -- Service port
-    port: 8090
-    
-    # -- Target port on the pod
-    targetPort: 8090
-    
-    # -- Service annotations
     annotations: {}
   
   # -- OLake Worker resource requirements
@@ -477,8 +363,8 @@ olakeWorker:
     
     # -- Temporal connection configuration
     temporal:
-      # -- Temporal server address (templated)
-      address: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.temporal.server.service.port }}"
+      # -- Temporal server address
+      address: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:7233"
       
       # -- Temporal task queue name for K8s worker
       taskQueue: OLAKE_K8S_TASK_QUEUE
@@ -488,8 +374,8 @@ olakeWorker:
       # -- Database host (templated)
       host: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
       
-      # -- Database port (templated)
-      port: "{{ .Values.postgresql.service.port }}"
+      # -- Database port
+      port: "5432"
       
       # -- Database user (templated from PostgreSQL superuser)
       user: "{{ .Values.postgresql.auth.postgresUser }}"
@@ -677,78 +563,24 @@ temporal:
     # -- Additional pod labels
     podLabels: {}
     
-    # -- Init container image configuration
-    initImage:
-      # -- Init container image repository
-      repository: busybox
-      
-      # -- Init container image tag
-      tag: latest
-      
-      # -- Init container image pull policy
-      pullPolicy: Always
+    # -- Temporal server readiness probe override (optional)
+    # Defaults: initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 5,
+    #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 7233
+    # Example customizations:
+    #   readinessProbe:
+    #     initialDelaySeconds: 15
+    readinessProbe: {}
     
-    # -- Temporal server liveness probe configuration
-    livenessProbe:
-      # -- Enable liveness probe
-      enabled: true
-      
-      # -- Initial delay before liveness probe starts
-      # Temporal takes time to initialize, especially with auto-setup
-      initialDelaySeconds: 150
-      
-      # -- How often to perform the probe
-      periodSeconds: 60
-      
-      # -- Timeout for the probe
-      timeoutSeconds: 10
-      
-      # -- Number of failures before pod is restarted
-      failureThreshold: 3
-      
-      # -- Number of successes before probe is considered successful
-      successThreshold: 1
-      
-      # -- TCP probe configuration
-      tcpSocket:
-        port: 7233
+    # -- Temporal server liveness probe override (optional)
+    # Defaults: initialDelaySeconds: 150, periodSeconds: 60, timeoutSeconds: 10,
+    #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 7233
+    # Example customizations:
+    #   livenessProbe:
+    #     initialDelaySeconds: 120
+    livenessProbe: {}
     
-    # -- Temporal server readiness probe configuration
-    readinessProbe:
-      # -- Enable readiness probe
-      enabled: true
-      
-      # -- Initial delay before readiness probe starts
-      initialDelaySeconds: 10
-      
-      # -- How often to perform the probe
-      periodSeconds: 10
-      
-      # -- Timeout for the probe
-      timeoutSeconds: 5
-      
-      # -- Number of failures before pod is marked unready
-      failureThreshold: 3
-      
-      # -- Number of successes before probe is considered successful
-      successThreshold: 1
-      
-      # -- TCP probe configuration
-      tcpSocket:
-        port: 7233
-    
-    # -- Temporal server service configuration
+    # -- Temporal server service annotations (optional)
     service:
-      # -- Service type (ClusterIP, NodePort, LoadBalancer)
-      type: ClusterIP
-      
-      # -- Service port
-      port: 7233
-      
-      # -- Target port on the pod
-      targetPort: 7233
-      
-      # -- Service annotations
       annotations: {}
     
     # -- Temporal server resource requirements
@@ -772,7 +604,7 @@ temporal:
       
       # -- Database port
       - name: DB_PORT
-        value: "{{ .Values.postgresql.service.port }}"
+        value: "5432"
       
       # -- PostgreSQL user (templated from postgresql.auth.postgresUser)
       - name: POSTGRES_USER
@@ -833,71 +665,29 @@ temporal:
     # -- Additional pod labels
     podLabels: {}
     
-    # -- Temporal UI liveness probe configuration
-    livenessProbe:
-      # -- Enable liveness probe
-      enabled: true
-      
-      # -- Initial delay before liveness probe starts
-      initialDelaySeconds: 30
-      
-      # -- How often to perform the probe
-      periodSeconds: 30
-      
-      # -- Timeout for the probe
-      timeoutSeconds: 10
-      
-      # -- Number of failures before pod is restarted
-      failureThreshold: 3
-      
-      # -- Number of successes before probe is considered successful
-      successThreshold: 1
-      
-      # -- HTTP probe configuration
-      httpGet:
-        path: /
-        port: 8081
+    # -- Temporal UI readiness probe override (optional)
+    # Defaults: initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 5,
+    #           failureThreshold: 3, successThreshold: 1, httpGet: / on port 8081
+    # Example customizations:
+    #   readinessProbe:
+    #     initialDelaySeconds: 15
+    readinessProbe: {}
     
-    # -- Temporal UI readiness probe configuration
-    readinessProbe:
-      # -- Enable readiness probe
-      enabled: true
-      
-      # -- Initial delay before readiness probe starts
-      initialDelaySeconds: 10
-      
-      # -- How often to perform the probe
-      periodSeconds: 10
-      
-      # -- Timeout for the probe
-      timeoutSeconds: 5
-      
-      # -- Number of failures before pod is marked unready
-      failureThreshold: 3
-      
-      # -- Number of successes before probe is considered successful
-      successThreshold: 1
-      
-      # -- HTTP probe configuration
-      httpGet:
-        path: /
-        port: 8081
+    # -- Temporal UI liveness probe override (optional)
+    # Defaults: initialDelaySeconds: 30, periodSeconds: 30, timeoutSeconds: 10,
+    #           failureThreshold: 3, successThreshold: 1, httpGet: / on port 8081
+    # Example customizations:
+    #   livenessProbe:
+    #     periodSeconds: 60
+    livenessProbe: {}
     
     # -- Temporal UI service configuration
+    # For external access, change type to NodePort or LoadBalancer
     service:
-      # -- Service type (ClusterIP, NodePort, LoadBalancer)
-      # Use NodePort or LoadBalancer for external access
-      type: NodePort
-      
-      # -- Service port
-      port: 8081
-      
-      # -- Target port on the pod
-      targetPort: 8081
-      
+      # -- Service type (ClusterIP for internal, NodePort/LoadBalancer for external access)
+      type: ClusterIP
       # -- NodePort (when service type is NodePort)
       nodePort: 30080
-      
       # -- Service annotations
       annotations: {}
     
@@ -916,13 +706,13 @@ temporal:
     
     # -- Temporal UI environment variables
     env:
-      # -- Temporal server address (matching working k8s manifest)
+      # -- Temporal server address
       - name: TEMPORAL_ADDRESS
-        value: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.temporal.server.service.port }}"
+        value: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:7233"
       
       # -- Temporal UI port
       - name: TEMPORAL_UI_PORT
-        value: "{{ .Values.temporal.ui.service.port }}"
+        value: "8081"
       
       # -- CORS origins for cross-origin requests
       - name: TEMPORAL_CORS_ORIGINS
@@ -990,72 +780,24 @@ postgresql:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- PostgreSQL liveness probe configuration
-  livenessProbe:
-    # -- Enable liveness probe
-    enabled: true
-    
-    # -- Initial delay before liveness probe starts
-    initialDelaySeconds: 30
-    
-    # -- How often to perform the probe
-    periodSeconds: 10
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 5
-    
-    # -- Number of failures before pod is restarted
-    failureThreshold: 6
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- Probe command
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
+  # -- PostgreSQL readiness probe override (optional)
+  # Defaults: initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 5,
+  #           failureThreshold: 6, successThreshold: 1, exec: pg_isready command
+  # Example customizations:
+  #   readinessProbe:
+  #     initialDelaySeconds: 10
+  readinessProbe: {}
   
-  # -- PostgreSQL readiness probe configuration
-  readinessProbe:
-    # -- Enable readiness probe
-    enabled: true
-    
-    # -- Initial delay before readiness probe starts
-    initialDelaySeconds: 5
-    
-    # -- How often to perform the probe
-    periodSeconds: 10
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 5
-    
-    # -- Number of failures before pod is marked unready
-    failureThreshold: 6
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- Probe command
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
+  # -- PostgreSQL liveness probe override (optional)
+  # Defaults: initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5,
+  #           failureThreshold: 6, successThreshold: 1, exec: pg_isready command
+  # Example customizations:
+  #   livenessProbe:
+  #     initialDelaySeconds: 60
+  livenessProbe: {}
   
-  # -- PostgreSQL service configuration
+  # -- PostgreSQL service annotations (optional)
   service:
-    # -- Service type (ClusterIP, NodePort, LoadBalancer)
-    type: ClusterIP
-    
-    # -- Service port
-    port: 5432
-    
-    # -- Target port on the pod
-    targetPort: 5432
-    
-    # -- Service annotations
     annotations: {}
   
   # -- PostgreSQL resource requirements
@@ -1127,68 +869,24 @@ elasticsearch:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- Elasticsearch liveness probe configuration
-  livenessProbe:
-    # -- Enable liveness probe
-    enabled: true
-    
-    # -- Initial delay before liveness probe starts
-    initialDelaySeconds: 90
-    
-    # -- How often to perform the probe
-    periodSeconds: 10
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 5
-    
-    # -- Number of failures before pod is restarted
-    failureThreshold: 3
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- HTTP probe configuration
-    httpGet:
-      path: /_cluster/health?local=true
-      port: 9200
+  # -- Elasticsearch readiness probe override (optional)
+  # Defaults: initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 5,
+  #           failureThreshold: 3, successThreshold: 1, httpGet: /_cluster/health?local=true on port 9200
+  # Example customizations:
+  #   readinessProbe:
+  #     initialDelaySeconds: 15
+  readinessProbe: {}
   
-  # -- Elasticsearch readiness probe configuration
-  readinessProbe:
-    # -- Enable readiness probe
-    enabled: true
-    
-    # -- Initial delay before readiness probe starts
-    initialDelaySeconds: 10
-    
-    # -- How often to perform the probe
-    periodSeconds: 10
-    
-    # -- Timeout for the probe
-    timeoutSeconds: 5
-    
-    # -- Number of failures before pod is marked unready
-    failureThreshold: 3
-    
-    # -- Number of successes before probe is considered successful
-    successThreshold: 1
-    
-    # -- HTTP probe configuration
-    httpGet:
-      path: /_cluster/health?local=true
-      port: 9200
+  # -- Elasticsearch liveness probe override (optional)
+  # Defaults: initialDelaySeconds: 90, periodSeconds: 10, timeoutSeconds: 5,
+  #           failureThreshold: 3, successThreshold: 1, httpGet: /_cluster/health?local=true on port 9200
+  # Example customizations:
+  #   livenessProbe:
+  #     initialDelaySeconds: 120
+  livenessProbe: {}
   
-  # -- Elasticsearch service configuration
+  # -- Elasticsearch service annotations (optional)
   service:
-    # -- Service type (ClusterIP, NodePort, LoadBalancer)
-    type: ClusterIP
-    
-    # -- Service port
-    port: 9200
-    
-    # -- Target port on the pod
-    targetPort: 9200
-    
-    # -- Service annotations
     annotations: {}
   
   # -- Elasticsearch resource requirements

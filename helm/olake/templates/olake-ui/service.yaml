@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: olake-ui
   namespace: {{ .Values.namespace.name }}
-  {{- with .Values.olakeUI.service.annotations }}
+  {{- with (.Values.olakeUI.service.annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -16,19 +16,19 @@ metadata:
 spec:
   type: {{ .Values.olakeUI.service.type }}
   ports:
-  - port: {{ .Values.olakeUI.service.ports.backend }}
+  - port: 8080
     targetPort: backend
     protocol: TCP
     name: backend
-    {{- if and (eq .Values.olakeUI.service.type "NodePort") .Values.olakeUI.service.nodePorts.backend }}
-    nodePort: {{ .Values.olakeUI.service.nodePorts.backend }}
+    {{- if eq .Values.olakeUI.service.type "NodePort" }}
+    nodePort: 30081
     {{- end }}
-  - port: {{ .Values.olakeUI.service.ports.frontend }}
+  - port: 8000
     targetPort: frontend
     protocol: TCP
     name: frontend
-    {{- if and (eq .Values.olakeUI.service.type "NodePort") .Values.olakeUI.service.nodePorts.frontend }}
-    nodePort: {{ .Values.olakeUI.service.nodePorts.frontend }}
+    {{- if eq .Values.olakeUI.service.type "NodePort" }}
+    nodePort: 30082
     {{- end }}
   selector:
     app.kubernetes.io/name: olake-ui

@@ -47,14 +47,14 @@ spec:
         {{- toYaml .Values.global.securityContext | nindent 8 }}
       initContainers:
       - name: wait-for-temporal
-        image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
-        imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         - -c
         - |
           echo "Waiting for Temporal to be ready..."
-          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.temporal.server.service.port }}; do
+          until nc -z temporal.{{ .Values.namespace.name }}.svc.cluster.local 7233; do
             echo "Temporal is not ready yet. Waiting..."
             sleep 5
           done
@@ -65,10 +65,10 @@ spec:
         imagePullPolicy: {{ .Values.olakeUI.image.pullPolicy }}
         ports:
         - name: backend
-          containerPort: {{ .Values.olakeUI.service.ports.backend }}
+          containerPort: 8080
           protocol: TCP
         - name: frontend
-          containerPort: {{ .Values.olakeUI.service.ports.frontend }}
+          containerPort: 8000
           protocol: TCP
         env:
         - name: PERSISTENT_DIR
@@ -80,38 +80,28 @@ spec:
           mountPath: /tmp/olake-config
         resources:
           {{- toYaml .Values.olakeUI.resources | nindent 10 }}
-        {{- if .Values.olakeUI.readinessProbe.enabled }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 30
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" 8080)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.olakeUI.readinessProbe | default dict) }}
         readinessProbe:
-          initialDelaySeconds: {{ .Values.olakeUI.readinessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.olakeUI.readinessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.olakeUI.readinessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.olakeUI.readinessProbe.failureThreshold }}
-          successThreshold: {{ .Values.olakeUI.readinessProbe.successThreshold }}
-          {{- with .Values.olakeUI.readinessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.olakeUI.readinessProbe.tcpSocket }}
-          tcpSocket:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-        {{- if .Values.olakeUI.livenessProbe.enabled }}
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 60
+          "periodSeconds" 30
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" 8080)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.olakeUI.livenessProbe | default dict) }}
         livenessProbe:
-          initialDelaySeconds: {{ .Values.olakeUI.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.olakeUI.livenessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.olakeUI.livenessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.olakeUI.livenessProbe.failureThreshold }}
-          successThreshold: {{ .Values.olakeUI.livenessProbe.successThreshold }}
-          {{- with .Values.olakeUI.livenessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.olakeUI.livenessProbe.tcpSocket }}
-          tcpSocket:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+          {{- toYaml $livenessProbe | nindent 10 }}
       volumes:
       - name: olake-config
         configMap:

@@ -51,7 +51,7 @@ spec:
         imagePullPolicy: {{ .Values.elasticsearch.image.pullPolicy }}
         ports:
         - name: http
-          containerPort: {{ .Values.elasticsearch.service.port }}
+          containerPort: 9200
           protocol: TCP
         - name: transport
           containerPort: 9300
@@ -63,28 +63,26 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.elasticsearch.resources | nindent 10 }}
-        {{- if .Values.elasticsearch.readinessProbe.enabled }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 10
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/_cluster/health?local=true" "port" 9200)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.elasticsearch.readinessProbe | default dict) }}
         readinessProbe:
-          initialDelaySeconds: {{ .Values.elasticsearch.readinessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.elasticsearch.readinessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.elasticsearch.readinessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.elasticsearch.readinessProbe.failureThreshold }}
-          successThreshold: {{ .Values.elasticsearch.readinessProbe.successThreshold }}
-          {{- with .Values.elasticsearch.readinessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-        {{- if .Values.elasticsearch.livenessProbe.enabled }}
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 90
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/_cluster/health?local=true" "port" 9200)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.elasticsearch.livenessProbe | default dict) }}
         livenessProbe:
-          initialDelaySeconds: {{ .Values.elasticsearch.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.elasticsearch.livenessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.elasticsearch.livenessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.elasticsearch.livenessProbe.failureThreshold }}
-          successThreshold: {{ .Values.elasticsearch.livenessProbe.successThreshold }}
-          {{- with .Values.elasticsearch.livenessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+          {{- toYaml $livenessProbe | nindent 10 }}
 {{- end }}

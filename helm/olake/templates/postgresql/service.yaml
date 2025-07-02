@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: postgresql
   namespace: {{ .Values.namespace.name }}
-  {{- with .Values.postgresql.service.annotations }}
+  {{- with (.Values.postgresql.service.annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -14,10 +14,10 @@ metadata:
     app.kubernetes.io/component: database
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.postgresql.service.type }}
+  type: ClusterIP
   ports:
-  - port: {{ .Values.postgresql.service.port }}
-    targetPort: {{ .Values.postgresql.service.targetPort }}
+  - port: 5432
+    targetPort: 5432
     protocol: TCP
     name: postgres
   selector:

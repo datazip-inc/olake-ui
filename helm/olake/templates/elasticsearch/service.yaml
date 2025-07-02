@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: elasticsearch
   namespace: {{ .Values.namespace.name }}
-  {{- with .Values.elasticsearch.service.annotations }}
+  {{- with (.Values.elasticsearch.service.annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -14,10 +14,10 @@ metadata:
     app.kubernetes.io/component: search
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.elasticsearch.service.type }}
+  type: ClusterIP
   ports:
-  - port: {{ .Values.elasticsearch.service.port }}
-    targetPort: {{ .Values.elasticsearch.service.targetPort }}
+  - port: 9200
+    targetPort: 9200
     protocol: TCP
     name: http
   - port: 9300

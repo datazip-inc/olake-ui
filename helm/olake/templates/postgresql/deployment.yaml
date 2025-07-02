@@ -51,7 +51,7 @@ spec:
         imagePullPolicy: {{ .Values.postgresql.image.pullPolicy }}
         ports:
         - name: postgres
-          containerPort: {{ .Values.postgresql.service.port }}
+          containerPort: 5432
           protocol: TCP
         env:
         - name: PGDATA
@@ -59,30 +59,28 @@ spec:
         envFrom:
         - secretRef:
             name: postgresql-secret
-        {{- if .Values.postgresql.livenessProbe.enabled }}
-        livenessProbe:
-          initialDelaySeconds: {{ .Values.postgresql.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.postgresql.livenessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.postgresql.livenessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.postgresql.livenessProbe.failureThreshold }}
-          successThreshold: {{ .Values.postgresql.livenessProbe.successThreshold }}
-          {{- with .Values.postgresql.livenessProbe.exec }}
-          exec:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-        {{- if .Values.postgresql.readinessProbe.enabled }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 5
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 6
+          "successThreshold" 1
+          "exec" (dict "command" (list "/bin/sh" "-c" "exec pg_isready -U \"postgres\" -h 127.0.0.1 -p 5432"))
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.postgresql.readinessProbe | default dict) }}
         readinessProbe:
-          initialDelaySeconds: {{ .Values.postgresql.readinessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.postgresql.readinessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.postgresql.readinessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.postgresql.readinessProbe.failureThreshold }}
-          successThreshold: {{ .Values.postgresql.readinessProbe.successThreshold }}
-          {{- with .Values.postgresql.readinessProbe.exec }}
-          exec:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 30
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 6
+          "successThreshold" 1
+          "exec" (dict "command" (list "/bin/sh" "-c" "exec pg_isready -U \"postgres\" -h 127.0.0.1 -p 5432"))
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.postgresql.livenessProbe | default dict) }}
+        livenessProbe:
+          {{- toYaml $livenessProbe | nindent 10 }}
         resources:
           {{- toYaml .Values.postgresql.resources | nindent 10 }}
         {{- if .Values.postgresql.persistence.enabled }}

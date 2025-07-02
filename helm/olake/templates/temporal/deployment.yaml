@@ -47,14 +47,14 @@ spec:
         {{- toYaml .Values.global.securityContext | nindent 8 }}
       initContainers:
       - name: wait-for-postgresql
-        image: "{{ .Values.temporal.server.initImage.repository }}:{{ .Values.temporal.server.initImage.tag }}"
-        imagePullPolicy: {{ .Values.temporal.server.initImage.pullPolicy }}
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         - -c
         - |
           echo "Waiting for PostgreSQL to be ready..."
-          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.postgresql.service.port }}; do
+          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local 5432; do
             echo "PostgreSQL is not ready yet. Waiting..."
             sleep 5
           done
@@ -65,7 +65,7 @@ spec:
         imagePullPolicy: {{ .Values.temporal.server.image.pullPolicy }}
         ports:
         - name: grpc
-          containerPort: {{ .Values.temporal.server.service.port }}
+          containerPort: 7233
           protocol: TCP
         env:
         {{- range .Values.temporal.server.env }}
@@ -74,28 +74,26 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.temporal.server.resources | nindent 10 }}
-        {{- if .Values.temporal.server.readinessProbe.enabled }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 10
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" 7233)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.temporal.server.readinessProbe | default dict) }}
         readinessProbe:
-          initialDelaySeconds: {{ .Values.temporal.server.readinessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.temporal.server.readinessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.temporal.server.readinessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.temporal.server.readinessProbe.failureThreshold }}
-          successThreshold: {{ .Values.temporal.server.readinessProbe.successThreshold }}
-          {{- with .Values.temporal.server.readinessProbe.tcpSocket }}
-          tcpSocket:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-        {{- if .Values.temporal.server.livenessProbe.enabled }}
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 150
+          "periodSeconds" 60
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" 7233)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.temporal.server.livenessProbe | default dict) }}
         livenessProbe:
-          initialDelaySeconds: {{ .Values.temporal.server.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.temporal.server.livenessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.temporal.server.livenessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.temporal.server.livenessProbe.failureThreshold }}
-          successThreshold: {{ .Values.temporal.server.livenessProbe.successThreshold }}
-          {{- with .Values.temporal.server.livenessProbe.tcpSocket }}
-          tcpSocket:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+          {{- toYaml $livenessProbe | nindent 10 }}
 {{- end }}

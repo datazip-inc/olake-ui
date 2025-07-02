@@ -50,14 +50,14 @@ spec:
       serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
       initContainers:
       - name: wait-for-olake-ui
-        image: "{{ .Values.olakeWorker.initImage.repository }}:{{ .Values.olakeWorker.initImage.tag }}"
-        imagePullPolicy: {{ .Values.olakeWorker.initImage.pullPolicy }}
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         - -c
         - |
           echo "Waiting for OLake UI to be ready..."
-          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.olakeUI.service.ports.backend }}; do
+          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local 8080; do
             echo "OLake UI is not ready yet. Waiting..."
             sleep 5
           done
@@ -81,30 +81,28 @@ spec:
             name: olake-k8s-worker-config
         resources:
           {{- toYaml .Values.olakeWorker.resources | nindent 10 }}
-        {{- if .Values.olakeWorker.livenessProbe.enabled }}
-        livenessProbe:
-          initialDelaySeconds: {{ .Values.olakeWorker.livenessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.olakeWorker.livenessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.olakeWorker.livenessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.olakeWorker.livenessProbe.failureThreshold }}
-          successThreshold: {{ .Values.olakeWorker.livenessProbe.successThreshold }}
-          {{- with .Values.olakeWorker.livenessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
-        {{- if .Values.olakeWorker.readinessProbe.enabled }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 30
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/health" "port" 8090)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.olakeWorker.readinessProbe | default dict) }}
         readinessProbe:
-          initialDelaySeconds: {{ .Values.olakeWorker.readinessProbe.initialDelaySeconds }}
-          periodSeconds: {{ .Values.olakeWorker.readinessProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.olakeWorker.readinessProbe.timeoutSeconds }}
-          failureThreshold: {{ .Values.olakeWorker.readinessProbe.failureThreshold }}
-          successThreshold: {{ .Values.olakeWorker.readinessProbe.successThreshold }}
-          {{- with .Values.olakeWorker.readinessProbe.httpGet }}
-          httpGet:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 60
+          "periodSeconds" 30
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/health" "port" 8090)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.olakeWorker.livenessProbe | default dict) }}
+        livenessProbe:
+          {{- toYaml $livenessProbe | nindent 10 }}
         volumeMounts:
         - name: shared-storage
           mountPath: /data/olake-jobs

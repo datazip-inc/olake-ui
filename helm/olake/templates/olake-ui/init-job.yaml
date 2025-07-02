@@ -25,22 +25,22 @@ spec:
       restartPolicy: Never
       initContainers:
       - name: wait-for-olake-ui
-        image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
-        imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         - -c
         - |
           echo "Waiting for OLake UI to be ready..."
-          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.olakeUI.service.ports.backend }}; do
+          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local 8080; do
             echo "OLake UI is not ready yet. Waiting..."
             sleep 5
           done
           echo "OLake UI is ready!"
       containers:
       - name: signup-init
-        image: "{{ .Values.olakeUI.curlImage.repository }}:{{ .Values.olakeUI.curlImage.tag }}"
-        imagePullPolicy: {{ .Values.olakeUI.curlImage.pullPolicy }}
+        image: curlimages/curl:latest
+        imagePullPolicy: IfNotPresent
         env:
         - name: USERNAME
           value: "admin"
@@ -49,7 +49,7 @@ spec:
         - name: EMAIL
           value: "admin@example.com"
         - name: OLAKE_APP_URL
-          value: "http://olake-ui.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.olakeUI.service.ports.backend }}/signup"
+          value: "http://olake-ui.{{ .Values.namespace.name }}.svc.cluster.local:8080/signup"
         command:
         - /bin/sh
         - -c

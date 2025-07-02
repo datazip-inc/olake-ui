@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: temporal
   namespace: {{ .Values.namespace.name }}
-  {{- with .Values.temporal.server.service.annotations }}
+  {{- with (.Values.temporal.server.service.annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -14,10 +14,10 @@ metadata:
     app.kubernetes.io/component: workflow-engine
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.temporal.server.service.type }}
+  type: ClusterIP
   ports:
-  - port: {{ .Values.temporal.server.service.port }}
-    targetPort: {{ .Values.temporal.server.service.targetPort }}
+  - port: 7233
+    targetPort: 7233
     protocol: TCP
     name: grpc
   selector:

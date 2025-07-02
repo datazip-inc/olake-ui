@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: temporal-ui
   namespace: {{ .Values.namespace.name }}
-  {{- with .Values.temporal.ui.service.annotations }}
+  {{- with (.Values.temporal.ui.service.annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -16,8 +16,8 @@ metadata:
 spec:
   type: {{ .Values.temporal.ui.service.type }}
   ports:
-  - port: {{ .Values.temporal.ui.service.port }}
-    targetPort: {{ .Values.temporal.ui.service.targetPort }}
+  - port: 8081
+    targetPort: 8081
     protocol: TCP
     name: http
     {{- if and (eq .Values.temporal.ui.service.type "NodePort") .Values.temporal.ui.service.nodePort }}

@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: olake-k8s-worker
   namespace: {{ .Values.namespace.name }}
-  {{- with .Values.olakeWorker.service.annotations }}
+  {{- with (.Values.olakeWorker.service.annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -14,10 +14,10 @@ metadata:
     app.kubernetes.io/component: worker
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.olakeWorker.service.type }}
+  type: ClusterIP
   ports:
-  - port: {{ .Values.olakeWorker.service.port }}
-    targetPort: {{ .Values.olakeWorker.service.targetPort }}
+  - port: 8090
+    targetPort: 8090
     protocol: TCP
     name: health
   selector:
