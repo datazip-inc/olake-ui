@@ -340,7 +340,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       5,
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "string",
+					"type":        "obj",
 					"title":       "JDBC URL Parameters",
 					"description": "Additional JDBC URL parameters for connection tuning (optional)",
 					"order":       6,
@@ -568,7 +568,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       5,
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "string",
+					"type":        "obj",
 					"title":       "JDBC URL Parameters",
 					"description": "Additional JDBC URL parameters for connection tuning (optional)",
 					"order":       6,
