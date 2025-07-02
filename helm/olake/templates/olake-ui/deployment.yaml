@@ -44,19 +44,6 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-      - name: wait-for-postgresql
-        image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
-        imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
-        command:
-        - /bin/sh
-        - -c
-        - |
-          echo "Waiting for PostgreSQL to be ready..."
-          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local {{ .Values.postgresql.service.port }}; do
-            echo "PostgreSQL is not ready yet. Waiting..."
-            sleep 5
-          done
-          echo "PostgreSQL is ready!"
       - name: wait-for-temporal
         image: "{{ .Values.olakeUI.initImage.repository }}:{{ .Values.olakeUI.initImage.tag }}"
         imagePullPolicy: {{ .Values.olakeUI.initImage.pullPolicy }}
