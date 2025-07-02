@@ -91,6 +91,33 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 	return result, nil
 }
 
+// FetchSpec runs a workflow to fetch connector specifications
+func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (map[string]interface{}, error) {
+	params := &ActivityParams{
+		SourceType:      sourceType,
+		Version:         version,
+		WorkflowID:      fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix()),
+		DestinationType: destinationType,
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        params.WorkflowID,
+		TaskQueue: TaskQueue,
+	}
+
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := run.Get(ctx, &result); err != nil {
+		return nil, fmt.Errorf("workflow execution failed: %v", err)
+	}
+
+	return result, nil
+}
+
 // TestConnection runs a workflow to test connection
 func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
 	params := &ActivityParams{

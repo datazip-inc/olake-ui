@@ -38,11 +38,11 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 	return result, nil
 }
 
-// // GetSpecActivity runs the spec command to get connector specifications
-// func GetSpecActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
-// 	params.Command = docker.Spec
-// 	return ExecuteDockerCommandActivity(ctx, params)
-// }
+// GetSpecActivity runs the spec command to get connector specifications
+func FetchSpecActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
+	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	return runner.FetchSpec(ctx, params.DestinationType, params.SourceType, params.Version, params.WorkflowID)
+}
 
 // TestConnectionActivity runs the check command to test connection
 func TestConnectionActivity(ctx context.Context, params *ActivityParams) (map[string]interface{}, error) {

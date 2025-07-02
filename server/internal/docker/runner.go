@@ -146,6 +146,35 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	}
 	return outputDir
 }
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (map[string]interface{}, error) {
+	workDir, err := r.setupWorkDirectory(workflowID)
+	if err != nil {
+		return nil, err
+	}
+	logs.Info("working directory path %s\n", workDir)
+	specPath := filepath.Join(workDir, "spec.json")
+	// Prepare the command arguments
+	dockerArgs := []string{
+		"run", "-v",
+		r.GetDockerImageName(sourceType, version),
+		string(Spec),
+	}
+	// Add destination flag if provided
+	if destinationType != "" {
+		dockerArgs = append(dockerArgs, "--destination", destinationType)
+	}
+	// Run the command
+	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
+	}
+	result, err := utils.ParseJSONFile(specPath)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
 
 // TestConnection runs the check command and returns connection status
 func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
@@ -191,7 +220,6 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if err != nil {
 		return nil, err
 	}
-	logs.Info("working directory path %s\n", workDir)
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
