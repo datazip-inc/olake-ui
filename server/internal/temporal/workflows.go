@@ -36,6 +36,24 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 	return result, nil
 }
 
+// FetchSpecWorkflow is a workflow for fetching connector specifications
+func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (map[string]interface{}, error) {
+	// Execute the FetchSpecActivity directly
+	options := workflow.ActivityOptions{
+		StartToCloseTimeout: time.Minute * 10,
+		RetryPolicy:         DefaultRetryPolicy,
+	}
+	ctx = workflow.WithActivityOptions(ctx, options)
+
+	var result map[string]interface{}
+	err := workflow.ExecuteActivity(ctx, FetchSpecActivity, params).Get(ctx, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // TestConnectionWorkflow is a workflow for testing connections
 func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[string]interface{}, error) {
 	// Execute the TestConnectionActivity directly
