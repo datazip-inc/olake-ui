@@ -1,0 +1,20 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-ip-config
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-3"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-config
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-config
+    {{- include "olake.labels" . | nindent 4 }}
+data:
+  # This will be populated by the CIDR detection job
+  staticIP: "172.16.100.100"  # Default fallback
+  serviceCIDR: "172.16.0.0/16"  # Default fallback
+{{- end }}

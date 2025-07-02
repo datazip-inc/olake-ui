@@ -1,13 +1,10 @@
-{{- if .Values.nfsServer.enabled }}
+{{- if false }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   namespace: {{ .Values.namespace.name }}
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "1"
-    "helm.sh/hook-delete-policy": before-hook-creation
+  annotations: {}
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -15,7 +12,7 @@ metadata:
     {{- include "olake.labels" . | nindent 4 }}
 spec:
   type: ClusterIP
-  clusterIP: "192.168.100.100"
+  clusterIP: {{ include "olake.nfsStaticIP" . }}
   ports:
   - name: nfs
     port: 2049

@@ -71,3 +71,15 @@ Shared storage PVC name
 {{ .Values.nfsServer.external.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+NFS Server Static IP
+*/}}
+{{- define "olake.nfsStaticIP" -}}
+{{- $configMap := lookup "v1" "ConfigMap" .Values.namespace.name (printf "%s-nfs-ip-config" (include "olake.fullname" .)) -}}
+{{- if and $configMap $configMap.data $configMap.data.staticIP -}}
+{{- $configMap.data.staticIP -}}
+{{- else -}}
+172.16.100.100
+{{- end -}}
+{{- end -}}

@@ -1,0 +1,125 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-cidr-detection
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-cidr-detection
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-cidr-detection
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "olake.name" . }}-cidr-detection
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: nfs-cidr-detection
+    spec:
+      serviceAccountName: {{ include "olake.fullname" . }}-nfs-cidr-detection
+      restartPolicy: Never
+      containers:
+      - name: cidr-detector
+        image: bitnami/kubectl:latest
+        imagePullPolicy: Always
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set +e  # Don't exit on errors, we want to try multiple methods
+          echo "Detecting service CIDR range..."
+          
+          # Method 1: Error-based detection (most reliable)
+          echo "Trying error-based detection..."
+          ERROR_OUTPUT=$(echo '{"apiVersion":"v1","kind":"Service","metadata":{"name":"temp-cidr-test"},"spec":{"clusterIP":"1.1.1.1","ports":[{"port":443}]}}' | kubectl apply -f - 2>&1 || true)
+          echo "Error output: $ERROR_OUTPUT"
+          CIDR=$(echo "$ERROR_OUTPUT" | grep -o '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/[0-9]*' | head -1 || true)
+          
+          # Cleanup the test service attempt
+          kubectl delete service temp-cidr-test --ignore-not-found=true || true
+          
+          if [ -z "$CIDR" ]; then
+            echo "Error-based detection failed, trying alternative method..."
+            # Method 2: Alternative error-based detection
+            echo "Trying alternative error method..."
+            ALT_ERROR=$(kubectl create service clusterip temp-test-svc --tcp='8080:8080' --clusterip='1.0.0.0' 2>&1 || true)
+            echo "Alt error output: $ALT_ERROR"
+            CIDR=$(echo "$ALT_ERROR" | grep -o '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/[0-9]*' | head -1 || true)
+            kubectl delete service temp-test-svc --ignore-not-found=true || true
+          fi
+          
+          if [ -z "$CIDR" ]; then
+            echo "Alternative detection failed, trying cluster-info method..."
+            # Method 3: cluster-info dump method
+            echo "Trying cluster-info dump..."
+            CLUSTER_INFO=$(kubectl cluster-info dump 2>/dev/null || true)
+            CIDR=$(echo "$CLUSTER_INFO" | grep -o '\--service-cluster-ip-range=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/[0-9]*' | cut -d'=' -f2 | head -1 || true)
+          fi
+          
+          if [ -z "$CIDR" ]; then
+            echo "cluster-info method failed, trying existing service analysis..."
+            # Method 4: Analyze existing services to infer CIDR
+            echo "Analyzing existing services..."
+            EXISTING_IPS=$(kubectl get svc --all-namespaces -o jsonpath='{.items[*].spec.clusterIP}' | tr ' ' '\n' | grep -v None | head -5)
+            echo "Found existing service IPs: $EXISTING_IPS"
+            
+            # Try to infer CIDR from existing service IPs
+            FIRST_IP=$(echo "$EXISTING_IPS" | head -1)
+            if [[ $FIRST_IP == 10.96.* ]]; then
+              CIDR="10.96.0.0/12"
+            elif [[ $FIRST_IP == 172.20.* ]]; then
+              CIDR="172.20.0.0/16"
+            elif [[ $FIRST_IP == 192.168.* ]]; then
+              CIDR="192.168.0.0/16"
+            elif [[ $FIRST_IP == 172.16.* ]]; then
+              CIDR="172.16.0.0/16"
+            fi
+            echo "Inferred CIDR from existing services: $CIDR"
+          fi
+          
+          if [ -z "$CIDR" ]; then
+            echo "All detection methods failed, using default service CIDR"
+            CIDR="172.16.0.0/16"
+          fi
+          
+          echo "Detected service CIDR: $CIDR"
+          
+          # Calculate static IP by taking network base + 100
+          # Extract network part and add offset
+          NETWORK=$(echo $CIDR | cut -d'/' -f1 | cut -d'.' -f1-3)
+          STATIC_IP="${NETWORK}.100"
+          
+          # Calculate appropriate static IP based on detected CIDR
+          if [[ $CIDR == 10.96.* ]]; then
+            STATIC_IP="10.96.100.100"
+          elif [[ $CIDR == 172.16.* ]]; then
+            STATIC_IP="172.16.100.100"
+          elif [[ $CIDR == 172.20.* ]]; then
+            STATIC_IP="172.20.100.100"  
+          elif [[ $CIDR == 192.168.* ]]; then
+            STATIC_IP="192.168.100.100"
+          fi
+          
+          echo "Calculated static IP: $STATIC_IP"
+          
+          # Create or update ConfigMap with the static IP
+          kubectl create configmap {{ include "olake.fullname" . }}-nfs-ip-config \
+            --from-literal=staticIP="$STATIC_IP" \
+            --from-literal=serviceCIDR="$CIDR" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          echo "Successfully stored static IP in ConfigMap"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+{{- end }}
