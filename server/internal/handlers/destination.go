@@ -200,7 +200,8 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 	// TODO: use context provided by request
-	result, err := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", encryptedConfig)
+	//would be require in local availble versions for blackbox
+	result, err := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "v0.1.4", encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
