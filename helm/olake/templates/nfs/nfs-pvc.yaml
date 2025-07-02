@@ -4,7 +4,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "olake.fullname" . }}-shared-storage
   namespace: {{ .Values.namespace.name }}
-  annotations: {}
+  annotations:
+    "helm.sh/resource-policy": "keep"
   labels:
     {{- include "olake.labels" . | nindent 4 }}
 spec:

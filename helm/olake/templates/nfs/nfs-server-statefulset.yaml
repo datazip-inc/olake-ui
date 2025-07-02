@@ -4,7 +4,8 @@ kind: StatefulSet
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   namespace: {{ .Values.namespace.name }}
-  annotations: {}
+  annotations:
+    "helm.sh/resource-policy": "keep"
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
