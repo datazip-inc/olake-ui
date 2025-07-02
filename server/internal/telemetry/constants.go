@@ -1,9 +1,15 @@
-package utils
+package telemetry
 
 import "time"
 
-// Telemetry event constants
+// Telemetry constants
 const (
+	TelemetryUserIDFile      = "user_id"
+	OlakeVersion             = "0.0.4"
+	IpNotFound               = "NA"
+	TelemetryConfigTimeout   = 30 * time.Second
+	TelemetrySegmentAPIKey   = "AiWKKeaOKQvsOotHj5iGANpNhYG6OaM3"
+	IPUrl                    = "https://api.ipify.org?format=text"
 	EventUserLogin           = "user_login"
 	EventJobCreated          = "job_created"
 	EventSyncStarted         = "sync_started"
@@ -13,13 +19,4 @@ const (
 	EventDestinationCreated  = "destination_created"
 	EventSourcesUpdated      = "sources_updated"
 	EventDestinationsUpdated = "destinations_updated"
-)
-
-// Telemetry configuration constants
-const (
-	TelemetryAnonymousIDFile       = "telemetry_id"
-	TelemetryVersion               = "0.0.1"
-	TelemetryIPNotFoundPlaceholder = "NA"
-	TelemetryConfigTimeout         = time.Second
-	TelemetrySegmentAPIKey         = "AiWKKeaOKQvsOotHj5iGANpNhYG6OaM3"
 )

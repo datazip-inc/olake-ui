@@ -10,12 +10,10 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 )
 
-// jobDetails contains common job information used in telemetry
 type jobDetails struct {
 	JobName         string
 	CreatedAt       time.Time
@@ -26,15 +24,14 @@ type jobDetails struct {
 	DestinationName string
 }
 
-// getJobDetails fetches common job information from the database
 func getJobDetails(jobID int) (*jobDetails, error) {
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID, false)
-	if err != nil {
+	if err != nil || job == nil {
+		if job == nil {
+			return nil, fmt.Errorf("job not found")
+		}
 		return nil, fmt.Errorf("failed to get job details: %s", err)
-	}
-	if job == nil {
-		return nil, fmt.Errorf("job not found")
 	}
 
 	details := &jobDetails{
@@ -43,13 +40,9 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	}
 
 	if job.CreatedBy != nil {
-		userORM := database.NewUserORM()
-		fullUser, err := userORM.GetByID(job.CreatedBy.ID)
-		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %s", err)
-			return nil, err
+		if user, err := database.NewUserORM().GetByID(job.CreatedBy.ID); err == nil {
+			details.CreatedBy = user.Username
 		}
-		details.CreatedBy = fullUser.Username
 	}
 
 	if job.SourceID != nil {
@@ -65,9 +58,8 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	return details, nil
 }
 
-// prepareCommonProperties prepares the common telemetry properties for sync events
-func prepareCommonProperties(jobID int, workflowID string, details *jobDetails) map[string]interface{} {
-	return map[string]interface{}{
+func prepareCommonProperties(jobID int, workflowID string, details *jobDetails, eventTime time.Time) map[string]interface{} {
+	props := map[string]interface{}{
 		"job_id":           jobID,
 		"workflow_id":      workflowID,
 		"job_name":         details.JobName,
@@ -78,112 +70,89 @@ func prepareCommonProperties(jobID int, workflowID string, details *jobDetails) 
 		"destination_type": details.DestinationType,
 		"destination_name": details.DestinationName,
 	}
+
+	if eventTime.IsZero() {
+		eventTime = time.Now().UTC()
+	}
+	timeKey := "started_at"
+	if eventTime != props["created_at"] {
+		timeKey = "ended_at"
+	}
+	props[timeKey] = eventTime.Format(time.RFC3339)
+
+	return props
 }
 
-// TrackSyncStart tracks when a sync job starts with relevant properties
-func TrackSyncStart(ctx context.Context, jobID int, workflowID string) error {
+func trackSyncEvent(ctx context.Context, jobID int, workflowID string, eventType string) error {
 	details, err := getJobDetails(jobID)
 	if err != nil {
-		logs.Error("Failed to get job details for telemetry: %s", err)
 		return err
 	}
 
-	properties := prepareCommonProperties(jobID, workflowID, details)
-	properties["started_at"] = time.Now().UTC().Format(time.RFC3339)
-
-	if err := TrackEvent(ctx, utils.EventSyncStarted, properties); err != nil {
-		logs.Error("Failed to track sync start event: %s", err)
-		return err
+	properties := prepareCommonProperties(jobID, workflowID, details, time.Time{})
+	if eventType == EventSyncCompleted {
+		if err := enrichWithSyncStats(properties, workflowID); err != nil {
+			return err
+		}
 	}
 
+	if err := TrackEvent(ctx, eventType, properties); err != nil {
+		return err
+	}
 	return nil
 }
 
-// TrackSyncFailed tracks when a sync job fails with relevant properties
-func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) error {
-	details, err := getJobDetails(jobID)
-	if err != nil {
-		logs.Error("Failed to get job details for telemetry: %s", err)
-		return err
-	}
-
-	properties := prepareCommonProperties(jobID, workflowID, details)
-	properties["ended_at"] = time.Now().UTC().Format(time.RFC3339)
-
-	if err := TrackEvent(ctx, utils.EventSyncFailed, properties); err != nil {
-		logs.Error("Failed to track sync failure event: %s", err)
-		return err
-	}
-
-	return nil
-}
-
-// TrackSyncCompleted tracks when a sync job completes successfully with relevant properties
-func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error {
-	details, err := getJobDetails(jobID)
-	if err != nil {
-		logs.Error("Failed to get job details for telemetry: %s", err)
-		return err
-	}
-
-	properties := prepareCommonProperties(jobID, workflowID, details)
-	properties["ended_at"] = time.Now().UTC().Format(time.RFC3339)
-
-	// Read stats.json file
+func enrichWithSyncStats(properties map[string]interface{}, workflowID string) error {
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	homeDir := docker.GetDefaultConfigDir()
-	mainSyncDir := filepath.Join(homeDir, syncFolderName)
-	statsPath := filepath.Join(mainSyncDir, "stats.json")
+	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 
+	if err := addStatsProperties(properties, mainSyncDir); err != nil {
+		return err
+	}
+
+	return addStreamsProperties(properties, mainSyncDir)
+}
+
+func addStatsProperties(properties map[string]interface{}, mainSyncDir string) error {
+	statsPath := filepath.Join(mainSyncDir, "stats.json")
 	statsData, err := os.ReadFile(statsPath)
 	if err != nil {
-		logs.Error("Failed to read stats.json: %s", err)
 		return err
 	}
+
 	var stats map[string]interface{}
 	if err := json.Unmarshal(statsData, &stats); err != nil {
-		logs.Error("Failed to unmarshal stats.json: %s", err)
 		return err
 	}
-	// Add stats properties to the event
+
 	if recordsSynced, ok := stats["Synced Records"]; ok {
 		properties["records_synced"] = recordsSynced
 	}
 	if memory, ok := stats["Memory"]; ok {
 		properties["memory_used"] = memory
 	}
+	return nil
+}
 
-	// Read streams.json if exists
+func addStreamsProperties(properties map[string]interface{}, mainSyncDir string) error {
 	streamsPath := filepath.Join(mainSyncDir, "streams.json")
 	streamsData, err := os.ReadFile(streamsPath)
 	if err != nil {
-		logs.Error("Failed to read streams.json: %s", err)
-		return err
+		return fmt.Errorf("Failed to read streams.json: %s", err)
 	}
+
 	var streamsConfig struct {
-		Streams []struct {
-			Stream struct {
-				Name               string   `json:"name"`
-				Namespace          string   `json:"namespace"`
-				SyncMode           string   `json:"sync_mode"`
-				SupportedSyncModes []string `json:"supported_sync_modes"`
-			} `json:"stream"`
-		} `json:"streams"`
 		SelectedStreams map[string][]struct {
-			StreamName     string `json:"stream_name"`
 			Normalization  bool   `json:"normalization"`
 			PartitionRegex string `json:"partition_regex"`
 		} `json:"selected_streams"`
 	}
 
 	if err := json.Unmarshal(streamsData, &streamsConfig); err != nil {
-		logs.Error("Error unmarshalling streams.json: %s", err)
+		return fmt.Errorf("Error unmarshalling streams.json: %s", err)
 	}
-	// Count normalized streams
-	normalizedCount := 0
-	partitionedCount := 0
 
-	// Count normalized and partitioned streams from selected_streams
+	normalizedCount, partitionedCount := 0, 0
 	for _, streams := range streamsConfig.SelectedStreams {
 		for _, stream := range streams {
 			if stream.Normalization {
@@ -197,11 +166,32 @@ func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) error
 
 	properties["normalized_streams_count"] = normalizedCount
 	properties["partitioned_streams_count"] = partitionedCount
-
-	if err := TrackEvent(ctx, utils.EventSyncCompleted, properties); err != nil {
-		logs.Error("Failed to track sync completion event: %s", err)
-		return err
-	}
-
 	return nil
+}
+
+func TrackSyncStart(ctx context.Context, jobID int, workflowID string) {
+	go func() {
+		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncStarted)
+		if err != nil {
+			logs.Debug("failed to track sync start event: %s", err)
+		}
+	}()
+}
+
+func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) {
+	go func() {
+		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncFailed)
+		if err != nil {
+			logs.Debug("failed to track sync failed event: %s", err)
+		}
+	}()
+}
+
+func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) {
+	go func() {
+		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncCompleted)
+		if err != nil {
+			logs.Debug("failed to track sync completed event: %s", err)
+		}
+	}()
 }

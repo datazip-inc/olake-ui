@@ -13,6 +13,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -20,7 +21,6 @@ import (
 const (
 	DefaultDirPermissions  = 0755
 	DefaultFilePermissions = 0644
-	DefaultConfigDir       = "/tmp/olake-config"
 )
 
 // Command represents a Docker command type
@@ -51,21 +51,15 @@ func NewRunner(workingDir string) *Runner {
 		logs.Critical("Failed to create working directory %s: %v", workingDir, err)
 	}
 
-	// Get anonymousID from constants, default to empty string if there's an error
-	anonymousID := ""
-	if id := constants.GetStoredAnonymousID(); id != "" {
-		anonymousID = id
-	}
-
 	return &Runner{
 		WorkingDir:  workingDir,
-		anonymousID: anonymousID,
+		anonymousID: telemetry.GetTelemetryUserID(),
 	}
 }
 
 // GetDefaultConfigDir returns the default directory for storing config files
 func GetDefaultConfigDir() string {
-	return DefaultConfigDir
+	return constants.DefaultConfigDir
 }
 
 // setupWorkDirectory creates a working directory and returns the full path
@@ -148,7 +142,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 // getHostOutputDir determines the host output directory path
 func (r *Runner) getHostOutputDir(outputDir string) string {
 	if persistentDir := os.Getenv("PERSISTENT_DIR"); persistentDir != "" {
-		hostOutputDir := strings.Replace(outputDir, DefaultConfigDir, persistentDir, 1)
+		hostOutputDir := strings.Replace(outputDir, constants.DefaultConfigDir, persistentDir, 1)
 		logs.Info("hostOutputDir %s\n", hostOutputDir)
 		return hostOutputDir
 	}

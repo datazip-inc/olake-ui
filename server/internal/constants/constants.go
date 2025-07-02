@@ -2,28 +2,25 @@ package constants
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/beego/beego/v2/core/config"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	"github.com/spf13/viper"
 )
 
 var (
-	defaultPort     = 8080
-	version         = "Not Set"
-	commitsha       = "Not Set"
-	releasechannel  = "Not Set"
-	defaultBaseHost = "localhost"
-	DefaultTimeZone = "Asia/Kolkata"
-	DefaultUsername = "olake"
-	DefaultPassword = "password"
-	EncryptionKey   = "OLAKE_SECRET_KEY"
-	TableNameMap    = map[TableType]string{}
+	defaultPort      = 8080
+	version          = "Not Set"
+	commitsha        = "Not Set"
+	releasechannel   = "Not Set"
+	defaultBaseHost  = "localhost"
+	DefaultTimeZone  = "Asia/Kolkata"
+	DefaultUsername  = "olake"
+	DefaultPassword  = "password"
+	EncryptionKey    = "OLAKE_SECRET_KEY"
+	TableNameMap     = map[TableType]string{}
+	DefaultConfigDir = "/tmp/olake-config"
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
@@ -63,16 +60,4 @@ func checkForRequiredVariables(vars []string) {
 			panic("Required config variable not found: ," + v)
 		}
 	}
-}
-
-// GetStoredAnonymousID returns the stored anonymous ID from the config directory
-func GetStoredAnonymousID() string {
-	idPath := filepath.Join(os.TempDir(), "olake-config", "telemetry", utils.TelemetryAnonymousIDFile)
-
-	idBytes, err := os.ReadFile(idPath)
-	if err != nil {
-		logs.Error("Failed to read telemetry anonymous ID file: %s", err)
-		return ""
-	}
-	return string(idBytes)
 }

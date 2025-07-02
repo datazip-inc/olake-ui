@@ -6,69 +6,66 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // TrackSourceCreation tracks the creation of a new source with relevant properties
-func TrackSourceCreation(ctx context.Context, sourceID int, sourceName, sourceType, version string, createdAt time.Time) error {
-	properties := map[string]interface{}{
-		"source_id":   sourceID,
-		"source_name": sourceName,
-		"source_type": sourceType,
-		"version":     version,
-	}
+func TrackSourceCreation(ctx context.Context, source models.Source) {
+	go func() {
+		properties := map[string]interface{}{
+			"source_id":   source.ID,
+			"source_name": source.Name,
+			"source_type": source.Type,
+			"version":     source.Version,
+		}
 
-	if !createdAt.IsZero() {
-		properties["created_at"] = createdAt.Format(time.RFC3339)
-	}
+		if !source.CreatedAt.IsZero() {
+			properties["created_at"] = source.CreatedAt.Format(time.RFC3339)
+		}
 
-	if err := TrackEvent(ctx, utils.EventSourceCreated, properties); err != nil {
-		logs.Error("Failed to track source creation event: %s", err)
-		return err
-	}
-
-	return nil
+		if err := TrackEvent(ctx, EventSourceCreated, properties); err != nil {
+			logs.Debug("Failed to track source creation event: %s", err)
+			return
+		}
+		// Track sources status after creation
+		TrackSourcesStatus(ctx)
+	}()
 }
 
 // TrackSourcesStatus logs telemetry about active and inactive sources
-func TrackSourcesStatus(ctx context.Context, userID interface{}) error {
-	sourceORM := database.NewSourceORM()
-	jobORM := database.NewJobORM()
-	userORM := database.NewUserORM()
+func TrackSourcesStatus(ctx context.Context) {
+	go func() {
+		sourceORM := database.NewSourceORM()
+		jobORM := database.NewJobORM()
 
-	sources, err := sourceORM.GetAll()
-	if err != nil {
-		return err
-	}
-
-	activeSources := 0
-	for _, source := range sources {
-		jobs, err := jobORM.GetBySourceID(source.ID)
+		sources, err := sourceORM.GetAll()
 		if err != nil {
-			return err
+			logs.Debug("failed to get all sources in track source status: %s", err)
+			return
 		}
-		if len(jobs) > 0 {
-			activeSources++
+
+		activeSources := 0
+		for _, source := range sources {
+			// TODO: remove orm calls from loop
+			jobs, err := jobORM.GetBySourceID(source.ID)
+			if err != nil {
+				logs.Debug("failed to get all jobs for source[%d] in track source status: %s", source.ID, err)
+				break
+			}
+			if len(jobs) > 0 {
+				activeSources++
+			}
 		}
-	}
 
-	// Prepare telemetry properties
-	props := map[string]interface{}{
-		"active_sources":   activeSources,
-		"inactive_sources": len(sources) - activeSources,
-		"total_sources":    len(sources),
-	}
-
-	// Get user properties if available
-	if userID != nil {
-		user, err := userORM.GetByID(userID.(int))
-		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %s", err)
-			return err
+		// Prepare telemetry properties
+		props := map[string]interface{}{
+			"active_sources":   activeSources,
+			"inactive_sources": len(sources) - activeSources,
+			"total_sources":    len(sources),
 		}
-		props["user_id"] = user.ID
-		props["user_email"] = user.Email
-	}
 
-	return TrackEvent(ctx, utils.EventSourcesUpdated, props)
+		if err := TrackEvent(ctx, EventSourcesUpdated, props); err != nil {
+			logs.Debug("failed to track source status event: %s", err)
+		}
+	}()
 }

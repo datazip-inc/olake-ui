@@ -16,12 +16,7 @@ import (
 
 func main() {
 	// Initialize telemetry
-	go func() {
-		if err := telemetry.InitTelemetry(); err != nil {
-			logs.Error("Failed to initialize telemetry: %s", err)
-		}
-	}()
-
+	telemetry.InitTelemetry()
 	// check constants
 	constants.Init()
 
@@ -64,6 +59,6 @@ func main() {
 
 	// Stop the worker
 	worker.Stop()
-	telemetry.Flush()
+	telemetry.Close()
 	logs.Info("Worker stopped. Goodbye!")
 }

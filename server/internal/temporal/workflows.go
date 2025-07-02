@@ -73,20 +73,11 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event
-		go func() {
-			if err := telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID); err != nil {
-				workflow.GetLogger(ctx).Error("Failed to track sync failure event", "error", err)
-			}
-		}()
+		telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID)
 		return nil, err
 	}
 
 	// Track sync completion
-	go func() {
-		if err := telemetry.TrackSyncCompleted(context.Background(), jobID, params.WorkflowID); err != nil {
-			workflow.GetLogger(ctx).Error("Failed to track sync completion event", "error", err)
-		}
-	}()
-
+	telemetry.TrackSyncCompleted(context.Background(), jobID, params.WorkflowID)
 	return result, nil
 }

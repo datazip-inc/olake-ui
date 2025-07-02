@@ -166,32 +166,8 @@ func (c *JobHandler) CreateJob() {
 		return
 	}
 
-	// Track job creation event
-	go func() {
-		if err := telemetry.TrackJobCreation(
-			c.Ctx.Request.Context(),
-			job.ID,
-			job.Name,
-			projectIDStr,
-			source.Type,
-			source.Name,
-			dest.DestType,
-			dest.Name,
-			job.Frequency,
-			job.Active,
-			userID,
-			job.CreatedAt,
-		); err != nil {
-			c.Ctx.Input.SetData("telemetry_error", err)
-		}
-	}()
-
-	// Track sources and destinations status after job creation
-	go func() {
-		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources and destinations status: %s", err)
-		}
-	}()
+	// telemetry events
+	telemetry.TrackJobCreation(c.Ctx.Request.Context(), *job)
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
@@ -270,11 +246,7 @@ func (c *JobHandler) UpdateJob() {
 	}
 
 	// Track sources and destinations status after job update
-	go func() {
-		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources and destinations status: %s", err)
-		}
-	}()
+	telemetry.TrackJobEntity(c.Ctx.Request.Context())
 
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
@@ -323,8 +295,6 @@ func (c *JobHandler) DeleteJob() {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
 		}
 	}
-	// Get user ID before deletion for telemetry
-	userID := c.GetSession(constants.SessionUserID)
 
 	// Delete job
 	if err := c.jobORM.Delete(id); err != nil {
@@ -333,11 +303,7 @@ func (c *JobHandler) DeleteJob() {
 	}
 
 	// Track sources and destinations status after job deletion
-	go func() {
-		if err := telemetry.TrackSourcesAndDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources and destinations status: %s", err)
-		}
-	}()
+	telemetry.TrackJobEntity(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
@@ -618,18 +584,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 		return nil, fmt.Errorf("failed to create source: %s", err)
 	}
 
-	go func() {
-		if err := telemetry.TrackSourceCreation(
-			context.Background(),
-			source.ID,
-			source.Name,
-			source.Type,
-			source.Version,
-			source.CreatedAt,
-		); err != nil {
-			logs.Error("Failed to track source creation event: %s", err)
-		}
-	}()
+	telemetry.TrackSourceCreation(context.Background(), *source)
 
 	return source, nil
 }
@@ -680,19 +635,6 @@ func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, 
 	}
 
 	// Track destination creation event
-	go func() {
-		if err := telemetry.TrackDestinationCreation(
-			context.Background(),
-			dest.ID,
-			dest.Name,
-			dest.DestType,
-			dest.Version,
-			dest.Config,
-			dest.CreatedAt,
-		); err != nil {
-			logs.Error("Failed to track destination creation event: %s", err)
-		}
-	}()
-
+	telemetry.TrackDestinationCreation(context.Background(), *dest)
 	return dest, nil
 }

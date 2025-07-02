@@ -7,81 +7,83 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties
-func TrackDestinationCreation(ctx context.Context, destinationID int, destinationName, destinationType, version, config string, createdAt time.Time) error {
-	properties := map[string]interface{}{
-		"destination_id":   destinationID,
-		"destination_name": destinationName,
-		"destination_type": destinationType,
-		"version":          version,
-		"catalog":          "none",
-	}
-	var configMap map[string]interface{}
-	// parse config to get catalog_type
-	if err := json.Unmarshal([]byte(config), &configMap); err != nil {
-		logs.Error("Failed to unmarshal config: %s", err)
-		return err
-	}
-
-	if writer, exists := configMap["writer"].(map[string]interface{}); exists {
-		if catalogType, exists := writer["catalog_type"]; exists {
-			properties["catalog"] = catalogType
+func TrackDestinationCreation(ctx context.Context, dest models.Destination) {
+	go func() {
+		properties := map[string]interface{}{
+			"destination_id":   dest.ID,
+			"destination_name": dest.Name,
+			"destination_type": dest.DestType,
+			"version":          dest.Version,
+			"catalog":          "none",
 		}
-	}
+		var configMap map[string]interface{}
+		// parse config to get catalog_type
+		if err := json.Unmarshal([]byte(dest.Config), &configMap); err != nil {
+			logs.Debug("Failed to unmarshal config: %s", err)
+			return
+		}
 
-	if !createdAt.IsZero() {
-		properties["created_at"] = createdAt.Format(time.RFC3339)
-	}
+		if writer, exists := configMap["writer"].(map[string]interface{}); exists {
+			if catalogType, exists := writer["catalog_type"]; exists {
+				properties["catalog"] = catalogType
+			}
+		}
 
-	if err := TrackEvent(ctx, utils.EventDestinationCreated, properties); err != nil {
-		logs.Error("Failed to track destination creation event: %s", err)
-		return err
-	}
+		if !dest.CreatedAt.IsZero() {
+			properties["created_at"] = dest.CreatedAt.Format(time.RFC3339)
+		}
 
-	return nil
+		if err := TrackEvent(ctx, EventDestinationCreated, properties); err != nil {
+			logs.Debug("Failed to track destination creation event: %s", err)
+			return
+		}
+
+		// Track destinations status after creation
+		TrackDestinationsStatus(ctx)
+
+	}()
 }
 
 // TrackDestinationsStatus logs telemetry about active and inactive destinations
-func TrackDestinationsStatus(ctx context.Context, userID interface{}) error {
-	destORM := database.NewDestinationORM()
-	jobORM := database.NewJobORM()
-	userORM := database.NewUserORM()
+func TrackDestinationsStatus(ctx context.Context) {
+	go func() {
+		// TODO: remove creation of orm from here
+		destORM := database.NewDestinationORM()
+		jobORM := database.NewJobORM()
 
-	destinations, err := destORM.GetAll()
-	if err != nil {
-		return err
-	}
-
-	activeDestinations := 0
-
-	for _, dest := range destinations {
-		jobs, err := jobORM.GetByDestinationID(dest.ID)
+		destinations, err := destORM.GetAll()
 		if err != nil {
-			return err
+			logs.Debug("Failed to get all destinations: %s", err)
+			return
 		}
-		if len(jobs) > 0 {
-			activeDestinations++
-		}
-	}
 
-	// Prepare telemetry properties
-	props := map[string]interface{}{
-		"active_destinations":   activeDestinations,
-		"inactive_destinations": len(destinations) - activeDestinations,
-		"total_destinations":    len(destinations),
-	}
+		activeDestinations := 0
 
-	if userID != nil {
-		user, err := userORM.GetByID(userID.(int))
-		if err != nil {
-			logs.Error("Failed to get user details for telemetry: %s", err)
-			return err
+		for _, dest := range destinations {
+			// TODO: remove db calls loop
+			jobs, err := jobORM.GetByDestinationID(dest.ID)
+			if err != nil {
+				logs.Debug("Failed to get jobs for destination %d: %s", dest.ID, err)
+				break
+			}
+			if len(jobs) > 0 {
+				activeDestinations++
+			}
 		}
-		props["user_id"] = user.ID
-		props["user_email"] = user.Email
-	}
-	return TrackEvent(ctx, utils.EventDestinationsUpdated, props)
+
+		// Prepare telemetry properties
+		props := map[string]interface{}{
+			"active_destinations":   activeDestinations,
+			"inactive_destinations": len(destinations) - activeDestinations,
+			"total_destinations":    len(destinations),
+		}
+
+		if err := TrackEvent(ctx, EventDestinationsUpdated, props); err != nil {
+			logs.Debug("failed to track destination status event: %s", err)
+		}
+	}()
 }

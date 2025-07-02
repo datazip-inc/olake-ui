@@ -112,25 +112,7 @@ func (c *SourceHandler) CreateSource() {
 	}
 
 	// Track source creation event
-	go func() {
-		if err := telemetry.TrackSourceCreation(
-			c.Ctx.Request.Context(),
-			source.ID,
-			source.Name,
-			source.Type,
-			source.Version,
-			source.CreatedAt,
-		); err != nil {
-			logs.Error("Failed to track source creation event: %s", err)
-		}
-	}()
-
-	// Track sources status after creation
-	go func() {
-		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources status: %s", err)
-		}
-	}()
+	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), *source)
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -169,12 +151,7 @@ func (c *SourceHandler) UpdateSource() {
 	}
 
 	// Track sources status after update
-	go func() {
-		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources status: %s", err)
-		}
-	}()
-
+	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -194,9 +171,6 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
-	// Get user ID before deletion for telemetry
-	userID := c.GetSession(constants.SessionUserID)
-
 	// Deactivate all jobs using this source
 	for _, job := range jobs {
 		job.Active = false
@@ -212,13 +186,7 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
-	// Track sources status after deletion
-	go func() {
-		if err := telemetry.TrackSourcesStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track sources status: %s", err)
-		}
-	}()
-
+	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
 		Name: source.Name,
 	})

@@ -3,11 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"golang.org/x/crypto/bcrypt"
 
@@ -15,7 +12,6 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	telemetryutils "github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -56,11 +52,7 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	go func() {
-		if err := telemetry.TrackUserLogin(c.Ctx.Request.Context(), user.ID, user.Email, user.Username); err != nil {
-			logs.Error("Failed to track user login: %s", err)
-		}
-	}()
+	telemetry.TrackUserLogin(c.Ctx.Request.Context(), *user)
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,
@@ -118,13 +110,8 @@ func (c *AuthHandler) Signup() {
 
 // @router /telemetry-id [get]
 func (c *AuthHandler) GetTelemetryID() {
-	telemetryID, err := os.ReadFile(filepath.Join(os.TempDir(), "olake-config", "telemetry", telemetryutils.TelemetryAnonymousIDFile))
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve telemetry ID")
-		return
-	}
-
+	telemetryID := telemetry.GetTelemetryUserID()
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		telemetryutils.TelemetryAnonymousIDFile: string(telemetryID),
+		telemetry.TelemetryUserIDFile: string(telemetryID),
 	})
 }

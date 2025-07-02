@@ -4,24 +4,24 @@ import (
 	"context"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
+	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
 // TrackUserLogin tracks when a user logs in to  olake-ui
-func TrackUserLogin(ctx context.Context, userID int, email, username string) error {
-	if instance != nil {
-		instance.username = username
-	}
+func TrackUserLogin(ctx context.Context, user models.User) {
+	go func() {
+		if instance != nil {
+			instance.username = user.Username
+		}
 
-	properties := map[string]interface{}{
-		"user_id": userID,
-		"email":   email,
-	}
+		properties := map[string]interface{}{
+			"user_id": user.ID,
+			"email":   user.Email,
+		}
 
-	err := TrackEvent(ctx, utils.EventUserLogin, properties)
-	if err != nil {
-		logs.Error("Failed to track user login event: %s", err)
-		return err
-	}
-	return nil
+		err := TrackEvent(ctx, EventUserLogin, properties)
+		if err != nil {
+			logs.Debug("Failed to track user login event: %s", err)
+		}
+	}()
 }

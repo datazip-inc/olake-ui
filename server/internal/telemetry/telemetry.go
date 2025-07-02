@@ -13,23 +13,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/datazip/olake-frontend/server/internal/telemetry/utils"
 	analytics "github.com/segmentio/analytics-go/v3"
 )
 
-var (
-	client   analytics.Client
-	instance *Telemetry
-)
-
-type Telemetry struct {
-	client       analytics.Client
-	platform     utils.PlatformInfo
-	ipAddress    string
-	locationInfo *LocationInfo
-	anonymousID  string
-	username     string
-}
+var instance *Telemetry
 
 type LocationInfo struct {
 	Country string `json:"country"`
@@ -37,103 +24,102 @@ type LocationInfo struct {
 	City    string `json:"city"`
 }
 
-func InitTelemetry() error {
-	ip := getOutboundIP()
-	client = analytics.New(utils.TelemetrySegmentAPIKey)
-	// Generate anonymous ID during initialization
-	anonymousID := generateStoredAnonymousID()
+type PlatformInfo struct {
+	OlakeVersion string
+	OS           string
+	Arch         string
+	DeviceCPU    string
+}
 
-	instance = &Telemetry{
-		client:      client,
-		platform:    getPlatformInfo(),
-		ipAddress:   ip,
-		anonymousID: anonymousID,
-	}
+type Telemetry struct {
+	client       analytics.Client
+	platform     PlatformInfo
+	ipAddress    string
+	locationInfo *LocationInfo
+	TempUserID   string
+	username     string
+}
 
-	if ip == utils.TelemetryIPNotFoundPlaceholder {
-		return nil
-	}
+func InitTelemetry() {
+	go func() {
+		ip := getOutboundIP()
+		client := analytics.New(TelemetrySegmentAPIKey)
 
-	ctx, cancel := context.WithTimeout(context.Background(), utils.TelemetryConfigTimeout)
-	defer cancel()
-	loc, err := getLocationFromIP(ctx, ip)
+		// Generate user ID during initialization
+		tempUserID := func() string {
+			configDir := filepath.Join(os.TempDir(), "olake-config", "telemetry")
+			idPath := filepath.Join(configDir, TelemetryUserIDFile)
 
-	if err != nil {
-		fmt.Printf("Failed to fetch location for IP %s: %s\n", ip, err)
-		instance.locationInfo = &LocationInfo{
-			Country: "NA",
-			Region:  "NA",
-			City:    "NA",
+			idBytes, err := os.ReadFile(idPath)
+
+			if err != nil {
+				newID := func() string {
+					hash := sha256.New()
+					hash.Write([]byte(time.Now().String()))
+					return hex.EncodeToString(hash.Sum(nil))[:32]
+				}()
+				if err := os.MkdirAll(configDir, 0755); err != nil {
+					return newID
+				}
+				_ = os.WriteFile(idPath, []byte(newID), 0600)
+				return newID
+			}
+			return string(idBytes)
+		}()
+
+		instance = &Telemetry{
+			client: client,
+			platform: PlatformInfo{
+				OS:           runtime.GOOS,
+				Arch:         runtime.GOARCH,
+				OlakeVersion: OlakeVersion,
+				DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
+			},
+			ipAddress:    ip,
+			TempUserID:   tempUserID,
+			locationInfo: getLocationFromIP(ip),
 		}
-	}
-	instance.locationInfo = &loc
-	return nil
-}
-
-// generateStoredAnonymousID generates or retrieves a stored anonymous ID
-func generateStoredAnonymousID() string {
-	configDir := getConfigDir()
-	idPath := filepath.Join(configDir, utils.TelemetryAnonymousIDFile)
-
-	idBytes, err := os.ReadFile(idPath)
-
-	if err != nil {
-		newID := generateUUID()
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			return newID
-		}
-		_ = os.WriteFile(idPath, []byte(newID), 0600)
-		return newID
-	}
-	return string(idBytes)
-}
-
-func getConfigDir() string {
-	return filepath.Join(os.TempDir(), "olake-config", "telemetry")
-}
-
-func generateUUID() string {
-	hash := sha256.New()
-	hash.Write([]byte(time.Now().String()))
-	return hex.EncodeToString(hash.Sum(nil))[:32]
-}
-
-func getPlatformInfo() utils.PlatformInfo {
-	return utils.PlatformInfo{
-		OS:           runtime.GOOS,
-		Arch:         runtime.GOARCH,
-		OlakeVersion: utils.TelemetryVersion,
-		DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
-	}
+	}()
 }
 
 func getOutboundIP() string {
-	resp, err := http.Get("https://api.ipify.org?format=text")
-
+	resp, err := http.Get(IPUrl)
 	if err != nil {
-		return utils.TelemetryIPNotFoundPlaceholder
+		return IpNotFound
 	}
-
 	defer resp.Body.Close()
 
 	ipBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return utils.TelemetryIPNotFoundPlaceholder
+		return IpNotFound
 	}
 
 	return string(ipBody)
 }
 
-func getLocationFromIP(ctx context.Context, ip string) (LocationInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://ipinfo.io/%s/json", ip), http.NoBody)
-	if err != nil {
-		return LocationInfo{}, err
+func getLocationFromIP(ip string) *LocationInfo {
+	locationInfo := &LocationInfo{
+		Country: "NA",
+		Region:  "NA",
+		City:    "NA",
 	}
 
-	client := http.Client{Timeout: 1 * time.Second}
+	if ip == IpNotFound || ip == "" {
+		return locationInfo
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), TelemetryConfigTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://ipinfo.io/%s/json", ip), http.NoBody)
+	if err != nil {
+		return locationInfo
+	}
+
+	client := http.Client{Timeout: TelemetryConfigTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		return LocationInfo{}, err
+		return locationInfo
 	}
 	defer resp.Body.Close()
 
@@ -144,22 +130,18 @@ func getLocationFromIP(ctx context.Context, ip string) (LocationInfo, error) {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return LocationInfo{}, err
+		return locationInfo
 	}
 
-	return LocationInfo{
+	return &LocationInfo{
 		Country: info.Country,
 		Region:  info.Region,
 		City:    info.City,
-	}, nil
+	}
 }
 
 // TrackEvent sends a custom event to Segment
 func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
-	if instance == nil {
-		return nil
-	}
-
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
@@ -169,34 +151,32 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		properties["username"] = instance.username
 	}
 
+	props := map[string]interface{}{
+		"olake_version": instance.platform.OlakeVersion,
+		"os":            instance.platform.OS,
+		"arch":          instance.platform.Arch,
+		"device_cpu":    instance.platform.DeviceCPU,
+		"ip_address":    instance.ipAddress,
+		"location":      instance.locationInfo,
+	}
+
 	// Add common properties that needs to be sent with every event
-	essentialProps := utils.GetTelemetryCommonProperties(instance.platform, instance.ipAddress, instance.locationInfo)
-	for key, value := range essentialProps {
+	for key, value := range props {
 		properties[key] = value
 	}
 
-	err := instance.client.Enqueue(analytics.Track{
-		UserId:     instance.anonymousID,
+	return instance.client.Enqueue(analytics.Track{
+		UserId:     instance.TempUserID,
 		Event:      eventName,
 		Properties: properties,
 	})
-
-	if err != nil {
-		fmt.Printf("Failed to send telemetry event %s: %s\n", eventName, err)
-	}
-
-	return nil
 }
 
-func Flush() {
+func Close() {
 	if instance == nil {
 		return
 	}
-	time.Sleep(5 * time.Second)
-	err := instance.client.Close()
-	if err != nil {
-		fmt.Printf("Warning: Failed to close telemetry client: %s\n", err)
-	}
+	_ = instance.client.Close()
 }
 
 // SetUsername sets the username for telemetry tracking
@@ -204,4 +184,11 @@ func SetUsername(username string) {
 	if instance != nil {
 		instance.username = username
 	}
+}
+
+func GetTelemetryUserID() string {
+	if instance != nil {
+		return instance.TempUserID
+	}
+	return ""
 }

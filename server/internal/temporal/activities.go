@@ -62,11 +62,7 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 		"workflowID", params.WorkflowID)
 
 	// Track sync start event
-	go func() {
-		if err := telemetry.TrackSyncStart(ctx, params.JobID, params.WorkflowID); err != nil {
-			logger.Error("Failed to track sync start event", "error", err)
-		}
-	}()
+	telemetry.TrackSyncStart(ctx, params.JobID, params.WorkflowID)
 
 	// Create a Docker runner with the default config directory
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())

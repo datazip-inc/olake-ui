@@ -106,27 +106,7 @@ func (c *DestHandler) CreateDestination() {
 	}
 
 	// Track destination creation event
-	go func() {
-		if err := telemetry.TrackDestinationCreation(
-			c.Ctx.Request.Context(),
-			destination.ID,
-			destination.Name,
-			destination.DestType,
-			destination.Version,
-			destination.Config,
-			destination.CreatedAt,
-		); err != nil {
-			logs.Error("Failed to track destination creation event: %s", err)
-		}
-	}()
-
-	// Track destinations status after creation
-	go func() {
-		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track destinations status: %s", err)
-		}
-	}()
-
+	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), *destination)
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -168,11 +148,7 @@ func (c *DestHandler) UpdateDestination() {
 	}
 
 	// Track destinations status after update
-	go func() {
-		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track destinations status: %s", err)
-		}
-	}()
+	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -187,9 +163,6 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
-
-	// Get user ID before deletion for telemetry
-	userID := c.GetSession(constants.SessionUserID)
 
 	jobs, err := c.jobORM.GetByDestinationID(id)
 	if err != nil {
@@ -208,11 +181,7 @@ func (c *DestHandler) DeleteDestination() {
 	}
 
 	// Track destinations status after deletion
-	go func() {
-		if err := telemetry.TrackDestinationsStatus(c.Ctx.Request.Context(), userID); err != nil {
-			logs.Error("Failed to track destinations status: %s", err)
-		}
-	}()
+	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
 		Name: dest.Name,
