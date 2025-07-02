@@ -1,0 +1,58 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-pv-updater
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-pv-updater
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-pv-updater
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "olake.name" . }}-pv-updater
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: nfs-pv-updater
+    spec:
+      serviceAccountName: {{ include "olake.fullname" . }}-nfs-cidr-detection
+      restartPolicy: Never
+      containers:
+      - name: pv-updater
+        image: bitnami/kubectl:latest
+        imagePullPolicy: Always
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Updating NFS PV with detected IP..."
+          
+          # Get the detected IP from ConfigMap
+          STATIC_IP=$(kubectl get configmap {{ include "olake.fullname" . }}-nfs-ip-config -n {{ .Values.namespace.name }} -o jsonpath='{.data.staticIP}')
+          
+          if [ -z "$STATIC_IP" ]; then
+            echo "Error: Could not get static IP from ConfigMap"
+            exit 1
+          fi
+          
+          echo "Using static IP: $STATIC_IP"
+          
+          # Update the existing PV with the correct NFS server IP
+          kubectl patch pv {{ include "olake.fullname" . }}-nfs-pv --type='merge' -p='{"spec":{"nfs":{"server":"'$STATIC_IP'"}}}'
+          
+          echo "NFS PV updated successfully"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+{{- end }}

@@ -63,6 +63,10 @@ spec:
         env:
         - name: SHARED_DIRECTORY
           value: "/exports"
+        - name: NFS_PORT
+          value: "2049"
+        - name: MOUNTD_PORT
+          value: "20048"
         resources:
           {{- toYaml .Values.nfsServer.resources | nindent 10 }}
         livenessProbe:
