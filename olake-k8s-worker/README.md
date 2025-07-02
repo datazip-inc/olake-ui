@@ -118,7 +118,7 @@ The worker uses these default configurations for local development:
 The worker creates Kubernetes Jobs in minikube for each operation:
 
 - **Discover Catalog**: Analyzes source schema and returns available tables/streams
-- **Test Connection**: Validates source/destination connectivity  
+- **Test Connection**: Validates source/destination connectivity
 - **Sync Data**: Performs actual data replication
 
 ## Monitoring in Minikube

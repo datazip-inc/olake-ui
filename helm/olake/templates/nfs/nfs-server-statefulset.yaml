@@ -1,0 +1,98 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-server
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "olake.fullname" . }}-nfs-server
+  replicas: {{ .Values.nfsServer.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: nfs-server
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.nfsServer.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: nfs-server
+        {{- with .Values.nfsServer.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.nfsServer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nfsServer.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nfsServer.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: nfs-server
+        image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
+        imagePullPolicy: {{ .Values.nfsServer.image.pullPolicy }}
+        ports:
+        - name: nfs
+          containerPort: 2049
+        - name: mountd
+          containerPort: 20048
+        - name: rpcbind
+          containerPort: 111
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /exports
+        env:
+        - name: SHARED_DIRECTORY
+          value: "/exports"
+        resources:
+          {{- toYaml .Values.nfsServer.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: 2049
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 2049
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+  volumeClaimTemplates:
+  - metadata:
+      name: nfs-storage
+    spec:
+      accessModes: {{ .Values.nfsServer.persistence.accessModes }}
+      {{- if .Values.nfsServer.persistence.storageClass }}
+      storageClassName: {{ .Values.nfsServer.persistence.storageClass }}
+      {{- else if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.nfsServer.persistence.size }}
+{{- end }}

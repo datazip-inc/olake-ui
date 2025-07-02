@@ -129,5 +129,5 @@ spec:
           name: olake-ui-config
       - name: shared-storage
         persistentVolumeClaim:
-          claimName: {{ .Values.storage.persistentVolumeClaim.name }}
+          claimName: {{ include "olake.sharedStoragePVC" . }}
 {{- end }}

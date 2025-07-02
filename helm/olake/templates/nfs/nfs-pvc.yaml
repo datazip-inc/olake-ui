@@ -1,0 +1,20 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "olake.fullname" . }}-shared-storage
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "2"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: {{ include "olake.fullname" . }}-nfs
+  resources:
+    requests:
+      storage: {{ .Values.nfsServer.persistence.size }}
+{{- end }}

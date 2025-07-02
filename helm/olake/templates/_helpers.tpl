@@ -60,3 +60,14 @@ Create the name of the service account to use for olake-worker
 {{- default "default" .Values.olakeWorker.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Shared storage PVC name
+*/}}
+{{- define "olake.sharedStoragePVC" -}}
+{{- if .Values.nfsServer.enabled -}}
+{{ include "olake.fullname" . }}-shared-storage
+{{- else -}}
+{{ .Values.nfsServer.external.name }}
+{{- end -}}
+{{- end -}}

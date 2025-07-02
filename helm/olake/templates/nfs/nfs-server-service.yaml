@@ -1,0 +1,33 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-server
+  namespace: {{ .Values.namespace.name }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service
+  ports:
+  - name: nfs
+    port: 2049
+    targetPort: 2049
+  - name: mountd
+    port: 20048
+    targetPort: 20048
+  - name: rpcbind
+    port: 111
+    targetPort: 111
+  selector:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+{{- end }}

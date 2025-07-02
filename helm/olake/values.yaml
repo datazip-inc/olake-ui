@@ -38,6 +38,10 @@ global:
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
     seccompProfile:
       type: RuntimeDefault
 
@@ -469,7 +473,7 @@ olakeWorker:
       serviceAccount: "{{ include \"olake.workerServiceAccountName\" . }}"
       
       # -- PVC name for shared storage (templated)
-      storagePvcName: "{{ .Values.storage.persistentVolumeClaim.name }}"
+      storagePvcName: "{{ include \"olake.sharedStoragePVC\" . }}"
     
     # -- Temporal connection configuration
     temporal:
@@ -564,29 +568,72 @@ olakeWorker:
 # STORAGE CONFIGURATION
 # =============================================================================
 
-# Shared storage configuration for job data exchange
-storage:
-  # -- Persistent Volume Claim configuration
-  persistentVolumeClaim:
-    # -- Enable persistent volume claim creation
-    enabled: true
-    
-    # -- PVC name
+# Storage configuration for shared data exchange between pods
+# Choose between self-managed NFS server or external storage (EFS/Azure Files)
+nfsServer:
+  # -- Enable self-managed NFS server deployment
+  # When false, you must provide external storage (EFS/Azure Files/etc.)
+  enabled: true
+  
+  # -- External storage configuration (used when enabled: false)
+  external:
+    # -- PVC name for external storage
     name: olake-jobs-pvc
     
-    # -- Access modes
-    accessModes:
-      - ReadWriteMany
-    
-    # -- Storage class name
-    # Leave empty to use global storage class
-    storageClassName: ""
-    
-    # -- Storage size
+    # -- Storage size for external storage
     size: 10Gi
+  
+  # -- Number of NFS server replicas (should be 1 for StatefulSet)
+  replicaCount: 1
+  
+  # -- NFS server image configuration
+  image:
+    # -- NFS server image repository
+    repository: itsthenetwork/nfs-server-alpine
     
-    # -- Additional annotations for PVC
-    annotations: {}
+    # -- NFS server image tag
+    tag: "latest"
+    
+    # -- Image pull policy
+    pullPolicy: Always
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- NFS server resource requirements
+  resources:
+    requests:
+      # -- Memory request
+      memory: "256Mi"
+      # -- CPU request
+      cpu: "250m"
+    limits:
+      # -- Memory limit
+      memory: "512Mi"
+      # -- CPU limit
+      cpu: "500m"
+  
+  # -- NFS server persistence configuration
+  # This is the underlying storage for the NFS server itself
+  persistence:
+    # -- Size of underlying storage for NFS server
+    size: 20Gi
+    
+    # -- Access modes for underlying storage
+    accessModes:
+      - ReadWriteOnce
 
 # =============================================================================
 # TEMPORAL WORKFLOW ENGINE
@@ -1036,23 +1083,6 @@ postgresql:
     # -- Enable persistent storage
     enabled: true
     
-    # -- Storage class name
-    # Leave empty to use global storage class
-    # 
-    # IMPORTANT: PostgreSQL requires block storage that supports POSIX file permissions
-    # and atomic file operations. Do NOT use NFS-based storage classes such as:
-    # - azurefile (Azure Files/SMB)
-    # - efs-sc (AWS EFS)
-    # - nfs-* (any NFS-based storage)
-    # 
-    # These will cause PostgreSQL to fail with permission errors during initialization.
-    # Recommended storage classes for PostgreSQL:
-    # - managed-csi or managed-premium (Azure Disk)
-    # - gp2, gp3, or io1 (AWS EBS)
-    # - standard or ssd (Google Persistent Disk)
-    # - local-path (for development/testing only)
-    storageClass: ""
-    
     # -- Size of persistent volume
     size: 8Gi
     
@@ -1198,34 +1228,6 @@ elasticsearch:
     # For production, enable and configure security
     - name: xpack.security.enabled
       value: "false"
-
-# =============================================================================
-# SECURITY CONFIGURATION
-# =============================================================================
-
-# -- Security context configuration
-# Applied to pods that don't override these settings
-securityContext:
-  # -- Run as non-root user
-  runAsNonRoot: true
-  
-  # -- User ID to run containers
-  runAsUser: 1000
-  
-  # -- Group ID for filesystem permissions
-  fsGroup: 1000
-  
-  # -- Allow privilege escalation
-  allowPrivilegeEscalation: false
-  
-  # -- Capabilities to drop
-  capabilities:
-    drop:
-      - ALL
-  
-  # -- Seccomp profile
-  seccompProfile:
-    type: RuntimeDefault
 
 # =============================================================================
 # DEFAULT SCHEDULING CONFIGURATION

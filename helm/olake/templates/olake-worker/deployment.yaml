@@ -133,5 +133,5 @@ spec:
       volumes:
       - name: shared-storage
         persistentVolumeClaim:
-          claimName: {{ .Values.storage.persistentVolumeClaim.name }}
+          claimName: {{ include "olake.sharedStoragePVC" . }}
 {{- end }}
