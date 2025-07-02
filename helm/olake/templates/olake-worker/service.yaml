@@ -4,10 +4,6 @@ kind: Service
 metadata:
   name: olake-k8s-worker
   namespace: {{ .Values.namespace.name }}
-  {{- with (.Values.olakeWorker.service.annotations | default dict) }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
   labels:
     app.kubernetes.io/name: olake-worker
     app.kubernetes.io/instance: {{ .Release.Name }}

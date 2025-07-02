@@ -1,4 +1,4 @@
-{{- if and .Values.olakeUI.enabled .Values.olakeUI.initJob.enabled }}
+{{- if .Values.olakeUI.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -43,11 +43,11 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: USERNAME
-          value: "admin"
+          value: "{{ .Values.olakeUI.initJob.adminUser.username }}"
         - name: PASSWORD
-          value: "password"
+          value: "{{ .Values.olakeUI.initJob.adminUser.password }}"
         - name: EMAIL
-          value: "admin@example.com"
+          value: "{{ .Values.olakeUI.initJob.adminUser.email }}"
         - name: OLAKE_APP_URL
           value: "http://olake-ui.{{ .Values.namespace.name }}.svc.cluster.local:8080/signup"
         command:
@@ -82,8 +82,12 @@ spec:
             exit 1
           fi
           echo 'signup-init: User setup process complete.'
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "128Mi" "cpu" "100m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeUI.initJob.resources | default dict) }}
         resources:
-          {{- toYaml .Values.olakeUI.initJob.resources | nindent 10 }}
+          {{- toYaml $resources | nindent 10 }}
   # Automatically clean up completed jobs after 1 hour
   ttlSecondsAfterFinished: 3600
 {{- end }}

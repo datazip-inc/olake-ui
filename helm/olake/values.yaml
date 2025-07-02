@@ -175,35 +175,30 @@ olakeUI:
   #       cpu: "1500m"
   resources: {}
   
-  # -- Initialization job configuration
-  # This job runs database migrations and initial setup
+  # -- Initialization job configuration (always enabled)
   initJob:
-    # -- Enable initialization job
-    enabled: true
-    
-    # -- Initialization job image configuration
-    image:
-      # -- Image repository (usually same as main app)
-      repository: olake-ui
+    # -- Admin user credentials for initial setup
+    adminUser:
+      # -- Admin username
+      username: "admin"
       
-      # -- Image tag (usually same as main app)
-      tag: local
+      # -- Admin password (change this in production!)
+      password: "password"
       
-      # -- Image pull policy
-      pullPolicy: Always
+      # -- Admin email address
+      email: "admin@example.com"
     
-    # -- Initialization job resource requirements
-    resources:
-      requests:
-        # -- Memory request
-        memory: "256Mi"
-        # -- CPU request
-        cpu: "250m"
-      limits:
-        # -- Memory limit
-        memory: "512Mi"
-        # -- CPU limit
-        cpu: "500m"
+    # -- Initialization job resource requirements (optional overrides)
+    # Defaults: requests: memory=128Mi, cpu=100m (no limits by default)
+    # Example customizations:
+    #   resources:
+    #     requests:
+    #       memory: "256Mi"
+    #       cpu: "200m"
+    #     limits:
+    #       memory: "512Mi"
+    #       cpu: "400m"
+    resources: {}
 
 # =============================================================================
 # OLAKE KUBERNETES WORKER
@@ -265,10 +260,7 @@ olakeWorker:
   #     periodSeconds: 60
   livenessProbe: {}
   
-  # -- OLake Worker service annotations (optional)
-  # Example: service.annotations: {"prometheus.io/scrape": "true"}
-  service:
-    annotations: {}
+  # -- Service is hardcoded: ClusterIP on port 8090 for health checks
   
   # -- OLake Worker resource requirements (optional overrides)
   # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
@@ -294,23 +286,11 @@ olakeWorker:
     # -- Service account annotations
     annotations: {}
   
-  # -- RBAC configuration for Kubernetes API permissions
-  rbac:
-    # -- Create RBAC resources
-    create: true
-    
-    # -- RBAC rules for the service account
-    # These permissions allow the worker to manage pods for job execution
-    rules:
-      - apiGroups: [""]
-        resources: ["pods", "pods/log", "pods/status"]
-        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-      - apiGroups: [""]
-        resources: ["configmaps", "secrets"]
-        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-      - apiGroups: ["batch"]
-        resources: ["jobs"]
-        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # -- RBAC permissions are hardcoded with least privilege principle:
+  # - Pods: get, list, watch, create, delete (no update/patch)
+  # - Pod logs/status: get, list, watch (read-only)
+  # - Jobs: full management for batch processing
+  # - ConfigMaps/Secrets: get, list, watch (read-only)
   
   # -- OLake Worker application configuration
   config:
