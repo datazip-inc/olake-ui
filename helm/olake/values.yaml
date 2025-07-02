@@ -1022,7 +1022,7 @@ postgresql:
       command:
         - /bin/sh
         - -c
-        - exec pg_isready -U "{{ .Values.postgresql.auth.username | default "postgres" }}" -h 127.0.0.1 -p 5432
+        - exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
   
   # -- PostgreSQL readiness probe configuration
   readinessProbe:
@@ -1049,7 +1049,7 @@ postgresql:
       command:
         - /bin/sh
         - -c
-        - exec pg_isready -U "{{ .Values.postgresql.auth.username | default "postgres" }}" -h 127.0.0.1 -p 5432
+        - exec pg_isready -U "postgres" -h 127.0.0.1 -p 5432
   
   # -- PostgreSQL service configuration
   service:
