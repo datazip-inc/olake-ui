@@ -89,7 +89,7 @@ func generateStoredAnonymousID() string {
 }
 
 func getConfigDir() string {
-	return filepath.Join(os.TempDir(), "olake")
+	return filepath.Join(os.TempDir(), "olake-config", "telemetry")
 }
 
 func generateUUID() string {

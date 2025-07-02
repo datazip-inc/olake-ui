@@ -27,7 +27,6 @@ services:
       - "8080:8080" # Expose backend API port
     volumes:
       - <<: *workerConfigVolumeDetails
-      - telemetry-data:/tmp/olake
     networks:
       - temporal-network
     depends_on:
@@ -94,7 +93,6 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
-      - telemetry-data:/tmp/olake
     environment:
       TEMPORAL_ADDRESS: "temporal:7233"
       OLAKE_SECRET_KEY: *encryptionKey
@@ -207,6 +205,4 @@ volumes:
   olake-config-data:
     driver: local
   temporal-elasticsearch-data:
-    driver: local
-  telemetry-data:
     driver: local

@@ -67,7 +67,7 @@ func checkForRequiredVariables(vars []string) {
 
 // GetStoredAnonymousID returns the stored anonymous ID from the config directory
 func GetStoredAnonymousID() string {
-	idPath := filepath.Join(os.TempDir(), "olake", utils.TelemetryAnonymousIDFile)
+	idPath := filepath.Join(os.TempDir(), "olake-config", "telemetry", utils.TelemetryAnonymousIDFile)
 
 	idBytes, err := os.ReadFile(idPath)
 	if err != nil {
