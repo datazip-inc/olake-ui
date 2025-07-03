@@ -165,7 +165,7 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	if err != nil {
 		return nil, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
 	}
-	spec, err := utils.ParseLastJSONLine(string(output))
+	spec, err := utils.ParseSpecJSON(string(output))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse spec: %s", string(output))
 	}

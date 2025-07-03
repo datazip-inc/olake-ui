@@ -287,7 +287,8 @@ func ToCron(frequency string) string {
 }
 
 // ParseLastJSONLine extracts and parses the last JSON object from the given output
-func ParseLastJSONLine(output string) (map[string]interface{}, error) {
+// ParseSpecJSON extracts and returns the value inside the top-level "spec" key from the last valid JSON line in the output
+func ParseSpecJSON(output string) (map[string]interface{}, error) {
 	lines := strings.Split(output, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
@@ -295,12 +296,16 @@ func ParseLastJSONLine(output string) (map[string]interface{}, error) {
 		end := strings.LastIndex(line, "}")
 		if start != -1 && end != -1 && end > start {
 			jsonPart := line[start : end+1]
-			var result map[string]interface{}
-			if err := json.Unmarshal([]byte(jsonPart), &result); err != nil {
+			var fullMap map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonPart), &fullMap); err != nil {
 				continue // Skip invalid JSON, keep looking
 			}
-			return result, nil
+
+			// Only return what's inside top-level "spec"
+			if spec, ok := fullMap["spec"].(map[string]interface{}); ok {
+				return spec, nil
+			}
 		}
 	}
-	return nil, fmt.Errorf("no valid JSON line found in output")
+	return nil, fmt.Errorf("no top-level 'spec' JSON block found in output")
 }
