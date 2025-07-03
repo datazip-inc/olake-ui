@@ -34,24 +34,6 @@ global:
   storageClass: ""
 
 # =============================================================================
-# NAMESPACE CONFIGURATION
-# =============================================================================
-
-# -- Namespace configuration
-namespace:
-  # -- Name of the namespace where all resources will be deployed
-  name: olake
-  
-  # -- Whether to create the namespace if it doesn't exist
-  create: true
-  
-  # -- Additional labels for the namespace
-  labels: {}
-  
-  # -- Additional annotations for the namespace
-  annotations: {}
-
-# =============================================================================
 # OLAKE MAIN APPLICATION
 # =============================================================================
 
