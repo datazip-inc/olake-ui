@@ -49,9 +49,10 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	}
 	logger.Info("Created K8s pod manager")
 
-	// Connect to Temporal
+	// Connect to Temporal with custom logger
 	c, err := client.Dial(client.Options{
 		HostPort: cfg.Temporal.Address,
+		Logger:   logger.NewTemporalLogger(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
