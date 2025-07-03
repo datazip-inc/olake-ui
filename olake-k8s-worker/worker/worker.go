@@ -11,6 +11,7 @@ import (
 
 	"olake-k8s-worker/activities"
 	"olake-k8s-worker/config"
+	"olake-k8s-worker/config/helpers"
 	"olake-k8s-worker/database/service"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/pods"
@@ -69,9 +70,9 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 
 	// Log timeout configuration
 	logger.Infof("Activity timeouts configured - Discover: %v, Test: %v, Sync: %v",
-		cfg.GetActivityTimeout("discover"),
-		cfg.GetActivityTimeout("test"),
-		cfg.GetActivityTimeout("sync"))
+		helpers.GetActivityTimeout(cfg, "discover"),
+		helpers.GetActivityTimeout(cfg, "test"),
+		helpers.GetActivityTimeout(cfg, "sync"))
 
 	// Register workflows - these will set WorkflowID from Temporal execution context
 	w.RegisterWorkflow(workflows.DiscoverCatalogWorkflow)

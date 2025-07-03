@@ -7,6 +7,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"olake-k8s-worker/config"
+	"olake-k8s-worker/config/helpers"
 	"olake-k8s-worker/shared"
 )
 
@@ -29,7 +30,7 @@ func SetConfig(cfg *config.Config) {
 // getActivityTimeout returns activity timeout from config or fallback
 func getActivityTimeout(operation string) time.Duration {
 	if globalConfig != nil {
-		return globalConfig.GetActivityTimeout(operation)
+		return helpers.GetActivityTimeout(globalConfig, operation)
 	}
 	// Fallback defaults if config not available
 	switch operation {
