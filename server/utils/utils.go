@@ -285,3 +285,22 @@ func ToCron(frequency string) string {
 		return ""
 	}
 }
+
+// ParseLastJSONLine extracts and parses the last JSON object from the given output
+func ParseLastJSONLine(output string) (map[string]interface{}, error) {
+	lines := strings.Split(output, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		start := strings.Index(line, "{")
+		end := strings.LastIndex(line, "}")
+		if start != -1 && end != -1 && end > start {
+			jsonPart := line[start : end+1]
+			var result map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonPart), &result); err != nil {
+				continue // Skip invalid JSON, keep looking
+			}
+			return result, nil
+		}
+	}
+	return nil, fmt.Errorf("no valid JSON line found in output")
+}

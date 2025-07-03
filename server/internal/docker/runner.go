@@ -148,15 +148,9 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	return outputDir
 }
 func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (map[string]interface{}, error) {
-	workDir, err := r.setupWorkDirectory(workflowID)
-	if err != nil {
-		return nil, err
-	}
-	logs.Info("working directory path %s\n", workDir)
-	specPath := filepath.Join(workDir, "spec.json")
 	// Prepare the command arguments
 	dockerArgs := []string{
-		"run", "-v", fmt.Sprintf("%s:/mnt/config", r.getHostOutputDir(workDir)),
+		"run",
 		r.GetDockerImageName(sourceType, version),
 		"spec",
 	}
@@ -166,16 +160,16 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	}
 	// Run the command
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
-	logs.Info("running docker command: %s\n", strings.Join(dockerArgs, " "))
+	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
 	}
-	result, err := utils.ParseJSONFile(specPath)
+	spec, err := utils.ParseLastJSONLine(string(output))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse spec: %s", string(output))
 	}
-	return result, nil
+	return spec, nil
 }
 
 // TestConnection runs the check command and returns connection status

@@ -302,14 +302,13 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	}
 	var spec map[string]interface{}
 	var err error
-	if c.tempClient != nil {
-		spec, err = c.tempClient.FetchSpec(
-			c.Ctx.Request.Context(),
-			"",
-			req.Type,
-			req.Version,
-		)
-	}
+
+	spec, err = c.tempClient.FetchSpec(
+		c.Ctx.Request.Context(),
+		"",
+		req.Type,
+		req.Version,
+	)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get spec: %v", err))
 		return
