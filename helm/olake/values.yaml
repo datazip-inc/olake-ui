@@ -662,19 +662,3 @@ elasticsearch:
   #       cpu: "2000m"
   resources: {}
   
-  # -- Elasticsearch environment variables
-  env:
-    # -- Set Elasticsearch to single-node mode (development only)
-    # For production, configure proper clustering
-    - name: discovery.type
-      value: single-node
-    
-    # -- Java heap size configuration
-    # Should be ~50% of available memory
-    - name: ES_JAVA_OPTS
-      value: "-Xms512m -Xmx512m"
-    
-    # -- Disable X-Pack security (development only)
-    # For production, enable and configure security
-    - name: xpack.security.enabled
-      value: "false"

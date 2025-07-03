@@ -57,10 +57,12 @@ spec:
           containerPort: 9300
           protocol: TCP
         env:
-        {{- range .Values.elasticsearch.env }}
-        - name: {{ .name }}
-          value: {{ .value | quote }}
-        {{- end }}
+        - name: discovery.type
+          value: "single-node"
+        - name: ES_JAVA_OPTS
+          value: "-Xms512m -Xmx512m"
+        - name: xpack.security.enabled
+          value: "false"
         {{- $defaultResources := dict 
           "requests" (dict "memory" "1Gi" "cpu" "500m")
         }}
