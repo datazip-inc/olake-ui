@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"olake-k8s-worker/config/types"
 	"olake-k8s-worker/logger"
 	"olake-k8s-worker/shared"
 	"olake-k8s-worker/utils/k8s"
@@ -57,6 +58,9 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
+			NodeSelector:  k.getNodeSelector(spec.Operation),
+			Tolerations:   k.getTolerations(spec.Operation),
+			Affinity:      k.buildAffinity(spec.Operation),
 			Containers: []corev1.Container{
 				{
 					Name:    "connector",
@@ -161,4 +165,83 @@ func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
 	logger.Infof("Successfully cleaned up Pod %s in namespace %s (directory preserved for UI access)",
 		podName, k.namespace)
 	return nil
+}
+
+// getNodeSelector returns node selector configuration for the given operation
+func (k *K8sPodManager) getNodeSelector(operation shared.Command) map[string]string {
+	schedulingConfig := k.getSchedulingConfigForOperation(operation)
+	return schedulingConfig.NodeSelector
+}
+
+// getTolerations returns tolerations configuration for the given operation
+func (k *K8sPodManager) getTolerations(operation shared.Command) []corev1.Toleration {
+	schedulingConfig := k.getSchedulingConfigForOperation(operation)
+	return schedulingConfig.Tolerations
+}
+
+// buildAffinity builds affinity rules for the given operation
+func (k *K8sPodManager) buildAffinity(operation shared.Command) *corev1.Affinity {
+	schedulingConfig := k.getSchedulingConfigForOperation(operation)
+	
+	// Start with custom affinity if provided
+	affinity := schedulingConfig.Affinity
+	
+	// Add anti-affinity rules if enabled
+	if schedulingConfig.AntiAffinity.Enabled {
+		antiAffinity := k.buildAntiAffinity(operation, schedulingConfig.AntiAffinity)
+		if affinity == nil {
+			affinity = &corev1.Affinity{}
+		}
+		affinity.PodAntiAffinity = antiAffinity
+	}
+	
+	return affinity
+}
+
+// buildAntiAffinity builds anti-affinity rules for the given operation
+func (k *K8sPodManager) buildAntiAffinity(operation shared.Command, config types.AntiAffinityConfig) *corev1.PodAntiAffinity {
+	labelSelector := &metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			"app":       "olake-connector",
+			"operation": string(operation),
+		},
+	}
+	
+	affinityTerm := corev1.PodAffinityTerm{
+		LabelSelector: labelSelector,
+		TopologyKey:   config.TopologyKey,
+	}
+	
+	if config.Strategy == "hard" {
+		return &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{affinityTerm},
+		}
+	} else {
+		// Soft anti-affinity
+		return &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight:          config.Weight,
+					PodAffinityTerm: affinityTerm,
+				},
+			},
+		}
+	}
+}
+
+// getSchedulingConfigForOperation returns the appropriate scheduling configuration for an operation
+func (k *K8sPodManager) getSchedulingConfigForOperation(operation shared.Command) types.ActivitySchedulingConfig {
+	jobScheduling := k.config.Kubernetes.JobScheduling
+	
+	switch operation {
+	case shared.Sync:
+		return jobScheduling.SyncJobs
+	case shared.Discover:
+		return jobScheduling.DiscoverJobs
+	case shared.Check:
+		return jobScheduling.TestJobs
+	default:
+		logger.Warnf("Unknown operation %s, using default scheduling config", operation)
+		return types.ActivitySchedulingConfig{}
+	}
 }

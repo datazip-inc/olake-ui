@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
+
+	"olake-k8s-worker/logger"
+	"olake-k8s-worker/utils/env"
 )
 
 // SplitLines splits text into lines, removing empty lines
@@ -119,4 +123,53 @@ func parseConnectionTestOutput(output string) (map[string]interface{}, error) {
 		"message": logMessage.ConnectionStatus.Message,
 		"status":  logMessage.ConnectionStatus.Status,
 	}, nil
+}
+
+// ParseDuration parses a duration string with error handling and fallback
+func ParseDuration(envKey, defaultValue string) time.Duration {
+	value := env.GetEnv(envKey, defaultValue)
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		logger.Warnf("Failed to parse duration for %s, using default: %s", envKey, defaultValue)
+		duration, _ = time.ParseDuration(defaultValue)
+	}
+	return duration
+}
+
+// GetOptionalTTL converts an environment variable to an optional TTL pointer
+func GetOptionalTTL(envKey string, defaultValue int) *int32 {
+	value := env.GetEnvInt(envKey, defaultValue)
+	if value <= 0 {
+		return nil
+	}
+	ttl := int32(value)
+	return &ttl
+}
+
+// ParseKeyValuePairs parses a string of key=value pairs separated by commas
+// Example: "key1=value1,key2=value2" -> map[string]string{"key1": "value1", "key2": "value2"}
+func ParseKeyValuePairs(input string) map[string]string {
+	result := make(map[string]string)
+	if input == "" {
+		return result
+	}
+	
+	pairs := strings.Split(input, ",")
+	for _, pair := range pairs {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+		
+		kv := strings.SplitN(pair, "=", 2)
+		if len(kv) == 2 {
+			key := strings.TrimSpace(kv[0])
+			value := strings.TrimSpace(kv[1])
+			if key != "" {
+				result[key] = value
+			}
+		}
+	}
+	
+	return result
 }
