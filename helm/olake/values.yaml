@@ -32,6 +32,84 @@ global:
   # Set to "-" to disable dynamic provisioning
   # Examples: gp2, fast, standard, local-path
   storageClass: ""
+  
+  # -- Job scheduling configuration for pods created by olake-worker
+  # Controls how sync, discover, and test job pods are scheduled on the cluster
+  job:
+    # -- Sync job scheduling configuration (long-running, resource-intensive jobs)
+    # Sync jobs typically benefit from anti-affinity to distribute load across nodes
+    sync:
+      # -- Node selector for sync jobs
+      # Example: nodeSelector: {disktype: ssd, memory: high-mem}
+      nodeSelector: {}
+      
+      # -- Tolerations for sync jobs
+      # Example: tolerations: [{key: "dedicated", operator: "Equal", value: "sync-jobs", effect: "NoSchedule"}]
+      tolerations: []
+      
+      # -- Anti-affinity configuration for sync jobs
+      antiAffinity:
+        # -- Enable anti-affinity to spread sync jobs across nodes
+        enabled: true
+        
+        # -- Anti-affinity strategy: "soft" (preferred) or "hard" (required)
+        # "soft" allows scheduling even if anti-affinity cannot be satisfied
+        # "hard" prevents scheduling if anti-affinity cannot be satisfied
+        strategy: "soft"
+        
+        # -- Topology key for anti-affinity
+        # "kubernetes.io/hostname" spreads across nodes
+        # "topology.kubernetes.io/zone" spreads across availability zones
+        topologyKey: "kubernetes.io/hostname"
+        
+        # -- Weight for soft anti-affinity (1-100, only used when strategy is "soft")
+        weight: 100
+    
+    # -- Discover job scheduling configuration (medium duration, moderate resources)
+    # Discover jobs may benefit from anti-affinity for better resource distribution
+    discover:
+      # -- Node selector for discover jobs
+      nodeSelector: {}
+      
+      # -- Tolerations for discover jobs
+      tolerations: []
+      
+      # -- Anti-affinity configuration for discover jobs
+      antiAffinity:
+        # -- Enable anti-affinity to spread discover jobs across nodes
+        enabled: true
+        
+        # -- Anti-affinity strategy: "soft" (preferred) or "hard" (required)
+        strategy: "soft"
+        
+        # -- Topology key for anti-affinity
+        topologyKey: "kubernetes.io/hostname"
+        
+        # -- Weight for soft anti-affinity (1-100, only used when strategy is "soft")
+        weight: 100
+    
+    # -- Test job scheduling configuration (short-lived, lightweight jobs)
+    # Test jobs typically don't need anti-affinity due to their brief nature
+    test:
+      # -- Node selector for test jobs
+      nodeSelector: {}
+      
+      # -- Tolerations for test jobs
+      tolerations: []
+      
+      # -- Anti-affinity configuration for test jobs
+      antiAffinity:
+        # -- Enable anti-affinity (disabled by default for test jobs)
+        enabled: false
+        
+        # -- Anti-affinity strategy: "soft" (preferred) or "hard" (required)
+        strategy: "soft"
+        
+        # -- Topology key for anti-affinity
+        topologyKey: "kubernetes.io/hostname"
+        
+        # -- Weight for soft anti-affinity (1-100, only used when strategy is "soft")
+        weight: 100
 
 # =============================================================================
 # OLAKE MAIN APPLICATION
