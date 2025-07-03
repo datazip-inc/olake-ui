@@ -1,4 +1,4 @@
-{{- if .Values.nfsServer.enabled }}
+{{- if and .Values.nfsServer.enabled (or (not .Values.nfsServer.network.serviceCIDR) (not .Values.nfsServer.network.staticIP)) }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -32,89 +32,113 @@ spec:
         - /bin/bash
         - -c
         - |
-          set +e  # Don't exit on errors, we want to try multiple methods
-          echo "Detecting service CIDR range..."
+          set -euo pipefail
           
-          # Method 1: Error-based detection (most reliable)
-          echo "Trying error-based detection..."
-          ERROR_OUTPUT=$(echo '{"apiVersion":"v1","kind":"Service","metadata":{"name":"temp-cidr-test"},"spec":{"clusterIP":"1.1.1.1","ports":[{"port":443}]}}' | kubectl apply -f - 2>&1 || true)
-          echo "Error output: $ERROR_OUTPUT"
-          CIDR=$(echo "$ERROR_OUTPUT" | grep -o '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/[0-9]*' | head -1 || true)
+          echo "INFO: Starting simplified CIDR detection..."
           
-          # Cleanup the test service attempt
-          kubectl delete service temp-cidr-test --ignore-not-found=true || true
+          # Check if user provided values in values.yaml
+          USER_CIDR="{{ .Values.nfsServer.network.serviceCIDR }}"
+          USER_STATIC_IP="{{ .Values.nfsServer.network.staticIP }}"
           
-          if [ -z "$CIDR" ]; then
-            echo "Error-based detection failed, trying alternative method..."
-            # Method 2: Alternative error-based detection
-            echo "Trying alternative error method..."
-            ALT_ERROR=$(kubectl create service clusterip temp-test-svc --tcp='8080:8080' --clusterip='1.0.0.0' 2>&1 || true)
-            echo "Alt error output: $ALT_ERROR"
-            CIDR=$(echo "$ALT_ERROR" | grep -o '[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/[0-9]*' | head -1 || true)
-            kubectl delete service temp-test-svc --ignore-not-found=true || true
-          fi
-          
-          if [ -z "$CIDR" ]; then
-            echo "Alternative detection failed, trying cluster-info method..."
-            # Method 3: cluster-info dump method
-            echo "Trying cluster-info dump..."
-            CLUSTER_INFO=$(kubectl cluster-info dump 2>/dev/null || true)
-            CIDR=$(echo "$CLUSTER_INFO" | grep -o '\--service-cluster-ip-range=[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*/[0-9]*' | cut -d'=' -f2 | head -1 || true)
-          fi
-          
-          if [ -z "$CIDR" ]; then
-            echo "cluster-info method failed, trying existing service analysis..."
-            # Method 4: Analyze existing services to infer CIDR
-            echo "Analyzing existing services..."
-            EXISTING_IPS=$(kubectl get svc --all-namespaces -o jsonpath='{.items[*].spec.clusterIP}' | tr ' ' '\n' | grep -v None | head -5)
-            echo "Found existing service IPs: $EXISTING_IPS"
+          if [ -n "$USER_CIDR" ] && [ -n "$USER_STATIC_IP" ]; then
+            echo "INFO: Using user-provided configuration"
+            FINAL_CIDR="$USER_CIDR"
+            FINAL_STATIC_IP="$USER_STATIC_IP"
+          else
+            echo "INFO: Auto-detecting network configuration..."
             
-            # Try to infer CIDR from existing service IPs
-            FIRST_IP=$(echo "$EXISTING_IPS" | head -1)
-            if [[ $FIRST_IP == 10.96.* ]]; then
-              CIDR="10.96.0.0/12"
-            elif [[ $FIRST_IP == 172.20.* ]]; then
-              CIDR="172.20.0.0/16"
-            elif [[ $FIRST_IP == 192.168.* ]]; then
-              CIDR="192.168.0.0/16"
-            elif [[ $FIRST_IP == 172.16.* ]]; then
-              CIDR="172.16.0.0/16"
+            # Method 1: Environment variable (most reliable)
+            if [ -n "$KUBERNETES_SERVICE_HOST" ] && [[ "$KUBERNETES_SERVICE_HOST" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              DETECTED_IP="$KUBERNETES_SERVICE_HOST"
+              echo "INFO: Found kubernetes service IP from environment: $DETECTED_IP"
+            # Method 2: DNS resolution (fallback)
+            elif RESOLVED_IP=$(getent hosts kubernetes.default.svc.cluster.local 2>/dev/null | awk '{print $1}' | head -1); then
+              if [[ "$RESOLVED_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                DETECTED_IP="$RESOLVED_IP"
+                echo "INFO: Resolved kubernetes service IP via DNS: $DETECTED_IP"
+              else
+                echo "ERROR: Invalid IP from DNS resolution: $RESOLVED_IP"
+                exit 1
+              fi
+            # Method 3: Error out
+            else
+              echo "ERROR: Cannot detect service CIDR automatically"
+              echo "Please set nfsServer.network.serviceCIDR and nfsServer.network.staticIP in values.yaml"
+              exit 1
             fi
-            echo "Inferred CIDR from existing services: $CIDR"
+            
+            # CIDR inference based on detected IP
+            echo "INFO: Inferring CIDR from detected IP: $DETECTED_IP"
+            case "$DETECTED_IP" in
+              10.96.*) 
+                DETECTED_CIDR="10.96.0.0/12"
+                echo "INFO: Detected standard kubeadm CIDR: $DETECTED_CIDR"
+                ;;
+              10.244.*) 
+                DETECTED_CIDR="10.244.0.0/12"
+                echo "INFO: Detected kind/flannel CIDR: $DETECTED_CIDR"
+                ;;
+              10.32.*) 
+                DETECTED_CIDR="10.32.0.0/12"
+                echo "INFO: Detected GKE CIDR: $DETECTED_CIDR"
+                ;;
+              172.*) 
+                DETECTED_CIDR="172.16.0.0/12"
+                echo "INFO: Detected private 172.x CIDR: $DETECTED_CIDR"
+                ;;
+              192.168.*) 
+                DETECTED_CIDR="192.168.0.0/16"
+                echo "INFO: Detected private 192.168.x CIDR: $DETECTED_CIDR"
+                ;;
+              *) 
+                # Extract /16 for unknown ranges
+                DETECTED_CIDR="$(echo "$DETECTED_IP" | cut -d. -f1,2).0.0/16"
+                echo "INFO: Unknown range, using conservative /16 CIDR: $DETECTED_CIDR"
+                ;;
+            esac
+            
+            # Safe static IP calculation with high offset
+            echo "INFO: Calculating static IP with high offset to avoid collisions..."
+            NETWORK_BASE=$(echo "$DETECTED_CIDR" | cut -d'/' -f1)
+            MASK=$(echo "$DETECTED_CIDR" | cut -d'/' -f2)
+            
+            # Parse network base IP
+            IFS='.' read -r o1 o2 o3 o4 <<< "$NETWORK_BASE"
+            
+            # Calculate static IP based on mask
+            case "$MASK" in
+              12)
+                # For /12 networks, use a different /24 subnet with high offset
+                CALCULATED_STATIC_IP="${o1}.$((o2 + 4)).100.100"
+                ;;
+              16)
+                # For /16 networks, use high third octet
+                CALCULATED_STATIC_IP="${o1}.${o2}.200.100"
+                ;;
+              *)
+                # Default: increment third octet significantly
+                CALCULATED_STATIC_IP="${o1}.${o2}.$((o3 + 200)).100"
+                ;;
+            esac
+            
+            echo "INFO: Calculated static IP: $CALCULATED_STATIC_IP"
+            
+            # Use detected values or user overrides
+            FINAL_CIDR="${USER_CIDR:-$DETECTED_CIDR}"
+            FINAL_STATIC_IP="${USER_STATIC_IP:-$CALCULATED_STATIC_IP}"
           fi
           
-          if [ -z "$CIDR" ]; then
-            echo "All detection methods failed, using default service CIDR"
-            CIDR="172.16.0.0/16"
-          fi
+          echo "INFO: Final configuration:"
+          echo "  Service CIDR: $FINAL_CIDR"
+          echo "  Static IP: $FINAL_STATIC_IP"
           
-          echo "Detected service CIDR: $CIDR"
-          
-          # Calculate static IP by taking network base + 100
-          # Extract network part and add offset
-          NETWORK=$(echo $CIDR | cut -d'/' -f1 | cut -d'.' -f1-3)
-          STATIC_IP="${NETWORK}.100"
-          
-          # Calculate appropriate static IP based on detected CIDR
-          if [[ $CIDR == 10.96.* ]]; then
-            STATIC_IP="10.96.100.100"
-          elif [[ $CIDR == 172.16.* ]]; then
-            STATIC_IP="172.16.100.100"
-          elif [[ $CIDR == 172.20.* ]]; then
-            STATIC_IP="172.20.100.100"  
-          elif [[ $CIDR == 192.168.* ]]; then
-            STATIC_IP="192.168.100.100"
-          fi
-          
-          echo "Calculated static IP: $STATIC_IP"
-          
-          # Create or update ConfigMap with the static IP
+          # Create ConfigMap with final values
           kubectl create configmap {{ include "olake.fullname" . }}-nfs-ip-config \
-            --from-literal=staticIP="$STATIC_IP" \
-            --from-literal=serviceCIDR="$CIDR" \
+            --from-literal=staticIP="$FINAL_STATIC_IP" \
+            --from-literal=serviceCIDR="$FINAL_CIDR" \
             --dry-run=client -o yaml | kubectl apply -f -
           
-          echo "Successfully stored static IP in ConfigMap"
+          echo "SUCCESS: Network configuration completed successfully"
         resources:
           requests:
             memory: "64Mi"

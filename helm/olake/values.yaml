@@ -127,15 +127,15 @@ olakeUI:
   # -- OLake UI image configuration
   image:
     # -- OLake UI image repository
-    repository: dzipstagingacr.azurecr.io/olake-ui
+    repository: olake-ui
     
     # -- OLake UI image tag
     # Use 'local' for development, specific version for production
-    tag: latest
+    tag: local
     
     # -- Image pull policy
     # Use 'Never' for local development, 'Always' for production
-    pullPolicy: Always
+    pullPolicy: Never
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -264,15 +264,15 @@ olakeWorker:
   # -- OLake Worker image configuration
   image:
     # -- OLake Worker image repository
-    repository: dzipstagingacr.azurecr.io/olake-k8s-worker
+    repository: olake-k8s-worker
     
     # -- OLake Worker image tag
     # Use 'local' for development, specific version for production
-    tag: latest
+    tag: local
     
     # -- Image pull policy
     # Use 'Never' for local development, 'Always' for production
-    pullPolicy: Always
+    pullPolicy: Never
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -388,6 +388,18 @@ nfsServer:
   # -- Enable self-managed NFS server deployment
   # When false, you must provide external storage (EFS/Azure Files/etc.)
   enabled: true
+  
+  # -- Network configuration for NFS server
+  network:
+    # -- Service CIDR range (auto-detected if empty)
+    # Example: "10.96.0.0/12"
+    # Only set this if auto-detection fails or you want to override
+    serviceCIDR: ""
+    
+    # -- Static IP for NFS server (auto-calculated if empty)
+    # Example: "10.100.100.100"
+    # Only set this if auto-calculation fails or you want to override
+    staticIP: ""
   
   # -- External storage configuration (used when enabled: false)
   external:
