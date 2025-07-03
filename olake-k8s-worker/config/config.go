@@ -24,9 +24,8 @@ type LoggingConfig = types.LoggingConfig
 
 // LoadConfig loads configuration from environment variables
 func LoadConfig() (*Config, error) {
-	// Create loader and load configuration
-	configLoader := loader.NewConfigLoader()
-	config, err := configLoader.LoadConfig()
+	// Load configuration directly
+	config, err := loader.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
