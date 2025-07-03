@@ -83,3 +83,10 @@ NFS Server Static IP
 172.16.100.100
 {{- end -}}
 {{- end -}}
+
+{{/*
+Get the namespace name
+*/}}
+{{- define "olake.namespace" -}}
+{{- .Values.namespaceOverride | default "olake" -}}
+{{- end -}}

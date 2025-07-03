@@ -34,7 +34,7 @@ spec:
           echo "Checking olake-worker health endpoint..."
           
           for i in $(seq 1 60); do
-            response=$(curl -s -o /dev/null -w "%{http_code}" http://olake-k8s-worker.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.olakeWorker.config.healthCheck.port }}/health || echo "000")
+            response=$(curl -s -o /dev/null -w "%{http_code}" http://olake-k8s-worker.{{ .Values.namespace.name }}.svc.cluster.local:8090/health || echo "000")
             if [ "$response" = "200" ]; then
               echo "✓ OLake stack is ready! (olake-worker health check passed)"
               exit 0

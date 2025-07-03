@@ -68,7 +68,7 @@ spec:
         imagePullPolicy: {{ .Values.olakeWorker.image.pullPolicy }}
         ports:
         - name: health
-          containerPort: {{ .Values.olakeWorker.config.healthCheck.port }}
+          containerPort: 8090
           protocol: TCP
         env:
         - name: DB_PASSWORD

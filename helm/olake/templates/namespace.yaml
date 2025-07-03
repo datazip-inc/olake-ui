@@ -1,13 +1,13 @@
-{{- if .Values.namespace.create }}
+{{- if .Values.namespaceOverride }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.namespace.name }}
+  name: {{ .Values.namespaceOverride }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-100"
     "helm.sh/hook-delete-policy": before-hook-creation
   labels:
-    name: {{ .Values.namespace.name }}
+    name: {{ .Values.namespaceOverride }}
     {{- include "olake.labels" . | nindent 4 }}
 {{- end }}
