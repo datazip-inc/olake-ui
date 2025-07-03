@@ -25,4 +25,7 @@ data:
     
     # Deployment Mode
     DEPLOYMENT_MODE = kubernetes
+    
+    # Temporal Configuration
+    TEMPORAL_ADDRESS = temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233
 {{- end }}
