@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-service-creator
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "2"
@@ -35,7 +35,7 @@ spec:
           echo "Creating NFS service with detected IP..."
           
           # Get the detected IP from ConfigMap
-          STATIC_IP=$(kubectl get configmap {{ include "olake.fullname" . }}-nfs-ip-config -n {{ .Values.namespace.name }} -o jsonpath='{.data.staticIP}')
+          STATIC_IP=$(kubectl get configmap {{ include "olake.fullname" . }}-nfs-ip-config -n {{ include "olake.namespace" . }} -o jsonpath='{.data.staticIP}')
           
           if [ -z "$STATIC_IP" ]; then
             echo "Error: Could not get static IP from ConfigMap"
@@ -50,7 +50,7 @@ spec:
           kind: Service
           metadata:
             name: {{ include "olake.fullname" . }}-nfs-server
-            namespace: {{ .Values.namespace.name }}
+            namespace: {{ include "olake.namespace" . }}
             labels:
               app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
               app.kubernetes.io/instance: {{ .Release.Name }}

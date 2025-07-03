@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: elasticsearch
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
     app.kubernetes.io/name: elasticsearch

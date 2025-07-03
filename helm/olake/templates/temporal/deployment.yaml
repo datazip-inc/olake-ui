@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: temporal
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
     app.kubernetes.io/name: temporal
@@ -56,7 +56,7 @@ spec:
         - -c
         - |
           echo "Waiting for PostgreSQL to be ready..."
-          until nc -z postgresql.{{ .Values.namespace.name }}.svc.cluster.local 5432; do
+          until nc -z postgresql.{{ include "olake.namespace" . }}.svc.cluster.local 5432; do
             echo "PostgreSQL is not ready yet. Waiting..."
             sleep 5
           done
@@ -79,11 +79,11 @@ spec:
         - name: POSTGRES_PWD
           value: {{ .Values.postgresql.auth.postgresPassword | quote }}
         - name: POSTGRES_SEEDS
-          value: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
+          value: "postgresql.{{ include "olake.namespace" . }}.svc.cluster.local"
         - name: ENABLE_ES
           value: "true"
         - name: ES_SEEDS
-          value: "elasticsearch.{{ .Values.namespace.name }}.svc.cluster.local"
+          value: "elasticsearch.{{ include "olake.namespace" . }}.svc.cluster.local"
         - name: ES_VERSION
           value: "v7"
         {{- $defaultResources := dict 

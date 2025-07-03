@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ include "olake.workerServiceAccountName" . }}
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "51"
@@ -34,7 +34,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ include "olake.workerServiceAccountName" . }}
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "52"
@@ -51,5 +51,5 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "olake.workerServiceAccountName" . }}
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
 {{- end }}

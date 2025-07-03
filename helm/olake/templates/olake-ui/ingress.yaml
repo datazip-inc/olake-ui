@@ -14,7 +14,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ $fullName }}-ui
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   {{- with .Values.olakeUI.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

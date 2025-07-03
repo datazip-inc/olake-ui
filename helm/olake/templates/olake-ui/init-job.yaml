@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: olake-signup-init
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
     app.kubernetes.io/name: olake-ui-init
@@ -32,7 +32,7 @@ spec:
         - -c
         - |
           echo "Waiting for OLake UI to be ready..."
-          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local 8080; do
+          until nc -z olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local 8080; do
             echo "OLake UI is not ready yet. Waiting..."
             sleep 5
           done
@@ -49,7 +49,7 @@ spec:
         - name: EMAIL
           value: "{{ .Values.olakeUI.initJob.adminUser.email }}"
         - name: OLAKE_APP_URL
-          value: "http://olake-ui.{{ .Values.namespace.name }}.svc.cluster.local:8080/signup"
+          value: "http://olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local:8080/signup"
         command:
         - /bin/sh
         - -c

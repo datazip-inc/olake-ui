@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-pv-updater
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "1"
@@ -35,7 +35,7 @@ spec:
           echo "Updating NFS PV with detected IP..."
           
           # Get the detected IP from ConfigMap
-          STATIC_IP=$(kubectl get configmap {{ include "olake.fullname" . }}-nfs-ip-config -n {{ .Values.namespace.name }} -o jsonpath='{.data.staticIP}')
+          STATIC_IP=$(kubectl get configmap {{ include "olake.fullname" . }}-nfs-ip-config -n {{ include "olake.namespace" . }} -o jsonpath='{.data.staticIP}')
           
           if [ -z "$STATIC_IP" ]; then
             echo "Error: Could not get static IP from ConfigMap"

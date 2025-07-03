@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ include "olake.fullname" . }}-post-install-wait
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
@@ -34,7 +34,7 @@ spec:
           echo "Checking olake-worker health endpoint..."
           
           for i in $(seq 1 60); do
-            response=$(curl -s -o /dev/null -w "%{http_code}" http://olake-k8s-worker.{{ .Values.namespace.name }}.svc.cluster.local:8090/health || echo "000")
+            response=$(curl -s -o /dev/null -w "%{http_code}" http://olake-k8s-worker.{{ include "olake.namespace" . }}.svc.cluster.local:8090/health || echo "000")
             if [ "$response" = "200" ]; then
               echo "✓ OLake stack is ready! (olake-worker health check passed)"
               exit 0

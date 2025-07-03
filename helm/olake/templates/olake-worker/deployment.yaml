@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: olake-k8s-worker
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
     app.kubernetes.io/name: olake-worker
@@ -59,7 +59,7 @@ spec:
         - -c
         - |
           echo "Waiting for OLake UI to be ready..."
-          until nc -z olake-ui.{{ .Values.namespace.name }}.svc.cluster.local 8080; do
+          until nc -z olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local 8080; do
             echo "OLake UI is not ready yet. Waiting..."
             sleep 5
           done
