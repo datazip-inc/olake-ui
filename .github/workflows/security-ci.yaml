@@ -3,11 +3,9 @@ on:
   push:
     branches:
       - "master"
-      - "feat/bff-api"
   pull_request:
     branches:
       - "*"
-      - "feat/bff-api"
   workflow_dispatch:
     inputs:
       logLevel:

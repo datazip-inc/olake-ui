@@ -18,9 +18,22 @@ import (
 
 // Constants
 const (
+	// File and directory permissions
 	DefaultDirPermissions  = 0755
 	DefaultFilePermissions = 0644
-	DefaultConfigDir       = "/tmp/olake-config"
+
+	// Directory paths
+	DefaultConfigDir  = "/tmp/olake-config"
+	ContainerMountDir = "/mnt/config"
+
+	// Docker related
+	dockerImagePrefix = "olakego/source"
+	dockerRunCmd      = "run"
+	dockerVolumeFlag  = "-v"
+	dockerPullPolicy  = "--pull=always"
+
+	// Environment variables
+	envPersistentDir = "PERSISTENT_DIR"
 )
 
 // Command represents a Docker command type
@@ -55,11 +68,6 @@ func NewRunner(workingDir string) *Runner {
 	}
 }
 
-// GetDefaultConfigDir returns the default directory for storing config files
-func GetDefaultConfigDir() string {
-	return DefaultConfigDir
-}
-
 // setupWorkDirectory creates a working directory and returns the full path
 func (r *Runner) setupWorkDirectory(subDir string) (string, error) {
 	workDir := filepath.Join(r.WorkingDir, subDir)
@@ -85,7 +93,7 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 	if version == "" {
 		version = "latest"
 	}
-	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
+	return fmt.Sprintf("%s-%s:%s", dockerImagePrefix, sourceType, version)
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
@@ -139,7 +147,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 
 // getHostOutputDir determines the host output directory path
 func (r *Runner) getHostOutputDir(outputDir string) string {
-	if persistentDir := os.Getenv("PERSISTENT_DIR"); persistentDir != "" {
+	if persistentDir := os.Getenv(envPersistentDir); persistentDir != "" {
 		hostOutputDir := strings.Replace(outputDir, DefaultConfigDir, persistentDir, 1)
 		logs.Info("hostOutputDir %s\n", hostOutputDir)
 		return hostOutputDir

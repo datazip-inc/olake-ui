@@ -61,6 +61,9 @@ func (c *Client) Close() {
 		c.temporalClient.Close()
 	}
 }
+func (c *Client) GetClient() client.Client {
+	return c.temporalClient
+}
 
 // GetCatalog runs a workflow to discover catalog data
 func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
