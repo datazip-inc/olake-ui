@@ -286,60 +286,8 @@ olakeWorker:
     # -- Service account annotations
     annotations: {}
   
-  # -- RBAC permissions are hardcoded with least privilege principle:
-  # - Pods: get, list, watch, create, delete (no update/patch)
-  # - Pod logs/status: get, list, watch (read-only)
-  # - Jobs: full management for batch processing
-  # - ConfigMaps/Secrets: get, list, watch (read-only)
-  
   # -- OLake Worker application configuration
   config:
-    # -- Kubernetes-specific configuration
-    kubernetes:
-      # -- Namespace for job execution (templated)
-      namespace: "{{ .Values.namespace.name }}"
-      
-      # -- Image registry for job containers
-      # This should point to where your connector images are stored
-      imageRegistry: olakego
-      
-      # -- Image pull policy for job containers
-      imagePullPolicy: IfNotPresent
-      
-      # -- Service account for job pods (templated)
-      serviceAccount: "{{ include \"olake.workerServiceAccountName\" . }}"
-      
-      # -- PVC name for shared storage (templated)
-      storagePvcName: "{{ include \"olake.sharedStoragePVC\" . }}"
-    
-    # -- Temporal connection configuration
-    temporal:
-      # -- Temporal server address
-      address: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:7233"
-      
-      # -- Temporal task queue name for K8s worker
-      taskQueue: OLAKE_K8S_TASK_QUEUE
-    
-    # -- Database connection configuration
-    database:
-      # -- Database host (templated)
-      host: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
-      
-      # -- Database port
-      port: "5432"
-      
-      # -- Database user (templated from PostgreSQL superuser)
-      user: "{{ .Values.postgresql.auth.postgresUser }}"
-      
-      # -- Database password (templated from PostgreSQL superuser)
-      password: "{{ .Values.postgresql.auth.postgresPassword }}"
-      
-      # -- Database name (use default postgres database)
-      name: "postgres"
-      
-      # -- SSL mode for database connection
-      sslmode: disable
-    
     # -- Worker performance configuration
     worker:
       # -- Maximum concurrent activities per worker
@@ -373,25 +321,6 @@ olakeWorker:
         
         # -- Timeout for data sync activities (29 days, slightly less than workflow)
         sync: 700h
-    
-    # -- Job execution configuration
-    job:
-      # -- TTL for completed jobs (seconds)
-      ttlSeconds: 3600
-      
-      # -- Backoff limit for failed jobs
-      backoffLimit: 3
-      
-      # -- Number of parallel job pods
-      parallelism: 1
-      
-      # -- Number of successful completions required
-      completions: 1
-    
-    # -- Health check configuration
-    healthCheck:
-      # -- Port for health check endpoint
-      port: 8090
     
     # -- Logging configuration
     logging:

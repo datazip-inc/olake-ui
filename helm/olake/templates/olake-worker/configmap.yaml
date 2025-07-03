@@ -12,15 +12,15 @@ metadata:
     {{- include "olake.labels" . | nindent 4 }}
 data:
   # Temporal Configuration
-  TEMPORAL_ADDRESS: {{ tpl .Values.olakeWorker.config.temporal.address . | quote }}
-  TEMPORAL_TASK_QUEUE: {{ .Values.olakeWorker.config.temporal.taskQueue | quote }}
+  TEMPORAL_ADDRESS: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:7233"
+  TEMPORAL_TASK_QUEUE: "OLAKE_K8S_TASK_QUEUE"
   
   # Database Configuration
-  DB_HOST: {{ tpl .Values.olakeWorker.config.database.host . | quote }}
-  DB_PORT: {{ tpl .Values.olakeWorker.config.database.port . | quote }}
-  DB_NAME: {{ tpl .Values.olakeWorker.config.database.name . | quote }}
-  DB_USER: {{ tpl .Values.olakeWorker.config.database.user . | quote }}
-  DB_SSLMODE: {{ .Values.olakeWorker.config.database.sslmode | quote }}
+  DB_HOST: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "postgres"
+  DB_USER: {{ .Values.postgresql.auth.postgresUser | quote }}
+  DB_SSLMODE: "disable"
   
   # Timeout Configuration
   WORKFLOW_TIMEOUT_DISCOVER: {{ .Values.olakeWorker.config.timeouts.workflow.discover | quote }}
@@ -31,24 +31,15 @@ data:
   ACTIVITY_TIMEOUT_SYNC: {{ .Values.olakeWorker.config.timeouts.activity.sync | quote }}
   
   # Kubernetes Configuration
-  WORKER_NAMESPACE: {{ tpl .Values.olakeWorker.config.kubernetes.namespace . | quote }}
-  IMAGE_REGISTRY: {{ .Values.olakeWorker.config.kubernetes.imageRegistry | quote }}
-  IMAGE_PULL_POLICY: {{ .Values.olakeWorker.config.kubernetes.imagePullPolicy | quote }}
-  SERVICE_ACCOUNT: {{ tpl .Values.olakeWorker.config.kubernetes.serviceAccount . | quote }}
-  OLAKE_STORAGE_PVC_NAME: {{ tpl .Values.olakeWorker.config.kubernetes.storagePvcName . | quote }}
-  
-  # Job Configuration
-  JOB_TTL_SECONDS: {{ .Values.olakeWorker.config.job.ttlSeconds | quote }}
-  JOB_BACKOFF_LIMIT: {{ .Values.olakeWorker.config.job.backoffLimit | quote }}
-  JOB_PARALLELISM: {{ .Values.olakeWorker.config.job.parallelism | quote }}
-  JOB_COMPLETIONS: {{ .Values.olakeWorker.config.job.completions | quote }}
+  WORKER_NAMESPACE: {{ .Values.namespace.name | quote }}
+  IMAGE_REGISTRY: "olakego"
+  IMAGE_PULL_POLICY: "IfNotPresent"
+  SERVICE_ACCOUNT: {{ include "olake.workerServiceAccountName" . | quote }}
+  OLAKE_STORAGE_PVC_NAME: {{ include "olake.sharedStoragePVC" . | quote }}
   
   # Worker Configuration
   MAX_CONCURRENT_ACTIVITIES: {{ .Values.olakeWorker.config.worker.maxConcurrentActivities | quote }}
   MAX_CONCURRENT_WORKFLOWS: {{ .Values.olakeWorker.config.worker.maxConcurrentWorkflows | quote }}
-  
-  # Health Check Configuration
-  HEALTH_CHECK_PORT: {{ .Values.olakeWorker.config.healthCheck.port | quote }}
   
   # Logging Configuration
   LOG_LEVEL: {{ .Values.olakeWorker.config.logging.level | quote }}
