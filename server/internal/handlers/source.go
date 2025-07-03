@@ -13,6 +13,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -110,6 +111,9 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
+	// Track source creation event
+	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), source)
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -146,6 +150,8 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 
+	// Track sources status after update
+	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -180,6 +186,7 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
+	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
 		Name: source.Name,
 	})
@@ -340,7 +347,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       5,
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "string",
+					"type":        "obj",
 					"title":       "JDBC URL Parameters",
 					"description": "Additional JDBC URL parameters for connection tuning (optional)",
 					"order":       6,
@@ -568,7 +575,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       5,
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "string",
+					"type":        "obj",
 					"title":       "JDBC URL Parameters",
 					"description": "Additional JDBC URL parameters for connection tuning (optional)",
 					"order":       6,

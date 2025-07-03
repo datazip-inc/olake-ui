@@ -7,6 +7,7 @@ import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
 import SourceEmptyState from "../components/SourceEmptyState"
+import analyticsService from "../../../api/services/analyticsService"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -29,6 +30,7 @@ const Sources: React.FC = () => {
 	}, [fetchSources])
 
 	const handleCreateSource = () => {
+		analyticsService.trackEvent("create_source_clicked")
 		navigate("/sources/new")
 	}
 

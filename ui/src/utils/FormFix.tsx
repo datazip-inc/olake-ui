@@ -74,7 +74,9 @@ const DirectFormField = ({
 					? e.target.value
 						? Number(e.target.value)
 						: undefined
-					: e.target.value
+					: schema.type === "obj"
+						? tryParseJSON(e.target.value) || e.target.value
+						: e.target.value
 
 		setFieldValue(newValue)
 		setWasUserModified(true)
@@ -84,6 +86,16 @@ const DirectFormField = ({
 			setLocalError(validateField(newValue))
 		} else {
 			setLocalError(null)
+		}
+	}
+
+	// Helper function to try parsing JSON
+	const tryParseJSON = (str: string) => {
+		try {
+			const parsed = JSON.parse(str)
+			return typeof parsed === "object" ? parsed : null
+		} catch {
+			return null
 		}
 	}
 
@@ -226,6 +238,23 @@ const DirectFormField = ({
 	const renderInput = () => {
 		if (schema.type === "array") {
 			return renderArrayField()
+		}
+
+		if (schema.type === "obj") {
+			return (
+				<input
+					ref={inputRef}
+					type="text"
+					value={
+						typeof fieldValue === "object"
+							? JSON.stringify(fieldValue)
+							: (fieldValue ?? "")
+					}
+					onChange={handleChange}
+					placeholder={schema.placeholder}
+					className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+				/>
+			)
 		}
 
 		if (schema.enum?.length) {
