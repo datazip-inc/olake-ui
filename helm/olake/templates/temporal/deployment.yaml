@@ -68,10 +68,22 @@ spec:
           containerPort: 7233
           protocol: TCP
         env:
-        {{- range .Values.temporal.server.env }}
-        - name: {{ .name }}
-          value: {{ tpl .value $ | quote }}
-        {{- end }}
+        - name: DB
+          value: "postgres12"
+        - name: DB_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          value: {{ .Values.postgresql.auth.postgresUser | quote }}
+        - name: POSTGRES_PWD
+          value: {{ .Values.postgresql.auth.postgresPassword | quote }}
+        - name: POSTGRES_SEEDS
+          value: "postgresql.{{ .Values.namespace.name }}.svc.cluster.local"
+        - name: ENABLE_ES
+          value: "true"
+        - name: ES_SEEDS
+          value: "elasticsearch.{{ .Values.namespace.name }}.svc.cluster.local"
+        - name: ES_VERSION
+          value: "v7"
         {{- $defaultResources := dict 
           "requests" (dict "memory" "512Mi" "cpu" "500m")
         }}

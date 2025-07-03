@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/component: workflow-ui
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.temporal.ui.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: temporal-ui
@@ -19,30 +19,11 @@ spec:
       app.kubernetes.io/component: workflow-ui
   template:
     metadata:
-      annotations:
-        {{- with .Values.temporal.ui.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
       labels:
         app.kubernetes.io/name: temporal-ui
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: workflow-ui
-        {{- with .Values.temporal.ui.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-    spec:
-      {{- with .Values.temporal.ui.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.temporal.ui.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.temporal.ui.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+          spec:
       securityContext:
         {{- toYaml .Values.global.securityContext | nindent 8 }}
       initContainers:
@@ -60,43 +41,39 @@ spec:
           echo "Temporal server is ready!"
       containers:
       - name: temporal-ui
-        image: "{{ .Values.temporal.ui.image.repository }}:{{ .Values.temporal.ui.image.tag }}"
-        imagePullPolicy: {{ .Values.temporal.ui.image.pullPolicy }}
+        image: "temporalio/ui:2.16.2"
+        imagePullPolicy: Always
         ports:
         - name: http
           containerPort: 8081
           protocol: TCP
         env:
-        {{- range .Values.temporal.ui.env }}
-        - name: {{ .name }}
-          value: {{ tpl .value $ | quote }}
-        {{- end }}
-        {{- $defaultResources := dict 
-          "requests" (dict "memory" "128Mi" "cpu" "100m")
-        }}
-        {{- $resources := mergeOverwrite $defaultResources (.Values.temporal.ui.resources | default dict) }}
+        - name: TEMPORAL_ADDRESS
+          value: "temporal.{{ .Values.namespace.name }}.svc.cluster.local:7233"
+        - name: TEMPORAL_UI_PORT
+          value: "8081"
+        - name: TEMPORAL_CORS_ORIGINS
+          value: "http://localhost:3000"
         resources:
-          {{- toYaml $resources | nindent 10 }}
-        {{- $defaultReadinessProbe := dict 
-          "initialDelaySeconds" 10
-          "periodSeconds" 10
-          "timeoutSeconds" 5
-          "failureThreshold" 3
-          "successThreshold" 1
-          "httpGet" (dict "path" "/" "port" 8081)
-        }}
-        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.temporal.ui.readinessProbe | default dict) }}
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
         readinessProbe:
-          {{- toYaml $readinessProbe | nindent 10 }}
-        {{- $defaultLivenessProbe := dict 
-          "initialDelaySeconds" 30
-          "periodSeconds" 30
-          "timeoutSeconds" 10
-          "failureThreshold" 3
-          "successThreshold" 1
-          "httpGet" (dict "path" "/" "port" 8081)
-        }}
-        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.temporal.ui.livenessProbe | default dict) }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+          httpGet:
+            path: /
+            port: 8081
         livenessProbe:
-          {{- toYaml $livenessProbe | nindent 10 }}
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+          httpGet:
+            path: /
+            port: 8081
 {{- end }}
