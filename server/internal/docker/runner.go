@@ -85,6 +85,7 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 	if version == "" {
 		version = "latest"
 	}
+	version = "dev-latest"
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
@@ -155,9 +156,9 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	specPath := filepath.Join(workDir, "spec.json")
 	// Prepare the command arguments
 	dockerArgs := []string{
-		"run", "-v",
+		"run", "-v", fmt.Sprintf("%s:/mnt/config", r.getHostOutputDir(workDir)),
 		r.GetDockerImageName(sourceType, version),
-		string(Spec),
+		"spec",
 	}
 	// Add destination flag if provided
 	if destinationType != "" {
@@ -165,6 +166,7 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	}
 	// Run the command
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	logs.Info("running docker command: %s\n", strings.Join(dockerArgs, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
