@@ -27,6 +27,13 @@ type ActivityParams struct {
 
 // SyncParams contains parameters for sync activities
 type SyncParams struct {
-	JobID      int
-	WorkflowID string
+	JobID           int
+	WorkflowID      string
+	JobName         string
+	CreatedBy       string
+	CreatedAt       string
+	SourceType      string
+	SourceName      string
+	DestinationType string
+	DestinationName string
 }

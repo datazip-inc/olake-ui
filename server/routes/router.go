@@ -42,6 +42,7 @@ func Init() {
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
 	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
 	web.Router("/auth/check", &handlers.AuthHandler{}, "get:CheckAuth")
+	web.Router("/telemetry-id", &handlers.AuthHandler{}, "get:GetTelemetryID")
 
 	// User routes
 	web.Router("/api/v1/users", &handlers.UserHandler{}, "post:CreateUser")
