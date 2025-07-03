@@ -25,7 +25,9 @@ spec:
         app.kubernetes.io/component: workflow-ui
           spec:
       securityContext:
-        {{- toYaml .Values.global.securityContext | nindent 8 }}
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       initContainers:
       - name: wait-for-temporal
         image: busybox:latest

@@ -46,7 +46,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.global.securityContext | nindent 8 }}
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
       serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
       initContainers:
       - name: wait-for-olake-ui

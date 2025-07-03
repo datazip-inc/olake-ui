@@ -44,7 +44,8 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
-        {{- toYaml .Values.global.securityContext | nindent 8 }}
+        runAsUser: 0
+        runAsNonRoot: false
       initContainers:
       - name: wait-for-temporal
         image: busybox:latest

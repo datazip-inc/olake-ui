@@ -32,18 +32,6 @@ global:
   # Set to "-" to disable dynamic provisioning
   # Examples: gp2, fast, standard, local-path
   storageClass: ""
-  
-  # -- Global security context applied to all pods
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    seccompProfile:
-      type: RuntimeDefault
 
 # =============================================================================
 # NAMESPACE CONFIGURATION
