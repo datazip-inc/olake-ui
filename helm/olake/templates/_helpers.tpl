@@ -88,5 +88,10 @@ NFS Server Static IP
 Get the namespace name
 */}}
 {{- define "olake.namespace" -}}
-{{- .Values.namespaceOverride | default "olake" -}}
+{{- $ns := .Values.namespaceOverride | default "olake" -}}
+{{- if or (not $ns) (eq $ns "") -}}
+olake
+{{- else -}}
+{{ $ns }}
+{{- end -}}
 {{- end -}}
