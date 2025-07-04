@@ -10,6 +10,9 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 )
 
+// docker hub tags api url template
+const dockerHubTagsURLTemplate = "https://hub.docker.com/v2/repositories/%s/tags/?page_size=100"
+
 // DockerHubTag represents a single tag from Docker Hub API response
 type DockerHubTag struct {
 	Name string `json:"name"`
@@ -20,59 +23,83 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
-// GetDockerHubTags fetches all tags for a given Docker image from Docker Hub
-// imageName should be in the format "namespace/repository" (e.g., "library/nginx")
+// GetDockerHubTags fetches all valid tags for a given Docker image from Docker Hub or falls back to local images
 func GetDockerHubTags(imageName string) ([]string, error) {
-	url := fmt.Sprintf("https://hub.docker.com/v2/repositories/%s/tags/?page_size=100", imageName)
-	resp, err := http.Get(url)
+	resp, err := http.Get(fmt.Sprintf(dockerHubTagsURLTemplate, imageName))
 	if err != nil {
-		logs.Debug("Warning: Failed to fetch tags from Docker Hub, falling back to local images: %v\n", err)
+		logs.Debug("Warning: Failed to fetch tags from Docker Hub, falling back to local images: %s", err)
 		return getLocalImageTags(imageName)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logs.Debug("Warning: Docker Hub API returned status %d, falling back to local images\n", resp.StatusCode)
+		logs.Debug("Warning: Docker Hub API returned status %d, falling back to local images", resp.StatusCode)
 		return getLocalImageTags(imageName)
 	}
 
 	var responseData DockerHubTagsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-		logs.Debug("Warning: Failed to decode Docker Hub response, falling back to local images: %v\n", err)
+		logs.Debug("Warning: Failed to decode Docker Hub response, falling back to local images: %s", err)
 		return getLocalImageTags(imageName)
 	}
 
-	tags := make([]string, 0, len(responseData.Results))
+	var tags []string
 	for _, tagData := range responseData.Results {
-		if !strings.Contains(tagData.Name, "stag") && !strings.Contains(tagData.Name, "latest") && !strings.Contains(tagData.Name, "dev") && tagData.Name >= "v0.1.0" {
+		if isValidTag(tagData.Name) {
 			tags = append(tags, tagData.Name)
+		}
+	}
+	return tags, nil
+}
+
+// getLocalImageTags fetches all valid local tags for a given image
+func getLocalImageTags(imageName string) ([]string, error) {
+	cmd := exec.Command("docker", "images", imageName, "--format", "{{.Tag}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tags for image %s: %v", imageName, err)
+	}
+	var tags []string
+	for _, tag := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if isValidTag(tag) {
+			tags = append(tags, tag)
 		}
 	}
 
 	return tags, nil
 }
 
-func getLocalImageTags(imageName string) ([]string, error) {
-	cmd := exec.Command("docker", "images", "--format", "{{.Repository}}:{{.Tag}}")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to list local docker images: %v", err)
+// GetAvailableDriversVersions returns the driver with the highest available version locally
+func GetAvailableDriversVersions() (string, string) {
+	drivers := []string{"postgres", "mysql", "oracle", "mongodb"}
+	result := make(map[string]string)
+
+	for _, driver := range drivers {
+		imageName := fmt.Sprintf("olakego/source-%s", driver)
+		versions, err := getLocalImageTags(imageName)
+		if err != nil || len(versions) == 0 {
+			continue
+		}
+
+		result[driver] = versions[len(versions)-1]
 	}
 
-	lines := strings.Split(string(output), "\n")
-	tags := make([]string, 0)
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, imageName+":") {
-			tag := strings.TrimPrefix(line, imageName+":")
-			if tag == "<none>" {
-				continue
-			}
-			if !strings.Contains(tag, "stag") && !strings.Contains(tag, "latest") && !strings.Contains(tag, "dev") && tag >= "v0.1.0" {
-				tags = append(tags, tag)
-			}
+	var maxDriver, maxVersion string
+	for driver, version := range result {
+		if version > maxVersion {
+			maxDriver = driver
+			maxVersion = version
 		}
 	}
 
-	return tags, nil
+	return maxDriver, maxVersion
+}
+
+// isValidTag centralizes tag filtering logic
+func isValidTag(tag string) bool {
+	return tag != "<none>" &&
+		!strings.Contains(tag, "stag") &&
+		!strings.Contains(tag, "latest") &&
+		!strings.Contains(tag, "dev") &&
+		tag >= "v0.1.0"
 }
