@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"sort"
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -25,22 +26,29 @@ type DockerHubTagsResponse struct {
 
 // GetDockerHubTags fetches all valid tags for a given Docker image from Docker Hub or falls back to local images
 func GetDockerHubTags(imageName string) ([]string, error) {
+	tags, err := fetchTagsFromDockerHub(imageName)
+	if err != nil {
+		logs.Debug("Warning: %s. Falling back to local images.", err)
+		return getLocalImageTags(imageName)
+	}
+	return tags, nil
+}
+
+// fetchTagsFromDockerHub tries to fetch tags from Docker Hub
+func fetchTagsFromDockerHub(imageName string) ([]string, error) {
 	resp, err := http.Get(fmt.Sprintf(dockerHubTagsURLTemplate, imageName))
 	if err != nil {
-		logs.Debug("Warning: Failed to fetch tags from Docker Hub, falling back to local images: %s", err)
-		return getLocalImageTags(imageName)
+		return nil, fmt.Errorf("failed to fetch tags from Docker Hub: %s", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logs.Debug("Warning: Docker Hub API returned status %d, falling back to local images", resp.StatusCode)
-		return getLocalImageTags(imageName)
+		return nil, fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode)
 	}
 
 	var responseData DockerHubTagsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-		logs.Debug("Warning: Failed to decode Docker Hub response, falling back to local images: %s", err)
-		return getLocalImageTags(imageName)
+		return nil, fmt.Errorf("failed to decode Docker Hub response: %s", err)
 	}
 
 	var tags []string
@@ -65,6 +73,11 @@ func getLocalImageTags(imageName string) ([]string, error) {
 			tags = append(tags, tag)
 		}
 	}
+
+	// Sort tags in descending order
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i] > tags[j] // '>' for descending order
+	})
 
 	return tags, nil
 }

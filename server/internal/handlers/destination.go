@@ -189,6 +189,10 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 	driver, version := utils.GetAvailableDriversVersions()
+	if driver == "" || version == "" {
+		driver = "postgres"
+		version = "latest"
+	}
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
