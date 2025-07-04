@@ -43,7 +43,7 @@ func fetchTagsFromDockerHub(imageName string) ([]string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Docker Hub API returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("docker hub api request failed with status code: %d", resp.StatusCode)
 	}
 
 	var responseData DockerHubTagsResponse
