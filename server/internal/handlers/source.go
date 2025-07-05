@@ -281,7 +281,7 @@ func (c *SourceHandler) GetSourceVersions() {
 	// Get versions from Docker Hub
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 
-	versions, err := utils.GetDockerHubTags(imageName)
+	versions, err := utils.GetDockerHubTags(c.Ctx.Request.Context(), imageName)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
 		return

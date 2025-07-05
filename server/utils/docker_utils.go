@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -25,11 +26,11 @@ type DockerHubTagsResponse struct {
 }
 
 // GetDockerHubTags fetches all valid tags for a given Docker image from Docker Hub or falls back to local images
-func GetDockerHubTags(imageName string) ([]string, error) {
+func GetDockerHubTags(ctx context.Context, imageName string) ([]string, error) {
 	tags, err := fetchTagsFromDockerHub(imageName)
 	if err != nil {
 		logs.Debug("Warning: %s. Falling back to local images.", err)
-		return getLocalImageTags(imageName)
+		return getLocalImageTags(ctx, imageName)
 	}
 	return tags, nil
 }
@@ -61,14 +62,20 @@ func fetchTagsFromDockerHub(imageName string) ([]string, error) {
 }
 
 // getLocalImageTags fetches all valid local tags for a given image
-func getLocalImageTags(imageName string) ([]string, error) {
-	cmd := exec.Command("docker", "images", imageName, "--format", "{{.Tag}}")
-	output, err := cmd.Output()
+func getLocalImageTags(ctx context.Context, imageName string) ([]string, error) {
+	images, err := getLocalDockerData(ctx, imageName+":")
 	if err != nil {
-		return nil, fmt.Errorf("failed to list tags for image %s: %v", imageName, err)
+		return nil, err
 	}
+
 	var tags []string
-	for _, tag := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+	for _, image := range images {
+		// Expected format: imageName:tag
+		parts := strings.Split(image, ":")
+		if len(parts) != 2 {
+			continue
+		}
+		tag := parts[1]
 		if isValidTag(tag) {
 			tags = append(tags, tag)
 		}
@@ -83,20 +90,35 @@ func getLocalImageTags(imageName string) ([]string, error) {
 }
 
 // GetAvailableDriversVersions returns the driver with the highest available version locally
-func GetAvailableDriversVersions() (string, string) {
-	drivers := []string{"postgres", "mysql", "oracle", "mongodb"}
+func GetAvailableDriversVersions(ctx context.Context) (string, string) {
+	images, err := getLocalSourceImages(ctx)
+	if err != nil {
+		logs.Debug("Failed to fetch local source images: %v", err)
+		return "", ""
+	}
+
 	result := make(map[string]string)
 
-	for _, driver := range drivers {
-		imageName := fmt.Sprintf("olakego/source-%s", driver)
-		versions, err := getLocalImageTags(imageName)
-		if err != nil || len(versions) == 0 {
+	for _, image := range images {
+		// Expected format: olakego/source-postgres:1.2.3
+		parts := strings.Split(strings.TrimPrefix(image, "olakego/source-"), ":")
+		if len(parts) != 2 {
+			continue
+		}
+		driver := parts[0]
+		version := parts[1]
+
+		if !isValidTag(version) {
 			continue
 		}
 
-		result[driver] = versions[len(versions)-1]
+		// Keep the highest version per driver
+		if existing, ok := result[driver]; !ok || version > existing {
+			result[driver] = version
+		}
 	}
 
+	// Find the driver with the highest version overall
 	var maxDriver, maxVersion string
 	for driver, version := range result {
 		if version > maxVersion {
@@ -106,6 +128,28 @@ func GetAvailableDriversVersions() (string, string) {
 	}
 
 	return maxDriver, maxVersion
+}
+
+// getLocalSourceImages returns all local images with prefix olakego/source-
+func getLocalSourceImages(ctx context.Context) ([]string, error) {
+	return getLocalDockerData(ctx, "olakego/source-")
+}
+
+// getLocalDockerData returns filtered docker images output based on provided prefix
+func getLocalDockerData(ctx context.Context, filterPrefix string) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "docker", "images", "--format", "{{.Repository}}:{{.Tag}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list docker images: %v", err)
+	}
+
+	var results []string
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if strings.HasPrefix(line, filterPrefix) {
+			results = append(results, line)
+		}
+	}
+	return results, nil
 }
 
 // isValidTag centralizes tag filtering logic
