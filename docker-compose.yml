@@ -26,6 +26,8 @@ services:
       - "8000:8000" # Expose UI port
       - "8080:8080" # Expose backend API port
     volumes:
+      # Mount Docker socket to enable black box environment by managing local containers/images
+      - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     networks:
       - temporal-network

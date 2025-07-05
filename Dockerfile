@@ -55,7 +55,7 @@ COPY --from=go-builder /app/olake-server /opt/backend/olake-server
 # Copy the backend configuration file
 COPY server/conf/app.conf /opt/backend/conf/app.conf
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
-
+RUN apk update && apk add --no-cache docker-cli
 # Copy supervisor configuration file
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
