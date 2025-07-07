@@ -4,15 +4,14 @@ kind: Service
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   namespace: {{ include "olake.namespace" . }}
-  annotations: {}
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
-  clusterIP: {{ include "olake.nfsStaticIP" . }}
+  # Static cluster IP for NFS server service
+  clusterIP: {{ .Values.nfsServer.clusterIP }}
   ports:
   - name: nfs
     port: 2049

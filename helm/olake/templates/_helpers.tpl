@@ -73,22 +73,6 @@ Shared storage PVC name
 {{- end -}}
 
 {{/*
-NFS Server Static IP
-*/}}
-{{- define "olake.nfsStaticIP" -}}
-{{- if .Values.nfsServer.network.staticIP -}}
-{{- .Values.nfsServer.network.staticIP -}}
-{{- else -}}
-{{- $configMap := lookup "v1" "ConfigMap" (include "olake.namespace" .) (printf "%s-nfs-ip-config" (include "olake.fullname" .)) -}}
-{{- if and $configMap $configMap.data $configMap.data.staticIP -}}
-{{- $configMap.data.staticIP -}}
-{{- else -}}
-172.16.100.100
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Get the namespace name
 */}}
 {{- define "olake.namespace" -}}

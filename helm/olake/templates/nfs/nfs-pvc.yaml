@@ -2,15 +2,19 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "olake.fullname" . }}-shared-storage
+  name: {{ include "olake.sharedStoragePVC" . }}
   namespace: {{ include "olake.namespace" . }}
   labels:
     {{- include "olake.labels" . | nindent 4 }}
 spec:
+  # Setting storageClassName to "" ensures this PVC binds to our manually
+  # created PV instead of using a dynamic provisioner.
+  storageClassName: ""
   accessModes:
     - ReadWriteMany
-  storageClassName: {{ include "olake.fullname" . }}-nfs
   resources:
     requests:
       storage: {{ .Values.nfsServer.persistence.size }}
+  # Explicitly bind to the PV we created
+  volumeName: {{ include "olake.fullname" . }}-shared-storage
 {{- end }}

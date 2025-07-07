@@ -10,8 +10,9 @@ metadata:
     app.kubernetes.io/component: nfs-server
     {{- include "olake.labels" . | nindent 4 }}
 spec:
+  # This MUST match the metadata.name of the headless Service.
   serviceName: {{ include "olake.fullname" . }}-nfs-server
-  replicas: {{ .Values.nfsServer.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
@@ -62,35 +63,37 @@ spec:
         env:
         - name: SHARED_DIRECTORY
           value: "/exports"
-        - name: NFS_PORT
-          value: "2049"
-        - name: MOUNTD_PORT
-          value: "20048"
         resources:
-          {{- toYaml .Values.nfsServer.resources | nindent 10 }}
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         livenessProbe:
           tcpSocket:
             port: 2049
           initialDelaySeconds: 30
           periodSeconds: 30
-          timeoutSeconds: 5
-          failureThreshold: 3
         readinessProbe:
           tcpSocket:
             port: 2049
           initialDelaySeconds: 10
           periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+  # The volumeClaimTemplates section is the correct way to provision storage
+  # for a StatefulSet. It will automatically create a PVC for each pod.
   volumeClaimTemplates:
   - metadata:
       name: nfs-storage
     spec:
       accessModes: {{ .Values.nfsServer.persistence.accessModes }}
-      {{- if .Values.nfsServer.persistence.storageClass }}
-      storageClassName: {{ .Values.nfsServer.persistence.storageClass }}
-      {{- else if .Values.global.storageClass }}
-      storageClassName: {{ .Values.global.storageClass }}
+      # This logic first checks for a specific storageClass under nfsServer,
+      # and if it's not found, it falls back to the global one.
+      {{- /* Determine the storage class name, falling back to global if needed */}}
+      {{- $sc := .Values.nfsServer.persistence.storageClass | default .Values.global.storageClass -}}
+      {{- /* Only render the storageClassName line if a value is present */}}
+      {{- if $sc }}
+      storageClassName: {{ $sc }}
       {{- end }}
       resources:
         requests:

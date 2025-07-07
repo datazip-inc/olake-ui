@@ -51,19 +51,19 @@ spec:
         fsGroup: 1000
       serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
       initContainers:
-      - name: wait-for-olake-ui
+      - name: wait-for-temporal
         image: busybox:latest
         imagePullPolicy: IfNotPresent
         command:
         - /bin/sh
         - -c
         - |
-          echo "Waiting for OLake UI to be ready..."
-          until nc -z olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local 8080; do
-            echo "OLake UI is not ready yet. Waiting..."
+          echo "Waiting for Temporal to be ready..."
+          until nc -z temporal.{{ include "olake.namespace" . }}.svc.cluster.local 7233; do
+            echo "Temporal is not ready yet. Waiting..."
             sleep 5
           done
-          echo "OLake UI is ready!"
+          echo "Temporal is ready!"
       containers:
       - name: olake-k8s-worker
         image: "{{ .Values.olakeWorker.image.repository }}:{{ .Values.olakeWorker.image.tag }}"

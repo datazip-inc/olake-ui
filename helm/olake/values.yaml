@@ -1,11 +1,3 @@
-# Default values for OLake.
-# This is a YAML-formatted file.
-# Declare variables to be substituted into your templates.
-
-# =============================================================================
-# GLOBAL CONFIGURATION
-# =============================================================================
-
 # -- Override the deployment namespace
 namespaceOverride: "olake"
 
@@ -17,102 +9,42 @@ fullnameOverride: ""
 
 # -- Global configuration that applies to all components
 global:
-  # -- Global image registry to use for all images
-  # Examples:
-  #   registry.example.com
-  #   harbor.company.com/olake
-  imageRegistry: ""
-  
-  # -- Global image pull secrets
-  # Examples:
-  #   - name: myRegistryKeySecretName
-  imagePullSecrets: []
-  
   # -- Global storage class for all persistent volumes
-  # Set to "-" to disable dynamic provisioning
-  # Examples: gp2, fast, standard, local-path
+  # Set to "" to disable dynamic provisioning
+  # Examples: gp2, standard, managed
   storageClass: ""
   
   # -- Job scheduling configuration for pods created by olake-worker
   # Controls how sync, discover, and test job pods are scheduled on the cluster
   job:
-    # -- Sync job scheduling configuration (long-running, resource-intensive jobs)
-    # Sync jobs typically benefit from anti-affinity to distribute load across nodes
     sync:
-      # -- Node selector for sync jobs
-      # Example: nodeSelector: {disktype: ssd, memory: high-mem}
       nodeSelector: {}
-      
-      # -- Tolerations for sync jobs
-      # Example: tolerations: [{key: "dedicated", operator: "Equal", value: "sync-jobs", effect: "NoSchedule"}]
       tolerations: []
-      
-      # -- Anti-affinity configuration for sync jobs
       antiAffinity:
-        # -- Enable anti-affinity to spread sync jobs across nodes
         enabled: true
-        
-        # -- Anti-affinity strategy: "soft" (preferred) or "hard" (required)
-        # "soft" allows scheduling even if anti-affinity cannot be satisfied
-        # "hard" prevents scheduling if anti-affinity cannot be satisfied
-        strategy: "soft"
-        
-        # -- Topology key for anti-affinity
-        # "kubernetes.io/hostname" spreads across nodes
-        # "topology.kubernetes.io/zone" spreads across availability zones
+        strategy: "hard"
         topologyKey: "kubernetes.io/hostname"
-        
-        # -- Weight for soft anti-affinity (1-100, only used when strategy is "soft")
-        weight: 100
     
-    # -- Discover job scheduling configuration (medium duration, moderate resources)
-    # Discover jobs may benefit from anti-affinity for better resource distribution
     discover:
-      # -- Node selector for discover jobs
       nodeSelector: {}
-      
-      # -- Tolerations for discover jobs
       tolerations: []
-      
-      # -- Anti-affinity configuration for discover jobs
       antiAffinity:
-        # -- Enable anti-affinity to spread discover jobs across nodes
-        enabled: true
-        
-        # -- Anti-affinity strategy: "soft" (preferred) or "hard" (required)
-        strategy: "soft"
-        
-        # -- Topology key for anti-affinity
-        topologyKey: "kubernetes.io/hostname"
-        
-        # -- Weight for soft anti-affinity (1-100, only used when strategy is "soft")
-        weight: 100
-    
-    # -- Test job scheduling configuration (short-lived, lightweight jobs)
-    # Test jobs typically don't need anti-affinity due to their brief nature
-    test:
-      # -- Node selector for test jobs
-      nodeSelector: {}
-      
-      # -- Tolerations for test jobs
-      tolerations: []
-      
-      # -- Anti-affinity configuration for test jobs
-      antiAffinity:
-        # -- Enable anti-affinity (disabled by default for test jobs)
         enabled: false
-        
-        # -- Anti-affinity strategy: "soft" (preferred) or "hard" (required)
         strategy: "soft"
-        
-        # -- Topology key for anti-affinity
         topologyKey: "kubernetes.io/hostname"
-        
-        # -- Weight for soft anti-affinity (1-100, only used when strategy is "soft")
-        weight: 100
+        weight: 10
+    
+    test:
+      nodeSelector: {}
+      tolerations: []
+      antiAffinity:
+        enabled: false
+        strategy: "soft"
+        topologyKey: "kubernetes.io/hostname"
+        weight: 10
 
 # =============================================================================
-# OLAKE MAIN APPLICATION
+# OLAKE UI
 # =============================================================================
 
 # OLake UI - Main application frontend and backend
@@ -126,15 +58,8 @@ olakeUI:
   
   # -- OLake UI image configuration
   image:
-    # -- OLake UI image repository
-    repository: olake-ui
-    
-    # -- OLake UI image tag
-    # Use 'local' for development, specific version for production
+    repository: olakego/olake-ui
     tag: local
-    
-    # -- Image pull policy
-    # Use 'Never' for local development, 'Always' for production
     pullPolicy: Never
   
   # -- Pod scheduling constraints
@@ -152,64 +77,12 @@ olakeUI:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- OLake UI readiness probe override (optional)
-  # Defaults: initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5,
-  #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 8080
-  # Example customizations:
-  #   readinessProbe:
-  #     initialDelaySeconds: 45
-  #     httpGet:
-  #       path: /health
-  #       port: 8080
-  readinessProbe: {}
-  
-  # -- OLake UI liveness probe override (optional)
-  # Defaults: initialDelaySeconds: 60, periodSeconds: 30, timeoutSeconds: 10,
-  #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 8080
-  # Example customizations:
-  #   livenessProbe:
-  #     periodSeconds: 60
-  #     httpGet:
-  #       path: /health
-  #       port: 8080
-  livenessProbe: {}
-  
   # -- OLake UI service configuration
   # For external access, change type to NodePort or LoadBalancer  
   service:
     # -- Service type (ClusterIP for internal, NodePort/LoadBalancer for external access)
     type: ClusterIP
-    # -- Service annotations
     annotations: {}
-  
-  # -- Ingress configuration for external access
-  ingress:
-    # -- Enable ingress
-    enabled: false
-    
-    # -- Ingress class name
-    # Examples: nginx, traefik, alb
-    className: ""
-    
-    # -- Ingress annotations
-    annotations: {}
-      # nginx.ingress.kubernetes.io/rewrite-target: /
-      # kubernetes.io/ingress.class: nginx
-      # kubernetes.io/tls-acme: "true"
-      # cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    
-    # -- Ingress hosts configuration
-    hosts:
-      - host: olake.local
-        paths:
-          - path: /
-            pathType: Prefix
-    
-    # -- TLS configuration
-    tls: []
-    #  - secretName: olake-tls
-    #    hosts:
-    #      - olake.example.com
   
   # -- OLake UI resource requirements (optional overrides)
   # Defaults: requests: memory=512Mi, cpu=500m (no limits by default)
@@ -223,7 +96,47 @@ olakeUI:
   #       cpu: "1500m"
   resources: {}
   
-  # -- Initialization job configuration (always enabled)
+  # -- Ingress configuration for external access
+  ingress:
+    # -- Enable ingress
+    enabled: false
+    
+    # -- Ingress class name
+    # Examples: nginx, traefik, alb
+    className: ""
+    
+    # -- Ingress annotations
+    # Add custom annotations for your ingress controller here.
+    # Examples:
+    #   nginx.ingress.kubernetes.io/rewrite-target: /
+    #   kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/tls-acme: "true"
+    #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    annotations: {}
+    
+    # -- Ingress hosts configuration
+    # List of host definitions for ingress. Each host can have multiple paths.
+    # Examples:
+    #   hosts:
+    #     - host: olake.local
+    #       paths:
+    #         - path: /
+    #           pathType: Prefix
+    #     - host: olake.example.com
+    #       paths:
+    #         - path: /
+    #           pathType: Prefix
+    hosts: []
+    
+    # -- TLS configuration
+    # Examples:
+    #   tls:
+    #     - secretName: olake-tls
+    #       hosts:
+    #         - olake.example.com
+    tls: []
+  
+  # -- Initialization job configuration
   initJob:
     # -- Admin user credentials for initial setup
     adminUser:
@@ -235,21 +148,9 @@ olakeUI:
       
       # -- Admin email address
       email: "admin@example.com"
-    
-    # -- Initialization job resource requirements (optional overrides)
-    # Defaults: requests: memory=128Mi, cpu=100m (no limits by default)
-    # Example customizations:
-    #   resources:
-    #     requests:
-    #       memory: "256Mi"
-    #       cpu: "200m"
-    #     limits:
-    #       memory: "512Mi"
-    #       cpu: "400m"
-    resources: {}
 
 # =============================================================================
-# OLAKE KUBERNETES WORKER
+# OLAKE WORKER
 # =============================================================================
 
 # OLake K8s Worker - Executes data pipeline tasks as Kubernetes pods
@@ -263,15 +164,8 @@ olakeWorker:
   
   # -- OLake Worker image configuration
   image:
-    # -- OLake Worker image repository
-    repository: olake-k8s-worker
-    
-    # -- OLake Worker image tag
-    # Use 'local' for development, specific version for production
+    repository: olakego/olake-k8s-worker
     tag: local
-    
-    # -- Image pull policy
-    # Use 'Never' for local development, 'Always' for production
     pullPolicy: Never
   
   # -- Pod scheduling constraints
@@ -288,27 +182,6 @@ olakeWorker:
   
   # -- Additional pod labels
   podLabels: {}
-  
-  # -- OLake Worker readiness probe override (optional)
-  # Defaults: initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5,
-  #           failureThreshold: 3, successThreshold: 1, httpGet: /health on port 8090
-  # Example customizations:
-  #   readinessProbe:
-  #     initialDelaySeconds: 45
-  #     httpGet:
-  #       path: /healthz
-  #       port: 8090
-  readinessProbe: {}
-  
-  # -- OLake Worker liveness probe override (optional)
-  # Defaults: initialDelaySeconds: 60, periodSeconds: 30, timeoutSeconds: 10,
-  #           failureThreshold: 3, successThreshold: 1, httpGet: /health on port 8090
-  # Example customizations:
-  #   livenessProbe:
-  #     periodSeconds: 60
-  livenessProbe: {}
-  
-  # -- Service is hardcoded: ClusterIP on port 8090 for health checks
   
   # -- OLake Worker resource requirements (optional overrides)
   # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
@@ -336,46 +209,31 @@ olakeWorker:
   
   # -- OLake Worker application configuration
   config:
-    # -- Worker performance configuration
     worker:
-      # -- Maximum concurrent activities per worker
+      # -- Maximum concurrent activities(https://docs.temporal.io/activities) per worker
       # Increase for higher throughput, decrease for resource constraints
-      maxConcurrentActivities: 10
+      maxConcurrentActivities: 15
       
-      # -- Maximum concurrent workflows per worker
-      # Usually lower than activities
-      maxConcurrentWorkflows: 5
+      # -- Maximum concurrent workflows(https://docs.temporal.io/workflows) per worker
+      maxConcurrentWorkflows: 10
     
     # -- Timeout configuration for different operation types
     timeouts:
       # -- Workflow execution timeouts
       workflow:
-        # -- Timeout for catalog discovery workflows
-        discover: 2h
-        
-        # -- Timeout for connection test workflows
-        test: 2h
-        
-        # -- Timeout for data sync workflows (30 days)
+        discover: 3h
+        test: 3h
         sync: 720h
-      
+
       # -- Activity execution timeouts
       activity:
-        # -- Timeout for catalog discovery activities
-        discover: 30m
-        
-        # -- Timeout for connection test activities
-        test: 30m
-        
-        # -- Timeout for data sync activities (29 days, slightly less than workflow)
+        discover: 2h
+        test: 2h
         sync: 700h
     
     # -- Logging configuration
     logging:
-      # -- Log level (debug, info, warn, error)
       level: info
-      
-      # -- Log format (json, text)
       format: json
 
 # =============================================================================
@@ -388,39 +246,57 @@ nfsServer:
   # -- Enable self-managed NFS server deployment
   # When false, you must provide external storage (EFS/Azure Files/etc.)
   enabled: true
-  
-  # -- Network configuration for NFS server
-  network:
-    # -- Service CIDR range (auto-detected if empty)
-    # Example: "10.96.0.0/12"
-    # Only set this if auto-detection fails or you want to override
-    serviceCIDR: ""
-    
-    # -- Static IP for NFS server (auto-calculated if empty)
-    # Example: "10.100.100.100"
-    # Only set this if auto-calculation fails or you want to override
-    staticIP: ""
-  
-  # -- External storage configuration (used when enabled: false)
+
+  # -- External NFS server configuration (used when enabled: false)
+  # When disabled, you must provide an existing ReadWriteMany (RWX) PersistentVolumeClaim
+  # 
+  # CLOUD PROVIDER GUIDES FOR RWX STORAGE:
+  # 
+  # AWS EFS: Use the Amazon EFS CSI driver with 'efs.csi.aws.com' provisioner
+  # See: https://github.com/kubernetes-sigs/aws-efs-csi-driver
+  # 
+  # Azure Files: Use 'azurefile' StorageClass with 'kubernetes.io/azure-file' provisioner  
+  # See: https://docs.microsoft.com/en-us/azure/aks/azure-files-csi
+  # 
+  # GCP Filestore: Use Google Cloud Filestore CSI driver with 'filestore.csi.storage.gke.io' provisioner
+  # See: https://cloud.google.com/filestore/docs/csi-driver
+  # 
+  # STEPS TO CREATE RWX PVC:
+  # 1. Find RWX StorageClass: kubectl get sc
+  # 2. Create PVC with accessModes: [ReadWriteMany] and your RWX storageClassName
+  # 3. Reference the PVC name in the 'name' field below
   external:
-    # -- PVC name for external storage
-    name: olake-jobs-pvc
-    
-    # -- Storage size for external storage
-    size: 10Gi
+    # -- The name of the PersistentVolumeClaim for the external RWX storage
+    # Example: "efs-pvc" or "azure-files-pvc" or "gcp-filestore-pvc"
+    name: ""
   
-  # -- Number of NFS server replicas (should be 1 for StatefulSet)
-  replicaCount: 1
+  # -- Static cluster IP for NFS server service
+  # Must be within your cluster's service CIDR range and not already in use
+  # 
+  # HOW TO FIND YOUR CLUSTER'S SERVICE CIDR:
+  # Method 1 (Most clusters): kubectl get pod $(kubectl get pods -n kube-system -l component=kube-apiserver -o jsonpath='{.items[0].metadata.name}') -n kube-system -o yaml | grep service-cluster-ip-range
+  # Method 2 (GKE): gcloud container clusters describe CLUSTER_NAME --zone ZONE --format 'value(servicesIpv4CidrBlock)'
+  # Method 3 (AKS): az aks show --resource-group RG --name CLUSTER_NAME --query 'networkProfile.serviceCidr' -o tsv
+  # Method 4 (EKS): kubectl get service kubernetes -o jsonpath='{.spec.clusterIP}' (infer CIDR from this IP)
+  #
+  # CHECK IF IP IS FREE: kubectl get services --all-namespaces | grep -w "YOUR_IP"
+  # (No output means the IP is available)
+  #
+  # BEST PRACTICES:
+  # - Choose from the higher end of the CIDR range (e.g., .250, .100, .50)
+  # - Avoid the very beginning of the range (reserved for core services)
+  # - Document the choice to prevent conflicts
+  #
+  # Examples by common CIDR ranges:
+  # - 10.96.0.0/12 → use 10.96.0.50 or 10.100.0.50
+  # - 10.0.0.0/16 → use 10.0.255.50
+  # - 172.20.0.0/16 → use 172.20.255.50
+  clusterIP: ""
   
   # -- NFS server image configuration
   image:
-    # -- NFS server image repository
     repository: itsthenetwork/nfs-server-alpine
-    
-    # -- NFS server image tag
-    tag: "latest"
-    
-    # -- Image pull policy
+    tag: latest-arm
     pullPolicy: Always
   
   # -- Pod scheduling constraints
@@ -438,24 +314,14 @@ nfsServer:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- NFS server resource requirements
-  resources:
-    requests:
-      # -- Memory request
-      memory: "256Mi"
-      # -- CPU request
-      cpu: "250m"
-    limits:
-      # -- Memory limit
-      memory: "512Mi"
-      # -- CPU limit
-      cpu: "500m"
-  
   # -- NFS server persistence configuration
   # This is the underlying storage for the NFS server itself
   persistence:
     # -- Size of underlying storage for NFS server
     size: 20Gi
+
+    # -- Storage class for underlying storage
+    storageClass: ""
     
     # -- Access modes for underlying storage
     accessModes:
@@ -473,19 +339,12 @@ temporal:
   # -- Temporal server configuration
   server:
     # -- Number of Temporal server replicas
-    # For production, consider 3+ replicas for high availability
     replicaCount: 1
     
     # -- Temporal server image configuration
     image:
-      # -- Temporal server image repository
       repository: temporalio/auto-setup
-      
-      # -- Temporal server image tag
-      # Check https://hub.docker.com/r/temporalio/auto-setup/tags for latest versions
       tag: "1.22.3"
-      
-      # -- Image pull policy
       pullPolicy: Always
     
     # -- Pod scheduling constraints
@@ -503,26 +362,6 @@ temporal:
     # -- Additional pod labels
     podLabels: {}
     
-    # -- Temporal server readiness probe override (optional)
-    # Defaults: initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 5,
-    #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 7233
-    # Example customizations:
-    #   readinessProbe:
-    #     initialDelaySeconds: 15
-    readinessProbe: {}
-    
-    # -- Temporal server liveness probe override (optional)
-    # Defaults: initialDelaySeconds: 150, periodSeconds: 60, timeoutSeconds: 10,
-    #           failureThreshold: 3, successThreshold: 1, tcpSocket: port 7233
-    # Example customizations:
-    #   livenessProbe:
-    #     initialDelaySeconds: 120
-    livenessProbe: {}
-    
-    # -- Temporal server service annotations (optional)
-    service:
-      annotations: {}
-    
     # -- Temporal server resource requirements (optional overrides)
     # Defaults: requests: memory=512Mi, cpu=500m (no limits by default)
     # Example customizations:
@@ -535,7 +374,7 @@ temporal:
     #       cpu: "1500m"
     resources: {}
   
-  # -- Temporal Web UI configuration (disabled by default since rarely used)
+  # -- Temporal Web UI configuration (disabled by default)
   ui:
     # -- Enable Temporal Web UI
     enabled: false
@@ -555,14 +394,8 @@ postgresql:
   
   # -- PostgreSQL image configuration
   image:
-    # -- PostgreSQL image repository
     repository: postgres
-    
-    # -- PostgreSQL image tag
-    # Supported versions: 12, 13, 14, 15
     tag: "14-alpine"
-    
-    # -- Image pull policy
     pullPolicy: Always
   
   # -- Authentication configuration
@@ -602,26 +435,6 @@ postgresql:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- PostgreSQL readiness probe override (optional)
-  # Defaults: initialDelaySeconds: 5, periodSeconds: 10, timeoutSeconds: 5,
-  #           failureThreshold: 6, successThreshold: 1, exec: pg_isready command
-  # Example customizations:
-  #   readinessProbe:
-  #     initialDelaySeconds: 10
-  readinessProbe: {}
-  
-  # -- PostgreSQL liveness probe override (optional)
-  # Defaults: initialDelaySeconds: 30, periodSeconds: 10, timeoutSeconds: 5,
-  #           failureThreshold: 6, successThreshold: 1, exec: pg_isready command
-  # Example customizations:
-  #   livenessProbe:
-  #     initialDelaySeconds: 60
-  livenessProbe: {}
-  
-  # -- PostgreSQL service annotations (optional)
-  service:
-    annotations: {}
-  
   # -- PostgreSQL resource requirements (optional overrides)
   # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
   # Example customizations:
@@ -660,19 +473,12 @@ elasticsearch:
   enabled: true
   
   # -- Number of Elasticsearch replicas
-  # For production, consider 3+ replicas for high availability
   replicaCount: 1
   
   # -- Elasticsearch image configuration
   image:
-    # -- Elasticsearch image repository
     repository: elasticsearch
-    
-    # -- Elasticsearch image tag
-    # Supported versions: 7.x, 8.x
     tag: "7.17.10"
-    
-    # -- Image pull policy
     pullPolicy: Always
   
   # -- Pod scheduling constraints
@@ -689,26 +495,6 @@ elasticsearch:
   
   # -- Additional pod labels
   podLabels: {}
-  
-  # -- Elasticsearch readiness probe override (optional)
-  # Defaults: initialDelaySeconds: 10, periodSeconds: 10, timeoutSeconds: 5,
-  #           failureThreshold: 3, successThreshold: 1, httpGet: /_cluster/health?local=true on port 9200
-  # Example customizations:
-  #   readinessProbe:
-  #     initialDelaySeconds: 15
-  readinessProbe: {}
-  
-  # -- Elasticsearch liveness probe override (optional)
-  # Defaults: initialDelaySeconds: 90, periodSeconds: 10, timeoutSeconds: 5,
-  #           failureThreshold: 3, successThreshold: 1, httpGet: /_cluster/health?local=true on port 9200
-  # Example customizations:
-  #   livenessProbe:
-  #     initialDelaySeconds: 120
-  livenessProbe: {}
-  
-  # -- Elasticsearch service annotations (optional)
-  service:
-    annotations: {}
   
   # -- Elasticsearch resource requirements (optional overrides)
   # Defaults: requests: memory=1Gi, cpu=500m (no limits by default)

@@ -2,9 +2,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ include "olake.fullname" . }}-nfs-pv
-  annotations:
-    "helm.sh/resource-policy": "keep"
+  name: {{ include "olake.fullname" . }}-shared-storage
   labels:
     {{- include "olake.labels" . | nindent 4 }}
 spec:
@@ -13,8 +11,12 @@ spec:
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: {{ include "olake.fullname" . }}-nfs
+  mountOptions:
+    - nfsvers=4.1
   nfs:
-    server: {{ include "olake.nfsStaticIP" . }}
-    path: /
+    # This path must match the SHARED_DIRECTORY in the nfs-server statefulset
+    path: "/"
+    # Static IP address of the NFS server service
+    server: {{ .Values.nfsServer.clusterIP }}
+    readOnly: false
 {{- end }}
