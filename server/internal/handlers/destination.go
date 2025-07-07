@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -195,13 +196,37 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-	driver := req.SourceType
-	version := req.SourceVersion
+
+	if req.Type == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		return
+	}
+	if req.Version == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+		return
+	}
+
+	// Extract source type and version from the combined type and version fields
+	// Format: "destinationType-sourceType" and "destinationVersion-sourceVersion"
+	destAndSource := strings.Split(req.Type, "-")
+	driver := "" // Default to destination type if no source type is present
+	if len(destAndSource) > 1 {
+		driver = destAndSource[1] // Use source type if present
+	}
+
+	version := "" // Default to destination version
+	versionParts := strings.Split(req.Version, "-")
+	if len(versionParts) > 1 {
+		version = versionParts[1] // Use source version if present
+	}
+
+	// Fallback to default if source type/version not found
 	if driver == "" || version == "" {
 		driver, version = utils.GetAvailableDriversVersions(c.Ctx.Request.Context())
 	}

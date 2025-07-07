@@ -124,19 +124,15 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: destinationConnector,
+				type: `${destinationConnector}-${sourceConnector.toLowerCase()}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
 						: JSON.stringify(destinationFormData),
-				version: destinationVersion,
+				version: `${destinationVersion}-${sourceVersion}`
 			}
 			setShowTestingModal(true)
-			const testResult = await destinationService.testDestinationConnection(
-				newDestinationData,
-				sourceConnector.toLowerCase(),
-				sourceVersion,
-			)
+			const testResult = await destinationService.testDestinationConnection(newDestinationData)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
