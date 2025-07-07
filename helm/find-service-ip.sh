@@ -13,31 +13,100 @@ echo ""
 echo "📋 Step 1: Discovering Service CIDR"
 echo "-----------------------------------"
 
-# Try the most common method first
-CIDR=""
-APISERVER_POD=$(kubectl get pods -n kube-system -l component=kube-apiserver -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+# Method 1: Try to infer CIDR from kubernetes service IP (most reliable)
+echo "🔍 Checking kubernetes service IP..."
+KUBERNETES_IP=$(kubectl get service kubernetes -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
 
-if [ -n "$APISERVER_POD" ]; then
-    CIDR=$(kubectl get pod "$APISERVER_POD" -n kube-system -o yaml 2>/dev/null | grep 'service-cluster-ip-range' | sed 's/.*=//' | tr -d '"' | head -1 || echo "")
+if [ -n "$KUBERNETES_IP" ]; then
+    echo "✅ Found kubernetes service IP: ${KUBERNETES_IP}"
+    
+    # Infer CIDR from common patterns
+    case "$KUBERNETES_IP" in
+        10.0.0.1)
+            CIDR="10.0.0.0/16"
+            ;;
+        10.96.0.1)
+            CIDR="10.96.0.0/12"
+            ;;
+        172.20.0.1)
+            CIDR="172.20.0.0/16"
+            ;;
+        100.64.0.1)
+            CIDR="100.64.0.0/13"
+            ;;
+        *)
+            # Generic inference: assume /16 for most cases
+            IFS='.' read -r o1 o2 o3 o4 <<< "$KUBERNETES_IP"
+            if [ "$o4" = "1" ] && [ "$o3" = "0" ]; then
+                CIDR="${o1}.${o2}.0.0/16"
+            elif [ "$o4" = "1" ]; then
+                CIDR="${o1}.${o2}.${o3}.0/24"
+            else
+                CIDR="${o1}.${o2}.0.0/16"  # Default assumption
+            fi
+            ;;
+    esac
+    
+    if [ -n "$CIDR" ]; then
+        echo "✅ Inferred service CIDR: ${CIDR}"
+    fi
+fi
+
+# Method 2: API server validation (if inference failed)
+if [ -z "$CIDR" ]; then
+    echo "🔍 Trying API server validation method..."
+    
+    # Create a temporary file for the service spec
+    TEMP_FILE=$(mktemp)
+    cat > "$TEMP_FILE" <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: cidr-discovery-dummy-service
+spec:
+  clusterIP: 1.1.1.1
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+EOF
+    
+    # Try to apply with timeout
+    CIDR_INFO=$(timeout 10 kubectl apply -f "$TEMP_FILE" 2>&1 || echo "timeout")
+    rm -f "$TEMP_FILE"
+    
+    # Clean up any dummy service
+    kubectl delete svc cidr-discovery-dummy-service --ignore-not-found=true >/dev/null 2>&1
+    
+    if [ "$CIDR_INFO" != "timeout" ]; then
+        # Extract CIDR from error message
+        CIDR=$(echo "$CIDR_INFO" | grep -o 'The range of valid IPs is [0-9./]*' | sed 's/The range of valid IPs is //' || echo "")
+        
+        if [ -z "$CIDR" ]; then
+            CIDR=$(echo "$CIDR_INFO" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' | head -1 || echo "")
+        fi
+    fi
 fi
 
 if [ -z "$CIDR" ]; then
-    echo "❌ Could not automatically determine Service CIDR from kube-apiserver."
+    echo "❌ Could not automatically determine Service CIDR."
     echo ""
-    echo "Please try one of these manual methods:"
+    echo "API server response:"
+    echo "$CIDR_INFO"
     echo ""
-    echo "🔧 For GKE:"
-    echo "   gcloud container clusters describe CLUSTER_NAME --zone ZONE --format 'value(servicesIpv4CidrBlock)'"
+    echo "Please manually find your service CIDR using these cloud-specific commands:"
     echo ""
     echo "🔧 For AKS:"
     echo "   az aks show --resource-group RG --name CLUSTER_NAME --query 'networkProfile.serviceCidr' -o tsv"
     echo ""
     echo "🔧 For EKS:"
-    echo "   kubectl get service kubernetes -o jsonpath='{.spec.clusterIP}'"
-    echo "   (Then infer CIDR from this IP, e.g., 172.20.0.1 → 172.20.0.0/16)"
+    echo "   aws eks describe-cluster --name CLUSTER_NAME --query 'cluster.kubernetesNetworkConfig.serviceCidr' --output text"
     echo ""
-    echo "🔧 For kubeadm:"
-    echo "   kubectl get cm -n kube-system kubeadm-config -o yaml | grep serviceSubnet"
+    echo "🔧 For GKE:"
+    echo "   gcloud container clusters describe CLUSTER_NAME --zone ZONE --format 'value(servicesIpv4CidrBlock)'"
+    echo ""
+    echo "Then manually choose an IP from that range and use:"
+    echo "   helm install olake ./helm/olake --set nfsServer.clusterIP=YOUR_CHOSEN_IP"
     exit 1
 fi
 
