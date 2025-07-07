@@ -35,5 +35,5 @@ const (
 	LabelValueOlakeSync    = "olake-sync"
 	LabelValueConnectorJob = "connector-job"
 	LabelValueJobConfig    = "job-config"
-	LabelValueK8sWorker    = "olake-ui/olake-workers/k8s"
+	LabelValueK8sWorker    = "olake-k8s-worker"
 )

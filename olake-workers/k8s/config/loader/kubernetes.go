@@ -22,7 +22,7 @@ func LoadKubernetes() (types.KubernetesConfig, error) {
 		PVCName:         env.GetEnv("OLAKE_STORAGE_PVC_NAME", "olake-jobs-pvc"),
 		Labels: map[string]string{
 			"app":        "olake-sync",
-			"managed-by": "olake-ui/olake-workers/k8s",
+			"managed-by": "olake-k8s-worker",
 			"version":    env.GetEnv("WORKER_VERSION", "latest"),
 		},
 		JobScheduling:   jobScheduling,
