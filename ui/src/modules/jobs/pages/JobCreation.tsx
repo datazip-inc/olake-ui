@@ -132,8 +132,10 @@ const JobCreation: React.FC = () => {
 				version: destinationVersion,
 			}
 			setShowTestingModal(true)
-			const testResult =
-				await destinationService.testDestinationConnection(newDestinationData)
+			const testResult = await destinationService.testDestinationConnection(
+				newDestinationData,
+				sourceConnector.toLowerCase(),
+			)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
