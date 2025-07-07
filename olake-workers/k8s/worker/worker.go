@@ -80,7 +80,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	w.RegisterWorkflow(workflows.RunSyncWorkflow)
 
 	// Create activities with injected dependencies
-	activitiesInstance := activities.NewActivities(jobService, podManager)
+	activitiesInstance := activities.NewActivities(jobService, podManager, cfg)
 
 	// Register activities - these receive WorkflowID from workflows
 	w.RegisterActivity(activitiesInstance.DiscoverCatalogActivity)

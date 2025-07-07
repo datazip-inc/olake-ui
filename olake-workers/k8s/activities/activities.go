@@ -3,10 +3,11 @@ package activities
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"go.temporal.io/sdk/activity"
 
+	"olake-ui/olake-workers/k8s/config"
+	"olake-ui/olake-workers/k8s/config/helpers"
 	"olake-ui/olake-workers/k8s/database/service"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
@@ -17,13 +18,15 @@ import (
 type Activities struct {
 	jobService service.JobDataService
 	podManager *pods.K8sPodManager
+	config     *config.Config
 }
 
 // NewActivities creates a new Activities instance with injected dependencies
-func NewActivities(jobService service.JobDataService, podManager *pods.K8sPodManager) *Activities {
+func NewActivities(jobService service.JobDataService, podManager *pods.K8sPodManager, cfg *config.Config) *Activities {
 	return &Activities{
 		jobService: jobService,
 		podManager: podManager,
+		config:     cfg,
 	}
 }
 
@@ -43,7 +46,7 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
 		},
-		Timeout: 5 * time.Minute,
+		Timeout: helpers.GetActivityTimeout(a.config, "discover"),
 	}
 
 	return a.podManager.ExecutePodActivity(ctx, request)
@@ -75,7 +78,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
 		},
-		Timeout: 5 * time.Minute,
+		Timeout: helpers.GetActivityTimeout(a.config, "test"),
 	}
 
 	return a.podManager.ExecutePodActivity(ctx, request)
@@ -125,9 +128,8 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 			{Name: "writer.json", Data: jobData.DestConfig},
 			{Name: "state.json", Data: stateData},
 		},
-		Timeout: 15 * time.Minute,
+		Timeout: helpers.GetActivityTimeout(a.config, "sync"),
 	}
 
 	return a.podManager.ExecutePodActivity(ctx, request)
 }
-
