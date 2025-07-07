@@ -95,10 +95,10 @@ func GetAvailableDriversVersions(ctx context.Context) (string, string) {
 	if err == nil && len(tags) > 0 {
 		return "postgres", tags[0]
 	}
-	logs.Debug("Falling back to local source images due to error: %v", err)
+	logs.Debug("Falling back to local source images due to error: %s", err)
 	images, err := getLocalDockerData(ctx, "olakego/source-")
 	if err != nil {
-		logs.Debug("Failed to fetch local source images: %v", err)
+		logs.Debug("Failed to fetch local source images: %s", err)
 		return "", ""
 	}
 
@@ -140,7 +140,7 @@ func getLocalDockerData(ctx context.Context, filterPrefix string) ([]string, err
 	cmd := exec.CommandContext(ctx, "docker", "images", "--format", "{{.Repository}}:{{.Tag}}")
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list docker images: %v", err)
+		return nil, fmt.Errorf("failed to list docker images: %s", err)
 	}
 
 	var results []string
