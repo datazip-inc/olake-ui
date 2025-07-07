@@ -12,6 +12,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -20,12 +21,14 @@ type DestHandler struct {
 	web.Controller
 	destORM    *database.DestinationORM
 	jobORM     *database.JobORM
+	userORM    *database.UserORM
 	tempClient *temporal.Client
 }
 
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 	c.jobORM = database.NewJobORM()
+	c.userORM = database.NewUserORM()
 	var err error
 	c.tempClient, err = temporal.NewClient()
 	if err != nil {
@@ -101,6 +104,8 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
+	// Track destination creation event
+	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), destination)
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -141,6 +146,9 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
+	// Track destinations status after update
+	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -154,6 +162,7 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
+
 	jobs, err := c.jobORM.GetByDestinationID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
@@ -169,6 +178,9 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
 		return
 	}
+
+	// Track destinations status after deletion
+	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
 		Name: dest.Name,
