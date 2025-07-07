@@ -32,7 +32,6 @@ global:
         enabled: false
         strategy: "soft"
         topologyKey: "kubernetes.io/hostname"
-        weight: 10
     
     test:
       nodeSelector: {}
@@ -41,7 +40,6 @@ global:
         enabled: false
         strategy: "soft"
         topologyKey: "kubernetes.io/hostname"
-        weight: 10
 
 # =============================================================================
 # OLAKE UI
