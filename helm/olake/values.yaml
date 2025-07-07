@@ -232,7 +232,7 @@ olakeWorker:
     # -- Logging configuration
     logging:
       level: info
-      format: json
+      format: console
 
 # =============================================================================
 # STORAGE CONFIGURATION
