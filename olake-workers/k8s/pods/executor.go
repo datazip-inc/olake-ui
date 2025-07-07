@@ -79,7 +79,7 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 							corev1.ResourceMemory: k8s.ParseQuantity("256Mi"),
 							corev1.ResourceCPU:    k8s.ParseQuantity("100m"),
 						},
-						// No limits for autoscaling flexibility
+						// No limits for flexibility
 					},
 					Env: []corev1.EnvVar{
 						{
@@ -182,10 +182,10 @@ func (k *K8sPodManager) getTolerations(operation shared.Command) []corev1.Tolera
 // buildAffinity builds affinity rules for the given operation
 func (k *K8sPodManager) buildAffinity(operation shared.Command) *corev1.Affinity {
 	schedulingConfig := k.getSchedulingConfigForOperation(operation)
-	
+
 	// Start with custom affinity if provided
 	affinity := schedulingConfig.Affinity
-	
+
 	// Add anti-affinity rules if enabled
 	if schedulingConfig.AntiAffinity.Enabled {
 		antiAffinity := k.buildAntiAffinity(operation, schedulingConfig.AntiAffinity)
@@ -194,7 +194,7 @@ func (k *K8sPodManager) buildAffinity(operation shared.Command) *corev1.Affinity
 		}
 		affinity.PodAntiAffinity = antiAffinity
 	}
-	
+
 	return affinity
 }
 
@@ -206,12 +206,12 @@ func (k *K8sPodManager) buildAntiAffinity(operation shared.Command, config types
 			"operation": string(operation),
 		},
 	}
-	
+
 	affinityTerm := corev1.PodAffinityTerm{
 		LabelSelector: labelSelector,
 		TopologyKey:   config.TopologyKey,
 	}
-	
+
 	if config.Strategy == "hard" {
 		return &corev1.PodAntiAffinity{
 			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{affinityTerm},
@@ -232,7 +232,7 @@ func (k *K8sPodManager) buildAntiAffinity(operation shared.Command, config types
 // getSchedulingConfigForOperation returns the appropriate scheduling configuration for an operation
 func (k *K8sPodManager) getSchedulingConfigForOperation(operation shared.Command) types.ActivitySchedulingConfig {
 	jobScheduling := k.config.Kubernetes.JobScheduling
-	
+
 	switch operation {
 	case shared.Sync:
 		return jobScheduling.SyncJobs

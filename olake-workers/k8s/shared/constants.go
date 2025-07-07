@@ -17,9 +17,7 @@ const (
 
 	// Resource defaults
 	DefaultCPURequest    = "100m"
-	DefaultCPULimit      = "500m"
 	DefaultMemoryRequest = "256Mi"
-	DefaultMemoryLimit   = "1Gi"
 )
 
 // Label constants (keep existing labels)
