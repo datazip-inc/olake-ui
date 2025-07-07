@@ -1,108 +1,202 @@
-# OLake: Open-Source Data Lakehouse Platform (Full Stack Helm Chart)
+# OLake Helm Chart
 
-OLake is a cloud-native, open-source platform for database replication and data lakehouse management.  
-This Helm chart deploys the **entire OLake stack**—including UI, API, worker, Temporal, PostgreSQL, and Elasticsearch—on any Kubernetes cluster.
+<h1 align="center" style="border-bottom: none">
+    <a href="https://datazip.io/olake" target="_blank">
+        <img alt="olake" src="https://github.com/user-attachments/assets/d204f25f-5289-423c-b3f2-44b2194bdeaf" width="100" height="100"/>
+    </a>
+    <br>OLake
+</h1>
 
----
+<p align="center">This <b>Helm Chart</b> deploys <b>OLake</b>, fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse. ⚡ Efficient, quick and scalable data ingestion for real-time analytics.</p>
 
-## 🚀 Quick Start
+## Components
 
-### Prerequisites
-- Kubernetes cluster (minikube, kind, EKS, GKE, AKS, etc.)
-- [Helm 3.x](https://helm.sh/docs/intro/install/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+-   **OLake UI**: The main application, providing the user interface and backend API.
+-   **OLake Worker**: A Kubernetes-native worker that executes data synchronization, discovery, and testing tasks.
+-   **Temporal**: A powerful workflow orchestration engine used to manage and monitor the lifecycle of data ingestion pipelines.
+-   **PostgreSQL**: The primary data store for both the OLake application and Temporal.
+-   **NFS Server**: An in-cluster NFS server for shared storage between OLake components. **Alternatively**, use an external NFS provider like AWS EFS or Azure Files.
+-   **Elasticsearch**: Used by Temporal for advanced visibility and search capabilities.
 
-### Install OLake Stack with Helm
+## TL;DR
 ```bash
+# Clone the repository
 git clone https://github.com/datazip-inc/olake-ui.git
 cd olake-ui
-helm install olake ./helm/olake
+
+# https://kubernetes.io/docs/concepts/services-networking/cluster-ip-allocation/#why-do-you-need-to-reserve-service-cluster-ips
+helm install olake ./helm/olake --set nfsServer.clusterIP=<STATIC_CLUSTER_IP> -f ./helm/olake/values.yaml
 ```
 
-#### Accessing the Services
-- **OLake UI**: `kubectl get svc -n olake` (see NodePort/LoadBalancer IPs)
-- **Temporal UI**: `kubectl get svc -n olake`
-- **API/Worker**: Exposed as ClusterIP by default (see Helm values for customization)
+## Prerequisites
 
----
+-   Kubernetes 1.19+
+-   Helm 3.2.0+
+-   Use helper script to find an available IP in cluster's service CIDR range:
+    ```bash
+    # Clone the repository
+    git clone https://github.com/datazip-inc/olake-ui.git
+    cd olake-ui
 
-## ⚙️ Configuration
+    # Run the IP discovery script
+    chmod +x ./helm/find-service-ip.sh
+    ./helm/find-service-ip.sh
+    ```
+-   Alternatively, use a `ReadWriteMany` (RWX) storage class if not using the built-in NFS server. Check **Storage Configuration** section below for details.
 
-OLake is highly configurable via Helm values and environment variables.
-
-- **Namespace**: Default is `olake`
-- **Temporal Address**: `temporal.olake.svc.cluster.local:7233`
-- **Database**: `postgres.olake.svc.cluster.local`
-- **PVC Storage**: `olake-jobs-pvc` for job configs and state
-
-**To customize:**
+## Installation
 ```bash
-# Edit values.yaml or provide your own
-helm install olake ./helm/olake -f my-values.yaml
-```
-See [values.yaml](./olake/values.yaml) for all options.
-
----
-
-## 🛠️ Advanced: Self-Management
-
-### Custom Configuration
-- All major settings (Temporal, DB, worker, timeouts, resources) are configurable.
-- See [values.yaml](./olake/values.yaml) for all options.
-
-### Monitoring & Debugging
-```bash
-kubectl logs -l app.kubernetes.io/name=olake-k8s-worker -n olake -f
-kubectl get pods -n olake
-kubectl describe pod <pod-name> -n olake
+# Install with custom values and static NFS IP
+helm install olake ./helm/olake --set nfsServer.clusterIP=<STATIC_CLUSTER_IP> -f ./helm/olake/values.yaml
 ```
 
----
+### Job Scheduling
 
-## 📝 Example: Minimal Custom Values
+The data processing pods (for sync, discover, and test jobs) can be scheduled on specific WorkerNodes. This is useful for isolating workloads or ensuring they run on nodes with specific capabilities.
+
+**Example: Using node selectors and tolerations**
 
 ```yaml
-olakeWorker:
-  image:
-    tag: "v1.0.0"
-  config:
-    temporal:
-      address: "temporal.olake.svc.cluster.local:7233"
-    database:
-      host: "postgres.olake.svc.cluster.local"
-      user: "olake"
-      password: "olake"
+global:
+  job:
+    sync:
+      nodeSelector:
+        nodegroup: large
+      tolerations:
+        - key: "workload"
+          operator: "Equal"
+          value: "true"
+          effect: "NoSchedule"
+      antiAffinity:
+        enabled: true
+        strategy: "hard"
+        topologyKey: "kubernetes.io/hostname"
+        weight: 100
+    discover:
+      antiAffinity:
+        enabled: false
+        strategy: "soft"
+        weight: 10
+    test:
+      antiAffinity:
+        enabled: false
+        strategy: "soft"
+        weight: 50
 ```
 
----
+### Storage Configuration
 
-## 🆘 Troubleshooting
+The chart deploys an NFS server, or an existing `ReadWriteMany` (RWX) storage solution can also be used.
 
-- **Pods not starting?**  
-  `kubectl get events -n olake`
-- **Database issues?**  
-  `kubectl get pods -n olake | grep postgres`
-- **Logs:**  
-  `kubectl logs deployment/olake-k8s-worker -n olake`
+**Option 1: Use the built-in NFS server (default)**
 
----
+This is the easiest way to get started. The chart will create an NFS server with specific IP address.
 
-## 🧩 Contributing
+```yaml
+nfsServer:
+  enabled: true
+  clusterIP: "10.0.255.50" # Example static IP address
+  persistence:
+    size: 50Gi
+    storageClass: ""
+```
 
-- Fork, branch, and PR as usual.
-- Please add tests and update docs for new features.
-- For local development, see [CONTRIBUTING.md](../olake-k8s-worker/CONTRIBUTING.md).
+**Option 2: Use an external RWX storage provider**
 
----
+For production environments, it is recommended to use a managed RWX storage solution like AWS EFS, Azure Files, or GCP Filestore.
 
-## 🏁 Next Steps
+```yaml
+nfsServer:
+  enabled: false
+  external:
+    name: "my-rwx-pvc" # Name of the ReadWriteMany PVC
+```
 
-- [ ] Add production monitoring/alerting
-- [ ] Support for external databases and storage
+## Accessing Services
 
----
+After installation, the services can be accessed via:
 
-## 📚 More Information
+```bash
+# Get service information
+kubectl get svc -n olake
 
-- [OLake Documentation](https://github.com/datazip-inc/olake-ui)
-- [Helm Chart Reference](./olake/values.yaml)
+# Port forward to access UI locally
+kubectl port-forward -n olake svc/olake-ui 8000:8000 8080:8080
+
+# Access Temporal UI (if enabled)
+kubectl port-forward -n olake svc/temporal-ui 8088:8088
+```
+
+## Monitoring and Troubleshooting
+
+### View Logs
+
+```bash
+# OLake Worker logs
+kubectl logs -n olake -l app.kubernetes.io/name=olake-worker -f
+
+# OLake UI logs
+kubectl logs -n olake -l app.kubernetes.io/name=olake-ui -f
+
+# Temporal logs
+kubectl logs -n olake -l app.kubernetes.io/name=temporal -f
+```
+
+### Common Issues
+
+1. **Pods stuck in Pending state**
+   ```bash
+   kubectl describe pod <pod-name> -n olake
+   kubectl get events -n olake --sort-by='.lastTimestamp'
+   ```
+
+2. **Storage issues**
+   ```bash
+   kubectl get pv,pvc -n olake
+   kubectl describe pvc olake-shared-storage -n olake
+   ```
+
+3. **Network connectivity**
+   ```bash
+   kubectl exec -it <worker-pod> -n olake -- nslookup temporal.olake.svc.cluster.local
+   ```
+
+## Configuration Reference
+
+### Key Configuration Options
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `global.job.sync.antiAffinity.enabled` | Enable anti-affinity for sync jobs | `true` |
+| `global.job.sync.antiAffinity.strategy` | Anti-affinity strategy (hard/soft) | `hard` |
+| `nfsServer.enabled` | Enable built-in NFS server | `true` |
+| `nfsServer.external.name` | External RWX PVC name | `""` |
+| `nfsServer.clusterIP` | Static IP address for NFS Server | `""` |
+
+For a complete list of configuration options, see [values.yaml](./olake/values.yaml).
+
+## Upgrading
+
+```bash
+# Upgrade to latest version
+helm upgrade olake ./helm/olake --set nfsServer.clusterIP=<STATIC_CLUSTER_IP>
+
+# Upgrade with new values
+helm upgrade olake ./helm/olake --set nfsServer.clusterIP=<STATIC_CLUSTER_IP> -f new-values.yaml
+```
+
+## Uninstallation
+
+```bash
+# Uninstall the release
+helm uninstall olake --namespace olake
+
+# Optional: Delete the namespace (this will delete all data)
+kubectl delete namespace olake
+```
+
+## Support
+
+For issues and support:
+- [GitHub Issues](https://github.com/datazip-inc/olake-ui/issues)
+- [Documentation](https://github.com/datazip-inc/olake-ui)
