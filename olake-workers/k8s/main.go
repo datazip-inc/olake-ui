@@ -1,10 +1,6 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
-
 	"olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/worker"
@@ -39,19 +35,8 @@ func main() {
 		logger.Fatalf("Failed to create K8s worker: %v", err)
 	}
 
-	// Start worker
+	// Start worker - this will block until shutdown signal is received
 	if err := w.Start(); err != nil {
 		logger.Fatalf("Failed to start worker: %v", err)
 	}
-
-	logger.Info("K8s Worker started successfully")
-
-	// Wait for interrupt signal
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-
-	logger.Info("Shutting down K8s worker...")
-	w.Stop()
-	logger.Info("K8s worker stopped")
 }
