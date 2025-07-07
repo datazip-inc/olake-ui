@@ -92,11 +92,11 @@ func getLocalImageTags(ctx context.Context, imageName string) ([]string, error) 
 // GetAvailableDriversVersions returns the driver with the highest available version locally
 func GetAvailableDriversVersions(ctx context.Context) (string, string) {
 	tags, err := GetDockerHubTags(ctx, "olakego/source-postgres")
-	if err == nil {
-		logs.Debug("Failed to fetch dockerhub tags: %v", err)
+	if err == nil && len(tags) > 0 {
 		return "postgres", tags[0]
 	}
-	images, err := getLocalSourceImages(ctx)
+	logs.Debug("Falling back to local source images due to error: %v", err)
+	images, err := getLocalDockerData(ctx, "olakego/source-")
 	if err != nil {
 		logs.Debug("Failed to fetch local source images: %v", err)
 		return "", ""
@@ -133,11 +133,6 @@ func GetAvailableDriversVersions(ctx context.Context) (string, string) {
 	}
 
 	return maxDriver, maxVersion
-}
-
-// getLocalSourceImages returns all local images with prefix olakego/source-
-func getLocalSourceImages(ctx context.Context) ([]string, error) {
-	return getLocalDockerData(ctx, "olakego/source-")
 }
 
 // getLocalDockerData returns filtered docker images output based on provided prefix
