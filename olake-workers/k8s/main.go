@@ -11,16 +11,21 @@ import (
 )
 
 func main() {
-	// Initialize logger first
-	logger.Init()
-
+	// Initialize bootstrap logger for early startup messages
+	logger.InitDefault()
+	
 	logger.Info("OLake K8s Worker starting...")
+	logger.Info("Loading configuration...")
 
-	// Load configuration
+	// Load full configuration (including logging config)
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		logger.Fatalf("Failed to load configuration: %v", err)
 	}
+
+	// Re-initialize logger with loaded configuration
+	logger.Init(cfg.Logging)
+	logger.Info("Logger reconfigured with loaded settings")
 
 
 	logger.Infof("Temporal Address: %s", cfg.Temporal.Address)

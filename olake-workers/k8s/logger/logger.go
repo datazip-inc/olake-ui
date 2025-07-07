@@ -1,16 +1,66 @@
 package logger
 
 import (
-	"encoding/json"
-	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
+
+	"olake-ui/olake-workers/k8s/config/types"
 )
 
 var logger zerolog.Logger
+
+// Init initializes the global logger based on the provided configuration
+func Init(config types.LoggingConfig) {
+	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
+
+	var writer io.Writer
+	switch strings.ToLower(config.Format) {
+	case "console":
+		// Use ConsoleWriter with built-in colors and formatting
+		writer = zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.RFC3339,
+		}
+	case "json":
+		writer = os.Stdout
+	default:
+		// Default to JSON for production safety
+		writer = os.Stdout
+	}
+
+	logger = zerolog.New(writer).With().Timestamp().Logger()
+	zerolog.SetGlobalLevel(parseLogLevel(config.Level))
+}
+
+// InitDefault initializes the logger with default settings for backward compatibility
+func InitDefault() {
+	Init(types.LoggingConfig{
+		Level:  "info",
+		Format: "console",
+	})
+}
+
+// parseLogLevel converts a string level to a zerolog.Level
+func parseLogLevel(levelStr string) zerolog.Level {
+	switch strings.ToLower(levelStr) {
+	case "debug":
+		return zerolog.DebugLevel
+	case "info":
+		return zerolog.InfoLevel
+	case "warn":
+		return zerolog.WarnLevel
+	case "error":
+		return zerolog.ErrorLevel
+	case "fatal":
+		return zerolog.FatalLevel
+	default:
+		return zerolog.InfoLevel // Default to info level
+	}
+}
 
 // Info writes record with log level INFO
 func Info(v ...interface{}) {
@@ -57,43 +107,4 @@ func Fatal(v ...interface{}) {
 func Fatalf(format string, v ...interface{}) {
 	logger.Fatal().Msgf(format, v...)
 	os.Exit(1)
-}
-
-func Init() {
-	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
-
-	// Log level colors
-	logColors := map[string]string{
-		"debug": "\033[36m", // Cyan
-		"info":  "\033[32m", // Green
-		"warn":  "\033[33m", // Yellow
-		"error": "\033[31m", // Red
-		"fatal": "\033[31m", // Red
-	}
-
-	consoleWriter := zerolog.ConsoleWriter{
-		Out:        os.Stdout,
-		TimeFormat: "2006-01-02 15:04:05",
-		FormatLevel: func(i interface{}) string {
-			level := strings.ToLower(fmt.Sprintf("%s", i))
-			if color, exists := logColors[level]; exists {
-				return fmt.Sprintf("%s%s\033[0m", color, strings.ToUpper(level))
-			}
-			return strings.ToUpper(level)
-		},
-		FormatMessage: func(i interface{}) string {
-			switch v := i.(type) {
-			case string:
-				return v
-			default:
-				jsonMsg, _ := json.Marshal(v)
-				return string(jsonMsg)
-			}
-		},
-		FormatTimestamp: func(i interface{}) string {
-			return fmt.Sprintf("\033[90m%s\033[0m", i)
-		},
-	}
-
-	logger = zerolog.New(consoleWriter).With().Timestamp().Logger()
 }

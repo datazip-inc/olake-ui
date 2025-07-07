@@ -8,8 +8,7 @@ import (
 // LoadLogging loads logging configuration from environment variables
 func LoadLogging() (types.LoggingConfig, error) {
 	return types.LoggingConfig{
-		Level:      env.GetEnv("LOG_LEVEL", "info"),
-		Format:     env.GetEnv("LOG_FORMAT", "console"),
-		Structured: env.GetEnvBool("LOG_STRUCTURED", false),
+		Level:  env.GetEnv("LOG_LEVEL", "info"),
+		Format: env.GetEnv("LOG_FORMAT", "console"),
 	}, nil
 }

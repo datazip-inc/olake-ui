@@ -20,11 +20,3 @@ type Config struct {
 	// Logging configuration
 	Logging LoggingConfig `json:"logging"`
 }
-
-// LoggingConfig contains logging settings
-type LoggingConfig struct {
-	Level      string `json:"level"`
-	Format     string `json:"format"`
-	Structured bool   `json:"structured"`
-}
-
