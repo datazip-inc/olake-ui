@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: olake
-  labels:
-    name: olake
-    app.kubernetes.io/name: olake
-    app.kubernetes.io/instance: olake
