@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: temporal
   namespace: {{ include "olake.namespace" . }}
-  {{- with (.Values.temporal.server.service.annotations | default dict) }}
+  {{- with ((.Values.temporal.server.service).annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}

@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: postgresql
   namespace: {{ include "olake.namespace" . }}
-  {{- with (.Values.postgresql.service.annotations | default dict) }}
+  {{- with ((.Values.postgresql.service).annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}

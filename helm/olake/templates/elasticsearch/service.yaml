@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: elasticsearch
   namespace: {{ include "olake.namespace" . }}
-  {{- with (.Values.elasticsearch.service.annotations | default dict) }}
+  {{- with ((.Values.elasticsearch.service).annotations | default dict) }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
