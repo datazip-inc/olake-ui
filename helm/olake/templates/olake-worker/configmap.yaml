@@ -23,12 +23,12 @@ data:
   DB_SSLMODE: "disable"
   
   # Timeout Configuration
-  WORKFLOW_TIMEOUT_DISCOVER: {{ .Values.olakeWorker.config.timeouts.workflow.discover | quote }}
-  WORKFLOW_TIMEOUT_TEST: {{ .Values.olakeWorker.config.timeouts.workflow.test | quote }}
-  WORKFLOW_TIMEOUT_SYNC: {{ .Values.olakeWorker.config.timeouts.workflow.sync | quote }}
-  ACTIVITY_TIMEOUT_DISCOVER: {{ .Values.olakeWorker.config.timeouts.activity.discover | quote }}
-  ACTIVITY_TIMEOUT_TEST: {{ .Values.olakeWorker.config.timeouts.activity.test | quote }}
-  ACTIVITY_TIMEOUT_SYNC: {{ .Values.olakeWorker.config.timeouts.activity.sync | quote }}
+  TIMEOUT_WORKFLOW_DISCOVER: {{ .Values.olakeWorker.config.timeouts.workflow.discover | quote }}
+  TIMEOUT_WORKFLOW_TEST: {{ .Values.olakeWorker.config.timeouts.workflow.test | quote }}
+  TIMEOUT_WORKFLOW_SYNC: {{ .Values.olakeWorker.config.timeouts.workflow.sync | quote }}
+  TIMEOUT_ACTIVITY_DISCOVER: {{ .Values.olakeWorker.config.timeouts.activity.discover | quote }}
+  TIMEOUT_ACTIVITY_TEST: {{ .Values.olakeWorker.config.timeouts.activity.test | quote }}
+  TIMEOUT_ACTIVITY_SYNC: {{ .Values.olakeWorker.config.timeouts.activity.sync | quote }}
   
   # Kubernetes Configuration
   WORKER_NAMESPACE: {{ include "olake.namespace" . | quote }}

@@ -59,8 +59,8 @@ olakeUI:
   # -- OLake UI image configuration
   image:
     repository: olakego/olake-ui
-    tag: local
-    pullPolicy: Never
+    tag: latest
+    pullPolicy: Always
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -164,9 +164,9 @@ olakeWorker:
   
   # -- OLake Worker image configuration
   image:
-    repository: olakego/olake-k8s-worker
-    tag: local
-    pullPolicy: Never
+    repository: olakego/olake-worker-k8s
+    tag: latest
+    pullPolicy: Always
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -296,7 +296,7 @@ nfsServer:
   # -- NFS server image configuration
   image:
     repository: itsthenetwork/nfs-server-alpine
-    tag: latest-arm
+    tag: latest
     pullPolicy: Always
   
   # -- Pod scheduling constraints

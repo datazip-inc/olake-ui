@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: olake-k8s-worker
+  name: olake-worker
   namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
@@ -65,7 +65,7 @@ spec:
           done
           echo "Temporal is ready!"
       containers:
-      - name: olake-k8s-worker
+      - name: olake-worker
         image: "{{ .Values.olakeWorker.image.repository }}:{{ .Values.olakeWorker.image.tag }}"
         imagePullPolicy: {{ .Values.olakeWorker.image.pullPolicy }}
         ports:
@@ -76,7 +76,7 @@ spec:
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: olake-k8s-worker-secret
+              name: olake-worker-secret
               key: DB_PASSWORD
         envFrom:
         - configMapRef:
