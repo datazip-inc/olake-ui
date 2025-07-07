@@ -5,6 +5,8 @@ metadata:
   name: {{ include "olake.fullname" . }}-shared-storage
   labels:
     {{- include "olake.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   capacity:
     storage: {{ .Values.nfsServer.persistence.size }}
