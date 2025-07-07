@@ -135,6 +135,7 @@ const JobCreation: React.FC = () => {
 			const testResult = await destinationService.testDestinationConnection(
 				newDestinationData,
 				sourceConnector.toLowerCase(),
+				sourceVersion,
 			)
 
 			setTimeout(() => {
