@@ -44,6 +44,24 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+      - name: fix-permissions
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Setting up NFS export directory permissions..."
+          chown -R 1000:1000 /exports
+          chmod -R 755 /exports
+          echo "Permissions fixed for user 1000:1000"
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /exports
       containers:
       - name: nfs-server
         image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
