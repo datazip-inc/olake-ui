@@ -20,6 +20,7 @@ data:
   DB_PORT: "5432"
   DB_NAME: "postgres"
   DB_USER: {{ .Values.postgresql.auth.postgresUser | quote }}
+  DB_PASSWORD: {{ .Values.postgresql.auth.postgresPassword | quote }}
   DB_SSLMODE: "disable"
   
   # Timeout Configuration

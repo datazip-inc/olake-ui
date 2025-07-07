@@ -6,6 +6,8 @@ metadata:
   namespace: {{ include "olake.namespace" . }}
   labels:
     {{- include "olake.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
 spec:
   # Setting storageClassName to "" ensures this PVC binds to our manually
   # created PV instead of using a dynamic provisioner.

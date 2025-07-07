@@ -72,12 +72,6 @@ spec:
         - name: health
           containerPort: 8090
           protocol: TCP
-        env:
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: olake-worker-secret
-              key: DB_PASSWORD
         envFrom:
         - configMapRef:
             name: olake-worker-config

@@ -85,6 +85,8 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: nfs-storage
+      annotations:
+        "helm.sh/resource-policy": keep
     spec:
       accessModes: {{ .Values.nfsServer.persistence.accessModes }}
       # This logic first checks for a specific storageClass under nfsServer,
