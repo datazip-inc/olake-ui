@@ -188,11 +188,12 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-	driver, version := utils.GetAvailableDriversVersions(c.Ctx.Request.Context())
+	driver := req.SourceType
+	version := req.SourceVersion
 	if driver == "" || version == "" {
-		driver = "postgres"
-		version = "latest"
+		driver, version = utils.GetAvailableDriversVersions(c.Ctx.Request.Context())
 	}
+
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{

@@ -2,10 +2,12 @@ package models
 
 // Common fields for source/destination config
 type ConnectorConfig struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	Name          string `json:"name"`
+	Type          string `json:"type"`
+	Version       string `json:"version"`
+	Config        string `json:"config" orm:"type(jsonb)"`
+	SourceType    string `json:"source_type,omitempty"`
+	SourceVersion string `json:"source_version,omitempty"`
 }
 
 // LoginRequest represents the expected JSON structure for login requests

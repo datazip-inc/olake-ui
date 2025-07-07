@@ -91,6 +91,11 @@ func getLocalImageTags(ctx context.Context, imageName string) ([]string, error) 
 
 // GetAvailableDriversVersions returns the driver with the highest available version locally
 func GetAvailableDriversVersions(ctx context.Context) (string, string) {
+	tags, err := GetDockerHubTags(ctx, "olakego/source-postgres")
+	if err == nil {
+		logs.Debug("Failed to fetch dockerhub tags: %v", err)
+		return "postgres", tags[0]
+	}
 	images, err := getLocalSourceImages(ctx)
 	if err != nil {
 		logs.Debug("Failed to fetch local source images: %v", err)
