@@ -129,8 +129,9 @@ const JobCreation: React.FC = () => {
 					typeof destinationFormData === "string"
 						? destinationFormData
 						: JSON.stringify(destinationFormData),
-				version: `${destinationVersion}-${sourceVersion}`
+				version: `${destinationVersion}-${sourceVersion}`,
 			}
+
 			setShowTestingModal(true)
 			const testResult = await destinationService.testDestinationConnection(newDestinationData)
 
