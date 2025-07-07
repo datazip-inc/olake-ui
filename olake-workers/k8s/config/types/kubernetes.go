@@ -1,8 +1,6 @@
 package types
 
 import (
-	"time"
-	
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -13,9 +11,6 @@ type KubernetesConfig struct {
 	ImagePullPolicy string            `json:"image_pull_policy"`
 	ServiceAccount  string            `json:"service_account"`
 	PVCName         string            `json:"storage_pvc_name"`
-	JobTTL          *int32            `json:"job_ttl_seconds"`
-	JobTimeout      time.Duration     `json:"job_timeout"`
-	CleanupPolicy   string            `json:"cleanup_policy"`
 	Labels          map[string]string `json:"labels"`
 	JobScheduling   JobSchedulingConfig `json:"job_scheduling"`
 }

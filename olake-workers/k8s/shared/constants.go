@@ -14,8 +14,6 @@ const (
 	DefaultImageRegistry   = "olakego"
 	DefaultImagePullPolicy = "IfNotPresent"
 	DefaultServiceAccount  = "olake-worker"
-	DefaultJobTTLSeconds   = 86400 // 24 hours for long-running jobs
-	DefaultCleanupPolicy   = "auto"
 
 	// Resource defaults
 	DefaultCPURequest    = "100m"
