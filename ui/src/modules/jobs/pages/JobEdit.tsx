@@ -447,7 +447,7 @@ const JobEdit: React.FC = () => {
 								: JSON.stringify(destinationData.config),
 					}
 					const testResult =
-						await destinationService.testDestinationConnection(testData, )
+						await destinationService.testDestinationConnection(testData)
 
 					if (testResult.data?.status === "SUCCEEDED") {
 						setShowTestingModal(false)
