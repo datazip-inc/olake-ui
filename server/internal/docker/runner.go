@@ -13,6 +13,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -20,7 +21,6 @@ import (
 const (
 	DefaultDirPermissions  = 0755
 	DefaultFilePermissions = 0644
-	DefaultConfigDir       = "/tmp/olake-config"
 )
 
 // Command represents a Docker command type
@@ -41,7 +41,8 @@ type FileConfig struct {
 
 // Runner is responsible for executing Docker commands
 type Runner struct {
-	WorkingDir string
+	WorkingDir  string
+	anonymousID string
 }
 
 // NewRunner creates a new Docker runner
@@ -51,13 +52,14 @@ func NewRunner(workingDir string) *Runner {
 	}
 
 	return &Runner{
-		WorkingDir: workingDir,
+		WorkingDir:  workingDir,
+		anonymousID: telemetry.GetTelemetryUserID(),
 	}
 }
 
 // GetDefaultConfigDir returns the default directory for storing config files
 func GetDefaultConfigDir() string {
-	return DefaultConfigDir
+	return constants.DefaultConfigDir
 }
 
 // setupWorkDirectory creates a working directory and returns the full path
@@ -141,7 +143,7 @@ func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, versi
 // getHostOutputDir determines the host output directory path
 func (r *Runner) getHostOutputDir(outputDir string) string {
 	if persistentDir := os.Getenv("PERSISTENT_DIR"); persistentDir != "" {
-		hostOutputDir := strings.Replace(outputDir, DefaultConfigDir, persistentDir, 1)
+		hostOutputDir := strings.Replace(outputDir, constants.DefaultConfigDir, persistentDir, 1)
 		logs.Info("hostOutputDir %s\n", hostOutputDir)
 		return hostOutputDir
 	}
@@ -181,6 +183,7 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
+		{Name: "user_id.txt", Data: r.anonymousID},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -219,6 +222,7 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
+		{Name: "user_id.txt", Data: r.anonymousID},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
@@ -263,6 +267,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		{Name: "streams.json", Data: job.StreamsConfig},
 		{Name: "writer.json", Data: job.DestID.Config},
 		{Name: "state.json", Data: job.State},
+		{Name: "user_id.txt", Data: r.anonymousID},
 	}
 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -50,6 +51,8 @@ func (c *AuthHandler) Login() {
 	if web.BConfig.WebConfig.Session.SessionOn {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
+
+	telemetry.TrackUserLogin(c.Ctx.Request.Context(), user)
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,
@@ -102,5 +105,13 @@ func (c *AuthHandler) Signup() {
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
+	})
+}
+
+// @router /telemetry-id [get]
+func (c *AuthHandler) GetTelemetryID() {
+	telemetryID := telemetry.GetTelemetryUserID()
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+		telemetry.TelemetryUserIDFile: string(telemetryID),
 	})
 }
