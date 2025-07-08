@@ -1,0 +1,21 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "olake.sharedStoragePVC" . }}
+  namespace: {{ include "olake.namespace" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-shared-storage
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: shared-storage
+    {{- include "olake.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.nfsServer.persistence.size | default "20Gi" }}
+  storageClassName: {{ .Values.nfsServer.storageClass.name | default "nfs-server" }}
+{{- end }}
