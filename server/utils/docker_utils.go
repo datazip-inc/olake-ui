@@ -34,15 +34,20 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 			return nil, fmt.Errorf("failed to get cached images: %s", err)
 		}
 
-		var tags []string
+		tagsMap := make(map[string]struct{})
 		for _, image := range images {
 			if strings.HasPrefix(image, imagePrefix) {
 				parts := strings.Split(image, ":")
 				if len(parts) != 2 && !isValidTag(parts[1]) {
 					continue
 				}
-				tags = append(tags, parts[1])
+				tagsMap[parts[1]] = struct{}{}
 			}
+		}
+
+		var tags []string
+		for tag := range tagsMap {
+			tags = append(tags, tag)
 		}
 
 		// Sort tags in descending order
@@ -55,10 +60,10 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 	fetchTagsFromDockerHub := func(ctx context.Context, imageName string) ([]string, error) {
 		// use default postgres if empty
-		imageName = Ternary(imageName == "", "postgres", imageName).(string)
+		imageName = Ternary(imageName == "", "olakego/source-postgres", imageName).(string)
 		// Create a new HTTP request with context
 		req, err := http.NewRequestWithContext(ctx, "GET",
-			fmt.Sprintf(dockerHubTagsURLTemplate, imageName), nil)
+			fmt.Sprintf(dockerHubTagsURLTemplate, imageName), http.NoBody)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %s", err)
 		}

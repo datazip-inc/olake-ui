@@ -88,7 +88,10 @@ export const destinationService = {
 		return
 	},
 
-	testDestinationConnection: async (destination: EntityTestRequest) => {
+	testDestinationConnection: async (
+		destination: EntityTestRequest,
+		source_type: string = ""
+	) => {
 		try {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
@@ -101,6 +104,7 @@ export const destinationService = {
 								: destination.type.toLowerCase(),
 					version: destination.version,
 					config: destination.config,
+					source_type: source_type
 				},
 				{ timeout: 0 },
 			)
