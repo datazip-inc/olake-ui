@@ -278,21 +278,18 @@ func (c *SourceHandler) GetSourceJobs() {
 
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
-	// Get source type from query parameter
 	sourceType := c.GetString("type")
 	if sourceType == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "source type is required")
 		return
 	}
 
-	// Get versions from Docker Hub
-	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
-
-	versions, err := utils.GetDockerHubTags(c.Ctx.Request.Context(), imageName)
+	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), fmt.Sprintf("olakego/source-%s", sourceType), true)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "failed to fetch driver versions")
 		return
 	}
+
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,
 	})

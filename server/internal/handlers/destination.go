@@ -197,40 +197,46 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
+	if req.Type == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		return
+	}
+
+	if req.Version == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+		return
+	}
+
+	entityTypes := strings.Split(req.Type, ":")
+	driver := utils.Ternary(len(entityTypes) == 2, entityTypes[1], "").(string)
+	version := req.Version
+
+	// check if tags available through dockerhub
+	_, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", false)
+	if err != nil {
+		// if dockerhub api fails then check for cached images and use any of them with same version
+		images, err := utils.GetCachedImages(c.Ctx.Request.Context())
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to getc cached images config: %s", err))
+			return
+		}
+		for _, image := range images {
+			if strings.HasSuffix(image, version) {
+				untagged := strings.Split(image, ":")[0]         // olakego/source-postgres
+				lastPart := strings.Split(untagged, "/")[1]      // source-postgres
+				driver = strings.TrimPrefix(lastPart, "source-") // postgres
+				break
+			}
+		}
+	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
 
-	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
-		return
-	}
-	if req.Version == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
-		return
-	}
-
-	// Extract source type and version from the combined type and version fields
-	// Format: "destinationType-sourceType" and "destinationVersion-sourceVersion"
-	destAndSource := strings.Split(req.Type, "-")
-	driver := "" // Default to destination type if no source type is present
-	if len(destAndSource) > 1 {
-		driver = destAndSource[1] // Use source type if present
-	}
-
-	version := "" // Default to destination version
-	versionParts := strings.Split(req.Version, "-")
-	if len(versionParts) > 1 {
-		version = versionParts[1] // Use source version if present
-	}
-
-	// Fallback to default if source type/version not found
-	if driver == "" || version == "" {
-		driver, version = utils.GetAvailableDriversVersions(c.Ctx.Request.Context())
-	}
-
+	// check if destination asociated with job
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
@@ -274,12 +280,11 @@ func (c *DestHandler) GetDestinationVersions() {
 		return
 	}
 
-	// In a real implementation, we would query for available versions
-	// based on the destination type and project ID
-	// For now, we'll return a mock response
-
-	// Mock available versions (this would be replaced with actual DB query)
-	versions := []string{"latest"}
+	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "failed to fetch driver versions")
+		return
+	}
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,

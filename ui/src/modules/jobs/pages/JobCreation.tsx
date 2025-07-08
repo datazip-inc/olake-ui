@@ -124,12 +124,12 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: `${destinationConnector}-${sourceConnector.toLowerCase()}`,
+				type: `${destinationConnector}:${sourceConnector.toLowerCase()}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
 						: JSON.stringify(destinationFormData),
-				version: `${destinationVersion}-${sourceVersion}`,
+				version: `${destinationVersion}`,
 			}
 
 			setShowTestingModal(true)
