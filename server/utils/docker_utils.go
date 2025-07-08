@@ -3,9 +3,7 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"os/exec"
 	"sort"
@@ -38,7 +36,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 		for _, image := range images {
 			if strings.HasPrefix(image, imagePrefix) {
 				parts := strings.Split(image, ":")
-				if len(parts) != 2 && !isValidTag(parts[1]) {
+				if len(parts) != 2 || !isValidTag(parts[1]) {
 					continue
 				}
 				tagsMap[parts[1]] = struct{}{}
@@ -95,8 +93,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 	tags, err := fetchTagsFromDockerHub(ctx, imageName)
 	if err != nil {
-		var netErr net.Error
-		if cachedTags && errors.As(err, &netErr) {
+		if cachedTags {
 			// check for cached images on local
 			return fetchCachedImageTags(ctx, imageName)
 		}
