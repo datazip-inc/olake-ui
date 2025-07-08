@@ -76,12 +76,7 @@ Shared storage PVC name
 Get the namespace name
 */}}
 {{- define "olake.namespace" -}}
-{{- $ns := .Values.namespaceOverride | default "olake" -}}
-{{- if or (not $ns) (eq $ns "") -}}
-olake
-{{- else -}}
-{{ $ns }}
-{{- end -}}
+{{- .Release.Namespace -}}
 {{- end -}}
 
 {{/*

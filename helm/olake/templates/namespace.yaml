@@ -1,5 +1,5 @@
 {{- $ns := include "olake.namespace" . }}
-{{- if $ns }}
+{{- if and $ns (ne $ns "default") }}
 apiVersion: v1
 kind: Namespace
 metadata:

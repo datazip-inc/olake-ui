@@ -4,26 +4,50 @@ kind: Service
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   namespace: {{ include "olake.namespace" . }}
-  annotations:
-    "helm.sh/resource-policy": keep
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  # Static cluster IP for NFS server service
-  clusterIP: {{ .Values.nfsServer.clusterIP }}
+  type: ClusterIP
   ports:
   - name: nfs
     port: 2049
-    targetPort: 2049
+    protocol: TCP
+  - name: nfs-udp
+    port: 2049
+    protocol: UDP
+  - name: nlockmgr
+    port: 32803
+    protocol: TCP
+  - name: nlockmgr-udp
+    port: 32803
+    protocol: UDP
   - name: mountd
     port: 20048
-    targetPort: 20048
+    protocol: TCP
+  - name: mountd-udp
+    port: 20048
+    protocol: UDP
+  - name: rquotad
+    port: 875
+    protocol: TCP
+  - name: rquotad-udp
+    port: 875
+    protocol: UDP
   - name: rpcbind
     port: 111
-    targetPort: 111
+    protocol: TCP
+  - name: rpcbind-udp
+    port: 111
+    protocol: UDP
+  - name: statd
+    port: 662
+    protocol: TCP
+  - name: statd-udp
+    port: 662
+    protocol: UDP
   selector:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}

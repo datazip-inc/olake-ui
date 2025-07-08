@@ -60,6 +60,21 @@ spec:
             sleep 5
           done
           echo "Temporal is ready!"
+      {{- if .Values.nfsServer.enabled }}
+      - name: wait-for-nfs-server
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for NFS server to be ready..."
+          until nc -z {{ include "olake.fullname" . }}-nfs-server.{{ include "olake.namespace" . }}.svc.cluster.local 2049; do
+            echo "NFS server is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "NFS server is ready!"
+      {{- end }}
       containers:
       - name: olake-ui
         image: "{{ .Values.olakeUI.image.repository }}:{{ .Values.olakeUI.image.tag }}"

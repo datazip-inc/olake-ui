@@ -4,15 +4,12 @@ kind: StatefulSet
 metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   namespace: {{ include "olake.namespace" . }}
-  annotations:
-    "helm.sh/resource-policy": keep
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  # This MUST match the metadata.name of the headless Service.
   serviceName: {{ include "olake.fullname" . }}-nfs-server
   replicas: 1
   selector:
@@ -46,24 +43,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      initContainers:
-      - name: fix-permissions
-        image: busybox:latest
-        imagePullPolicy: IfNotPresent
-        command:
-        - /bin/sh
-        - -c
-        - |
-          echo "Setting up NFS export directory permissions..."
-          chown -R 1000:1000 /exports
-          chmod -R 755 /exports
-          echo "Permissions fixed for user 1000:1000"
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 0
-        volumeMounts:
-        - name: nfs-storage
-          mountPath: /exports
+      serviceAccountName: {{ include "olake.fullname" . }}-nfs-server
       containers:
       - name: nfs-server
         image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
@@ -71,53 +51,75 @@ spec:
         ports:
         - name: nfs
           containerPort: 2049
+        - name: nfs-udp
+          containerPort: 2049
+          protocol: UDP
+        - name: nlockmgr
+          containerPort: 32803
+        - name: nlockmgr-udp
+          containerPort: 32803
+          protocol: UDP
         - name: mountd
           containerPort: 20048
+        - name: mountd-udp
+          containerPort: 20048
+          protocol: UDP
+        - name: rquotad
+          containerPort: 875
+        - name: rquotad-udp
+          containerPort: 875
+          protocol: UDP
         - name: rpcbind
           containerPort: 111
+        - name: rpcbind-udp
+          containerPort: 111
+          protocol: UDP
+        - name: statd
+          containerPort: 662
+        - name: statd-udp
+          containerPort: 662
+          protocol: UDP
         securityContext:
-          privileged: true
-        volumeMounts:
-        - name: nfs-storage
-          mountPath: /exports
+          capabilities:
+            add:
+              - DAC_READ_SEARCH
+              - SYS_RESOURCE
+        args:
+          - "-provisioner={{ include "olake.fullname" . }}/nfs-server"
+          - "-grace-period=0"
         env:
-        - name: SHARED_DIRECTORY
-          value: "/exports"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: SERVICE_NAME
+          value: {{ include "olake.fullname" . }}-nfs-server
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: export-volume
+          mountPath: /export
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "250m"
+            cpu: 250m
+            memory: 256Mi
           limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          tcpSocket:
-            port: 2049
-          initialDelaySeconds: 30
-          periodSeconds: 30
-        readinessProbe:
-          tcpSocket:
-            port: 2049
-          initialDelaySeconds: 10
-          periodSeconds: 10
-  # The volumeClaimTemplates section is the correct way to provision storage
-  # for a StatefulSet. It will automatically create a PVC for each pod.
+            cpu: 500m
+            memory: 512Mi
   volumeClaimTemplates:
   - metadata:
-      name: nfs-storage
+      name: export-volume
       annotations:
         "helm.sh/resource-policy": keep
     spec:
-      accessModes: {{ .Values.nfsServer.persistence.accessModes }}
-      # This logic first checks for a specific storageClass under nfsServer,
-      # and if it's not found, it falls back to the global one.
-      {{- /* Determine the storage class name, falling back to global if needed */}}
-      {{- $sc := .Values.nfsServer.persistence.storageClass | default .Values.global.storageClass -}}
-      {{- /* Only render the storageClassName line if a value is present */}}
-      {{- if $sc }}
-      storageClassName: {{ $sc }}
-      {{- end }}
+      accessModes:
+        - ReadWriteOnce
       resources:
         requests:
-          storage: {{ .Values.nfsServer.persistence.size }}
+          storage: {{ .Values.nfsServer.persistence.size | default "20Gi" }}
+      {{- if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass }}
+      {{- end }}
 {{- end }}

@@ -1,0 +1,60 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-server
+  namespace: {{ include "olake.namespace" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+    {{- include "olake.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-server
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+    {{- include "olake.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "update"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+- apiGroups: ["extensions"]
+  resources: ["podsecuritypolicies"]
+  resourceNames: ["nfs-provisioner"]
+  verbs: ["use"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-server
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+    {{- include "olake.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "olake.fullname" . }}-nfs-server
+subjects:
+- kind: ServiceAccount
+  name: {{ include "olake.fullname" . }}-nfs-server
+  namespace: {{ include "olake.namespace" . }}
+{{- end }}

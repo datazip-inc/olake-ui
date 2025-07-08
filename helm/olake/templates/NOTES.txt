@@ -57,7 +57,7 @@
 - ✅ Elasticsearch
 {{- end }}
 {{- if .Values.nfsServer.enabled }}
-- ✅ NFS Server (Shared Storage)
+- ✅ NFS Server (Dynamic Shared Storage)
 {{- end }}
 
 📚 NEXT STEPS:

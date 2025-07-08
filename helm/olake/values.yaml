@@ -1,5 +1,4 @@
-# -- Override the deployment namespace
-namespaceOverride: "olake"
+# -- Namespace will be set by --namespace flag during helm install
 
 # -- Provide a name in place of olake for `app:` labels
 nameOverride: ""
@@ -234,18 +233,14 @@ olakeWorker:
       level: info
       format: console
 
-# =============================================================================
-# STORAGE CONFIGURATION
-# =============================================================================
-
 # Storage configuration for shared data exchange between pods
-# Choose between self-managed NFS server or external storage (EFS/Azure Files)
+# Uses NFS Ganesha for dynamic provisioning and high availability
 nfsServer:
-  # -- Enable self-managed NFS server deployment
+  # -- Enable NFS server deployment with dynamic provisioning
   # When false, you must provide external storage (EFS/Azure Files/etc.)
   enabled: true
 
-  # -- External NFS server configuration (used when enabled: false)
+  # -- External storage configuration (used when enabled: false)
   # When disabled, you must provide an existing ReadWriteMany (RWX) PersistentVolumeClaim
   # 
   # CLOUD PROVIDER GUIDES FOR RWX STORAGE:
@@ -258,44 +253,16 @@ nfsServer:
   # 
   # GCP Filestore: Use Google Cloud Filestore CSI driver with 'filestore.csi.storage.gke.io' provisioner
   # See: https://cloud.google.com/filestore/docs/csi-driver
-  # 
-  # STEPS TO CREATE RWX PVC:
-  # 1. Find RWX StorageClass: kubectl get sc
-  # 2. Create PVC with accessModes: [ReadWriteMany] and your RWX storageClassName
-  # 3. Reference the PVC name in the 'name' field below
   external:
     # -- The name of the PersistentVolumeClaim for the external RWX storage
     # Example: "efs-pvc" or "azure-files-pvc" or "gcp-filestore-pvc"
     name: ""
   
-  # -- Static cluster IP for NFS server service
-  # Must be within your cluster's service CIDR range and not already in use
-  # 
-  # HOW TO FIND YOUR CLUSTER'S SERVICE CIDR:
-  # Method 1 (Most clusters): kubectl get pod $(kubectl get pods -n kube-system -l component=kube-apiserver -o jsonpath='{.items[0].metadata.name}') -n kube-system -o yaml | grep service-cluster-ip-range
-  # Method 2 (GKE): gcloud container clusters describe CLUSTER_NAME --zone ZONE --format 'value(servicesIpv4CidrBlock)'
-  # Method 3 (AKS): az aks show --resource-group RG --name CLUSTER_NAME --query 'networkProfile.serviceCidr' -o tsv
-  # Method 4 (EKS): kubectl get service kubernetes -o jsonpath='{.spec.clusterIP}' (infer CIDR from this IP)
-  #
-  # CHECK IF IP IS FREE: kubectl get services --all-namespaces | grep -w "YOUR_IP"
-  # (No output means the IP is available)
-  #
-  # BEST PRACTICES:
-  # - Choose from the higher end of the CIDR range (e.g., .250, .100, .50)
-  # - Avoid the very beginning of the range (reserved for core services)
-  # - Document the choice to prevent conflicts
-  #
-  # Examples by common CIDR ranges:
-  # - 10.96.0.0/12 → use 10.96.0.50 or 10.100.0.50
-  # - 10.0.0.0/16 → use 10.0.255.50
-  # - 172.20.0.0/16 → use 172.20.255.50
-  clusterIP: ""
-  
   # -- NFS server image configuration
   image:
-    repository: itsthenetwork/nfs-server-alpine
+    repository: devxygmbh/nfs-server-provisioner
     tag: latest
-    pullPolicy: Always
+    pullPolicy: IfNotPresent
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -312,18 +279,16 @@ nfsServer:
   # -- Additional pod labels
   podLabels: {}
   
-  # -- NFS server persistence configuration
-  # This is the underlying storage for the NFS server itself
+  # -- Persistence configuration for NFS server backing storage
   persistence:
-    # -- Size of underlying storage for NFS server
+    # -- Size of backing storage for NFS server
     size: 20Gi
+  
+  # -- StorageClass configuration for dynamic provisioning
+  storageClass:
+    # -- Name of the StorageClass created by NFS server
+    name: "nfs-server"
 
-    # -- Storage class for underlying storage
-    storageClass: ""
-    
-    # -- Access modes for underlying storage
-    accessModes:
-      - ReadWriteOnce
 
 # =============================================================================
 # TEMPORAL WORKFLOW ENGINE

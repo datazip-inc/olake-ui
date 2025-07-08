@@ -1,0 +1,22 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.nfsServer.storageClass.name | default "nfs-server" }}
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: storage-class
+    {{- include "olake.labels" . | nindent 4 }}
+provisioner: {{ include "olake.fullname" . }}/nfs-server
+parameters: {}
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+mountOptions:
+  - vers=4.1
+  - rsize=1048576
+  - wsize=1048576
+  - hard
+  - timeo=600
+  - retrans=2
+{{- end }}
