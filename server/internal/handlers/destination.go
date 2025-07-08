@@ -208,7 +208,7 @@ func (c *DestHandler) TestConnection() {
 	}
 
 	entityTypes := strings.Split(req.Type, ":")
-	driver := utils.Ternary(len(entityTypes) == 2, entityTypes[1], "").(string)
+	driver := utils.Ternary(len(entityTypes) == 2 && entityTypes[1] != "", entityTypes[1], "").(string)
 	version := req.Version
 
 	// check if tags available through dockerhub
@@ -282,7 +282,7 @@ func (c *DestHandler) GetDestinationVersions() {
 
 	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "failed to fetch driver versions")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
 		return
 	}
 

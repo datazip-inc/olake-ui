@@ -37,15 +37,11 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 		var tags []string
 		for _, image := range images {
 			if strings.HasPrefix(image, imagePrefix) {
-				// Expected format: imageName:tag
 				parts := strings.Split(image, ":")
-				if len(parts) != 2 {
+				if len(parts) != 2 && !isValidTag(parts[1]) {
 					continue
 				}
-				tag := parts[1]
-				if isValidTag(tag) {
-					tags = append(tags, tag)
-				}
+				tags = append(tags, parts[1])
 			}
 		}
 
