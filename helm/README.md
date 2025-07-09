@@ -92,9 +92,6 @@ The chart deploys a self-managed NFS server with dynamic provisioning:
 ```yaml
 nfsServer:
   enabled: true
-  image:
-    repository: devxygmbh/nfs-server-provisioner
-    tag: latest
   persistence:
     size: 20Gi
   storageClass:
@@ -116,47 +113,29 @@ nfsServer:
 
 ```bash
 # Get service information
-kubectl get svc -n olake
+kubectl get svc
 
 # Access UI locally
-kubectl port-forward -n olake svc/olake-ui 8000:8000 8080:8080
-
-# Access Temporal UI
-kubectl port-forward -n olake svc/temporal-ui 8088:8088
-```
-
-## Monitoring and Troubleshooting
-
-### View Logs
-
-```bash
-# OLake Worker logs
-kubectl logs -n olake -l app.kubernetes.io/name=olake-worker -f
-
-# OLake UI logs
-kubectl logs -n olake -l app.kubernetes.io/name=olake-ui -f
-
-# NFS Server logs
-kubectl logs -n olake -l app.kubernetes.io/name=olake-nfs-server -f
+kubectl port-forward svc/olake-ui 8000:8000 8080:8080
 ```
 
 ### Common Issues
 
 1. **Storage provisioning failures**
    ```bash
-   kubectl get pv,pvc -n olake
-   kubectl describe pvc shared-storage -n olake
+   kubectl get pv,pvc
+   kubectl describe pvc shared-storage
    ```
 
 2. **NFS server not ready**
    ```bash
-   kubectl get pods -n olake -l app.kubernetes.io/name=olake-nfs-server
-   kubectl logs -n olake -l app.kubernetes.io/name=olake-nfs-server
+   kubectl get pods -l app.kubernetes.io/name=olake-nfs-server
+   kubectl logs -l app.kubernetes.io/name=olake-nfs-server
    ```
 
 3. **Network connectivity**
    ```bash
-   kubectl exec -it <pod> -n olake -- nslookup olake-nfs-server.olake.svc.cluster.local
+   kubectl exec -it <pod> -- nslookup olake-nfs-server.olake.svc.cluster.local
    ```
 
 ## Configuration Reference
