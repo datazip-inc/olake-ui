@@ -14,15 +14,6 @@
     <a href="https://join.slack.com/t/getolake/shared_invite/zt-2utw44do6-g4XuKKeqBghBMy2~LcJ4ag"><img alt="slack" src="https://img.shields.io/badge/Join%20Our%20Community-Slack-blue"/></a>
 </p>
 
-## Overview
-
-Olake-UI is built on top of Olake CLI to execute commands via UI.
-
-- [UI Readme](/olake_frontend/README.md)
-- [Server Readme](/server/README.md)
-- [API Contracts](/api-contract.md)
-- [Contributor Guidlines](/CONTRIBUTING.md)
-
 ## Components
 
 -   **OLake UI**: The main application providing user interface and backend API
@@ -31,17 +22,6 @@ Olake-UI is built on top of Olake CLI to execute commands via UI.
 -   **PostgreSQL**: Primary data store for both OLake application and Temporal
 -   **Elasticsearch**: Advanced visibility and search capabilities for Temporal
 -   **NFS Server**(Optional): Self-managed in-cluster NFS server with dynamic provisioning for shared storage
-
-## TL;DR
-
-```bash
-# Clone the repository
-git clone https://github.com/datazip-inc/olake-ui.git
-cd olake-ui
-
-# Install with default values
-helm install olake ./helm/olake
-```
 
 ## Prerequisites
 
@@ -52,11 +32,36 @@ helm install olake ./helm/olake
 ## Installation
 
 ```bash
-# Install on a specific namespace
-helm install olake ./helm/olake --namespace <namespace> --create-namespace
+# Install on a default namespace
+helm install olake ./helm/olake
 
 #Install with specific values file
 helm install olake ./helm/olake -f </path/to/values/file> --namespace <namespace> --create-namespace
+```
+
+## Configuration Reference
+
+### Key Configuration Options
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `olakeUI.initJob.adminUser.username` | Initial admin username | `admin` |
+| `olakeUI.initJob.adminUser.password` | Initial admin password | `password` |
+| `nfsServer.enabled` | Enable dynamic NFS provisioning | `true` |
+| `nfsServer.persistence.size` | NFS server storage size | `20Gi` |
+| `nfsServer.storageClass.name` | Dynamic StorageClass name | `nfs-server` |
+| `global.job.sync.antiAffinity.enabled` | Enable sync job anti-affinity | `true` |
+
+For complete configuration options, see [values.yaml](./olake/values.yaml).
+
+## Accessing Services
+
+```bash
+# Get service information
+kubectl get svc
+
+# Access UI locally
+kubectl port-forward svc/olake-ui 8000:8000 8080:8080
 ```
 
 ## Features
@@ -109,54 +114,86 @@ nfsServer:
     name: "my-rwx-pvc"
 ```
 
-## Accessing Services
+
+## Monitoring and Troubleshooting
+
+### View Logs
 
 ```bash
-# Get service information
-kubectl get svc
+# OLake UI logs
+kubectl logs -l app.kubernetes.io/name=olake-ui -f
 
-# Access UI locally
-kubectl port-forward svc/olake-ui 8000:8000 8080:8080
+# OLake Worker logs
+kubectl logs -l app.kubernetes.io/name=olake-worker -f
+
+# Temporal logs
+kubectl logs -l app.kubernetes.io/name=temporal -f
+
+# PostgreSQL logs
+kubectl logs -l app.kubernetes.io/name=postgresql -f
+
+# NFS Server logs
+kubectl logs -l app.kubernetes.io/name=olake-nfs-server -f
 ```
 
 ### Common Issues
 
-1. **Storage provisioning failures**
+1. **Pod deployment failures**
    ```bash
+   # Check pod status across all components
+   kubectl get pods -l app.kubernetes.io/instance=olake
+   
+   # Describe problematic pods for detailed error information
+   kubectl describe pod <pod-name>
+   
+   # Check recent events for deployment issues
+   kubectl get events --sort-by='.lastTimestamp' --field-selector type!=Normal
+   ```
+
+2. **OLake UI not starting**
+   ```bash
+   # Check UI pod status and logs
+   kubectl get pods -l app.kubernetes.io/name=olake-ui
+   kubectl logs -l app.kubernetes.io/name=olake-ui -f
+   ```
+
+3. **OLake Worker issues**
+   ```bash
+   # Check worker pod status and logs
+   kubectl get pods -l app.kubernetes.io/name=olake-worker
+   kubectl logs -l app.kubernetes.io/name=olake-worker -f
+   
+   # Verify worker configuration
+   kubectl describe configmap olake-worker-config
+   ```
+
+4. **Storage provisioning failures**
+   ```bash
+   # Check PVC and PV status
    kubectl get pv,pvc
    kubectl describe pvc shared-storage
-   ```
-
-2. **NFS server not ready**
-   ```bash
+   
+   # Check NFS server pod and StorageClass
    kubectl get pods -l app.kubernetes.io/name=olake-nfs-server
-   kubectl logs -l app.kubernetes.io/name=olake-nfs-server
+   kubectl describe storageclass nfs-server
    ```
 
-3. **Network connectivity**
+5. **Network connectivity issues**
    ```bash
-   kubectl exec -it <pod> -- nslookup olake-nfs-server.olake.svc.cluster.local
+   # Test service discovery
+   kubectl exec -it <pod> -- nslookup temporal
+   kubectl exec -it <pod> -- nslookup postgresql
+   kubectl exec -it <pod> -- nslookup olake-nfs-server
+   
+   # Check service endpoints
+   kubectl get endpoints temporal postgresql olake-nfs-server
    ```
-
-## Configuration Reference
-
-### Key Configuration Options
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `nfsServer.enabled` | Enable dynamic NFS provisioning | `true` |
-| `nfsServer.image.repository` | NFS server image repository | `devxygmbh/nfs-server-provisioner` |
-| `nfsServer.persistence.size` | NFS server storage size | `20Gi` |
-| `nfsServer.storageClass.name` | Dynamic StorageClass name | `nfs-server` |
-| `global.job.sync.antiAffinity.enabled` | Enable sync job anti-affinity | `true` |
-
-For complete configuration options, see [values.yaml](./olake/values.yaml).
 
 ## Upgrading
 
 ```bash
 # Upgrade to latest version
-helm upgrade olake ./helm/olake -f ./helm/olake/values.yaml
+helm upgrade olake ./helm/olake
 
 # Upgrade with new values
 helm upgrade olake ./helm/olake -f new-values.yaml
