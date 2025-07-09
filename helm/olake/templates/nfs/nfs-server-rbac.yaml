@@ -6,8 +6,6 @@ metadata:
   namespace: {{ include "olake.namespace" . }}
   annotations:
     "helm.sh/resource-policy": keep
-    "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "-6"
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -20,8 +18,6 @@ metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   annotations:
     "helm.sh/resource-policy": keep
-    "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "-6"
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -54,8 +50,6 @@ metadata:
   name: {{ include "olake.fullname" . }}-nfs-server
   annotations:
     "helm.sh/resource-policy": keep
-    "helm.sh/hook": pre-install
-    "helm.sh/hook-weight": "-6"
   labels:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}

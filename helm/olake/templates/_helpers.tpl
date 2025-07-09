@@ -80,6 +80,18 @@ Get the namespace name
 {{- end -}}
 
 {{/*
+Calculate shared storage size based on NFS server backing storage
+Reserves 2Gi for filesystem overhead
+*/}}
+{{- define "olake.sharedStorageSize" -}}
+{{- $nfsSize := .Values.nfsServer.persistence.size | default "20Gi" -}}
+{{- $sizeValue := regexReplaceAll "([0-9]+).*" $nfsSize "${1}" | int -}}
+{{- $sizeUnit := regexReplaceAll "[0-9]+(.*)" $nfsSize "${1}" -}}
+{{- $adjustedSize := sub $sizeValue 2 -}}
+{{- printf "%d%s" $adjustedSize $sizeUnit -}}
+{{- end -}}
+
+{{/*
 Generate job scheduling environment variables for an activity type
 Usage: {{- include "olake.job.schedulingEnvVars" (dict "Values" .Values "activityName" "sync") }}
 */}}

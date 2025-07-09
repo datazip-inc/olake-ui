@@ -25,25 +25,42 @@ spec:
       - name: wait-for-stack
         image: curlimages/curl:8.1.2
         imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
         command:
         - /bin/sh
         - -c
         - |
+          set -e
+
+          check_service() {
+            local service_name="$1"
+            local url="$2"
+            echo "--> Checking readiness of $service_name at $url..."
+            for i in $(seq 1 60); do
+              if curl --fail -s -o /dev/null "$url"; then
+                echo "✓ $service_name is ready!"
+                return 0
+              fi
+              echo "Attempt $i/60 for $service_name: service not ready. Retrying in 10 seconds..."
+              sleep 10
+            done
+            echo "✗ Timeout: $service_name failed to become ready after 10 minutes."
+            exit 1
+          }
+
           echo "Waiting for OLake stack to be ready..."
-          echo "Checking olake-worker health endpoint..."
           
-          for i in $(seq 1 60); do
-            response=$(curl -s -o /dev/null -w "%{http_code}" http://olake-k8s-worker.{{ include "olake.namespace" . }}.svc.cluster.local:8090/health || echo "000")
-            if [ "$response" = "200" ]; then
-              echo "✓ OLake stack is ready! (olake-worker health check passed)"
-              exit 0
-            fi
-            echo "Attempt $i/60: Health check returned $response, waiting 10 seconds..."
-            sleep 10
-          done
+          check_service "olake-worker" "http://olake-k8s-worker.{{ include "olake.namespace" . }}.svc.cluster.local:8090/health"
           
-          echo "✗ Timeout: OLake stack failed to become ready within 10 minutes"
-          exit 1
+          echo "✓ OLake stack is fully operational."
+          exit 0
         resources:
           requests:
             memory: "32Mi"

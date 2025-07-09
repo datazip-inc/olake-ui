@@ -17,4 +17,4 @@ maintainers:
   - name: Schitiz Sharma
     email: schitiz@datazip.io
 dependencies: []
-annotations: []
+annotations: {}

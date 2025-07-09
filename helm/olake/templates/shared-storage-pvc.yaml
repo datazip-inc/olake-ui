@@ -16,6 +16,6 @@ spec:
     - ReadWriteMany
   resources:
     requests:
-      storage: {{ .Values.nfsServer.persistence.size | default "20Gi" }}
+      storage: {{ include "olake.sharedStorageSize" . }}
   storageClassName: {{ .Values.nfsServer.storageClass.name | default "nfs-server" }}
 {{- end }}
