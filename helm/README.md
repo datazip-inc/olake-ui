@@ -58,9 +58,18 @@ Configure the default admin user credentials during installation:
 ```yaml
 olakeUI:
   initUser:
+    # Default admin user (for development only)
     adminUser:
       username: "admin"
-      password: "your-secure-password"
+      password: "password"
+      email: "admin@example.com"
+    
+    # For production, use an existing Kubernetes secret
+    existingSecret: "olake-admin-secret"
+    secretKeys:
+      username: "admin-username"
+      password: "admin-password"
+      email: "admin-email"
 ```
 
 ### Ingress Configuration
@@ -109,25 +118,18 @@ global:
 
 ### Storage Configuration
 
-**Dynamic NFS Provisioning (default)**
-
-The chart deploys a self-managed NFS server with dynamic provisioning:
+Configure shared storage for data processing jobs:
 
 ```yaml
 nfsServer:
+  # Default: Self-managed NFS server with dynamic provisioning
   enabled: true
   persistence:
     size: 20Gi
   storageClass:
     name: "nfs-server"
-```
-
-**External Storage Provider**
-
-For production environments, use external ReadWriteMany storage:
-
-```yaml
-nfsServer:
+  
+  # For production, use external ReadWriteMany PVC
   enabled: false
   external:
     name: "my-rwx-pvc"

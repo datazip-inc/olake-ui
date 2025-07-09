@@ -41,12 +41,30 @@ spec:
         image: curlimages/curl:latest
         imagePullPolicy: IfNotPresent
         env:
+        {{- if .Values.olakeUI.initUser.existingSecret }}
+        - name: USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.olakeUI.initUser.existingSecret }}
+              key: {{ required "A username key must be provided in olakeUI.initUser.secretKeys" .Values.olakeUI.initUser.secretKeys.username }}
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.olakeUI.initUser.existingSecret }}
+              key: {{ required "A password key must be provided in olakeUI.initUser.secretKeys" .Values.olakeUI.initUser.secretKeys.password }}
+        - name: EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.olakeUI.initUser.existingSecret }}
+              key: {{ required "An email key must be provided in olakeUI.initUser.secretKeys" .Values.olakeUI.initUser.secretKeys.email }}
+        {{- else }}
         - name: USERNAME
           value: "{{ .Values.olakeUI.initUser.adminUser.username }}"
         - name: PASSWORD
           value: "{{ .Values.olakeUI.initUser.adminUser.password }}"
         - name: EMAIL
           value: "{{ .Values.olakeUI.initUser.adminUser.email }}"
+        {{- end }}
         - name: OLAKE_APP_URL
           value: "http://olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local:8080/signup"
         command:

@@ -126,7 +126,22 @@ olakeUI:
   
   # -- Initialization user configuration
   initUser:
-    # -- Admin user credentials for initial setup
+    # -- Use an existing Kubernetes secret for the admin user credentials.
+    # If you provide a secret name, the job will use it instead of the direct values below.
+    # The secret must contain keys for username, password, and email.
+    # Example:
+    # existingSecret: "my-olake-admin-secret"
+    existingSecret: ""
+
+    # -- Map the keys from your existing secret to the required fields.
+    # This is required only if `existingSecret` is set.
+    secretKeys:
+      username: "username"
+      password: "password"
+      email: "email"
+
+    # -- Credentials for the initial admin user.
+    # These values are used only if `existingSecret` is not provided.
     adminUser:
       # -- Admin username
       username: "admin"
