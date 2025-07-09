@@ -1,4 +1,3 @@
-{{- if .Values.postgresql.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,7 +10,7 @@ metadata:
     app.kubernetes.io/component: database
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.postgresql.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: postgresql
@@ -100,4 +99,3 @@ spec:
         persistentVolumeClaim:
           claimName: postgresql-pvc
       {{- end }}
-{{- end }}

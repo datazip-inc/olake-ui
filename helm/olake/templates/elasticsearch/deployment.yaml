@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/component: search
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.elasticsearch.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: elasticsearch

@@ -1,4 +1,3 @@
-{{- if .Values.temporal.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,7 +10,7 @@ metadata:
     app.kubernetes.io/component: workflow-engine
     {{- include "olake.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.temporal.server.replicaCount }}
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: temporal
@@ -114,4 +113,3 @@ spec:
         {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.temporal.server.livenessProbe | default dict) }}
         livenessProbe:
           {{- toYaml $livenessProbe | nindent 10 }}
-{{- end }}

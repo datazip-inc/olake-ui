@@ -1,7 +1,5 @@
 🎉 OLake has been successfully deployed!
 
-{{- if .Values.olakeUI.enabled }}
-
 📋 ACCESS INSTRUCTIONS:
 
 {{- if .Values.olakeUI.ingress.enabled }}
@@ -35,21 +33,11 @@
 
 {{- end }}
 
-{{- end }}
-
 📊 COMPONENT STATUS:
-{{- if .Values.olakeUI.enabled }}
 - ✅ OLake UI (Frontend & Backend)
-{{- end }}
-{{- if .Values.olakeWorker.enabled }}
 - ✅ OLake Worker
-{{- end }}
-{{- if .Values.postgresql.enabled }}
 - ✅ PostgreSQL Database
-{{- end }}
-{{- if .Values.temporal.enabled }}
 - ✅ Temporal Server
-{{- end }}
 {{- if .Values.temporal.ui.enabled }}
 - ✅ Temporal UI
 {{- end }}

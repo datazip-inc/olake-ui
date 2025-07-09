@@ -1,4 +1,3 @@
-{{- if .Values.temporal.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -24,4 +23,3 @@ spec:
     app.kubernetes.io/name: temporal
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: workflow-engine
-{{- end }}

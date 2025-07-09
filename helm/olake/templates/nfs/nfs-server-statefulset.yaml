@@ -46,8 +46,8 @@ spec:
       serviceAccountName: {{ include "olake.fullname" . }}-nfs-server
       containers:
       - name: nfs-server
-        image: "{{ .Values.nfsServer.image.repository }}:{{ .Values.nfsServer.image.tag }}"
-        imagePullPolicy: {{ .Values.nfsServer.image.pullPolicy }}
+        image: "devxygmbh/nfs-server-provisioner:latest"
+        imagePullPolicy: IfNotPresent
         ports:
         - name: nfs
           containerPort: 2049

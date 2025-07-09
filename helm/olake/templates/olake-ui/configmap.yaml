@@ -1,4 +1,3 @@
-{{- if .Values.olakeUI.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,4 +27,3 @@ data:
     
     # Temporal Configuration
     TEMPORAL_ADDRESS = temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233
-{{- end }}

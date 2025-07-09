@@ -1,4 +1,4 @@
-{{- if and .Values.temporal.enabled .Values.temporal.ui.enabled }}
+{{- if .Values.temporal.ui.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,7 +23,7 @@ spec:
         app.kubernetes.io/name: temporal-ui
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: workflow-ui
-          spec:
+    spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

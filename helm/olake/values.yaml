@@ -1,5 +1,3 @@
-# -- Namespace will be set by --namespace flag during helm install
-
 # -- Provide a name in place of olake for `app:` labels
 nameOverride: ""
 
@@ -40,15 +38,8 @@ global:
         strategy: "soft"
         topologyKey: "kubernetes.io/hostname"
 
-# =============================================================================
-# OLAKE UI
-# =============================================================================
-
-# OLake UI - Main application frontend and backend
+# OLake UI - Main application
 olakeUI:
-  # -- Enable OLake UI deployment
-  enabled: true
-  
   # -- Number of OLake UI replicas
   # For production, consider 2+ replicas for high availability
   replicaCount: 1
@@ -146,19 +137,8 @@ olakeUI:
       # -- Admin email address
       email: "admin@example.com"
 
-# =============================================================================
-# OLAKE WORKER
-# =============================================================================
-
 # OLake K8s Worker - Executes data pipeline tasks as Kubernetes pods
 olakeWorker:
-  # -- Enable OLake K8s Worker deployment
-  enabled: true
-  
-  # -- Number of OLake Worker replicas
-  # Multiple replicas can handle more concurrent workflows
-  replicaCount: 1
-  
   # -- OLake Worker image configuration
   image:
     repository: olakego/olake-worker-k8s
@@ -234,7 +214,6 @@ olakeWorker:
       format: console
 
 # Storage configuration for shared data exchange between pods
-# Uses NFS Ganesha for dynamic provisioning and high availability
 nfsServer:
   # -- Enable NFS server deployment with dynamic provisioning
   # When false, you must provide external storage (EFS/Azure Files/etc.)
@@ -258,11 +237,6 @@ nfsServer:
     # Example: "efs-pvc" or "azure-files-pvc" or "gcp-filestore-pvc"
     name: ""
   
-  # -- NFS server image configuration
-  image:
-    repository: devxygmbh/nfs-server-provisioner
-    tag: latest
-    pullPolicy: IfNotPresent
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -289,20 +263,10 @@ nfsServer:
     # -- Name of the StorageClass created by NFS server
     name: "nfs-server"
 
-
-# =============================================================================
-# TEMPORAL WORKFLOW ENGINE
-# =============================================================================
-
 # Temporal configuration for workflow orchestration
 temporal:
-  # -- Enable Temporal deployment
-  enabled: true
-  
   # -- Temporal server configuration
   server:
-    # -- Number of Temporal server replicas
-    replicaCount: 1
     
     # -- Temporal server image configuration
     image:
@@ -342,19 +306,8 @@ temporal:
     # -- Enable Temporal Web UI
     enabled: false
 
-# =============================================================================
-# POSTGRESQL DATABASE
-# =============================================================================
-
 # PostgreSQL is used as the backend database for Temporal and OLake
 postgresql:
-  # -- Enable PostgreSQL deployment
-  enabled: true
-  
-  # -- Number of PostgreSQL replicas
-  # Note: PostgreSQL clustering requires additional configuration
-  replicaCount: 1
-  
   # -- PostgreSQL image configuration
   image:
     repository: postgres
@@ -425,18 +378,11 @@ postgresql:
     # -- Additional annotations for PVC
     annotations: {}
 
-# =============================================================================
-# ELASTICSEARCH
-# =============================================================================
-
 # Elasticsearch is used by Temporal for advanced visibility features
 elasticsearch:
   # -- Enable Elasticsearch deployment
   # Set to false to disable advanced visibility in Temporal
   enabled: true
-  
-  # -- Number of Elasticsearch replicas
-  replicaCount: 1
   
   # -- Elasticsearch image configuration
   image:
@@ -470,4 +416,3 @@ elasticsearch:
   #       memory: "4Gi"
   #       cpu: "2000m"
   resources: {}
-  

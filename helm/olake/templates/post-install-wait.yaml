@@ -1,4 +1,3 @@
-{{- if and .Values.olakeUI.enabled .Values.olakeWorker.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -52,4 +51,3 @@ spec:
           limits:
             memory: "64Mi"
             cpu: "100m"
-{{- end }}

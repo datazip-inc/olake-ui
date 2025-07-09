@@ -1,4 +1,3 @@
-{{- if .Values.olakeUI.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -90,4 +89,3 @@ spec:
           {{- toYaml $resources | nindent 10 }}
   # Automatically clean up completed jobs after 1 hour
   ttlSecondsAfterFinished: 3600
-{{- end }}
