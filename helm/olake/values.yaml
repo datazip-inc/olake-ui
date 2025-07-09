@@ -124,8 +124,8 @@ olakeUI:
     #         - olake.example.com
     tls: []
   
-  # -- Initialization job configuration
-  initJob:
+  # -- Initialization user configuration
+  initUser:
     # -- Admin user credentials for initial setup
     adminUser:
       # -- Admin username

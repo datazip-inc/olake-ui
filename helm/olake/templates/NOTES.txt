@@ -57,8 +57,8 @@
 📚 NEXT STEPS:
 
 1. Log into the OLake UI using the admin credentials
-   - Username: {{ .Values.olakeUI.initJob.adminUser.username }}
-   - Password: {{ .Values.olakeUI.initJob.adminUser.password }}
+   - Username: {{ .Values.olakeUI.initUser.adminUser.username }}
+   - Password: {{ .Values.olakeUI.initUser.adminUser.password }}
 2. Configure data sources and destinations
 3. Setup Jobs to start syncing
 

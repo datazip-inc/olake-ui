@@ -39,21 +39,6 @@ helm install olake ./helm/olake
 helm install olake ./helm/olake -f </path/to/values/file> --namespace <namespace> --create-namespace
 ```
 
-## Configuration Reference
-
-### Key Configuration Options
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `olakeUI.initJob.adminUser.username` | Initial admin username | `admin` |
-| `olakeUI.initJob.adminUser.password` | Initial admin password | `password` |
-| `nfsServer.enabled` | Enable dynamic NFS provisioning | `true` |
-| `nfsServer.persistence.size` | NFS server storage size | `20Gi` |
-| `nfsServer.storageClass.name` | Dynamic StorageClass name | `nfs-server` |
-| `global.job.sync.antiAffinity.enabled` | Enable sync job anti-affinity | `true` |
-
-For complete configuration options, see [values.yaml](./olake/values.yaml).
-
 ## Accessing Services
 
 ```bash
@@ -65,6 +50,40 @@ kubectl port-forward svc/olake-ui 8000:8000 8080:8080
 ```
 
 ## Features
+
+### Initial User Setup
+
+Configure the default admin user credentials during installation:
+
+```yaml
+olakeUI:
+  initUser:
+    adminUser:
+      username: "admin"
+      password: "your-secure-password"
+```
+
+### Ingress Configuration
+
+Enable external access to the OLake UI through Kubernetes Ingress:
+
+```yaml
+olakeUI:
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+    hosts:
+      - host: olake.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: olake-tls
+        hosts:
+          - olake.example.com
+```
 
 ### Job Scheduling
 

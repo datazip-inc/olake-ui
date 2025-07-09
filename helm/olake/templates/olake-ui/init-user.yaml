@@ -42,11 +42,11 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: USERNAME
-          value: "{{ .Values.olakeUI.initJob.adminUser.username }}"
+          value: "{{ .Values.olakeUI.initUser.adminUser.username }}"
         - name: PASSWORD
-          value: "{{ .Values.olakeUI.initJob.adminUser.password }}"
+          value: "{{ .Values.olakeUI.initUser.adminUser.password }}"
         - name: EMAIL
-          value: "{{ .Values.olakeUI.initJob.adminUser.email }}"
+          value: "{{ .Values.olakeUI.initUser.adminUser.email }}"
         - name: OLAKE_APP_URL
           value: "http://olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local:8080/signup"
         command:
@@ -84,7 +84,7 @@ spec:
         {{- $defaultResources := dict 
           "requests" (dict "memory" "128Mi" "cpu" "100m")
         }}
-        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeUI.initJob.resources | default dict) }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeUI.initUser.resources | default dict) }}
         resources:
           {{- toYaml $resources | nindent 10 }}
   # Automatically clean up completed jobs after 1 hour
