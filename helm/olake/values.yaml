@@ -216,7 +216,9 @@ olakeWorker:
 # Storage configuration for shared data exchange between pods
 nfsServer:
   # -- Enable NFS server deployment with dynamic provisioning
-  # When false, you must provide external storage (EFS/Azure Files/etc.)
+  # IMPORTANT: NFS components are created once and persist across helm operations.
+  # They will NOT be deleted on 'helm uninstall' or modified on 'helm upgrade'.
+  # This ensures data persistence but requires manual management for updates.
   enabled: true
 
   # -- External storage configuration (used when enabled: false)
