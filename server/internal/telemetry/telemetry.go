@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	analytics "github.com/segmentio/analytics-go/v3"
@@ -142,6 +143,9 @@ func getLocationFromIP(ip string) *LocationInfo {
 
 // TrackEvent sends a custom event to Segment
 func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
+	if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
+		return nil
+	}
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
