@@ -172,9 +172,11 @@ func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
 // getNodeSelectorForJob returns node selector configuration for the given jobID
 // Returns empty map if no mapping is found (graceful fallback)
 func (k *K8sPodManager) getNodeSelectorForJob(jobID int) map[string]string {
-	// TODO: Implement Helm ConfigMap lookup for jobID-based node selectors
-	// For now, return empty map as graceful fallback
-	logger.Infof("JobID-based node selector lookup for job %d - returning empty (no mapping)", jobID)
+	if mapping, exists := k.config.Kubernetes.JobMapping[jobID]; exists {
+		logger.Infof("Found node mapping for JobID %d: %v", jobID, mapping)
+		return mapping
+	}
+	logger.Debugf("No node mapping found for JobID %d, using default scheduling", jobID)
 	return make(map[string]string)
 }
 
@@ -185,6 +187,46 @@ func (k *K8sPodManager) getTolerationsForJob(jobID int) []corev1.Toleration {
 	// For now, return empty slice as graceful fallback
 	logger.Infof("JobID-based tolerations lookup for job %d - returning empty (no mapping)", jobID)
 	return []corev1.Toleration{}
+}
+
+// buildNodeAffinity creates node affinity from JobID mapping configuration
+// Converts map[string]string to preferredDuringScheduling node affinity with proper edge case handling
+func (k *K8sPodManager) buildNodeAffinity(nodeSelectorMap map[string]string) (*corev1.NodeAffinity, error) {
+	if len(nodeSelectorMap) == 0 {
+		return nil, nil // No mapping, no node affinity
+	}
+
+	var matchExpressions []corev1.NodeSelectorRequirement
+	for key, value := range nodeSelectorMap {
+		// Edge case: Ensure the key and value from config are not empty
+		if key == "" || value == "" {
+			logger.Warnf("Skipping invalid node mapping entry with empty key or value: key=%s, value=%s", key, value)
+			continue
+		}
+		
+		// The 'Values' field for the 'In' operator must be a slice of strings
+		matchExpressions = append(matchExpressions, corev1.NodeSelectorRequirement{
+			Key:      key,
+			Operator: corev1.NodeSelectorOpIn,
+			Values:   []string{value},
+		})
+	}
+
+	// If all entries were invalid, there's nothing to do
+	if len(matchExpressions) == 0 {
+		return nil, fmt.Errorf("all node mapping entries were invalid")
+	}
+
+	return &corev1.NodeAffinity{
+		PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+			{
+				Weight: 100, // High preference for JobID-mapped nodes
+				Preference: corev1.NodeSelectorTerm{
+					MatchExpressions: matchExpressions,
+				},
+			},
+		},
+	}, nil
 }
 
 // buildAffinityForJob builds affinity rules for the given jobID and operation type
@@ -213,10 +255,22 @@ func (k *K8sPodManager) buildAffinityForJob(jobID int, operation shared.Command)
 		logger.Debugf("No anti-affinity rules applied for %s operation (jobID %d)", operation, jobID)
 	}
 
-	// TODO: Future enhancement - implement JobID-based node affinity using jobMapping configuration
-	// This would add nodeAffinity rules to prefer/require specific node groups based on JobID
-	// Example: JobID 123 → high-memory nodes, JobID 456 → GPU nodes
-	// Would use the jobMapping from Helm ConfigMaps loaded in getNodeSelectorForJob()
+	// Add JobID-based node affinity using jobMapping configuration
+	nodeMapping := k.getNodeSelectorForJob(jobID)
+	if len(nodeMapping) > 0 {
+		nodeAffinity, err := k.buildNodeAffinity(nodeMapping)
+		if err != nil {
+			logger.Errorf("Failed to build node affinity for JobID %d: %v", jobID, err)
+		} else if nodeAffinity != nil {
+			if affinity == nil {
+				affinity = &corev1.Affinity{}
+			}
+			affinity.NodeAffinity = nodeAffinity
+			logger.Infof("Applied node affinity for JobID %d: preferring nodes with %v", jobID, nodeMapping)
+		}
+	} else {
+		logger.Debugf("No JobID-based node affinity applied for JobID %d (no mapping found)", jobID)
+	}
 
 	return affinity
 }

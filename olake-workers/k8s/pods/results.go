@@ -67,7 +67,7 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string) (map[
 		// For discover operations, look for streams.json catalog file
 		workflowDir := k.filesystemHelper.GetWorkflowDirectory(shared.Discover, workflowID)
 		catalogPath := k.filesystemHelper.GetFilePath(workflowDir, "streams.json")
-		
+
 		if result, err := json.ParseJSONFile(catalogPath); err == nil {
 			logger.Debugf("Successfully parsed streams.json for discover operation")
 			return result, nil
@@ -93,7 +93,7 @@ func (k *K8sPodManager) fallbackToLogParsing(ctx context.Context, podName, workf
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod logs: %v", err)
 	}
-	
+
 	logger.Debugf("Raw pod logs for pod %s:\n%s", podName, logs)
 	return parser.ParseJobOutput(logs)
 }
