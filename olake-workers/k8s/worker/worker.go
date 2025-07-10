@@ -104,17 +104,6 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	return k8sWorker, nil
 }
 
-// NewK8sWorker creates a new K8s worker with default configuration (for backward compatibility)
-func NewK8sWorker() (*K8sWorker, error) {
-	// Load configuration
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %v", err)
-	}
-
-	// Use the full configuration constructor
-	return NewK8sWorkerWithConfig(cfg)
-}
 
 func (w *K8sWorker) Start() error {
 	logger.Info("Starting Temporal worker...")

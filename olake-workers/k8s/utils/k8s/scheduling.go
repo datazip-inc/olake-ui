@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/validation"
 	"olake-ui/olake-workers/k8s/logger"
 )
 
@@ -78,27 +79,58 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 
 		if len(nodeLabels) == 0 {
 			logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
+			result[jobID] = make(map[string]string)
+			stats.ValidEntries++
+			continue
 		}
 
-		// Validate node label keys and values
+		// Validate node label keys and values using Kubernetes validation
+		// Treat each JobID mapping as atomic: either all labels are valid or reject the entire entry
 		validMapping := make(map[string]string)
+		isEntryValid := true
+		
 		for key, value := range nodeLabels {
-			if strings.TrimSpace(key) == "" {
+			key = strings.TrimSpace(key)
+			value = strings.TrimSpace(value)
+			
+			// Validate empty key/value
+			if key == "" {
 				stats.InvalidMappings = append(stats.InvalidMappings, 
 					fmt.Sprintf("JobID %d: empty label key", jobID))
 				logger.Errorf("JobID %d has empty node label key", jobID)
-				continue
+				isEntryValid = false
+				break
 			}
-			if strings.TrimSpace(value) == "" {
+			if value == "" {
 				stats.InvalidMappings = append(stats.InvalidMappings, 
 					fmt.Sprintf("JobID %d: empty label value for key '%s'", jobID, key))
 				logger.Errorf("JobID %d has empty value for node label key '%s'", jobID, key)
-				continue
+				isEntryValid = false
+				break
 			}
-			validMapping[strings.TrimSpace(key)] = strings.TrimSpace(value)
+			
+			// Validate Kubernetes label key (RFC 1123 DNS subdomain format)
+			if errs := validation.IsDNS1123Subdomain(key); len(errs) > 0 {
+				stats.InvalidMappings = append(stats.InvalidMappings, 
+					fmt.Sprintf("JobID %d: invalid label key '%s'", jobID, key))
+				logger.Errorf("JobID %d has invalid node label key '%s': %v", jobID, key, errs)
+				isEntryValid = false
+				break
+			}
+			
+			// Validate Kubernetes label value (RFC 1123 label format)
+			if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
+				stats.InvalidMappings = append(stats.InvalidMappings, 
+					fmt.Sprintf("JobID %d: invalid label value '%s' for key '%s'", jobID, value, key))
+				logger.Errorf("JobID %d has invalid node label value '%s' for key '%s': %v", jobID, value, key, errs)
+				isEntryValid = false
+				break
+			}
+			
+			validMapping[key] = value
 		}
 
-		if len(validMapping) > 0 || len(nodeLabels) == 0 {
+		if isEntryValid {
 			result[jobID] = validMapping
 			stats.ValidEntries++
 		}

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OLake Helm Chart Values Schema",
+  "type": "object",
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "jobMapping": {
+          "type": "object",
+          "description": "Mapping of JobIDs to node selectors for pod scheduling. Example: { \"123\": { \"node-type\": \"gpu\" }, \"456\": { \"instance-type\": \"memory-optimized\" } }",
+          "patternProperties": {
+            "^[0-9]+$": {
+              "type": "object",
+              "description": "Node selector configuration for a specific JobID. Each property represents a Kubernetes node label (key-value pair).",
+              "additionalProperties": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-_.]*[a-zA-Z0-9])?$",
+                "maxLength": 63,
+                "description": "The value for a node label. Must follow Kubernetes label value format (RFC 1123)."
+              },
+              "propertyNames": {
+                "pattern": "^[a-zA-Z0-9]([a-zA-Z0-9\\-_.]*[a-zA-Z0-9])?(/[a-zA-Z0-9]([a-zA-Z0-9\\-_.]*[a-zA-Z0-9])?)*$",
+                "maxLength": 253,
+                "description": "Node label key. Must follow Kubernetes label key format (RFC 1123 DNS subdomain)."
+              }
+            }
+          },
+          "additionalProperties": false,
+          "examples": [
+            {
+              "123": {
+                "node-type": "gpu",
+                "instance-size": "large"
+              },
+              "456": {
+                "node-type": "memory-optimized"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

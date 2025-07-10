@@ -17,7 +17,7 @@ global:
   # Example:
   #   jobMapping:
   #     123:
-  #       node-type: "high-memory"
+  #       olake.io/workload-type: "heavy"
   #     456:
   #       node-type: "high-cpu"
   jobMapping: {}
