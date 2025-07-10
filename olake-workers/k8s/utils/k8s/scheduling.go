@@ -1,108 +1,136 @@
 package k8s
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
-	"olake-ui/olake-workers/k8s/config/types"
-	"olake-ui/olake-workers/k8s/utils/env"
-	"olake-ui/olake-workers/k8s/utils/parser"
-	corev1 "k8s.io/api/core/v1"
+	"olake-ui/olake-workers/k8s/logger"
 )
 
-// GetDefaultJobSchedulingConfig returns default scheduling configuration for Kubernetes jobs
-func GetDefaultJobSchedulingConfig() types.JobSchedulingConfig {
-	return types.JobSchedulingConfig{
-		SyncJobs: types.ActivitySchedulingConfig{
-			NodeSelector: map[string]string{},
-			Tolerations:  []corev1.Toleration{},
-			Affinity:     nil,
-			AntiAffinity: types.AntiAffinityConfig{
-				Enabled:     true,
-				Strategy:    "hard",
-				TopologyKey: "kubernetes.io/hostname",
-				Weight:      100,
-			},
-		},
-		DiscoverJobs: types.ActivitySchedulingConfig{
-			NodeSelector: map[string]string{},
-			Tolerations:  []corev1.Toleration{},
-			Affinity:     nil,
-			AntiAffinity: types.AntiAffinityConfig{
-				Enabled:     false,
-				Strategy:    "soft",
-				TopologyKey: "kubernetes.io/hostname",
-				Weight:      50,
-			},
-		},
-		TestJobs: types.ActivitySchedulingConfig{
-			NodeSelector: map[string]string{},
-			Tolerations:  []corev1.Toleration{},
-			Affinity:     nil,
-			AntiAffinity: types.AntiAffinityConfig{
-				Enabled:     false,
-				Strategy:    "soft",
-				TopologyKey: "kubernetes.io/hostname",
-				Weight:      50,
-			},
-		},
+// JobMappingStats contains statistics about job mapping loading
+type JobMappingStats struct {
+	TotalEntries    int
+	ValidEntries    int
+	InvalidJobIDs   []string
+	InvalidMappings []string
+}
+
+// LoadJobMappingFromEnv loads the JobID to node mapping configuration from environment variables
+// with enhanced error handling and detailed validation
+func LoadJobMappingFromEnv() map[int]map[string]string {
+	jobMappingJSON := os.Getenv("OLAKE_JOB_MAPPING")
+	if jobMappingJSON == "" {
+		logger.Info("No OLAKE_JOB_MAPPING environment variable found, using empty mapping")
+		return make(map[int]map[string]string)
 	}
-}
 
-// LoadJobSchedulingFromEnv loads job scheduling configuration from environment variables
-// Following Airbyte pattern: OLAKE_{ACTIVITY}_JOB_{SETTING}
-func LoadJobSchedulingFromEnv(config types.JobSchedulingConfig) types.JobSchedulingConfig {
-	// Load sync job configuration
-	config.SyncJobs = loadActivitySchedulingFromEnv("SYNC", config.SyncJobs)
-	
-	// Load discover job configuration
-	config.DiscoverJobs = loadActivitySchedulingFromEnv("DISCOVER", config.DiscoverJobs)
-	
-	// Load test job configuration
-	config.TestJobs = loadActivitySchedulingFromEnv("TEST", config.TestJobs)
-	
-	return config
-}
+	// Validate JSON format first
+	jobMappingJSON = strings.TrimSpace(jobMappingJSON)
+	if !strings.HasPrefix(jobMappingJSON, "{") || !strings.HasSuffix(jobMappingJSON, "}") {
+		logger.Errorf("OLAKE_JOB_MAPPING must be a valid JSON object, got: %s", 
+			truncateForLog(jobMappingJSON, 100))
+		return make(map[int]map[string]string)
+	}
 
-// loadActivitySchedulingFromEnv loads activity-specific scheduling configuration
-func loadActivitySchedulingFromEnv(activity string, config types.ActivitySchedulingConfig) types.ActivitySchedulingConfig {
-	// Load node selector from environment variable
-	// Format: OLAKE_SYNC_JOB_NODE_SELECTOR="key1=value1,key2=value2"
-	nodeSelectorEnv := env.GetEnv(fmt.Sprintf("OLAKE_%s_JOB_NODE_SELECTOR", activity), "")
-	if nodeSelectorEnv != "" {
-		nodeSelector := parser.ParseKeyValuePairs(nodeSelectorEnv)
-		if len(nodeSelector) > 0 {
-			config.NodeSelector = nodeSelector
+	var jobMapping map[string]map[string]string
+	if err := json.Unmarshal([]byte(jobMappingJSON), &jobMapping); err != nil {
+		logger.Errorf("Failed to parse OLAKE_JOB_MAPPING as JSON: %v", err)
+		logger.Errorf("Raw configuration (first 200 chars): %s", 
+			truncateForLog(jobMappingJSON, 200))
+		return make(map[int]map[string]string)
+	}
+
+	// Enhanced validation and conversion with detailed error tracking
+	stats := JobMappingStats{
+		TotalEntries:    len(jobMapping),
+		InvalidJobIDs:   make([]string, 0),
+		InvalidMappings: make([]string, 0),
+	}
+
+	result := make(map[int]map[string]string)
+	
+	for jobIDStr, nodeLabels := range jobMapping {
+		// Validate JobID format
+		jobID, err := strconv.Atoi(jobIDStr)
+		if err != nil {
+			stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
+			logger.Errorf("Invalid JobID format (must be integer): '%s'", jobIDStr)
+			continue
+		}
+
+		// Validate jobID is positive
+		if jobID <= 0 {
+			stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
+			logger.Errorf("JobID must be positive integer, got: %d", jobID)
+			continue
+		}
+
+		// Validate node labels structure
+		if nodeLabels == nil {
+			stats.InvalidMappings = append(stats.InvalidMappings, 
+				fmt.Sprintf("JobID %d: null mapping", jobID))
+			logger.Errorf("JobID %d has null node mapping", jobID)
+			continue
+		}
+
+		if len(nodeLabels) == 0 {
+			logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
+		}
+
+		// Validate node label keys and values
+		validMapping := make(map[string]string)
+		for key, value := range nodeLabels {
+			if strings.TrimSpace(key) == "" {
+				stats.InvalidMappings = append(stats.InvalidMappings, 
+					fmt.Sprintf("JobID %d: empty label key", jobID))
+				logger.Errorf("JobID %d has empty node label key", jobID)
+				continue
+			}
+			if strings.TrimSpace(value) == "" {
+				stats.InvalidMappings = append(stats.InvalidMappings, 
+					fmt.Sprintf("JobID %d: empty label value for key '%s'", jobID, key))
+				logger.Errorf("JobID %d has empty value for node label key '%s'", jobID, key)
+				continue
+			}
+			validMapping[strings.TrimSpace(key)] = strings.TrimSpace(value)
+		}
+
+		if len(validMapping) > 0 || len(nodeLabels) == 0 {
+			result[jobID] = validMapping
+			stats.ValidEntries++
 		}
 	}
+
+	// Log comprehensive statistics
+	logger.Infof("Job mapping loaded: %d valid entries out of %d total", 
+		stats.ValidEntries, stats.TotalEntries)
 	
-	// Load anti-affinity strategy
-	// Format: OLAKE_SYNC_JOB_ANTI_AFFINITY_STRATEGY="hard"
-	antiAffinityStrategy := env.GetEnv(fmt.Sprintf("OLAKE_%s_JOB_ANTI_AFFINITY_STRATEGY", activity), "")
-	if antiAffinityStrategy != "" {
-		config.AntiAffinity.Strategy = antiAffinityStrategy
+	if len(stats.InvalidJobIDs) > 0 {
+		logger.Errorf("Found %d invalid JobIDs: %v", 
+			len(stats.InvalidJobIDs), stats.InvalidJobIDs)
 	}
 	
-	// Load anti-affinity topology key
-	// Format: OLAKE_SYNC_JOB_ANTI_AFFINITY_TOPOLOGY_KEY="kubernetes.io/hostname"
-	topologyKey := env.GetEnv(fmt.Sprintf("OLAKE_%s_JOB_ANTI_AFFINITY_TOPOLOGY_KEY", activity), "")
-	if topologyKey != "" {
-		config.AntiAffinity.TopologyKey = topologyKey
+	if len(stats.InvalidMappings) > 0 {
+		logger.Errorf("Found %d invalid mappings: %v", 
+			len(stats.InvalidMappings), stats.InvalidMappings)
 	}
-	
-	// Load anti-affinity enabled flag
-	// Format: OLAKE_SYNC_JOB_ANTI_AFFINITY_ENABLED="true"
-	antiAffinityEnabledEnv := env.GetEnv(fmt.Sprintf("OLAKE_%s_JOB_ANTI_AFFINITY_ENABLED", activity), "")
-	if antiAffinityEnabledEnv != "" {
-		config.AntiAffinity.Enabled = env.GetEnvBool(fmt.Sprintf("OLAKE_%s_JOB_ANTI_AFFINITY_ENABLED", activity), config.AntiAffinity.Enabled)
+
+	// Warn if no valid mappings were loaded
+	if stats.ValidEntries == 0 && stats.TotalEntries > 0 {
+		logger.Errorf("No valid job mappings loaded despite %d entries in configuration", 
+			stats.TotalEntries)
 	}
-	
-	// Load anti-affinity weight
-	// Format: OLAKE_SYNC_JOB_ANTI_AFFINITY_WEIGHT="100"
-	weightEnv := env.GetEnv(fmt.Sprintf("OLAKE_%s_JOB_ANTI_AFFINITY_WEIGHT", activity), "")
-	if weightEnv != "" {
-		weight := env.GetEnvInt(fmt.Sprintf("OLAKE_%s_JOB_ANTI_AFFINITY_WEIGHT", activity), int(config.AntiAffinity.Weight))
-		config.AntiAffinity.Weight = int32(weight)
+
+	return result
+}
+
+// truncateForLog safely truncates a string for logging to prevent log spam
+func truncateForLog(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
 	}
-	
-	return config
+	return s[:maxLen] + "..."
 }

@@ -8,11 +8,8 @@ import (
 
 // LoadKubernetes loads Kubernetes configuration from environment variables
 func LoadKubernetes() (types.KubernetesConfig, error) {
-	// Load default job scheduling configuration
-	jobScheduling := k8s.GetDefaultJobSchedulingConfig()
-	
-	// Override with environment variables if provided
-	jobScheduling = k8s.LoadJobSchedulingFromEnv(jobScheduling)
+	// Load JobID-based job mapping configuration
+	jobMapping := k8s.LoadJobMappingFromEnv()
 	
 	return types.KubernetesConfig{
 		Namespace:       env.GetEnv("WORKER_NAMESPACE", "olake"),
@@ -25,6 +22,6 @@ func LoadKubernetes() (types.KubernetesConfig, error) {
 			"managed-by": "olake-k8s-worker",
 			"version":    env.GetEnv("WORKER_VERSION", "latest"),
 		},
-		JobScheduling:   jobScheduling,
+		JobMapping:      jobMapping,
 	}, nil
 }

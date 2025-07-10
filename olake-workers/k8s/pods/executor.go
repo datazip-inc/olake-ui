@@ -3,12 +3,12 @@ package pods
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"olake-ui/olake-workers/k8s/config/types"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/shared"
 	"olake-ui/olake-workers/k8s/utils/k8s"
@@ -20,13 +20,14 @@ type PodSpec struct {
 	Image              string
 	Command            []string
 	Args               []string
-	Operation          shared.Command
 	OriginalWorkflowID string
+	JobID              int
+	Operation          shared.Command
 }
 
-// CreatePod creates a Kubernetes Pod for running sync operations
+// CreatePod creates a Kubernetes Pod for running job operations
 func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []shared.JobConfig) (*corev1.Pod, error) {
-	// Get workflow directory using filesystem helper
+	// Get workflow directory using filesystem helper with the actual operation type
 	workflowDir := k.filesystemHelper.GetWorkflowDirectory(spec.Operation, spec.OriginalWorkflowID)
 
 	// Use filesystem helper to setup directory and write config files
@@ -44,23 +45,25 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 			Name:      spec.Name,
 			Namespace: k.namespace,
 			Labels: map[string]string{
-				"app":                  "olake-connector",
-				"type":                 string(spec.Operation) + "-pod",
-				"operation":            string(spec.Operation),
-				"olake.io/workflow-id": k8s.SanitizeName(spec.OriginalWorkflowID),
-				"olake.io/autoscaling": "enabled",
+				"app":                      "olake-connector",
+				"type":                     "job-pod",
+				"olake.io/workflow-id":     k8s.SanitizeName(spec.OriginalWorkflowID),
+				"olake.io/job-id":          strconv.Itoa(spec.JobID),
+				"olake.io/operation-type":  string(spec.Operation),
+				"olake.io/autoscaling":     "enabled",
 			},
 			Annotations: map[string]string{
 				"olake.io/created-by":           "olake-ui/olake-workers/k8s",
 				"olake.io/created-at":           time.Now().Format(time.RFC3339),
 				"olake.io/original-workflow-id": spec.OriginalWorkflowID,
+				"olake.io/operation-type":       string(spec.Operation),
 			},
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			NodeSelector:  k.getNodeSelector(spec.Operation),
-			Tolerations:   k.getTolerations(spec.Operation),
-			Affinity:      k.buildAffinity(spec.Operation),
+			NodeSelector:  k.getNodeSelectorForJob(spec.JobID),
+			Tolerations:   k.getTolerationsForJob(spec.JobID),
+			Affinity:      k.buildAffinityForJob(spec.JobID, spec.Operation),
 			Containers: []corev1.Container{
 				{
 					Name:    "connector",
@@ -85,10 +88,6 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 						{
 							Name:  "OLAKE_WORKFLOW_ID",
 							Value: spec.OriginalWorkflowID,
-						},
-						{
-							Name:  "OLAKE_OPERATION",
-							Value: string(spec.Operation),
 						},
 					},
 				},
@@ -167,81 +166,57 @@ func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
 	return nil
 }
 
-// getNodeSelector returns node selector configuration for the given operation
-func (k *K8sPodManager) getNodeSelector(operation shared.Command) map[string]string {
-	schedulingConfig := k.getSchedulingConfigForOperation(operation)
-	return schedulingConfig.NodeSelector
+
+
+
+// getNodeSelectorForJob returns node selector configuration for the given jobID
+// Returns empty map if no mapping is found (graceful fallback)
+func (k *K8sPodManager) getNodeSelectorForJob(jobID int) map[string]string {
+	// TODO: Implement Helm ConfigMap lookup for jobID-based node selectors
+	// For now, return empty map as graceful fallback
+	logger.Infof("JobID-based node selector lookup for job %d - returning empty (no mapping)", jobID)
+	return make(map[string]string)
 }
 
-// getTolerations returns tolerations configuration for the given operation
-func (k *K8sPodManager) getTolerations(operation shared.Command) []corev1.Toleration {
-	schedulingConfig := k.getSchedulingConfigForOperation(operation)
-	return schedulingConfig.Tolerations
+// getTolerationsForJob returns tolerations configuration for the given jobID
+// Returns empty slice if no mapping is found (graceful fallback)
+func (k *K8sPodManager) getTolerationsForJob(jobID int) []corev1.Toleration {
+	// TODO: Implement Helm ConfigMap lookup for jobID-based tolerations
+	// For now, return empty slice as graceful fallback
+	logger.Infof("JobID-based tolerations lookup for job %d - returning empty (no mapping)", jobID)
+	return []corev1.Toleration{}
 }
 
-// buildAffinity builds affinity rules for the given operation
-func (k *K8sPodManager) buildAffinity(operation shared.Command) *corev1.Affinity {
-	schedulingConfig := k.getSchedulingConfigForOperation(operation)
+// buildAffinityForJob builds affinity rules for the given jobID and operation type
+// Implements operation-based anti-affinity and JobID-based node affinity
+func (k *K8sPodManager) buildAffinityForJob(jobID int, operation shared.Command) *corev1.Affinity {
+	var affinity *corev1.Affinity
 
-	// Start with custom affinity if provided
-	affinity := schedulingConfig.Affinity
-
-	// Add anti-affinity rules if enabled
-	if schedulingConfig.AntiAffinity.Enabled {
-		antiAffinity := k.buildAntiAffinity(operation, schedulingConfig.AntiAffinity)
-		if affinity == nil {
-			affinity = &corev1.Affinity{}
-		}
-		affinity.PodAntiAffinity = antiAffinity
-	}
-
-	return affinity
-}
-
-// buildAntiAffinity builds anti-affinity rules for the given operation
-func (k *K8sPodManager) buildAntiAffinity(operation shared.Command, config types.AntiAffinityConfig) *corev1.PodAntiAffinity {
-	labelSelector := &metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			"app":       "olake-connector",
-			"operation": string(operation),
-		},
-	}
-
-	affinityTerm := corev1.PodAffinityTerm{
-		LabelSelector: labelSelector,
-		TopologyKey:   config.TopologyKey,
-	}
-
-	if config.Strategy == "hard" {
-		return &corev1.PodAntiAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{affinityTerm},
-		}
-	} else {
-		// Soft anti-affinity
-		return &corev1.PodAntiAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-				{
-					Weight:          config.Weight,
-					PodAffinityTerm: affinityTerm,
+	// Apply anti-affinity rules for sync operations to spread pods across nodes
+	if operation == shared.Sync {
+		logger.Infof("Applying sync operation anti-affinity rules for jobID %d", jobID)
+		affinity = &corev1.Affinity{
+			PodAntiAffinity: &corev1.PodAntiAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+					{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"olake.io/operation-type": "sync",
+							},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					},
 				},
 			},
 		}
+	} else {
+		logger.Debugf("No anti-affinity rules applied for %s operation (jobID %d)", operation, jobID)
 	}
-}
 
-// getSchedulingConfigForOperation returns the appropriate scheduling configuration for an operation
-func (k *K8sPodManager) getSchedulingConfigForOperation(operation shared.Command) types.ActivitySchedulingConfig {
-	jobScheduling := k.config.Kubernetes.JobScheduling
+	// TODO: Future enhancement - implement JobID-based node affinity using jobMapping configuration
+	// This would add nodeAffinity rules to prefer/require specific node groups based on JobID
+	// Example: JobID 123 → high-memory nodes, JobID 456 → GPU nodes
+	// Would use the jobMapping from Helm ConfigMaps loaded in getNodeSelectorForJob()
 
-	switch operation {
-	case shared.Sync:
-		return jobScheduling.SyncJobs
-	case shared.Discover:
-		return jobScheduling.DiscoverJobs
-	case shared.Check:
-		return jobScheduling.TestJobs
-	default:
-		logger.Warnf("Unknown operation %s, using default scheduling config", operation)
-		return types.ActivitySchedulingConfig{}
-	}
+	return affinity
 }

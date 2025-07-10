@@ -11,32 +11,16 @@ global:
   # Examples: gp2, standard, managed
   storageClass: ""
   
-  # -- Job scheduling configuration for pods created by olake-worker
-  # Controls how sync, discover, and test job pods are scheduled on the cluster
-  job:
-    sync:
-      nodeSelector: {}
-      tolerations: []
-      antiAffinity:
-        enabled: true
-        strategy: "hard"
-        topologyKey: "kubernetes.io/hostname"
-    
-    discover:
-      nodeSelector: {}
-      tolerations: []
-      antiAffinity:
-        enabled: false
-        strategy: "soft"
-        topologyKey: "kubernetes.io/hostname"
-    
-    test:
-      nodeSelector: {}
-      tolerations: []
-      antiAffinity:
-        enabled: false
-        strategy: "soft"
-        topologyKey: "kubernetes.io/hostname"
+  # -- JobID-based node mapping configuration for pods created by olake-worker
+  # Maps JobID (integer) to specific node labels for pod scheduling
+  # Format: { jobID: { node_label: node_value } }
+  # Example:
+  #   jobMapping:
+  #     123:
+  #       node-type: "high-memory"
+  #     456:
+  #       node-type: "high-cpu"
+  jobMapping: {}
 
 # OLake UI - Main application
 olakeUI:

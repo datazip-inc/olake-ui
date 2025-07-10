@@ -31,6 +31,7 @@ type ActivityParams struct {
 	WorkflowID   string
 	StreamConfig string
 	Flag         string
+	JobID        int
 }
 
 // SyncParams contains parameters for sync activities

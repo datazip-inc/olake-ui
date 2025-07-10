@@ -46,22 +46,8 @@ data:
   LOG_FORMAT: {{ .Values.olakeWorker.config.logging.format | quote }}
   
   # =================================================================
-  # JOB SCHEDULING CONFIGURATION
+  # JOB MAPPING CONFIGURATION
   # =================================================================
-  {{- if .Values.global.job }}
-  
-  # Validate strategy values for all activity types
-  {{- range $activity := list "sync" "discover" "test" }}
-    {{- $config := index $.Values.global.job $activity | default dict }}
-    {{- $strategy := $config.antiAffinity.strategy }}
-    {{- if and $strategy (not (has $strategy (list "soft" "hard"))) }}
-      {{- fail (printf "Invalid antiAffinity strategy '%s' for %s jobs. Must be 'soft' or 'hard'." $strategy $activity) }}
-    {{- end }}
-  {{- end }}
-  
-  # Generate environment variables for each activity type
-  {{- include "olake.job.schedulingEnvVars" (dict "Values" .Values "activityName" "sync") | nindent 2 }}
-  {{- include "olake.job.schedulingEnvVars" (dict "Values" .Values "activityName" "discover") | nindent 2 }}
-  {{- include "olake.job.schedulingEnvVars" (dict "Values" .Values "activityName" "test") | nindent 2 }}
-  
+  {{- if .Values.global.jobMapping }}
+  OLAKE_JOB_MAPPING: {{ .Values.global.jobMapping | toJson | quote }}
   {{- end }}

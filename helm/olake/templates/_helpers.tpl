@@ -91,17 +91,3 @@ Reserves 2Gi for filesystem overhead
 {{- printf "%d%s" $adjustedSize $sizeUnit -}}
 {{- end -}}
 
-{{/*
-Generate job scheduling environment variables for an activity type
-Usage: {{- include "olake.job.schedulingEnvVars" (dict "Values" .Values "activityName" "sync") }}
-*/}}
-{{- define "olake.job.schedulingEnvVars" -}}
-{{- $config := index .Values.global.job .activityName | default dict -}}
-{{- $activityUpper := upper .activityName -}}
-OLAKE_{{ $activityUpper }}_JOB_NODE_SELECTOR: {{ $config.nodeSelector | toJson | quote }}
-OLAKE_{{ $activityUpper }}_JOB_TOLERATIONS: {{ $config.tolerations | toJson | quote }}
-OLAKE_{{ $activityUpper }}_JOB_ANTI_AFFINITY_ENABLED: {{ $config.antiAffinity.enabled | quote }}
-OLAKE_{{ $activityUpper }}_JOB_ANTI_AFFINITY_STRATEGY: {{ $config.antiAffinity.strategy | quote }}
-OLAKE_{{ $activityUpper }}_JOB_ANTI_AFFINITY_TOPOLOGY_KEY: {{ $config.antiAffinity.topologyKey | quote }}
-OLAKE_{{ $activityUpper }}_JOB_ANTI_AFFINITY_WEIGHT: {{ $config.antiAffinity.weight | quote }}
-{{- end -}}

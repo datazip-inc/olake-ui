@@ -40,6 +40,7 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 	// Execute pod activity using common workflow
 	request := pods.PodActivityRequest{
 		WorkflowID: params.WorkflowID,
+		JobID:      params.JobID,
 		Operation:  shared.Discover,
 		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args:       []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
@@ -68,6 +69,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 	// Execute pod activity using common workflow
 	request := pods.PodActivityRequest{
 		WorkflowID: params.WorkflowID,
+		JobID:      params.JobID,
 		Operation:  shared.Check,
 		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args: []string{
@@ -113,6 +115,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	// Execute pod activity using common workflow
 	request := pods.PodActivityRequest{
 		WorkflowID: params.WorkflowID,
+		JobID:      params.JobID,
 		Operation:  shared.Sync,
 		Image:      a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
 		Args: []string{
