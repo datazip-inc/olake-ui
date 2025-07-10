@@ -10,10 +10,13 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/logger"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 )
 
 func main() {
+	// Initialize telemetry
+	telemetry.InitTelemetry()
 	// check constants
 	constants.Init()
 
@@ -58,5 +61,6 @@ func main() {
 
 	// stop the worker
 	worker.Stop()
+	telemetry.Close()
 	logs.Info("Worker stopped. Goodbye!")
 }

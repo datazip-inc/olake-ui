@@ -10,6 +10,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/logger"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/routes"
 )
 
@@ -18,6 +19,11 @@ func main() {
 	if key := os.Getenv(constants.EncryptionKey); key == "" {
 		logs.Warning("Encryption key is not set. This is not recommended for production environments.")
 	}
+
+	// start telemetry service
+	telemetry.InitTelemetry()
+	defer telemetry.Close()
+
 	// check constants
 	constants.Init()
 
@@ -30,6 +36,7 @@ func main() {
 	err := database.Init(postgresDB)
 	if err != nil {
 		logs.Critical("Failed to initialize database: %s", err)
+		return
 	}
 
 	// init routers

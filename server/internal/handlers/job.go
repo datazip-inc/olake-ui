@@ -9,16 +9,27 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/services"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
+	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type JobHandler struct {
 	web.Controller
 	jobService *services.JobService
+	jobORM     *database.JobORM
+	sourceORM  *database.SourceORM
+	destORM    *database.DestinationORM
+	userORM    *database.UserORM
+	tempClient *temporal.Client
 }
 
 // Prepare initializes the service instances
 func (c *JobHandler) Prepare() {
+	c.jobORM = database.NewJobORM()
+	c.sourceORM = database.NewSourceORM()
+	c.destORM = database.NewDestinationORM()
+	c.userORM = database.NewUserORM()
 	var err error
 	c.jobService, err = services.NewJobService()
 	if err != nil {
@@ -56,6 +67,61 @@ func (c *JobHandler) CreateJob() {
 	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
 		if id, ok := sessionUserID.(int); ok {
 			userID = &id
+	// Find or create source
+	source, err := c.getOrCreateSource(req.Source, projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process source: %s", err))
+		return
+	}
+
+	// Find or create destination
+	dest, err := c.getOrCreateDestination(req.Destination, projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process destination: %s", err))
+		return
+	}
+
+	// Create job model
+	job := &models.Job{
+		Name:          req.Name,
+		SourceID:      source,
+		DestID:        dest,
+		Active:        true,
+		Frequency:     req.Frequency,
+		StreamsConfig: req.StreamsConfig,
+		State:         "{}",
+		ProjectID:     projectIDStr,
+	}
+
+	// Get user information from session
+	userID := c.GetSession(constants.SessionUserID)
+	if userID != nil {
+		user := &models.User{ID: userID.(int)}
+		job.CreatedBy = user
+		job.UpdatedBy = user
+	}
+
+	if err := c.jobORM.Create(job); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create job: %s", err))
+		return
+	}
+
+	// telemetry events
+	telemetry.TrackJobCreation(c.Ctx.Request.Context(), job)
+
+	if c.tempClient != nil {
+		fmt.Println("Using Temporal workflow for sync job")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			job.ProjectID,
+			job.ID,
+			job.Frequency,
+			temporal.ActionCreate,
+		)
+		if err != nil {
+			fmt.Printf("Temporal workflow execution failed: %v", err)
+		} else {
+			fmt.Println("Successfully executed sync job via Temporal")
 		}
 	}
 
@@ -89,6 +155,64 @@ func (c *JobHandler) UpdateJob() {
 	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
 		if id, ok := sessionUserID.(int); ok {
 			userID = &id
+	// Get existing job
+	existingJob, err := c.jobORM.GetByID(id, true)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	// Find or create source
+	source, err := c.getOrCreateSource(req.Source, projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process source: %s", err))
+		return
+	}
+
+	// Find or create destination
+	dest, err := c.getOrCreateDestination(req.Destination, projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process destination: %s", err))
+		return
+	}
+
+	// Update fields
+	existingJob.Name = req.Name
+	existingJob.SourceID = source
+	existingJob.DestID = dest
+	existingJob.Active = req.Activate
+	existingJob.Frequency = req.Frequency
+	existingJob.StreamsConfig = req.StreamsConfig
+	existingJob.UpdatedAt = time.Now()
+	existingJob.ProjectID = projectIDStr
+
+	// Update user information
+	userID := c.GetSession(constants.SessionUserID)
+	if userID != nil {
+		user := &models.User{ID: userID.(int)}
+		existingJob.UpdatedBy = user
+	}
+
+	// Update job in database
+	if err := c.jobORM.Update(existingJob); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
+		return
+	}
+
+	// Track sources and destinations status after job update
+	telemetry.TrackJobEntity(c.Ctx.Request.Context())
+
+	if c.tempClient != nil {
+		logs.Info("Using Temporal workflow for sync job")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			existingJob.ProjectID,
+			existingJob.ID,
+			existingJob.Frequency,
+			temporal.ActionUpdate,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
 		}
 	}
 
@@ -120,6 +244,30 @@ func (c *JobHandler) DeleteJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	jobName := job.Name
+	if c.tempClient != nil {
+		logs.Info("Using Temporal workflow for delete job schedule")
+		_, err = c.tempClient.ManageSync(
+			c.Ctx.Request.Context(),
+			job.ProjectID,
+			job.ID,
+			job.Frequency,
+			temporal.ActionDelete,
+		)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
+		}
+	}
+
+	// Delete job
+	if err := c.jobORM.Delete(id); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete job")
+		return
+	}
+
+	// Track sources and destinations status after job deletion
+	telemetry.TrackJobEntity(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
@@ -234,4 +382,106 @@ func (c *JobHandler) GetJobLogs() {
 	}
 
 	utils.SuccessResponse(&c.Controller, logs)
+}
+
+// Helper methods
+
+// getOrCreateSource finds or creates a source based on the provided config
+func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDStr string) (*models.Source, error) {
+	// Try to find an existing source matching the criteria
+	sources, err := c.sourceORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
+	if err == nil && len(sources) > 0 {
+		// Update the existing source if found
+		source := sources[0]
+		source.Config = config.Config
+		source.Version = config.Version
+
+		// Get user info for update
+		userID := c.GetSession(constants.SessionUserID)
+		if userID != nil {
+			user := &models.User{ID: userID.(int)}
+			source.UpdatedBy = user
+		}
+
+		if err := c.sourceORM.Update(source); err != nil {
+			return nil, fmt.Errorf("failed to update source: %s", err)
+		}
+
+		return source, nil
+	}
+
+	// Create a new source if not found
+	source := &models.Source{
+		Name:      config.Name,
+		Type:      config.Type,
+		Config:    config.Config,
+		Version:   config.Version,
+		ProjectID: projectIDStr,
+	}
+
+	// Set user info
+	userID := c.GetSession(constants.SessionUserID)
+	if userID != nil {
+		user := &models.User{ID: userID.(int)}
+		source.CreatedBy = user
+		source.UpdatedBy = user
+	}
+
+	if err := c.sourceORM.Create(source); err != nil {
+		return nil, fmt.Errorf("failed to create source: %s", err)
+	}
+
+	telemetry.TrackSourceCreation(context.Background(), source)
+
+	return source, nil
+}
+
+// getOrCreateDestination finds or creates a destination based on the provided config
+func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
+	// Try to find an existing destination matching the criteria
+	destinations, err := c.destORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
+	if err == nil && len(destinations) > 0 {
+		// Update the existing destination if found
+		dest := destinations[0]
+		dest.Config = config.Config
+		dest.Version = config.Version
+
+		// Get user info for update
+		userID := c.GetSession(constants.SessionUserID)
+		if userID != nil {
+			user := &models.User{ID: userID.(int)}
+			dest.UpdatedBy = user
+		}
+
+		if err := c.destORM.Update(dest); err != nil {
+			return nil, fmt.Errorf("failed to update destination: %s", err)
+		}
+
+		return dest, nil
+	}
+
+	// Create a new destination if not found
+	dest := &models.Destination{
+		Name:      config.Name,
+		DestType:  config.Type,
+		Config:    config.Config,
+		Version:   config.Version,
+		ProjectID: projectIDStr,
+	}
+
+	// Set user info
+	userID := c.GetSession(constants.SessionUserID)
+	if userID != nil {
+		user := &models.User{ID: userID.(int)}
+		dest.CreatedBy = user
+		dest.UpdatedBy = user
+	}
+
+	if err := c.destORM.Create(dest); err != nil {
+		return nil, fmt.Errorf("failed to create destination: %s", err)
+	}
+
+	// Track destination creation event
+	telemetry.TrackDestinationCreation(context.Background(), dest)
+	return dest, nil
 }
