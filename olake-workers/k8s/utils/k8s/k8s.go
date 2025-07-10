@@ -1,9 +1,7 @@
 package k8s
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -49,12 +47,4 @@ func SanitizeName(name string) string {
 	return name
 }
 
-// GenerateJobName creates a Kubernetes-compatible job name
-func GenerateJobName(prefix string, identifier string) string {
-	return fmt.Sprintf("%s-%s-%d", prefix, identifier, time.Now().Unix())
-}
 
-// GenerateWorkflowID generates a unique workflow ID
-func GenerateWorkflowID(prefix string, jobID int) string {
-	return fmt.Sprintf("%s-%d-%d", prefix, jobID, time.Now().Unix())
-}
