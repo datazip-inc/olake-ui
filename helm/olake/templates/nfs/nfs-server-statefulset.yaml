@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
-    {{- include "olake.labels" . | nindent 4 }}
 spec:
   serviceName: {{ include "olake.fullname" . }}-nfs-server
   replicas: 1

@@ -10,7 +10,6 @@ metadata:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
-    {{- include "olake.labels" . | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -19,10 +18,10 @@ metadata:
   annotations:
     "helm.sh/resource-policy": keep
   labels:
+    # Static labels only - no dynamic chart version labels
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
-    {{- include "olake.labels" . | nindent 4 }}
 rules:
 - apiGroups: [""]
   resources: ["persistentvolumes"]
@@ -51,10 +50,10 @@ metadata:
   annotations:
     "helm.sh/resource-policy": keep
   labels:
+    # Static labels only - no dynamic chart version labels
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: nfs-server
-    {{- include "olake.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

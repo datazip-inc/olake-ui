@@ -34,12 +34,9 @@ Create chart name and version as used by the chart label.
 Common labels
 */}}
 {{- define "olake.labels" -}}
-helm.sh/chart: {{ include "olake.chart" . }}
 {{ include "olake.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+olake.io/part-of: olake
 {{- end }}
 
 {{/*
