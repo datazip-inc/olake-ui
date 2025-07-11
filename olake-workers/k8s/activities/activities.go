@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"go.temporal.io/sdk/activity"
@@ -130,5 +131,21 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		Timeout: helpers.GetActivityTimeout(a.config, "sync"),
 	}
 
-	return a.podManager.ExecutePodActivity(ctx, request)
+	result, err := a.podManager.ExecutePodActivity(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update job state similar to server implementation
+	if stateJSON, err := json.Marshal(result); err == nil {
+		if err := a.jobService.UpdateJobState(params.JobID, string(stateJSON), true); err != nil {
+			logger.Errorf("Failed to update job state for jobID %d: %v", params.JobID, err)
+			return nil, fmt.Errorf("failed to update job state: %v", err)
+		}
+		logger.Infof("Successfully updated job state for jobID %d", params.JobID)
+	} else {
+		logger.Warnf("Failed to marshal result for jobID %d: %v", params.JobID, err)
+	}
+
+	return result, nil
 }

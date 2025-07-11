@@ -54,3 +54,10 @@ func (db *DB) GetJobData(jobID int) (*JobData, error) {
 
 	return &jobData, err
 }
+
+// UpdateJobState updates the job state and active status in the database
+func (db *DB) UpdateJobState(jobID int, state string, active bool) error {
+	query := `UPDATE "olake-dev-job" SET state = $1, active = $2, updated_at = NOW() WHERE id = $3`
+	_, err := db.conn.Exec(query, state, active, jobID)
+	return err
+}

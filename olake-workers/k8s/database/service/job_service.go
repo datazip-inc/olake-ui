@@ -8,6 +8,7 @@ import (
 // JobDataService defines the interface for job data operations
 type JobDataService interface {
 	GetJobData(jobID int) (*database.JobData, error)
+	UpdateJobState(jobID int, state string, active bool) error
 	Close() error
 }
 
@@ -32,6 +33,12 @@ func NewPostgresJobService() (*PostgresJobService, error) {
 func (s *PostgresJobService) GetJobData(jobID int) (*database.JobData, error) {
 	logger.Debugf("Getting job data for jobID: %d", jobID)
 	return s.db.GetJobData(jobID)
+}
+
+// UpdateJobState updates the job state and active status in the database
+func (s *PostgresJobService) UpdateJobState(jobID int, state string, active bool) error {
+	logger.Debugf("Updating job state for jobID: %d", jobID)
+	return s.db.UpdateJobState(jobID, state, active)
 }
 
 // Close closes the database connection
