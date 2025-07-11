@@ -96,24 +96,27 @@ olakeUI:
 
 ### Job Scheduling
 
-Data processing pods can be scheduled on specific nodes with custom constraints:
+#### JobID-Based Node Mapping
 
 ```yaml
 global:
-  job:
-    sync:
-      nodeSelector:
-        nodegroup: large
-      tolerations:
-        - key: "workload"
-          operator: "Equal"
-          value: "true"
-          effect: "NoSchedule"
-      antiAffinity:
-        enabled: true
-        strategy: "hard"
-        topologyKey: "kubernetes.io/hostname"
-        weight: 100
+  # JobID-based node mapping configuration for pods created by olake-worker
+  # Maps JobID (integer) to specific node labels for pod scheduling
+  # Format: { jobID: { node_label: node_value } }
+  jobMapping:
+    123:
+      olake.io/workload-type: "heavy"
+    456:
+      node-type: "high-cpu"
+    789:
+      olake.io/workload-type: "small"
+    999: {} # Empty mapping uses default scheduling
+  
+  # - JobID Format: Must be positive integers (e.g., 123, 456, 789)
+  # - Label Keys: Must follow RFC 1123 DNS subdomain format (lowercase letters, numbers, hyphens, dots)
+  # - Label Values: Must be valid Kubernetes label values (63 chars max, alphanumeric with hyphens)
+  # - Environment Variable: Configuration is passed via `OLAKE_JOB_MAPPING` environment variable as JSON
+
 ```
 
 ### Storage Configuration
