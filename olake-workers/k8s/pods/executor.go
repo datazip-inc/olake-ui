@@ -112,13 +112,13 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 		return nil, err
 	}
 
-	logger.Infof("Successfully created Pod %s", spec.Name)
+	logger.Debugf("Successfully created Pod %s", spec.Name)
 	return result, nil
 }
 
 // WaitForPodCompletion waits for a Pod to complete and returns the result
 func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string, timeout time.Duration) (map[string]interface{}, error) {
-	logger.Infof("Waiting for Pod %s to complete (timeout: %v)", podName, timeout)
+	logger.Debugf("Waiting for Pod %s to complete (timeout: %v)", podName, timeout)
 	deadline := time.Now().Add(timeout)
 
 	for time.Now().Before(deadline) {
@@ -150,7 +150,7 @@ func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string
 
 // CleanupPod removes a pod (but keeps work directory for UI access)
 func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
-	logger.Infof("Cleaning up Pod %s in namespace %s", podName, k.namespace)
+	logger.Debugf("Cleaning up Pod %s in namespace %s", podName, k.namespace)
 
 	// Delete the pod only
 	err := k.clientset.CoreV1().Pods(k.namespace).Delete(ctx, podName, metav1.DeleteOptions{})
@@ -161,7 +161,7 @@ func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
 		return fmt.Errorf("failed to delete pod %s in namespace %s: %v", podName, k.namespace, err)
 	}
 
-	logger.Infof("Successfully cleaned up Pod %s in namespace %s (directory preserved for UI access)",
+	logger.Debugf("Successfully cleaned up Pod %s in namespace %s",
 		podName, k.namespace)
 	return nil
 }
@@ -185,7 +185,7 @@ func (k *K8sPodManager) getNodeSelectorForJob(jobID int) map[string]string {
 func (k *K8sPodManager) getTolerationsForJob(jobID int) []corev1.Toleration {
 	// TODO: Implement Helm ConfigMap lookup for jobID-based tolerations
 	// For now, return empty slice as graceful fallback
-	logger.Infof("JobID-based tolerations lookup for job %d - returning empty (no mapping)", jobID)
+	logger.Debugf("JobID-based tolerations lookup for job %d - returning empty (no mapping)", jobID)
 	return []corev1.Toleration{}
 }
 
@@ -236,7 +236,7 @@ func (k *K8sPodManager) buildAffinityForJob(jobID int, operation shared.Command)
 
 	// Apply anti-affinity rules for sync operations to spread pods across nodes
 	if operation == shared.Sync {
-		logger.Infof("Applying sync operation anti-affinity rules for jobID %d", jobID)
+		logger.Debugf("Applying sync operation anti-affinity rules for jobID %d", jobID)
 		affinity = &corev1.Affinity{
 			PodAntiAffinity: &corev1.PodAntiAffinity{
 				RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{

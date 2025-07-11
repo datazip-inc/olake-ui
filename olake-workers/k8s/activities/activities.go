@@ -33,7 +33,7 @@ func NewActivities(jobService service.JobDataService, podManager *pods.K8sPodMan
 // DiscoverCatalogActivity discovers data source catalog using Kubernetes Pod
 func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.ActivityParams) (map[string]interface{}, error) {
 	activityLogger := activity.GetLogger(ctx)
-	activityLogger.Info("Starting K8s discover catalog activity")
+	activityLogger.Debug("Starting K8s discover catalog activity")
 
 	// Use injected pod manager
 
@@ -56,12 +56,10 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 // TestConnectionActivity tests data source connection using Kubernetes Pod
 func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.ActivityParams) (map[string]interface{}, error) {
 	activityLogger := activity.GetLogger(ctx)
-	activityLogger.Info("Starting K8s test connection activity",
+	activityLogger.Debug("Starting K8s test connection activity",
 		"sourceType", params.SourceType,
+		"version", params.Version,
 		"workflowID", params.WorkflowID)
-
-	logger.Infof("Starting test connection activity for sourceType: %s, version: %s, workflowID: %s",
-		params.SourceType, params.Version, params.WorkflowID)
 
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for connection test")
@@ -89,11 +87,9 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 // SyncActivity syncs data using Kubernetes Pod
 func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams) (map[string]interface{}, error) {
 	activityLogger := activity.GetLogger(ctx)
-	activityLogger.Info("Starting K8s sync activity",
+	activityLogger.Debug("Starting K8s sync activity",
 		"jobId", params.JobID,
 		"workflowID", params.WorkflowID)
-
-	logger.Infof("Starting sync activity for jobID: %d, workflowID: %s", params.JobID, params.WorkflowID)
 
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
