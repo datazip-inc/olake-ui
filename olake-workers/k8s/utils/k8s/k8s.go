@@ -12,18 +12,6 @@ func ParseQuantity(s string) resource.Quantity {
 	return q
 }
 
-// ParseQuantityWithDefault parses quantity with fallback
-func ParseQuantityWithDefault(s, defaultValue string) resource.Quantity {
-	if s == "" {
-		s = defaultValue
-	}
-	q, err := resource.ParseQuantity(s)
-	if err != nil {
-		q, _ = resource.ParseQuantity(defaultValue)
-	}
-	return q
-}
-
 // SanitizeName converts a string to a valid Kubernetes resource name
 // Consolidates SanitizeK8sName and SanitizeKubernetesName functions
 func SanitizeName(name string) string {
@@ -46,5 +34,3 @@ func SanitizeName(name string) string {
 
 	return name
 }
-
-

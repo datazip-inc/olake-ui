@@ -40,11 +40,3 @@ func LoadConfig() (*Config, error) {
 }
 
 
-// Legacy functions for backward compatibility (deprecated)
-
-// NewConfigValidator creates a new configuration validator
-// Deprecated: Use validator.NewConfigValidator() directly
-func NewConfigValidator() *validator.ConfigValidator {
-	return validator.NewConfigValidator()
-}
-

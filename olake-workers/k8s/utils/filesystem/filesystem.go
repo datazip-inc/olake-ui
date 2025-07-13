@@ -21,13 +21,6 @@ func NewHelper() *Helper {
 	}
 }
 
-// NewHelperWithPath creates a new filesystem helper with custom base path
-func NewHelperWithPath(basePath string) *Helper {
-	return &Helper{
-		basePath: basePath,
-	}
-}
-
 // GetWorkflowDirectory determines the directory name based on operation and workflow ID
 func (fs *Helper) GetWorkflowDirectory(operation shared.Command, originalWorkflowID string) string {
 	if operation == shared.Sync {

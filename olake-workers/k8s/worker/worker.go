@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -104,7 +103,6 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	return k8sWorker, nil
 }
 
-
 func (w *K8sWorker) Start() error {
 	logger.Info("Starting Temporal worker...")
 
@@ -118,7 +116,7 @@ func (w *K8sWorker) Start() error {
 
 	// Log success before blocking
 	logger.Info("K8s Worker started successfully")
-	
+
 	// Start temporal worker using blocking Run method
 	// This will block until the worker is stopped
 	logger.Info("Starting Temporal worker (blocking)...")
@@ -131,40 +129,7 @@ func (w *K8sWorker) Start() error {
 	return nil
 }
 
-func (w *K8sWorker) Stop() {
-	logger.Info("Stopping Temporal worker...")
-
-	// Stop health server
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := w.healthServer.Stop(ctx); err != nil {
-		logger.Errorf("Failed to stop health server: %v", err)
-	}
-
-	// Close job service
-	if err := w.jobService.Close(); err != nil {
-		logger.Errorf("Failed to close job service: %v", err)
-	}
-
-	// Stop temporal worker
-	w.worker.Stop()
-	w.temporalClient.Close()
-	logger.Info("Temporal worker stopped")
-}
-
-// GetConfig returns the worker configuration
-func (w *K8sWorker) GetConfig() *config.Config {
-	return w.config
-}
-
 // GetUptime returns how long the worker has been running
 func (w *K8sWorker) GetUptime() time.Duration {
 	return time.Since(w.startTime)
-}
-
-// IsHealthy returns true if the worker is healthy
-func (w *K8sWorker) IsHealthy() bool {
-	// Could add more sophisticated health checks here
-	return w.temporalClient != nil && w.worker != nil
 }

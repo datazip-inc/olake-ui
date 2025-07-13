@@ -1,7 +1,6 @@
 package worker
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -49,11 +48,6 @@ func (hs *HealthServer) Start() error {
 	return hs.server.ListenAndServe()
 }
 
-// Stop stops the health check server
-func (hs *HealthServer) Stop(ctx context.Context) error {
-	logger.Info("Stopping health check server")
-	return hs.server.Shutdown(ctx)
-}
 
 // healthHandler handles liveness probe requests
 func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {

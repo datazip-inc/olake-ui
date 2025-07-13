@@ -200,32 +200,6 @@ func (v *ConfigValidator) ValidateTimeoutRelationships(config *types.TimeoutConf
 	return nil
 }
 
-// ValidateResourceLimits validates Kubernetes resource specifications
-func (v *ConfigValidator) ValidateResourceLimits(resources *types.KubernetesResourceLimits) error {
-	// Basic validation - ensure values are not empty
-	if resources.CPURequest == "" || resources.CPULimit == "" {
-		return fmt.Errorf("CPU request and limit must be specified")
-	}
-	if resources.MemoryRequest == "" || resources.MemoryLimit == "" {
-		return fmt.Errorf("memory request and limit must be specified")
-	}
-
-	// Validate each resource quantity format
-	if err := v.ValidateResourceQuantity(resources.CPURequest); err != nil {
-		return fmt.Errorf("invalid CPU request: %w", err)
-	}
-	if err := v.ValidateResourceQuantity(resources.CPULimit); err != nil {
-		return fmt.Errorf("invalid CPU limit: %w", err)
-	}
-	if err := v.ValidateResourceQuantity(resources.MemoryRequest); err != nil {
-		return fmt.Errorf("invalid memory request: %w", err)
-	}
-	if err := v.ValidateResourceQuantity(resources.MemoryLimit); err != nil {
-		return fmt.Errorf("invalid memory limit: %w", err)
-	}
-
-	return nil
-}
 
 // ValidateTemporalAddress validates Temporal server address
 func (v *ConfigValidator) ValidateTemporalAddress(address string) error {
@@ -305,24 +279,6 @@ func (v *ConfigValidator) ValidateImageRegistry(registry string) error {
 	return nil
 }
 
-// ValidateResourceQuantity validates Kubernetes resource quantity format
-func (v *ConfigValidator) ValidateResourceQuantity(quantity string) error {
-	if quantity == "" {
-		return fmt.Errorf("resource quantity cannot be empty")
-	}
-
-	// Basic regex for Kubernetes quantity format (e.g., "100m", "1Gi", "500Mi")
-	matched, err := regexp.MatchString("^[0-9]+(\\.[0-9]+)?(m|Mi|Gi|Ki|Ti)?$", quantity)
-	if err != nil {
-		return fmt.Errorf("error validating resource quantity format: %w", err)
-	}
-
-	if !matched {
-		return fmt.Errorf("invalid resource quantity format: %s", quantity)
-	}
-
-	return nil
-}
 
 // ValidateLabels validates Kubernetes labels
 func (v *ConfigValidator) ValidateLabels(labels map[string]string) error {
