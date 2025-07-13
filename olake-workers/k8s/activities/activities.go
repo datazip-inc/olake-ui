@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
 
 	"go.temporal.io/sdk/activity"
 
@@ -13,6 +15,7 @@ import (
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
 	"olake-ui/olake-workers/k8s/shared"
+	"olake-ui/olake-workers/k8s/utils/filesystem"
 )
 
 // Activities holds the dependencies for activity functions
@@ -95,6 +98,9 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
 
+	// Start state monitoring goroutine for incremental persistence
+	go a.monitorState(ctx, params.JobID, params.WorkflowID)
+
 	// Get job details from database using injected service
 	jobData, err := a.jobService.GetJobData(params.JobID)
 	if err != nil {
@@ -148,4 +154,72 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	}
 
 	return result, nil
+}
+
+// monitorState monitors state.json file changes and persists incremental updates to PostgreSQL
+func (a *Activities) monitorState(ctx context.Context, jobID int, workflowID string) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	
+	var lastModTime time.Time
+	
+	for {
+		select {
+		case <-ticker.C:
+			if err := a.checkpointState(jobID, workflowID, &lastModTime); err != nil {
+				logger.Errorf("Failed to checkpoint state for job %d: %v", jobID, err)
+			}
+		case <-ctx.Done():
+			// Final checkpoint on shutdown
+			logger.Infof("Activity context cancelled, performing final state checkpoint for job %d", jobID)
+			if err := a.checkpointState(jobID, workflowID, &lastModTime); err != nil {
+				logger.Errorf("Final checkpoint failed for job %d: %v", jobID, err)
+			}
+			return
+		}
+	}
+}
+
+// checkpointState reads state.json and persists it to PostgreSQL if it has changed
+func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *time.Time) error {
+	// Create filesystem helper to get correct directory path
+	fsHelper := filesystem.NewHelper()
+	workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, workflowID)
+	statePath := fsHelper.GetFilePath(workflowDir, "state.json")
+	
+	// Check if file changed using ModTime
+	info, err := os.Stat(statePath)
+	if err != nil {
+		return fmt.Errorf("stat failed: %w", err)
+	}
+	
+	if !info.ModTime().After(*lastModTime) {
+		return nil // No change
+	}
+	
+	// Read state file
+	stateData, err := os.ReadFile(statePath)
+	if err != nil {
+		return fmt.Errorf("read failed: %w", err)
+	}
+	
+	// Validate JSON
+	var js json.RawMessage
+	if err := json.Unmarshal(stateData, &js); err != nil {
+		return fmt.Errorf("invalid JSON, skipping checkpoint: %w", err)
+	}
+	
+	// Check for empty/truncated file
+	if len(stateData) < 10 {
+		return fmt.Errorf("state file too small (%d bytes), skipping", len(stateData))
+	}
+	
+	// Persist to PostgreSQL using existing service
+	if err := a.jobService.UpdateJobState(jobID, string(stateData), true); err != nil {
+		return fmt.Errorf("db update failed: %w", err)
+	}
+	
+	*lastModTime = info.ModTime()
+	logger.Debugf("State checkpoint completed for job %d", jobID)
+	return nil
 }
