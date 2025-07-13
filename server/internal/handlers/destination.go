@@ -6,26 +6,17 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/services"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type DestHandler struct {
 	web.Controller
-	destORM    *database.DestinationORM
-	jobORM     *database.JobORM
-	userORM    *database.UserORM
-	tempClient *temporal.Client
+	destService *services.DestinationService
 }
 
 func (c *DestHandler) Prepare() {
-	c.destORM = database.NewDestinationORM()
-	c.jobORM = database.NewJobORM()
-	c.userORM = database.NewUserORM()
 	var err error
 	c.destService, err = services.NewDestinationService()
 	if err != nil {
@@ -38,9 +29,9 @@ func (c *DestHandler) Prepare() {
 func (c *DestHandler) GetAllDestinations() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
-	destinations, err := c.destService.GetAllDestinations(projectID)
+	destinations, err := c.destService.GetAllDestinations(c.Ctx.Request.Context(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve destinations")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -57,7 +48,6 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
-	// Get user ID from session
 	var userID *int
 	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
 		if uid, ok := sessionUserID.(int); ok {
@@ -65,13 +55,11 @@ func (c *DestHandler) CreateDestination() {
 		}
 	}
 
-	if err := c.destService.CreateDestination(req, projectIDStr, userID); err != nil {
+	if err := c.destService.CreateDestination(c.Ctx.Request.Context(), req, projectIDStr, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Track destination creation event
-	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), destination)
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -85,7 +73,6 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
-	// Get user ID from session
 	var userID *int
 	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
 		if uid, ok := sessionUserID.(int); ok {
@@ -93,17 +80,10 @@ func (c *DestHandler) UpdateDestination() {
 		}
 	}
 
-	if err := c.destService.UpdateDestination(id, req, userID); err != nil {
-		if err.Error() == "destination not found: " {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
-		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination")
-		}
+	if err := c.destService.UpdateDestination(c.Ctx.Request.Context(), id, req, userID); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	// Track destinations status after update
-	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -112,29 +92,11 @@ func (c *DestHandler) UpdateDestination() {
 func (c *DestHandler) DeleteDestination() {
 	id := GetIDFromPath(&c.Controller)
 
-	response, err := c.destService.DeleteDestination(id)
+	response, err := c.destService.DeleteDestination(c.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
-	jobs, err := c.jobORM.GetByDestinationID(id)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
-	}
-	for _, job := range jobs {
-		job.Active = false
-		if err := c.jobORM.Update(job); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this destination")
-			return
-		}
-	}
-	if err := c.destORM.Delete(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
-		return
-	}
-
-	// Track destinations status after deletion
-	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, response)
 }
@@ -147,7 +109,7 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
-	result, err := c.destService.TestConnection(req)
+	result, err := c.destService.TestConnection(c.Ctx.Request.Context(), req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
 		return
@@ -159,13 +121,9 @@ func (c *DestHandler) TestConnection() {
 func (c *DestHandler) GetDestinationJobs() {
 	id := GetIDFromPath(&c.Controller)
 
-	jobs, err := c.destService.GetDestinationJobs(id)
+	jobs, err := c.destService.GetDestinationJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
-		if err.Error() == "destination not found: " {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
-		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
-		}
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 

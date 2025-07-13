@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/beego/beego/v2/server/web"
-
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/services"
 	"github.com/datazip/olake-frontend/server/utils"
@@ -29,8 +28,8 @@ func (c *UserHandler) CreateUser() {
 		return
 	}
 
-	if err := c.userService.CreateUser(&req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user: "+err.Error())
+	if err := c.userService.CreateUser(c.Ctx.Request.Context(), &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -39,9 +38,9 @@ func (c *UserHandler) CreateUser() {
 
 // @router /users [get]
 func (c *UserHandler) GetAllUsers() {
-	users, err := c.userService.GetAllUsers()
+	users, err := c.userService.GetAllUsers(c.Ctx.Request.Context())
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve users")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -63,13 +62,13 @@ func (c *UserHandler) UpdateUser() {
 		return
 	}
 
-	updatedUser, err := c.userService.UpdateUser(id, &req)
+	updatedUser, err := c.userService.UpdateUser(c.Ctx.Request.Context(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found")
 			return
 		}
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update user")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -85,8 +84,8 @@ func (c *UserHandler) DeleteUser() {
 		return
 	}
 
-	if err := c.userService.DeleteUser(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete user")
+	if err := c.userService.DeleteUser(c.Ctx.Request.Context(), id); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 

@@ -34,9 +34,9 @@ func (c *AuthHandler) Login() {
 	user, err := c.authService.Login(req.Username, req.Password)
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrUserNotFound):
+		case errors.Is(err, constants.ErrUserNotFound):
 			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "user not found, sign up first")
-		case errors.Is(err, services.ErrInvalidCredentials):
+		case errors.Is(err, constants.ErrInvalidCredentials):
 			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid credentials")
 		default:
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Login failed")
@@ -97,9 +97,9 @@ func (c *AuthHandler) Signup() {
 
 	if err := c.authService.Signup(&req); err != nil {
 		switch {
-		case errors.Is(err, services.ErrUserAlreadyExists):
+		case errors.Is(err, constants.ErrUserAlreadyExists):
 			utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists")
-		case errors.Is(err, services.ErrPasswordProcessing):
+		case errors.Is(err, constants.ErrPasswordProcessing):
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password")
 		default:
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user")

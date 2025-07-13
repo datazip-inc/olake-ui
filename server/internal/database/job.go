@@ -182,10 +182,24 @@ func (r *JobORM) Update(job *models.Job) error {
 	return err
 }
 
+// BulkDeactivate deactivates multiple jobs by their IDs in a single query
+func (r *JobORM) UpdateAllJobs(ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("id__in", ids).
+		Update(orm.Params{
+			"active":     false,
+			"updated_at": time.Now(),
+		})
+	return err
+}
+
 // Delete a job
 func (r *JobORM) Delete(id int) error {
-	job := &models.Job{ID: id}
-	_, err := r.ormer.Delete(job)
+	_, err := r.ormer.Delete(&models.Job{ID: id})
 	return err
 }
 

@@ -1,16 +1,16 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
-	"strconv"
+	"time"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/services"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -20,190 +20,136 @@ type SourceHandler struct {
 }
 
 func (c *SourceHandler) Prepare() {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	var err error
 	c.sourceService, err = services.NewSourceService()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to initialize source service")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize source service", err)
 		return
 	}
+	c.Ctx.Request = c.Ctx.Request.WithContext(ctx)
 }
 
 // @router /project/:projectid/sources [get]
 func (c *SourceHandler) GetAllSources() {
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-
-	sources, err := c.sourceService.GetAllSources(projectIDStr)
+	projectID := c.Ctx.Input.Param(":projectid")
+	sources, err := c.sourceService.GetAllSources(c.Ctx.Request.Context(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, sources)
 }
 
 // @router /project/:projectid/sources [post]
 func (c *SourceHandler) CreateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
-
 	var req models.CreateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-
-	// Get user ID from session
-	var userID *int
-	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
-		if uid, ok := sessionUserID.(int); ok {
-			userID = &uid
-		}
-	}
-
-	if err := c.sourceService.CreateSource(req, projectID, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create source: %s", err))
+	userID := GetUserIDFromSession(&c.Controller)
+	if err := c.sourceService.CreateSource(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
-
-	// Track source creation event
-	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), source)
-
 	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
-	id, err := c.getIDFromPath()
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-		return
-	}
-
+	id := GetIDFromPath(&c.Controller)
 	var req models.UpdateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-
-	// Get user ID from session
-	var userID *int
-	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
-		if uid, ok := sessionUserID.(int); ok {
-			userID = &uid
-		}
-	}
-
-	if err := c.sourceService.UpdateSource(id, req, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update source: %s", err))
+	userID := GetUserIDFromSession(&c.Controller)
+	if err := c.sourceService.UpdateSource(c.Ctx.Request.Context(), id, req, userID); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update source", err)
 		return
 	}
-
-	// Track sources status after update
-	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
-	id, err := c.getIDFromPath()
+	id := GetIDFromPath(&c.Controller)
+	resp, err := c.sourceService.DeleteSource(c.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-		return
-	}
-
-	response, err := c.sourceService.DeleteSource(id)
-	if err != nil {
-		if err.Error() == "source not found: " {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
 		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to delete source: %s", err))
+			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete source", err)
 		}
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, response)
-	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
+	utils.SuccessResponse(&c.Controller, resp)
 }
 
 // @router /project/:projectid/sources/test [post]
 func (c *SourceHandler) TestConnection() {
 	var req models.SourceTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-
-	result, err := c.sourceService.TestConnection(req)
+	result, err := c.sourceService.TestConnection(c.Ctx.Request.Context(), req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to test connection: %s", err))
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, result)
 }
 
 // @router /sources/streams[post]
 func (c *SourceHandler) GetSourceCatalog() {
 	var req models.StreamsRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-
-	catalog, err := c.sourceService.GetSourceCatalog(req)
+	catalog, err := c.sourceService.GetSourceCatalog(c.Ctx.Request.Context(), req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
 func (c *SourceHandler) GetSourceJobs() {
-	id, err := c.getIDFromPath()
+	id := GetIDFromPath(&c.Controller)
+	jobs, err := c.sourceService.GetSourceJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid source ID")
-		return
-	}
-
-	jobs, err := c.sourceService.GetSourceJobs(id)
-	if err != nil {
-		if err.Error() == "source not found: " {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found")
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
 		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get jobs by source ID")
+			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
 		}
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"jobs": jobs,
-	})
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
 	sourceType := c.GetString("type")
-
-	versions, err := c.sourceService.GetSourceVersions(sourceType)
+	versions, err := c.sourceService.GetSourceVersions(c.Ctx.Request.Context(), sourceType)
 	if err != nil {
+		status := http.StatusInternalServerError
+		msg := "Failed to get Docker versions"
 		if err.Error() == "source type is required" {
-			utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
-		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
+			status = http.StatusBadRequest
+			msg = "Source type is required"
 		}
+		respondWithError(&c.Controller, status, msg, err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"version": versions,
-	})
-}
-
-// Helper method to extract ID from path
-func (c *SourceHandler) getIDFromPath() (int, error) {
-	idStr := c.Ctx.Input.Param(":id")
-	return strconv.Atoi(idStr)
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{"version": versions})
 }
 
 // @router /project/:projectid/sources/spec [get]
