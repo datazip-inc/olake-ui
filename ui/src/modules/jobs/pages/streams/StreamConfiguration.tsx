@@ -34,9 +34,13 @@ const StreamConfiguration = ({
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
-		stream.stream.sync_mode === "full_refresh" ? "full" : "cdc",
+		stream.stream.sync_mode === "full_refresh"
+			? "full"
+			: stream.stream.sync_mode === "incremental"
+				? "incremental"
+				: "cdc",
 	)
-	// const [enableBackfill, setEnableBackfill] = useState(false)
+	const [enableBackfill, setEnableBackfill] = useState(false)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
@@ -64,19 +68,19 @@ const StreamConfiguration = ({
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
-		let initialEnableBackfillForSwitch = false
+		let initialEnableBackfillForSwitch = true
 
 		if (initialApiSyncMode === "full_refresh") {
 			setSyncMode("full")
-			initialEnableBackfillForSwitch = true
 		} else if (initialApiSyncMode === "cdc") {
 			setSyncMode("cdc")
-			initialEnableBackfillForSwitch = true
 		} else if (initialApiSyncMode === "strict_cdc") {
 			setSyncMode("cdc")
 			initialEnableBackfillForSwitch = false
+		} else if (initialApiSyncMode === "incremental") {
+			setSyncMode("incremental")
 		}
-		// setEnableBackfill(initialEnableBackfillForSwitch)
+		setEnableBackfill(initialEnableBackfillForSwitch)
 		setNormalisation(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
@@ -149,22 +153,21 @@ const StreamConfiguration = ({
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
-		let newApiSyncMode: "full_refresh" | "cdc" = "cdc"
+		let newApiSyncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc"
 		let newEnableBackfillState = true
-
 		if (selectedRadioValue === "full") {
 			newApiSyncMode = "full_refresh"
-			newEnableBackfillState = true
+		} else if (selectedRadioValue === "incremental") {
+			newApiSyncMode = "incremental"
 		} else {
 			newApiSyncMode = "cdc"
-			newEnableBackfillState = true
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
-		// setEnableBackfill(newEnableBackfillState)
+		setEnableBackfill(newEnableBackfillState)
 		onSyncModeChange?.(
 			stream.stream.name,
-			stream.stream.namespace || "default",
+			stream.stream.namespace || "",
 			newApiSyncMode,
 		)
 
@@ -175,31 +178,31 @@ const StreamConfiguration = ({
 		})
 	}
 
-	// const handleEnableBackfillChange = (checked: boolean) => {
-	// 	setEnableBackfill(checked)
-	// 	let finalApiSyncMode = stream.stream.sync_mode
+	const handleEnableBackfillChange = (checked: boolean) => {
+		setEnableBackfill(checked)
+		let finalApiSyncMode = stream.stream.sync_mode
 
-	// 	if (syncMode === "cdc") {
-	// 		if (checked) {
-	// 			finalApiSyncMode = "cdc"
-	// 			stream.stream.sync_mode = "cdc"
-	// 			onSyncModeChange?.(
-	// 				stream.stream.name,
-	// 				stream.stream.namespace || "default",
-	// 				"cdc",
-	// 			)
-	// 		} else {
-	// 			finalApiSyncMode = "strict_cdc"
-	// 			stream.stream.sync_mode = "strict_cdc"
-	// 		}
-	// 	}
+		if (syncMode === "cdc") {
+			if (checked) {
+				finalApiSyncMode = "cdc"
+				stream.stream.sync_mode = "cdc"
+				onSyncModeChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "default",
+					"cdc",
+				)
+			} else {
+				finalApiSyncMode = "strict_cdc"
+				stream.stream.sync_mode = "strict_cdc"
+			}
+		}
 
-	// 	setFormData({
-	// 		...formData,
-	// 		backfill: checked,
-	// 		sync_mode: finalApiSyncMode,
-	// 	})
-	// }
+		setFormData({
+			...formData,
+			backfill: checked,
+			sync_mode: finalApiSyncMode,
+		})
+	}
 
 	const handleNormalizationChange = (checked: boolean) => {
 		setNormalisation(checked)
@@ -509,19 +512,85 @@ const StreamConfiguration = ({
 							>
 								CDC
 							</Radio>
+							<Radio
+								value="incremental"
+								className="w-1/3"
+								disabled={
+									!stream.stream.supported_sync_modes ||
+									!stream.stream.supported_sync_modes.some(
+										mode => mode === "incremental",
+									)
+								}
+							>
+								Incremental
+							</Radio>
 						</Radio.Group>
+						{syncMode === "incremental" &&
+							stream.stream.available_cursor_fields && (
+								<div className="mb-4 mr-2 flex flex-col">
+									<label className="mb-1 font-medium text-[#575757]">
+										Cursor field:
+									</label>
+									<Select
+										className="w-2/5"
+										placeholder="Select cursor field"
+										value={stream.stream.cursor_field}
+										onChange={(value: string) => {
+											stream.stream.cursor_field = value
+											onSyncModeChange?.(
+												stream.stream.name,
+												stream.stream.namespace || "",
+												"incremental",
+											)
+										}}
+										optionLabelProp="label"
+										disabled={fromJobEditFlow}
+									>
+										{[...stream.stream.available_cursor_fields] // Show Primary key fields first if they are in available_cursor_fields
+											.sort((a, b) => {
+												const aIsPK =
+													stream.stream.source_defined_primary_key?.includes(
+														a,
+													) || false
+												const bIsPK =
+													stream.stream.source_defined_primary_key?.includes(
+														b,
+													) || false
+												if (aIsPK && !bIsPK) return -1
+												if (!aIsPK && bIsPK) return 1
+												return a.localeCompare(b)
+											})
+											.map((field: string) => (
+												<Select.Option
+													key={field}
+													value={field}
+													label={field}
+												>
+													<div className="flex items-center justify-between">
+														<span>{field}</span>
+														{stream.stream.source_defined_primary_key?.includes(
+															field,
+														) && <span className="text-[#203FDD]">PK</span>}
+													</div>
+												</Select.Option>
+											))}
+									</Select>
+								</div>
+							)}
 					</div>
 				</div>
 				<div className={CARD_STYLE}>
 					<div className="flex items-center justify-between">
-						<label className="text-[#c1c1c1]">Enable backfill</label>
+						<label className="font-medium">Enable backfill</label>
 						<Switch
-							// className="text-[#c1c1c1]"
-							// checked={enableBackfill}
-							// onChange={handleEnableBackfillChange}
-							// disabled={syncMode === "full"}
-							checked={true}
-							disabled={true}
+							className="text-[#c1c1c1]"
+							checked={enableBackfill}
+							onChange={handleEnableBackfillChange}
+							disabled={
+								syncMode === "full" ||
+								syncMode === "incremental" ||
+								fromJobEditFlow
+							}
 						/>
 					</div>
 				</div>
@@ -534,7 +603,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={normalisation}
 							onChange={handleNormalizationChange}
-							disabled={!isSelected}
+							disabled={!isSelected || fromJobEditFlow}
 						/>
 					</div>
 				</div>
@@ -612,6 +681,7 @@ const StreamConfiguration = ({
 									size="small"
 									className="rounded-[6px] py-1 text-sm"
 									onClick={handleClearPartitionRegex}
+									disabled={fromJobEditFlow}
 								>
 									Delete Partition
 								</Button>

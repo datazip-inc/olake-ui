@@ -16,7 +16,7 @@ export type MultiFilterCondition = {
 }
 
 export type StreamData = {
-	sync_mode: "full_refresh" | "cdc"
+	sync_mode: "full_refresh" | "cdc" | "incremental"
 	skip_nested_flattening?: boolean
 	cursor_field?: string[]
 	destination_sync_mode: string
@@ -36,9 +36,12 @@ export type StreamData = {
 				}
 			>
 		}
-		supported_sync_modes?: ["full_refresh"] | ["full_refresh", "incremental"]
+		supported_sync_modes?: string[]
 		source_defined_cursor?: boolean
 		default_cursor_field?: string[]
+		available_cursor_fields?: string[]
+		cursor_field?: string
+		source_defined_primary_key?: string[]
 		[key: string]: unknown
 	}
 }
@@ -64,7 +67,7 @@ export type StreamConfigurationProps = {
 	onSyncModeChange?: (
 		streamName: string,
 		namespace: string,
-		mode: "full_refresh" | "cdc",
+		mode: "full_refresh" | "cdc" | "incremental",
 	) => void
 	useDirectForms?: boolean
 }
