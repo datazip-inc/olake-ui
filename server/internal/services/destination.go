@@ -21,6 +21,7 @@ type DestinationService struct {
 }
 
 func NewDestinationService() (*DestinationService, error) {
+	logs.Info("Creating destination service")
 	tempClient, err := temporal.NewClient()
 	if err != nil {
 		logs.Error("Failed to create Temporal client: %v", err)
@@ -35,6 +36,7 @@ func NewDestinationService() (*DestinationService, error) {
 }
 
 func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID string) ([]models.DestinationDataItem, error) {
+	logs.Info("Retrieving destinations for project with id: %s", projectID)
 	destinations, err := s.destORM.GetAllByProjectID(projectID)
 	if err != nil {
 		logs.Error("Failed to retrieve destinations: %v", err)
@@ -89,6 +91,7 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 }
 
 func (s *DestinationService) CreateDestination(ctx context.Context, req models.CreateDestinationRequest, projectID string, userID *int) error {
+	logs.Info("Creating destination: %s", req.Name)
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -112,6 +115,7 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req models.C
 }
 
 func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req models.UpdateDestinationRequest, userID *int) error {
+	logs.Info("Updating destination with id: %d", id)
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
 		logs.Warn("Destination not found: %v", err)
@@ -138,6 +142,7 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req 
 }
 
 func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*models.DeleteDestinationResponse, error) {
+	logs.Info("Deleting destination with id: %d", id)
 	dest, err := s.destORM.GetByID(id)
 	if err != nil {
 		logs.Warn("Destination not found: %v", err)
@@ -168,6 +173,7 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*mo
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req models.DestinationTestConnectionRequest) (map[string]interface{}, error) {
+	logs.Info("Testing connection for destination: %s", req.Name)
 	if req.Type == "" || req.Version == "" {
 		return nil, fmt.Errorf("destination type and version are required")
 	}
@@ -193,6 +199,7 @@ func (s *DestinationService) TestConnection(ctx context.Context, req models.Dest
 }
 
 func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]*models.Job, error) {
+	logs.Info("Retrieving jobs for destination with id: %d", id)
 	_, err := s.destORM.GetByID(id)
 	if err != nil {
 		logs.Warn("Destination not found: %v", err)
@@ -209,6 +216,7 @@ func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]
 }
 
 func (s *DestinationService) GetDestinationVersions(destType string) ([]string, error) {
+	logs.Info("Retrieving versions for destination type: %s", destType)
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")
 	}

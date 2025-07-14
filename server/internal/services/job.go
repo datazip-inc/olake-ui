@@ -28,6 +28,7 @@ type JobService struct {
 }
 
 func NewJobService() (*JobService, error) {
+	logs.Info("Creating job service")
 	tempClient, err := temporal.NewClient()
 	if err != nil {
 		logs.Error("Failed to create Temporal client: %v", err)
@@ -42,6 +43,7 @@ func NewJobService() (*JobService, error) {
 }
 
 func (s *JobService) GetAllJobsByProject(projectID string) ([]models.JobResponse, error) {
+	logs.Info("Retrieving jobs by project ID: %s", projectID)
 	jobs, err := s.jobORM.GetAllByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("%s jobs by project ID: %s", constants.ErrFailedToRetrieve, err)
@@ -57,6 +59,7 @@ func (s *JobService) GetAllJobsByProject(projectID string) ([]models.JobResponse
 }
 
 func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest, projectID string, userID *int) error {
+	logs.Info("Creating job: %s", req.Name)
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
@@ -102,6 +105,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 }
 
 func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest, projectID string, jobID int, userID *int) error {
+	logs.Info("Updating job: %s", req.Name)
 	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -147,6 +151,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest
 }
 
 func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
+	logs.Info("Deleting job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return "", fmt.Errorf("job not found: %s", err)
@@ -170,6 +175,7 @@ func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 }
 
 func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
+	logs.Info("Syncing job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
@@ -191,6 +197,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 }
 
 func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
+	logs.Info("Activating job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -249,6 +256,7 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 }
 
 func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
+	logs.Info("Getting task logs for job with id: %d", jobID)
 	_, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
