@@ -263,3 +263,12 @@ export const getDestinationType = (type: string) => {
 		return "ICEBERG"
 	}
 }
+
+export const operatorOptions = [
+	{ label: "=", value: "=" },
+	{ label: "!=", value: "!=" },
+	{ label: ">", value: ">" },
+	{ label: "<", value: "<" },
+	{ label: ">=", value: ">=" },
+	{ label: "<=", value: "<=" },
+]

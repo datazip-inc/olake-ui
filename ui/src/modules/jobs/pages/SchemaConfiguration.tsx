@@ -39,6 +39,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				stream_name: string
 				partition_regex: string
 				normalization: boolean
+				filter?: string
 			}[]
 		}
 		streams: StreamData[]
@@ -273,6 +274,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							stream_name: streamName,
 							partition_regex: "",
 							normalization: false,
+							filter: "",
 						},
 					]
 					changed = true
@@ -304,6 +306,37 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				return current
 			})
 		}, 0)
+	}
+
+	const handleFullLoadFilterChange = (
+		streamName: string,
+		namespace: string,
+		filterValue: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, filter: filterValue } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
 	}
 
 	const filteredStreams = useMemo(() => {
@@ -450,7 +483,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex h-[calc(100vh-250px)] w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
@@ -486,6 +519,14 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									?.partition_regex || ""
 							}
 							onPartitionRegexChange={handlePartitionRegexChange}
+							initialFullLoadFilter={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || "default"
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.filter || ""
+							}
+							onFullLoadFilterChange={handleFullLoadFilterChange}
+							fromJobEditFlow={fromJobEditFlow}
 						/>
 					) : (
 						!loading && (
