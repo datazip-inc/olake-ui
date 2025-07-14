@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -251,37 +250,4 @@ func ParseJSONFile(filePath string) (map[string]interface{}, error) {
 	}
 
 	return result, nil
-}
-
-// ToCron converts a frequency string to a cron expression
-func ToCron(frequency string) string {
-	parts := strings.Split(strings.ToLower(frequency), "-")
-	if len(parts) != 2 {
-		return ""
-	}
-
-	valueStr, unit := parts[0], parts[1]
-	value, err := strconv.Atoi(valueStr)
-	if err != nil || value <= 0 {
-		return ""
-	}
-
-	switch unit {
-	case "minutes":
-		return fmt.Sprintf("*/%d * * * *", value) // Every N minutes
-	case "hours":
-		return fmt.Sprintf("0 */%d * * *", value) // Every N hours at minute 0
-	case "days":
-		return fmt.Sprintf("0 0 */%d * *", value) // Every N days at midnight
-	case "weeks":
-		// Every N weeks on Sunday (0), cron doesn't support "every N weeks" directly,
-		// so simulate with day-of-week field (best-effort)
-		return fmt.Sprintf("0 0 * * */%d", value)
-	case "months":
-		return fmt.Sprintf("0 0 1 */%d *", value) // Every N months on the 1st at midnight
-	case "years":
-		return fmt.Sprintf("0 0 1 1 */%d", value) // Every N years on the 1st of January at midnight
-	default:
-		return ""
-	}
 }
