@@ -47,6 +47,10 @@ func InitTelemetry() {
 	}
 
 	go func() {
+		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
+			return
+		}
+
 		ip := getOutboundIP()
 		client := analytics.New(TelemetrySegmentAPIKey)
 
@@ -147,9 +151,6 @@ func getLocationFromIP(ip string) *LocationInfo {
 
 // TrackEvent sends a custom event to Segment
 func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
-	if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
-		return nil
-	}
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
