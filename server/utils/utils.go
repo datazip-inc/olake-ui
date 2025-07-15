@@ -15,6 +15,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
+	"github.com/robfig/cron"
 
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
@@ -284,4 +285,44 @@ func ToCron(frequency string) string {
 	default:
 		return ""
 	}
+}
+
+// removes old logs from the specified directory based on the retention period
+func CleanOldLogs(logsDir string, retentionPeriod int) {
+	cutOffTime := time.Now().AddDate(0, 0, -retentionPeriod)
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		logs.Error("Failed to read logsDir: %v", err)
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "telemetry" {
+			continue
+		}
+
+		fullPath := filepath.Join(logsDir, entry.Name())
+		info, err := os.Stat(fullPath)
+		if err != nil {
+			continue
+		}
+
+		if info.ModTime().Before(cutOffTime) {
+			if err := os.RemoveAll(fullPath); err != nil {
+				continue
+			}
+			logs.Info("Deleting directory: %s (modified at %v)", fullPath, info.ModTime())
+		}
+	}
+}
+
+// starts a log cleaner that removes old logs from the specified directory based on the retention period
+func InitLogCleaner(logDir string, retentionPeriod int) {
+	logs.Info("Log cleaner started...")
+	c := cron.New()
+	c.AddFunc("@midnight", func() {
+		logs.Info("removing old logs...")
+		CleanOldLogs(logDir, retentionPeriod)
+	})
+	c.Start()
 }

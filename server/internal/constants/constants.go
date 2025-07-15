@@ -10,17 +10,19 @@ import (
 )
 
 var (
-	defaultPort      = 8080
-	version          = "Not Set"
-	commitsha        = "Not Set"
-	releasechannel   = "Not Set"
-	defaultBaseHost  = "localhost"
-	DefaultTimeZone  = "Asia/Kolkata"
-	DefaultUsername  = "olake"
-	DefaultPassword  = "password"
-	EncryptionKey    = "OLAKE_SECRET_KEY"
-	TableNameMap     = map[TableType]string{}
-	DefaultConfigDir = "/tmp/olake-config"
+	defaultPort               = 8080
+	version                   = "Not Set"
+	commitsha                 = "Not Set"
+	releasechannel            = "Not Set"
+	defaultBaseHost           = "localhost"
+	DefaultTimeZone           = "Asia/Kolkata"
+	DefaultUsername           = "olake"
+	DefaultPassword           = "password"
+	EncryptionKey             = "OLAKE_SECRET_KEY"
+	TableNameMap              = map[TableType]string{}
+	DefaultConfigDir          = "/tmp/olake-config"
+	DefaultOlakeDataPath      = "/tmp/olake-data"
+	DefaultLogRetentionPeriod = 7
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
