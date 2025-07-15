@@ -42,6 +42,10 @@ type Telemetry struct {
 }
 
 func InitTelemetry() {
+	if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
+		return
+	}
+
 	go func() {
 		ip := getOutboundIP()
 		client := analytics.New(TelemetrySegmentAPIKey)
