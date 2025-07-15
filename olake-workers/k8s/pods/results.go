@@ -56,7 +56,7 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string) (map[
 	operationType := pod.Annotations["olake.io/operation-type"]
 	if operationType == "" {
 		logger.Warnf("Operation type not found in pod annotations for pod %s, falling back to log parsing", podName)
-		return k.fallbackToLogParsing(ctx, podName, workflowID)
+		return k.fallbackToLogParsing(ctx, podName)
 	}
 
 	logger.Debugf("Processing results for pod %s with operation type: %s", podName, operationType)
@@ -73,22 +73,22 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string) (map[
 			return result, nil
 		} else {
 			logger.Warnf("Failed to parse streams.json for discover operation: %v, falling back to logs", err)
-			return k.fallbackToLogParsing(ctx, podName, workflowID)
+			return k.fallbackToLogParsing(ctx, podName)
 		}
 
 	case shared.Sync, shared.Check:
 		// For sync and check operations, parse logs directly
-		return k.fallbackToLogParsing(ctx, podName, workflowID)
+		return k.fallbackToLogParsing(ctx, podName)
 
 	default:
 		logger.Warnf("Unknown operation type '%s' for pod %s, falling back to log parsing", operationType, podName)
-		return k.fallbackToLogParsing(ctx, podName, workflowID)
+		return k.fallbackToLogParsing(ctx, podName)
 	}
 }
 
 // fallbackToLogParsing handles result extraction by parsing pod logs
 // This is used as a fallback when annotation-based detection fails or for operations that rely on log parsing
-func (k *K8sPodManager) fallbackToLogParsing(ctx context.Context, podName, workflowID string) (map[string]interface{}, error) {
+func (k *K8sPodManager) fallbackToLogParsing(ctx context.Context, podName string) (map[string]interface{}, error) {
 	logs, err := k.getPodLogs(ctx, podName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod logs: %v", err)
