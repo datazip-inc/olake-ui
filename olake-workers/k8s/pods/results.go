@@ -100,13 +100,14 @@ func (k *K8sPodManager) fallbackToLogParsing(ctx context.Context, podName, workf
 
 // PodActivityRequest defines a request for executing a pod activity
 type PodActivityRequest struct {
-	WorkflowID string
-	JobID      int
-	Operation  shared.Command
-	Image      string
-	Args       []string
-	Configs    []shared.JobConfig
-	Timeout    time.Duration
+	WorkflowID    string
+	JobID         int
+	Operation     shared.Command
+	ConnectorType string
+	Image         string
+	Args          []string
+	Configs       []shared.JobConfig
+	Timeout       time.Duration
 }
 
 // ExecutePodActivity executes a pod activity with common workflow
@@ -120,6 +121,7 @@ func (k *K8sPodManager) ExecutePodActivity(ctx context.Context, req PodActivityR
 		Command:            []string{},
 		Args:               req.Args,
 		Operation:          req.Operation,
+		ConnectorType:      req.ConnectorType,
 	}
 
 	// Create Pod

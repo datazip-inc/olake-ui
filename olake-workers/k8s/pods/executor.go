@@ -23,6 +23,7 @@ type PodSpec struct {
 	OriginalWorkflowID string
 	JobID              int
 	Operation          shared.Command
+	ConnectorType      string
 }
 
 // CreatePod creates a Kubernetes Pod for running job operations
@@ -45,15 +46,19 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 			Name:      spec.Name,
 			Namespace: k.namespace,
 			Labels: map[string]string{
-				"app":                      "olake-connector",
-				"type":                     "job-pod",
-				"olake.io/workflow-id":     k8s.SanitizeName(spec.OriginalWorkflowID),
-				"olake.io/job-id":          strconv.Itoa(spec.JobID),
-				"olake.io/operation-type":  string(spec.Operation),
-				"olake.io/autoscaling":     "enabled",
+				// Standard Kubernetes labels
+				"app.kubernetes.io/name":       "olake",
+				"app.kubernetes.io/component":  fmt.Sprintf("%s-%s", spec.ConnectorType, string(spec.Operation)),
+				"app.kubernetes.io/managed-by": "olake-workers",
+				
+				// Custom Olake labels
+				"olake.io/operation-type":      string(spec.Operation),
+				"olake.io/connector":           spec.ConnectorType,
+				"olake.io/job-id":              strconv.Itoa(spec.JobID),
+				"olake.io/workflow-id":         k8s.SanitizeName(spec.OriginalWorkflowID),
 			},
 			Annotations: map[string]string{
-				"olake.io/created-by":           "olake-ui/olake-workers/k8s",
+				"olake.io/created-by-pod":       k8s.GetCurrentPodName(),
 				"olake.io/created-at":           time.Now().Format(time.RFC3339),
 				"olake.io/original-workflow-id": spec.OriginalWorkflowID,
 				"olake.io/operation-type":       string(spec.Operation),

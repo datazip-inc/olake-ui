@@ -140,7 +140,7 @@ olakeUI:
 olakeWorker:
   # -- OLake Worker image configuration
   image:
-    repository: olakego/olake-worker-k8s
+    repository: olakego/olake-workers
     tag: latest
     pullPolicy: Always
   

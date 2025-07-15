@@ -43,11 +43,12 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 
 	// Execute pod activity using common workflow
 	request := pods.PodActivityRequest{
-		WorkflowID: params.WorkflowID,
-		JobID:      params.JobID,
-		Operation:  shared.Discover,
-		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
-		Args:       []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
+		WorkflowID:    params.WorkflowID,
+		JobID:         params.JobID,
+		Operation:     shared.Discover,
+		ConnectorType: params.SourceType,
+		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
+		Args:          []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
 		},
@@ -70,10 +71,11 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 
 	// Execute pod activity using common workflow
 	request := pods.PodActivityRequest{
-		WorkflowID: params.WorkflowID,
-		JobID:      params.JobID,
-		Operation:  shared.Check,
-		Image:      a.podManager.GetDockerImageName(params.SourceType, params.Version),
+		WorkflowID:    params.WorkflowID,
+		JobID:         params.JobID,
+		Operation:     shared.Check,
+		ConnectorType: params.SourceType,
+		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args: []string{
 			string(shared.Check),
 			fmt.Sprintf("--%s", params.Flag),
@@ -117,10 +119,11 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 
 	// Execute pod activity using common workflow
 	request := pods.PodActivityRequest{
-		WorkflowID: params.WorkflowID,
-		JobID:      params.JobID,
-		Operation:  shared.Sync,
-		Image:      a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
+		WorkflowID:    params.WorkflowID,
+		JobID:         params.JobID,
+		Operation:     shared.Sync,
+		ConnectorType: jobData.SourceType,
+		Image:         a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
 		Args: []string{
 			string(shared.Sync),
 			"--config", "/mnt/config/config.json",
@@ -162,6 +165,7 @@ func (a *Activities) monitorState(ctx context.Context, jobID int, workflowID str
 	defer ticker.Stop()
 	
 	var lastModTime time.Time
+	logger.Infof("Starting state monitoring for job %d (workflowID: %s) with 30-second interval", jobID, workflowID)
 	
 	for {
 		select {
@@ -174,6 +178,8 @@ func (a *Activities) monitorState(ctx context.Context, jobID int, workflowID str
 			logger.Infof("Activity context cancelled, performing final state checkpoint for job %d", jobID)
 			if err := a.checkpointState(jobID, workflowID, &lastModTime); err != nil {
 				logger.Errorf("Final checkpoint failed for job %d: %v", jobID, err)
+			} else {
+				logger.Infof("Final state checkpoint completed successfully for job %d", jobID)
 			}
 			return
 		}
@@ -190,12 +196,20 @@ func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *
 	// Check if file changed using ModTime
 	info, err := os.Stat(statePath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			logger.Debugf("State file does not exist yet for job %d: %s", jobID, statePath)
+			return nil // File doesn't exist yet, not an error
+		}
 		return fmt.Errorf("stat failed: %w", err)
 	}
 	
 	if !info.ModTime().After(*lastModTime) {
+		logger.Debugf("No state changes detected for job %d (last modified: %s)", jobID, info.ModTime().Format("2006-01-02 15:04:05"))
 		return nil // No change
 	}
+	
+	logger.Infof("State file changed for job %d, initiating checkpoint (size: %d bytes, modified: %s)", 
+		jobID, info.Size(), info.ModTime().Format("2006-01-02 15:04:05"))
 	
 	// Read state file
 	stateData, err := os.ReadFile(statePath)
@@ -220,6 +234,6 @@ func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *
 	}
 	
 	*lastModTime = info.ModTime()
-	logger.Debugf("State checkpoint completed for job %d", jobID)
+	logger.Infof("State checkpoint completed successfully for job %d (%d bytes persisted to database)", jobID, len(stateData))
 	return nil
 }

@@ -109,8 +109,8 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 				break
 			}
 			
-			// Validate Kubernetes label key (RFC 1123 DNS subdomain format)
-			if errs := validation.IsDNS1123Subdomain(key); len(errs) > 0 {
+			// Validate Kubernetes label key (qualified name format)
+			if errs := validation.IsQualifiedName(key); len(errs) > 0 {
 				stats.InvalidMappings = append(stats.InvalidMappings, 
 					fmt.Sprintf("JobID %d: invalid label key '%s'", jobID, key))
 				logger.Errorf("JobID %d has invalid node label key '%s': %v", jobID, key, errs)

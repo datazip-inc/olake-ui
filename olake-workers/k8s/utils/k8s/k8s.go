@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	
+	"olake-ui/olake-workers/k8s/utils/env"
 )
 
 // ParseQuantity parses Kubernetes resource quantity string
@@ -33,4 +35,13 @@ func SanitizeName(name string) string {
 	}
 
 	return name
+}
+
+// GetCurrentPodName retrieves the current pod name from environment variable
+func GetCurrentPodName() string {
+	podName := env.GetEnv("POD_NAME", "")
+	if podName == "" {
+		panic("POD_NAME environment variable not set - check Kubernetes manifest")
+	}
+	return podName
 }
