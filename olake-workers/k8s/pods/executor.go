@@ -50,12 +50,12 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 				"app.kubernetes.io/name":       "olake",
 				"app.kubernetes.io/component":  fmt.Sprintf("%s-%s", spec.ConnectorType, string(spec.Operation)),
 				"app.kubernetes.io/managed-by": "olake-workers",
-				
+
 				// Custom Olake labels
-				"olake.io/operation-type":      string(spec.Operation),
-				"olake.io/connector":           spec.ConnectorType,
-				"olake.io/job-id":              strconv.Itoa(spec.JobID),
-				"olake.io/workflow-id":         k8s.SanitizeName(spec.OriginalWorkflowID),
+				"olake.io/operation-type": string(spec.Operation),
+				"olake.io/connector":      spec.ConnectorType,
+				"olake.io/job-id":         strconv.Itoa(spec.JobID),
+				"olake.io/workflow-id":    k8s.SanitizeName(spec.OriginalWorkflowID),
 			},
 			Annotations: map[string]string{
 				"olake.io/created-by-pod":       k8s.GetCurrentPodName(),
@@ -171,9 +171,6 @@ func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
 	return nil
 }
 
-
-
-
 // getNodeSelectorForJob returns node selector configuration for the given jobID
 // Returns empty map if no mapping is found (graceful fallback)
 func (k *K8sPodManager) getNodeSelectorForJob(jobID int) map[string]string {
@@ -208,7 +205,7 @@ func (k *K8sPodManager) buildNodeAffinity(nodeSelectorMap map[string]string) (*c
 			logger.Warnf("Skipping invalid node mapping entry with empty key or value: key=%s, value=%s", key, value)
 			continue
 		}
-		
+
 		// The 'Values' field for the 'In' operator must be a slice of strings
 		matchExpressions = append(matchExpressions, corev1.NodeSelectorRequirement{
 			Key:      key,
