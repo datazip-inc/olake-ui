@@ -124,16 +124,19 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: destinationConnector,
+				type: `${destinationConnector}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
 						: JSON.stringify(destinationFormData),
-				version: destinationVersion,
+				version: `${destinationVersion}`,
 			}
+
 			setShowTestingModal(true)
-			const testResult =
-				await destinationService.testDestinationConnection(newDestinationData)
+			const testResult = await destinationService.testDestinationConnection(
+				newDestinationData,
+				sourceConnector.toLowerCase(),
+			)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
@@ -318,7 +321,7 @@ const JobCreation: React.FC = () => {
 								onConnectorChange={setDestinationConnector}
 								initialConnector={
 									destinationConnector.toLowerCase() === "s3" ||
-									destinationConnector.toLowerCase() === "amazon s3"
+									destinationConnector.toLowerCase() === "amazon s3" // TODO: dont manage different types use single at every place
 										? "s3"
 										: destinationConnector.toLowerCase() === "apache iceberg" ||
 											  destinationConnector.toLowerCase() === "iceberg"

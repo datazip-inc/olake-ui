@@ -61,7 +61,7 @@ export const identifyUser = async () => {
 		const systemInfo = await getSystemInfo()
 		const telemetryId = await getTelemetryID()
 
-		if (telemetryId) {
+		if (telemetryId && telemetryId !== "") {
 			await analytics.identify(telemetryId, {
 				username,
 				...systemInfo,
@@ -80,6 +80,11 @@ export const trackEvent = async (
 	properties?: Record<string, any>,
 ) => {
 	try {
+		const telemetryId = await getTelemetryID()
+		if (!telemetryId || telemetryId === "") {
+			return
+		}
+
 		const username = localStorage.getItem("username")
 		const systemInfo = await getSystemInfo()
 
