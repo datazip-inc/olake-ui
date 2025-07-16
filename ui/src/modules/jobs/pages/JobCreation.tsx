@@ -25,6 +25,7 @@ import {
 } from "../../../utils/utils"
 import { destinationService, sourceService } from "../../../api"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import analyticsService from "../../../api/services/analyticsService"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -123,16 +124,19 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: destinationConnector,
+				type: `${destinationConnector}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
 						: JSON.stringify(destinationFormData),
-				version: destinationVersion,
+				version: `${destinationVersion}`,
 			}
+
 			setShowTestingModal(true)
-			const testResult =
-				await destinationService.testDestinationConnection(newDestinationData)
+			const testResult = await destinationService.testDestinationConnection(
+				newDestinationData,
+				sourceConnector.toLowerCase(),
+			)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
@@ -245,6 +249,7 @@ const JobCreation: React.FC = () => {
 		)
 		existingSavedJobs.push(savedJob)
 		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
+		analyticsService.trackEvent("save_job_clicked")
 		message.success("Job saved successfully!")
 		navigate("/jobs")
 	}
@@ -316,7 +321,7 @@ const JobCreation: React.FC = () => {
 								onConnectorChange={setDestinationConnector}
 								initialConnector={
 									destinationConnector.toLowerCase() === "s3" ||
-									destinationConnector.toLowerCase() === "amazon s3"
+									destinationConnector.toLowerCase() === "amazon s3" // TODO: dont manage different types use single at every place
 										? "s3"
 										: destinationConnector.toLowerCase() === "apache iceberg" ||
 											  destinationConnector.toLowerCase() === "iceberg"

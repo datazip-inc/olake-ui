@@ -13,6 +13,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -110,6 +111,9 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
+	// Track source creation event
+	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), source)
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -146,6 +150,8 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 
+	// Track sources status after update
+	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -180,6 +186,7 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
+	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
 		Name: source.Name,
 	})
@@ -271,21 +278,18 @@ func (c *SourceHandler) GetSourceJobs() {
 
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
-	// Get source type from query parameter
 	sourceType := c.GetString("type")
 	if sourceType == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Source type is required")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "source type is required")
 		return
 	}
 
-	// Get versions from Docker Hub
-	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
-
-	versions, err := utils.GetDockerHubTags(imageName)
+	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), fmt.Sprintf("olakego/source-%s", sourceType), true)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get Docker versions")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
 		return
 	}
+
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,
 	})
@@ -340,7 +344,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       5,
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "string",
+					"type":        "obj",
 					"title":       "JDBC URL Parameters",
 					"description": "Additional JDBC URL parameters for connection tuning (optional)",
 					"order":       6,
@@ -568,7 +572,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 					"order":       5,
 				},
 				"jdbc_url_params": map[string]interface{}{
-					"type":        "string",
+					"type":        "obj",
 					"title":       "JDBC URL Parameters",
 					"description": "Additional JDBC URL parameters for connection tuning (optional)",
 					"order":       6,

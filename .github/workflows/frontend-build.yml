@@ -3,12 +3,8 @@ on:
   push:
     branches:
       - master
-      - staging
-      - "*"
   pull_request:
     branches:
-      - master
-      - staging
       - "*"
 
 jobs:

@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -13,6 +13,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -21,12 +22,14 @@ type DestHandler struct {
 	web.Controller
 	destORM    *database.DestinationORM
 	jobORM     *database.JobORM
+	userORM    *database.UserORM
 	tempClient *temporal.Client
 }
 
 func (c *DestHandler) Prepare() {
 	c.destORM = database.NewDestinationORM()
 	c.jobORM = database.NewJobORM()
+	c.userORM = database.NewUserORM()
 	var err error
 	c.tempClient, err = temporal.NewClient()
 	if err != nil {
@@ -102,6 +105,8 @@ func (c *DestHandler) CreateDestination() {
 		return
 	}
 
+	// Track destination creation event
+	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), destination)
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -142,6 +147,9 @@ func (c *DestHandler) UpdateDestination() {
 		return
 	}
 
+	// Track destinations status after update
+	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
+
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -155,6 +163,7 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
 		return
 	}
+
 	jobs, err := c.jobORM.GetByDestinationID(id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
@@ -170,6 +179,9 @@ func (c *DestHandler) DeleteDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
 		return
 	}
+
+	// Track destinations status after deletion
+	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
 		Name: dest.Name,
@@ -194,13 +206,37 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
 		return
 	}
+
+	driver := utils.Ternary(req.Source == "", "postgres", req.Source).(string)
+	version := req.Version
+
+	// check if tags available through dockerhub
+	_, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", false)
+	if err != nil {
+		// if dockerhub api fails then check for cached images and use any of them with same version
+		images, err := utils.GetCachedImages(c.Ctx.Request.Context())
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to getc cached images config: %s", err))
+			return
+		}
+		for _, image := range images {
+			if strings.HasSuffix(image, version) {
+				untagged := strings.Split(image, ":")[0]         // olakego/source-postgres
+				lastPart := strings.Split(untagged, "/")[1]      // source-postgres
+				driver = strings.TrimPrefix(lastPart, "source-") // postgres
+				break
+			}
+		}
+	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-	// TODO: use context provided by request
-	result, err := c.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", encryptedConfig)
+
+	// check if destination asociated with job
+	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -243,12 +279,12 @@ func (c *DestHandler) GetDestinationVersions() {
 		return
 	}
 
-	// In a real implementation, we would query for available versions
-	// based on the destination type and project ID
-	// For now, we'll return a mock response
-
-	// Mock available versions (this would be replaced with actual DB query)
-	versions := []string{"latest"}
+	// get available driver versions
+	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
+		return
+	}
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"version": versions,
