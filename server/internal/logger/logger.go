@@ -6,8 +6,6 @@ import (
 	"sync"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/utils"
 )
 
 var (
@@ -49,9 +47,6 @@ func InitLogger(logdir string) {
 		if err := logs.SetLogger(logs.AdapterFile, fileConfig); err != nil {
 			panic("File logger init failed: " + err.Error())
 		}
-
-		// init log cleaner
-		utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())
 
 		// Configure logger behavior
 		logs.SetLogFuncCallDepth(3)

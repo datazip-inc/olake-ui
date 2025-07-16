@@ -253,41 +253,70 @@ func ToCron(frequency string) string {
 	}
 }
 
-// removes old logs from the specified directory based on the retention period
-func CleanOldLogs(logsDir string, retentionPeriod int) {
-	cutOffTime := time.Now().AddDate(0, 0, -retentionPeriod) // retention period in days
-	entries, err := os.ReadDir(logsDir)
-	if err != nil {
-		logs.Error("Failed to read logsDir: %v", err)
-		return
+func CleanOldLogs(logDir string, retentionMinutes int) error {
+	cutoff := time.Now().Add(-time.Minute * 3)
+
+	shouldDelete := func(path string) (bool, error) {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, err
+		}
+		if !info.IsDir() || !info.ModTime().Before(cutoff) {
+			return false, nil
+		}
+
+		// Check for any file ending in .log, .log.gz, or .gz
+		found := false
+		err = filepath.WalkDir(path, func(p string, d os.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			name := d.Name()
+			if strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".log.gz") {
+				found = true
+				return filepath.SkipDir
+			}
+			return nil
+		})
+		if err != nil {
+			return false, err
+		}
+		return found, nil
 	}
 
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return err
+	}
 	for _, entry := range entries {
 		if !entry.IsDir() || entry.Name() == "telemetry" {
 			continue
 		}
 
-		fullPath := filepath.Join(logsDir, entry.Name())
-		info, err := os.Stat(fullPath)
+		dirPath := filepath.Join(logDir, entry.Name())
+		ok, err := shouldDelete(dirPath)
 		if err != nil {
 			continue
 		}
-
-		if info.ModTime().Before(cutOffTime) {
-			if err := os.RemoveAll(fullPath); err != nil {
+		if ok {
+			fmt.Printf("Deleting folder %s\n", dirPath)
+			if err := os.RemoveAll(dirPath); err != nil {
 				continue
 			}
-			logs.Info("Deleting logs: %s (modified at %v)", fullPath, info.ModTime())
 		}
 	}
+	return nil
 }
 
 // starts a log cleaner that removes old logs from the specified directory based on the retention period
 func InitLogCleaner(logDir string, retentionPeriod int) {
 	logs.Info("Log cleaner started...")
+	CleanOldLogs(logDir, retentionPeriod) // catchup missed cycles if any
 	c := cron.New()
 	err := c.AddFunc("@midnight", func() {
-		logs.Info("running log cleaner...")
 		CleanOldLogs(logDir, retentionPeriod)
 	})
 	if err != nil {
@@ -299,9 +328,10 @@ func InitLogCleaner(logDir string, retentionPeriod int) {
 
 // GetRetentionPeriod returns the retention period for logs
 func GetLogRetentionPeriod() int {
-	if os.Getenv("LOG_RETENTION_PERIOD") != "" {
-		retentionPeriod, _ := strconv.Atoi(os.Getenv("LOG_RETENTION_PERIOD"))
-		return retentionPeriod
+	if val := os.Getenv("LOG_RETENTION_PERIOD"); val != "" {
+		if retentionPeriod, err := strconv.Atoi(val); err == nil && retentionPeriod > 0 {
+			return retentionPeriod
+		}
 	}
 	return constants.DefaultLogRetentionPeriod
 }

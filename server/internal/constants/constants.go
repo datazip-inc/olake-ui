@@ -21,7 +21,7 @@ var (
 	EncryptionKey             = "OLAKE_SECRET_KEY"
 	TableNameMap              = map[TableType]string{}
 	DefaultConfigDir          = "/tmp/olake-config"
-	DefaultLogRetentionPeriod = 7
+	DefaultLogRetentionPeriod = 30
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
