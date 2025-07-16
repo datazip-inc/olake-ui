@@ -286,10 +286,14 @@ func CleanOldLogs(logsDir string, retentionPeriod int) {
 func InitLogCleaner(logDir string, retentionPeriod int) {
 	logs.Info("Log cleaner started...")
 	c := cron.New()
-	c.AddFunc("@midnight", func() {
+	err := c.AddFunc("@midnight", func() {
 		logs.Info("running log cleaner...")
 		CleanOldLogs(logDir, retentionPeriod)
 	})
+	if err != nil {
+		logs.Error("Failed to start log cleaner: %v", err)
+		return
+	}
 	c.Start()
 }
 
