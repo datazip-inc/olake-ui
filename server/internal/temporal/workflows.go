@@ -1,6 +1,7 @@
 package temporal
 
 import (
+	"context"
 	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -84,11 +85,17 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 		JobID:      jobID,
 		WorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
 	}
+
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var result map[string]interface{}
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
+		// Track sync failure event
+		telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID)
 		return nil, err
 	}
+
+	// Track sync completion
+	telemetry.TrackSyncCompleted(context.Background(), jobID, params.WorkflowID)
 	return result, nil
 }

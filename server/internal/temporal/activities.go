@@ -60,6 +60,10 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 	logger.Info("Starting sync activity",
 		"jobId", params.JobID,
 		"workflowID", params.WorkflowID)
+
+	// Track sync start event
+	telemetry.TrackSyncStart(ctx, params.JobID, params.WorkflowID)
+
 	// Create a Docker runner with the default config directory
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	// Record heartbeat
