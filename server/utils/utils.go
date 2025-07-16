@@ -101,48 +101,6 @@ func HandleErrorJS(w http.ResponseWriter, r *http.Request, err error) {
 	http.Redirect(w, r, fmt.Sprintf(`/error?msg=%q`, url.QueryEscape(err.Error())), http.StatusPermanentRedirect)
 }
 
-// // Encrypt with AES encryption and returns base64 encoded string
-// func encryptAES(content, key []byte) (string, error) {
-// 	block, err := aes.NewCipher(key)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	cipherText := make([]byte, aes.BlockSize+len(content))
-// 	iv := cipherText[:aes.BlockSize]
-// 	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-// 		return "", err
-// 	}
-// 	stream := cipher.NewCFBEncrypter(block, iv)
-// 	stream.XORKeyStream(cipherText[aes.BlockSize:], content)
-// 	return base64.StdEncoding.EncodeToString(cipherText), err
-// }
-
-// // decryptAES decrypts a base64 encoded string using AES encryption
-// func decryptAES(secure string, key []byte) ([]byte, error) {
-// 	cipherDecoded, err := base64.StdEncoding.DecodeString(secure)
-// 	// if DecodeString failed, exit:
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// create a new AES cipher with the key and encrypted message
-// 	block, err := aes.NewCipher(key)
-// 	// if NewCipher failed, exit:
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// if the length of the cipherDecoded is less than 16 Bytes:
-// 	if len(cipherDecoded) < aes.BlockSize {
-// 		logs.Error("cipherDecoded block size is too short!")
-// 		return nil, err
-// 	}
-// 	iv := cipherDecoded[:aes.BlockSize]
-// 	cipherDecoded = cipherDecoded[aes.BlockSize:]
-// 	// decrypt the message
-// 	stream := cipher.NewCFBDecrypter(block, iv)
-// 	stream.XORKeyStream(cipherDecoded, cipherDecoded)
-// 	return cipherDecoded, nil
-// }
-
 func ExistsInArray[T comparable](arr []T, value T) bool {
 	for _, elem := range arr {
 		if elem == value {
@@ -163,6 +121,13 @@ func ULID() string {
 	}
 
 	return newUlid.String()
+}
+
+func Ternary(cond bool, a, b any) any {
+	if cond {
+		return a
+	}
+	return b
 }
 
 // ConnectionStatus represents the structure of the connection status JSON
