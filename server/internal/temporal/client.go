@@ -7,6 +7,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/docker"
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -92,7 +93,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 }
 
 // FetchSpec runs a workflow to fetch connector specifications
-func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (map[string]interface{}, error) {
+func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (models.SpecOutput, error) {
 	params := &ActivityParams{
 		SourceType:      sourceType,
 		Version:         version,
@@ -107,12 +108,12 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 
 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
+		return models.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
 	}
 
-	var result map[string]interface{}
+	var result models.SpecOutput
 	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
+		return models.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
 	}
 
 	return result, nil

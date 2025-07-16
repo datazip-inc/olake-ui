@@ -286,9 +286,8 @@ func ToCron(frequency string) string {
 	}
 }
 
-// ParseLastJSONLine extracts and parses the last JSON object from the given output
-// ParseSpecJSON extracts and returns the value inside the top-level "spec" key from the last valid JSON line in the output
-func ParseSpecJSON(output string) (map[string]interface{}, error) {
+// ParseSpecJSON extracts and returns the "spec" and "uischema" objects from the last valid JSON block
+func ParseSpecJSON(output string) (models.SpecOutput, error) {
 	lines := strings.Split(output, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
@@ -298,14 +297,17 @@ func ParseSpecJSON(output string) (map[string]interface{}, error) {
 			jsonPart := line[start : end+1]
 			var fullMap map[string]interface{}
 			if err := json.Unmarshal([]byte(jsonPart), &fullMap); err != nil {
-				continue // Skip invalid JSON, keep looking
+				continue // Skip invalid JSON
 			}
 
-			// Only return what's inside top-level "spec"
-			if spec, ok := fullMap["spec"].(map[string]interface{}); ok {
-				return spec, nil
+			// Extract both spec and uischema if available
+			spec, okSpec := fullMap["spec"].(map[string]interface{})
+			uischema, okUI := fullMap["uischema"].(map[string]interface{})
+
+			if okSpec || okUI {
+				return models.SpecOutput{Spec: spec, UISchema: uischema}, nil
 			}
 		}
 	}
-	return nil, fmt.Errorf("no top-level 'spec' JSON block found in output")
+	return models.SpecOutput{}, fmt.Errorf("no top-level 'spec' or 'uischema' JSON block found in output")
 }

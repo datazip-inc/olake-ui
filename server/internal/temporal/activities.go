@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/datazip/olake-frontend/server/internal/docker"
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"go.temporal.io/sdk/activity"
 )
 
@@ -39,7 +40,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 }
 
 // GetSpecActivity runs the spec command to get connector specifications
-func FetchSpecActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
+func FetchSpecActivity(ctx context.Context, params ActivityParams) (models.SpecOutput, error) {
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	return runner.FetchSpec(ctx, params.DestinationType, params.SourceType, params.Version, params.WorkflowID)
 }

@@ -12,9 +12,14 @@ type JSONResponse struct {
 }
 
 type SpecResponse struct {
-	Version string      `json:"version"`
-	Type    string      `json:"type"`
-	Spec    interface{} `json:"spec" orm:"type(jsonb)"`
+	Version  string      `json:"version"`
+	Type     string      `json:"type"`
+	Spec     interface{} `json:"spec" orm:"type(jsonb)"`
+	UISchema interface{} `json:"uischema" orm:"type(jsonb)"`
+}
+type SpecOutput struct {
+	Spec     map[string]interface{} `json:"spec"`
+	UISchema map[string]interface{} `json:"uischema"`
 }
 
 // Reuse generic API response with generics

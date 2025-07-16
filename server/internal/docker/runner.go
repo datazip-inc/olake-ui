@@ -13,6 +13,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -85,7 +86,6 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 	if version == "" {
 		version = "latest"
 	}
-	version = "dev-latest"
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
@@ -147,7 +147,7 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	}
 	return outputDir
 }
-func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (map[string]interface{}, error) {
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (models.SpecOutput, error) {
 	// Prepare the command arguments
 	dockerArgs := []string{
 		"run",
@@ -163,11 +163,11 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
+		return models.SpecOutput{}, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
 	}
 	spec, err := utils.ParseSpecJSON(string(output))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse spec: %s", string(output))
+		return models.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
 	}
 	return spec, nil
 }

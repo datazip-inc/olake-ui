@@ -3,6 +3,7 @@ package temporal
 import (
 	"time"
 
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -37,7 +38,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 }
 
 // FetchSpecWorkflow is a workflow for fetching connector specifications
-func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (map[string]interface{}, error) {
+func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (models.SpecOutput, error) {
 	// Execute the FetchSpecActivity directly
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 10,
@@ -45,10 +46,10 @@ func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (map[string
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 
-	var result map[string]interface{}
+	var result models.SpecOutput
 	err := workflow.ExecuteActivity(ctx, FetchSpecActivity, params).Get(ctx, &result)
 	if err != nil {
-		return nil, err
+		return models.SpecOutput{}, err
 	}
 
 	return result, nil

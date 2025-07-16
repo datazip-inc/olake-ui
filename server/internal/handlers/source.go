@@ -300,10 +300,10 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var spec map[string]interface{}
+	var specOutput models.SpecOutput
 	var err error
 
-	spec, err = c.tempClient.FetchSpec(
+	specOutput, err = c.tempClient.FetchSpec(
 		c.Ctx.Request.Context(),
 		"",
 		req.Type,
@@ -315,8 +315,9 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	}
 
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    spec,
+		Version:  req.Version,
+		Type:     req.Type,
+		Spec:     specOutput.Spec,
+		UISchema: specOutput.UISchema,
 	})
 }

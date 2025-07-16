@@ -264,7 +264,7 @@ func (c *DestHandler) GetDestinationSpec() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var spec map[string]interface{}
+	var spec models.SpecOutput
 	var err error
 	destinationType := "iceberg"
 	if req.Type == "s3" {
