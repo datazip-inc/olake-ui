@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
@@ -51,7 +51,7 @@ func InitLogger(logdir string) {
 		}
 
 		// init log cleaner
-		utils.InitLogCleaner(constants.DefaultOlakeDataPath, constants.DefaultLogRetentionPeriod)
+		utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())
 
 		// Configure logger behavior
 		logs.SetLogFuncCallDepth(3)

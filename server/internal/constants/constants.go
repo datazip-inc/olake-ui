@@ -21,7 +21,6 @@ var (
 	EncryptionKey             = "OLAKE_SECRET_KEY"
 	TableNameMap              = map[TableType]string{}
 	DefaultConfigDir          = "/tmp/olake-config"
-	DefaultOlakeDataPath      = "/tmp/olake-data"
 	DefaultLogRetentionPeriod = 7
 )
 

@@ -17,6 +17,7 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/robfig/cron"
 
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
@@ -289,7 +290,7 @@ func ToCron(frequency string) string {
 
 // removes old logs from the specified directory based on the retention period
 func CleanOldLogs(logsDir string, retentionPeriod int) {
-	cutOffTime := time.Now().AddDate(0, 0, -retentionPeriod)
+	cutOffTime := time.Now().AddDate(0, 0, -retentionPeriod) // retention period in days
 	entries, err := os.ReadDir(logsDir)
 	if err != nil {
 		logs.Error("Failed to read logsDir: %v", err)
@@ -311,7 +312,7 @@ func CleanOldLogs(logsDir string, retentionPeriod int) {
 			if err := os.RemoveAll(fullPath); err != nil {
 				continue
 			}
-			logs.Info("Deleting directory: %s (modified at %v)", fullPath, info.ModTime())
+			logs.Info("Deleting logs: %s (modified at %v)", fullPath, info.ModTime())
 		}
 	}
 }
@@ -321,8 +322,17 @@ func InitLogCleaner(logDir string, retentionPeriod int) {
 	logs.Info("Log cleaner started...")
 	c := cron.New()
 	c.AddFunc("@midnight", func() {
-		logs.Info("removing old logs...")
+		logs.Info("running log cleaner...")
 		CleanOldLogs(logDir, retentionPeriod)
 	})
 	c.Start()
+}
+
+// GetRetentionPeriod returns the retention period for logs
+func GetLogRetentionPeriod() int {
+	if os.Getenv("LOG_RETENTION_PERIOD") != "" {
+		retentionPeriod, _ := strconv.Atoi(os.Getenv("LOG_RETENTION_PERIOD"))
+		return retentionPeriod
+	}
+	return constants.DefaultLogRetentionPeriod
 }
