@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 
 	analytics "github.com/segmentio/analytics-go/v3"
@@ -42,6 +43,10 @@ type Telemetry struct {
 
 func InitTelemetry() {
 	go func() {
+		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
+			return
+		}
+
 		ip := getOutboundIP()
 		client := analytics.New(TelemetrySegmentAPIKey)
 
