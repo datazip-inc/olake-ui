@@ -6,6 +6,7 @@ import (
 
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"go.temporal.io/sdk/activity"
 )
 
