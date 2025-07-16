@@ -253,8 +253,8 @@ func ToCron(frequency string) string {
 	}
 }
 
-func CleanOldLogs(logDir string, retentionMinutes int) error {
-	cutoff := time.Now().Add(-time.Minute * 3)
+func CleanOldLogs(logDir string, retentionMinutes int) {
+	cutoff := time.Now().AddDate(0, 0, -retentionMinutes)
 
 	shouldDelete := func(path string) (bool, error) {
 		info, err := os.Stat(path)
@@ -267,9 +267,9 @@ func CleanOldLogs(logDir string, retentionMinutes int) error {
 
 		// Check for any file ending in .log, .log.gz, or .gz
 		found := false
-		err = filepath.WalkDir(path, func(p string, d os.DirEntry, err error) error {
+		err = filepath.WalkDir(path, func(_ string, d os.DirEntry, err error) error {
 			if err != nil {
-				return nil
+				return err
 			}
 			if d.IsDir() {
 				return nil
@@ -289,7 +289,7 @@ func CleanOldLogs(logDir string, retentionMinutes int) error {
 
 	entries, err := os.ReadDir(logDir)
 	if err != nil {
-		return err
+		return
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() || entry.Name() == "telemetry" {
@@ -308,7 +308,6 @@ func CleanOldLogs(logDir string, retentionMinutes int) error {
 			}
 		}
 	}
-	return nil
 }
 
 // starts a log cleaner that removes old logs from the specified directory based on the retention period
