@@ -213,7 +213,7 @@ func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]
 	return jobs, nil
 }
 
-func (s *DestinationService) GetDestinationVersions(destType string) ([]string, error) {
+func (s *DestinationService) GetDestinationVersions(ctx context.Context, destType string) ([]string, error) {
 	logs.Info("Retrieving versions for destination type: %s", destType)
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")

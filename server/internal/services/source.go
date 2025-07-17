@@ -272,7 +272,7 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 	// Get versions from Docker Hub
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 
-	versions, err := utils.GetDockerHubTags(imageName)
+	versions, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Docker versions for source type %s: %s", sourceType, err)
 	}

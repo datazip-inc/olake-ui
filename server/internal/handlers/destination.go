@@ -137,7 +137,7 @@ func (c *DestHandler) GetDestinationJobs() {
 func (c *DestHandler) GetDestinationVersions() {
 	destType := c.GetString("type")
 
-	versions, err := c.destService.GetDestinationVersions(destType)
+	versions, err := c.destService.GetDestinationVersions(context.Background(), destType)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
 		return
