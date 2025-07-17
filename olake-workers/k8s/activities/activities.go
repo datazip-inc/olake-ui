@@ -144,24 +144,21 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	if err != nil {
 		logger.Warnf("Activity failed for job %d: %v. Attempting final state save...", params.JobID, err)
 
-		// Compute workflow dir and path (reuse existing helper)
+		// Use the shared utility to read and validate the state file
 		fsHelper := filesystem.NewHelper()
-		workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, params.WorkflowID)
-		statePath := fsHelper.GetFilePath(workflowDir, "state.json")
+		stateData, readErr := fsHelper.ReadAndValidateStateFile(params.WorkflowID)
 
-		// Read and basic validate
-		stateData, readErr := os.ReadFile(statePath)
-		if readErr == nil && len(stateData) > 10 { // Skip if missing or too small
-			var js json.RawMessage
-			if json.Unmarshal(stateData, &js) == nil { // Valid JSON
-				if updateErr := a.jobService.UpdateJobState(params.JobID, string(stateData), false); updateErr != nil {
-					logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
-				} else {
-					logger.Infof("Saved final state on failure for job %d", params.JobID)
-				}
+		if readErr == nil {
+			// If the state file is valid, attempt to save it
+			if updateErr := a.jobService.UpdateJobState(params.JobID, string(stateData), false); updateErr != nil {
+				logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
+			} else {
+				logger.Infof("Saved final state on failure for job %d", params.JobID)
 			}
-		} else if readErr != nil {
-			logger.Warnf("Failed to read final state on error: %v", readErr)
+		} else {
+			// Log if reading or validation fails, but don't block the process
+			// This covers file not existing, being too small, or containing invalid JSON
+			logger.Warnf("Failed to read/validate final state on error: %v", readErr)
 		}
 
 		return nil, err
@@ -212,10 +209,11 @@ func (a *Activities) monitorState(ctx context.Context, jobID int, workflowID str
 func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *time.Time) error {
 	// Create filesystem helper to get correct directory path
 	fsHelper := filesystem.NewHelper()
+	// We still need the path for os.Stat to check the modification time
 	workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, workflowID)
 	statePath := fsHelper.GetFilePath(workflowDir, "state.json")
 
-	// Check if file changed using ModTime
+	// Check if file changed using ModTime before reading it
 	info, err := os.Stat(statePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -227,27 +225,17 @@ func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *
 
 	if !info.ModTime().After(*lastModTime) {
 		logger.Debugf("No state changes detected for job %d (last modified: %s)", jobID, info.ModTime().Format("2006-01-02 15:04:05"))
-		return nil // No change
+		return nil // No change, skip reading the file
 	}
 
 	logger.Infof("State file changed for job %d, initiating checkpoint (size: %d bytes, modified: %s)",
 		jobID, info.Size(), info.ModTime().Format("2006-01-02 15:04:05"))
 
-	// Read state file
-	stateData, err := os.ReadFile(statePath)
+	// Read and validate the state file using the shared utility
+	// This single call replaces os.ReadFile, json.Unmarshal, and size validation
+	stateData, err := fsHelper.ReadAndValidateStateFile(workflowID)
 	if err != nil {
-		return fmt.Errorf("read failed: %w", err)
-	}
-
-	// Validate JSON
-	var js json.RawMessage
-	if err := json.Unmarshal(stateData, &js); err != nil {
-		return fmt.Errorf("invalid JSON, skipping checkpoint: %w", err)
-	}
-
-	// Check for empty/truncated file
-	if len(stateData) < 10 {
-		return fmt.Errorf("state file too small (%d bytes), skipping", len(stateData))
+		return fmt.Errorf("failed to read or validate state for job %d: %w", jobID, err)
 	}
 
 	// Persist to PostgreSQL using existing service

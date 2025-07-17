@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -42,24 +41,26 @@ func (k *K8sPodManager) getPodLogs(ctx context.Context, podName string) (string,
 
 // getPodResults extracts results from completed pod
 func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, operation shared.Command, workflowID string) (map[string]interface{}, error) {
-	// For sync: Prefer state.json file
+	// For sync operations, prioritize reading the state.json file for results
 	if operation == shared.Sync && workflowID != "" {
 		fsHelper := filesystem.NewHelper()
-		workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, workflowID)
-		statePath := fsHelper.GetFilePath(workflowDir, "state.json")
-
-		stateData, err := os.ReadFile(statePath)
+		stateData, err := fsHelper.ReadAndValidateStateFile(workflowID)
 		if err == nil {
 			var result map[string]interface{}
-			if json.Unmarshal(stateData, &result) == nil && len(stateData) > 10 { // Basic validation
+			if unmarshalErr := json.Unmarshal(stateData, &result); unmarshalErr == nil {
 				logger.Debugf("Successfully read state.json for sync pod %s", podName)
 				return result, nil
+			} else {
+				// This case is unlikely if ReadAndValidateStateFile truly validates JSON, but it's safe to handle
+				logger.Warnf("Failed to parse validated state.json for sync pod %s: %v, falling back to logs", podName, unmarshalErr)
 			}
+		} else {
+			// Log the error from ReadAndValidateStateFile, which could be os.ErrNotExist or something else
+			logger.Warnf("Failed to read state.json for sync pod %s: %v, falling back to logs", podName, err)
 		}
-		logger.Warnf("Failed to read state.json for sync pod %s: %v, falling back to logs", podName, err)
 	}
 
-	// Fallback/default: Parse logs (existing code)
+	// Fallback/default: Parse logs from the pod
 	logger.Debugf("Parsing pod logs for pod %s", podName)
 	logs, err := k.getPodLogs(ctx, podName)
 	if err != nil {

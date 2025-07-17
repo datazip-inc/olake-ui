@@ -2,12 +2,15 @@ package filesystem
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"olake-ui/olake-workers/k8s/shared"
 )
+
+const minStateFileSize = 10
 
 // Helper handles file system operations for job configuration
 type Helper struct {
@@ -63,4 +66,37 @@ func createDirectory(path string, perm os.FileMode) error {
 
 func writeFile(filename string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(filename, data, perm)
+}
+
+// ReadAndValidateStateFile reads and validates the state.json file for the given workflow.
+// Returns the raw file contents as []byte if the file exists and is valid JSON.
+// Returns os.ErrNotExist if the file does not exist.
+func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
+	if workflowID == "" {
+		return nil, fmt.Errorf("workflowID cannot be empty")
+	}
+
+	workflowDir := fs.GetWorkflowDirectory(shared.Sync, workflowID)
+	statePath := fs.GetFilePath(workflowDir, "state.json")
+
+	stateData, err := os.ReadFile(statePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%w: %s", os.ErrNotExist, statePath)
+		}
+		return nil, fmt.Errorf("read failed: %w", err)
+	}
+
+	// Validate file size first (cheaper than JSON parsing)
+	if len(stateData) < minStateFileSize {
+		return nil, fmt.Errorf("state file too small (%d bytes)", len(stateData))
+	}
+
+	// Validate JSON structure
+	var js json.RawMessage
+	if err := json.Unmarshal(stateData, &js); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	return stateData, nil
 }
