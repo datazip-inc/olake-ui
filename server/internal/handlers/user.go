@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -28,7 +29,7 @@ func (c *UserHandler) CreateUser() {
 		return
 	}
 
-	if err := c.userService.CreateUser(c.Ctx.Request.Context(), &req); err != nil {
+	if err := c.userService.CreateUser(context.Background(), &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -38,7 +39,7 @@ func (c *UserHandler) CreateUser() {
 
 // @router /users [get]
 func (c *UserHandler) GetAllUsers() {
-	users, err := c.userService.GetAllUsers(c.Ctx.Request.Context())
+	users, err := c.userService.GetAllUsers(context.Background())
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
@@ -62,7 +63,7 @@ func (c *UserHandler) UpdateUser() {
 		return
 	}
 
-	updatedUser, err := c.userService.UpdateUser(c.Ctx.Request.Context(), id, &req)
+	updatedUser, err := c.userService.UpdateUser(context.Background(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found")
@@ -84,7 +85,7 @@ func (c *UserHandler) DeleteUser() {
 		return
 	}
 
-	if err := c.userService.DeleteUser(c.Ctx.Request.Context(), id); err != nil {
+	if err := c.userService.DeleteUser(context.Background(), id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -29,7 +30,7 @@ func (c *DestHandler) Prepare() {
 func (c *DestHandler) GetAllDestinations() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
-	destinations, err := c.destService.GetAllDestinations(c.Ctx.Request.Context(), projectID)
+	destinations, err := c.destService.GetAllDestinations(context.Background(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
@@ -55,7 +56,7 @@ func (c *DestHandler) CreateDestination() {
 		}
 	}
 
-	if err := c.destService.CreateDestination(c.Ctx.Request.Context(), req, projectIDStr, userID); err != nil {
+	if err := c.destService.CreateDestination(context.Background(), req, projectIDStr, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -80,7 +81,7 @@ func (c *DestHandler) UpdateDestination() {
 		}
 	}
 
-	if err := c.destService.UpdateDestination(c.Ctx.Request.Context(), id, req, userID); err != nil {
+	if err := c.destService.UpdateDestination(context.Background(), id, req, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -92,7 +93,7 @@ func (c *DestHandler) UpdateDestination() {
 func (c *DestHandler) DeleteDestination() {
 	id := GetIDFromPath(&c.Controller)
 
-	response, err := c.destService.DeleteDestination(c.Ctx.Request.Context(), id)
+	response, err := c.destService.DeleteDestination(context.Background(), id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
@@ -109,7 +110,7 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
-	result, err := c.destService.TestConnection(c.Ctx.Request.Context(), req)
+	result, err := c.destService.TestConnection(context.Background(), req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
 		return
@@ -121,7 +122,7 @@ func (c *DestHandler) TestConnection() {
 func (c *DestHandler) GetDestinationJobs() {
 	id := GetIDFromPath(&c.Controller)
 
-	jobs, err := c.destService.GetDestinationJobs(c.Ctx.Request.Context(), id)
+	jobs, err := c.destService.GetDestinationJobs(context.Background(), id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return

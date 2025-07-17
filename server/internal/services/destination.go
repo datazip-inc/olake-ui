@@ -173,28 +173,26 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*mo
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req models.DestinationTestConnectionRequest) (map[string]interface{}, error) {
-	logs.Info("Testing connection for destination: %s", req.Name)
-	if req.Type == "" || req.Version == "" {
-		return nil, fmt.Errorf("destination type and version are required")
+	logs.Info("Testing connection with config: %v", req.Config)
+	if s.tempClient == nil {
+		return nil, fmt.Errorf("temporal client not available")
 	}
-
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		logs.Error("Failed to encrypt config: %v", err)
-		return nil, fmt.Errorf("failed to encrypt destination config: %s", err)
+		return nil, fmt.Errorf("%s encrypt config: %s", constants.ErrFailedToProcess, err)
 	}
-
-	result, err := s.tempClient.TestConnection(ctx, "destination", req.Type, req.Version, encryptedConfig)
+	result, err := s.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
 
 	if result == nil {
 		result = map[string]interface{}{
-			"message": "Connection test failed: Please check your configuration and try again",
+			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
+
 	return result, nil
 }
 

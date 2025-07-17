@@ -183,22 +183,28 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*models.Delet
 }
 
 func (s *SourceService) TestConnection(ctx context.Context, req models.SourceTestConnectionRequest) (map[string]interface{}, error) {
-	//logs.Info("Testing connection with config: %v", req.Config)
+	logs.Info("Testing connection for source: %v", req)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
+	if req.Type == "" || req.Version == "" {
+		return nil, fmt.Errorf("source type and version are required")
+	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("%s encrypt config: %s", constants.ErrFailedToProcess, err)
+		logs.Error("Failed to encrypt config: %v", err)
+		return nil, fmt.Errorf("failed to encrypt source config: %s", err)
 	}
-	result, err := s.tempClient.TestConnection(context.Background(), "config", "postgres", "latest", encryptedConfig)
+
+	result, err := s.tempClient.TestConnection(ctx, "config", req.Type, req.Version, encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
 
 	if result == nil {
 		result = map[string]interface{}{
-			"message": "Connection test failed: Please check your configuration and try again",
+			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
@@ -207,7 +213,7 @@ func (s *SourceService) TestConnection(ctx context.Context, req models.SourceTes
 }
 
 func (s *SourceService) GetSourceCatalog(ctx context.Context, req models.StreamsRequest) (map[string]interface{}, error) {
-	//logs.Info("Getting source catalog with config: %v", req.Config)
+	logs.Info("Getting source catalog with config: %v", req.Config)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
@@ -228,7 +234,7 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req models.Streams
 	var newStreams map[string]interface{}
 	if s.tempClient != nil {
 		newStreams, err = s.tempClient.GetCatalog(
-			context.Background(),
+			ctx,
 			req.Type,
 			req.Version,
 			encryptedConfig,

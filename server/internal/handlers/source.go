@@ -35,7 +35,7 @@ func (c *SourceHandler) Prepare() {
 // @router /project/:projectid/sources [get]
 func (c *SourceHandler) GetAllSources() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	sources, err := c.sourceService.GetAllSources(c.Ctx.Request.Context(), projectID)
+	sources, err := c.sourceService.GetAllSources(context.Background(), projectID)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
 		return
@@ -52,7 +52,7 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.CreateSource(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
+	if err := c.sourceService.CreateSource(context.Background(), req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
@@ -68,7 +68,7 @@ func (c *SourceHandler) UpdateSource() {
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.UpdateSource(c.Ctx.Request.Context(), id, req, userID); err != nil {
+	if err := c.sourceService.UpdateSource(context.Background(), id, req, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update source", err)
 		return
 	}
@@ -78,7 +78,7 @@ func (c *SourceHandler) UpdateSource() {
 // @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
 	id := GetIDFromPath(&c.Controller)
-	resp, err := c.sourceService.DeleteSource(c.Ctx.Request.Context(), id)
+	resp, err := c.sourceService.DeleteSource(context.Background(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
@@ -97,7 +97,7 @@ func (c *SourceHandler) TestConnection() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	result, err := c.sourceService.TestConnection(c.Ctx.Request.Context(), req)
+	result, err := c.sourceService.TestConnection(context.Background(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
@@ -112,7 +112,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	catalog, err := c.sourceService.GetSourceCatalog(c.Ctx.Request.Context(), req)
+	catalog, err := c.sourceService.GetSourceCatalog(context.Background(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
@@ -123,7 +123,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 // @router /sources/:id/jobs [get]
 func (c *SourceHandler) GetSourceJobs() {
 	id := GetIDFromPath(&c.Controller)
-	jobs, err := c.sourceService.GetSourceJobs(c.Ctx.Request.Context(), id)
+	jobs, err := c.sourceService.GetSourceJobs(context.Background(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
@@ -138,7 +138,7 @@ func (c *SourceHandler) GetSourceJobs() {
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
 	sourceType := c.GetString("type")
-	versions, err := c.sourceService.GetSourceVersions(c.Ctx.Request.Context(), sourceType)
+	versions, err := c.sourceService.GetSourceVersions(context.Background(), sourceType)
 	if err != nil {
 		status := http.StatusInternalServerError
 		msg := "Failed to get Docker versions"

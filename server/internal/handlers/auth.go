@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -49,7 +50,7 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	telemetry.TrackUserLogin(c.Ctx.Request.Context(), user)
+	telemetry.TrackUserLogin(context.Background(), user)
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,

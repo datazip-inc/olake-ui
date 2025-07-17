@@ -260,7 +260,7 @@ func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
 	if len(destIDs) == 0 {
 		return jobs, nil
 	}
-	_, err := r.ormer.QueryTable(r.TableName).Filter("destination_id__in", destIDs).RelatedSel().All(&jobs)
+	_, err := r.ormer.QueryTable(r.TableName).Filter("dest_id__in", destIDs).RelatedSel().All(&jobs)
 	if err != nil {
 		return nil, err
 	}

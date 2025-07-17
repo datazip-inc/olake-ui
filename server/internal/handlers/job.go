@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -44,7 +45,7 @@ func (c *JobHandler) CreateJob() {
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.CreateJob(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+	if err := c.jobService.CreateJob(context.Background(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -65,7 +66,7 @@ func (c *JobHandler) UpdateJob() {
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
+	if err := c.jobService.UpdateJob(context.Background(), &req, projectID, jobID, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -80,7 +81,7 @@ func (c *JobHandler) DeleteJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
-	jobName, err := c.jobService.DeleteJob(c.Ctx.Request.Context(), id)
+	jobName, err := c.jobService.DeleteJob(context.Background(), id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
@@ -96,7 +97,7 @@ func (c *JobHandler) SyncJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
-	result, err := c.jobService.SyncJob(c.Ctx.Request.Context(), projectID, id)
+	result, err := c.jobService.SyncJob(context.Background(), projectID, id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
@@ -139,7 +140,7 @@ func (c *JobHandler) GetJobTasks() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
-	tasks, err := c.jobService.GetJobTasks(c.Ctx.Request.Context(), projectID, id)
+	tasks, err := c.jobService.GetJobTasks(context.Background(), projectID, id)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
@@ -152,7 +153,7 @@ func (c *JobHandler) GetJobTasks() {
 }
 
 // @router /project/:projectid/jobs/:id/logs [get]
-func (c *JobHandler) GetJobLogs() {
+func (c *JobHandler) GetTaskLogs() {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -164,7 +165,7 @@ func (c *JobHandler) GetJobLogs() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "File path is required")
 		return
 	}
-	logs, err := c.jobService.GetTaskLogs(c.Ctx.Request.Context(), id, filePath)
+	logs, err := c.jobService.GetTaskLogs(context.Background(), id, filePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
