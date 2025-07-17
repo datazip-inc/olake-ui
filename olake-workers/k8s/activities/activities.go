@@ -142,6 +142,28 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 
 	result, err := a.podManager.ExecutePodActivity(ctx, request)
 	if err != nil {
+		logger.Warnf("Activity failed for job %d: %v. Attempting final state save...", params.JobID, err)
+
+		// Compute workflow dir and path (reuse existing helper)
+		fsHelper := filesystem.NewHelper()
+		workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, params.WorkflowID)
+		statePath := fsHelper.GetFilePath(workflowDir, "state.json")
+
+		// Read and basic validate
+		stateData, readErr := os.ReadFile(statePath)
+		if readErr == nil && len(stateData) > 10 { // Skip if missing or too small
+			var js json.RawMessage
+			if json.Unmarshal(stateData, &js) == nil { // Valid JSON
+				if updateErr := a.jobService.UpdateJobState(params.JobID, string(stateData), false); updateErr != nil {
+					logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
+				} else {
+					logger.Infof("Saved final state on failure for job %d", params.JobID)
+				}
+			}
+		} else if readErr != nil {
+			logger.Warnf("Failed to read final state on error: %v", readErr)
+		}
+
 		return nil, err
 	}
 
@@ -163,10 +185,10 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 func (a *Activities) monitorState(ctx context.Context, jobID int, workflowID string) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	var lastModTime time.Time
 	logger.Infof("Starting state monitoring for job %d (workflowID: %s) with 30-second interval", jobID, workflowID)
-	
+
 	for {
 		select {
 		case <-ticker.C:
@@ -192,7 +214,7 @@ func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *
 	fsHelper := filesystem.NewHelper()
 	workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, workflowID)
 	statePath := fsHelper.GetFilePath(workflowDir, "state.json")
-	
+
 	// Check if file changed using ModTime
 	info, err := os.Stat(statePath)
 	if err != nil {
@@ -202,37 +224,37 @@ func (a *Activities) checkpointState(jobID int, workflowID string, lastModTime *
 		}
 		return fmt.Errorf("stat failed: %w", err)
 	}
-	
+
 	if !info.ModTime().After(*lastModTime) {
 		logger.Debugf("No state changes detected for job %d (last modified: %s)", jobID, info.ModTime().Format("2006-01-02 15:04:05"))
 		return nil // No change
 	}
-	
-	logger.Infof("State file changed for job %d, initiating checkpoint (size: %d bytes, modified: %s)", 
+
+	logger.Infof("State file changed for job %d, initiating checkpoint (size: %d bytes, modified: %s)",
 		jobID, info.Size(), info.ModTime().Format("2006-01-02 15:04:05"))
-	
+
 	// Read state file
 	stateData, err := os.ReadFile(statePath)
 	if err != nil {
 		return fmt.Errorf("read failed: %w", err)
 	}
-	
+
 	// Validate JSON
 	var js json.RawMessage
 	if err := json.Unmarshal(stateData, &js); err != nil {
 		return fmt.Errorf("invalid JSON, skipping checkpoint: %w", err)
 	}
-	
+
 	// Check for empty/truncated file
 	if len(stateData) < 10 {
 		return fmt.Errorf("state file too small (%d bytes), skipping", len(stateData))
 	}
-	
+
 	// Persist to PostgreSQL using existing service
 	if err := a.jobService.UpdateJobState(jobID, string(stateData), true); err != nil {
 		return fmt.Errorf("db update failed: %w", err)
 	}
-	
+
 	*lastModTime = info.ModTime()
 	logger.Infof("State checkpoint completed successfully for job %d (%d bytes persisted to database)", jobID, len(stateData))
 	return nil

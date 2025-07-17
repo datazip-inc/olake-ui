@@ -122,7 +122,7 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 }
 
 // WaitForPodCompletion waits for a Pod to complete and returns the result
-func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string, timeout time.Duration) (map[string]interface{}, error) {
+func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string, timeout time.Duration, operation shared.Command, workflowID string) (map[string]interface{}, error) {
 	logger.Debugf("Waiting for Pod %s to complete (timeout: %v)", podName, timeout)
 	deadline := time.Now().Add(timeout)
 
@@ -135,7 +135,7 @@ func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string
 		// Check if pod completed successfully
 		if pod.Status.Phase == corev1.PodSucceeded {
 			logger.Infof("Pod %s completed successfully", podName)
-			return k.getPodResults(ctx, podName)
+			return k.getPodResults(ctx, podName, operation, workflowID)
 		}
 
 		// Check if pod failed

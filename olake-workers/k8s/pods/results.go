@@ -2,13 +2,16 @@ package pods
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/shared"
+	"olake-ui/olake-workers/k8s/utils/filesystem"
 	"olake-ui/olake-workers/k8s/utils/k8s"
 	"olake-ui/olake-workers/k8s/utils/parser"
 )
@@ -37,15 +40,31 @@ func (k *K8sPodManager) getPodLogs(ctx context.Context, podName string) (string,
 	return result, nil
 }
 
-// getPodResults extracts results from completed pod by parsing its logs
-func (k *K8sPodManager) getPodResults(ctx context.Context, podName string) (map[string]interface{}, error) {
-	logger.Debugf("Parsing pod logs for pod %s", podName)
+// getPodResults extracts results from completed pod
+func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, operation shared.Command, workflowID string) (map[string]interface{}, error) {
+	// For sync: Prefer state.json file
+	if operation == shared.Sync && workflowID != "" {
+		fsHelper := filesystem.NewHelper()
+		workflowDir := fsHelper.GetWorkflowDirectory(shared.Sync, workflowID)
+		statePath := fsHelper.GetFilePath(workflowDir, "state.json")
 
+		stateData, err := os.ReadFile(statePath)
+		if err == nil {
+			var result map[string]interface{}
+			if json.Unmarshal(stateData, &result) == nil && len(stateData) > 10 { // Basic validation
+				logger.Debugf("Successfully read state.json for sync pod %s", podName)
+				return result, nil
+			}
+		}
+		logger.Warnf("Failed to read state.json for sync pod %s: %v, falling back to logs", podName, err)
+	}
+
+	// Fallback/default: Parse logs (existing code)
+	logger.Debugf("Parsing pod logs for pod %s", podName)
 	logs, err := k.getPodLogs(ctx, podName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod logs: %v", err)
 	}
-
 	logger.Debugf("Raw pod logs for pod %s:\n%s", podName, logs)
 	return parser.ParseJobOutput(logs)
 }
@@ -93,5 +112,5 @@ func (k *K8sPodManager) ExecutePodActivity(ctx context.Context, req PodActivityR
 	}()
 
 	// Wait for pod completion
-	return k.WaitForPodCompletion(ctx, pod.Name, req.Timeout)
+	return k.WaitForPodCompletion(ctx, pod.Name, req.Timeout, req.Operation, req.WorkflowID)
 }
