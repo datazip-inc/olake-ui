@@ -160,12 +160,15 @@ func (c *JobHandler) GetTaskLogs() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
 		return
 	}
-	filePath := c.GetString("file")
-	if filePath == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "File path is required")
+	// Parse request body
+	var req struct {
+		FilePath string `json:"file_path"`
+	}
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	logs, err := c.jobService.GetTaskLogs(context.Background(), id, filePath)
+	logs, err := c.jobService.GetTaskLogs(context.Background(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
