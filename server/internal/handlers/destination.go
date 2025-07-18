@@ -82,7 +82,12 @@ func (c *DestHandler) CreateDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
+	var err error
+	req.Config, err = utils.AddWriterType(req.Config, req.Type)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to add writer type to config")
+		return
+	}
 	// Convert request to Destination model
 	destination := &models.Destination{
 		Name:      req.Name,
@@ -120,7 +125,12 @@ func (c *DestHandler) UpdateDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
+	var err error
+	req.Config, err = utils.AddWriterType(req.Config, req.Type)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to add writer type to config")
+		return
+	}
 	// Get existing destination
 	existingDest, err := c.destORM.GetByID(id)
 	if err != nil {
@@ -196,6 +206,12 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
+	var err error
+	req.Config, err = utils.AddWriterType(req.Config, req.Type)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to add writer type to config")
+		return
+	}
 
 	if req.Type == "" {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
@@ -211,7 +227,7 @@ func (c *DestHandler) TestConnection() {
 	version := req.Version
 
 	// check if tags available through dockerhub
-	_, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", false)
+	_, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", false)
 	if err != nil {
 		// if dockerhub api fails then check for cached images and use any of them with same version
 		images, err := utils.GetCachedImages(c.Ctx.Request.Context())
