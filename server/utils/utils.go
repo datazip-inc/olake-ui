@@ -279,18 +279,24 @@ func ParseSpecJSON(output string) (models.SpecOutput, error) {
 
 // AddWriterType takes a JSON string config and adds the "type" field
 func AddWriterType(configStr, writerType string) (string, error) {
-	var config map[string]interface{}
-
-	if err := json.Unmarshal([]byte(configStr), &config); err != nil {
-		return "", fmt.Errorf("invalid JSON: %w", err)
+	var writer map[string]interface{}
+	if err := json.Unmarshal([]byte(configStr), &writer); err != nil {
+		return "", fmt.Errorf("invalid input JSON: %w", err)
 	}
 
-	config["type"] = writerType
+	if writerType == "s3" {
+		writerType = "PARQUET"
+	}
+	writerType = strings.ToUpper(writerType)
+	result := map[string]interface{}{
+		"writer": writer,
+		"type":   writerType,
+	}
 
-	updated, err := json.Marshal(config)
+	output, err := json.Marshal(result)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal updated config: %w", err)
+		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
 
-	return string(updated), nil
+	return string(output), nil
 }
