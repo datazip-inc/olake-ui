@@ -9,6 +9,7 @@ import (
 type JobDataService interface {
 	GetJobData(jobID int) (*database.JobData, error)
 	UpdateJobState(jobID int, state string, active bool) error
+	HealthCheck() error
 	Close() error
 }
 
@@ -39,6 +40,11 @@ func (s *PostgresJobService) GetJobData(jobID int) (*database.JobData, error) {
 func (s *PostgresJobService) UpdateJobState(jobID int, state string, active bool) error {
 	logger.Debugf("Updating job state for jobID: %d", jobID)
 	return s.db.UpdateJobState(jobID, state, active)
+}
+
+// HealthCheck pings the database to verify connectivity
+func (s *PostgresJobService) HealthCheck() error {
+	return s.db.Ping()
 }
 
 // Close closes the database connection

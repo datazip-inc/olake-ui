@@ -57,6 +57,11 @@ func NewDB() (*DB, error) {
 	}, nil
 }
 
+// Ping tests the database connection
+func (db *DB) Ping() error {
+	return db.conn.Ping()
+}
+
 // Close closes the database connection
 func (db *DB) Close() error {
 	return db.conn.Close()

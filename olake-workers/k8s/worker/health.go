@@ -48,7 +48,6 @@ func (hs *HealthServer) Start() error {
 	return hs.server.ListenAndServe()
 }
 
-
 // healthHandler handles liveness probe requests
 func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 	response := HealthResponse{
@@ -87,10 +86,20 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 	} else {
 		response.Status = "not_ready"
 		response.Checks["temporal"] = "disconnected"
-		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 
-	// TODO: Add database connectivity check if needed
+	// Check database connectivity
+	if hs.worker != nil && hs.worker.jobService != nil && hs.worker.jobService.HealthCheck() == nil {
+		response.Checks["database"] = "connected"
+	} else {
+		response.Status = "not_ready"
+		response.Checks["database"] = "disconnected"
+	}
+
+	// Set HTTP status code based on overall health
+	if response.Status == "not_ready" {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
