@@ -58,7 +58,7 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 				"olake.io/workflow-id":    k8s.SanitizeName(spec.OriginalWorkflowID),
 			},
 			Annotations: map[string]string{
-				"olake.io/created-by-pod":       k8s.GetCurrentPodName(),
+				"olake.io/created-by-pod":       k8s.GenerateWorkerIdentity(),
 				"olake.io/created-at":           time.Now().Format(time.RFC3339),
 				"olake.io/original-workflow-id": spec.OriginalWorkflowID,
 				"olake.io/operation-type":       string(spec.Operation),

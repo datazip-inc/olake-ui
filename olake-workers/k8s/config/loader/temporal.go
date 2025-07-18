@@ -10,7 +10,7 @@ import (
 func LoadTemporal() (types.TemporalConfig, error) {
 	return types.TemporalConfig{
 		Address:   env.GetEnv("TEMPORAL_ADDRESS", "temporal.olake.svc.cluster.local:7233"),
-		TaskQueue: "OLAKE_K8S_TASK_QUEUE", // Hardcoded as per requirement
+		TaskQueue: "OLAKE_K8S_TASK_QUEUE",
 		Timeout:   parser.ParseDuration("TEMPORAL_TIMEOUT", "30s"),
 	}, nil
 }

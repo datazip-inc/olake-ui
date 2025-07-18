@@ -1,10 +1,11 @@
 package k8s
 
 import (
+	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/resource"
-	
+
 	"olake-ui/olake-workers/k8s/utils/env"
 )
 
@@ -37,11 +38,8 @@ func SanitizeName(name string) string {
 	return name
 }
 
-// GetCurrentPodName retrieves the current pod name from environment variable
-func GetCurrentPodName() string {
-	podName := env.GetEnv("POD_NAME", "")
-	if podName == "" {
-		panic("POD_NAME environment variable not set - check Kubernetes manifest")
-	}
-	return podName
+// GenerateWorkerIdentity creates a unique worker identity based on pod name
+func GenerateWorkerIdentity() string {
+	podName := env.GetEnv("POD_NAME", "unknown")
+	return fmt.Sprintf("olake-ui/olake-workers/%s", podName)
 }
