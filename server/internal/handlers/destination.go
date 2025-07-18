@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/services"
 	"github.com/datazip/olake-frontend/server/utils"
@@ -41,22 +39,17 @@ func (c *DestHandler) GetAllDestinations() {
 
 // @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
-	projectIDStr := c.Ctx.Input.Param(":projectid")
+	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req models.CreateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	var userID *int
-	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
-		if uid, ok := sessionUserID.(int); ok {
-			userID = &uid
-		}
-	}
+	userID := GetUserIDFromSession(&c.Controller)
 
-	if err := c.destService.CreateDestination(context.Background(), req, projectIDStr, userID); err != nil {
+	if err := c.destService.CreateDestination(context.Background(), req, projectID, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -69,17 +62,12 @@ func (c *DestHandler) UpdateDestination() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req models.UpdateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	var userID *int
-	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
-		if uid, ok := sessionUserID.(int); ok {
-			userID = &uid
-		}
-	}
+	userID := GetUserIDFromSession(&c.Controller)
 
 	if err := c.destService.UpdateDestination(context.Background(), id, req, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
@@ -105,8 +93,8 @@ func (c *DestHandler) DeleteDestination() {
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
 	var req models.DestinationTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
@@ -155,8 +143,8 @@ func (c *DestHandler) GetDestinationSpec() {
 	// Will be used for multi-tenant filtering in the future
 
 	var req models.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 

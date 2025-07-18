@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -55,11 +54,7 @@ func (c *JobHandler) CreateJob() {
 // @router /project/:projectid/jobs/:id [put]
 func (c *JobHandler) UpdateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	jobID, err := strconv.Atoi(c.Ctx.Input.Param(":id"))
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	jobID := GetIDFromPath(&c.Controller)
 	var req models.UpdateJobRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -75,12 +70,7 @@ func (c *JobHandler) UpdateJob() {
 
 // @router /project/:projectid/jobs/:id [delete]
 func (c *JobHandler) DeleteJob() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 	jobName, err := c.jobService.DeleteJob(context.Background(), id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
@@ -92,11 +82,7 @@ func (c *JobHandler) DeleteJob() {
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	id, err := strconv.Atoi(c.Ctx.Input.Param(":id"))
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 	result, err := c.jobService.SyncJob(context.Background(), projectID, id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
@@ -107,11 +93,7 @@ func (c *JobHandler) SyncJob() {
 
 // @router /project/:projectid/jobs/:id/activate [put]
 func (c *JobHandler) ActivateJob() {
-	id, err := strconv.Atoi(c.Ctx.Input.Param(":id"))
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 	var req struct {
 		Activate bool `json:"activate"`
 	}
@@ -134,12 +116,7 @@ func (c *JobHandler) ActivateJob() {
 // @router /project/:projectid/jobs/:id/tasks [get]
 func (c *JobHandler) GetJobTasks() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 	tasks, err := c.jobService.GetJobTasks(context.Background(), projectID, id)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
@@ -154,12 +131,7 @@ func (c *JobHandler) GetJobTasks() {
 
 // @router /project/:projectid/jobs/:id/logs [get]
 func (c *JobHandler) GetTaskLogs() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
-		return
-	}
+	id := GetIDFromPath(&c.Controller)
 	// Parse request body
 	var req struct {
 		FilePath string `json:"file_path"`

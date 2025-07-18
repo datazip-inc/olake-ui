@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -157,8 +156,8 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	_ = c.Ctx.Input.Param(":projectid")
 
 	var req models.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := bindJSON(&c.Controller, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
