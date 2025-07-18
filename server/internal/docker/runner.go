@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -51,7 +52,7 @@ func GetDefaultConfigDir() string {
 func (r *Runner) setupWorkDirectory(subDir string) (string, error) {
 	workDir := filepath.Join(r.WorkingDir, subDir)
 	if err := utils.CreateDirectory(workDir, DefaultDirPermissions); err != nil {
-		return "", fmt.Errorf("failed to create work directory: %v", err)
+		return "", fmt.Errorf("failed to create work directory: %s", err)
 	}
 	return workDir, nil
 }
@@ -61,10 +62,20 @@ func (r *Runner) writeConfigFiles(workDir string, configs []FileConfig) error {
 	for _, config := range configs {
 		filePath := filepath.Join(workDir, config.Name)
 		if err := utils.WriteFile(filePath, []byte(config.Data), DefaultFilePermissions); err != nil {
-			return fmt.Errorf("failed to write %s: %v", config.Name, err)
+			return fmt.Errorf("failed to write %s: %s", config.Name, err)
 		}
 	}
 	return nil
+}
+
+// deleteConfigFiles removes only the config files written in the working directory
+func (r *Runner) deleteConfigFiles(workDir string, configs []FileConfig) {
+	for _, config := range configs {
+		filePath := filepath.Join(workDir, config.Name)
+		if err := os.Remove(filePath); err != nil {
+			logs.Warn("Failed to delete config file %s: %s", filePath, err)
+		}
+	}
 }
 
 // GetDockerImageName constructs a Docker image name based on source type and version
@@ -90,6 +101,7 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
 		return nil, err
 	}
+	defer r.deleteConfigFiles(workDir, configs)
 
 	configPath := filepath.Join(workDir, "config.json")
 	output, err := r.ExecuteDockerCommand(ctx, flag, Check, sourceType, version, configPath)
@@ -129,6 +141,7 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
 		return nil, err
 	}
+	defer r.deleteConfigFiles(workDir, configs)
 
 	configPath := filepath.Join(workDir, "config.json")
 	catalogPath := filepath.Join(workDir, "streams.json")
@@ -177,6 +190,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
 		return nil, err
 	}
+	defer r.deleteConfigFiles(workDir, configs)
 
 	configPath := filepath.Join(workDir, "config.json")
 	statePath := filepath.Join(workDir, "state.json")
