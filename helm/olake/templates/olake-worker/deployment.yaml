@@ -1,23 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: olake-worker
+  name: olake-workers
   namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
-    app.kubernetes.io/name: olake-worker
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: worker
     {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
 spec:
   replicas: 1
   minReadySeconds: 30
   progressDeadlineSeconds: 600
   selector:
     matchLabels:
-      app.kubernetes.io/name: olake-worker
-      app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/component: worker
+      {{- include "olake.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: workers
   template:
     metadata:
       annotations:
@@ -25,9 +22,8 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        app.kubernetes.io/name: olake-worker
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/component: worker
+        {{- include "olake.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: workers
         {{- with .Values.olakeWorker.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -64,7 +60,7 @@ spec:
           done
           echo "Temporal is ready!"
       containers:
-      - name: olake-worker
+      - name: olake-workers
         image: "{{ .Values.olakeWorker.image.repository }}:{{ .Values.olakeWorker.image.tag }}"
         imagePullPolicy: {{ .Values.olakeWorker.image.pullPolicy }}
         ports:
@@ -84,7 +80,7 @@ spec:
               fieldPath: metadata.namespace
         envFrom:
         - configMapRef:
-            name: olake-worker-config
+            name: olake-workers-config
         {{- $defaultResources := dict 
           "requests" (dict "memory" "256Mi" "cpu" "250m")
         }}

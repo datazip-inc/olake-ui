@@ -87,6 +87,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	w.RegisterActivity(activitiesInstance.SyncActivity)
 
 	logger.Info("Successfully registered all workflows and activities")
+	logger.Infof("Worker Identity: %s", cfg.Worker.WorkerIdentity)
 
 	k8sWorker := &K8sWorker{
 		temporalClient: c,
@@ -108,7 +109,6 @@ func (w *K8sWorker) Start() error {
 
 	// Start health server in background
 	go func() {
-		logger.Info("Starting health check server on :8090")
 		if err := w.healthServer.Start(); err != nil && err != http.ErrServerClosed {
 			logger.Errorf("Health server failed: %v", err)
 		}

@@ -100,3 +100,31 @@ func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
 
 	return stateData, nil
 }
+
+// ReadAndValidateStreamsFile reads and validates the streams.json file for the given workflow.
+// Returns the raw file contents as []byte if the file exists and is valid JSON.
+// Returns os.ErrNotExist if the file does not exist.
+func (fs *Helper) ReadAndValidateStreamsFile(workflowID string) ([]byte, error) {
+	if workflowID == "" {
+		return nil, fmt.Errorf("workflowID cannot be empty")
+	}
+
+	workflowDir := fs.GetWorkflowDirectory(shared.Discover, workflowID)
+	streamsPath := fs.GetFilePath(workflowDir, "streams.json")
+
+	streamsData, err := os.ReadFile(streamsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%w: %s", os.ErrNotExist, streamsPath)
+		}
+		return nil, fmt.Errorf("read failed: %w", err)
+	}
+
+	// Validate JSON structure
+	var js json.RawMessage
+	if err := json.Unmarshal(streamsData, &js); err != nil {
+		return nil, fmt.Errorf("invalid JSON: %w", err)
+	}
+
+	return streamsData, nil
+}

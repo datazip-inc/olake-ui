@@ -11,7 +11,7 @@ global:
   # Examples: gp2, standard, managed
   storageClass: ""
   
-  # -- JobID-based node mapping configuration for pods created by olake-worker
+  # -- JobID-based node mapping configuration for pods created by olake-workers
   # Maps JobID (integer) to specific node labels for pod scheduling
   # Format: { jobID: { node_label: node_value } }
   # Example:
@@ -67,6 +67,14 @@ olakeUI:
   #       memory: "2Gi"
   #       cpu: "1500m"
   resources: {}
+  
+  # -- Environment variables for OLake UI
+  # Add custom environment variables here
+  # Example:
+  #   env:
+  #     CUSTOM_VAR: "value"
+  #     FEATURE_FLAG: "true"
+  env: {}
   
   # -- Ingress configuration for external access
   ingress:
@@ -170,6 +178,15 @@ olakeWorker:
   #       memory: "1Gi"
   #       cpu: "1000m"
   resources: {}
+  
+  # -- Environment variables for OLake Worker
+  # Add custom environment variables here
+  # Example:
+  #   env:
+  #     CUSTOM_VAR: "value"
+  #     FEATURE_FLAG: "true"
+  env:
+    RUN_MODE: dev
   
   # -- Service Account configuration for Kubernetes API access
   serviceAccount:

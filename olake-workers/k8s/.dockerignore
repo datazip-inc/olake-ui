@@ -1,4 +1,4 @@
-# olake-k8s-worker/.dockerignore
+# olake-workers/.dockerignore
 # Git
 .git
 .gitignore
@@ -19,7 +19,7 @@ k8s/
 Thumbs.db
 
 # Build artifacts
-olake-k8s-worker
+olake-workers
 *.exe
 
 # Logs

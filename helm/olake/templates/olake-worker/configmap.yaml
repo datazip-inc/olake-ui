@@ -1,14 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: olake-worker-config
+  name: olake-workers-config
   namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
-    app.kubernetes.io/name: olake-worker
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: worker
     {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
 data:
   # Temporal Configuration
   TEMPORAL_ADDRESS: "temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233"
@@ -44,6 +42,13 @@ data:
   # Logging Configuration
   LOG_LEVEL: {{ .Values.olakeWorker.config.logging.level | quote }}
   LOG_FORMAT: {{ .Values.olakeWorker.config.logging.format | quote }}
+  
+  {{- if .Values.olakeWorker.env }}
+  # Additional Environment Variables
+  {{- range $key, $value := .Values.olakeWorker.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
   
   # =================================================================
   # JOB MAPPING CONFIGURATION

@@ -88,7 +88,7 @@ func getDBURL() string {
 
 func getTableNames() map[string]string {
 	// Get environment mode (development, production, etc.)
-	runMode := env.GetEnv("RUN_MODE", "development")
+	runMode := env.GetEnv("RUN_MODE", "dev")
 
 	// Table name patterns matching server implementation
 	tableNames := map[string]string{

@@ -22,14 +22,14 @@ A cloud-native Temporal worker that executes OLake data integration activities a
 2. **Build the worker:**
    ```bash
    go mod tidy
-   go build -o olake-worker-k8s main.go
+   go build -o olake-workers main.go
    ```
 
 3. **Configure environment:**
    ```bash
    export TEMPORAL_HOST_PORT="localhost:7233"
    export TEMPORAL_NAMESPACE="default"
-   export TEMPORAL_TASK_QUEUE="olake-k8s-worker"
+   export TEMPORAL_TASK_QUEUE="OLAKE_K8S_TASK_QUEUE"
    export DB_HOST="localhost"
    export DB_PORT="5432"
    export DB_NAME="temporal"
@@ -39,7 +39,7 @@ A cloud-native Temporal worker that executes OLake data integration activities a
 
 4. **Run the worker:**
    ```bash
-   ./olake-worker-k8s
+   ./olake-workers
    ```
 
 The worker will connect to Temporal and start listening for activities on the configured task queue.
@@ -75,10 +75,10 @@ The OLake Kubernetes Worker executes data integration activities as isolated Kub
 
 ```bash
 # Build locally
-docker build -t olakego/olake-worker-k8s:local .
+docker build -t olakego/olake-workers:local .
 
 # For minikube development
-minikube image load olakego/olake-worker-k8s:local
+minikube image load olakego/olake-workers:local
 ```
 
 ### Project Structure
@@ -101,12 +101,12 @@ olake-workers/k8s/
 1. **Make code changes**
 2. **Build and test:**
    ```bash
-   go build -o olake-worker-k8s main.go
+   go build -o olake-workers main.go
    go test ./...
    ```
 3. **Build Docker image:**
    ```bash
-   docker build -t olakego/olake-worker-k8s:local .
+   docker build -t olakego/olake-workers:local .
    ```
 4. **Deploy to cluster** (see Helm chart documentation)
 
@@ -122,7 +122,7 @@ The worker is configured via environment variables:
 |-----------------------|---------------------------|-----------------------------------------|
 | `TEMPORAL_HOST_PORT`  | Temporal server address   | `temporal.olake.svc.cluster.local:7233` |
 | `TEMPORAL_NAMESPACE`  | Temporal namespace        | `default`                               |
-| `TEMPORAL_TASK_QUEUE` | Task queue to listen on   | `olake-k8s-worker`                      |
+| `TEMPORAL_TASK_QUEUE` | Task queue to listen on   | `olake-workers`                      |
 | `DB_HOST`             | PostgreSQL host           | `postgresql.olake.svc.cluster.local`    |
 | `DB_PORT`             | PostgreSQL port           | `5432`                                  |
 | `DB_NAME`             | Database name             | `temporal`                              |
@@ -176,7 +176,7 @@ Structured JSON logging with configurable levels:
 export LOG_LEVEL=debug
 
 # View worker logs (in Kubernetes)
-kubectl logs -l app.kubernetes.io/name=olake-worker -n olake
+kubectl logs -l app.kubernetes.io/name=olake-workers -n olake
 ```
 
 ---
@@ -191,7 +191,7 @@ kubectl logs -l app.kubernetes.io/name=olake-worker -n olake
 telnet <temporal-host> 7233
 
 # Check worker logs
-kubectl logs -l app.kubernetes.io/name=olake-worker -n olake
+kubectl logs -l app.kubernetes.io/name=olake-workers -n olake
 ```
 
 **Verify database access:**
@@ -205,7 +205,7 @@ psql -h <db-host> -p <db-port> -U <db-user> -d <db-name>
 **Check RBAC permissions:**
 ```bash
 # Verify service account has pod creation permissions
-kubectl auth can-i create pods --as=system:serviceaccount:olake:olake-worker-sa -n olake
+kubectl auth can-i create pods --as=system:serviceaccount:olake:olake-workers-sa -n olake
 ```
 
 **Storage issues:**
@@ -214,7 +214,7 @@ kubectl auth can-i create pods --as=system:serviceaccount:olake:olake-worker-sa 
 kubectl get pvc -n olake
 
 # Test NFS mounting
-kubectl exec deployment/olake-worker -n olake -- mount | grep nfs
+kubectl exec deployment/olake-workers -n olake -- mount | grep nfs
 ```
 
 ### Activity Timeouts
@@ -236,7 +236,7 @@ export TIMEOUT_ACTIVITY_SYNC=800h
 
 ### Common Issues
 
-1. **Image pull errors**: Ensure `olakego/olake-worker-k8s` image is accessible
+1. **Image pull errors**: Ensure `olakego/olake-workers` image is accessible
 2. **Permission denied**: Check Kubernetes RBAC configuration
 3. **Storage mounting failures**: Verify NFS server is running and accessible
 4. **Database connection timeouts**: Check network policies and firewall rules

@@ -13,7 +13,7 @@ const (
 	DefaultNamespace       = "olake"
 	DefaultImageRegistry   = "olakego"
 	DefaultImagePullPolicy = "IfNotPresent"
-	DefaultServiceAccount  = "olake-worker"
+	DefaultServiceAccount  = "olake-workers"
 
 	// Resource defaults
 	DefaultCPURequest    = "100m"
@@ -35,5 +35,5 @@ const (
 	LabelValueOlakeSync    = "olake-sync"
 	LabelValueConnectorJob = "connector-job"
 	LabelValueJobConfig    = "job-config"
-	LabelValueK8sWorker    = "olake-k8s-worker"
+	LabelValueK8sWorker    = "olake-workers"
 )

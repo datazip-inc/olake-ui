@@ -100,7 +100,7 @@ olakeUI:
 
 ```yaml
 global:
-  # JobID-based node mapping configuration for pods created by olake-worker
+  # JobID-based node mapping configuration for pods created by olake-workers
   # Maps JobID (integer) to specific node labels for pod scheduling
   # Format: { jobID: { node_label: node_value } }
   jobMapping:
@@ -115,8 +115,6 @@ global:
   # - JobID Format: Must be positive integers (e.g., 123, 456, 789)
   # - Label Keys: Must follow RFC 1123 DNS subdomain format (lowercase letters, numbers, hyphens, dots)
   # - Label Values: Must be valid Kubernetes label values (63 chars max, alphanumeric with hyphens)
-  # - Environment Variable: Configuration is passed via `OLAKE_JOB_MAPPING` environment variable as JSON
-
 ```
 
 ### Storage Configuration
@@ -148,7 +146,7 @@ nfsServer:
 kubectl logs -l app.kubernetes.io/name=olake-ui -f
 
 # OLake Worker logs
-kubectl logs -l app.kubernetes.io/name=olake-worker -f
+kubectl logs -l app.kubernetes.io/name=olake-workers -f
 
 # Temporal logs
 kubectl logs -l app.kubernetes.io/name=temporal -f
@@ -184,11 +182,11 @@ kubectl logs -l app.kubernetes.io/name=olake-nfs-server -f
 3. **OLake Worker issues**
    ```bash
    # Check worker pod status and logs
-   kubectl get pods -l app.kubernetes.io/name=olake-worker
-   kubectl logs -l app.kubernetes.io/name=olake-worker -f
+   kubectl get pods -l app.kubernetes.io/name=olake-workers
+   kubectl logs -l app.kubernetes.io/name=olake-workers -f
    
    # Verify worker configuration
-   kubectl describe configmap olake-worker-config
+   kubectl describe configmap olake-workers-config
    ```
 
 4. **Storage provisioning failures**

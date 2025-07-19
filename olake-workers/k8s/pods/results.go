@@ -60,6 +60,25 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, opera
 		}
 	}
 
+	// For discover operations, prioritize reading the streams.json file for results
+	if operation == shared.Discover && workflowID != "" {
+		fsHelper := filesystem.NewHelper()
+		streamsData, err := fsHelper.ReadAndValidateStreamsFile(workflowID)
+		if err == nil {
+			var streamsResult map[string]interface{}
+			if unmarshalErr := json.Unmarshal(streamsData, &streamsResult); unmarshalErr == nil {
+				logger.Debugf("Successfully read streams.json for discover pod %s", podName)
+				return streamsResult, nil
+			} else {
+				// This case is unlikely if ReadAndValidateStreamsFile truly validates JSON, but it's safe to handle
+				logger.Warnf("Failed to parse validated streams.json for discover pod %s: %v, falling back to logs", podName, unmarshalErr)
+			}
+		} else {
+			// Log the error from ReadAndValidateStreamsFile, which could be os.ErrNotExist or something else
+			logger.Warnf("Failed to read streams.json for discover pod %s: %v, falling back to logs", podName, err)
+		}
+	}
+
 	// Fallback/default: Parse logs from the pod
 	logger.Debugf("Parsing pod logs for pod %s", podName)
 	logs, err := k.getPodLogs(ctx, podName)

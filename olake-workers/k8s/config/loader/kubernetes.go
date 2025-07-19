@@ -15,11 +15,11 @@ func LoadKubernetes() (types.KubernetesConfig, error) {
 		Namespace:       env.GetEnv("WORKER_NAMESPACE", "olake"),
 		ImageRegistry:   env.GetEnv("IMAGE_REGISTRY", "olakego"),
 		ImagePullPolicy: env.GetEnv("IMAGE_PULL_POLICY", "IfNotPresent"),
-		ServiceAccount:  env.GetEnv("SERVICE_ACCOUNT", "olake-worker"),
+		ServiceAccount:  env.GetEnv("SERVICE_ACCOUNT", "olake-workers"),
 		PVCName:         env.GetEnv("OLAKE_STORAGE_PVC_NAME", "olake-jobs-pvc"),
 		Labels: map[string]string{
 			"app":        "olake-sync",
-			"managed-by": "olake-k8s-worker",
+			"managed-by": "olake-workers",
 			"version":    env.GetEnv("WORKER_VERSION", "latest"),
 		},
 		JobMapping:      jobMapping,

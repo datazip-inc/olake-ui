@@ -48,11 +48,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use for olake-worker
+Create the name of the service account to use for olake-workers
 */}}
 {{- define "olake.workerServiceAccountName" -}}
 {{- if .Values.olakeWorker.serviceAccount.create }}
-{{- default (printf "%s-worker" (include "olake.fullname" .)) .Values.olakeWorker.serviceAccount.name }}
+{{- default (printf "%s-workers" (include "olake.fullname" .)) .Values.olakeWorker.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.olakeWorker.serviceAccount.name }}
 {{- end }}

@@ -8,10 +8,8 @@ metadata:
     "helm.sh/hook-weight": "51"
     "helm.sh/hook-delete-policy": before-hook-creation
   labels:
-    app.kubernetes.io/name: olake-worker
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: worker
     {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
 rules:
 # Pod management for job execution (least privilege)
 - apiGroups: [""]
@@ -39,10 +37,8 @@ metadata:
     "helm.sh/hook-weight": "52"
     "helm.sh/hook-delete-policy": before-hook-creation
   labels:
-    app.kubernetes.io/name: olake-worker
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: worker
     {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

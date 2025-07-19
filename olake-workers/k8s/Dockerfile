@@ -13,7 +13,7 @@ RUN go mod download
 COPY . .
 
 # Build the worker binary
-RUN go build -o olake-k8s-worker ./main.go
+RUN go build -o olake-workers ./main.go
 
 # Final stage - minimal runtime image
 FROM alpine:3.18
@@ -29,7 +29,7 @@ RUN addgroup -g 1001 -S olake && \
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/olake-k8s-worker .
+COPY --from=builder /app/olake-workers .
 
 # Change ownership to non-root user
 RUN chown -R olake:olake /app
@@ -38,4 +38,4 @@ RUN chown -R olake:olake /app
 EXPOSE 8090
 
 # No health check (let Kubernetes handle it via HTTP probes)
-CMD ["./olake-k8s-worker"]
+CMD ["./olake-workers"]
