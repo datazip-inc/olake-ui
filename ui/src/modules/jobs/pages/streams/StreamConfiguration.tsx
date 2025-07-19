@@ -114,7 +114,7 @@ const StreamConfiguration = ({
 			}
 
 			parts.forEach(part => {
-				const operatorMatch = part.match(/(=|!=|>|>=|<|<=)/)
+				const operatorMatch = part.match(/(>=|<=|=|!=|>|<)/)
 				if (operatorMatch) {
 					const operator = operatorMatch[0] as FilterOperator
 					const [columnName, value] = part.split(operator)
@@ -461,7 +461,7 @@ const StreamConfiguration = ({
 			? columnType.find(t => t !== "null") || columnType[0]
 			: columnType
 
-		if (primaryType === "string") {
+		if (primaryType === "string" || primaryType === "timestamp") {
 			// Check if value is already wrapped in quotes
 			if (!value.startsWith('"') && !value.endsWith('"')) {
 				return `"${value}"`
