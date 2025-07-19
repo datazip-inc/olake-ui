@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -99,48 +98,6 @@ func HandleErrorJS(w http.ResponseWriter, r *http.Request, err error) {
 	http.Redirect(w, r, fmt.Sprintf(`/error?msg=%q`, url.QueryEscape(err.Error())), http.StatusPermanentRedirect)
 }
 
-// // Encrypt with AES encryption and returns base64 encoded string
-// func encryptAES(content, key []byte) (string, error) {
-// 	block, err := aes.NewCipher(key)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	cipherText := make([]byte, aes.BlockSize+len(content))
-// 	iv := cipherText[:aes.BlockSize]
-// 	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-// 		return "", err
-// 	}
-// 	stream := cipher.NewCFBEncrypter(block, iv)
-// 	stream.XORKeyStream(cipherText[aes.BlockSize:], content)
-// 	return base64.StdEncoding.EncodeToString(cipherText), err
-// }
-
-// // decryptAES decrypts a base64 encoded string using AES encryption
-// func decryptAES(secure string, key []byte) ([]byte, error) {
-// 	cipherDecoded, err := base64.StdEncoding.DecodeString(secure)
-// 	// if DecodeString failed, exit:
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// create a new AES cipher with the key and encrypted message
-// 	block, err := aes.NewCipher(key)
-// 	// if NewCipher failed, exit:
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	// if the length of the cipherDecoded is less than 16 Bytes:
-// 	if len(cipherDecoded) < aes.BlockSize {
-// 		logs.Error("cipherDecoded block size is too short!")
-// 		return nil, err
-// 	}
-// 	iv := cipherDecoded[:aes.BlockSize]
-// 	cipherDecoded = cipherDecoded[aes.BlockSize:]
-// 	// decrypt the message
-// 	stream := cipher.NewCFBDecrypter(block, iv)
-// 	stream.XORKeyStream(cipherDecoded, cipherDecoded)
-// 	return cipherDecoded, nil
-// }
-
 func ExistsInArray[T comparable](arr []T, value T) bool {
 	for _, elem := range arr {
 		if elem == value {
@@ -161,6 +118,13 @@ func ULID() string {
 	}
 
 	return newUlid.String()
+}
+
+func Ternary(cond bool, a, b any) any {
+	if cond {
+		return a
+	}
+	return b
 }
 
 // ConnectionStatus represents the structure of the connection status JSON
@@ -251,37 +215,4 @@ func ParseJSONFile(filePath string) (map[string]interface{}, error) {
 	}
 
 	return result, nil
-}
-
-// ToCron converts a frequency string to a cron expression
-func ToCron(frequency string) string {
-	parts := strings.Split(strings.ToLower(frequency), "-")
-	if len(parts) != 2 {
-		return ""
-	}
-
-	valueStr, unit := parts[0], parts[1]
-	value, err := strconv.Atoi(valueStr)
-	if err != nil || value <= 0 {
-		return ""
-	}
-
-	switch unit {
-	case "minutes":
-		return fmt.Sprintf("*/%d * * * *", value) // Every N minutes
-	case "hours":
-		return fmt.Sprintf("0 */%d * * *", value) // Every N hours at minute 0
-	case "days":
-		return fmt.Sprintf("0 0 */%d * *", value) // Every N days at midnight
-	case "weeks":
-		// Every N weeks on Sunday (0), cron doesn't support "every N weeks" directly,
-		// so simulate with day-of-week field (best-effort)
-		return fmt.Sprintf("0 0 * * */%d", value)
-	case "months":
-		return fmt.Sprintf("0 0 1 */%d *", value) // Every N months on the 1st at midnight
-	case "years":
-		return fmt.Sprintf("0 0 1 1 */%d", value) // Every N years on the 1st of January at midnight
-	default:
-		return ""
-	}
 }

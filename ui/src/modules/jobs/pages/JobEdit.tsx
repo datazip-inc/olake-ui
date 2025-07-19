@@ -26,7 +26,6 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
-	getFrequencyValue,
 	removeSavedJobFromLocalStorage,
 } from "../../../utils/utils"
 
@@ -132,12 +131,8 @@ const JobEdit: React.FC = () => {
 
 	// Config step states
 	const [jobName, setJobName] = useState("")
-	const [replicationFrequency, setReplicationFrequency] = useState("seconds")
-	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
-	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+	const [cronExpression, setCronExpression] = useState("* * * * *")
 	const [isSavedJob, setIsSavedJob] = useState(false)
-	const [replicationFrequencyValue, setReplicationFrequencyValue] =
-		useState("1")
 	const [job, setJob] = useState<Job | null>(null)
 	const [savedJobId, setSavedJobId] = useState<string | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
@@ -178,14 +173,8 @@ const JobEdit: React.FC = () => {
 		})
 
 		// Set other job settings
-		// Parse frequency with format value-unit (e.g. "1-minutes")
-		if (job.frequency && job.frequency.includes("-")) {
-			const [value, unit] = job.frequency.split("-")
-			setReplicationFrequencyValue(value)
-			setReplicationFrequency(unit)
-		} else {
-			setReplicationFrequency(getFrequencyValue(job.frequency) || "hours")
-			setReplicationFrequencyValue("1")
+		if (job.frequency) {
+			setCronExpression(job.frequency)
 		}
 
 		// Parse streams config
@@ -306,7 +295,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	const getjobUpdatePayLoad = () => {
-		let jobUpdateRequestPayload: JobBase = {
+		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
 				name: sourceData?.name || "",
@@ -330,7 +319,7 @@ const JobEdit: React.FC = () => {
 				typeof selectedStreams === "string"
 					? selectedStreams
 					: JSON.stringify(selectedStreams),
-			frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
+			frequency: cronExpression,
 			activate: job?.activate,
 		}
 		return jobUpdateRequestPayload
@@ -611,14 +600,8 @@ const JobEdit: React.FC = () => {
 							<JobConfiguration
 								jobName={jobName}
 								setJobName={setJobName}
-								replicationFrequency={replicationFrequency}
-								setReplicationFrequency={setReplicationFrequency}
-								replicationFrequencyValue={replicationFrequencyValue}
-								setReplicationFrequencyValue={setReplicationFrequencyValue}
-								schemaChangeStrategy={schemaChangeStrategy}
-								setSchemaChangeStrategy={setSchemaChangeStrategy}
-								notifyOnSchemaChanges={notifyOnSchemaChanges}
-								setNotifyOnSchemaChanges={setNotifyOnSchemaChanges}
+								cronExpression={cronExpression}
+								setCronExpression={setCronExpression}
 								stepNumber={4}
 								stepTitle="Job Configuration"
 							/>

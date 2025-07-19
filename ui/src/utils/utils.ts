@@ -4,6 +4,7 @@ import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
+import { DAYS_MAP } from "./constants"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
@@ -161,6 +162,8 @@ export const getFrequencyValue = (frequency: string) => {
 			return "years"
 		case "minutes":
 			return "minutes"
+		case "custom":
+			return "custom"
 		default:
 			return "hours"
 	}
@@ -262,6 +265,44 @@ export const getDestinationType = (type: string) => {
 	) {
 		return "ICEBERG"
 	}
+}
+
+export const getDayNumber = (day: string): number => {
+	return DAYS_MAP[day as keyof typeof DAYS_MAP]
+}
+
+export const generateCronExpression = (
+	frequency: string,
+	time: string,
+	ampm: "AM" | "PM",
+	day: string,
+) => {
+	let hour = parseInt(time)
+	if (ampm === "PM" && hour !== 12) {
+		hour += 12
+	} else if (ampm === "AM" && hour === 12) {
+		hour = 0
+	}
+
+	let cronExp = ""
+	switch (frequency) {
+		case "minutes":
+			cronExp = "* * * * *" // Every minute
+			break
+		case "hours":
+			cronExp = "0 * * * *" // Every hour at minute 0
+			break
+		case "days":
+			cronExp = `0 ${hour} * * *` // Every day at specified hour
+			break
+		case "weeks":
+			const dayNumber = getDayNumber(day)
+			cronExp = `0 ${hour} * * ${dayNumber}` // Every week on specified day at specified hour
+			break
+		default:
+			cronExp = "* * * * *" // Default to every minute if no frequency specified
+	}
+	return cronExp
 }
 
 export const operatorOptions = [
