@@ -106,7 +106,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				}
 
 				processedResponseData.streams.forEach((stream: StreamData) => {
-					const namespace = stream.stream.namespace || "default"
+					const namespace = stream.stream.namespace || ""
 					if (!processedResponseData.selected_streams[namespace]) {
 						processedResponseData.selected_streams[namespace] = []
 					}
@@ -377,7 +377,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			// Selection status filtering
 			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || "default"
+				stream.stream.namespace || ""
 			]?.some(s => s.stream_name === stream.stream.name)
 
 			if (hasSelectedFilter && hasNotSelectedFilter) {
@@ -395,7 +395,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const groupedFilteredStreams = useMemo(() => {
 		const grouped: { [namespace: string]: StreamData[] } = {}
 		filteredStreams.forEach(stream => {
-			const ns = stream.stream.namespace || "default"
+			const ns = stream.stream.namespace || ""
 			if (!grouped[ns]) grouped[ns] = []
 			grouped[ns].push(stream)
 		})
@@ -502,26 +502,26 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							useDirectForms={useDirectForms}
 							isSelected={
 								!!apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.some(s => s.stream_name === activeStreamData.stream.name)
 							}
 							initialNormalization={
 								apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.normalization || false
 							}
 							onNormalizationChange={handleNormalizationChange}
 							initialPartitionRegex={
 								apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.partition_regex || ""
 							}
 							onPartitionRegexChange={handlePartitionRegexChange}
 							initialFullLoadFilter={
 								apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.filter || ""
 							}
