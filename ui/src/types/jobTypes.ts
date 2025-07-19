@@ -71,14 +71,8 @@ export interface JobTableProps {
 export interface JobConfigurationProps {
 	jobName: string
 	setJobName: React.Dispatch<React.SetStateAction<string>>
-	replicationFrequency: string
-	setReplicationFrequency: React.Dispatch<React.SetStateAction<string>>
-	replicationFrequencyValue: string
-	setReplicationFrequencyValue: React.Dispatch<React.SetStateAction<string>>
-	schemaChangeStrategy: string
-	setSchemaChangeStrategy: React.Dispatch<React.SetStateAction<string>>
-	notifyOnSchemaChanges: boolean
-	setNotifyOnSchemaChanges: React.Dispatch<React.SetStateAction<boolean>>
+	cronExpression?: string
+	setCronExpression: React.Dispatch<React.SetStateAction<string>>
 	stepNumber?: number | string
 	stepTitle?: string
 }
