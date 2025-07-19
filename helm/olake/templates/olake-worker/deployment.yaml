@@ -14,6 +14,7 @@ spec:
   selector:
     matchLabels:
       {{- include "olake.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: olake-workers
       app.kubernetes.io/component: workers
   template:
     metadata:
@@ -23,6 +24,7 @@ spec:
         {{- end }}
       labels:
         {{- include "olake.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: olake-workers
         app.kubernetes.io/component: workers
         {{- with .Values.olakeWorker.podLabels }}
         {{- toYaml . | nindent 8 }}

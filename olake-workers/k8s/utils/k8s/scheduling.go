@@ -132,6 +132,13 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	// Log comprehensive statistics
 	logger.Infof("Job mapping loaded: %d valid entries out of %d total",
 		stats.ValidEntries, stats.TotalEntries)
+	
+	// Print the valid job mapping configuration as JSON
+	if len(result) > 0 {
+		if jsonBytes, err := json.Marshal(result); err == nil {
+			logger.Infof("Job mapping configuration: %s", string(jsonBytes))
+		}
+	}
 
 	if len(stats.InvalidJobIDs) > 0 {
 		logger.Errorf("Found %d invalid JobIDs: %v",

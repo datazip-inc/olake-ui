@@ -59,6 +59,19 @@ Create the name of the service account to use for olake-workers
 {{- end }}
 
 {{/*
+Create the name of the service account to use for job pods
+*/}}
+{{- define "olake.jobServiceAccountName" -}}
+{{- if .Values.global.jobServiceAccount.name }}
+{{- .Values.global.jobServiceAccount.name }}
+{{- else if .Values.global.jobServiceAccount.create }}
+{{- printf "%s-job" (include "olake.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- "" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Shared storage PVC name
 */}}
 {{- define "olake.sharedStoragePVC" -}}

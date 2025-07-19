@@ -56,3 +56,8 @@ data:
   {{- if .Values.global.jobMapping }}
   OLAKE_JOB_MAPPING: {{ .Values.global.jobMapping | toJson | quote }}
   {{- end }}
+  
+  # =================================================================
+  # JOB SERVICE ACCOUNT CONFIGURATION
+  # =================================================================
+  JOB_SERVICE_ACCOUNT_NAME: {{ include "olake.jobServiceAccountName" . | quote }}

@@ -22,6 +22,19 @@ global:
   #       node-type: "high-cpu"
   jobMapping: {}
 
+  # -- Service account configuration for job pods created by olake-workers
+  # Used for cloud provider IAM integration (AWS IRSA, GCP Workload Identity, Azure Workload Identity)
+  jobServiceAccount:
+    create: false
+    name: ""
+    
+    # Used for cloud provider IAM role association
+    # Examples:
+    #   AWS IRSA: eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/olake-job-role"
+    #   GCP Workload Identity: iam.gke.io/gcp-service-account: "olake-job@project.iam.gserviceaccount.com"
+    #   Azure Workload Identity: azure.workload.identity/client-id: "12345678-1234-1234-1234-123456789012"
+    annotations: {}
+
 # OLake UI - Main application
 olakeUI:
   # -- Number of OLake UI replicas

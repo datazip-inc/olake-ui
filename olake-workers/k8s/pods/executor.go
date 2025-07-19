@@ -60,8 +60,10 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 			Annotations: map[string]string{
 				"olake.io/created-by-pod":       k8s.GenerateWorkerIdentity(),
 				"olake.io/created-at":           time.Now().Format(time.RFC3339),
-				"olake.io/original-workflow-id": spec.OriginalWorkflowID,
+				"olake.io/workflow-id":          spec.OriginalWorkflowID,
 				"olake.io/operation-type":       string(spec.Operation),
+				"olake.io/connector-type":       spec.ConnectorType,
+				"olake.io/job-id":               strconv.Itoa(spec.JobID),
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -108,6 +110,12 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 				},
 			},
 		},
+	}
+
+	// Set ServiceAccountName only if configured (non-empty)
+	// If empty, Kubernetes will use the namespace's default service account
+	if k.config.Kubernetes.JobServiceAccount != "" && k.config.Kubernetes.JobServiceAccount != "default" {
+		pod.Spec.ServiceAccountName = k.config.Kubernetes.JobServiceAccount
 	}
 
 	logger.Infof("Creating Pod %s with image %s", spec.Name, spec.Image)

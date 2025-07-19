@@ -44,7 +44,7 @@ func NewHealthServer(worker *K8sWorker, port int) *HealthServer {
 
 // Start starts the health check server
 func (hs *HealthServer) Start() error {
-	logger.Infof("Starting health check server on %s", hs.server.Addr)
+	logger.Infof("Starting health check server on port 8090")
 	return hs.server.ListenAndServe()
 }
 

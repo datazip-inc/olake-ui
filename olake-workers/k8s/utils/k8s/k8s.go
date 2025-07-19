@@ -41,5 +41,5 @@ func SanitizeName(name string) string {
 // GenerateWorkerIdentity creates a unique worker identity based on pod name
 func GenerateWorkerIdentity() string {
 	podName := env.GetEnv("POD_NAME", "unknown")
-	return fmt.Sprintf("olake-ui/olake-workers/%s", podName)
+	return fmt.Sprintf("olake.io/olake-workers/%s", podName)
 }

@@ -26,7 +26,6 @@ func NewPostgresJobService() (*PostgresJobService, error) {
 		return nil, err
 	}
 
-	logger.Info("Created PostgreSQL job service")
 	return &PostgresJobService{db: db}, nil
 }
 

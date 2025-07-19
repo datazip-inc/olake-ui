@@ -68,6 +68,7 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, opera
 			var streamsResult map[string]interface{}
 			if unmarshalErr := json.Unmarshal(streamsData, &streamsResult); unmarshalErr == nil {
 				logger.Debugf("Successfully read streams.json for discover pod %s", podName)
+				logger.Debugf("Discovered streams configuration: %s", string(streamsData))
 				return streamsResult, nil
 			} else {
 				// This case is unlikely if ReadAndValidateStreamsFile truly validates JSON, but it's safe to handle

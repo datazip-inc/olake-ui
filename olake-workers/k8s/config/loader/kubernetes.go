@@ -10,7 +10,7 @@ import (
 func LoadKubernetes() (types.KubernetesConfig, error) {
 	// Load JobID-based job mapping configuration
 	jobMapping := k8s.LoadJobMappingFromEnv()
-	
+
 	return types.KubernetesConfig{
 		Namespace:       env.GetEnv("WORKER_NAMESPACE", "olake"),
 		ImageRegistry:   env.GetEnv("IMAGE_REGISTRY", "olakego"),
@@ -22,6 +22,7 @@ func LoadKubernetes() (types.KubernetesConfig, error) {
 			"managed-by": "olake-workers",
 			"version":    env.GetEnv("WORKER_VERSION", "latest"),
 		},
-		JobMapping:      jobMapping,
+		JobMapping:        jobMapping,
+		JobServiceAccount: env.GetEnv("JOB_SERVICE_ACCOUNT_NAME", ""),
 	}, nil
 }

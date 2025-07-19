@@ -119,7 +119,7 @@ func (w *K8sWorker) Start() error {
 
 	// Start temporal worker using blocking Run method
 	// This will block until the worker is stopped
-	logger.Info("Starting Temporal worker (blocking)...")
+	logger.Info("Starting Temporal worker...")
 	err := w.worker.Run(worker.InterruptCh())
 	if err != nil {
 		return fmt.Errorf("temporal worker failed: %w", err)
