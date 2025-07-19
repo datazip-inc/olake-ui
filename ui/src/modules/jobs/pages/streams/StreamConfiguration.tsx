@@ -162,6 +162,15 @@ const StreamConfiguration = ({
 		initialFullLoadFilter,
 	])
 
+	// Add helper function for checking supported sync modes
+	const isSyncModeSupported = (mode: string): boolean => {
+		return (
+			stream.stream.supported_sync_modes?.some(
+				supportedMode => supportedMode === mode,
+			) ?? false
+		)
+	}
+
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
@@ -200,7 +209,7 @@ const StreamConfiguration = ({
 				stream.stream.sync_mode = "cdc"
 				onSyncModeChange?.(
 					stream.stream.name,
-					stream.stream.namespace || "default",
+					stream.stream.namespace || "",
 					"cdc",
 				)
 			} else {
@@ -220,7 +229,7 @@ const StreamConfiguration = ({
 		setNormalisation(checked)
 		onNormalizationChange(
 			stream.stream.name,
-			stream.stream.namespace || "default",
+			stream.stream.namespace || "",
 			checked,
 		)
 		setFormData({
@@ -235,7 +244,7 @@ const StreamConfiguration = ({
 			setPartitionRegex("")
 			onPartitionRegexChange(
 				stream.stream.name,
-				stream.stream.namespace || "default",
+				stream.stream.namespace || "",
 				partitionRegex,
 			)
 			setFormData({
@@ -250,7 +259,7 @@ const StreamConfiguration = ({
 		setPartitionRegex("")
 		onPartitionRegexChange(
 			stream.stream.name,
-			stream.stream.namespace || "default",
+			stream.stream.namespace || "",
 			"",
 		)
 		setFormData({
@@ -274,7 +283,7 @@ const StreamConfiguration = ({
 			})
 			onFullLoadFilterChange?.(
 				stream.stream.name,
-				stream.stream.namespace || "default",
+				stream.stream.namespace || "",
 				"",
 			)
 		}
@@ -312,7 +321,7 @@ const StreamConfiguration = ({
 
 			onFullLoadFilterChange?.(
 				stream.stream.name,
-				stream.stream.namespace || "default",
+				stream.stream.namespace || "",
 				filterString,
 			)
 		}
@@ -340,7 +349,7 @@ const StreamConfiguration = ({
 
 			onFullLoadFilterChange?.(
 				stream.stream.name,
-				stream.stream.namespace || "default",
+				stream.stream.namespace || "",
 				filterString,
 			)
 		}
@@ -379,13 +388,13 @@ const StreamConfiguration = ({
 				const filterString = `${condition.columnName} ${condition.operator} ${formatFilterValue(condition.columnName, condition.value)}`
 				onFullLoadFilterChange?.(
 					stream.stream.name,
-					stream.stream.namespace || "default",
+					stream.stream.namespace || "",
 					filterString,
 				)
 			} else {
 				onFullLoadFilterChange?.(
 					stream.stream.name,
-					stream.stream.namespace || "default",
+					stream.stream.namespace || "",
 					"",
 				)
 			}
@@ -537,24 +546,24 @@ const StreamConfiguration = ({
 							<Radio
 								value="full"
 								className="w-1/3"
+								disabled={!isSyncModeSupported("full_refresh")}
 							>
 								Full refresh
 							</Radio>
 							<Radio
 								value="cdc"
 								className="w-1/3"
+								disabled={
+									!isSyncModeSupported("cdc") &&
+									!isSyncModeSupported("strict_cdc")
+								}
 							>
 								CDC
 							</Radio>
 							<Radio
 								value="incremental"
 								className="w-1/3"
-								disabled={
-									!stream.stream.supported_sync_modes ||
-									!stream.stream.supported_sync_modes.some(
-										mode => mode === "incremental",
-									)
-								}
+								disabled={!isSyncModeSupported("incremental")}
 							>
 								Incremental
 							</Radio>
