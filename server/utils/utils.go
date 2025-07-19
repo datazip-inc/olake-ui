@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -252,8 +253,8 @@ func ToCron(frequency string) string {
 	}
 }
 
-func CleanOldLogs(logDir string, retentionMinutes int) {
-	cutoff := time.Now().AddDate(0, 0, -retentionMinutes)
+func CleanOldLogs(logDir string, retentionPeriod int) {
+	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
 
 	shouldDelete := func(path string) (bool, error) {
 		info, err := os.Stat(path)
@@ -263,33 +264,27 @@ func CleanOldLogs(logDir string, retentionMinutes int) {
 		if !info.IsDir() || !info.ModTime().Before(cutoff) {
 			return false, nil
 		}
-
-		// Check for any file ending in .log, .log.gz, or .gz
-		found := false
-		err = filepath.WalkDir(path, func(_ string, d os.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				return nil
-			}
-			name := d.Name()
-			if strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".log.gz") {
-				found = true
-				return filepath.SkipDir
-			}
-			return nil
-		})
+		entries, err := os.ReadDir(path)
 		if err != nil {
 			return false, err
 		}
-		return found, nil
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".log.gz") {
+				return true, nil
+			}
+		}
+		return false, nil
 	}
 
 	entries, err := os.ReadDir(logDir)
 	if err != nil {
 		return
 	}
+
 	for _, entry := range entries {
 		if !entry.IsDir() || entry.Name() == "telemetry" {
 			continue
