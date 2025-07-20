@@ -750,7 +750,7 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={!!activePartitionRegex}
+						disabled={!!activePartitionRegex || fromJobEditFlow}
 					/>
 					{!activePartitionRegex ? (
 						<Button
