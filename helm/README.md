@@ -117,6 +117,29 @@ global:
   # - Label Values: Must be valid Kubernetes label values (63 chars max, alphanumeric with hyphens)
 ```
 
+### Cloud IAM Integration
+
+Configure service accounts for activity pods to access cloud resources without storing credentials:
+
+```yaml
+global:
+  jobServiceAccount:
+    # Create a service account for job pods
+    create: true
+    name: ""  # Auto-generated: olake-job
+    
+    # Cloud provider IAM role associations
+    annotations:
+      # AWS IRSA
+      eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/olake-job-role"
+      
+      # GCP Workload Identity
+      iam.gke.io/gcp-service-account: "olake-job@project.iam.gserviceaccount.com"
+      
+      # Azure Workload Identity
+      azure.workload.identity/client-id: "12345678-1234-1234-1234-123456789012"
+```
+
 ### Storage Configuration
 
 Configure shared storage for data processing jobs:
