@@ -497,6 +497,14 @@ const JobEdit: React.FC = () => {
 			}
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
+			if (!jobName.trim()) {
+				message.error("Job name is required")
+				return
+			}
+			if (!cronExpression.trim()) {
+				message.error("Cron expression is required")
+				return
+			}
 			if (isSavedJob) {
 				removeSavedJobFromLocalStorage(savedJobId || "")
 			}
