@@ -58,14 +58,14 @@ func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	// Check if worker is still running
-	if hs.worker == nil {
+	if hs.worker.temporalClient == nil || hs.worker.worker == nil {
 		response.Status = "unhealthy"
-		response.Checks["worker"] = "not_initialized"
+		if hs.worker.temporalClient == nil {
+			response.Checks["worker"] = "temporal_client_disconnected"
+		} else {
+			response.Checks["worker"] = "temporal_worker_failed"
+		}
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -92,7 +92,7 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check database connectivity
-	if hs.worker != nil && hs.worker.jobService != nil && hs.worker.jobService.HealthCheck() == nil {
+	if hs.worker.jobService.HealthCheck() == nil {
 		response.Checks["database"] = "connected"
 	} else {
 		response.Status = "not_ready"
