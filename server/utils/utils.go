@@ -15,7 +15,9 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
+	"github.com/robfig/cron"
 
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
@@ -249,4 +251,79 @@ func ToCron(frequency string) string {
 	default:
 		return frequency
 	}
+}
+func CleanOldLogs(logDir string, retentionPeriod int) {
+	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
+
+	shouldDelete := func(path string) (bool, error) {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, err
+		}
+		if !info.IsDir() || !info.ModTime().Before(cutoff) {
+			return false, nil
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return false, err
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".log.gz") {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
+
+	entries, err := os.ReadDir(logDir)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() || entry.Name() == "telemetry" {
+			continue
+		}
+
+		dirPath := filepath.Join(logDir, entry.Name())
+		ok, err := shouldDelete(dirPath)
+		if err != nil {
+			continue
+		}
+		if ok {
+			fmt.Printf("Deleting folder %s\n", dirPath)
+			if err := os.RemoveAll(dirPath); err != nil {
+				continue
+			}
+		}
+	}
+}
+
+// starts a log cleaner that removes old logs from the specified directory based on the retention period
+func InitLogCleaner(logDir string, retentionPeriod int) {
+	logs.Info("Log cleaner started...")
+	CleanOldLogs(logDir, retentionPeriod) // catchup missed cycles if any
+	c := cron.New()
+	err := c.AddFunc("@midnight", func() {
+		CleanOldLogs(logDir, retentionPeriod)
+	})
+	if err != nil {
+		logs.Error("Failed to start log cleaner: %v", err)
+		return
+	}
+	c.Start()
+}
+
+// GetRetentionPeriod returns the retention period for logs
+func GetLogRetentionPeriod() int {
+	if val := os.Getenv("LOG_RETENTION_PERIOD"); val != "" {
+		if retentionPeriod, err := strconv.Atoi(val); err == nil && retentionPeriod > 0 {
+			return retentionPeriod
+		}
+	}
+	return constants.DefaultLogRetentionPeriod
 }
