@@ -63,6 +63,9 @@ func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 		response.Status = "unhealthy"
 		response.Checks["worker"] = "not_initialized"
 		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
