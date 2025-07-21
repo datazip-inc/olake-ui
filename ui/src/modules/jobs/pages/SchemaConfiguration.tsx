@@ -39,6 +39,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				stream_name: string
 				partition_regex: string
 				normalization: boolean
+				filter?: string
 			}[]
 		}
 		streams: StreamData[]
@@ -105,7 +106,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				}
 
 				processedResponseData.streams.forEach((stream: StreamData) => {
-					const namespace = stream.stream.namespace || "default"
+					const namespace = stream.stream.namespace || ""
 					if (!processedResponseData.selected_streams[namespace]) {
 						processedResponseData.selected_streams[namespace] = []
 					}
@@ -134,7 +135,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
-		newSyncMode: "full_refresh" | "cdc",
+		newSyncMode: "full_refresh" | "cdc" | "incremental",
 	) => {
 		setApiResponse(prev => {
 			if (!prev) return prev
@@ -273,6 +274,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							stream_name: streamName,
 							partition_regex: "",
 							normalization: false,
+							filter: "",
 						},
 					]
 					changed = true
@@ -304,6 +306,37 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				return current
 			})
 		}, 0)
+	}
+
+	const handleFullLoadFilterChange = (
+		streamName: string,
+		namespace: string,
+		filterValue: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, filter: filterValue } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
 	}
 
 	const filteredStreams = useMemo(() => {
@@ -344,7 +377,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			// Selection status filtering
 			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || "default"
+				stream.stream.namespace || ""
 			]?.some(s => s.stream_name === stream.stream.name)
 
 			if (hasSelectedFilter && hasNotSelectedFilter) {
@@ -362,7 +395,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const groupedFilteredStreams = useMemo(() => {
 		const grouped: { [namespace: string]: StreamData[] } = {}
 		filteredStreams.forEach(stream => {
-			const ns = stream.stream.namespace || "default"
+			const ns = stream.stream.namespace || ""
 			if (!grouped[ns]) grouped[ns] = []
 			grouped[ns].push(stream)
 		})
@@ -450,7 +483,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex h-[calc(100vh-250px)] w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
@@ -462,30 +495,38 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onSyncModeChange={(
 								streamName: string,
 								namespace: string,
-								syncMode: "full_refresh" | "cdc",
+								syncMode: "full_refresh" | "cdc" | "incremental",
 							) => {
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
 							useDirectForms={useDirectForms}
 							isSelected={
 								!!apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.some(s => s.stream_name === activeStreamData.stream.name)
 							}
 							initialNormalization={
 								apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.normalization || false
 							}
 							onNormalizationChange={handleNormalizationChange}
 							initialPartitionRegex={
 								apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || "default"
+									activeStreamData.stream.namespace || ""
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.partition_regex || ""
 							}
 							onPartitionRegexChange={handlePartitionRegexChange}
+							initialFullLoadFilter={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || ""
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.filter || ""
+							}
+							onFullLoadFilterChange={handleFullLoadFilterChange}
+							fromJobEditFlow={fromJobEditFlow}
 						/>
 					) : (
 						!loading && (

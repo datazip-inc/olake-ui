@@ -65,6 +65,42 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 
 			const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
 
+			// Check if it's a custom pattern first
+			if (
+				!(
+					// Minutes pattern
+					(
+						(minute === "*" &&
+							hour === "*" &&
+							dayOfMonth === "*" &&
+							month === "*" &&
+							dayOfWeek === "*") ||
+						// Hours pattern
+						(minute === "0" &&
+							hour === "*" &&
+							dayOfMonth === "*" &&
+							month === "*" &&
+							dayOfWeek === "*") ||
+						// Days pattern
+						(minute === "0" &&
+							/^\d+$/.test(hour) &&
+							dayOfMonth === "*" &&
+							month === "*" &&
+							dayOfWeek === "*") ||
+						// Weeks pattern
+						(minute === "0" &&
+							/^\d+$/.test(hour) &&
+							dayOfMonth === "*" &&
+							month === "*" &&
+							/^[0-6]$/.test(dayOfWeek))
+					)
+				)
+			) {
+				setFrequency("custom")
+				setCustomCronExpression(cronExpression)
+				return
+			}
+
 			// Determine frequency and set states based on cron pattern
 			if (minute === "*" && hour === "*") {
 				setFrequency("minutes")
@@ -103,15 +139,13 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 				)
 				setSelectedAmPm(hourNum >= 12 ? "PM" : "AM")
 				setSelectedDay(DAYS[parseInt(dayOfWeek)])
-			} else {
-				setFrequency("custom")
-				setCustomCronExpression(cronExpression)
 			}
 
 			setCronValue(cronExpression)
 		} catch (error) {
 			console.error("Error parsing cron expression:", error)
-			setFrequency("minutes")
+			setFrequency("custom")
+			setCustomCronExpression(cronExpression)
 		}
 	}, [cronExpression])
 

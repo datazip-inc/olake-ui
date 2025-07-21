@@ -7,6 +7,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/docker"
+	"github.com/datazip/olake-frontend/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
@@ -182,6 +183,7 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 
 // createSchedule creates a new schedule
 func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, scheduleID, workflowID, cronSpec string, jobID int) (map[string]interface{}, error) {
+	cronSpec = utils.ToCron(cronSpec)
 	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
 		ID: scheduleID,
 		Spec: client.ScheduleSpec{
@@ -208,6 +210,7 @@ func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, sc
 
 // updateSchedule updates an existing schedule
 func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, cronSpec string) (map[string]interface{}, error) {
+	cronSpec = utils.ToCron(cronSpec)
 	// Check if update is needed
 	if len(currentSchedule.Schedule.Spec.CronExpressions) > 0 &&
 		currentSchedule.Schedule.Spec.CronExpressions[0] == cronSpec {

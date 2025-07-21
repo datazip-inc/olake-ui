@@ -270,6 +270,7 @@ const JobEdit: React.FC = () => {
 					stream_name: streamName,
 					partition_regex: "",
 					normalization: false,
+					filter: "",
 				})
 				streamsData.streams.push({
 					stream: {
@@ -496,6 +497,14 @@ const JobEdit: React.FC = () => {
 			}
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
+			if (!jobName.trim()) {
+				message.error("Job name is required")
+				return
+			}
+			if (!cronExpression.trim()) {
+				message.error("Cron expression is required")
+				return
+			}
 			if (isSavedJob) {
 				removeSavedJobFromLocalStorage(savedJobId || "")
 			}
@@ -553,11 +562,7 @@ const JobEdit: React.FC = () => {
 			</div>
 
 			{/* Main content */}
-			<div
-				className={`flex flex-1 overflow-hidden border-gray-200 ${
-					currentStep === "config" || currentStep === "schema" ? "border-t" : ""
-				}`}
-			>
+			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				{/* Left content */}
 				<div
 					className={`${
@@ -565,9 +570,9 @@ const JobEdit: React.FC = () => {
 						!docsMinimized
 							? "w-[calc(100%-30%)]"
 							: "w-full"
-					} ${currentStep === "schema" ? "" : "overflow-hidden"} relative flex flex-col`}
+					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
-					<div className="flex-1 pb-0">
+					<div className="h-full">
 						{currentStep === "source" && sourceData && (
 							<JobSourceEdit
 								sourceData={sourceData}
@@ -583,7 +588,7 @@ const JobEdit: React.FC = () => {
 						)}
 
 						{currentStep === "schema" && (
-							<div className="h-full overflow-scroll">
+							<div className="h-full overflow-auto">
 								<SchemaConfiguration
 									selectedStreams={selectedStreams as any}
 									setSelectedStreams={setSelectedStreams as any}
