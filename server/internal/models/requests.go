@@ -5,6 +5,7 @@ type ConnectorConfig struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
 	Version string `json:"version"`
+	Source  string `json:"source_type"`
 	Config  string `json:"config" orm:"type(jsonb)"`
 }
 

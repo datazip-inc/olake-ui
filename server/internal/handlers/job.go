@@ -128,14 +128,14 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	// Find or create source
-	source, err := c.getOrCreateSource(req.Source, projectIDStr)
+	source, err := c.getOrCreateSource(&req.Source, projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process source: %s", err))
 		return
 	}
 
 	// Find or create destination
-	dest, err := c.getOrCreateDestination(req.Destination, projectIDStr)
+	dest, err := c.getOrCreateDestination(&req.Destination, projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process destination: %s", err))
 		return
@@ -209,14 +209,14 @@ func (c *JobHandler) UpdateJob() {
 	}
 
 	// Find or create source
-	source, err := c.getOrCreateSource(req.Source, projectIDStr)
+	source, err := c.getOrCreateSource(&req.Source, projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process source: %s", err))
 		return
 	}
 
 	// Find or create destination
-	dest, err := c.getOrCreateDestination(req.Destination, projectIDStr)
+	dest, err := c.getOrCreateDestination(&req.Destination, projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process destination: %s", err))
 		return
@@ -540,7 +540,7 @@ func (c *JobHandler) GetTaskLogs() {
 // Helper methods
 
 // getOrCreateSource finds or creates a source based on the provided config
-func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDStr string) (*models.Source, error) {
+func (c *JobHandler) getOrCreateSource(config *models.JobSourceConfig, projectIDStr string) (*models.Source, error) {
 	// Try to find an existing source matching the criteria
 	sources, err := c.sourceORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(sources) > 0 {
@@ -590,7 +590,7 @@ func (c *JobHandler) getOrCreateSource(config models.JobSourceConfig, projectIDS
 }
 
 // getOrCreateDestination finds or creates a destination based on the provided config
-func (c *JobHandler) getOrCreateDestination(config models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
+func (c *JobHandler) getOrCreateDestination(config *models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
 	// Try to find an existing destination matching the criteria
 	destinations, err := c.destORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(destinations) > 0 {

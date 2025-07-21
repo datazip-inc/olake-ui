@@ -1,31 +1,26 @@
 import { useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { message } from "antd"
+import { useAppStore } from "../../../store"
+import { getConnectorInLowerCase } from "../../../utils/utils"
+import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
+import { destinationService, sourceService } from "../../../api"
+import analyticsService from "../../../api/services/analyticsService"
 import { v4 as uuidv4 } from "uuid"
-import CreateSource, {
-	CreateSourceHandle,
-} from "../../sources/pages/CreateSource"
-import CreateDestination, {
-	CreateDestinationHandle,
-} from "../../destinations/pages/CreateDestination"
 import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+
+// Components
+import JobConfiguration from "../components/JobConfiguration"
+import CreateSource from "../../sources/pages/CreateSource"
+import CreateDestination from "../../destinations/pages/CreateDestination"
+import SchemaConfiguration from "./SchemaConfiguration"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
-import { useAppStore } from "../../../store"
-import EntitySavedModal from "../../common/Modals/EntitySavedModal"
-import SchemaConfiguration from "./SchemaConfiguration"
-import JobConfiguration from "../components/JobConfiguration"
-import EntityCancelModal from "../../common/Modals/EntityCancelModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import { CatalogType, JobBase, JobCreationSteps } from "../../../types"
-import {
-	getConnectorInLowerCase,
-	getReplicationFrequency,
-} from "../../../utils/utils"
-import { destinationService, sourceService } from "../../../api"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import analyticsService from "../../../api/services/analyticsService"
+import EntitySavedModal from "../../common/Modals/EntitySavedModal"
+import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -43,11 +38,7 @@ const JobCreation: React.FC = () => {
 	const [destinationVersion, setDestinationVersion] = useState("latest")
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 	const [jobName, setJobName] = useState("")
-	const [replicationFrequency, setReplicationFrequency] = useState("minutes")
-	const [replicationFrequencyValue, setReplicationFrequencyValue] =
-		useState("1")
-	const [schemaChangeStrategy, setSchemaChangeStrategy] = useState("propagate")
-	const [notifyOnSchemaChanges, setNotifyOnSchemaChanges] = useState(true)
+	const [cronExpression, setCronExpression] = useState("* * * * *")
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	const {
@@ -61,8 +52,8 @@ const JobCreation: React.FC = () => {
 		setDestinationTestConnectionError,
 	} = useAppStore()
 
-	const sourceRef = useRef<CreateSourceHandle>(null)
-	const destinationRef = useRef<CreateDestinationHandle>(null)
+	const sourceRef = useRef<any>(null)
+	const destinationRef = useRef<any>(null)
 
 	const handleNext = async () => {
 		if (currentStep === "source") {
@@ -124,16 +115,19 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: destinationConnector,
+				type: `${destinationConnector}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
 						: JSON.stringify(destinationFormData),
-				version: destinationVersion,
+				version: `${destinationVersion}`,
 			}
+
 			setShowTestingModal(true)
-			const testResult =
-				await destinationService.testDestinationConnection(newDestinationData)
+			const testResult = await destinationService.testDestinationConnection(
+				newDestinationData,
+				sourceConnector.toLowerCase(),
+			)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
@@ -156,6 +150,10 @@ const JobCreation: React.FC = () => {
 				message.error("Job name is required")
 				return
 			}
+			if (!cronExpression.trim()) {
+				message.error("Cron expression is required")
+				return
+			}
 			const newJobData: JobBase = {
 				name: jobName,
 				source: {
@@ -171,7 +169,7 @@ const JobCreation: React.FC = () => {
 					config: JSON.stringify(destinationFormData),
 				},
 				streams_config: JSON.stringify(selectedStreams),
-				frequency: `${replicationFrequencyValue}-${replicationFrequency}`,
+				frequency: cronExpression, // Use cron expression instead of frequency-value format
 			}
 			addJob(newJobData)
 				.then(() => {
@@ -230,9 +228,7 @@ const JobCreation: React.FC = () => {
 				config: JSON.stringify(destinationFormData),
 			},
 			streams_config: JSON.stringify(selectedStreams),
-			frequency: replicationFrequency
-				? getReplicationFrequency(replicationFrequency) || "hourly"
-				: "hourly",
+			frequency: cronExpression,
 			activate: false,
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString(),
@@ -318,7 +314,7 @@ const JobCreation: React.FC = () => {
 								onConnectorChange={setDestinationConnector}
 								initialConnector={
 									destinationConnector.toLowerCase() === "s3" ||
-									destinationConnector.toLowerCase() === "amazon s3"
+									destinationConnector.toLowerCase() === "amazon s3" // TODO: dont manage different types use single at every place
 										? "s3"
 										: destinationConnector.toLowerCase() === "apache iceberg" ||
 											  destinationConnector.toLowerCase() === "iceberg"
@@ -372,16 +368,10 @@ const JobCreation: React.FC = () => {
 						<JobConfiguration
 							jobName={jobName}
 							setJobName={setJobName}
-							replicationFrequency={replicationFrequency}
-							setReplicationFrequency={setReplicationFrequency}
-							replicationFrequencyValue={replicationFrequencyValue}
-							setReplicationFrequencyValue={setReplicationFrequencyValue}
-							schemaChangeStrategy={schemaChangeStrategy}
-							setSchemaChangeStrategy={setSchemaChangeStrategy}
-							notifyOnSchemaChanges={notifyOnSchemaChanges}
-							setNotifyOnSchemaChanges={setNotifyOnSchemaChanges}
+							cronExpression={cronExpression}
+							setCronExpression={setCronExpression}
 							stepNumber={4}
-							stepTitle="Job configuration"
+							stepTitle="Job Configuration"
 						/>
 					)}
 				</div>
