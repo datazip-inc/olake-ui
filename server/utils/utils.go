@@ -228,7 +228,7 @@ func ToCron(frequency string) string {
 	valueStr, unit := parts[0], parts[1]
 	value, err := strconv.Atoi(valueStr)
 	if err != nil || value <= 0 {
-		return ""
+		return frequency
 	}
 
 	switch unit {
@@ -247,6 +247,6 @@ func ToCron(frequency string) string {
 	case "years":
 		return fmt.Sprintf("0 0 1 1 */%d", value) // Every N years on the 1st of January at midnight
 	default:
-		return ""
+		return frequency
 	}
 }
