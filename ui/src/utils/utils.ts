@@ -304,3 +304,12 @@ export const generateCronExpression = (
 	}
 	return cronExp
 }
+
+export const operatorOptions = [
+	{ label: "=", value: "=" },
+	{ label: "!=", value: "!=" },
+	{ label: ">", value: ">" },
+	{ label: "<", value: "<" },
+	{ label: ">=", value: ">=" },
+	{ label: "<=", value: "<=" },
+]

@@ -150,6 +150,10 @@ const JobCreation: React.FC = () => {
 				message.error("Job name is required")
 				return
 			}
+			if (!cronExpression.trim()) {
+				message.error("Cron expression is required")
+				return
+			}
 			const newJobData: JobBase = {
 				name: jobName,
 				source: {
