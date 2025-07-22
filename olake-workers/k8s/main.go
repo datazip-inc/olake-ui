@@ -9,7 +9,7 @@ import (
 func main() {
 	// Initialize bootstrap logger for early startup messages
 	logger.InitDefault()
-	
+
 	logger.Info("OLake K8s Worker starting...")
 	logger.Info("Loading configuration...")
 
@@ -22,7 +22,6 @@ func main() {
 	// Re-initialize logger with loaded configuration
 	logger.Init(cfg.Logging)
 	logger.Info("Logger reconfigured with loaded settings")
-
 
 	logger.Infof("Temporal Address: %s", cfg.Temporal.Address)
 	logger.Infof("Task Queue: %s", cfg.Temporal.TaskQueue)
