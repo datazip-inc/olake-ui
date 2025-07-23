@@ -45,6 +45,7 @@ const StreamConfiguration = ({
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
 	const [partitionRegex, setPartitionRegex] = useState("")
+	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
 	const [defaultCursorField, setDefaultCursorField] = useState<string>("")
 	const [activePartitionRegex, setActivePartitionRegex] = useState(
 		initialPartitionRegex || "",
@@ -78,8 +79,10 @@ const StreamConfiguration = ({
 		) {
 			const [, defaultField] = stream.stream.cursor_field.split(":")
 			setDefaultCursorField(defaultField)
+			setShowFallbackSelector(true)
 		} else {
 			setDefaultCursorField("")
+			setShowFallbackSelector(false)
 		}
 
 		if (initialApiSyncMode === "full_refresh") {
@@ -573,8 +576,11 @@ const StreamConfiguration = ({
 								<div className="mb-4 mr-2">
 									<div className="flex w-full gap-4">
 										<div className="flex w-1/2 flex-col">
-											<label className="mb-1 font-medium text-[#575757]">
+											<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
 												Cursor field:
+												<Tooltip title="Column for identifying new/updated records ">
+													<Info className="size-3.5 cursor-pointer" />
+												</Tooltip>
 											</label>
 											<Select
 												placeholder="Select cursor field"
@@ -623,49 +629,83 @@ const StreamConfiguration = ({
 													))}
 											</Select>
 										</div>
-										{stream.stream.cursor_field && (
-											<div className="flex w-1/2 flex-col">
-												<label className="mb-1 font-medium text-[#575757]">
-													Default:
-												</label>
-												<Select
-													placeholder="Select default"
-													value={defaultCursorField}
-													onChange={(value: string) => {
-														const newCursorField = value
-															? `${stream.stream.cursor_field}:${value}`
-															: stream.stream.cursor_field
-														stream.stream.cursor_field = newCursorField
-														setDefaultCursorField(value)
-														onSyncModeChange?.(
-															stream.stream.name,
-															stream.stream.namespace || "",
-															"incremental",
-														)
-													}}
-													allowClear
-													optionLabelProp="label"
-												>
-													{getFieldsOfSameType(
-														stream.stream.cursor_field?.split(":")[0] ||
-															stream.stream.cursor_field,
-													).map((field: string) => (
-														<Select.Option
-															key={field}
-															value={field}
-															label={field}
+										{stream.stream.cursor_field &&
+											!showFallbackSelector &&
+											!defaultCursorField && (
+												<div className="flex w-1/2 items-end">
+													<Tooltip title="Alternative cursor column in case cursor column encounters null values">
+														<Button
+															type="default"
+															icon={<Plus className="size-4" />}
+															onClick={() => setShowFallbackSelector(true)}
+															className="mb-[2px] flex items-center gap-1"
 														>
-															<div className="flex items-center justify-between">
-																<span>{field}</span>
-																{stream.stream.source_defined_primary_key?.includes(
-																	field,
-																) && <span className="text-[#203FDD]">PK</span>}
-															</div>
-														</Select.Option>
-													))}
-												</Select>
-											</div>
-										)}
+															Add Fallback Cursor
+														</Button>
+													</Tooltip>
+												</div>
+											)}
+
+										{stream.stream.cursor_field &&
+											(showFallbackSelector || defaultCursorField) && (
+												<div className="flex w-1/2 flex-col">
+													<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
+														Fallback Cursor:
+														<Tooltip title="Alternative cursor column in case cursor column encounters null values">
+															<Info className="size-3.5 cursor-pointer text-[#575757]" />
+														</Tooltip>
+													</label>
+													<Select
+														placeholder="Select default"
+														value={defaultCursorField}
+														onChange={(value: string) => {
+															const newCursorField = value
+																? `${stream.stream.cursor_field}:${value}`
+																: stream.stream.cursor_field
+															stream.stream.cursor_field = newCursorField
+															setDefaultCursorField(value)
+															onSyncModeChange?.(
+																stream.stream.name,
+																stream.stream.namespace || "",
+																"incremental",
+															)
+														}}
+														allowClear
+														onClear={() => {
+															setShowFallbackSelector(false)
+															setDefaultCursorField("")
+															stream.stream.cursor_field =
+																stream.stream.cursor_field?.split(":")[0]
+															onSyncModeChange?.(
+																stream.stream.name,
+																stream.stream.namespace || "",
+																"incremental",
+															)
+														}}
+														optionLabelProp="label"
+													>
+														{getFieldsOfSameType(
+															stream.stream.cursor_field?.split(":")[0] ||
+																stream.stream.cursor_field,
+														).map((field: string) => (
+															<Select.Option
+																key={field}
+																value={field}
+																label={field}
+															>
+																<div className="flex items-center justify-between">
+																	<span>{field}</span>
+																	{stream.stream.source_defined_primary_key?.includes(
+																		field,
+																	) && (
+																		<span className="text-[#203FDD]">PK</span>
+																	)}
+																</div>
+															</Select.Option>
+														))}
+													</Select>
+												</div>
+											)}
 									</div>
 								</div>
 							)}
