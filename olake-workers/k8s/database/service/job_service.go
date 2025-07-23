@@ -5,9 +5,25 @@ import (
 	"olake-ui/olake-workers/k8s/logger"
 )
 
+// JobData represents the job configuration data from database
+type JobData struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	SourceType    string `json:"source_type"`
+	SourceVersion string `json:"source_version"`
+	SourceConfig  string `json:"source_config"`
+	DestType      string `json:"dest_type"`
+	DestVersion   string `json:"dest_version"`
+	DestConfig    string `json:"dest_config"`
+	StreamsConfig string `json:"streams_config"`
+	State         string `json:"state"`
+	ProjectID     string `json:"project_id"`
+	Active        bool   `json:"active"`
+}
+
 // JobDataService defines the interface for job data operations
 type JobDataService interface {
-	GetJobData(jobID int) (*database.JobData, error)
+	GetJobData(jobID int) (*JobData, error)
 	UpdateJobState(jobID int, state string, active bool) error
 	HealthCheck() error
 	Close() error
@@ -30,9 +46,28 @@ func NewPostgresJobService() (*PostgresJobService, error) {
 }
 
 // GetJobData retrieves job configuration from database
-func (s *PostgresJobService) GetJobData(jobID int) (*database.JobData, error) {
+func (s *PostgresJobService) GetJobData(jobID int) (*JobData, error) {
 	logger.Debugf("Getting job data for jobID: %d", jobID)
-	return s.db.GetJobData(jobID)
+	dbJobData, err := s.db.GetJobData(jobID)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Convert from internal database jobData to service JobData
+	return &JobData{
+		ID:            dbJobData.ID,
+		Name:          dbJobData.Name,
+		SourceType:    dbJobData.SourceType,
+		SourceVersion: dbJobData.SourceVersion,
+		SourceConfig:  dbJobData.SourceConfig,
+		DestType:      dbJobData.DestType,
+		DestVersion:   dbJobData.DestVersion,
+		DestConfig:    dbJobData.DestConfig,
+		StreamsConfig: dbJobData.StreamsConfig,
+		State:         dbJobData.State,
+		ProjectID:     dbJobData.ProjectID,
+		Active:        dbJobData.Active,
+	}, nil
 }
 
 // UpdateJobState updates the job state and active status in the database

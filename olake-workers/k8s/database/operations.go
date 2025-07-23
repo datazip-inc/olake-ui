@@ -1,6 +1,6 @@
 package database
 
-func (db *DB) GetJobData(jobID int) (*JobData, error) {
+func (db *DB) GetJobData(jobID int) (*jobData, error) {
 	query := `
         SELECT 
             j.id, j.name, j.active,
@@ -12,15 +12,15 @@ func (db *DB) GetJobData(jobID int) (*JobData, error) {
         JOIN "olake-dev-destination" d ON j.dest_id = d.id
         WHERE j.id = $1`
 
-	var jobData JobData
+	var result jobData
 	err := db.conn.QueryRow(query, jobID).Scan(
-		&jobData.ID, &jobData.Name, &jobData.Active,
-		&jobData.SourceType, &jobData.SourceVersion, &jobData.SourceConfig,
-		&jobData.DestType, &jobData.DestConfig,
-		&jobData.StreamsConfig, &jobData.State,
+		&result.ID, &result.Name, &result.Active,
+		&result.SourceType, &result.SourceVersion, &result.SourceConfig,
+		&result.DestType, &result.DestConfig,
+		&result.StreamsConfig, &result.State,
 	)
 
-	return &jobData, err
+	return &result, err
 }
 
 // UpdateJobState updates the job state and active status in the database

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/utils/env"
 
@@ -16,8 +17,8 @@ type DB struct {
 	tableNames map[string]string
 }
 
-// JobData represents the job configuration data from database
-type JobData struct {
+// jobData represents the job configuration data from database (internal use only)
+type jobData struct {
 	ID            int    `json:"id"`
 	Name          string `json:"name"`
 	SourceType    string `json:"source_type"`
@@ -39,6 +40,18 @@ func NewDB() (*DB, error) {
 	conn, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	// Apply connection pool settings
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		logger.Warnf("Failed to load database config, using defaults: %v", err)
+	} else {
+		conn.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+		conn.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+		conn.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+		logger.Infof("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v", 
+			cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
 	}
 
 	// Test connection
