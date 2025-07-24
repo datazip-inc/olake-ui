@@ -7,7 +7,7 @@ fullnameOverride: ""
 # -- Global configuration that applies to all components
 global:
   # -- Global storage class for all persistent volumes
-  # Set to "" to disable dynamic provisioning
+  # Set to "" to use default storage class
   # Examples: gp2, standard, managed
   storageClass: ""
   
