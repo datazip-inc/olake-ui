@@ -129,6 +129,7 @@ export interface ExtendedStreamConfigurationProps
 	initialPartitionRegex: string
 	initialFullLoadFilter?: string
 	fromJobEditFlow?: boolean
+	initialSelectedStreams?: CombinedStreamsData
 	onNormalizationChange: (
 		streamName: string,
 		namespace: string,
