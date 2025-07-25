@@ -46,7 +46,7 @@ const StreamConfiguration = ({
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
 	const [partitionRegex, setPartitionRegex] = useState("")
 	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
-	const [defaultCursorField, setDefaultCursorField] = useState<string>("")
+	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
 	const [activePartitionRegex, setActivePartitionRegex] = useState(
 		initialPartitionRegex || "",
 	)
@@ -78,10 +78,10 @@ const StreamConfiguration = ({
 			stream.stream.cursor_field.includes(":")
 		) {
 			const [, defaultField] = stream.stream.cursor_field.split(":")
-			setDefaultCursorField(defaultField)
+			setFallBackCursorField(defaultField)
 			setShowFallbackSelector(true)
 		} else {
-			setDefaultCursorField("")
+			setFallBackCursorField("")
 			setShowFallbackSelector(false)
 		}
 
@@ -482,26 +482,34 @@ const StreamConfiguration = ({
 		return value
 	}
 
-	const getFieldType = (fieldName: string): string => {
-		const properties = stream.stream.type_schema?.properties || {}
-		const fieldType = properties[fieldName]?.type
-		return Array.isArray(fieldType)
-			? fieldType.find(t => t !== "null") || fieldType[0]
-			: fieldType
-	}
-
-	const getFieldsOfSameType = (selectedField: string): string[] => {
-		const selectedType = getFieldType(selectedField)
+	const getColumnOptionsForCursor = (
+		isFallback: boolean = false,
+	): { label: React.ReactNode; value: string }[] => {
 		const availableCursorFields = stream.stream.available_cursor_fields || []
+		const selectedField = stream.stream.cursor_field?.split(":")[0]
 
-		return availableCursorFields.filter(field => {
-			// Skip the currently selected cursor field
-			if (field === selectedField) return false
-
-			// Check if field has the same type
-			const fieldType = getFieldType(field)
-			return fieldType === selectedType
-		})
+		return [...availableCursorFields]
+			.filter(field => !isFallback || field !== selectedField)
+			.sort((a, b) => {
+				const aIsPK =
+					stream.stream.source_defined_primary_key?.includes(a) || false
+				const bIsPK =
+					stream.stream.source_defined_primary_key?.includes(b) || false
+				if (aIsPK && !bIsPK) return -1
+				if (!aIsPK && bIsPK) return 1
+				return a.localeCompare(b)
+			})
+			.map((field: string) => ({
+				label: (
+					<div className="flex items-center justify-between">
+						<span>{field}</span>
+						{stream.stream.source_defined_primary_key?.includes(field) && (
+							<span className="text-[#203FDD]">PK</span>
+						)}
+					</div>
+				),
+				value: field,
+			}))
 	}
 
 	// Tab button component
@@ -586,11 +594,11 @@ const StreamConfiguration = ({
 												placeholder="Select cursor field"
 												value={stream.stream.cursor_field?.split(":")[0]}
 												onChange={(value: string) => {
-													const newCursorField = defaultCursorField
-														? `${value}:${defaultCursorField}`
+													const newCursorField = fallBackCursorField
+														? `${value}:${fallBackCursorField}`
 														: value
 													stream.stream.cursor_field = newCursorField
-													setDefaultCursorField("")
+													setFallBackCursorField("")
 													onSyncModeChange?.(
 														stream.stream.name,
 														stream.stream.namespace || "",
@@ -599,39 +607,20 @@ const StreamConfiguration = ({
 												}}
 												optionLabelProp="label"
 											>
-												{[...stream.stream.available_cursor_fields]
-													.sort((a, b) => {
-														const aIsPK =
-															stream.stream.source_defined_primary_key?.includes(
-																a,
-															) || false
-														const bIsPK =
-															stream.stream.source_defined_primary_key?.includes(
-																b,
-															) || false
-														if (aIsPK && !bIsPK) return -1
-														if (!aIsPK && bIsPK) return 1
-														return a.localeCompare(b)
-													})
-													.map((field: string) => (
-														<Select.Option
-															key={field}
-															value={field}
-															label={field}
-														>
-															<div className="flex items-center justify-between">
-																<span>{field}</span>
-																{stream.stream.source_defined_primary_key?.includes(
-																	field,
-																) && <span className="text-[#203FDD]">PK</span>}
-															</div>
-														</Select.Option>
-													))}
+												{getColumnOptionsForCursor().map(option => (
+													<Select.Option
+														key={option.value}
+														value={option.value}
+														label={option.value}
+													>
+														{option.label}
+													</Select.Option>
+												))}
 											</Select>
 										</div>
 										{stream.stream.cursor_field &&
 											!showFallbackSelector &&
-											!defaultCursorField && (
+											!fallBackCursorField && (
 												<div className="flex w-1/2 items-end">
 													<Tooltip title="Alternative cursor column in case cursor column encounters null values">
 														<Button
@@ -647,7 +636,7 @@ const StreamConfiguration = ({
 											)}
 
 										{stream.stream.cursor_field &&
-											(showFallbackSelector || defaultCursorField) && (
+											(showFallbackSelector || fallBackCursorField) && (
 												<div className="flex w-1/2 flex-col">
 													<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
 														Fallback Cursor:
@@ -657,13 +646,13 @@ const StreamConfiguration = ({
 													</label>
 													<Select
 														placeholder="Select default"
-														value={defaultCursorField}
+														value={fallBackCursorField}
 														onChange={(value: string) => {
 															const newCursorField = value
 																? `${stream.stream.cursor_field}:${value}`
 																: stream.stream.cursor_field
 															stream.stream.cursor_field = newCursorField
-															setDefaultCursorField(value)
+															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
@@ -673,7 +662,7 @@ const StreamConfiguration = ({
 														allowClear
 														onClear={() => {
 															setShowFallbackSelector(false)
-															setDefaultCursorField("")
+															setFallBackCursorField("")
 															stream.stream.cursor_field =
 																stream.stream.cursor_field?.split(":")[0]
 															onSyncModeChange?.(
@@ -684,23 +673,13 @@ const StreamConfiguration = ({
 														}}
 														optionLabelProp="label"
 													>
-														{getFieldsOfSameType(
-															stream.stream.cursor_field?.split(":")[0] ||
-																stream.stream.cursor_field,
-														).map((field: string) => (
+														{getColumnOptionsForCursor(true).map(option => (
 															<Select.Option
-																key={field}
-																value={field}
-																label={field}
+																key={option.value}
+																value={option.value}
+																label={option.value}
 															>
-																<div className="flex items-center justify-between">
-																	<span>{field}</span>
-																	{stream.stream.source_defined_primary_key?.includes(
-																		field,
-																	) && (
-																		<span className="text-[#203FDD]">PK</span>
-																	)}
-																</div>
+																{option.label}
 															</Select.Option>
 														))}
 													</Select>
