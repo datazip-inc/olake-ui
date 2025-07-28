@@ -8,6 +8,7 @@ import {
 	getConnectorImage,
 	generateCronExpression,
 	parseCronExpression,
+	validateCronExpression,
 	isValidCronExpression,
 } from "../../../utils/utils"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
@@ -205,8 +206,7 @@ const JobSettings: React.FC = () => {
 			message.error("Job name is required")
 			return
 		}
-		if (!cronExpression.trim()) {
-			message.error("Cron expression is required")
+		if (!validateCronExpression(cronExpression)) {
 			return
 		}
 

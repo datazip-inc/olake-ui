@@ -7,6 +7,7 @@ import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 import { DAYS_MAP } from "./constants"
 import { CronParseResult } from "../types"
 import parser from "cron-parser"
+import { message } from "antd"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
@@ -428,4 +429,16 @@ export const parseCronExpression = (
 		console.error("Error parsing cron expression:", error)
 		return { frequency: "custom", customCronExpression: cronExpression }
 	}
+}
+
+export const validateCronExpression = (cronExpression: string): boolean => {
+	if (!cronExpression.trim()) {
+		message.error("Cron expression is required")
+		return false
+	}
+	if (!isValidCronExpression(cronExpression)) {
+		message.error("Invalid cron expression")
+		return false
+	}
+	return true
 }
