@@ -411,16 +411,15 @@ const StreamConfiguration = ({
 		const cursorFields = (stream.stream.available_cursor_fields ||
 			[]) as string[]
 
-		// Combine fields in priority order, filter out duplicates
-		const orderedFields = [
-			...primaryKeys,
-			...cursorFields,
-			...Object.keys(properties),
-		]
-
-		// Convert to unique array while preserving order
-		return [...new Set(orderedFields)]
+		return cursorFields
 			.filter(key => properties[key])
+			.sort((a, b) => {
+				const aIsPK = primaryKeys.includes(a)
+				const bIsPK = primaryKeys.includes(b)
+				if (aIsPK && !bIsPK) return -1
+				if (!aIsPK && bIsPK) return 1
+				return a.localeCompare(b)
+			})
 			.map(key => {
 				const types = properties[key].type
 				// Get the first non-null type as primary type
@@ -451,19 +450,6 @@ const StreamConfiguration = ({
 					value: key,
 				}
 			})
-	}
-
-	const getFilteredOperatorOptions = (columnName: string) => {
-		const properties = stream.stream.type_schema?.properties || {}
-		const columnType = properties[columnName]?.type
-		const primaryType = Array.isArray(columnType)
-			? columnType.find(t => t !== "null") || columnType[0]
-			: columnType
-
-		if (primaryType === "string") {
-			return operatorOptions.filter(op => op.value === "=" || op.value === "!=")
-		}
-		return operatorOptions
 	}
 
 	const formatFilterValue = (columnName: string, value: string) => {
@@ -894,7 +880,7 @@ const StreamConfiguration = ({
 								onChange={value =>
 									handleFilterConditionChange(index, "operator", value)
 								}
-								options={getFilteredOperatorOptions(condition.columnName)}
+								options={operatorOptions}
 								disabled={fromJobEditFlow}
 							/>
 						</div>
