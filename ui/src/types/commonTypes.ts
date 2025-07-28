@@ -67,3 +67,11 @@ export interface CatalogOption {
 export interface LayoutProps {
 	children: React.ReactNode
 }
+
+export interface CronParseResult {
+	frequency: string
+	selectedTime?: string
+	selectedAmPm?: "AM" | "PM"
+	selectedDay?: string
+	customCronExpression?: string
+}
