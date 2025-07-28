@@ -432,7 +432,7 @@ const StreamConfiguration = ({
 			[]) as string[]
 
 		return cursorFields
-			.filter(key => properties[key])
+			.filter(key => properties[key.toLowerCase()])
 			.sort((a, b) => {
 				const aIsPK = primaryKeys.includes(a)
 				const bIsPK = primaryKeys.includes(b)
@@ -441,7 +441,7 @@ const StreamConfiguration = ({
 				return a.localeCompare(b)
 			})
 			.map(key => {
-				const types = properties[key].type
+				const types = properties[key.toLowerCase()].type
 				// Get the first non-null type as primary type
 				const primaryType = Array.isArray(types)
 					? types.find(t => t !== "null") || types[0]

@@ -326,7 +326,7 @@ const JobSettings: React.FC = () => {
 													</label>
 													<Input
 														className="w-64"
-														placeholder="Enter cron expression (e.g., */5 * * * *)"
+														placeholder="Enter cron expression"
 														value={customCronExpression}
 														onChange={e =>
 															handleCustomCronChange(e.target.value)
