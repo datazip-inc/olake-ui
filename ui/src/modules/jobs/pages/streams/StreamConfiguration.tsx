@@ -5,6 +5,7 @@ import {
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
+	CombinedStreamsData,
 } from "../../../../types"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import StreamsSchema from "./StreamsSchema"
@@ -31,6 +32,7 @@ const StreamConfiguration = ({
 	initialFullLoadFilter = "",
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
+	initialSelectedStreams,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
@@ -66,6 +68,24 @@ const StreamConfiguration = ({
 		backfill: false,
 		partition_regex: initialPartitionRegex || "",
 	})
+
+	const [initialJobStreams, setInitialJobStreams] = useState<
+		CombinedStreamsData | undefined
+	>(undefined)
+
+	useEffect(() => {
+		// Set initial streams only once when component mounts
+		if (fromJobEditFlow && initialSelectedStreams && !initialJobStreams) {
+			setInitialJobStreams(initialSelectedStreams)
+		}
+	}, [fromJobEditFlow, initialSelectedStreams])
+
+	// Check if this stream was in the initial job streams
+	const isStreamInInitialSelection =
+		fromJobEditFlow &&
+		initialJobStreams?.selected_streams?.[stream.stream.namespace || ""]?.some(
+			(s: { stream_name: string }) => s.stream_name === stream.stream.name,
+		)
 
 	useEffect(() => {
 		setActiveTab("config")
@@ -700,7 +720,7 @@ const StreamConfiguration = ({
 							disabled={
 								syncMode === "full" ||
 								syncMode === "incremental" ||
-								fromJobEditFlow
+								isStreamInInitialSelection
 							}
 						/>
 					</div>
@@ -714,7 +734,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={normalisation}
 							onChange={handleNormalizationChange}
-							disabled={!isSelected || fromJobEditFlow}
+							disabled={!isSelected || isStreamInInitialSelection}
 						/>
 					</div>
 				</div>
@@ -733,7 +753,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={fullLoadFilter}
 							onChange={handleFullLoadFilterChange}
-							disabled={!isSelected || fromJobEditFlow}
+							disabled={!isSelected || isStreamInInitialSelection}
 						/>
 					</div>
 					{fullLoadFilter && isSelected && (
@@ -769,13 +789,13 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={!!activePartitionRegex || fromJobEditFlow}
+						disabled={!!activePartitionRegex || isStreamInInitialSelection}
 					/>
 					{!activePartitionRegex ? (
 						<Button
 							className="mt-2 w-fit bg-[#203FDD] px-1 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
-							disabled={!partitionRegex}
+							disabled={!partitionRegex || isStreamInInitialSelection}
 						>
 							Set Partition
 						</Button>
@@ -792,7 +812,7 @@ const StreamConfiguration = ({
 									size="small"
 									className="rounded-[6px] py-1 text-sm"
 									onClick={handleClearPartitionRegex}
-									disabled={fromJobEditFlow}
+									disabled={isStreamInInitialSelection}
 								>
 									Delete Partition
 								</Button>
@@ -824,7 +844,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600"
 									}`}
-									disabled={fromJobEditFlow}
+									disabled={isStreamInInitialSelection}
 								>
 									AND
 								</button>
@@ -836,7 +856,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600"
 									}`}
-									disabled={fromJobEditFlow}
+									disabled={isStreamInInitialSelection}
 								>
 									OR
 								</button>
@@ -846,7 +866,7 @@ const StreamConfiguration = ({
 								danger
 								icon={<X className="size-4" />}
 								onClick={() => handleRemoveFilter(index)}
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							>
 								Remove
 							</Button>
@@ -880,7 +900,7 @@ const StreamConfiguration = ({
 								options={getColumnOptions()}
 								labelInValue={false}
 								optionLabelProp="value"
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							/>
 						</div>
 						<div>
@@ -895,7 +915,7 @@ const StreamConfiguration = ({
 									handleFilterConditionChange(index, "operator", value)
 								}
 								options={getFilteredOperatorOptions(condition.columnName)}
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							/>
 						</div>
 						<div>
@@ -906,18 +926,19 @@ const StreamConfiguration = ({
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							/>
 						</div>
 					</div>
 				</div>
 			))}
-			{multiFilterCondition.conditions.length < 2 && !fromJobEditFlow && (
+			{multiFilterCondition.conditions.length < 2 && (
 				<Button
 					type="default"
 					icon={<Plus className="size-4" />}
 					onClick={handleAddFilter}
 					className="w-fit"
+					disabled={isStreamInInitialSelection}
 				>
 					New Column filter
 				</Button>
