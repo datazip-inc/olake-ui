@@ -1,26 +1,24 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/beego/beego/v2/server/web"
-
-	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/internal/services"
 	"github.com/datazip/olake-frontend/server/utils"
 )
 
 type UserHandler struct {
 	web.Controller
-	userORM *database.UserORM
+	userService *services.UserService
 }
 
 func (c *UserHandler) Prepare() {
-	c.userORM = database.NewUserORM()
+	c.userService = services.NewUserService()
 }
 
 // @router /users [post]
@@ -31,8 +29,8 @@ func (c *UserHandler) CreateUser() {
 		return
 	}
 
-	if err := c.userORM.Create(&req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create user: %s", err))
+	if err := c.userService.CreateUser(context.Background(), &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -41,9 +39,9 @@ func (c *UserHandler) CreateUser() {
 
 // @router /users [get]
 func (c *UserHandler) GetAllUsers() {
-	users, err := c.userORM.GetAll()
+	users, err := c.userService.GetAllUsers(context.Background())
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve users")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -65,24 +63,17 @@ func (c *UserHandler) UpdateUser() {
 		return
 	}
 
-	// Get existing user
-	existingUser, err := c.userORM.GetByID(id)
+	updatedUser, err := c.userService.UpdateUser(context.Background(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found")
+		if err.Error() == "user not found" {
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found")
+			return
+		}
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	// Update fields
-	existingUser.Username = req.Username
-	existingUser.Email = req.Email
-	existingUser.UpdatedAt = time.Now()
-
-	if err := c.userORM.Update(existingUser); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update user")
-		return
-	}
-
-	utils.SuccessResponse(&c.Controller, existingUser)
+	utils.SuccessResponse(&c.Controller, updatedUser)
 }
 
 // @router /users/:id [delete]
@@ -94,8 +85,8 @@ func (c *UserHandler) DeleteUser() {
 		return
 	}
 
-	if err := c.userORM.Delete(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete user")
+	if err := c.userService.DeleteUser(context.Background(), id); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return
 	}
 

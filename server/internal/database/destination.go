@@ -108,6 +108,8 @@ func (r *DestinationORM) Update(destination *models.Destination) error {
 
 func (r *DestinationORM) Delete(id int) error {
 	destination := &models.Destination{ID: id}
+	// Use ORM's Delete method which will automatically handle the soft delete
+	// by setting the DeletedAt field due to the ORM tags in BaseModel
 	_, err := r.ormer.Delete(destination)
 	return err
 }

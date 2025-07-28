@@ -85,18 +85,18 @@ func (r *JobORM) GetAll() ([]*models.Job, error) {
 func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	// Query sources in the project
-	sourceTable := constants.TableNameMap[constants.SourceTable]
-	sources := []int{}
-	_, err := r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, sourceTable), projectID).QueryRows(&sources)
+	// Query sources in the project using ORM
+	var sources []models.Source
+	sourceQs := r.ormer.QueryTable(constants.TableNameMap[constants.SourceTable])
+	_, err := sourceQs.Filter("project_id", projectID).All(&sources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sources for project ID %s: %s", projectID, err)
 	}
 
-	// Query destinations in the project
-	destTable := constants.TableNameMap[constants.DestinationTable]
-	destinations := []int{}
-	_, err = r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, destTable), projectID).QueryRows(&destinations)
+	// Query destinations in the project using ORM
+	var destinations []models.Destination
+	destQs := r.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable])
+	_, err = destQs.Filter("project_id", projectID).All(&destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get destinations for project ID %s: %s", projectID, err)
 	}
@@ -106,11 +106,27 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 		return jobs, nil
 	}
 
-	// Build query
+	// Extract IDs for filtering
+	sourceIDs := make([]int, len(sources))
+	for i := range sources {
+		sourceIDs[i] = sources[i].ID
+	}
+
+	destIDs := make([]int, len(destinations))
+	for i := range destinations {
+		destIDs[i] = destinations[i].ID
+	}
+
+	// Build query for jobs
 	qs := r.ormer.QueryTable(r.TableName)
-	// Filter by sources or destinations from the project
-	if len(sources) > 0 {
-		qs = qs.Filter("source_id__in", sources)
+
+	// Create OR condition for sources and destinations
+	cond := orm.NewCondition()
+	if len(sourceIDs) > 0 {
+		cond = cond.Or("source_id__in", sourceIDs)
+	}
+	if len(destIDs) > 0 {
+		cond = cond.Or("dest_id__in", destIDs)
 	}
 
 	if len(destinations) > 0 {
@@ -166,10 +182,24 @@ func (r *JobORM) Update(job *models.Job) error {
 	return err
 }
 
+// BulkDeactivate deactivates multiple jobs by their IDs in a single query
+func (r *JobORM) UpdateAllJobs(ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("id__in", ids).
+		Update(orm.Params{
+			"active":     false,
+			"updated_at": time.Now(),
+		})
+	return err
+}
+
 // Delete a job
 func (r *JobORM) Delete(id int) error {
-	job := &models.Job{ID: id}
-	_, err := r.ormer.Delete(job)
+	_, err := r.ormer.Delete(&models.Job{ID: id})
 	return err
 }
 
@@ -212,5 +242,27 @@ func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
 		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
 	}
 
+	return jobs, nil
+}
+func (r *JobORM) GetBySourceIDs(sourceIDs []int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	if len(sourceIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := r.ormer.QueryTable(r.TableName).Filter("source_id__in", sourceIDs).RelatedSel().All(&jobs)
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	if len(destIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := r.ormer.QueryTable(r.TableName).Filter("dest_id__in", destIDs).RelatedSel().All(&jobs)
+	if err != nil {
+		return nil, err
+	}
 	return jobs, nil
 }
