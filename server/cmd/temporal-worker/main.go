@@ -9,17 +9,26 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/logger"
+	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
+	"github.com/datazip/olake-frontend/server/utils"
 )
 
 func main() {
+	// Initialize telemetry
+	telemetry.InitTelemetry()
 	// check constants
 	constants.Init()
 
 	// init logger
 	logsdir, _ := config.String("logsdir")
 	logger.InitLogger(logsdir)
+
+	// init log cleaner
+	utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())
+
 	// init database
 	postgresDB, _ := config.String("postgresdb")
 	err := database.Init(postgresDB)
@@ -56,5 +65,6 @@ func main() {
 
 	// Stop the worker
 	worker.Stop()
+	telemetry.Close()
 	logs.Info("Worker stopped. Goodbye!")
 }

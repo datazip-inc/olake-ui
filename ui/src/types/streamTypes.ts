@@ -1,8 +1,22 @@
 import type { CheckboxChangeEvent } from "antd/es/checkbox"
 import type { UnknownObject } from "./index"
 
+export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
+export type LogicalOperator = "and" | "or"
+
+export type FilterCondition = {
+	columnName: string
+	operator: FilterOperator
+	value: string
+}
+
+export type MultiFilterCondition = {
+	conditions: FilterCondition[]
+	logicalOperator: LogicalOperator
+}
+
 export type StreamData = {
-	sync_mode: "full_refresh" | "cdc"
+	sync_mode: "full_refresh" | "cdc" | "incremental"
 	skip_nested_flattening?: boolean
 	cursor_field?: string[]
 	destination_sync_mode: string
@@ -22,9 +36,12 @@ export type StreamData = {
 				}
 			>
 		}
-		supported_sync_modes?: ["full_refresh"] | ["full_refresh", "incremental"]
+		supported_sync_modes?: string[]
 		source_defined_cursor?: boolean
 		default_cursor_field?: string[]
+		available_cursor_fields?: string[]
+		cursor_field?: string
+		source_defined_primary_key?: string[]
 		[key: string]: unknown
 	}
 }
@@ -50,29 +67,28 @@ export type StreamConfigurationProps = {
 	onSyncModeChange?: (
 		streamName: string,
 		namespace: string,
-		mode: "full_refresh" | "cdc",
+		mode: "full_refresh" | "cdc" | "incremental",
 	) => void
 	useDirectForms?: boolean
 }
 
+export interface SelectedStream {
+	stream_name: string
+	partition_regex: string
+	normalization: boolean
+	filter?: string
+}
+
 export interface StreamsDataStructure {
 	selected_streams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
+		[namespace: string]: SelectedStream[]
 	}
 	streams: StreamData[]
 }
 
 export interface CombinedStreamsData {
 	selected_streams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
+		[namespace: string]: SelectedStream[]
 	}
 	streams: StreamData[]
 }
@@ -81,22 +97,14 @@ export interface SchemaConfigurationProps {
 	selectedStreams:
 		| string[]
 		| {
-				[namespace: string]: {
-					stream_name: string
-					partition_regex: string
-					normalization: boolean
-				}[]
+				[namespace: string]: SelectedStream[]
 		  }
 		| CombinedStreamsData
 	setSelectedStreams: React.Dispatch<
 		React.SetStateAction<
 			| string[]
 			| {
-					[namespace: string]: {
-						stream_name: string
-						partition_regex: string
-						normalization: boolean
-					}[]
+					[namespace: string]: SelectedStream[]
 			  }
 			| CombinedStreamsData
 		>
@@ -119,6 +127,9 @@ export interface ExtendedStreamConfigurationProps
 	isSelected: boolean
 	initialNormalization: boolean
 	initialPartitionRegex: string
+	initialFullLoadFilter?: string
+	fromJobEditFlow?: boolean
+	initialSelectedStreams?: CombinedStreamsData
 	onNormalizationChange: (
 		streamName: string,
 		namespace: string,
@@ -129,16 +140,17 @@ export interface ExtendedStreamConfigurationProps
 		namespace: string,
 		partitionRegex: string,
 	) => void
+	onFullLoadFilterChange?: (
+		streamName: string,
+		namespace: string,
+		filterValue: string,
+	) => void
 }
 
 export interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
 	selectedStreams: {
-		[namespace: string]: {
-			stream_name: string
-			partition_regex: string
-			normalization: boolean
-		}[]
+		[namespace: string]: SelectedStream[]
 	}
 	setActiveStreamData: (stream: StreamData) => void
 	activeStreamData: StreamData | null
@@ -151,19 +163,11 @@ export interface GroupedStreamsCollapsibleListProps {
 		React.SetStateAction<
 			| string[]
 			| {
-					[namespace: string]: {
-						stream_name: string
-						partition_regex: string
-						normalization: boolean
-					}[]
+					[namespace: string]: SelectedStream[]
 			  }
 			| {
 					selected_streams: {
-						[namespace: string]: {
-							stream_name: string
-							partition_regex: string
-							normalization: boolean
-						}[]
+						[namespace: string]: SelectedStream[]
 					}
 					streams: StreamData[]
 			  }

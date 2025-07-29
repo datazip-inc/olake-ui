@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.41.1
 	github.com/lib/pq v1.10.9
 	github.com/oklog/ulid v1.3.1
+	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
 	golang.org/x/crypto v0.35.0
@@ -27,6 +28,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
 	github.com/aws/smithy-go v1.22.4 // indirect
+)
+
+require (
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
+	github.com/segmentio/backo-go v1.0.0 // indirect
 )
 
 require (
@@ -50,7 +56,7 @@ require (
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
-	github.com/robfig/cron v1.2.0 // indirect
+	github.com/robfig/cron v1.2.0
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
