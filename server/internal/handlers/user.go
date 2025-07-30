@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -24,7 +23,7 @@ func (c *UserHandler) Prepare() {
 // @router /users [post]
 func (c *UserHandler) CreateUser() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
@@ -58,7 +57,7 @@ func (c *UserHandler) UpdateUser() {
 	}
 
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}

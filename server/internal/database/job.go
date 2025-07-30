@@ -129,12 +129,8 @@ func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
 		cond = cond.Or("dest_id__in", destIDs)
 	}
 
-	if len(destinations) > 0 {
-		qs = qs.Filter("dest_id__in", destinations)
-	}
-
 	// Add RelatedSel to load the related Source and Destination objects
-	_, err = qs.RelatedSel().All(&jobs)
+	_, err = qs.SetCond(cond).RelatedSel().All(&jobs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs with related data for project ID %s: %s", projectID, err)
 	}

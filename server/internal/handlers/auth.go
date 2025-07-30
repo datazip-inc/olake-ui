@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -27,7 +26,7 @@ func (c *AuthHandler) Prepare() {
 // @router /login [post]
 func (c *AuthHandler) Login() {
 	var req models.LoginRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
@@ -91,7 +90,7 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
