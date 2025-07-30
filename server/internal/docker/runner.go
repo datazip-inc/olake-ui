@@ -119,7 +119,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 // buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
-	dockerArgs := []string{"run"}
+	dockerArgs := []string{"run", "--rm"}
 
 	if version == "latest" {
 		dockerArgs = append(dockerArgs, "--pull=always")
