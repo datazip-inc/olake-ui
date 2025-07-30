@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"go.temporal.io/sdk/activity"
 )
 

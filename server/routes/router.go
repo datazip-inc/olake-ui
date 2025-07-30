@@ -5,7 +5,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
-	"github.com/datazip/olake-frontend/server/internal/handlers"
+	"github.com/datazip/olake-ui/server/internal/handlers"
 )
 
 // writeDefaultCorsHeaders sets common CORS headers

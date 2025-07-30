@@ -8,11 +8,11 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/services"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/services"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 type AuthHandler struct {

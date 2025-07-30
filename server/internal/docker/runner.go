@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/utils"
 	"github.com/docker/docker/client"
 )
 

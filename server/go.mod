@@ -1,4 +1,4 @@
-module github.com/datazip/olake-frontend/server
+module github.com/datazip/olake-ui/server
 
 go 1.24.2
 
