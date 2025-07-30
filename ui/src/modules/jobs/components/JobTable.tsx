@@ -135,6 +135,11 @@ const JobTable: React.FC<JobTableProps> = ({
 			},
 		},
 		{
+			title: "Job ID",
+			dataIndex: "id",
+			key: "id",
+		},
+		{
 			title: "Job Name",
 			dataIndex: "name",
 			key: "name",

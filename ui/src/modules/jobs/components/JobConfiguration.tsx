@@ -1,10 +1,14 @@
 import { Input, Select, Radio } from "antd"
 import StepTitle from "../../common/components/StepTitle"
-import { generateCronExpression } from "../../../utils/utils"
+import {
+	generateCronExpression,
+	parseCronExpression,
+	isValidCronExpression,
+} from "../../../utils/utils"
 import { JobConfigurationProps } from "../../../types"
 import { useEffect, useState } from "react"
-import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import parser from "cron-parser"
+import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobName,
@@ -35,6 +39,11 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	const getParsedDate = (value: Date) => value.toUTCString()
 
 	const updateNextRuns = (cronValue: string) => {
+		if (!cronValue || !isValidCronExpression(cronValue)) {
+			setNextRuns([])
+			return
+		}
+
 		try {
 			const interval = parser.parse(cronValue, {
 				currentDate: new Date(),
@@ -59,95 +68,24 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	useEffect(() => {
 		if (!cronExpression) return
 
-		try {
-			const parts = cronExpression.split(" ")
-			if (parts.length !== 5) return
+		const result = parseCronExpression(cronExpression, DAYS)
 
-			const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
-
-			// Check if it's a custom pattern first
-			if (
-				!(
-					// Minutes pattern
-					(
-						(minute === "*" &&
-							hour === "*" &&
-							dayOfMonth === "*" &&
-							month === "*" &&
-							dayOfWeek === "*") ||
-						// Hours pattern
-						(minute === "0" &&
-							hour === "*" &&
-							dayOfMonth === "*" &&
-							month === "*" &&
-							dayOfWeek === "*") ||
-						// Days pattern
-						(minute === "0" &&
-							/^\d+$/.test(hour) &&
-							dayOfMonth === "*" &&
-							month === "*" &&
-							dayOfWeek === "*") ||
-						// Weeks pattern
-						(minute === "0" &&
-							/^\d+$/.test(hour) &&
-							dayOfMonth === "*" &&
-							month === "*" &&
-							/^[0-6]$/.test(dayOfWeek))
-					)
-				)
-			) {
-				setFrequency("custom")
-				setCustomCronExpression(cronExpression)
-				return
-			}
-
-			// Determine frequency and set states based on cron pattern
-			if (minute === "*" && hour === "*") {
-				setFrequency("minutes")
-			} else if (minute === "0" && hour === "*") {
-				setFrequency("hours")
-			} else if (
-				minute === "0" &&
-				dayOfMonth === "*" &&
-				month === "*" &&
-				dayOfWeek === "*"
-			) {
-				setFrequency("days")
-				const hourNum = parseInt(hour)
-				setSelectedTime(
-					hourNum > 12
-						? (hourNum - 12).toString()
-						: hourNum === 0
-							? "12"
-							: hourNum.toString(),
-				)
-				setSelectedAmPm(hourNum >= 12 ? "PM" : "AM")
-			} else if (
-				minute === "0" &&
-				dayOfMonth === "*" &&
-				month === "*" &&
-				/^[0-6]$/.test(dayOfWeek)
-			) {
-				setFrequency("weeks")
-				const hourNum = parseInt(hour)
-				setSelectedTime(
-					hourNum > 12
-						? (hourNum - 12).toString()
-						: hourNum === 0
-							? "12"
-							: hourNum.toString(),
-				)
-				setSelectedAmPm(hourNum >= 12 ? "PM" : "AM")
-				setSelectedDay(DAYS[parseInt(dayOfWeek)])
-			}
-
-			setCronValue(cronExpression)
-		} catch (error) {
-			console.error("Error parsing cron expression:", error)
-			setFrequency("custom")
-			setCustomCronExpression(cronExpression)
+		setFrequency(result.frequency)
+		if (result.customCronExpression) {
+			setCustomCronExpression(result.customCronExpression)
 		}
-	}, [cronExpression])
+		if (result.selectedTime) {
+			setSelectedTime(result.selectedTime)
+		}
+		if (result.selectedAmPm) {
+			setSelectedAmPm(result.selectedAmPm)
+		}
+		if (result.selectedDay) {
+			setSelectedDay(result.selectedDay)
+		}
+
+		setCronValue(cronExpression)
+	}, [])
 
 	useEffect(() => {
 		if (cronValue) {
@@ -178,6 +116,9 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	}
 
 	const handleFrequencyChange = (selectedUnit: string) => {
+		if (selectedUnit === "custom" && customCronExpression.trim() === "") {
+			setNextRuns([])
+		}
 		setFrequency(selectedUnit)
 		updateCronExpression(selectedUnit)
 	}
@@ -257,7 +198,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 									<label className="mb-2 block text-sm">Cron Expression</label>
 									<Input
 										className="w-64"
-										placeholder="Enter cron expression (e.g., */5 * * * *)"
+										placeholder="Enter cron expression (Eg : * * * * *)"
 										value={customCronExpression}
 										onChange={e => handleCustomCronChange(e.target.value)}
 									/>

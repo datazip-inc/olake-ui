@@ -527,6 +527,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}
 							onFullLoadFilterChange={handleFullLoadFilterChange}
 							fromJobEditFlow={fromJobEditFlow}
+							initialSelectedStreams={apiResponse || undefined}
 						/>
 					) : (
 						!loading && (
