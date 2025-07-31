@@ -46,6 +46,31 @@ const Jobs: React.FC = () => {
 	}
 
 	const handleEditJob = (id: string) => {
+		if (activeTab === "saved") {
+			const savedJob = savedJobs.find(job => job.id.toString() === id)
+			if (savedJob) {
+				const initialData = {
+					sourceName: savedJob.source.name,
+					sourceConnector: savedJob.source.type,
+					sourceVersion: savedJob.source.version,
+					sourceFormData: JSON.parse(savedJob.source.config),
+					destinationName: savedJob.destination.name,
+					destinationConnector: savedJob.destination.type,
+					destinationVersion: savedJob.destination.version,
+					destinationFormData: JSON.parse(savedJob.destination.config),
+					selectedStreams: JSON.parse(savedJob.streams_config),
+					jobName: savedJob.name,
+					cronExpression: savedJob.frequency,
+				}
+				navigate("/jobs/new", {
+					state: {
+						initialData,
+						savedJobId: savedJob.id,
+					},
+				})
+				return
+			}
+		}
 		navigate(`/jobs/${id}/edit`)
 	}
 

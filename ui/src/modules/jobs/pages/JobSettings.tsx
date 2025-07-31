@@ -260,9 +260,7 @@ const JobSettings: React.FC = () => {
 										<ArrowLeft className="size-5" />
 									</Link>
 
-									<div className="text-2xl font-bold">
-										{job?.name || "<Job_name>"}
-									</div>
+									<div className="text-2xl font-bold">{job?.name || ""}</div>
 								</div>
 								<div className="ml-10 mt-1.5 w-fit rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
 									{job?.activate ? "Active" : "Inactive"}

@@ -1,5 +1,6 @@
 import { Checkbox } from "antd"
 import { StreamHeaderProps } from "../../../../types"
+import { CaretRight } from "@phosphor-icons/react"
 
 const StreamHeader: React.FC<StreamHeaderProps> = ({
 	stream,
@@ -42,6 +43,11 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 					</div>
 					{name}
 				</div>
+				{!isActiveStream && (
+					<div className="mr-4">
+						<CaretRight className="size-4 text-gray-400" />
+					</div>
+				)}
 			</div>
 		</div>
 	)

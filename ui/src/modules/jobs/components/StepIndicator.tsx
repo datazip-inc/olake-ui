@@ -5,10 +5,19 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	step,
 	index,
 	currentStep,
+	onStepClick,
+	isEditMode,
 }) => {
 	const isActive = steps.indexOf(currentStep) >= index
 	const isNextActive = steps.indexOf(currentStep) >= index + 1
 	const isLastStep = index === steps.length - 1
+	const isClickable = isEditMode || steps.indexOf(currentStep) > index
+
+	const handleClick = () => {
+		if ((isClickable || isEditMode) && onStepClick) {
+			onStepClick(step)
+		}
+	}
 
 	return (
 		<div className="flex flex-col items-start">
@@ -18,7 +27,8 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 						isActive
 							? "border-[#203FDD] outline outline-2 outline-[#203fDD]"
 							: "border-gray-300 bg-white"
-					}`}
+					} ${isClickable || isEditMode ? "cursor-pointer hover:bg-[#E8EBFF]" : "cursor-not-allowed"}`}
+					onClick={handleClick}
 				></div>
 				{!isLastStep && (
 					<div className="relative h-[2px] w-20">
@@ -32,7 +42,8 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 			<span
 				className={`mt-2 translate-x-[-40%] text-xs ${
 					isActive ? "text-[#203FDD]" : "text-gray-500"
-				}`}
+				} ${isClickable || isEditMode ? "cursor-pointer hover:text-[#203FDD]" : "cursor-not-allowed"}`}
+				onClick={handleClick}
 			>
 				{step === "config"
 					? "Job Config"
@@ -42,7 +53,11 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	)
 }
 
-const StepProgress: React.FC<StepProgressProps> = ({ currentStep }) => {
+const StepProgress: React.FC<StepProgressProps> = ({
+	currentStep,
+	onStepClick,
+	isEditMode,
+}) => {
 	return (
 		<div className="flex items-center">
 			{steps.map((step, index) => (
@@ -51,6 +66,8 @@ const StepProgress: React.FC<StepProgressProps> = ({ currentStep }) => {
 					step={step}
 					index={index}
 					currentStep={currentStep}
+					onStepClick={onStepClick}
+					isEditMode={isEditMode}
 				/>
 			))}
 		</div>

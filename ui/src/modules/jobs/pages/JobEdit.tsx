@@ -4,7 +4,6 @@ import { message, Spin } from "antd"
 import SourceEdit from "../../sources/pages/SourceEdit"
 import DestinationEdit from "../../destinations/pages/DestinationEdit"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
 import SchemaConfiguration from "./SchemaConfiguration"
 import JobConfiguration from "../components/JobConfiguration"
@@ -19,14 +18,11 @@ import {
 	StreamsDataStructure,
 } from "../../../types"
 import { jobService } from "../../../api"
-import { sourceService } from "../../../api/services/sourceService"
-import { destinationService } from "../../../api/services/destinationService"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
-	removeSavedJobFromLocalStorage,
 	validateCronExpression,
 } from "../../../utils/utils"
 
@@ -34,9 +30,13 @@ import {
 const JobSourceEdit = ({
 	sourceData,
 	updateSourceData,
+	docsMinimized,
+	onDocsMinimizedChange,
 }: {
 	sourceData: SourceData
 	updateSourceData: (data: SourceData) => void
+	docsMinimized: boolean
+	onDocsMinimizedChange: (minimized: boolean) => void
 }) => (
 	<div className="flex h-full flex-col">
 		<div className="flex-1 overflow-auto">
@@ -57,6 +57,8 @@ const JobSourceEdit = ({
 					updateSourceData({ ...sourceData, version })
 				}
 				onFormDataChange={config => updateSourceData({ ...sourceData, config })}
+				docsMinimized={docsMinimized}
+				onDocsMinimizedChange={onDocsMinimizedChange}
 			/>
 		</div>
 	</div>
@@ -66,9 +68,13 @@ const JobSourceEdit = ({
 const JobDestinationEdit = ({
 	destinationData,
 	updateDestinationData,
+	docsMinimized,
+	onDocsMinimizedChange,
 }: {
 	destinationData: DestinationData
 	updateDestinationData: (data: DestinationData) => void
+	docsMinimized: boolean
+	onDocsMinimizedChange: (minimized: boolean) => void
 }) => (
 	<div className="flex h-full flex-col">
 		<div
@@ -96,6 +102,8 @@ const JobDestinationEdit = ({
 				onFormDataChange={config =>
 					updateDestinationData({ ...destinationData, config })
 				}
+				docsMinimized={docsMinimized}
+				onDocsMinimizedChange={onDocsMinimizedChange}
 			/>
 		</div>
 	</div>
@@ -104,20 +112,10 @@ const JobDestinationEdit = ({
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
-	const {
-		jobs,
-		fetchJobs,
-		fetchSources,
-		fetchDestinations,
-		setShowTestingModal,
-		setShowSuccessModal,
-		setShowFailureModal,
-		setSourceTestConnectionError,
-		setDestinationTestConnectionError,
-	} = useAppStore()
+	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
 
-	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
-	const [docsMinimized, setDocsMinimized] = useState(true)
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("schema")
+	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
 	const [sourceData, setSourceData] = useState<SourceData | null>(null)
@@ -133,9 +131,7 @@ const JobEdit: React.FC = () => {
 	// Config step states
 	const [jobName, setJobName] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
-	const [isSavedJob, setIsSavedJob] = useState(false)
 	const [job, setJob] = useState<Job | null>(null)
-	const [savedJobId, setSavedJobId] = useState<string | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	useEffect(() => {
@@ -236,17 +232,6 @@ const JobEdit: React.FC = () => {
 		if (job) {
 			setJob(job)
 		}
-		if (!job) {
-			const savedJobsFromStorage = JSON.parse(
-				localStorage.getItem("savedJobs") || "[]",
-			)
-			job = savedJobsFromStorage.find((job: any) => job.id === jobId)
-			if (job) {
-				setJob(job)
-				setIsSavedJob(true)
-				setSavedJobId(job.id.toString())
-			}
-		}
 
 		if (job) {
 			initializeFromExistingJob(job)
@@ -339,12 +324,9 @@ const JobEdit: React.FC = () => {
 			// Create the job update payload
 			const jobUpdatePayload = getjobUpdatePayLoad()
 
-			if (jobId && !isSavedJob) {
+			if (jobId) {
 				await jobService.updateJob(jobId, jobUpdatePayload)
 				message.success("Job updated successfully!")
-			} else {
-				await jobService.createJob(jobUpdatePayload)
-				message.success("Job created successfully!")
 			}
 
 			// Refresh jobs and navigate back to jobs list
@@ -358,144 +340,39 @@ const JobEdit: React.FC = () => {
 		}
 	}
 
+	const handleSaveStreams = async () => {
+		if (!sourceData || !destinationData || !jobId) {
+			message.error("Source and destination data are required")
+			return
+		}
+
+		setIsSubmitting(true)
+		try {
+			const jobUpdatePayload = getjobUpdatePayLoad()
+			await jobService.updateJob(jobId, jobUpdatePayload)
+			message.success("Streams saved successfully!")
+			await fetchJobs()
+			navigate("/jobs")
+		} catch (error) {
+			console.error("Error saving Streams:", error)
+			message.error("Failed to save Streams. Please try again.")
+		} finally {
+			setIsSubmitting(false)
+		}
+	}
+
 	const handleNext = async () => {
 		if (currentStep === "source") {
-			if (isSavedJob && sourceData) {
-				setShowTestingModal(true)
+			if (sourceData) {
 				setIsFromSources(true)
-				try {
-					const testData = {
-						name: sourceData.name,
-						type: sourceData.type.toLowerCase(),
-						version: sourceData.version || "latest",
-						config:
-							typeof sourceData.config === "string"
-								? sourceData.config
-								: JSON.stringify(sourceData.config),
-					}
-					const testResult = await sourceService.testSourceConnection(testData)
-					setTimeout(() => {
-						setShowTestingModal(false)
-					}, 1000)
-					if (testResult.data?.status === "SUCCEEDED") {
-						setTimeout(() => {
-							setShowSuccessModal(true)
-						}, 1000)
-						setTimeout(() => {
-							setShowSuccessModal(false)
-							setCurrentStep("destination")
-						}, 2000)
-					} else {
-						setSourceTestConnectionError(testResult.data?.message || "")
-						setShowFailureModal(true)
-					}
-				} catch (error) {
-					console.error("Error testing source connection:", error)
-					setShowTestingModal(false)
-					setShowFailureModal(true)
-				}
-			} else {
-				if (sourceData) {
-					let newSourceData = {
-						name: sourceData.name,
-						type: sourceData.type,
-						config:
-							typeof sourceData.config === "string"
-								? sourceData.config
-								: JSON.stringify(sourceData.config),
-						version: sourceData.version || "latest",
-					}
-					setShowTestingModal(true)
-					setIsFromSources(true)
-					const testResult =
-						await sourceService.testSourceConnection(newSourceData)
-					if (testResult.data?.status === "SUCCEEDED") {
-						setShowTestingModal(false)
-						setShowSuccessModal(true)
-						setTimeout(() => {
-							setShowSuccessModal(false)
-							setCurrentStep("destination")
-						}, 1000)
-					} else {
-						setShowTestingModal(false)
-						setSourceTestConnectionError(testResult.data?.message || "")
-						setShowFailureModal(true)
-					}
-				}
+				setCurrentStep("destination")
 			}
 		} else if (currentStep === "destination") {
-			if (isSavedJob && destinationData) {
-				setShowTestingModal(true)
+			if (destinationData) {
 				setIsFromSources(false)
-				try {
-					const testData = {
-						name: destinationData.name,
-						type: destinationData.type.toLowerCase(),
-						version: destinationData.version || "latest",
-						config:
-							typeof destinationData.config === "string"
-								? destinationData.config
-								: JSON.stringify(destinationData.config),
-					}
-					const testResult =
-						await destinationService.testDestinationConnection(testData)
-
-					if (testResult.data?.status === "SUCCEEDED") {
-						setShowTestingModal(false)
-						setTimeout(() => {
-							setShowSuccessModal(true)
-						}, 1000)
-						setTimeout(() => {
-							setShowSuccessModal(false)
-							setCurrentStep("schema")
-						}, 2000)
-					} else {
-						setShowTestingModal(false)
-						setDestinationTestConnectionError(testResult.data?.message || "")
-						setShowFailureModal(true)
-					}
-				} catch (error) {
-					console.error("Error testing destination connection:", error)
-					setShowTestingModal(false)
-					setShowFailureModal(true)
-				}
-			} else {
-				if (destinationData) {
-					let newDestinationData = {
-						name: destinationData.name,
-						type: destinationData.type,
-						config:
-							typeof destinationData.config === "string"
-								? destinationData.config
-								: JSON.stringify(destinationData.config),
-						version: destinationData.version || "latest",
-					}
-					setShowTestingModal(true)
-					setIsFromSources(false)
-					const testResult =
-						await destinationService.testDestinationConnection(
-							newDestinationData,
-						)
-					if (testResult.data?.status === "SUCCEEDED") {
-						setShowTestingModal(false)
-						setShowSuccessModal(true)
-						setTimeout(() => {
-							setShowSuccessModal(false)
-							setCurrentStep("schema")
-						}, 1000)
-					} else {
-						setShowTestingModal(false)
-						setDestinationTestConnectionError(testResult.data?.message || "")
-						setShowFailureModal(true)
-					}
-				}
+				setCurrentStep("schema")
 			}
 		} else if (currentStep === "schema") {
-			if (jobId && !isSavedJob) {
-				const jobUpdatePayload = getjobUpdatePayLoad()
-				await jobService.updateJob(jobId, jobUpdatePayload)
-				fetchJobs()
-			}
 			setCurrentStep("config")
 		} else if (currentStep === "config") {
 			if (!jobName.trim()) {
@@ -505,9 +382,6 @@ const JobEdit: React.FC = () => {
 			if (!validateCronExpression(cronExpression)) {
 				return
 			}
-			if (isSavedJob) {
-				removeSavedJobFromLocalStorage(savedJobId || "")
-			}
 			handleJobSubmit()
 		}
 	}
@@ -516,19 +390,14 @@ const JobEdit: React.FC = () => {
 		if (currentStep === "destination") {
 			setCurrentStep("source")
 		} else if (currentStep === "schema") {
-			if (jobId && !isSavedJob) {
-				const jobUpdatePayload = getjobUpdatePayLoad()
-				await jobService.updateJob(jobId, jobUpdatePayload)
-				fetchJobs()
-			}
 			setCurrentStep("destination")
 		} else if (currentStep === "config") {
 			setCurrentStep("schema")
 		}
 	}
 
-	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+	const handleStepClick = async (step: string) => {
+		setCurrentStep(step as JobCreationSteps)
 	}
 
 	// Show loading while job data is loading
@@ -557,7 +426,11 @@ const JobEdit: React.FC = () => {
 						</div>
 					</div>
 					{/* Stepper */}
-					<StepProgress currentStep={currentStep} />
+					<StepProgress
+						currentStep={currentStep}
+						onStepClick={handleStepClick}
+						isEditMode={!!jobId}
+					/>
 				</div>
 			</div>
 
@@ -565,18 +438,15 @@ const JobEdit: React.FC = () => {
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				{/* Left content */}
 				<div
-					className={`${
-						(currentStep === "schema" || currentStep === "config") &&
-						!docsMinimized
-							? "w-[calc(100%-30%)]"
-							: "w-full"
-					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={`w-full ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					<div className="h-full">
 						{currentStep === "source" && sourceData && (
 							<JobSourceEdit
 								sourceData={sourceData}
 								updateSourceData={setSourceData}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						)}
 
@@ -584,6 +454,8 @@ const JobEdit: React.FC = () => {
 							<JobDestinationEdit
 								destinationData={destinationData}
 								updateDestinationData={setDestinationData}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						)}
 
@@ -600,6 +472,8 @@ const JobEdit: React.FC = () => {
 									sourceConfig={JSON.stringify(sourceData?.config || {})}
 									fromJobEditFlow={true}
 									jobId={jobId ? parseInt(jobId) : -1}
+									destinationType={destinationData?.type.toLowerCase() || ""}
+									initialStreamsData={selectedStreams}
 								/>
 							</div>
 						)}
@@ -616,15 +490,6 @@ const JobEdit: React.FC = () => {
 						)}
 					</div>
 				</div>
-
-				{/* Documentation panel */}
-				{currentStep === "schema" && (
-					<DocumentationPanel
-						isMinimized={docsMinimized}
-						onToggle={toggleDocsPanel}
-						docUrl={`https://olake.io/docs/connectors/${sourceData?.type.toLowerCase()}/config`}
-					/>
-				)}
 			</div>
 
 			{/* Footer */}
@@ -642,7 +507,18 @@ const JobEdit: React.FC = () => {
 						Back
 					</button>
 				</div>
-				<div>
+				<div
+					className={`flex gap-2 transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === "source" || currentStep === "destination") ? "mr-[40%]" : "mr-[4%]"}`}
+				>
+					{currentStep === "schema" && jobId && (
+						<button
+							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#203FDD] px-4 py-1 font-light text-[#203FDD] hover:bg-[#F5F7FF]"
+							onClick={handleSaveStreams}
+							disabled={isSubmitting}
+						>
+							{isSubmitting ? "Saving..." : "Save"}
+						</button>
+					)}
 					<button
 						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
 						onClick={handleNext}

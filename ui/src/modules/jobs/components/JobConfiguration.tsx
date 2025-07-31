@@ -1,5 +1,6 @@
-import { Input, Select, Radio } from "antd"
+import { Input, Select, Radio, Tooltip } from "antd"
 import StepTitle from "../../common/components/StepTitle"
+import { Info } from "@phosphor-icons/react"
 import {
 	generateCronExpression,
 	parseCronExpression,
@@ -195,7 +196,15 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 							{/* Custom Cron Input */}
 							{frequency === "custom" && (
 								<div>
-									<label className="mb-2 block text-sm">Cron Expression</label>
+									<div className="mb-2 flex items-center gap-1">
+										<label className="block text-sm">Cron Expression</label>
+										<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
+											<Info
+												size={16}
+												className="cursor-help text-slate-900"
+											/>
+										</Tooltip>
+									</div>
 									<Input
 										className="w-64"
 										placeholder="Enter cron expression (Eg : * * * * *)"

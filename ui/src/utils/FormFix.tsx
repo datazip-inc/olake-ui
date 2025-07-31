@@ -17,6 +17,7 @@ const DirectFormField = ({
 	required = false,
 	error,
 	validate = false,
+	disabled = false,
 }: DirectFormFieldProps) => {
 	const [fieldValue, setFieldValue] = useState(value)
 	const [showPassword, setShowPassword] = useState(false)
@@ -197,6 +198,7 @@ const DirectFormField = ({
 										value={item}
 										onChange={e => handleArrayItemEdit(index, e.target.value)}
 										className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
+										disabled={disabled}
 									/>
 								)}
 							</div>
@@ -205,32 +207,37 @@ const DirectFormField = ({
 								className="ml-2 text-red-500 hover:text-red-700"
 								onClick={() => handleArrayItemRemove(index)}
 								icon={<Trash className="size-4" />}
+								disabled={disabled}
 							/>
 						</div>
 					))}
 				</div>
-				<div className="flex items-center">
-					<Input
-						value={arrayItemInput}
-						onChange={e => setArrayItemInput(e.target.value)}
-						placeholder={`Add ${schema.title || name} item...`}
-						onKeyPress={e => {
-							if (e.key === "Enter") {
-								e.preventDefault()
-								handleArrayItemAdd()
-							}
-						}}
-						className="flex-grow rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
-					/>
-					<Button
-						type="primary"
-						className="ml-2 bg-[#203FDD] hover:bg-blue-700"
-						onClick={handleArrayItemAdd}
-						icon={<Plus className="size-4" />}
-					>
-						Add
-					</Button>
-				</div>
+				{!disabled && (
+					<div className="flex items-center">
+						<Input
+							value={arrayItemInput}
+							onChange={e => setArrayItemInput(e.target.value)}
+							placeholder={`Add ${schema.title || name} item...`}
+							onKeyPress={e => {
+								if (e.key === "Enter") {
+									e.preventDefault()
+									handleArrayItemAdd()
+								}
+							}}
+							className="flex-grow rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
+							disabled={disabled}
+						/>
+						<Button
+							type="primary"
+							className="ml-2 bg-[#203FDD] hover:bg-blue-700"
+							onClick={handleArrayItemAdd}
+							icon={<Plus className="size-4" />}
+							disabled={disabled}
+						>
+							Add
+						</Button>
+					</div>
+				)}
 			</div>
 		)
 	}
@@ -252,7 +259,8 @@ const DirectFormField = ({
 					}
 					onChange={handleChange}
 					placeholder={schema.placeholder}
-					className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+					disabled={disabled}
+					className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
 				/>
 			)
 		}
@@ -265,6 +273,7 @@ const DirectFormField = ({
 					className="w-full"
 					placeholder={schema.placeholder}
 					status={localError ? "error" : undefined}
+					disabled={disabled}
 					options={schema.enum.map(option => ({
 						label: option,
 						value: option,
@@ -279,6 +288,7 @@ const DirectFormField = ({
 					<Switch
 						checked={!!fieldValue}
 						onChange={handleSwitchChange}
+						disabled={disabled}
 						className={fieldValue ? "bg-blue-600" : "bg-gray-200"}
 					/>
 				</div>
@@ -294,11 +304,13 @@ const DirectFormField = ({
 						value={fieldValue ?? ""}
 						onChange={handleChange}
 						placeholder={schema.placeholder}
-						className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+						disabled={disabled}
+						className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
 					/>
 					<button
 						type="button"
 						onClick={togglePasswordVisibility}
+						disabled={disabled}
 						className="absolute right-2 top-1/2 -translate-y-1/2 transform cursor-pointer text-gray-500 hover:text-gray-700 focus:outline-none"
 					>
 						{showPassword ? (
@@ -319,7 +331,8 @@ const DirectFormField = ({
 				checked={getInputType() === "checkbox" ? !!fieldValue : undefined}
 				onChange={handleChange}
 				placeholder={schema.placeholder}
-				className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+				disabled={disabled}
+				className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
 			/>
 		)
 	}
@@ -352,6 +365,7 @@ export const DirectInputForm = ({
 	uiSchema,
 	errors,
 	validate = false,
+	disabled = false,
 }: DirectInputFormProps) => {
 	useEffect(() => {
 		if (!schema?.properties || !onChange) {
@@ -486,6 +500,7 @@ export const DirectInputForm = ({
 										: undefined
 								}
 								validate={validate}
+								disabled={disabled}
 							/>
 						</div>
 					)
@@ -502,6 +517,7 @@ export const DirectInputForm = ({
 						uiSchema={fieldUiSchema}
 						error={errors?.[name]}
 						validate={validate}
+						disabled={disabled}
 					/>
 				)
 			})
@@ -680,6 +696,7 @@ export const FixedSchemaForm: React.FC<DynamicSchemaFormProps> = props => {
 			uiSchema={props.uiSchema}
 			errors={props.errors}
 			validate={props.validate}
+			disabled={props.disabled}
 		/>
 	)
 }

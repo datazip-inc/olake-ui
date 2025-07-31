@@ -17,8 +17,13 @@ import {
 	Plus,
 	SlidersHorizontal,
 	X,
+	ArrowSquareOut,
 } from "@phosphor-icons/react"
-import { CARD_STYLE, TAB_STYLES } from "../../../../utils/constants"
+import {
+	CARD_STYLE,
+	PartioningRegexTooltip,
+	TAB_STYLES,
+} from "../../../../utils/constants"
 import { operatorOptions } from "../../../../utils/utils"
 
 const StreamConfiguration = ({
@@ -33,6 +38,7 @@ const StreamConfiguration = ({
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
+	destinationType = "s3",
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
@@ -178,12 +184,7 @@ const StreamConfiguration = ({
 			backfill: initialEnableBackfillForSwitch,
 			partition_regex: initialPartitionRegex || "",
 		}))
-	}, [
-		stream,
-		initialNormalization,
-		initialPartitionRegex,
-		initialFullLoadFilter,
-	])
+	}, [stream, initialNormalization, initialFullLoadFilter])
 
 	// Add helper function for checking supported sync modes
 	const isSyncModeSupported = (mode: string): boolean => {
@@ -203,6 +204,12 @@ const StreamConfiguration = ({
 			newApiSyncMode = "full_refresh"
 		} else if (selectedRadioValue === "incremental") {
 			newApiSyncMode = "incremental"
+			// Auto-select first available cursor field if none is selected
+			const availableCursorFields = stream.stream.available_cursor_fields || []
+			if (!stream.stream.cursor_field && availableCursorFields.length > 0) {
+				const firstCursorField = availableCursorFields[0]
+				stream.stream.cursor_field = firstCursorField
+			}
 		} else {
 			newApiSyncMode = "cdc"
 		}
@@ -735,7 +742,7 @@ const StreamConfiguration = ({
 					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE} !p-0`}
 				>
 					<div className="flex items-center justify-between !p-3">
-						<label className="">Full Load Filter</label>
+						<label className="">Data Filter</label>
 						<Switch
 							checked={fullLoadFilter}
 							onChange={handleFullLoadFilterChange}
@@ -752,7 +759,7 @@ const StreamConfiguration = ({
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 						<Info className="size-4" />
-						Select the stream to configure Full Load Filter
+						Select the stream to configure Data Filter
 					</div>
 				)}
 			</div>
@@ -767,7 +774,25 @@ const StreamConfiguration = ({
 
 	const renderPartitioningRegexContent = () => (
 		<>
-			<div className="text-[#575757]">Partitioning regex:</div>
+			<div className="flex items-center gap-0.5">
+				<div className="text-[#575757]">Partitioning regex:</div>
+
+				<Tooltip title={PartioningRegexTooltip}>
+					<Info className="size-5 cursor-help items-center pt-1 text-gray-400" />
+				</Tooltip>
+				<a
+					href={
+						destinationType === "s3"
+							? "https://olake.io/docs/writers/parquet/partitioning"
+							: "https://olake.io/docs/writers/iceberg/partitioning"
+					}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="flex items-center text-[#203FDD] hover:text-[#203FDD]/80"
+				>
+					<ArrowSquareOut className="size-5" />
+				</a>
+			</div>
 			{isSelected ? (
 				<>
 					<Input

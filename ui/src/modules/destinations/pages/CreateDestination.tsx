@@ -64,6 +64,8 @@ const CreateDestination = forwardRef<
 			onFormDataChange,
 			onVersionChange,
 			onCatalogTypeChange,
+			docsMinimized = false,
+			onDocsMinimizedChange,
 		},
 		ref,
 	) => {
@@ -96,6 +98,8 @@ const CreateDestination = forwardRef<
 		>(null)
 		const [validating, setValidating] = useState(false)
 		const navigate = useNavigate()
+		const [isDocPanelCollapsed, setIsDocPanelCollapsed] =
+			useState(docsMinimized)
 
 		const {
 			destinations,
@@ -266,7 +270,7 @@ const CreateDestination = forwardRef<
 			}
 
 			fetchDestinationSpec()
-		}, [connector, catalog, version])
+		}, [connector, catalog, version, setupType])
 
 		useEffect(() => {
 			if (!fromJobFlow) {
@@ -382,6 +386,25 @@ const CreateDestination = forwardRef<
 			}
 		}
 
+		const handleSetupTypeChange = (type: SetupType) => {
+			setSetupType(type)
+			// Clear form data when switching to new destination
+			if (type === SETUP_TYPES.NEW) {
+				setDestinationName("")
+				setFormData({})
+				setSchema(null)
+				setUiSchema(null)
+				setCatalog(null)
+				setConnector(CONNECTOR_TYPES.AMAZON_S3) // Reset to default connector
+				// Schema will be automatically fetched due to useEffect when connector changes
+				if (onDestinationNameChange) onDestinationNameChange("")
+				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
+				if (onFormDataChange) onFormDataChange({})
+				if (onVersionChange) onVersionChange("")
+				if (onCatalogTypeChange) onCatalogTypeChange(null)
+			}
+		}
+
 		const handleCatalogChange = (value: string) => {
 			setCatalog(value as CatalogType)
 			if (onCatalogTypeChange) {
@@ -435,7 +458,7 @@ const CreateDestination = forwardRef<
 		const setupTypeSelector = () => (
 			<SetupTypeSelector
 				value={setupType as SetupType}
-				onChange={value => setSetupType(value)}
+				onChange={handleSetupTypeChange}
 				newLabel="Set up a new destination"
 				existingLabel="Use an existing destination"
 				fromJobFlow={fromJobFlow}
@@ -563,71 +586,81 @@ const CreateDestination = forwardRef<
 				</>
 			)
 
-		return (
-			<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
-				{/* Header */}
-				{!fromJobFlow && (
-					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
-						<Link
-							to={"/destinations"}
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
-						>
-							<ArrowLeft className="mr-1 size-5" />
-						</Link>
-						<div className="text-xl font-bold">Create destination</div>
-					</div>
-				)}
+		const handleToggleDocPanel = () => {
+			const newState = !isDocPanelCollapsed
+			setIsDocPanelCollapsed(newState)
+			if (onDocsMinimizedChange) {
+				onDocsMinimizedChange(newState)
+			}
+		}
 
-				{/* Main content */}
-				<div className="flex flex-1 overflow-hidden">
-					{/* Left content */}
-					<div className="w-full overflow-auto p-6 pt-6">
-						{stepNumber && stepTitle && (
-							<StepTitle
-								stepNumber={stepNumber}
-								stepTitle={stepTitle}
-							/>
-						)}
-						<div className="mb-6 mt-6 rounded-xl border border-gray-200 bg-white p-6">
-							<div>
-								<div className="mb-4 flex items-center gap-1 text-base font-medium">
-									<Notebook className="size-5" />
-									Capture information
+		return (
+			<div className="flex h-screen">
+				<div className="flex flex-1 flex-col">
+					{!fromJobFlow && (
+						<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+							<Link
+								to={"/destinations"}
+								className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							>
+								<ArrowLeft className="mr-1 size-5" />
+							</Link>
+							<div className="text-lg font-bold">Create destination</div>
+						</div>
+					)}
+
+					<div className="flex flex-1 overflow-hidden">
+						<div className="flex flex-1 flex-col">
+							<div className="flex-1 overflow-auto p-6 pt-0">
+								{stepNumber && stepTitle && (
+									<StepTitle
+										stepNumber={stepNumber}
+										stepTitle={stepTitle}
+									/>
+								)}
+								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+									<div>
+										<div className="mb-4 flex items-center gap-2 text-base font-medium">
+											<Notebook className="size-5" />
+											Capture information
+										</div>
+
+										{setupTypeSelector()}
+										{newDestinationForm()}
+									</div>
 								</div>
 
-								{setupTypeSelector()}
-								{newDestinationForm()}
+								{schemaFormSection()}
 							</div>
+
+							{/* Footer */}
+							{!fromJobFlow && (
+								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+									<button
+										onClick={handleCancel}
+										className="ml-1 rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+									>
+										Cancel
+									</button>
+									<button
+										className="mr-1 flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
+										onClick={handleCreate}
+									>
+										Create
+										<ArrowRight className="size-4 text-white" />
+									</button>
+								</div>
+							)}
 						</div>
 
-						{schemaFormSection()}
+						<DocumentationPanel
+							docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
+							showResizer={true}
+							isMinimized={isDocPanelCollapsed}
+							onToggle={handleToggleDocPanel}
+						/>
 					</div>
-
-					{/* Documentation panel */}
-					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
-						showResizer={true}
-					/>
 				</div>
-
-				{/* Footer */}
-				{!fromJobFlow && (
-					<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-						<button
-							onClick={handleCancel}
-							className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-						>
-							Cancel
-						</button>
-						<button
-							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
-							onClick={handleCreate}
-						>
-							Create
-							<ArrowRight className="size-4 text-white" />
-						</button>
-					</div>
-				)}
 
 				<TestConnectionModal />
 				<TestConnectionSuccessModal />

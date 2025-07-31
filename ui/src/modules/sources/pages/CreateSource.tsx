@@ -39,6 +39,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			onConnectorChange,
 			onFormDataChange,
 			onVersionChange,
+			docsMinimized = false,
+			onDocsMinimizedChange,
 		},
 		ref,
 	) => {
@@ -53,7 +55,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [formData, setFormData] = useState<any>({})
 		const [schema, setSchema] = useState<any>(null)
 		const [loading, setLoading] = useState(false)
-		const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(false)
+		const [isDocPanelCollapsed, setIsDocPanelCollapsed] =
+			useState(docsMinimized)
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
 		const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
@@ -163,7 +166,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 
 			fetchSourceSpec()
-		}, [connector, selectedVersion])
+		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {
 			if (initialConnector) {
@@ -259,6 +262,23 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
+		const handleSetupTypeChange = (type: SetupType) => {
+			setSetupType(type)
+			// Clear form data when switching to new source
+			if (type === "new") {
+				setSourceName("")
+				setFormData({})
+				setSchema(null)
+				setConnector("MongoDB") // Reset to default connector
+
+				// Schema will be automatically fetched due to useEffect when connector changes
+				if (onSourceNameChange) onSourceNameChange("")
+				if (onConnectorChange) onConnectorChange("MongoDB")
+				if (onFormDataChange) onFormDataChange({})
+				if (onVersionChange) onVersionChange("latest")
+			}
+		}
+
 		const handleExistingSourceSelect = (value: string) => {
 			const selectedSource = sources.find(
 				s => s.id.toString() === value.toString(),
@@ -298,8 +318,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
-		const toggleDocPanel = () => {
-			setIsDocPanelCollapsed(!isDocPanelCollapsed)
+		const handleToggleDocPanel = () => {
+			const newState = !isDocPanelCollapsed
+			setIsDocPanelCollapsed(newState)
+			if (onDocsMinimizedChange) {
+				onDocsMinimizedChange(newState)
+			}
 		}
 
 		// UI component renderers
@@ -388,7 +412,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const renderSetupTypeSelector = () => (
 			<SetupTypeSelector
 				value={setupType as SetupType}
-				onChange={setSetupType}
+				onChange={handleSetupTypeChange}
 				newLabel="Set up a new source"
 				existingLabel="Use an existing source"
 				fromJobFlow={fromJobFlow}
@@ -421,71 +445,75 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			)
 
 		return (
-			<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
-				{!fromJobFlow && (
-					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
-						<Link
-							to={"/sources"}
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
-						>
-							<ArrowLeft className="mr-1 size-5" />
-						</Link>
-						<div className="text-lg font-bold">Create source</div>
-					</div>
-				)}
+			<div className={`flex h-screen`}>
+				<div className="flex flex-1 flex-col">
+					{!fromJobFlow && (
+						<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+							<Link
+								to={"/sources"}
+								className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							>
+								<ArrowLeft className="mr-1 size-5" />
+							</Link>
+							<div className="text-lg font-bold">Create source</div>
+						</div>
+					)}
 
-				<div className="flex flex-1 overflow-hidden">
-					<div className="w-full overflow-auto p-6 pt-0">
-						{stepNumber && stepTitle && (
-							<StepTitle
-								stepNumber={stepNumber}
-								stepTitle={stepTitle}
-							/>
-						)}
-						<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-							<div className="mb-6">
-								<div className="mb-4 flex items-center gap-2 text-base font-medium">
-									<Notebook className="size-5" />
-									Capture information
+					<div className="flex flex-1 overflow-hidden">
+						<div className="flex flex-1 flex-col">
+							<div className="flex-1 overflow-auto p-6 pt-0">
+								{stepNumber && stepTitle && (
+									<StepTitle
+										stepNumber={stepNumber}
+										stepTitle={stepTitle}
+									/>
+								)}
+								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+									<div className="mb-6">
+										<div className="mb-4 flex items-center gap-2 text-base font-medium">
+											<Notebook className="size-5" />
+											Capture information
+										</div>
+
+										{renderSetupTypeSelector()}
+
+										{setupType === "new"
+											? renderNewSourceForm()
+											: renderExistingSourceForm()}
+									</div>
 								</div>
 
-								{renderSetupTypeSelector()}
-
-								{setupType === "new"
-									? renderNewSourceForm()
-									: renderExistingSourceForm()}
+								{renderSchemaForm()}
 							</div>
+
+							{/* Footer - moved inside center section */}
+							{!fromJobFlow && (
+								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+									<button
+										onClick={handleCancel}
+										className="ml-1 rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+									>
+										Cancel
+									</button>
+									<button
+										className="mr-1 flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
+										onClick={handleCreate}
+									>
+										Create
+										<ArrowRight className="size-4 text-white" />
+									</button>
+								</div>
+							)}
 						</div>
 
-						{renderSchemaForm()}
+						<DocumentationPanel
+							docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}/config`}
+							isMinimized={isDocPanelCollapsed}
+							onToggle={handleToggleDocPanel}
+							showResizer={true}
+						/>
 					</div>
-
-					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}/config`}
-						isMinimized={isDocPanelCollapsed}
-						onToggle={toggleDocPanel}
-						showResizer={true}
-					/>
 				</div>
-
-				{/* Footer */}
-				{!fromJobFlow && (
-					<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
-						<button
-							onClick={handleCancel}
-							className="rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
-						>
-							Cancel
-						</button>
-						<button
-							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
-							onClick={handleCreate}
-						>
-							Create
-							<ArrowRight className="size-4 text-white" />
-						</button>
-					</div>
-				)}
 
 				<TestConnectionModal />
 				<TestConnectionSuccessModal />

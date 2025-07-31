@@ -167,3 +167,6 @@ export const FREQUENCY_OPTIONS = [
 	{ value: "weeks", label: "Every Week" },
 	{ value: "custom", label: "Custom" },
 ]
+
+export const PartioningRegexTooltip =
+	"Choose a column to partition your data for faster reads and better performance"

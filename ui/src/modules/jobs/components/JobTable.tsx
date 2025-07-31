@@ -86,7 +86,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								{
 									key: "edit",
 									icon: <PencilSimple className="size-4" />,
-									label: "Edit",
+									label: "Edit Streams",
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
@@ -102,7 +102,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								{
 									key: "history",
 									icon: <ClockCounterClockwise className="size-4" />,
-									label: "Job history",
+									label: "Job Logs & History",
 									onClick: () => handleViewHistory(record.id.toString()),
 								},
 								{

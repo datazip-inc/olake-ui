@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, Notebook } from "@phosphor-icons/react"
+import { ArrowLeft, Notebook, PencilSimple } from "@phosphor-icons/react"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
@@ -38,6 +38,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	onConnectorChange,
 	onVersionChange,
 	onFormDataChange,
+	docsMinimized = false,
+	onDocsMinimizedChange,
 }) => {
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const isNewDestination = destinationId === "new"
@@ -49,7 +51,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [selectedVersion, setSelectedVersion] = useState("latest")
 	const [versions, setVersions] = useState<string[]>([])
 	const [loadingVersions, setLoadingVersions] = useState(false)
-	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 	const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
@@ -385,7 +386,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+		const newState = !docsMinimized
+		if (onDocsMinimizedChange) {
+			onDocsMinimizedChange(newState)
+		}
 	}
 
 	const updateConnector = (value: string) => {
@@ -510,6 +514,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									onChange={updateConnector}
 									className="h-8 w-full"
 									options={connectorOptions}
+									disabled={fromJobFlow}
 								/>
 							</div>
 						</div>
@@ -521,7 +526,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<Select
 								className="h-8 w-full"
 								placeholder="Select catalog"
-								disabled={connector === "Amazon S3" || connector === "AWS S3"}
+								disabled={
+									connector === "Amazon S3" ||
+									connector === "AWS S3" ||
+									fromJobFlow
+								}
 								options={catalogOptions}
 								value={
 									catalog ||
@@ -547,6 +556,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								value={destinationName}
 								onChange={e => updateDestinationName(e.target.value)}
 								className="h-8"
+								disabled={fromJobFlow}
 							/>
 						</div>
 
@@ -560,6 +570,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								className="w-full"
 								loading={loadingVersions}
 								placeholder="Select version"
+								disabled={fromJobFlow}
 								options={versions.map(version => ({
 									value: version,
 									label: version,
@@ -582,6 +593,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						formData={formData}
 						onChange={updateFormData}
 						hideSubmit={true}
+						disabled={fromJobFlow}
 						{...(uiSchema ? { uiSchema } : {})}
 					/>
 				) : null}
@@ -625,114 +637,120 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	)
 
 	return (
-		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
-			{/* Header */}
-			{!fromJobFlow && (
-				<div className="flex gap-2 px-6 pb-0 pt-6">
-					<Link
-						to="/destinations"
-						className="mb-4 flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
-					>
-						<ArrowLeft className="size-5" />
-					</Link>
-
-					<div className="mb-4 flex items-center">
-						<h1 className="text-2xl font-bold">
+		<div className="flex h-screen">
+			<div className="flex flex-1 flex-col">
+				{!fromJobFlow && (
+					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+						<Link
+							to="/destinations"
+							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+						>
+							<ArrowLeft className="size-5" />
+						</Link>
+						<div className="text-lg font-bold">
 							{isNewDestination
 								? "Create New Destination"
 								: destinationName || "<Destination_name>"}
-						</h1>
+						</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
-				{/* Left content */}
-				<div
-					className={`${
-						docsMinimized ? "w-full" : "w-3/4"
-					} mt-4 overflow-auto p-6 pt-0 transition-all duration-300`}
-				>
-					{fromJobFlow && stepNumber && stepTitle && (
-						<div>
-							<StepTitle
-								stepNumber={stepNumber}
-								stepTitle={stepTitle}
-							/>
+				<div className="flex flex-1 overflow-hidden">
+					<div className="flex flex-1 flex-col">
+						<div className="flex-1 overflow-auto p-6 pt-0">
+							{fromJobFlow && stepNumber && stepTitle && (
+								<div className="mb-4">
+									<div className="flex items-center justify-between">
+										<StepTitle
+											stepNumber={stepNumber}
+											stepTitle={stepTitle}
+										/>
+										<Link
+											to={
+												destinationId
+													? `/destinations/${destinationId}`
+													: `/destinations/${destinations.find(d => d.name === destinationName)?.id || ""}`
+											}
+											className="flex items-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-2 text-white hover:bg-[#132685]"
+										>
+											<PencilSimple className="size-4" />
+											Edit Destination
+										</Link>
+									</div>
+								</div>
+							)}
+
+							{!fromJobFlow && (
+								<div className="mb-4 mt-2">
+									<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
+										<button
+											className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
+												activeTab === "config"
+													? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+											}`}
+											onClick={() => setActiveTab("config")}
+										>
+											Config
+										</button>
+										{!isNewDestination && (
+											<button
+												className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
+													activeTab === "jobs"
+														? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+														: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+												}`}
+												onClick={() => setActiveTab("jobs")}
+											>
+												Associated jobs
+											</button>
+										)}
+									</div>
+								</div>
+							)}
+
+							{activeTab === "config" ? renderConfigTab() : renderJobsTab()}
 						</div>
-					)}
 
-					{!fromJobFlow && (
-						<div className="mb-4">
-							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
-								<button
-									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-										activeTab === "config"
-											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-									}`}
-									onClick={() => setActiveTab("config")}
-								>
-									Config
-								</button>
-								{!isNewDestination && (
+						{/* Footer */}
+						{!fromJobFlow && (
+							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+								<div>
+									{!isNewDestination && (
+										<button
+											className="ml-1 rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+											onClick={handleDelete}
+										>
+											Delete
+										</button>
+									)}
+								</div>
+								<div className="flex space-x-4">
 									<button
-										className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-											activeTab === "jobs"
-												? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-												: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-										}`}
-										onClick={() => setActiveTab("jobs")}
+										className="mr-1 flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
+										onClick={handleSaveChanges}
 									>
-										Associated jobs
+										Save Changes
 									</button>
-								)}
+								</div>
 							</div>
-						</div>
-					)}
+						)}
+					</div>
 
-					{activeTab === "config" ? renderConfigTab() : renderJobsTab()}
+					<DocumentationPanel
+						docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
+						isMinimized={docsMinimized}
+						onToggle={toggleDocsPanel}
+						showResizer={true}
+					/>
 				</div>
-
-				{/* Documentation panel */}
-				<DocumentationPanel
-					docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
-					isMinimized={docsMinimized}
-					onToggle={toggleDocsPanel}
-					showResizer={true}
-				/>
 			</div>
-			{/* Delete Modal */}
+
 			<DeleteModal fromSource={false} />
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={false} />
 			<EntityEditModal entityType="destination" />
-
-			{/* Footer with buttons */}
-			{!fromJobFlow && (
-				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-					<div>
-						{!isNewDestination && (
-							<button
-								className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-								onClick={handleDelete}
-							>
-								Delete
-							</button>
-						)}
-					</div>
-					<div className="flex space-x-4">
-						<button
-							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
-							onClick={handleSaveChanges}
-						>
-							Save Changes
-						</button>
-					</div>
-				</div>
-			)}
 		</div>
 	)
 }

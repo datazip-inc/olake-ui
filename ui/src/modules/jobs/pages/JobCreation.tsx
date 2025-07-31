@@ -1,5 +1,5 @@
 import { useState, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
 import { useAppStore } from "../../../store"
 import {
@@ -8,7 +8,6 @@ import {
 } from "../../../utils/utils"
 import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
 import { destinationService, sourceService } from "../../../api"
-import analyticsService from "../../../api/services/analyticsService"
 import { v4 as uuidv4 } from "uuid"
 import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 
@@ -17,7 +16,6 @@ import JobConfiguration from "../components/JobConfiguration"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
 import SchemaConfiguration from "./SchemaConfiguration"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepProgress from "../components/StepIndicator"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
@@ -27,21 +25,43 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
+	const location = useLocation()
+	const initialData = location.state?.initialData || {}
+	const savedJobId = location.state?.savedJobId
+
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
-	const [docsMinimized, setDocsMinimized] = useState(true)
-	const [sourceName, setSourceName] = useState("")
-	const [sourceConnector, setSourceConnector] = useState("MongoDB")
-	const [sourceFormData, setSourceFormData] = useState<any>({})
-	const [sourceVersion, setSourceVersion] = useState("latest")
-	const [destinationName, setDestinationName] = useState("")
+	const [docsMinimized, setDocsMinimized] = useState(false)
+	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
+	const [sourceConnector, setSourceConnector] = useState(
+		initialData.sourceConnector || "MongoDB",
+	)
+	const [sourceFormData, setSourceFormData] = useState<any>(
+		initialData.sourceFormData || {},
+	)
+	const [sourceVersion, setSourceVersion] = useState(
+		initialData.sourceVersion || "latest",
+	)
+	const [destinationName, setDestinationName] = useState(
+		initialData.destinationName || "",
+	)
 	const [destinationCatalogType, setDestinationCatalogType] =
 		useState<CatalogType | null>(null)
-	const [destinationConnector, setDestinationConnector] = useState("s3")
-	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [destinationVersion, setDestinationVersion] = useState("latest")
-	const [selectedStreams, setSelectedStreams] = useState<any>([])
-	const [jobName, setJobName] = useState("")
-	const [cronExpression, setCronExpression] = useState("* * * * *")
+	const [destinationConnector, setDestinationConnector] = useState(
+		initialData.destinationConnector || "s3",
+	)
+	const [destinationFormData, setDestinationFormData] = useState<any>(
+		initialData.destinationFormData || {},
+	)
+	const [destinationVersion, setDestinationVersion] = useState(
+		initialData.destinationVersion || "latest",
+	)
+	const [selectedStreams, setSelectedStreams] = useState<any>(
+		initialData.selectedStreams || [],
+	)
+	const [jobName, setJobName] = useState(initialData.jobName || "")
+	const [cronExpression, setCronExpression] = useState(
+		initialData.cronExpression || "* * * * *",
+	)
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	const {
@@ -175,6 +195,16 @@ const JobCreation: React.FC = () => {
 			}
 			addJob(newJobData)
 				.then(() => {
+					// If this was a saved job, remove it from localStorage
+					if (savedJobId) {
+						const savedJobs = JSON.parse(
+							localStorage.getItem("savedJobs") || "[]",
+						)
+						const updatedSavedJobs = savedJobs.filter(
+							(job: any) => job.id !== savedJobId,
+						)
+						localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+					}
 					setShowEntitySavedModal(true)
 				})
 				.catch(error => {
@@ -214,43 +244,42 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleSaveJob = () => {
-		const savedJob = {
-			id: uuidv4(),
-			name: jobName || "-",
+		const jobData = {
+			id: savedJobId || uuidv4(),
+			name: jobName,
 			source: {
-				name: sourceName || "-",
-				type: getConnectorInLowerCase(sourceConnector),
+				name: sourceName,
+				type: sourceConnector.toLowerCase(),
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
 			destination: {
-				name: destinationName || "-",
-				type: getConnectorInLowerCase(destinationConnector),
+				name: destinationName,
+				type: destinationConnector.toLowerCase(),
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
-			activate: false,
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			created_by: "user",
-			updated_by: "user",
-			last_run_state: "",
-			last_run_time: "",
 		}
-		const existingSavedJobs = JSON.parse(
-			localStorage.getItem("savedJobs") || "[]",
-		)
-		existingSavedJobs.push(savedJob)
-		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
-		analyticsService.trackEvent("save_job_clicked")
-		message.success("Job saved successfully!")
-		navigate("/jobs")
-	}
 
-	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+
+		if (savedJobId) {
+			// Update existing saved job
+			const updatedSavedJobs = savedJobs.map((job: any) =>
+				job.id === savedJobId ? jobData : job,
+			)
+			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+			message.success("Job saved successfully!")
+		} else {
+			// Create new saved job
+			savedJobs.push(jobData)
+			localStorage.setItem("savedJobs", JSON.stringify(savedJobs))
+			message.success("Job saved successfully!")
+		}
+
+		navigate("/jobs")
 	}
 
 	return (
@@ -275,15 +304,10 @@ const JobCreation: React.FC = () => {
 
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
-					className={`${
-						(currentStep === "schema" || currentStep === "config") &&
-						!docsMinimized
-							? "w-2/3"
-							: "w-full"
-					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={`w-full ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
-						<div className="w-full">
+						<div className="h-full w-full overflow-auto">
 							<CreateSource
 								fromJobFlow={true}
 								stepNumber={"I"}
@@ -302,12 +326,14 @@ const JobCreation: React.FC = () => {
 									setCurrentStep("destination")
 								}}
 								ref={sourceRef}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						</div>
 					)}
 
 					{currentStep === "destination" && (
-						<div className="w-full">
+						<div className="h-full w-full overflow-auto">
 							<CreateDestination
 								fromJobFlow={true}
 								stepNumber={2}
@@ -335,6 +361,8 @@ const JobCreation: React.FC = () => {
 									setCurrentStep("schema")
 								}}
 								ref={destinationRef}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						</div>
 					)}
@@ -362,6 +390,7 @@ const JobCreation: React.FC = () => {
 										? selectedStreams
 										: undefined
 								}
+								destinationType={destinationConnector.toLowerCase()}
 							/>
 						</div>
 					)}
@@ -377,16 +406,6 @@ const JobCreation: React.FC = () => {
 						/>
 					)}
 				</div>
-
-				{/* Documentation panel */}
-				{currentStep === "schema" && (
-					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${sourceConnector.toLowerCase()}/config`}
-						isMinimized={docsMinimized}
-						onToggle={toggleDocsPanel}
-						showResizer={true}
-					/>
-				)}
 			</div>
 
 			{/* Footer */}
@@ -406,7 +425,9 @@ const JobCreation: React.FC = () => {
 						Save Job
 					</button>
 				</div>
-				<div className="flex items-center">
+				<div
+					className={`flex items-center transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === "source" || currentStep === "destination") ? "mr-[40%]" : "mr-[4%]"}`}
+				>
 					{currentStep !== "source" && (
 						<button
 							onClick={handleBack}

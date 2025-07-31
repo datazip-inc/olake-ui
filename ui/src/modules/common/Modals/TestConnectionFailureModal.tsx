@@ -36,7 +36,7 @@ const TestConnectionFailureModal = ({
 			footer={null}
 			closable={false}
 			centered
-			width={400}
+			width={420}
 		>
 			<div className="flex flex-col items-center justify-center gap-7 py-6">
 				<div className="relative">
@@ -73,7 +73,7 @@ const TestConnectionFailureModal = ({
 						onClick={handleCancel}
 						className="w-fit flex-1 rounded-md border border-[#f5222d] px-4 py-2 text-[#f5222d]"
 					>
-						Update
+						{fromSources ? "Edit  Source" : "Edit  Destination"}
 					</button>
 				</div>
 			</div>

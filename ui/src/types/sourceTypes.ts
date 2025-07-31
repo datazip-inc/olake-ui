@@ -29,6 +29,8 @@ export interface CreateSourceProps {
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void
 	onVersionChange?: (version: string) => void
+	docsMinimized?: boolean
+	onDocsMinimizedChange?: (minimized: boolean) => void
 }
 
 export interface SourceJob {
@@ -58,4 +60,6 @@ export interface SourceEditProps {
 	onConnectorChange?: (type: string) => void
 	onVersionChange?: (version: string) => void
 	onFormDataChange?: (config: Record<string, any>) => void
+	docsMinimized?: boolean
+	onDocsMinimizedChange?: (minimized: boolean) => void
 }

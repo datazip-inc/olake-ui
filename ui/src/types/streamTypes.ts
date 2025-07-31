@@ -119,6 +119,7 @@ export interface SchemaConfigurationProps {
 	initialStreamsData?: CombinedStreamsData
 	fromJobEditFlow?: boolean
 	jobId?: number
+	destinationType?: string
 }
 
 export interface ExtendedStreamConfigurationProps
@@ -130,6 +131,7 @@ export interface ExtendedStreamConfigurationProps
 	initialFullLoadFilter?: string
 	fromJobEditFlow?: boolean
 	initialSelectedStreams?: CombinedStreamsData
+	destinationType?: string
 	onNormalizationChange: (
 		streamName: string,
 		namespace: string,

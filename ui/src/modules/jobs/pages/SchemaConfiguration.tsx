@@ -10,7 +10,6 @@ import {
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StepTitle from "../../common/components/StepTitle"
 import { sourceService } from "../../../api"
-import StreamsDefault from "../../../assets/StreamsDefault.svg"
 import React from "react"
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
@@ -25,6 +24,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	initialStreamsData,
 	fromJobEditFlow = false,
 	jobId = -1,
+	destinationType,
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
@@ -59,6 +59,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			setSelectedStreams(initialStreamsData)
 			setLoading(false)
 			initialized.current = true
+
+			// Select first stream if no stream is currently active
+			if (!activeStreamData && initialStreamsData.streams.length > 0) {
+				setActiveStreamData(initialStreamsData.streams[0])
+			}
 			return
 		}
 
@@ -114,6 +119,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 				setApiResponse(processedResponseData)
 				setSelectedStreams(processedResponseData)
+
+				// Always select first stream if no stream is currently active
+				if (processedResponseData.streams.length > 0 && !activeStreamData) {
+					setActiveStreamData(processedResponseData.streams[0])
+				}
+
 				initialized.current = true
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
@@ -130,6 +141,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		sourceConfig,
 		initialStreamsData,
 		setSelectedStreams,
+		activeStreamData, // Add activeStreamData as dependency
 	])
 
 	const handleStreamSyncModeChange = (
@@ -528,23 +540,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onFullLoadFilterChange={handleFullLoadFilterChange}
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
+							destinationType={destinationType}
 						/>
-					) : (
-						!loading && (
-							<div className="flex flex-col">
-								<img
-									src={StreamsDefault}
-									alt="StreamsDefault"
-									className="size-10"
-								/>
-
-								<div className="mt-2 font-semibold">No stream selected</div>
-								<div className="text-sm text-[#787878]">
-									Please select a stream to configure
-								</div>
-							</div>
-						)
-					)}
+					) : null}
 				</div>
 			</div>
 		</div>
