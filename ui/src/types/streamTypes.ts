@@ -67,7 +67,7 @@ export type StreamConfigurationProps = {
 	onSyncModeChange?: (
 		streamName: string,
 		namespace: string,
-		mode: "full_refresh" | "cdc" | "incremental",
+		mode: "full_refresh" | "cdc" | "incremental" | "strict_cdc",
 	) => void
 	useDirectForms?: boolean
 }

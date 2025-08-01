@@ -48,7 +48,6 @@ const StreamConfiguration = ({
 				? "incremental"
 				: "cdc",
 	)
-	const [enableBackfill, setEnableBackfill] = useState(false)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
@@ -121,7 +120,6 @@ const StreamConfiguration = ({
 		} else if (initialApiSyncMode === "incremental") {
 			setSyncMode("incremental")
 		}
-		setEnableBackfill(initialEnableBackfillForSwitch)
 		setNormalisation(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
@@ -210,12 +208,13 @@ const StreamConfiguration = ({
 				const firstCursorField = availableCursorFields[0]
 				stream.stream.cursor_field = firstCursorField
 			}
-		} else {
+		} else if (selectedRadioValue === "cdc") {
 			newApiSyncMode = "cdc"
+		} else {
+			newApiSyncMode = "strict_cdc"
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
-		setEnableBackfill(newEnableBackfillState)
 		onSyncModeChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -226,32 +225,6 @@ const StreamConfiguration = ({
 			...formData,
 			sync_mode: newApiSyncMode,
 			backfill: newEnableBackfillState,
-		})
-	}
-
-	const handleEnableBackfillChange = (checked: boolean) => {
-		setEnableBackfill(checked)
-		let finalApiSyncMode = stream.stream.sync_mode
-
-		if (syncMode === "cdc") {
-			if (checked) {
-				finalApiSyncMode = "cdc"
-				stream.stream.sync_mode = "cdc"
-				onSyncModeChange?.(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					"cdc",
-				)
-			} else {
-				finalApiSyncMode = "strict_cdc"
-				stream.stream.sync_mode = "strict_cdc"
-			}
-		}
-
-		setFormData({
-			...formData,
-			backfill: checked,
-			sync_mode: finalApiSyncMode,
 		})
 	}
 
@@ -563,33 +536,33 @@ const StreamConfiguration = ({
 							Sync mode:
 						</label>
 						<Radio.Group
-							className="mb-4 flex w-full items-center"
+							className="mb-4 grid grid-cols-2 gap-4"
 							value={syncMode}
 							onChange={e => handleSyncModeChange(e.target.value)}
 						>
 							<Radio
 								value="full"
-								className="w-1/3"
 								disabled={!isSyncModeSupported("full_refresh")}
 							>
-								Full refresh
-							</Radio>
-							<Radio
-								value="cdc"
-								className="w-1/3"
-								disabled={
-									!isSyncModeSupported("cdc") &&
-									!isSyncModeSupported("strict_cdc")
-								}
-							>
-								CDC
+								Full Refresh
 							</Radio>
 							<Radio
 								value="incremental"
-								className="w-1/3"
 								disabled={!isSyncModeSupported("incremental")}
 							>
-								Incremental
+								Full Refresh + Incremental
+							</Radio>
+							<Radio
+								value="cdc"
+								disabled={!isSyncModeSupported("cdc")}
+							>
+								Full Refresh + CDC
+							</Radio>
+							<Radio
+								value="strict_cdc"
+								disabled={!isSyncModeSupported("strict_cdc")}
+							>
+								CDC Only
 							</Radio>
 						</Radio.Group>
 						{syncMode === "incremental" &&
@@ -701,21 +674,6 @@ const StreamConfiguration = ({
 									</div>
 								</div>
 							)}
-					</div>
-				</div>
-				<div className={CARD_STYLE}>
-					<div className="flex items-center justify-between">
-						<label className="font-medium">Enable backfill</label>
-						<Switch
-							className="text-[#c1c1c1]"
-							checked={enableBackfill}
-							onChange={handleEnableBackfillChange}
-							disabled={
-								syncMode === "full" ||
-								syncMode === "incremental" ||
-								isStreamInInitialSelection
-							}
-						/>
 					</div>
 				</div>
 
