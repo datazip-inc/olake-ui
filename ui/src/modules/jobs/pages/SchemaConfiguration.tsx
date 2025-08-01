@@ -147,7 +147,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
-		newSyncMode: "full_refresh" | "cdc" | "incremental",
+		newSyncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc",
 	) => {
 		setApiResponse(prev => {
 			if (!prev) return prev
@@ -507,7 +507,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onSyncModeChange={(
 								streamName: string,
 								namespace: string,
-								syncMode: "full_refresh" | "cdc" | "incremental",
+								syncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc",
 							) => {
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
