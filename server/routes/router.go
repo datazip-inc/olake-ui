@@ -1,45 +1,17 @@
 package routes
 
 import (
-	"net/http"
-
 	"github.com/beego/beego/v2/server/web"
-	"github.com/beego/beego/v2/server/web/context"
 	"github.com/datazip/olake-frontend/server/internal/handlers"
 )
 
-// writeDefaultCorsHeaders sets common CORS headers
-func writeDefaultCorsHeaders(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-	w.Header().Set("Access-Control-Allow-Headers", "Origin, Authorization, Content-Type, Accept")
-	w.Header().Set("Access-Control-Allow-Credentials", "true")
-	w.Header().Set("Access-Control-Max-Age", "86400")
-}
-
-// CustomCorsFilter handles CORS for different route patterns
-func CustomCorsFilter(ctx *context.Context) {
-	r := ctx.Request
-	w := ctx.ResponseWriter
-	writeDefaultCorsHeaders(w)
-	requestOrigin := r.Header.Get("Origin")
-	// API and auth routes - reflect origin
-	w.Header().Set("Access-Control-Allow-Origin", requestOrigin)
-	// Handle preflight OPTIONS requests
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-}
-
 func Init() {
-	// Apply CORS filter first
-	web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 
 	// Serve static frontend files
-	web.SetStaticPath("/", "/opt/frontend/dist")
+	web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
 
-	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
+	// Serve index.html for React frontend
+	web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route
 
 	// Auth routes
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
