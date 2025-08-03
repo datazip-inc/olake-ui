@@ -35,6 +35,9 @@ func Init() {
 	// Apply CORS filter first
 	web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 
+	// Serve static frontend files
+	web.SetStaticPath("/", "/opt/frontend/dist")
+
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
 
