@@ -6,7 +6,6 @@ import (
 )
 
 func Init() {
-
 	// Serve static frontend files
 	web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
 
