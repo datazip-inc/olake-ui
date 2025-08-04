@@ -12,6 +12,8 @@ func Init() {
 	// Serve index.html for React frontend
 	web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route
 
+	// Apply auth middleware to protected routes
+	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
 	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")

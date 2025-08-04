@@ -1,4 +1,7 @@
 export const API_CONFIG = {
+	// BASE_URL determines where API requests go.
+	// This uses the same protocol, host, and port that the frontend was loaded from.
+	// Example: if the app is served from http://localhost:8000, requests go to http://localhost:8000/api/...
 	BASE_URL: `${window.location.protocol}//${window.location.host}`,
 	PROJECT_ID: "123",
 	ENDPOINTS: {
