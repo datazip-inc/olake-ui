@@ -60,3 +60,23 @@ setup: build pre-commit
 	@$(MAKE) run
 	@sleep 5
 	@$(MAKE) create-user
+
+clean-docker-server:
+	cd server && \
+	docker compose down -v && \
+	docker compose up -d
+
+run-temporal-worker:
+	cd server && \
+	go mod tidy && \
+	go run $(PWD)/server/cmd/temporal-worker/main.go
+
+run-backend:
+	cd server && \
+	go mod tidy && \
+	go run $(PWD)/server/main.go
+
+run-frontend:
+	cd ui && \
+	pnpm i && \
+	pnpm run dev

@@ -160,38 +160,28 @@ Follow these steps to set up the project for local development and testing:
 3. **Clean Docker Environment**
 
    ```bash
-   cd server
-   # Stop all containers and remove volumes
-   docker compose down -v
-   # Start required services
-   docker compose up -d
+   make clean-docker-server
    ```
 
 4. **Start Temporal Worker**
 
    ```bash
    # In a new terminal
-   cd server
-   go mod tidy  # If needed
-   go run cmd/temporal-worker/main.go
+   make run-temporal-worker
    ```
 
 5. **Start Backend Server**
 
    ```bash
    # In a new terminal
-   cd server
-   go mod tidy  # If needed
-   go run main.go
+   make run-backend
    ```
 
 6. **Start Frontend Development Server**
 
    ```bash
    # In a new terminal
-   cd ui
-   pnpm i        # Install dependencies
-   pnpm run dev  # Start development server
+   make run-frontend
    ```
 
 7. **Access the Application**
