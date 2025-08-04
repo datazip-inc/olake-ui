@@ -374,41 +374,30 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 
 		return tempFilteredStreams.filter(stream => {
-			const cdcIsActive = selectedFilters.includes("CDC")
-			const frIsActive = selectedFilters.includes("Full refresh")
-			const hasSelectedFilter = selectedFilters.includes("Selected")
-			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
+			const fullRefreshIsActive = selectedFilters.includes("Full Refresh")
+			const incrementalIsActive = selectedFilters.includes(
+				"Full Refresh + Incremental",
+			)
+			const cdcIsActive = selectedFilters.includes("Full Refresh + CDC")
+			const strictCdcIsActive = selectedFilters.includes("CDC Only")
 
 			// Sync mode filtering
 			let passesSyncModeFilter = true
-			if (cdcIsActive && frIsActive) {
-				passesSyncModeFilter =
-					stream.stream.sync_mode === "cdc" ||
-					stream.stream.sync_mode === "full_refresh"
-			} else if (cdcIsActive) {
-				passesSyncModeFilter = stream.stream.sync_mode === "cdc"
-			} else if (frIsActive) {
-				passesSyncModeFilter = stream.stream.sync_mode === "full_refresh"
+			type SyncMode = "cdc" | "full_refresh" | "incremental" | "strict_cdc"
+			const activeSyncModeFilters = [
+				fullRefreshIsActive ? ("full_refresh" as SyncMode) : false,
+				incrementalIsActive ? ("incremental" as SyncMode) : false,
+				cdcIsActive ? ("cdc" as SyncMode) : false,
+				strictCdcIsActive ? ("strict_cdc" as SyncMode) : false,
+			].filter((mode): mode is SyncMode => mode !== false)
+
+			if (activeSyncModeFilters.length > 0) {
+				passesSyncModeFilter = activeSyncModeFilters.includes(
+					stream.stream.sync_mode as SyncMode,
+				)
 			}
 
-			if (!passesSyncModeFilter) {
-				return false
-			}
-
-			// Selection status filtering
-			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || ""
-			]?.some(s => s.stream_name === stream.stream.name)
-
-			if (hasSelectedFilter && hasNotSelectedFilter) {
-				// No filtering based on selection status if both are selected
-			} else if (hasSelectedFilter) {
-				if (!isSelected) return false
-			} else if (hasNotSelectedFilter) {
-				if (isSelected) return false
-			}
-
-			return true
+			return passesSyncModeFilter
 		})
 	}, [apiResponse, searchText, selectedFilters])
 
@@ -424,10 +413,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	const filters = [
 		"All tables",
-		"CDC",
-		"Full refresh",
-		"Selected",
-		"Not selected",
+		"Full Refresh",
+		"Full Refresh + Incremental",
+		"Full Refresh + CDC",
+		"CDC Only",
 	]
 
 	useEffect(() => {
