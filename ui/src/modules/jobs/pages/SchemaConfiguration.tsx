@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { Input, Empty, Spin } from "antd"
 import FilterButton from "../components/FilterButton"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
@@ -47,9 +47,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [loading, setLoading] = useState(!initialStreamsData)
 
 	// Use ref to track if we've initialized to prevent double updates
-	const initialized = React.useRef(!!initialStreamsData)
+	const initialized = useRef(false)
 
 	useEffect(() => {
+		// Reset initialized ref when source config changes
+		if (sourceConfig !== prevSourceConfig.current) {
+			initialized.current = false
+			prevSourceConfig.current = sourceConfig
+		}
+
 		if (
 			initialStreamsData &&
 			initialStreamsData.selected_streams &&
@@ -133,16 +139,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			}
 		}
 
-		fetchSourceStreams()
+		if (!initialized.current && sourceConfig && sourceConnector) {
+			fetchSourceStreams()
+		}
 	}, [
 		sourceName,
 		sourceConnector,
 		sourceVersion,
 		sourceConfig,
 		initialStreamsData,
-		setSelectedStreams,
-		activeStreamData, // Add activeStreamData as dependency
 	])
+
+	const prevSourceConfig = useRef(sourceConfig)
 
 	const handleStreamSyncModeChange = (
 		streamName: string,

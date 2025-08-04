@@ -133,6 +133,7 @@ const JobEdit: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState("* * * * *")
 	const [job, setJob] = useState<Job | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
+	const [streamsModified, setStreamsModified] = useState(false)
 
 	useEffect(() => {
 		fetchJobs()
@@ -400,6 +401,11 @@ const JobEdit: React.FC = () => {
 		setCurrentStep(step as JobCreationSteps)
 	}
 
+	const handleStreamsChange = (newStreams: any) => {
+		setSelectedStreams(newStreams)
+		setStreamsModified(true)
+	}
+
 	// Show loading while job data is loading
 	if (!job && jobId) {
 		return (
@@ -463,7 +469,7 @@ const JobEdit: React.FC = () => {
 							<div className="h-full overflow-auto">
 								<SchemaConfiguration
 									selectedStreams={selectedStreams as any}
-									setSelectedStreams={setSelectedStreams as any}
+									setSelectedStreams={handleStreamsChange}
 									stepNumber={3}
 									stepTitle="Streams Selection"
 									sourceName={sourceData?.name || ""}
@@ -473,7 +479,9 @@ const JobEdit: React.FC = () => {
 									fromJobEditFlow={true}
 									jobId={jobId ? parseInt(jobId) : -1}
 									destinationType={destinationData?.type.toLowerCase() || ""}
-									initialStreamsData={selectedStreams}
+									initialStreamsData={
+										streamsModified ? selectedStreams : undefined
+									}
 								/>
 							</div>
 						)}
