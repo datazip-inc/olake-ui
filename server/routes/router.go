@@ -1,25 +1,30 @@
 package routes
 
 import (
+	"os"
+	"strings"
+
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/handlers"
 )
 
 func Init() {
-	// Serve static frontend files
-	web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
+	isDev := strings.ToLower(os.Getenv("IS_DEV")) == "true"
+	if !isDev {
+		// Only set static path in production mode
+		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
+	}
 
-	// Serve index.html for React frontend
-	web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route
-
-	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
 	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
 	web.Router("/auth/check", &handlers.AuthHandler{}, "get:CheckAuth")
 	web.Router("/telemetry-id", &handlers.AuthHandler{}, "get:GetTelemetryID")
 
+	// Apply auth middleware to protected routes
+	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
+
+	// API routes
 	// User routes
 	web.Router("/api/v1/users", &handlers.UserHandler{}, "post:CreateUser")
 	web.Router("/api/v1/users", &handlers.UserHandler{}, "get:GetAllUsers")
@@ -54,4 +59,7 @@ func Init() {
 	web.Router("/api/v1/project/:projectid/jobs/:id/activate", &handlers.JobHandler{}, "post:ActivateJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", &handlers.JobHandler{}, "get:GetJobTasks")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", &handlers.JobHandler{}, "post:GetTaskLogs")
+
+	// This should be the last route - catch all for frontend
+	web.Router("/*", &handlers.FrontendHandler{})
 }

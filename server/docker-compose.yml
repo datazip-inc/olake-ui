@@ -1,4 +1,3 @@
-
 services:
   elasticsearch:
     container_name: temporal-elasticsearch
@@ -72,6 +71,7 @@ services:
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+      - IS_DEV=false
     image: temporalio/ui:2.16.2
     networks:
       - temporal-network

@@ -111,10 +111,10 @@ Configure encryption in `docker-compose.yml`:
 x-encryption:
   # 1. For AWS KMS (starts with 'arn:aws:kms:'):
   key: &encryptionKey "arn:aws:kms:..."
-  
+
   # 2. For local AES-256 (any other non-empty string):
   # key: &encryptionKey "secret-key"  # Auto-hashed to 256-bit key
-  
+
   # 3. For no encryption (not recommended for production):
   # key: &encryptionKey ""
 ```
@@ -134,3 +134,78 @@ x-encryption:
   ```bash
   docker compose logs -f <service_name>
   ```
+
+## Local Development Setup
+
+Follow these steps to set up the project for local development and testing:
+
+### Prerequisites
+
+- Go installed
+- PostgreSQL installed
+- Docker and Docker Compose installed
+
+### Setup Steps
+
+1. **Configure Development Mode**
+
+   - Open `server/docker-compose.yml`
+   - Find the environment section and set `IS_DEV: "true"`
+
+2. **Update PostgreSQL Configuration**
+
+   - Open `server/conf/app.conf`
+   - Update the PostgreSQL credentials with your local database settings
+
+3. **Clean Docker Environment**
+
+   ```bash
+   cd server
+   # Stop all containers and remove volumes
+   docker compose down -v
+   # Start required services
+   docker compose up -d
+   ```
+
+4. **Start Temporal Worker**
+
+   ```bash
+   # In a new terminal
+   cd server
+   go mod tidy  # If needed
+   go run cmd/temporal-worker/main.go
+   ```
+
+5. **Start Backend Server**
+
+   ```bash
+   # In a new terminal
+   cd server
+   go mod tidy  # If needed
+   go run main.go
+   ```
+
+6. **Start Frontend Development Server**
+
+   ```bash
+   # In a new terminal
+   cd ui
+   pnpm i        # Install dependencies
+   pnpm run dev  # Start development server
+   ```
+
+7. **Access the Application**
+   - Open [http://localhost:5173](http://localhost:5173) in your browser
+   - You can now test the application with the local development setup
+
+Now you should have a fully functional local development environment with:
+
+- PostgreSQL and other dependencies running in Docker
+- Temporal worker running locally
+- Backend server running locally
+
+### Tips
+
+- Keep an eye on the logs of each component for debugging
+- The temporal worker must be running for job execution
+- Make sure all required ports are available and not used by other applications
