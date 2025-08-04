@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Switch, message, Select, Radio } from "antd"
-import { ArrowRight } from "@phosphor-icons/react"
+import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
+import { ArrowRight, Info } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { ArrowLeft } from "@phosphor-icons/react"
 import {
@@ -319,9 +319,17 @@ const JobSettings: React.FC = () => {
 
 											{frequency === "custom" && (
 												<div>
-													<label className="mb-2 block text-sm">
-														Cron Expression
-													</label>
+													<div className="mb-2 flex items-center gap-1">
+														<label className="block text-sm">
+															Cron Expression
+														</label>
+														<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
+															<Info
+																size={16}
+																className="cursor-help text-slate-900"
+															/>
+														</Tooltip>
+													</div>
 													<Input
 														className="w-64"
 														placeholder="Enter cron expression (Eg : * * * * *)"
