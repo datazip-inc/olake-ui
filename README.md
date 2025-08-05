@@ -155,19 +155,6 @@ This guide helps you set up the full Olake development environment including bac
 
 ---
 
-## 🌱 Environment Variables
-
-Before running the project, you can optionally set the following environment variable for development:
-
-```bash
-export IS_DEV=true
-```
-
-- If `IS_DEV=true`, the backend will **proxy requests to the frontend dev server** at `http://localhost:5173`.
-- If not set or false, the backend will serve the frontend from the built files (`/opt/frontend/dist`).
-
----
-
 ## 📦 1. Clone the Repository
 
 ```bash

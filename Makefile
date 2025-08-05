@@ -52,8 +52,8 @@ trivy:
 
 # Create a user with specified username, password and email (e.g. make create-user username=admin password=admin123 email=admin@example.com)
 create-user:
-	@curl -s -X POST http://localhost:8000/signup -H "Content-Type: application/json" -d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "username" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
-
+	@curl -s -X POST http://localhost:8000/signup -H "Content-Type: application/json" -d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "\"success\": true" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
+	
 # Build, start server, and create frontend user in one command
 setup: build pre-commit
 	@echo "Starting server and setting up frontend user..."
