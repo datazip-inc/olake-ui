@@ -252,31 +252,40 @@ func ToCron(frequency string) string {
 		return frequency
 	}
 }
+
 func CleanOldLogs(logDir string, retentionPeriod int) {
+	logs.Info("Running log cleaner...")
 	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
 
-	shouldDelete := func(path string) (bool, error) {
-		info, err := os.Stat(path)
-		if err != nil {
-			return false, err
-		}
-		if !info.IsDir() || !info.ModTime().Before(cutoff) {
-			return false, nil
-		}
+	// check if old logs are present
+	shouldDelete := func(path string, cutoff time.Time) (bool, error) {
+		var foundOldLog bool
+
+		err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+			if err != nil || info == nil {
+				return nil
+			}
+			if info.IsDir() {
+				return nil
+			}
+			if (strings.HasSuffix(filePath, ".log") || strings.HasSuffix(filePath, ".log.gz")) &&
+				info.ModTime().Before(cutoff) {
+				foundOldLog = true
+				return filepath.SkipDir
+			}
+			return nil
+		})
+
+		return foundOldLog, err
+	}
+
+	// check if the directory is empty
+	isDirEmpty := func(path string) (bool, error) {
 		entries, err := os.ReadDir(path)
 		if err != nil {
 			return false, err
 		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				continue
-			}
-			name := entry.Name()
-			if strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".log.gz") {
-				return true, nil
-			}
-		}
-		return false, nil
+		return len(entries) == 0, nil
 	}
 
 	entries, err := os.ReadDir(logDir)
@@ -284,19 +293,29 @@ func CleanOldLogs(logDir string, retentionPeriod int) {
 		return
 	}
 
+	// delete dir if old logs are found or is empty
 	for _, entry := range entries {
 		if !entry.IsDir() || entry.Name() == "telemetry" {
 			continue
 		}
 
 		dirPath := filepath.Join(logDir, entry.Name())
-		ok, err := shouldDelete(dirPath)
+
+		toDelete, err := shouldDelete(dirPath, cutoff)
 		if err != nil {
 			continue
 		}
-		if ok {
-			fmt.Printf("Deleting folder %s\n", dirPath)
-			if err := os.RemoveAll(dirPath); err != nil {
+
+		if !toDelete {
+			toDelete, err = isDirEmpty(dirPath)
+			if err != nil {
+				continue
+			}
+		}
+
+		if toDelete {
+			logs.Info("Deleting folder: %s", dirPath)
+			if err = os.RemoveAll(dirPath); err != nil {
 				continue
 			}
 		}
