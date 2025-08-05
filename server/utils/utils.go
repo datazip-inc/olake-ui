@@ -263,7 +263,7 @@ func CleanOldLogs(logDir string, retentionPeriod int) {
 
 		err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 			if err != nil || info == nil {
-				return nil
+				return err
 			}
 			if info.IsDir() {
 				return nil
