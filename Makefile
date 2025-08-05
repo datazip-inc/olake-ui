@@ -52,7 +52,7 @@ trivy:
 
 # Create a user with specified username, password and email (e.g. make create-user username=admin password=admin123 email=admin@example.com)
 create-user:
-	@curl -s -X POST http://localhost:8080/signup -H "Content-Type: application/json" -d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "username" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
+	@curl -s -X POST http://localhost:8000/signup -H "Content-Type: application/json" -d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "username" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
 
 # Build, start server, and create frontend user in one command
 setup: build pre-commit
@@ -60,3 +60,28 @@ setup: build pre-commit
 	@$(MAKE) run
 	@sleep 5
 	@$(MAKE) create-user
+
+# Variables
+SERVER_DIR := $(PWD)/server
+FRONTEND_DIR := $(PWD)/ui
+
+# Start Temporal services using Docker Compose
+start-temporal:
+	cd $(SERVER_DIR) && docker compose down && docker compose up -d
+
+# Start Temporal Go worker
+start-temporal-server:
+	cd $(SERVER_DIR) && go run ./cmd/temporal-worker/main.go
+
+# Start backend server with live reload (dev mode)
+start-backend:
+	cd $(SERVER_DIR) && bee run
+
+# Start frontend dev server
+start-frontend:
+	cd $(FRONTEND_DIR) && pnpm install && pnpm run dev
+
+
+
+
+

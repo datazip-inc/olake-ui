@@ -134,3 +134,97 @@ x-encryption:
   ```bash
   docker compose logs -f <service_name>
   ```
+
+# 🛠️ Development Setup
+
+This guide helps you set up the full Olake development environment including backend, frontend, and Temporal services.
+
+---
+
+## ✅ Prerequisites
+
+- [Go](https://go.dev/doc/install) (≥ 1.20)
+- [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation)
+- [Docker](https://www.docker.com/)
+- [BeeGo CLI](https://beego.me/docs/install/bee.md)  
+  Install it with:
+
+  ```bash
+  go install github.com/beego/bee/v2@latest
+  ```
+
+---
+
+## 🌱 Environment Variables
+
+Before running the project, you can optionally set the following environment variable for development:
+
+```bash
+export IS_DEV=true
+```
+
+- If `IS_DEV=true`, the backend will **proxy requests to the frontend dev server** at `http://localhost:5173`.
+- If not set or false, the backend will serve the frontend from the built files (`/opt/frontend/dist`).
+
+---
+
+## 📦 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-org/olake-frontend.git
+cd olake-frontend
+```
+
+---
+
+## 🐳 2. Start Temporal Services
+
+Make sure Docker is running:
+
+```bash
+make start-temporal
+```
+
+> Starts `temporal`, `temporal-ui`, and `temporal-admin-tools` using Docker Compose inside the `server/` directory.
+
+---
+
+## ⚙️ 3. Start Temporal Worker (Go)
+
+In a separate terminal tab/window:
+
+```bash
+make start-temporal-server
+```
+
+> Runs the Temporal worker from `server/cmd/temporal-worker/main.go`.
+
+---
+
+## 🔙 4. Start Backend Server (Beego)
+
+```bash
+make start-backend
+```
+
+> Runs the Beego backend server with live reload using `bee run`.
+
+---
+
+## 🌐 5. Start Frontend Dev Server (Vite + React)
+
+```bash
+make start-frontend
+```
+
+> Installs frontend dependencies using `pnpm` and runs the development server.
+
+---
+
+## 🔗 6. Access the Services
+
+- **Frontend UI:** [http://localhost:5173](http://localhost:5173)
+- **Backend API:** [http://localhost:8000](http://localhost:8000)
+- **Temporal UI:** [http://localhost:8080](http://localhost:8080)
+
+---
