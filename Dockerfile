@@ -37,12 +37,8 @@ RUN pnpm build
 # Stage 3: Final Runtime Image
 FROM alpine:latest
 
-# Install dependencies: supervisor, nodejs, and npm (for 'serve')
-# docker-cli is removed as worker is no longer included
-RUN apk add --no-cache supervisor nodejs npm
-
-# Install 'serve' globally for the frontend
-RUN npm install -g serve
+# Install dependencies: supervisor and docker-cli
+RUN apk add --no-cache supervisor docker-cli
 
 # Create directories for applications, logs, and supervisor config
 RUN mkdir -p /opt/backend/conf \
@@ -59,8 +55,7 @@ RUN apk update && apk add --no-cache docker-cli
 # Copy supervisor configuration file
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose necessary ports
-EXPOSE 8080
+# Expose only the Go backend port (which serves both API and frontend)
 EXPOSE 8000
 
 # Set the default command to run Supervisor
