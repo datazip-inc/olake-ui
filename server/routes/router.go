@@ -2,7 +2,6 @@ package routes
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
@@ -33,11 +32,11 @@ func CustomCorsFilter(ctx *context.Context) {
 }
 
 func Init() {
-	if os.Getenv("IS_DEV") == "true" {
+	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "dev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
 		//Serve static frontend files
-		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
+		web.SetStaticPath("", "/Users/datazip/Desktop/olake-frontend/ui/dist") // Vite assets are in /assets
 
 		// Serve index.html for React frontend
 		web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route

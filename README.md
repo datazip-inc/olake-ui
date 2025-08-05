@@ -135,10 +135,10 @@ x-encryption:
   docker compose logs -f <service_name>
   ```
 
-# 🛠️ Development Setup
+## 🛠️ Development Setup
 
 This guide helps you set up the full Olake development environment including backend, frontend, and Temporal services.
-
+> ⚙️ Make sure to set `VITE_IS_DEV=true` in your `.env` file (frontend), and `runmode = dev` in `server/conf/app.conf` for Beego.
 ---
 
 ## ✅ Prerequisites
