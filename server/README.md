@@ -22,7 +22,7 @@ Review and update the configuration in `conf/app.conf` as needed:
 
 ```bash
 appname = olake-server
-httpport = 8080
+httpport = 8000
 runmode = dev
 copyrequestbody = true
 postgresdb = postgres://postgres:testing@testing-postgres.postgres.database.azure.com:5432/olakedb
@@ -50,7 +50,7 @@ bee run
 make run
 ```
 
-The server will start on port 8080 (or the port specified in your configuration).
+The server will start on port 8000 (or the port specified in your configuration).
 
 ### 4. Create a User
 
