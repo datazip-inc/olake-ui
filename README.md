@@ -66,6 +66,7 @@ This Docker Compose setup provides a comprehensive environment(UI, backend, Temp
 
    - **Frontend UI:** [http://localhost:8000](http://localhost:8000)
    - **Default login:** Username: `admin`, Password: `password`
+   - **Make sure port `8000` is exposed and accessible**, as both the frontend and backend run on this single port.
 
 5. **Stopping the stack:**
    ```bash
