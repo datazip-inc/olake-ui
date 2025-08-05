@@ -169,7 +169,8 @@ const StreamConfiguration = ({
 				],
 				logicalOperator: "and",
 			})
-			setFullLoadFilter(false)
+			// Keep the fullLoadFilter state from formData if it exists
+			setFullLoadFilter(formData.fullLoadFilter || false)
 		}
 
 		setFormData((prevFormData: any) => ({
@@ -177,6 +178,7 @@ const StreamConfiguration = ({
 			sync_mode: initialApiSyncMode,
 			backfill: initialEnableBackfillForSwitch,
 			partition_regex: initialPartitionRegex || "",
+			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
 	}, [
 		stream,
@@ -310,6 +312,11 @@ const StreamConfiguration = ({
 				"",
 			)
 		}
+		// Keep the toggle state in formData
+		setFormData({
+			...formData,
+			fullLoadFilter: checked,
+		})
 	}
 
 	const handleFilterConditionChange = (
