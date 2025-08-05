@@ -131,8 +131,21 @@ x-encryption:
   docker-compose logs -f
   ```
 - For logs specific to a service, use:
+
   ```bash
   docker compose logs -f <service_name>
+  ```
+
+- If you encounter issues while switching between development and production environments:
+
+  ```bash
+  # First, stop all services in root directory
+  docker compose down
+
+  # Then go to server directory and restart its services
+  cd server
+  docker compose down
+  docker compose up -d
   ```
 
 ## Local Development Setup
@@ -150,7 +163,10 @@ Follow these steps to set up the project for local development and testing:
 1. **Configure Development Mode**
 
    - Open `server/docker-compose.yml`
-   - Find the environment section and set `IS_DEV: "true"`
+   - In the environment section of temporal-ui container, set:
+     ```yaml
+     - IS_DEV=true
+     ```
 
 2. **Update PostgreSQL Configuration**
 

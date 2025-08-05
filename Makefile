@@ -62,6 +62,7 @@ setup: build pre-commit
 	@$(MAKE) create-user
 
 clean-docker-server:
+	docker compose down && \
 	cd server && \
 	docker compose down -v && \
 	docker compose up -d

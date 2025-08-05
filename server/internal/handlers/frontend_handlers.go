@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 )
 
@@ -24,16 +26,30 @@ func (c *FrontendHandler) Get() {
 		// In development mode, proxy to Vite dev server
 		viteDevServer, err := url.Parse("http://localhost:5173")
 		if err != nil {
+			logs.Error("Failed to parse Vite dev server URL: %v", err)
 			c.Ctx.Output.SetStatus(500)
 			return
 		}
+
+		// Try to ping the Vite dev server before setting up proxy
+		client := http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get(viteDevServer.String())
+		if err != nil {
+			logs.Error("Failed to connect to Vite dev server: %v", err)
+			c.Ctx.Output.SetStatus(502)
+			c.Ctx.WriteString(fmt.Sprintf("Failed to connect to Vite dev server: %v", err))
+			return
+		}
+		defer resp.Body.Close()
+		logs.Info("Successfully connected to Vite dev server at %s", viteDevServer.String())
 
 		proxy := httputil.NewSingleHostReverseProxy(viteDevServer)
 		
 		// Add error handling to the proxy
 		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			logs.Error("Proxy error occurred: %v", err)
 			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte(fmt.Sprintf("Proxy error: %v", err)))
+			w.Write([]byte(fmt.Sprintf("Proxy error: %v", err)))
 		}
 
 		// Update the Host header to match Vite dev server
