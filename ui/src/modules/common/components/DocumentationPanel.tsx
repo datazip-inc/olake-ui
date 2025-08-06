@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Button } from "antd"
+import { Button, Tooltip } from "antd"
 import {
 	CornersOut,
 	CaretRight,
@@ -175,11 +175,16 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 									/>
 								</div>
 								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
-									<ArrowSquareOut
-										size={25}
-										className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
-										onClick={openInNewTab}
-									/>
+									<Tooltip
+										title="Open documentation in new tab"
+										placement="left"
+									>
+										<ArrowSquareOut
+											size={25}
+											className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
+											onClick={openInNewTab}
+										/>
+									</Tooltip>
 								</div>
 							</div>
 						</div>
