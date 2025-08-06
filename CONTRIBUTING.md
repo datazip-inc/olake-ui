@@ -144,6 +144,10 @@ In a separate terminal tab/window:
 ```bash
 make start-frontend
 ```
+## to sign up
+```bash
+make create-user username=admin password=admin123 email=admin@example.com
+```
 
 > Installs frontend dependencies using `pnpm` and runs the development server.
 
