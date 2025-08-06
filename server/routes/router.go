@@ -35,14 +35,14 @@ func Init() {
 	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "dev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
-		//Serve static frontend files
+		// Serve static frontend files
 		web.SetStaticPath("", "/Users/datazip/Desktop/olake-frontend/ui/dist") // Vite assets are in /assets
 
 		// Serve index.html for React frontend
 		web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route
 	}
 
-	//Apply auth middleware to protected routes
+	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
