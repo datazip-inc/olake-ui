@@ -179,9 +179,7 @@ func (c *JobHandler) CreateJob() {
 			temporal.ActionCreate,
 		)
 		if err != nil {
-			fmt.Printf("Temporal workflow execution failed: %v", err)
-		} else {
-			fmt.Println("Successfully executed sync job via Temporal")
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for create job schedule: %s", err))
 		}
 	}
 
@@ -258,7 +256,8 @@ func (c *JobHandler) UpdateJob() {
 			temporal.ActionUpdate,
 		)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for update job schedule: %s", err))
+			return
 		}
 	}
 
@@ -293,6 +292,7 @@ func (c *JobHandler) DeleteJob() {
 		)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
+			return
 		}
 	}
 
@@ -341,7 +341,8 @@ func (c *JobHandler) SyncJob() {
 			temporal.ActionTrigger,
 		)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed: %s", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for sync job: %s", err))
+			return
 		}
 	}
 	utils.SuccessResponse(&c.Controller, nil)
@@ -379,6 +380,7 @@ func (c *JobHandler) ActivateJob() {
 		)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for activate job schedule: %s", err))
+			return
 		}
 	}
 	// Update activation status

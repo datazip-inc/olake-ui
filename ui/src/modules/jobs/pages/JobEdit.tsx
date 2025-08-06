@@ -27,6 +27,7 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import {
 	getConnectorInLowerCase,
 	removeSavedJobFromLocalStorage,
+	validateCronExpression,
 } from "../../../utils/utils"
 
 // Custom wrapper component for SourceEdit to use in job flow
@@ -501,8 +502,7 @@ const JobEdit: React.FC = () => {
 				message.error("Job name is required")
 				return
 			}
-			if (!cronExpression.trim()) {
-				message.error("Cron expression is required")
+			if (!validateCronExpression(cronExpression)) {
 				return
 			}
 			if (isSavedJob) {
