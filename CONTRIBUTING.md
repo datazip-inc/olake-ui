@@ -91,7 +91,14 @@ To contribute code, you’ll need the full development environment running local
 ### Quick Start Summary
 **Required Configurations:**  
 - In the frontend `.env` file: `VITE_IS_DEV=true`  
-- In the backend config (`server/conf/app.conf`): `runmode = dev`
+- In the backend config (`server/conf/app.conf`): `runmode = dev`  
+
+➡️ To set both configurations automatically, run:
+
+```bash
+make init-config
+```
+>This will create the required .env and app.conf files with default values, including a local PostgreSQL connection string.
 
 ### Prerequisites
 - **Go** ≥ 1.20  

@@ -65,6 +65,31 @@ setup: build pre-commit
 SERVER_DIR := $(PWD)/server
 FRONTEND_DIR := $(PWD)/ui
 
+# Create or update .env file in the frontend
+create-ui-env:
+	@echo "Ensuring .env exists in $(FRONTEND_DIR)..."
+	@mkdir -p $(FRONTEND_DIR)
+	@echo "VITE_IS_DEV=true" > $(FRONTEND_DIR)/.env
+	@echo ".env created/updated in $(FRONTEND_DIR)"
+
+# Create or update app.conf file in the backend
+create-backend-conf:
+	@echo "Ensuring app.conf exists in $(SERVER_DIR)/conf..."
+	@mkdir -p $(SERVER_DIR)/conf
+	@echo "appname = olake-server" > $(SERVER_DIR)/conf/app.conf
+	@echo "httpport = 8000" >> $(SERVER_DIR)/conf/app.conf
+	@echo "runmode = dev" >> $(SERVER_DIR)/conf/app.conf
+	@echo "copyrequestbody = true" >> $(SERVER_DIR)/conf/app.conf
+	@echo "postgresdb = postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" >> $(SERVER_DIR)/conf/app.conf
+	@echo "logsdir = ./logger/logs" >> $(SERVER_DIR)/conf/app.conf
+	@echo "sessionon = true" >> $(SERVER_DIR)/conf/app.conf
+	@echo "TEMPORAL_ADDRESS=localhost:7233" >> $(SERVER_DIR)/conf/app.conf
+	@echo "app.conf created/updated in $(SERVER_DIR)/conf"
+
+# Initialize frontend and backend configuration to default values
+init-config: create-ui-env create-backend-conf
+	@echo "Frontend .env and Backend app.conf initialized."
+
 # Start Temporal services using Docker Compose
 start-temporal:
 	cd $(SERVER_DIR) && docker compose down && docker compose up -d
