@@ -13,4 +13,4 @@ export const API_CONFIG = {
 		SOURCES: (projectId: string) => `/api/v1/project/${projectId}/sources`,
 		JOBS: (projectId: string) => `/api/v1/project/${projectId}/jobs`,
 	},
-}
+};
