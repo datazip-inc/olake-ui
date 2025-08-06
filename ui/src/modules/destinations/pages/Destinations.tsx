@@ -103,7 +103,7 @@ const Destinations: React.FC = () => {
 				</div>
 				<button
 					onClick={handleCreateDestination}
-					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white hover:bg-[#132685]"
+					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 				>
 					<Plus className="size-4 text-white" />
 					Create Destination

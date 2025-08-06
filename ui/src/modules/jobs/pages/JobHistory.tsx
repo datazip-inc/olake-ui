@@ -107,7 +107,7 @@ const JobHistory: React.FC = () => {
 			key: "status",
 			render: (status: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(status)}`}
 				>
 					{getStatusIcon(status.toLowerCase())}
 					<span>{getStatusLabel(status.toLowerCase())}</span>
@@ -156,7 +156,7 @@ const JobHistory: React.FC = () => {
 					<div className="flex items-start gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 						>
 							<ArrowLeft className="size-5" />
 						</Link>

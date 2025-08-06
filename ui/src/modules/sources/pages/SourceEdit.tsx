@@ -329,9 +329,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	// }
 
 	const toggleDocsPanel = () => {
-		const newState = !docsMinimized
 		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(newState)
+			onDocsMinimizedChange(prev => !prev)
 		}
 	}
 
@@ -350,7 +349,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
 							? "bg-[#FFF1F0] text-[#F5222D]"
-							: "bg-[#E6F4FF] text-[#0958D9]"
+							: "bg-primary-200 text-primary-700"
 					}`}
 				>
 					{activate ? "Active" : "Inactive"}
@@ -373,7 +372,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
 					{getStatusIcon(last_run_state.toLowerCase())}
 					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
@@ -416,7 +415,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 						<Link
 							to="/sources"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 						>
 							<ArrowLeft className="size-5" />
 						</Link>
@@ -440,7 +439,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													? `/sources/${sourceId}`
 													: `/sources/${sources.find(s => s.name === sourceName)?.id || ""}`
 											}
-											className="flex items-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-2 text-white hover:bg-[#132685]"
+											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
 											<PencilSimple className="size-4" />
 											Edit Source
@@ -451,11 +450,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 							{!fromJobFlow && (
 								<div className="mb-4">
-									<div className="mt-2 flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
+									<div className="mt-2 flex w-fit rounded-md bg-[#f5f5f5] p-1">
 										<button
-											className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
+											className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === "config"
-													? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+													? "mr-1 bg-primary text-center text-neutral-light"
 													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 											}`}
 											onClick={() => setActiveTab("config")}
@@ -464,9 +463,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 										</button>
 
 										<button
-											className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
+											className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === "jobs"
-													? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+													? "mr-1 bg-primary text-center text-neutral-light"
 													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 											}`}
 											onClick={() => setActiveTab("jobs")}
@@ -593,7 +592,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											<Button
 												type="default"
 												onClick={handleViewAllJobs}
-												className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
+												className="w-full border-none bg-primary-100 font-medium text-primary"
 											>
 												View all associated jobs
 											</Button>
@@ -608,7 +607,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 								<div>
 									<button
-										className="ml-1 rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+										className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
 										onClick={handleDelete}
 									>
 										Delete
@@ -616,7 +615,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								</div>
 								<div className="flex space-x-4">
 									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
 										onClick={handleSave}
 									>
 										Save changes

@@ -77,7 +77,7 @@ const Sidebar: React.FC<{
 						className={({ isActive }) =>
 							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-[#E9EBFC] text-[#203FDD] hover:text-black"
+									? "bg-primary-100 text-primary hover:text-black"
 									: "text-gray-700 hover:bg-[#f6f6f6] hover:text-black"
 							}`
 						}

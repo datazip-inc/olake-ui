@@ -188,7 +188,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				if (!status) return <div className="pl-4">-</div>
 				return (
 					<div
-						className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+						className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(status)}`}
 					>
 						{getStatusIcon(status.toLowerCase())}
 						<span>{getStatusLabel(status.toLowerCase())}</span>

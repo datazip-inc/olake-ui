@@ -19,7 +19,7 @@ const ClearDestinationAndSyncModal = () => {
 		>
 			<div className="flex w-full flex-col items-center justify-center gap-8">
 				<Warning
-					className="size-16 text-[#203FDD]"
+					className="size-16 text-primary"
 					weight="fill"
 				/>
 
@@ -31,7 +31,7 @@ const ClearDestinationAndSyncModal = () => {
 				<div className="flex w-full justify-end gap-4">
 					<Button
 						type="primary"
-						className="bg-[#203FDD] text-white"
+						className="bg-primary text-white"
 						onClick={() => {
 							setShowClearDestinationAndSyncModal(false)
 							message.success("Destination cleared and sync initiated")

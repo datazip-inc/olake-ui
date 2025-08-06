@@ -18,7 +18,12 @@ import {
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import { DestinationEditProps, DestinationJob, Entity } from "../../../types"
+import {
+	DestinationEditProps,
+	DestinationJob,
+	Entity,
+	EntityType,
+} from "../../../types"
 import type { ColumnsType } from "antd/es/table"
 import { formatDistanceToNow } from "date-fns"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
@@ -27,7 +32,14 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import { connectorOptions } from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
-import { catalogOptions } from "../../../utils/constants"
+import {
+	catalogOptions,
+	CONNECTOR_TYPES,
+	CATALOG_TYPES,
+	DESTINATION_INTERNAL_TYPES,
+	TAB_TYPES,
+	ENTITY_TYPES,
+} from "../../../utils/constants"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -43,10 +55,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 }) => {
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const isNewDestination = destinationId === "new"
-	const [activeTab, setActiveTab] = useState("config")
+	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
-	const catalogName = "AWS Glue"
+	const catalogName = CATALOG_TYPES.AWS_GLUE
 	const [destinationName, setDestinationName] = useState("")
 	const [selectedVersion, setSelectedVersion] = useState("latest")
 	const [versions, setVersions] = useState<string[]>([])
@@ -110,7 +122,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setDestination(destination)
 				setDestinationName(destination.name)
 				const connectorType =
-					destination.type === "iceberg" ? "Apache Iceberg" : "Amazon S3"
+					destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG
+						? CONNECTOR_TYPES.APACHE_ICEBERG
+						: CONNECTOR_TYPES.AMAZON_S3
 				setConnector(connectorType)
 				setSelectedVersion(destination.version || "")
 
@@ -122,16 +136,17 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setFormData(config)
 				setInitialFormData(config)
 
-				if (destination.type === "iceberg") {
+				if (destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG) {
 					try {
-						const catalogType = config.writer.catalog_type || "AWS Glue"
+						const catalogType =
+							config.writer.catalog_type || CATALOG_TYPES.AWS_GLUE
 						setCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
-						setCatalog("AWS Glue")
+						setCatalog(CATALOG_TYPES.AWS_GLUE)
 					}
 				} else {
-					setInitialCatalog("s3")
+					setInitialCatalog(DESTINATION_INTERNAL_TYPES.S3)
 				}
 			}
 		}
@@ -145,12 +160,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				connectorType?.toLowerCase() === "s3" ||
 				connectorType?.toLowerCase() === "amazon s3"
 			) {
-				connectorType = "Amazon S3"
+				connectorType = CONNECTOR_TYPES.AMAZON_S3
 			} else if (
 				connectorType?.toLowerCase() === "iceberg" ||
 				connectorType?.toLowerCase() === "apache iceberg"
 			) {
-				connectorType = "Apache Iceberg"
+				connectorType = CONNECTOR_TYPES.APACHE_ICEBERG
 			}
 
 			// Only set connector if it's not already set or if it's the same as initialData
@@ -169,12 +184,16 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					}
 					setFormData(parsedConfig)
 					setInitialFormData(parsedConfig)
-					if (connectorType === "Apache Iceberg") {
+					if (connectorType === CONNECTOR_TYPES.APACHE_ICEBERG) {
 						let writerCatalogType = parsedConfig?.writer?.catalog_type
-						setCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
-						setInitialCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+						setCatalog(
+							getCatalogName(writerCatalogType) || CATALOG_TYPES.AWS_GLUE,
+						)
+						setInitialCatalog(
+							getCatalogName(writerCatalogType) || CATALOG_TYPES.AWS_GLUE,
+						)
 					} else {
-						setInitialCatalog("s3")
+						setInitialCatalog(DESTINATION_INTERNAL_TYPES.S3)
 					}
 				}
 			}
@@ -188,10 +207,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			setLoadingVersions(true)
 			try {
 				let connectorType = connector
-				if (connector === "Apache Iceberg") {
-					connectorType = "iceberg"
+				if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+					connectorType = DESTINATION_INTERNAL_TYPES.ICEBERG
 				} else {
-					connectorType = "s3"
+					connectorType = DESTINATION_INTERNAL_TYPES.S3
 				}
 
 				const response = await destinationService.getDestinationVersions(
@@ -218,10 +237,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 		fetchVersions()
 		if (!initialData) {
-			if (connector === "Apache Iceberg") {
-				setCatalog("AWS Glue")
+			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+				setCatalog(CATALOG_TYPES.AWS_GLUE)
 			} else {
-				setCatalog("None")
+				setCatalog(CATALOG_TYPES.NONE)
 			}
 		}
 	}, [connector])
@@ -285,7 +304,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		const destinationData = {
 			...(destination || {}),
 			name: destinationName,
-			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
+			type:
+				connector === CONNECTOR_TYPES.APACHE_ICEBERG
+					? DESTINATION_INTERNAL_TYPES.ICEBERG
+					: DESTINATION_INTERNAL_TYPES.S3,
 			version: selectedVersion,
 			config: configStr,
 		}
@@ -386,9 +408,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const toggleDocsPanel = () => {
-		const newState = !docsMinimized
 		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(newState)
+			onDocsMinimizedChange(prev => !prev)
 		}
 	}
 
@@ -435,7 +456,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
 							? "bg-[#FFF1F0] text-[#F5222D]"
-							: "bg-[#E6F4FF] text-[#0958D9]"
+							: "bg-primary-200 text-primary-700"
 					}`}
 				>
 					{activate ? "Active" : "Inactive"}
@@ -458,7 +479,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
 					{getStatusIcon(last_run_state.toLowerCase())}
 					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
@@ -527,14 +548,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								className="h-8 w-full"
 								placeholder="Select catalog"
 								disabled={
-									connector === "Amazon S3" ||
-									connector === "AWS S3" ||
+									connector === CONNECTOR_TYPES.AMAZON_S3 ||
+									connector === CONNECTOR_TYPES.AWS_S3 ||
 									fromJobFlow
 								}
 								options={catalogOptions}
 								value={
 									catalog ||
-									(connector === "Amazon S3" || connector === "AWS S3"
+									(connector === CONNECTOR_TYPES.AMAZON_S3 ||
+									connector === CONNECTOR_TYPES.AWS_S3
 										? "None"
 										: undefined)
 								}
@@ -619,7 +641,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					<Button
 						type="default"
 						onClick={handleViewAllJobs}
-						className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
+						className="w-full border-none bg-primary-100 font-medium text-primary"
 					>
 						View all associated jobs
 					</Button>
@@ -643,7 +665,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 						<Link
 							to="/destinations"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 						>
 							<ArrowLeft className="size-5" />
 						</Link>
@@ -671,7 +693,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 													? `/destinations/${destinationId}`
 													: `/destinations/${destinations.find(d => d.name === destinationName)?.id || ""}`
 											}
-											className="flex items-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-2 text-white hover:bg-[#132685]"
+											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
 											<PencilSimple className="size-4" />
 											Edit Destination
@@ -682,25 +704,25 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 							{!fromJobFlow && (
 								<div className="mb-4 mt-2">
-									<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
+									<div className="flex w-fit rounded-md bg-[#f5f5f5] p-1">
 										<button
-											className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-												activeTab === "config"
-													? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+											className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
+												activeTab === TAB_TYPES.CONFIG
+													? "mr-1 bg-primary text-center text-neutral-light"
 													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 											}`}
-											onClick={() => setActiveTab("config")}
+											onClick={() => setActiveTab(TAB_TYPES.CONFIG)}
 										>
 											Config
 										</button>
 										{!isNewDestination && (
 											<button
-												className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-													activeTab === "jobs"
-														? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
+												className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
+													activeTab === TAB_TYPES.JOBS
+														? "mr-1 bg-primary text-center text-neutral-light"
 														: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
 												}`}
-												onClick={() => setActiveTab("jobs")}
+												onClick={() => setActiveTab(TAB_TYPES.JOBS)}
 											>
 												Associated jobs
 											</button>
@@ -709,7 +731,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								</div>
 							)}
 
-							{activeTab === "config" ? renderConfigTab() : renderJobsTab()}
+							{activeTab === TAB_TYPES.CONFIG
+								? renderConfigTab()
+								: renderJobsTab()}
 						</div>
 
 						{/* Footer */}
@@ -718,7 +742,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								<div>
 									{!isNewDestination && (
 										<button
-											className="ml-1 rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+											className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
 											onClick={handleDelete}
 										>
 											Delete
@@ -727,7 +751,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								</div>
 								<div className="flex space-x-4">
 									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
 										onClick={handleSaveChanges}
 									>
 										Save Changes
@@ -750,7 +774,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={false} />
-			<EntityEditModal entityType="destination" />
+			<EntityEditModal entityType={ENTITY_TYPES.DESTINATION as EntityType} />
 		</div>
 	)
 }

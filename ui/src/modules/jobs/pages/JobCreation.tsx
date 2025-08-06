@@ -290,7 +290,7 @@ const JobCreation: React.FC = () => {
 					<div className="flex items-center gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
@@ -412,14 +412,14 @@ const JobCreation: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+						className="rounded-md border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
 						onClick={handleCancel}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+						className="flex items-center justify-center gap-2 rounded-md border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
 					>
 						<DownloadSimple className="size-4" />
 						Save Job
@@ -431,13 +431,13 @@ const JobCreation: React.FC = () => {
 					{currentStep !== "source" && (
 						<button
 							onClick={handleBack}
-							className="mr-4 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+							className="mr-4 rounded-md border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
 						>
 							Back
 						</button>
 					)}
 					<button
-						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>
 						{currentStep === "config" ? "Create Job" : "Next"}

@@ -118,7 +118,7 @@ const JobLogs: React.FC = () => {
 							<div>
 								<Link
 									to={`/jobs/${jobId}/history`}
-									className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+									className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 								>
 									<ArrowLeft className="size-5" />
 								</Link>
@@ -223,7 +223,7 @@ const JobLogs: React.FC = () => {
 												</td>
 												<td className="w-24 px-4 py-3 text-sm">
 													<span
-														className={`rounded-[6px] px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
+														className={`rounded-md px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
 															taskLog.level,
 														)}`}
 													>
@@ -274,7 +274,7 @@ const JobLogs: React.FC = () => {
 			<div className="flex justify-end border-t border-gray-200 bg-white p-4">
 				<Button
 					type="primary"
-					className="bg-[#203FDD] font-extralight text-white"
+					className="bg-primary font-extralight text-white"
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
 					View job configurations

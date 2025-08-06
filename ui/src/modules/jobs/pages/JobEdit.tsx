@@ -36,7 +36,7 @@ const JobSourceEdit = ({
 	sourceData: SourceData
 	updateSourceData: (data: SourceData) => void
 	docsMinimized: boolean
-	onDocsMinimizedChange: (minimized: boolean) => void
+	onDocsMinimizedChange: React.Dispatch<React.SetStateAction<boolean>>
 }) => (
 	<div className="flex h-full flex-col">
 		<div className="flex-1 overflow-auto">
@@ -74,7 +74,7 @@ const JobDestinationEdit = ({
 	destinationData: DestinationData
 	updateDestinationData: (data: DestinationData) => void
 	docsMinimized: boolean
-	onDocsMinimizedChange: (minimized: boolean) => void
+	onDocsMinimizedChange: React.Dispatch<React.SetStateAction<boolean>>
 }) => (
 	<div className="flex h-full flex-col">
 		<div
@@ -314,7 +314,7 @@ const JobEdit: React.FC = () => {
 
 	// Handle job submission
 	const handleJobSubmit = async () => {
-		if (!sourceData || !destinationData) {
+		if (!sourceData || !destinationData || !jobId) {
 			message.error("Source and destination data are required")
 			return
 		}
@@ -325,10 +325,8 @@ const JobEdit: React.FC = () => {
 			// Create the job update payload
 			const jobUpdatePayload = getjobUpdatePayLoad()
 
-			if (jobId) {
-				await jobService.updateJob(jobId, jobUpdatePayload)
-				message.success("Job updated successfully!")
-			}
+			await jobService.updateJob(jobId, jobUpdatePayload)
+			message.success("Job updated successfully!")
 
 			// Refresh jobs and navigate back to jobs list
 			fetchJobs()
@@ -423,7 +421,7 @@ const JobEdit: React.FC = () => {
 					<div className="flex items-center gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
@@ -504,7 +502,7 @@ const JobEdit: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div>
 					<button
-						className="rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+						className="rounded-md border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
 						onClick={handleBack}
 						disabled={currentStep === "source"}
 						style={{
@@ -520,7 +518,7 @@ const JobEdit: React.FC = () => {
 				>
 					{currentStep === "schema" && jobId && (
 						<button
-							className="flex items-center justify-center gap-2 rounded-[6px] border border-[#203FDD] px-4 py-1 font-light text-[#203FDD] hover:bg-[#F5F7FF]"
+							className="flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-1 font-light text-primary hover:bg-primary-50"
 							onClick={handleSaveStreams}
 							disabled={isSubmitting}
 						>
@@ -528,7 +526,7 @@ const JobEdit: React.FC = () => {
 						</button>
 					)}
 					<button
-						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 						disabled={isSubmitting}
 					>

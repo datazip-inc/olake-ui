@@ -21,7 +21,7 @@ import {
 } from "@phosphor-icons/react"
 import {
 	CARD_STYLE,
-	PartioningRegexTooltip,
+	PartitioningRegexTooltip,
 	TAB_STYLES,
 } from "../../../../utils/constants"
 import { operatorOptions } from "../../../../utils/utils"
@@ -490,7 +490,7 @@ const StreamConfiguration = ({
 					<div className="flex items-center justify-between">
 						<span>{field}</span>
 						{stream.stream.source_defined_primary_key?.includes(field) && (
-							<span className="text-[#203FDD]">PK</span>
+							<span className="text-primary">PK</span>
 						)}
 					</div>
 				),
@@ -735,7 +735,7 @@ const StreamConfiguration = ({
 			<div className="flex items-center gap-0.5">
 				<div className="text-[#575757]">Partitioning regex:</div>
 
-				<Tooltip title={PartioningRegexTooltip}>
+				<Tooltip title={PartitioningRegexTooltip}>
 					<Info className="size-5 cursor-help items-center pt-1 text-gray-400" />
 				</Tooltip>
 				<a
@@ -746,7 +746,7 @@ const StreamConfiguration = ({
 					}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="flex items-center text-[#203FDD] hover:text-[#203FDD]/80"
+					className="flex items-center text-primary hover:text-primary/80"
 				>
 					<ArrowSquareOut className="size-5" />
 				</a>
@@ -762,7 +762,7 @@ const StreamConfiguration = ({
 					/>
 					{!activePartitionRegex ? (
 						<Button
-							className="mt-2 w-fit bg-[#203FDD] px-1 py-3 font-light text-white"
+							className="mt-2 w-fit bg-primary px-1 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
 							disabled={!partitionRegex || isStreamInInitialSelection}
 						>
@@ -779,7 +779,7 @@ const StreamConfiguration = ({
 									type="text"
 									danger
 									size="small"
-									className="rounded-[6px] py-1 text-sm"
+									className="rounded-md py-1 text-sm"
 									onClick={handleClearPartitionRegex}
 									disabled={isStreamInInitialSelection}
 								>
@@ -804,7 +804,7 @@ const StreamConfiguration = ({
 				<div key={index}>
 					{index > 0 && (
 						<div className="mb-4 flex items-center justify-between">
-							<div className="flex rounded-md bg-[#e9ebfc] p-1">
+							<div className="flex rounded-md bg-primary-100 p-1">
 								<button
 									type="button"
 									onClick={() => handleLogicalOperatorChange("and")}
@@ -920,7 +920,7 @@ const StreamConfiguration = ({
 		<div>
 			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
 			<div className="mb-4 w-full">
-				<div className="grid grid-cols-3 gap-1 rounded-[6px] bg-[#F5F5F5] p-1">
+				<div className="grid grid-cols-3 gap-1 rounded-md bg-[#F5F5F5] p-1">
 					<TabButton
 						id="config"
 						label="Config"

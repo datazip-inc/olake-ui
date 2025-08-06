@@ -255,14 +255,14 @@ const JobSettings: React.FC = () => {
 								<div className="flex items-center gap-2">
 									<Link
 										to="/jobs"
-										className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 									>
 										<ArrowLeft className="size-5" />
 									</Link>
 
 									<div className="text-2xl font-bold">{job?.name || ""}</div>
 								</div>
-								<div className="ml-10 mt-1.5 w-fit rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
+								<div className="ml-10 mt-1.5 w-fit rounded bg-primary-200 px-2 py-1 text-xs text-primary-700">
 									{job?.activate ? "Active" : "Inactive"}
 								</div>
 							</div>
@@ -427,7 +427,7 @@ const JobSettings: React.FC = () => {
 										</div>
 										<button
 											onClick={handleDeleteJob}
-											className="rounded-[6px] border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
+											className="rounded-md border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
 										>
 											Delete this job
 										</button>
@@ -445,7 +445,7 @@ const JobSettings: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleSaveSettings}
-						className="flex items-center gap-1 bg-[#203FDD] hover:bg-[#132685]"
+						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
 					>
 						Save{" "}
 						<ArrowRight

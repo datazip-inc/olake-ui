@@ -20,7 +20,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 			width={400}
 		>
 			<div className="flex flex-col items-center justify-center gap-4 py-4">
-				<div className="rounded-xl bg-[#F0F0F0] p-2">
+				<div className="rounded-xl bg-neutral-light p-2">
 					{type === "source" ? (
 						<LinktreeLogo className="z-10 size-5 text-[#6E6E6E]" />
 					) : type === "config" ? (

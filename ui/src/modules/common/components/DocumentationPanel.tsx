@@ -135,14 +135,14 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					style={{ transition: "opacity 0.3s ease" }}
 				>
 					{!isDocPanelCollapsed && (
-						<div className="absolute right-4 top-3.5 z-10">
+						<div className="absolute right-16 top-3.5 z-10">
 							<Button
 								type="default"
 								icon={
 									<ArrowSquareOut
 										size={20}
 										weight="bold"
-										className="text-[#203fdd]"
+										className="text-primary"
 									/>
 								}
 								onClick={openInNewTab}
@@ -167,17 +167,17 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					{isDocPanelCollapsed && (
 						<div className="flex h-full w-full items-start justify-center">
 							<div className="absolute right-3 top-10 z-10 flex flex-col gap-2">
-								<div className="rounded-xl border border-gray-200 bg-[#F0F0F0] p-2">
+								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
 									<Info
 										size={25}
-										className="cursor-pointer text-[#203fdd] transition-all duration-300 ease-in-out hover:text-[#203fdd]/80"
+										className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 										onClick={toggleDocPanel}
 									/>
 								</div>
-								<div className="rounded-xl border border-gray-200 bg-[#F0F0F0] p-2">
+								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
 									<ArrowSquareOut
 										size={25}
-										className="cursor-pointer text-[#203fdd] transition-all duration-300 ease-in-out hover:text-[#203fdd]/80"
+										className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 										onClick={openInNewTab}
 									/>
 								</div>

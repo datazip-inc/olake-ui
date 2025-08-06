@@ -98,8 +98,6 @@ const CreateDestination = forwardRef<
 		>(null)
 		const [validating, setValidating] = useState(false)
 		const navigate = useNavigate()
-		const [isDocPanelCollapsed, setIsDocPanelCollapsed] =
-			useState(docsMinimized)
 
 		const {
 			destinations,
@@ -587,10 +585,8 @@ const CreateDestination = forwardRef<
 			)
 
 		const handleToggleDocPanel = () => {
-			const newState = !isDocPanelCollapsed
-			setIsDocPanelCollapsed(newState)
 			if (onDocsMinimizedChange) {
-				onDocsMinimizedChange(newState)
+				onDocsMinimizedChange(prev => !prev)
 			}
 		}
 
@@ -601,7 +597,7 @@ const CreateDestination = forwardRef<
 						<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 							<Link
 								to={"/destinations"}
-								className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
 							>
 								<ArrowLeft className="mr-1 size-5" />
 							</Link>
@@ -638,12 +634,12 @@ const CreateDestination = forwardRef<
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
 										onClick={handleCancel}
-										className="ml-1 rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+										className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
 									>
 										Cancel
 									</button>
 									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
 										onClick={handleCreate}
 									>
 										Create
@@ -656,7 +652,7 @@ const CreateDestination = forwardRef<
 						<DocumentationPanel
 							docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
 							showResizer={true}
-							isMinimized={isDocPanelCollapsed}
+							isMinimized={docsMinimized}
 							onToggle={handleToggleDocPanel}
 						/>
 					</div>

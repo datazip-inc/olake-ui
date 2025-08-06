@@ -30,7 +30,7 @@ export interface CreateSourceProps {
 	onFormDataChange?: (formData: any) => void
 	onVersionChange?: (version: string) => void
 	docsMinimized?: boolean
-	onDocsMinimizedChange?: (minimized: boolean) => void
+	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export interface SourceJob {
@@ -61,5 +61,5 @@ export interface SourceEditProps {
 	onVersionChange?: (version: string) => void
 	onFormDataChange?: (config: Record<string, any>) => void
 	docsMinimized?: boolean
-	onDocsMinimizedChange?: (minimized: boolean) => void
+	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }

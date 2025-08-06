@@ -185,7 +185,7 @@ const DirectFormField = ({
 		const itemType = schema.items?.type || "string"
 
 		return (
-			<div className="rounded-[6px] border border-gray-300 p-3">
+			<div className="rounded-md border border-gray-300 p-3">
 				<div className="mb-2">
 					{arrayValues.map((item, index) => (
 						<div
@@ -197,7 +197,7 @@ const DirectFormField = ({
 									<Input
 										value={item}
 										onChange={e => handleArrayItemEdit(index, e.target.value)}
-										className="w-full rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
+										className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
 										disabled={disabled}
 									/>
 								)}
@@ -218,18 +218,18 @@ const DirectFormField = ({
 							value={arrayItemInput}
 							onChange={e => setArrayItemInput(e.target.value)}
 							placeholder={`Add ${schema.title || name} item...`}
-							onKeyPress={e => {
+							onKeyDown={e => {
 								if (e.key === "Enter") {
 									e.preventDefault()
 									handleArrayItemAdd()
 								}
 							}}
-							className="flex-grow rounded-[6px] border border-gray-300 px-3 py-2 text-sm"
+							className="flex-grow rounded-md border border-gray-300 px-3 py-2 text-sm"
 							disabled={disabled}
 						/>
 						<Button
 							type="primary"
-							className="ml-2 bg-[#203FDD] hover:bg-blue-700"
+							className="ml-2 bg-primary hover:bg-primary-600"
 							onClick={handleArrayItemAdd}
 							icon={<Plus className="size-4" />}
 							disabled={disabled}
@@ -260,7 +260,7 @@ const DirectFormField = ({
 					onChange={handleChange}
 					placeholder={schema.placeholder}
 					disabled={disabled}
-					className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+					className={`w-full rounded-md border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
 				/>
 			)
 		}
@@ -305,7 +305,7 @@ const DirectFormField = ({
 						onChange={handleChange}
 						placeholder={schema.placeholder}
 						disabled={disabled}
-						className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+						className={`w-full rounded-md border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
 					/>
 					<button
 						type="button"
@@ -332,7 +332,7 @@ const DirectFormField = ({
 				onChange={handleChange}
 				placeholder={schema.placeholder}
 				disabled={disabled}
-				className={`w-full rounded-[6px] border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+				className={`w-full rounded-md border ${localError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
 			/>
 		)
 	}

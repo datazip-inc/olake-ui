@@ -77,7 +77,7 @@ const EditSourceModal = () => {
 					<div className="flex justify-center">
 						<Warning
 							weight="fill"
-							className="size-12 text-[#203FDD]"
+							className="size-12 text-primary"
 						/>
 					</div>
 				}
@@ -129,7 +129,7 @@ const EditSourceModal = () => {
 										className={`rounded px-2 py-1 text-xs ${
 											!activate
 												? "bg-[#FFF1F0] text-[#F5222D]"
-												: "bg-[#E6F4FF] text-[#0958D9]"
+												: "bg-primary-200 text-primary-700"
 										}`}
 									>
 										{activate ? "Active" : "Inactive"}

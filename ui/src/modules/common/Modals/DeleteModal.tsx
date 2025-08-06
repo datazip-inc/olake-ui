@@ -67,7 +67,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
 							? "bg-[#FFF1F0] text-[#F5222D]"
-							: "bg-[#E6F4FF] text-[#0958D9]"
+							: "bg-primary-200 text-primary-700"
 					}`}
 				>
 					{activate ? "Active" : "Inactive"}
@@ -153,7 +153,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 					rowKey="id"
 					loading={loading}
 					pagination={false}
-					className="w-full rounded-[6px] border"
+					className="w-full rounded-md border"
 					rowClassName="no-hover"
 					scroll={{ y: 300 }}
 				/>

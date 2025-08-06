@@ -58,9 +58,9 @@ export const getStatusClass = (status: string) => {
 		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
 		case "running":
-			return "text-[#0958D9] bg-[#E6F4FF]"
+			return "text-primary-700 bg-primary-200"
 		case "scheduled":
-			return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
+			return "text-[rgba(0,0,0,88)] bg-neutral-light"
 		default:
 			return "text-[rgba(0,0,0,88)] bg-transparent"
 	}
