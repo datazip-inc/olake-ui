@@ -41,13 +41,13 @@ FRONTEND_DIR := $(PWD)/ui
 
 # Backend environment variables
 BACKEND_ENV_VARS = \
-      APPNAME=olake-server \
-      HTTPPORT=8000 \
-      RUNMODE=localdev \
-      COPYREQUESTBODY=true \
-      POSTGRESDB=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable \
-      LOGSDIR=./logger/logs \
-      SESSIONON=true \
+      APP_NAME=olake-server \
+      HTTP_PORT=8000 \
+      RUN_MODE=localdev \
+      COPY_REQUEST_BODY=true \
+      POSTGRES_DB=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable \
+      LOGS_DIR=./logger/logs \
+      SESSION_ON=true \
       TEMPORAL_ADDRESS=localhost:7233
 
 # Frontend environment variables

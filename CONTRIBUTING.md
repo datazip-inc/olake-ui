@@ -52,7 +52,7 @@ To contribute to this project, we need you to sign the [**Contributor License Ag
 8. **Submit a Pull Request**  
    - Go to your fork on GitHub.  
    - Click "Compare & pull request."  
-   - Target the `master` branch.  
+   - Target the `staging` branch.  
    - Add a clear title and description.  
    - Submit.
 
