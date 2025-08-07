@@ -233,7 +233,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								<div className={frequency === "weeks" ? "" : "ml-4"}>
 									<label className="mb-2 block text-sm">
 										Job Start Time{" "}
-										<span className="text-[#A7A7A7]">(12H Format UTC)</span>
+										<span className="text-gray-500">(12H Format UTC)</span>
 									</label>
 									<div className="flex items-center gap-1">
 										<Select

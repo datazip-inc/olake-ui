@@ -6,6 +6,7 @@ import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
 	StreamData,
+	SyncMode,
 } from "../../../types"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StepTitle from "../../common/components/StepTitle"
@@ -155,7 +156,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
-		newSyncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc",
+		newSyncMode: SyncMode,
 	) => {
 		setApiResponse(prev => {
 			if (!prev) return prev
@@ -383,12 +384,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			// Sync mode filtering
 			let passesSyncModeFilter = true
-			type SyncMode = "cdc" | "full_refresh" | "incremental" | "strict_cdc"
 			const activeSyncModeFilters = [
-				fullRefreshIsActive ? ("full_refresh" as SyncMode) : false,
-				incrementalIsActive ? ("incremental" as SyncMode) : false,
-				cdcIsActive ? ("cdc" as SyncMode) : false,
-				strictCdcIsActive ? ("strict_cdc" as SyncMode) : false,
+				fullRefreshIsActive ? SyncMode.FULL_REFRESH : false,
+				incrementalIsActive ? SyncMode.INCREMENTAL : false,
+				cdcIsActive ? SyncMode.CDC : false,
+				strictCdcIsActive ? SyncMode.STRICT_CDC : false,
 			].filter((mode): mode is SyncMode => mode !== false)
 
 			if (activeSyncModeFilters.length > 0) {
@@ -492,7 +492,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
@@ -504,7 +504,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onSyncModeChange={(
 								streamName: string,
 								namespace: string,
-								syncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc",
+								syncMode: SyncMode,
 							) => {
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}

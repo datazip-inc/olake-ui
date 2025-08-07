@@ -66,7 +66,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 				<span
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
-							? "bg-[#FFF1F0] text-[#F5222D]"
+							? "bg-danger-light text-danger"
 							: "bg-primary-200 text-primary-700"
 					}`}
 				>
@@ -138,10 +138,10 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 			<div className="flex flex-col items-center justify-center gap-7 py-8">
 				<Warning
 					weight="fill"
-					className="h-[55px] w-[63px] text-[#F5222D]"
+					className="h-[55px] w-[63px] text-danger"
 				/>
 				<div className="flex flex-col items-center">
-					<div className="text-center text-xl font-medium text-[#2B2B2B]">
+					<div className="text-center text-xl font-medium text-gray-950">
 						Deleting {entity?.name} {fromSource ? "source" : "destination"} will
 						disable these <br></br>jobs. Are you sure you want to continue?
 					</div>

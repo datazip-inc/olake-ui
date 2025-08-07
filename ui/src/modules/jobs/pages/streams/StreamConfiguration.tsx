@@ -6,6 +6,7 @@ import {
 	LogicalOperator,
 	MultiFilterCondition,
 	CombinedStreamsData,
+	SyncMode,
 } from "../../../../types"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import StreamsSchema from "./StreamsSchema"
@@ -21,6 +22,7 @@ import {
 } from "@phosphor-icons/react"
 import {
 	CARD_STYLE,
+	DESTINATION_INTERNAL_TYPES,
 	PartitioningRegexTooltip,
 	TAB_STYLES,
 } from "../../../../utils/constants"
@@ -38,13 +40,13 @@ const StreamConfiguration = ({
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
-	destinationType = "s3",
+	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
-		stream.stream.sync_mode === "full_refresh"
+		stream.stream.sync_mode === SyncMode.FULL_REFRESH
 			? "full"
-			: stream.stream.sync_mode === "incremental"
+			: stream.stream.sync_mode === SyncMode.INCREMENTAL
 				? "incremental"
 				: "cdc",
 	)
@@ -110,14 +112,14 @@ const StreamConfiguration = ({
 			setShowFallbackSelector(false)
 		}
 
-		if (initialApiSyncMode === "full_refresh") {
+		if (initialApiSyncMode === SyncMode.FULL_REFRESH) {
 			setSyncMode("full")
-		} else if (initialApiSyncMode === "cdc") {
+		} else if (initialApiSyncMode === SyncMode.CDC) {
 			setSyncMode("cdc")
-		} else if (initialApiSyncMode === "strict_cdc") {
+		} else if (initialApiSyncMode === SyncMode.STRICT_CDC) {
 			setSyncMode("cdc")
 			initialEnableBackfillForSwitch = false
-		} else if (initialApiSyncMode === "incremental") {
+		} else if (initialApiSyncMode === SyncMode.INCREMENTAL) {
 			setSyncMode("incremental")
 		}
 		setNormalisation(initialNormalization)
@@ -196,12 +198,12 @@ const StreamConfiguration = ({
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
-		let newApiSyncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc"
+		let newApiSyncMode: SyncMode
 		let newEnableBackfillState = true
 		if (selectedRadioValue === "full") {
-			newApiSyncMode = "full_refresh"
+			newApiSyncMode = SyncMode.FULL_REFRESH
 		} else if (selectedRadioValue === "incremental") {
-			newApiSyncMode = "incremental"
+			newApiSyncMode = SyncMode.INCREMENTAL
 			// Auto-select first available cursor field if none is selected
 			const availableCursorFields = stream.stream.available_cursor_fields || []
 			if (!stream.stream.cursor_field && availableCursorFields.length > 0) {
@@ -209,9 +211,9 @@ const StreamConfiguration = ({
 				stream.stream.cursor_field = firstCursorField
 			}
 		} else if (selectedRadioValue === "cdc") {
-			newApiSyncMode = "cdc"
+			newApiSyncMode = SyncMode.CDC
 		} else {
-			newApiSyncMode = "strict_cdc"
+			newApiSyncMode = SyncMode.STRICT_CDC
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
@@ -532,7 +534,7 @@ const StreamConfiguration = ({
 			<div className="flex flex-col gap-4">
 				<div className={CARD_STYLE}>
 					<div className="mb-4">
-						<label className="mb-3 block w-full font-medium text-[#575757]">
+						<label className="mb-3 block w-full font-medium text-neutral-text">
 							Sync mode:
 						</label>
 						<Radio.Group
@@ -542,25 +544,25 @@ const StreamConfiguration = ({
 						>
 							<Radio
 								value="full"
-								disabled={!isSyncModeSupported("full_refresh")}
+								disabled={!isSyncModeSupported(SyncMode.FULL_REFRESH)}
 							>
 								Full Refresh
 							</Radio>
 							<Radio
 								value="incremental"
-								disabled={!isSyncModeSupported("incremental")}
+								disabled={!isSyncModeSupported(SyncMode.INCREMENTAL)}
 							>
 								Full Refresh + Incremental
 							</Radio>
 							<Radio
 								value="cdc"
-								disabled={!isSyncModeSupported("cdc")}
+								disabled={!isSyncModeSupported(SyncMode.CDC)}
 							>
 								Full Refresh + CDC
 							</Radio>
 							<Radio
 								value="strict_cdc"
-								disabled={!isSyncModeSupported("strict_cdc")}
+								disabled={!isSyncModeSupported(SyncMode.STRICT_CDC)}
 							>
 								CDC Only
 							</Radio>
@@ -570,7 +572,7 @@ const StreamConfiguration = ({
 								<div className="mb-4 mr-2">
 									<div className="flex w-full gap-4">
 										<div className="flex w-1/2 flex-col">
-											<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
+											<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 												Cursor field:
 												<Tooltip title="Column for identifying new/updated records ">
 													<Info className="size-3.5 cursor-pointer" />
@@ -588,7 +590,7 @@ const StreamConfiguration = ({
 													onSyncModeChange?.(
 														stream.stream.name,
 														stream.stream.namespace || "",
-														"incremental",
+														SyncMode.INCREMENTAL,
 													)
 												}}
 												optionLabelProp="label"
@@ -624,10 +626,10 @@ const StreamConfiguration = ({
 										{stream.stream.cursor_field &&
 											(showFallbackSelector || fallBackCursorField) && (
 												<div className="flex w-1/2 flex-col">
-													<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
+													<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 														Fallback Cursor:
 														<Tooltip title="Alternative cursor column in case cursor column encounters null values">
-															<Info className="size-3.5 cursor-pointer text-[#575757]" />
+															<Info className="size-3.5 cursor-pointer text-neutral-text" />
 														</Tooltip>
 													</label>
 													<Select
@@ -642,7 +644,7 @@ const StreamConfiguration = ({
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
-																"incremental",
+																SyncMode.INCREMENTAL,
 															)
 														}}
 														allowClear
@@ -654,7 +656,7 @@ const StreamConfiguration = ({
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
-																"incremental",
+																SyncMode.INCREMENTAL,
 															)
 														}}
 														optionLabelProp="label"
@@ -678,7 +680,7 @@ const StreamConfiguration = ({
 				</div>
 
 				<div
-					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE}`}
+					className={`${!isSelected ? "font-normal text-text-disabled" : "font-medium"} ${CARD_STYLE}`}
 				>
 					<div className="flex items-center justify-between">
 						<label>Normalisation</label>
@@ -697,7 +699,7 @@ const StreamConfiguration = ({
 				)}
 
 				<div
-					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE} !p-0`}
+					className={`${!isSelected ? "font-normal text-text-disabled" : "font-medium"} ${CARD_STYLE} !p-0`}
 				>
 					<div className="flex items-center justify-between !p-3">
 						<label className="">Data Filter</label>
@@ -733,14 +735,14 @@ const StreamConfiguration = ({
 	const renderPartitioningRegexContent = () => (
 		<>
 			<div className="flex items-center gap-0.5">
-				<div className="text-[#575757]">Partitioning regex:</div>
+				<div className="text-neutral-text">Partitioning regex:</div>
 
 				<Tooltip title={PartitioningRegexTooltip}>
-					<Info className="size-5 cursor-help items-center pt-1 text-gray-400" />
+					<Info className="size-5 cursor-help items-center pt-1 text-gray-500" />
 				</Tooltip>
 				<a
 					href={
-						destinationType === "s3"
+						destinationType === DESTINATION_INTERNAL_TYPES.S3
 							? "https://olake.io/docs/writers/parquet/partitioning"
 							: "https://olake.io/docs/writers/iceberg/partitioning"
 					}
@@ -762,7 +764,7 @@ const StreamConfiguration = ({
 					/>
 					{!activePartitionRegex ? (
 						<Button
-							className="mt-2 w-fit bg-primary px-1 py-3 font-light text-white"
+							className="mt-2 w-fit bg-primary px-2 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
 							disabled={!partitionRegex || isStreamInInitialSelection}
 						>
@@ -770,7 +772,7 @@ const StreamConfiguration = ({
 						</Button>
 					) : (
 						<div className="mt-4">
-							<div className="text-sm text-[#575757]">
+							<div className="text-sm text-neutral-text">
 								Active partition regex:
 							</div>
 							<div className="mt-2 flex items-center justify-between text-sm">
@@ -842,13 +844,13 @@ const StreamConfiguration = ({
 						</div>
 					)}
 					<div className="mb-4">
-						<div className="mb-2 text-sm font-medium text-[#575757]">
+						<div className="mb-2 text-sm font-medium text-neutral-text">
 							Column {index === 0 ? "I" : "II"}
 						</div>
 						{index === 0 && (
-							<div className="mb-4 flex items-center gap-1 rounded-lg bg-[#FFF7E6] p-2 text-[#FFF6D5]">
-								<Lightning className="size-4 font-bold text-[#DAAC06]" />
-								<div className="text-[#6E5807]">
+							<div className="mb-4 flex items-center gap-1 rounded-lg bg-warning-light p-2 text-warning-light">
+								<Lightning className="size-4 font-bold text-warning" />
+								<div className="text-warning-dark">
 									Selecting indexed columns will enhance performance
 								</div>
 							</div>
@@ -856,7 +858,7 @@ const StreamConfiguration = ({
 					</div>
 					<div className="grid grid-cols-[50%_15%_30%] gap-4">
 						<div>
-							<label className="mb-2 block text-sm text-[#575757]">
+							<label className="mb-2 block text-sm text-neutral-text">
 								Column Name
 							</label>
 							<Select
@@ -873,7 +875,7 @@ const StreamConfiguration = ({
 							/>
 						</div>
 						<div>
-							<label className="mb-2 block text-sm text-[#575757]">
+							<label className="mb-2 block text-sm text-neutral-text">
 								Operator
 							</label>
 							<Select
@@ -920,7 +922,7 @@ const StreamConfiguration = ({
 		<div>
 			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
 			<div className="mb-4 w-full">
-				<div className="grid grid-cols-3 gap-1 rounded-md bg-[#F5F5F5] p-1">
+				<div className="grid grid-cols-3 gap-1 rounded-md bg-[#f5f5f5] p-1">
 					<TabButton
 						id="config"
 						label="Config"

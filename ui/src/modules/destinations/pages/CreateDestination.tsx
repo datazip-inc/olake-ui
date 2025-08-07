@@ -19,6 +19,7 @@ import {
 import {
 	CATALOG_TYPES,
 	CONNECTOR_TYPES,
+	DESTINATION_INTERNAL_TYPES,
 	IcebergCatalogTypes,
 	mapCatalogValueToType,
 	SETUP_TYPES,
@@ -73,8 +74,9 @@ const CreateDestination = forwardRef<
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
 				? CONNECTOR_TYPES.AMAZON_S3
-				: initialConnector === "s3" ||
-					  initialConnector.toLowerCase() === "amazon s3"
+				: initialConnector === DESTINATION_INTERNAL_TYPES.S3 ||
+					  initialConnector.toLowerCase() ===
+							DESTINATION_INTERNAL_TYPES.AMAZON_S3
 					? CONNECTOR_TYPES.AMAZON_S3
 					: CONNECTOR_TYPES.APACHE_ICEBERG,
 		)
@@ -160,7 +162,7 @@ const CreateDestination = forwardRef<
 		useEffect(() => {
 			if (initialConnector) {
 				setConnector(
-					initialConnector === "s3"
+					initialConnector === DESTINATION_INTERNAL_TYPES.S3
 						? CONNECTOR_TYPES.AMAZON_S3
 						: CONNECTOR_TYPES.APACHE_ICEBERG,
 				)
@@ -331,7 +333,10 @@ const CreateDestination = forwardRef<
 				: undefined
 			const newDestinationData = {
 				name: destinationName,
-				type: connector === CONNECTOR_TYPES.AMAZON_S3 ? "s3" : "iceberg",
+				type:
+					connector === CONNECTOR_TYPES.AMAZON_S3
+						? DESTINATION_INTERNAL_TYPES.S3
+						: DESTINATION_INTERNAL_TYPES.ICEBERG,
 				version,
 				config: JSON.stringify({ ...formData, catalog: catalogInLowerCase }),
 			}
@@ -597,7 +602,7 @@ const CreateDestination = forwardRef<
 						<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 							<Link
 								to={"/destinations"}
-								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 							>
 								<ArrowLeft className="mr-1 size-5" />
 							</Link>
@@ -634,7 +639,7 @@ const CreateDestination = forwardRef<
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
 										onClick={handleCancel}
-										className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 									>
 										Cancel
 									</button>

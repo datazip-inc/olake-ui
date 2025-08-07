@@ -118,7 +118,7 @@ const JobLogs: React.FC = () => {
 							<div>
 								<Link
 									to={`/jobs/${jobId}/history`}
-									className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+									className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 								>
 									<ArrowLeft className="size-5" />
 								</Link>

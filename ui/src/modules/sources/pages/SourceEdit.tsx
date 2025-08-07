@@ -348,7 +348,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				<span
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
-							? "bg-[#FFF1F0] text-[#F5222D]"
+							? "bg-danger-light text-danger"
 							: "bg-primary-200 text-primary-700"
 					}`}
 				>
@@ -415,7 +415,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 						<Link
 							to="/sources"
-							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="size-5" />
 						</Link>
@@ -455,7 +455,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === "config"
 													? "mr-1 bg-primary text-center text-neutral-light"
-													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+													: "mr-1 bg-[#f5f5f5] text-center text-text-primary"
 											}`}
 											onClick={() => setActiveTab("config")}
 										>
@@ -466,7 +466,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === "jobs"
 													? "mr-1 bg-primary text-center text-neutral-light"
-													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+													: "mr-1 bg-gray-200 text-center text-text-primary"
 											}`}
 											onClick={() => setActiveTab("jobs")}
 										>
@@ -607,7 +607,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 								<div>
 									<button
-										className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 										onClick={handleDelete}
 									>
 										Delete

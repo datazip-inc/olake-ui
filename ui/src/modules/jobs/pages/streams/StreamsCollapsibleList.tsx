@@ -301,7 +301,7 @@ const StreamsCollapsibleList = ({
 								className="mb-2 border border-solid border-[#e5e7eb]"
 							>
 								<div
-									className="flex cursor-pointer items-center border-b border-solid border-[#e5e7eb] bg-[#f5f5f5] p-3"
+									className="flex cursor-pointer items-center border-b border-solid border-gray-200 bg-[#f5f5f5] p-3"
 									onClick={() => handleToggleNamespace(ns)}
 								>
 									<Checkbox

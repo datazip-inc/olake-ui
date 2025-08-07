@@ -111,7 +111,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 				>
 					<button
 						onClick={toggleDocPanel}
-						className="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-[#383838] shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
+						className="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-gray-900 shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
 					>
 						<div
 							className={`transition-transform duration-300 ${

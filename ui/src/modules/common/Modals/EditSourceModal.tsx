@@ -128,7 +128,7 @@ const EditSourceModal = () => {
 									<span
 										className={`rounded px-2 py-1 text-xs ${
 											!activate
-												? "bg-[#FFF1F0] text-[#F5222D]"
+												? "bg-danger-light text-danger"
 												: "bg-primary-200 text-primary-700"
 										}`}
 									>
@@ -185,7 +185,7 @@ const EditSourceModal = () => {
 				<div className="flex flex-col items-center justify-center gap-7 py-6">
 					<CheckCircle
 						weight="fill"
-						className="size-16 text-[#13AA52]"
+						className="size-16 text-success"
 					/>
 					<div className="flex flex-col items-center text-xl font-medium">
 						Changes are saved successfully

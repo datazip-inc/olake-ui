@@ -7,6 +7,7 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
+import { DESTINATION_INTERNAL_TYPES } from "../../utils/constants"
 
 const normalizeDestinationType = (type: string): string => {
 	const typeMap: Record<string, string> = {
@@ -98,9 +99,10 @@ export const destinationService = {
 				{
 					type:
 						destination.type.toLowerCase() === "apache iceberg"
-							? "iceberg"
-							: destination.type.toLowerCase() === "amazon s3"
-								? "s3"
+							? DESTINATION_INTERNAL_TYPES.ICEBERG
+							: destination.type.toLowerCase() ===
+								  DESTINATION_INTERNAL_TYPES.AMAZON_S3
+								? DESTINATION_INTERNAL_TYPES.S3
 								: destination.type.toLowerCase(),
 					version: destination.version,
 					config: destination.config,
@@ -138,7 +140,10 @@ export const destinationService = {
 		const normalizedType = normalizeDestinationType(type)
 		let normalizedCatalog = normalizeCatalogType(catalog)
 
-		if (normalizedType === "iceberg" && normalizedCatalog === "none") {
+		if (
+			normalizedType === DESTINATION_INTERNAL_TYPES.ICEBERG &&
+			normalizedCatalog === "none"
+		) {
 			normalizedCatalog = "glue"
 		}
 

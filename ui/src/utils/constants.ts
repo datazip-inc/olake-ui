@@ -86,6 +86,8 @@ export const ENTITY_TYPES = {
 export const DESTINATION_INTERNAL_TYPES = {
 	ICEBERG: "iceberg",
 	S3: "s3",
+	AMAZON_S3: "amazon s3",
+	APACHE_ICEBERG: "apache iceberg",
 }
 
 export const JOB_TYPES = {

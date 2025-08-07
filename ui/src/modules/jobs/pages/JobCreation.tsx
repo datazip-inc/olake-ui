@@ -22,6 +22,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -47,7 +48,7 @@ const JobCreation: React.FC = () => {
 	const [destinationCatalogType, setDestinationCatalogType] =
 		useState<CatalogType | null>(null)
 	const [destinationConnector, setDestinationConnector] = useState(
-		initialData.destinationConnector || "s3",
+		initialData.destinationConnector || DESTINATION_INTERNAL_TYPES.S3,
 	)
 	const [destinationFormData, setDestinationFormData] = useState<any>(
 		initialData.destinationFormData || {},
@@ -193,24 +194,23 @@ const JobCreation: React.FC = () => {
 				streams_config: JSON.stringify(selectedStreams),
 				frequency: cronExpression, // Use cron expression instead of frequency-value format
 			}
-			addJob(newJobData)
-				.then(() => {
-					// If this was a saved job, remove it from localStorage
-					if (savedJobId) {
-						const savedJobs = JSON.parse(
-							localStorage.getItem("savedJobs") || "[]",
-						)
-						const updatedSavedJobs = savedJobs.filter(
-							(job: any) => job.id !== savedJobId,
-						)
-						localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
-					}
-					setShowEntitySavedModal(true)
-				})
-				.catch(error => {
-					console.error("Error adding job:", error)
-					message.error("Failed to create job")
-				})
+			try {
+				await addJob(newJobData)
+				// If this was a saved job, remove it from localStorage
+				if (savedJobId) {
+					const savedJobs = JSON.parse(
+						localStorage.getItem("savedJobs") || "[]",
+					)
+					const updatedSavedJobs = savedJobs.filter(
+						(job: any) => job.id !== savedJobId,
+					)
+					localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+				}
+				setShowEntitySavedModal(true)
+			} catch (error) {
+				console.error("Error adding job:", error)
+				message.error("Failed to create job")
+			}
 		}
 	}
 
@@ -290,7 +290,7 @@ const JobCreation: React.FC = () => {
 					<div className="flex items-center gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
@@ -341,12 +341,16 @@ const JobCreation: React.FC = () => {
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
 								initialConnector={
-									destinationConnector.toLowerCase() === "s3" ||
-									destinationConnector.toLowerCase() === "amazon s3" // TODO: dont manage different types use single at every place
-										? "s3"
-										: destinationConnector.toLowerCase() === "apache iceberg" ||
-											  destinationConnector.toLowerCase() === "iceberg"
-											? "iceberg"
+									destinationConnector.toLowerCase() ===
+										DESTINATION_INTERNAL_TYPES.S3 ||
+									destinationConnector.toLowerCase() ===
+										DESTINATION_INTERNAL_TYPES.AMAZON_S3 // TODO: dont manage different types use single at every place
+										? DESTINATION_INTERNAL_TYPES.S3
+										: destinationConnector.toLowerCase() ===
+													DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG ||
+											  destinationConnector.toLowerCase() ===
+													DESTINATION_INTERNAL_TYPES.ICEBERG
+											? DESTINATION_INTERNAL_TYPES.ICEBERG
 											: destinationConnector.toLowerCase()
 								}
 								onFormDataChange={data => {
@@ -412,14 +416,14 @@ const JobCreation: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-md border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white"
 						onClick={handleCancel}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-md border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 					>
 						<DownloadSimple className="size-4" />
 						Save Job
@@ -431,7 +435,7 @@ const JobCreation: React.FC = () => {
 					{currentStep !== "source" && (
 						<button
 							onClick={handleBack}
-							className="mr-4 rounded-md border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 						>
 							Back
 						</button>

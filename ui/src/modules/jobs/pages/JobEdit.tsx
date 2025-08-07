@@ -25,6 +25,7 @@ import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
+import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -215,7 +216,7 @@ const JobEdit: React.FC = () => {
 
 		setDestinationData({
 			name: "New Destination",
-			type: "s3",
+			type: DESTINATION_INTERNAL_TYPES.S3,
 			config: {
 				normalization: false,
 				s3_bucket: "",
@@ -421,7 +422,7 @@ const JobEdit: React.FC = () => {
 					<div className="flex items-center gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
@@ -502,7 +503,7 @@ const JobEdit: React.FC = () => {
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div>
 					<button
-						className="rounded-md border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+						className="rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 						onClick={handleBack}
 						disabled={currentStep === "source"}
 						style={{

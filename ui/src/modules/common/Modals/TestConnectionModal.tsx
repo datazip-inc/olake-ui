@@ -19,8 +19,8 @@ const TestConnectionModal = () => {
 					className="max-w-[70%]"
 				/>
 				<div className="flex flex-col items-center">
-					<p className="text-[#8A8A8A]">Please wait...</p>
-					<div className="text-xl font-medium text-[#2B2B2B]">
+					<p className="text-text-tertiary">Please wait...</p>
+					<div className="text-xl font-medium text-gray-950">
 						Testing your connection
 					</div>
 				</div>

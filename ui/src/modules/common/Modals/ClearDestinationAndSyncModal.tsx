@@ -23,7 +23,7 @@ const ClearDestinationAndSyncModal = () => {
 					weight="fill"
 				/>
 
-				<div className="text-center text-xl font-medium text-[#2B2B2B]">
+				<div className="text-center text-xl font-medium text-gray-950">
 					Clear destination and sync deletes all the data in your destination
 					and sync your job
 				</div>

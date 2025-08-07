@@ -4,7 +4,7 @@ import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import { DAYS_MAP } from "./constants"
+import { DAYS_MAP, DESTINATION_INTERNAL_TYPES } from "./constants"
 import { CronParseResult } from "../types"
 import parser from "cron-parser"
 import { message } from "antd"
@@ -20,11 +20,14 @@ export const getConnectorImage = (connector: string) => {
 		return MySQL
 	} else if (lowerConnector === "oracle") {
 		return Oracle
-	} else if (lowerConnector === "s3" || lowerConnector === "amazon") {
+	} else if (
+		lowerConnector === DESTINATION_INTERNAL_TYPES.S3 ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.AMAZON_S3
+	) {
 		return AWSS3
 	} else if (
-		lowerConnector === "iceberg" ||
-		lowerConnector === "apache iceberg"
+		lowerConnector === DESTINATION_INTERNAL_TYPES.ICEBERG ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
 	) {
 		return ApacheIceBerg
 	}

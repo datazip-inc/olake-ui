@@ -16,11 +16,11 @@ const ClearDataModal = () => {
 		>
 			<div className="flex w-full flex-col items-center justify-center gap-8">
 				<Warning
-					className="size-16 text-[#F5222D]"
+					className="size-16 text-danger"
 					weight="fill"
 				/>
 
-				<div className="text-center text-xl font-medium text-[#2B2B2B]">
+				<div className="text-center text-xl font-medium text-gray-950">
 					Clear data will delete all data in your job.
 				</div>
 

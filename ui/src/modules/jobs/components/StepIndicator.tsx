@@ -27,7 +27,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 						isActive
 							? "border-primary outline outline-2 outline-primary"
 							: "border-gray-300 bg-white"
-					} ${isClickable || isEditMode ? "cursor-pointer hover:bg-[#E8EBFF]" : "cursor-not-allowed"}`}
+					} ${isClickable || isEditMode ? "cursor-pointer hover:bg-[#e8ebff]" : "cursor-not-allowed"}`}
 					onClick={handleClick}
 					disabled={!(isClickable || isEditMode)}
 					type="button"
@@ -43,7 +43,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 			</div>
 			<button
 				className={`mt-2 inline translate-x-[-40%] text-xs ${
-					isActive ? "text-primary" : "text-gray-500"
+					isActive ? "text-primary" : "text-[#6b7280]"
 				} ${isClickable || isEditMode ? "cursor-pointer hover:text-primary" : "cursor-not-allowed"}`}
 				onClick={handleClick}
 				disabled={!(isClickable || isEditMode)}

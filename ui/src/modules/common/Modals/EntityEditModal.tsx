@@ -107,7 +107,7 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 					<span
 						className={`rounded px-2 py-1 text-xs ${
 							!activate
-								? "bg-[#FFF1F0] text-[#F5222D]"
+								? "bg-danger-light text-danger"
 								: "bg-primary-200 text-primary-700"
 						}`}
 					>

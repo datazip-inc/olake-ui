@@ -373,7 +373,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					>
 						<input
 							type="text"
-							className={`h-8 w-full rounded-md border ${sourceNameError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+							className={`h-8 w-full rounded-md border ${sourceNameError ? "border-red-500" : "border-gray-400"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 							placeholder="Enter the name of your source"
 							value={sourceName}
 							onChange={handleSourceNameChange}
@@ -447,7 +447,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 							<Link
 								to={"/sources"}
-								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 							>
 								<ArrowLeft className="mr-1 size-5" />
 							</Link>
@@ -487,7 +487,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
 										onClick={handleCancel}
-										className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 									>
 										Cancel
 									</button>

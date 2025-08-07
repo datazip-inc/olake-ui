@@ -54,7 +54,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	onDocsMinimizedChange,
 }) => {
 	const { destinationId } = useParams<{ destinationId: string }>()
-	const isNewDestination = destinationId === "new"
 	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
@@ -157,13 +156,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			setDestinationName(initialData.name || "")
 			let connectorType = initialData.type
 			if (
-				connectorType?.toLowerCase() === "s3" ||
-				connectorType?.toLowerCase() === "amazon s3"
+				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.S3 ||
+				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.AMAZON_S3
 			) {
 				connectorType = CONNECTOR_TYPES.AMAZON_S3
 			} else if (
-				connectorType?.toLowerCase() === "iceberg" ||
-				connectorType?.toLowerCase() === "apache iceberg"
+				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.ICEBERG ||
+				connectorType?.toLowerCase() ===
+					DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
 			) {
 				connectorType = CONNECTOR_TYPES.APACHE_ICEBERG
 			}
@@ -455,7 +455,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				<span
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
-							? "bg-[#FFF1F0] text-[#F5222D]"
+							? "bg-danger-light text-danger"
 							: "bg-primary-200 text-primary-700"
 					}`}
 				>
@@ -665,15 +665,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 						<Link
 							to="/destinations"
-							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="size-5" />
 						</Link>
-						<div className="text-lg font-bold">
-							{isNewDestination
-								? "Create New Destination"
-								: destinationName || "<Destination_name>"}
-						</div>
+						<div className="text-lg font-bold">{destinationName}</div>
 					</div>
 				)}
 
@@ -709,24 +705,24 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === TAB_TYPES.CONFIG
 													? "mr-1 bg-primary text-center text-neutral-light"
-													: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+													: "mr-1 bg-[#f5f5f5] text-center text-text-primary"
 											}`}
 											onClick={() => setActiveTab(TAB_TYPES.CONFIG)}
 										>
 											Config
 										</button>
-										{!isNewDestination && (
+										{
 											<button
 												className={`w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 													activeTab === TAB_TYPES.JOBS
 														? "mr-1 bg-primary text-center text-neutral-light"
-														: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
+														: "mr-1 bg-[#f5f5f5] text-center text-text-primary"
 												}`}
 												onClick={() => setActiveTab(TAB_TYPES.JOBS)}
 											>
 												Associated jobs
 											</button>
-										)}
+										}
 									</div>
 								</div>
 							)}
@@ -740,14 +736,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						{!fromJobFlow && (
 							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 								<div>
-									{!isNewDestination && (
+									{
 										<button
-											className="ml-1 rounded-md border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
+											className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 											onClick={handleDelete}
 										>
 											Delete
 										</button>
-									)}
+									}
 								</div>
 								<div className="flex space-x-4">
 									<button

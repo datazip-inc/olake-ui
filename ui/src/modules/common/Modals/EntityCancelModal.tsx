@@ -26,11 +26,11 @@ const EntityCancelModal: React.FC<EntityCancelModalProps> = ({
 			<div className="flex flex-col items-center justify-center gap-6 py-4">
 				<div className="rounded-xl bg-neutral-light p-2">
 					{type === "source" ? (
-						<LinktreeLogo className="z-10 size-6 text-[#6E6E6E]" />
+						<LinktreeLogo className="z-10 size-6 text-text-link" />
 					) : type === "destination" ? (
-						<Path className="z-10 size-6 text-[#6E6E6E]" />
+						<Path className="z-10 size-6 text-text-link" />
 					) : (
-						<GitCommit className="z-10 size-6 text-[#6E6E6E]" />
+						<GitCommit className="z-10 size-6 text-text-link" />
 					)}
 				</div>
 				<div className="mb-4 text-center text-xl font-medium">

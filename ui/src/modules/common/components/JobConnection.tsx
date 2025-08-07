@@ -24,7 +24,7 @@ const JobConnection: React.FC<JobConnectionProps> = ({
 							className="size-8"
 							alt={`${sourceType} connector`}
 						/>
-						<div className="ml-2 text-[#A3A3A3]">-------</div>
+						<div className="ml-2 text-text-muted">-------</div>
 						<div className="w-36 truncate rounded-md border border-[#D9D9D9] bg-black bg-opacity-[2%] px-2 py-1 text-center text-black">
 							{jobName.length > 15 ? (
 								<Tooltip title={jobName}>{jobName}</Tooltip>
@@ -32,7 +32,7 @@ const JobConnection: React.FC<JobConnectionProps> = ({
 								jobName
 							)}
 						</div>
-						<div className="mr-2 text-[#A3A3A3]">-------</div>
+						<div className="mr-2 text-text-muted">-------</div>
 						<img
 							src={getConnectorImage(destinationType)}
 							className="size-8"

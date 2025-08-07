@@ -255,12 +255,12 @@ const JobSettings: React.FC = () => {
 								<div className="flex items-center gap-2">
 									<Link
 										to="/jobs"
-										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-[#f6f6f6] hover:text-black"
+										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 									>
 										<ArrowLeft className="size-5" />
 									</Link>
 
-									<div className="text-2xl font-bold">{job?.name || ""}</div>
+									<div className="text-2xl font-bold">{job?.name}</div>
 								</div>
 								<div className="ml-10 mt-1.5 w-fit rounded bg-primary-200 px-2 py-1 text-xs text-primary-700">
 									{job?.activate ? "Active" : "Inactive"}
@@ -360,7 +360,7 @@ const JobSettings: React.FC = () => {
 												<div className={frequency === "weeks" ? "" : "ml-4"}>
 													<label className="mb-2 block text-sm">
 														Job Start Time{" "}
-														<span className="text-[#A7A7A7]">
+														<span className="text-gray-500">
 															(12H Format UTC)
 														</span>
 													</label>
@@ -421,13 +421,13 @@ const JobSettings: React.FC = () => {
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">Delete the job:</div>
-											<div className="text-sm text-[#8A8A8A]">
+											<div className="text-sm text-text-tertiary">
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
 										<button
 											onClick={handleDeleteJob}
-											className="rounded-md border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
+											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
 										>
 											Delete this job
 										</button>

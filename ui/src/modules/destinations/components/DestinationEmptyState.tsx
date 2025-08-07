@@ -16,11 +16,11 @@ const DestinationEmptyState = ({
 				alt="Empty state"
 				className="mb-8 h-64 w-96"
 			/>
-			<div className="mb-2 text-[#193AE6]">Welcome User !</div>
+			<div className="mb-2 text-brand-blue">Welcome User !</div>
 			<h2 className="mb-2 text-2xl font-bold">
 				Ready to create your first destination
 			</h2>
-			<p className="mb-8 text-[#0A0A0A]">
+			<p className="mb-8 text-text-primary">
 				Get started and experience the speed of OLake by running jobs
 			</p>
 			<Button
@@ -48,7 +48,7 @@ const DestinationEmptyState = ({
 					<div className="flex-1">
 						<div className="mb-1 flex items-center gap-1 text-xs">
 							<PlayCircle color="#9f9f9f" />
-							<span className="text-[#9F9F9F]">OLake/ Tutorial</span>
+							<span className="text-text-placeholder">OLake/ Tutorial</span>
 						</div>
 						<div className="text-xs">
 							Checkout this tutorial, to know more about running jobs

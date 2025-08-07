@@ -29,7 +29,7 @@ const FilterButton: React.FC<FilterButtonProps> = ({
 
 	const buttonStyles = `cursor-pointer rounded-md border border-solid px-2 py-2 text-sm capitalize ${
 		isFilterSelected
-			? `border-[${COLORS.selected.border}] text-[${COLORS.selected.text}]`
+			? "border-primary text-primary"
 			: `border-[${COLORS.unselected.border}] text-[${COLORS.unselected.text}]`
 	}`
 

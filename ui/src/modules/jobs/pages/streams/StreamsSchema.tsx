@@ -93,7 +93,7 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 				/>
 			</div>
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
-				<div className="flex items-center border-b border-[#d9d9d9] p-3 last:border-b-0 hover:bg-[#f5f5f5]">
+				<div className="flex items-center border-b border-gray-400 p-3 last:border-b-0 hover:bg-[#F5F5F5]">
 					<Checkbox
 						checked={isAllSelected}
 						onChange={handleSelectAll}
@@ -106,7 +106,7 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 				{Object.keys(columnsToDisplay || {}).map(item => (
 					<div
 						key={item}
-						className="flex items-center justify-between border-b border-[#d9d9d9] p-3 last:border-b-0 hover:bg-[#f5f5f5]"
+						className="flex items-center justify-between border-b border-gray-400 p-3 last:border-b-0 hover:bg-[#F5F5F5]"
 					>
 						<div className="flex items-center gap-2">
 							<Checkbox
