@@ -166,21 +166,21 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					{isDocPanelCollapsed && (
 						<div className="flex h-full w-full items-start justify-center">
 							<div className="absolute right-3 top-10 z-10 flex flex-col gap-2">
-								<div className="bg-neutral-light rounded-xl border border-gray-200 p-2">
+								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
 									<Info
 										size={25}
-										className="text-primary hover:text-primary/80 cursor-pointer transition-all duration-300 ease-in-out"
+										className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 										onClick={toggleDocPanel}
 									/>
 								</div>
-								<div className="bg-neutral-light rounded-xl border border-gray-200 p-2">
+								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
 									<Tooltip
 										title="Open documentation in new tab"
 										placement="left"
 									>
 										<ArrowSquareOut
 											size={25}
-											className="text-primary hover:text-primary/80 cursor-pointer transition-all duration-300 ease-in-out"
+											className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 											onClick={openInNewTab}
 										/>
 									</Tooltip>
