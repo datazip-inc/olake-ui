@@ -18,6 +18,7 @@ import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import connectorOptions from "../components/connectorOptions"
 import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import { CONNECTOR_TYPES } from "../../../utils/constants"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -267,7 +268,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSourceName("")
 				setFormData({})
 				setSchema(null)
-				setConnector("MongoDB") // Reset to default connector
+				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
 
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onSourceNameChange) onSourceNameChange("")
@@ -487,12 +488,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
 										onClick={handleCancel}
-										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+										className="border-danger text-danger hover:bg-danger ml-1 rounded-md border px-4 py-2 transition-colors duration-200 hover:text-white"
 									>
 										Cancel
 									</button>
 									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+										className="bg-primary hover:bg-primary-600 mr-1 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
 										onClick={handleCreate}
 									>
 										Create

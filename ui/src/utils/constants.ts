@@ -27,6 +27,8 @@ export const CONNECTOR_TYPES = {
 	POSTGRES: "Postgres",
 	MYSQL: "MySQL",
 	ORACLE: "Oracle",
+	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
+	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
 
 export const CATALOG_TYPES = {
