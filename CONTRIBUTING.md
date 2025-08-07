@@ -4,7 +4,7 @@ Thank you for your interest in contributing to Olake-UI — we appreciate your s
 
 ## Olake-UI Contributor Agreement
 
-To contribute to this project, we need you to sign the [**Contributor License Agreement (“CLA”)**][CLA] for the first commit you make. By agreeing to the [**CLA**][CLA], we can add you to the list of approved contributors and review the changes proposed by you.
+To contribute to this project, we need you to sign the [**Contributor License Agreement (“CLA”)**][CLA] on the first commit you make. By agreeing to the [**CLA**][CLA], we can add you to the list of approved contributors and review the changes proposed.
 
 ## How to Contribute
 
