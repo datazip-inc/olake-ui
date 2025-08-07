@@ -14,6 +14,10 @@ frontend-lint-fix:
 frontend-format:
 	cd ui; pnpm run format
 
+build:
+	gofmt -l -s -w .
+	cd server; go build -o olake-server main.go
+
 frontend-format-check:
 	cd ui; pnpm run format:check
 

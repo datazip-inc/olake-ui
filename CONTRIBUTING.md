@@ -1,8 +1,6 @@
-<xaiArtifact artifact_id="64d2e777-018b-40d4-9991-d708298be7bc" artifact_version_id="3572d3b9-5f2d-4a61-a9de-80196fb7d3a7" title="CONTRIBUTING.md" contentType="text/markdown">
-
 # Contributing to Olake-UI
 
-Thank you for contributing to Olake-UI!
+Thank you for your interest in contributing to Olake-UI — we appreciate your support in making this project better!
 
 ## Olake-UI Contributor Agreement
 
