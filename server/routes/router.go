@@ -36,7 +36,7 @@ func Init() {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
 		// Serve static frontend files
-		web.SetStaticPath("", "/Users/datazip/Desktop/olake-frontend/ui/dist") // Vite assets are in /assets
+		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
 
 		// Serve index.html for React frontend
 		web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route

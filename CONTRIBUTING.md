@@ -144,13 +144,13 @@ In a separate terminal tab/window:
 ```bash
 make start-frontend
 ```
+> Installs frontend dependencies using `pnpm` and runs the development server.
 
 ## Sign up
 ```bash
 make create-user username=admin password=admin123 email=admin@example.com
 ```
-
-> Installs frontend dependencies using `pnpm` and runs the development server.
+> Creates a new user with the specified username, password, and email.
 
 ### Access Local Services
 - **Frontend**: http://localhost:5173  
