@@ -1,8 +1,9 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { Form, Input, Button, Card, message } from "antd"
 import { User, LockKey } from "@phosphor-icons/react"
+
 import { useAppStore } from "../../../store"
-import { useNavigate } from "react-router-dom"
 import { LoginArgs } from "../../../types"
 
 const Login: React.FC = () => {

@@ -1,8 +1,9 @@
-import { Button, Modal } from "antd"
-import { useAppStore } from "../../../store"
-import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { useNavigate } from "react-router-dom"
 import React from "react"
+import { useNavigate } from "react-router-dom"
+import { Button, Modal } from "antd"
+import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
 
 interface EntityCancelModalProps {
 	type: string

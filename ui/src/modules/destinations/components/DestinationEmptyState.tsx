@@ -1,8 +1,9 @@
+import { Button } from "antd"
 import { PlayCircle, Plus } from "@phosphor-icons/react"
+
+import { DestinationTutorialYTLink } from "../../../utils/constants"
 import FirstDestination from "../../../assets/FirstDestination.svg"
 import DestinationTutorial from "../../../assets/DestinationTutorial.svg"
-import { Button } from "antd"
-import { DestinationTutorialYTLink } from "../../../utils/constants"
 
 const DestinationEmptyState = ({
 	handleCreateDestination,
@@ -16,11 +17,11 @@ const DestinationEmptyState = ({
 				alt="Empty state"
 				className="mb-8 h-64 w-96"
 			/>
-			<div className="mb-2 text-brand-blue">Welcome User !</div>
+			<div className="text-brand-blue mb-2">Welcome User !</div>
 			<h2 className="mb-2 text-2xl font-bold">
 				Ready to create your first destination
 			</h2>
-			<p className="mb-8 text-text-primary">
+			<p className="text-text-primary mb-8">
 				Get started and experience the speed of OLake by running jobs
 			</p>
 			<Button

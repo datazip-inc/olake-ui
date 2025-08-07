@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
-import { useAppStore } from "../../../store"
+import type { ColumnsType } from "antd/es/table"
 import { ArrowLeft, Notebook, PencilSimple } from "@phosphor-icons/react"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import FixedSchemaForm from "../../../utils/FormFix"
+
+import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
 import { jobService } from "../../../api"
-import StepTitle from "../../common/components/StepTitle"
-import DeleteModal from "../../common/Modals/DeleteModal"
+import {
+	DestinationEditProps,
+	DestinationJob,
+	Entity,
+	EntityType,
+} from "../../../types"
 import {
 	getCatalogInLowerCase,
 	getCatalogName,
@@ -18,19 +23,6 @@ import {
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import {
-	DestinationEditProps,
-	DestinationJob,
-	Entity,
-	EntityType,
-} from "../../../types"
-import type { ColumnsType } from "antd/es/table"
-import { formatDistanceToNow } from "date-fns"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import { connectorOptions } from "../components/connectorOptions"
-import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	catalogOptions,
@@ -40,6 +32,15 @@ import {
 	TAB_TYPES,
 	ENTITY_TYPES,
 } from "../../../utils/constants"
+import FixedSchemaForm from "../../../utils/FormFix"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import EntityEditModal from "../../common/Modals/EntityEditModal"
+import { connectorOptions } from "../components/connectorOptions"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,

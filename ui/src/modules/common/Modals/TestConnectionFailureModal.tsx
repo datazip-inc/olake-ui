@@ -1,8 +1,9 @@
-import { Modal } from "antd"
-import ErrorIcon from "../../../assets/ErrorIcon.svg"
-import { useAppStore } from "../../../store"
-import { Info } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
+import { Modal } from "antd"
+import { Info } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
+import ErrorIcon from "../../../assets/ErrorIcon.svg"
 
 const TestConnectionFailureModal = ({
 	fromSources,

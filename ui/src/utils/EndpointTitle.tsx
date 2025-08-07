@@ -1,4 +1,5 @@
 import { GenderNeuter } from "@phosphor-icons/react"
+
 import { EndpointTitleProps } from "../types"
 
 const EndpointTitle = ({ title = "Endpoint config" }: EndpointTitleProps) => (

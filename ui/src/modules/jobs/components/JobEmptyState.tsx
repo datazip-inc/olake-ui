@@ -1,8 +1,9 @@
+import { Button } from "antd"
 import { GitCommit, PlayCircle } from "@phosphor-icons/react"
+
+import { JobTutorialYTLink } from "../../../utils/constants"
 import FirstJob from "../../../assets/FirstJob.svg"
 import JobsTutorial from "../../../assets/JobsTutorial.svg"
-import { Button } from "antd"
-import { JobTutorialYTLink } from "../../../utils/constants"
 
 const JobEmptyState = ({
 	handleCreateJob,
@@ -16,14 +17,14 @@ const JobEmptyState = ({
 				alt="Empty state"
 				className="mb-8 h-64 w-96"
 			/>
-			<div className="mb-2 text-brand-blue">Welcome User !</div>
+			<div className="text-brand-blue mb-2">Welcome User !</div>
 			<h2 className="mb-2 text-2xl font-bold">Ready to run your first Job</h2>
-			<p className="mb-8 text-text-primary">
+			<p className="text-text-primary mb-8">
 				Get started and experience the speed of O<b>Lake</b> by running jobs
 			</p>
 			<Button
 				type="primary"
-				className="mb-12 bg-brand-blue text-sm"
+				className="bg-brand-blue mb-12 text-sm"
 				onClick={handleCreateJob}
 			>
 				<GitCommit />

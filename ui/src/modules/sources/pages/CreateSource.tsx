@@ -1,24 +1,25 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { message, Select, Spin } from "antd"
-import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import EntitySavedModal from "../../common/Modals/EntitySavedModal"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import EntityCancelModal from "../../common/Modals/EntityCancelModal"
-import StepTitle from "../../common/components/StepTitle"
-import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
+
+import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
-import { getConnectorLabel } from "../../../utils/utils"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
+import { getConnectorLabel } from "../../../utils/utils"
+import { CONNECTOR_TYPES, DEFAULT_VERSION } from "../../../utils/constants"
+import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
-import connectorOptions from "../components/connectorOptions"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
 import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
-import { CONNECTOR_TYPES } from "../../../utils/constants"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import EntitySavedModal from "../../common/Modals/EntitySavedModal"
+import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import connectorOptions from "../components/connectorOptions"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -274,7 +275,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				if (onSourceNameChange) onSourceNameChange("")
 				if (onConnectorChange) onConnectorChange("MongoDB")
 				if (onFormDataChange) onFormDataChange({})
-				if (onVersionChange) onVersionChange("latest")
+				if (onVersionChange) onVersionChange(DEFAULT_VERSION)
 			}
 		}
 
@@ -488,12 +489,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
 										onClick={handleCancel}
-										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+										className="border-danger text-danger hover:bg-danger ml-1 rounded-md border px-4 py-2 transition-colors duration-200 hover:text-white"
 									>
 										Cancel
 									</button>
 									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+										className="bg-primary hover:bg-primary-600 mr-1 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
 										onClick={handleCreate}
 									>
 										Create

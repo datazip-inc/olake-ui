@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { EntityBase, Job, JobTableProps } from "../../../types"
 import { useNavigate } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
 	ArrowsClockwise,
 	ClockCounterClockwise,
@@ -12,13 +12,14 @@ import {
 	Play,
 	Trash,
 } from "@phosphor-icons/react"
+
+import { EntityBase, Job, JobTableProps } from "../../../types"
 import {
 	getConnectorImage,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
-import { formatDistanceToNow } from "date-fns"
 import { PAGE_SIZE } from "../../../utils/constants"
 
 const formatLastSyncTime = (text?: string) => {

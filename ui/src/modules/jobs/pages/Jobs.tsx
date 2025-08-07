@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react"
-import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
-import { useAppStore } from "../../../store"
-import JobTable from "../components/JobTable"
+import { Button, Tabs, Empty, message, Spin } from "antd"
 import { GitCommit, Plus } from "@phosphor-icons/react"
-import DeleteJobModal from "../../common/Modals/DeleteJobModal"
+
+import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
-import JobEmptyState from "../components/JobEmptyState"
 import analyticsService from "../../../api/services/analyticsService"
 import { JobType } from "../../../types/jobTypes"
 import { JOB_TYPES } from "../../../utils/constants"
+import JobTable from "../components/JobTable"
+import JobEmptyState from "../components/JobEmptyState"
+import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobType>(
@@ -118,16 +119,24 @@ const Jobs: React.FC = () => {
 	}, [activeTab, jobs, savedJobs])
 
 	const updateJobsList = () => {
-		if (activeTab === JOB_TYPES.ACTIVE) {
-			setFilteredJobs(jobs.filter(job => job.activate === true))
-		} else if (activeTab === JOB_TYPES.INACTIVE) {
-			setFilteredJobs(jobs.filter(job => job.activate === false))
-		} else if (activeTab === JOB_TYPES.SAVED) {
-			setFilteredJobs(savedJobs)
-		} else if (activeTab === JOB_TYPES.FAILED) {
-			setFilteredJobs(
-				jobs.filter(job => job.last_run_state?.toLowerCase() == "failed"),
-			)
+		switch (activeTab) {
+			case JOB_TYPES.ACTIVE:
+				setFilteredJobs(jobs.filter(job => job.activate === true))
+				break
+			case JOB_TYPES.INACTIVE:
+				setFilteredJobs(jobs.filter(job => job.activate === false))
+				break
+			case JOB_TYPES.SAVED:
+				setFilteredJobs(savedJobs)
+				break
+			case JOB_TYPES.FAILED:
+				setFilteredJobs(
+					jobs.filter(job => job.last_run_state?.toLowerCase() === "failed"),
+				)
+				break
+			default:
+				// Handle unexpected activeTab values gracefully
+				setFilteredJobs([])
 		}
 	}
 
@@ -162,7 +171,7 @@ const Jobs: React.FC = () => {
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
 				<button
-					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
+					className="bg-primary hover:bg-primary-600 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white"
 					onClick={handleCreateJob}
 				>
 					<Plus className="size-4 text-white" />

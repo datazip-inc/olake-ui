@@ -1,10 +1,11 @@
-import { Button, message, Modal, Table } from "antd"
-import { useAppStore } from "../../../store"
-import { Warning } from "@phosphor-icons/react"
-import { Entity } from "../../../types"
-import { getConnectorImage } from "../../../utils/utils"
-import { DeleteModalProps } from "../../../types/modalTypes"
 import { formatDistanceToNow } from "date-fns"
+import { Button, message, Modal, Table } from "antd"
+import { Warning } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
+import { Entity } from "../../../types"
+import { DeleteModalProps } from "../../../types/modalTypes"
+import { getConnectorImage } from "../../../utils/utils"
 
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 	const {

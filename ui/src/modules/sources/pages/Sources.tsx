@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react"
-import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
-import { useAppStore } from "../../../store"
-import SourceTable from "../components/SourceTable"
+import { Button, Tabs, Empty, message, Spin } from "antd"
 import { LinktreeLogo, Plus } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
+import analyticsService from "../../../api/services/analyticsService"
 import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
+import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
-import analyticsService from "../../../api/services/analyticsService"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -104,7 +105,7 @@ const Sources: React.FC = () => {
 					<h1 className="text-2xl font-bold">Sources</h1>
 				</div>
 				<button
-					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
+					className="bg-primary hover:bg-primary-600 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white"
 					onClick={handleCreateSource}
 				>
 					<Plus className="size-4 text-white" />

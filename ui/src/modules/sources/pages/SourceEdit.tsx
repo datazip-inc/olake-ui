@@ -1,33 +1,33 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
+import type { ColumnsType } from "antd/es/table"
 import {
 	GenderNeuter,
 	Notebook,
 	ArrowLeft,
 	PencilSimple,
 } from "@phosphor-icons/react"
+
 import { useAppStore } from "../../../store"
-import type { ColumnsType } from "antd/es/table"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import FixedSchemaForm from "../../../utils/FormFix"
-import StepTitle from "../../common/components/StepTitle"
-import DeleteModal from "../../common/Modals/DeleteModal"
+import { sourceService, jobService } from "../../../api"
+import { Entity, SourceEditProps, SourceJob } from "../../../types"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import { sourceService } from "../../../api"
-import { formatDistanceToNow } from "date-fns"
-import { jobService } from "../../../api"
-import { Entity, SourceEditProps, SourceJob } from "../../../types"
+import FixedSchemaForm from "../../../utils/FormFix"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import connectorOptions from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
+import connectorOptions from "../components/connectorOptions"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { connectorTypeMap } from "../../../utils/constants"
 

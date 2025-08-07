@@ -1,17 +1,17 @@
-import { useEffect, useState, useMemo, useRef } from "react"
+import React, { useEffect, useState, useMemo, useRef } from "react"
 import { Input, Empty, Spin } from "antd"
-import FilterButton from "../components/FilterButton"
-import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+
+import { sourceService } from "../../../api"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
 	StreamData,
 	SyncMode,
 } from "../../../types"
-import StreamConfiguration from "./streams/StreamConfiguration"
+import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
-import { sourceService } from "../../../api"
-import React from "react"
+import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+import StreamConfiguration from "./streams/StreamConfiguration"
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,

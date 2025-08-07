@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import { message, Spin } from "antd"
-import SourceEdit from "../../sources/pages/SourceEdit"
-import DestinationEdit from "../../destinations/pages/DestinationEdit"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
-import StepProgress from "../components/StepIndicator"
-import SchemaConfiguration from "./SchemaConfiguration"
-import JobConfiguration from "../components/JobConfiguration"
+
 import { useAppStore } from "../../../store"
+import { jobService } from "../../../api"
 import {
 	StreamData,
 	Job,
@@ -17,7 +14,11 @@ import {
 	DestinationData,
 	StreamsDataStructure,
 } from "../../../types"
-import { jobService } from "../../../api"
+import JobConfiguration from "../components/JobConfiguration"
+import StepProgress from "../components/StepIndicator"
+import SourceEdit from "../../sources/pages/SourceEdit"
+import DestinationEdit from "../../destinations/pages/DestinationEdit"
+import SchemaConfiguration from "./SchemaConfiguration"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"

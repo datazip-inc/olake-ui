@@ -1,11 +1,12 @@
 import { useState } from "react"
 import { NavLink, Link, useNavigate } from "react-router-dom"
-import OlakeLogo from "../../../assets/OlakeLogo.svg"
-import Olake from "../../../assets/OLake.svg"
+import { LayoutProps } from "antd"
 import { CaretLeft, Info, X, SignOut } from "@phosphor-icons/react"
+
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
-import { LayoutProps } from "antd"
+import OlakeLogo from "../../../assets/OlakeLogo.svg"
+import Olake from "../../../assets/OLake.svg"
 
 const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 	<div className="p-4">

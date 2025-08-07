@@ -1,16 +1,18 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
-import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import EntitySavedModal from "../../common/Modals/EntitySavedModal"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import EntityCancelModal from "../../common/Modals/EntityCancelModal"
-import StepTitle from "../../common/components/StepTitle"
-import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
+
+import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
+import {
+	CatalogType,
+	CreateDestinationProps,
+	DestinationConfig,
+	ExtendedDestination,
+	SelectOption,
+	SetupType,
+} from "../../../types"
 import {
 	getCatalogInLowerCase,
 	getConnectorInLowerCase,
@@ -24,18 +26,17 @@ import {
 	mapCatalogValueToType,
 	SETUP_TYPES,
 } from "../../../utils/constants"
-import {
-	CatalogType,
-	CreateDestinationProps,
-	DestinationConfig,
-	ExtendedDestination,
-	SelectOption,
-	SetupType,
-} from "../../../types"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
 import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import EntitySavedModal from "../../common/Modals/EntitySavedModal"
+import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import { connectorOptions } from "../components/connectorOptions"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]

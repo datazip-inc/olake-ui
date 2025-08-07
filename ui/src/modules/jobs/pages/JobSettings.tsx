@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
-import { ArrowRight, Info } from "@phosphor-icons/react"
+import { ArrowRight, Info, ArrowLeft } from "@phosphor-icons/react"
+import parser from "cron-parser"
+
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
+import { jobService } from "../../../api"
 import {
 	getConnectorImage,
 	generateCronExpression,
@@ -11,12 +13,10 @@ import {
 	validateCronExpression,
 	isValidCronExpression,
 } from "../../../utils/utils"
+import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
-import { jobService } from "../../../api"
-import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
-import parser from "cron-parser"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -262,7 +262,7 @@ const JobSettings: React.FC = () => {
 
 									<div className="text-2xl font-bold">{job?.name}</div>
 								</div>
-								<div className="ml-10 mt-1.5 w-fit rounded bg-primary-200 px-2 py-1 text-xs text-primary-700">
+								<div className="bg-primary-200 text-primary-700 ml-10 mt-1.5 w-fit rounded px-2 py-1 text-xs">
 									{job?.activate ? "Active" : "Inactive"}
 								</div>
 							</div>
@@ -421,13 +421,13 @@ const JobSettings: React.FC = () => {
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">Delete the job:</div>
-											<div className="text-sm text-text-tertiary">
+											<div className="text-text-tertiary text-sm">
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
 										<button
 											onClick={handleDeleteJob}
-											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
+											className="bg-danger hover:bg-danger-dark rounded-md border px-4 py-1 font-light text-white"
 										>
 											Delete this job
 										</button>
@@ -445,7 +445,7 @@ const JobSettings: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleSaveSettings}
-						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
+						className="bg-primary hover:bg-primary-600 flex items-center gap-1"
 					>
 						Save{" "}
 						<ArrowRight

@@ -1,15 +1,16 @@
+import { useEffect, useState } from "react"
 import { Input, Select, Radio, Tooltip } from "antd"
-import StepTitle from "../../common/components/StepTitle"
 import { Info } from "@phosphor-icons/react"
+import parser from "cron-parser"
+
+import { JobConfigurationProps } from "../../../types"
 import {
 	generateCronExpression,
 	parseCronExpression,
 	isValidCronExpression,
 } from "../../../utils/utils"
-import { JobConfigurationProps } from "../../../types"
-import { useEffect, useState } from "react"
-import parser from "cron-parser"
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
+import StepTitle from "../../common/components/StepTitle"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobName,

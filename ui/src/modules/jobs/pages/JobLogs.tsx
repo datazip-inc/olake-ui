@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button, Tooltip } from "antd"
-import { useAppStore } from "../../../store"
 import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
 import {
 	getConnectorImage,
 	getLogLevelClass,

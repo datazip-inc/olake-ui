@@ -236,3 +236,5 @@ export const FREQUENCY_OPTIONS = [
 
 export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"
+
+export const DEFAULT_VERSION = "latest"

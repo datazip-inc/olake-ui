@@ -1,13 +1,13 @@
-import { Button, Modal, Table } from "antd"
-import { useAppStore } from "../../../store"
-import { getConnectorImage } from "../../../utils/utils"
-import { Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
-import { message } from "antd"
 import { formatDistanceToNow } from "date-fns"
+import { Button, Modal, Table, message } from "antd"
+import { Warning } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api"
 import { destinationService } from "../../../api/services/destinationService"
 import { EntityEditModalProps } from "../../../types"
+import { getConnectorImage } from "../../../utils/utils"
 
 const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 	const navigate = useNavigate()

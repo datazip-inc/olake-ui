@@ -1,13 +1,14 @@
+import { message } from "antd"
+import parser from "cron-parser"
+
+import { CronParseResult } from "../types"
+import { DAYS_MAP, DESTINATION_INTERNAL_TYPES } from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import { DAYS_MAP, DESTINATION_INTERNAL_TYPES } from "./constants"
-import { CronParseResult } from "../types"
-import parser from "cron-parser"
-import { message } from "antd"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()

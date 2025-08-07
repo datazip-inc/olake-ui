@@ -6,6 +6,7 @@ import {
 	Info,
 	ArrowSquareOut,
 } from "@phosphor-icons/react"
+
 import { DocumentationPanelProps } from "../../../types"
 
 const DocumentationPanel: React.FC<DocumentationPanelProps> = ({

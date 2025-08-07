@@ -1,28 +1,27 @@
 import { useState, useRef } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
+import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import { v4 as uuidv4 } from "uuid"
+
 import { useAppStore } from "../../../store"
+import { destinationService, sourceService } from "../../../api"
+import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
-import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
-import { destinationService, sourceService } from "../../../api"
-import { v4 as uuidv4 } from "uuid"
-import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
-
-// Components
+import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
 import JobConfiguration from "../components/JobConfiguration"
+import StepProgress from "../components/StepIndicator"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
 import SchemaConfiguration from "./SchemaConfiguration"
-import StepProgress from "../components/StepIndicator"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
-import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
