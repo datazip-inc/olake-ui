@@ -638,7 +638,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					<Button
 						type="default"
 						onClick={handleViewAllJobs}
-						className="bg-primary-100 text-primary w-full border-none font-medium"
+						className="w-full border-none bg-primary-100 font-medium text-primary"
 					>
 						View all associated jobs
 					</Button>
@@ -686,7 +686,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 													? `/destinations/${destinationId}`
 													: `/destinations/${destinations.find(d => d.name === destinationName)?.id || ""}`
 											}
-											className="bg-primary hover:bg-primary-600 flex items-center gap-2 rounded-md px-4 py-2 text-white"
+											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
 											<PencilSimple className="size-4" />
 											Edit Destination
@@ -701,8 +701,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === TAB_TYPES.CONFIG
-													? "bg-primary text-neutral-light text-center"
-													: "text-text-primary bg-[#f5f5f5] text-center"
+													? "bg-primary text-center text-neutral-light"
+													: "bg-[#f5f5f5] text-center text-text-primary"
 											}`}
 											onClick={() => setActiveTab(TAB_TYPES.CONFIG)}
 										>
@@ -712,8 +712,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											<button
 												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 													activeTab === TAB_TYPES.JOBS
-														? "bg-primary text-neutral-light text-center"
-														: "text-text-primary bg-[#f5f5f5] text-center"
+														? "bg-primary text-center text-neutral-light"
+														: "bg-[#f5f5f5] text-center text-text-primary"
 												}`}
 												onClick={() => setActiveTab(TAB_TYPES.JOBS)}
 											>
@@ -735,7 +735,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								<div>
 									{
 										<button
-											className="border-danger text-danger hover:bg-danger ml-1 rounded-md border px-4 py-2 transition-colors duration-200 hover:text-white"
+											className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 											onClick={handleDelete}
 										>
 											Delete
@@ -744,7 +744,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								</div>
 								<div className="flex space-x-4">
 									<button
-										className="bg-primary hover:bg-primary-600 mr-1 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
 										onClick={handleSaveChanges}
 									>
 										Save Changes

@@ -442,7 +442,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													? `/sources/${sourceId}`
 													: `/sources/${sources.find(s => s.name === sourceName)?.id || ""}`
 											}
-											className="bg-primary hover:bg-primary-600 flex items-center gap-2 rounded-md px-4 py-2 text-white"
+											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
 											<PencilSimple className="size-4" />
 											Edit Source
@@ -458,7 +458,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
 												activeTab === "config"
 													? "bg-primary text-neutral-light"
-													: "text-text-primary bg-[#f5f5f5]"
+													: "bg-[#f5f5f5] text-text-primary"
 											}`}
 											onClick={() => setActiveTab("config")}
 										>
@@ -469,7 +469,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
 												activeTab === "jobs"
 													? "bg-primary text-neutral-light"
-													: "text-text-primary bg-gray-200"
+													: "bg-gray-200 text-text-primary"
 											}`}
 											onClick={() => setActiveTab("jobs")}
 										>
@@ -595,7 +595,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											<Button
 												type="default"
 												onClick={handleViewAllJobs}
-												className="bg-primary-100 text-primary w-full border-none font-medium"
+												className="w-full border-none bg-primary-100 font-medium text-primary"
 											>
 												View all associated jobs
 											</Button>
@@ -610,7 +610,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 								<div>
 									<button
-										className="border-danger text-danger hover:bg-danger ml-1 rounded-md border px-4 py-2 transition-colors duration-200 hover:text-white"
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 										onClick={handleDelete}
 									>
 										Delete
@@ -618,7 +618,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								</div>
 								<div className="flex space-x-4">
 									<button
-										className="bg-primary hover:bg-primary-600 mr-1 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
 										onClick={handleSave}
 									>
 										Save changes
