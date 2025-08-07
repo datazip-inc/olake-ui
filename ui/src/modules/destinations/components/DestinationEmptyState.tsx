@@ -17,11 +17,11 @@ const DestinationEmptyState = ({
 				alt="Empty state"
 				className="mb-8 h-64 w-96"
 			/>
-			<div className="text-brand-blue mb-2">Welcome User !</div>
+			<div className="mb-2 text-brand-blue">Welcome User !</div>
 			<h2 className="mb-2 text-2xl font-bold">
 				Ready to create your first destination
 			</h2>
-			<p className="text-text-primary mb-8">
+			<p className="mb-8 text-text-primary">
 				Get started and experience the speed of OLake by running jobs
 			</p>
 			<Button

@@ -262,7 +262,7 @@ const JobSettings: React.FC = () => {
 
 									<div className="text-2xl font-bold">{job?.name}</div>
 								</div>
-								<div className="bg-primary-200 text-primary-700 ml-10 mt-1.5 w-fit rounded px-2 py-1 text-xs">
+								<div className="ml-10 mt-1.5 w-fit rounded bg-primary-200 px-2 py-1 text-xs text-primary-700">
 									{job?.activate ? "Active" : "Inactive"}
 								</div>
 							</div>
@@ -421,13 +421,13 @@ const JobSettings: React.FC = () => {
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">Delete the job:</div>
-											<div className="text-text-tertiary text-sm">
+											<div className="text-sm text-text-tertiary">
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
 										<button
 											onClick={handleDeleteJob}
-											className="bg-danger hover:bg-danger-dark rounded-md border px-4 py-1 font-light text-white"
+											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
 										>
 											Delete this job
 										</button>
@@ -445,7 +445,7 @@ const JobSettings: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleSaveSettings}
-						className="bg-primary hover:bg-primary-600 flex items-center gap-1"
+						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
 					>
 						Save{" "}
 						<ArrowRight

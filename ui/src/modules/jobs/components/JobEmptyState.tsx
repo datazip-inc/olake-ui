@@ -17,14 +17,14 @@ const JobEmptyState = ({
 				alt="Empty state"
 				className="mb-8 h-64 w-96"
 			/>
-			<div className="text-brand-blue mb-2">Welcome User !</div>
+			<div className="mb-2 text-brand-blue">Welcome User !</div>
 			<h2 className="mb-2 text-2xl font-bold">Ready to run your first Job</h2>
-			<p className="text-text-primary mb-8">
+			<p className="mb-8 text-text-primary">
 				Get started and experience the speed of O<b>Lake</b> by running jobs
 			</p>
 			<Button
 				type="primary"
-				className="bg-brand-blue mb-12 text-sm"
+				className="mb-12 bg-brand-blue text-sm"
 				onClick={handleCreateJob}
 			>
 				<GitCommit />

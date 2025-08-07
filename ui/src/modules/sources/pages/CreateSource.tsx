@@ -489,12 +489,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
 										onClick={handleCancel}
-										className="border-danger text-danger hover:bg-danger ml-1 rounded-md border px-4 py-2 transition-colors duration-200 hover:text-white"
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
 									>
 										Cancel
 									</button>
 									<button
-										className="bg-primary hover:bg-primary-600 mr-1 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
 										onClick={handleCreate}
 									>
 										Create
