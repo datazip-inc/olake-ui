@@ -8,10 +8,11 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	onStepClick,
 	isEditMode,
 }) => {
-	const isActive = steps.indexOf(currentStep) >= index
-	const isNextActive = steps.indexOf(currentStep) >= index + 1
+	const currentStepIndex = steps.indexOf(currentStep)
+	const isActive = currentStepIndex >= index
+	const isNextActive = currentStepIndex >= index + 1
 	const isLastStep = index === steps.length - 1
-	const isClickable = isEditMode || steps.indexOf(currentStep) > index
+	const isClickable = isEditMode || currentStepIndex > index
 
 	const handleClick = () => {
 		if ((isClickable || isEditMode) && onStepClick) {
