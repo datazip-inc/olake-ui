@@ -78,7 +78,7 @@ create-backend-conf:
 	@mkdir -p $(SERVER_DIR)/conf
 	@echo "appname = olake-server" > $(SERVER_DIR)/conf/app.conf
 	@echo "httpport = 8000" >> $(SERVER_DIR)/conf/app.conf
-	@echo "runmode = dev" >> $(SERVER_DIR)/conf/app.conf
+	@echo "runmode = localdev" >> $(SERVER_DIR)/conf/app.conf
 	@echo "copyrequestbody = true" >> $(SERVER_DIR)/conf/app.conf
 	@echo "postgresdb = postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable" >> $(SERVER_DIR)/conf/app.conf
 	@echo "logsdir = ./logger/logs" >> $(SERVER_DIR)/conf/app.conf

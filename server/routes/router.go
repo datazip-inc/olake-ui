@@ -32,7 +32,7 @@ func CustomCorsFilter(ctx *context.Context) {
 }
 
 func Init() {
-	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "dev" {
+	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "localdev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
 		// Serve static frontend files

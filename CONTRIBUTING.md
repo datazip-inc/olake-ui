@@ -144,7 +144,8 @@ In a separate terminal tab/window:
 ```bash
 make start-frontend
 ```
-## to sign up
+
+## Sign up
 ```bash
 make create-user username=admin password=admin123 email=admin@example.com
 ```
