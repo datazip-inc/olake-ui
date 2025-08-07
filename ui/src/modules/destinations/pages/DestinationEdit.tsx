@@ -31,6 +31,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	TAB_TYPES,
 	ENTITY_TYPES,
+	DISPLAYED_JOBS_COUNT,
 } from "../../../utils/constants"
 import FixedSchemaForm from "../../../utils/FormFix"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -107,7 +108,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const displayedJobs = showAllJobs
 		? transformJobs(destination?.jobs || [])
-		: transformJobs((destination?.jobs || []).slice(0, 5))
+		: transformJobs((destination?.jobs || []).slice(0, DISPLAYED_JOBS_COUNT))
 
 	useEffect(() => {
 		fetchDestinations()
@@ -549,17 +550,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								className="h-8 w-full"
 								placeholder="Select catalog"
 								disabled={
-									connector === CONNECTOR_TYPES.AMAZON_S3 ||
-									connector === CONNECTOR_TYPES.AWS_S3 ||
-									fromJobFlow
+									connector === CONNECTOR_TYPES.AMAZON_S3 || fromJobFlow
 								}
 								options={catalogOptions}
 								value={
 									catalog ||
-									(connector === CONNECTOR_TYPES.AMAZON_S3 ||
-									connector === CONNECTOR_TYPES.AWS_S3
-										? "None"
-										: undefined)
+									(connector === CONNECTOR_TYPES.AMAZON_S3 ? "None" : undefined)
 								}
 								onChange={value => {
 									setCatalog(value)
@@ -642,7 +638,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					<Button
 						type="default"
 						onClick={handleViewAllJobs}
-						className="w-full border-none bg-primary-100 font-medium text-primary"
+						className="bg-primary-100 text-primary w-full border-none font-medium"
 					>
 						View all associated jobs
 					</Button>
@@ -690,7 +686,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 													? `/destinations/${destinationId}`
 													: `/destinations/${destinations.find(d => d.name === destinationName)?.id || ""}`
 											}
-											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
+											className="bg-primary hover:bg-primary-600 flex items-center gap-2 rounded-md px-4 py-2 text-white"
 										>
 											<PencilSimple className="size-4" />
 											Edit Destination
@@ -705,8 +701,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 												activeTab === TAB_TYPES.CONFIG
-													? "bg-primary text-center text-neutral-light"
-													: "bg-[#f5f5f5] text-center text-text-primary"
+													? "bg-primary text-neutral-light text-center"
+													: "text-text-primary bg-[#f5f5f5] text-center"
 											}`}
 											onClick={() => setActiveTab(TAB_TYPES.CONFIG)}
 										>
@@ -716,8 +712,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											<button
 												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
 													activeTab === TAB_TYPES.JOBS
-														? "bg-primary text-center text-neutral-light"
-														: "bg-[#f5f5f5] text-center text-text-primary"
+														? "bg-primary text-neutral-light text-center"
+														: "text-text-primary bg-[#f5f5f5] text-center"
 												}`}
 												onClick={() => setActiveTab(TAB_TYPES.JOBS)}
 											>
@@ -739,7 +735,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								<div>
 									{
 										<button
-											className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+											className="border-danger text-danger hover:bg-danger ml-1 rounded-md border px-4 py-2 transition-colors duration-200 hover:text-white"
 											onClick={handleDelete}
 										>
 											Delete
@@ -748,7 +744,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								</div>
 								<div className="flex space-x-4">
 									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+										className="bg-primary hover:bg-primary-600 mr-1 flex items-center justify-center gap-1 rounded-md px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
 										onClick={handleSaveChanges}
 									>
 										Save Changes

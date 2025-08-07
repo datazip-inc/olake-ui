@@ -21,7 +21,6 @@ export const PARTITIONING_COLUMNS = [
 
 export const CONNECTOR_TYPES = {
 	AMAZON_S3: "Amazon S3",
-	AWS_S3: "AWS S3", // Alternative naming for S3
 	APACHE_ICEBERG: "Apache Iceberg",
 	MONGODB: "MongoDB",
 	POSTGRES: "Postgres",
@@ -238,3 +237,5 @@ export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"
 
 export const DEFAULT_VERSION = "latest"
+
+export const DISPLAYED_JOBS_COUNT = 5
