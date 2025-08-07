@@ -63,7 +63,7 @@ Contributions can include creating UI components, Server APIs, and Temporal Inte
 8. **Open a Pull Request**  
    - Go to your fork on GitHub.  
    - Click "Compare & pull request."  
-   - Set the target branch to `main`.  
+   - Set the target branch to `master`.  
    - Add a clear title and description.  
    - Submit!
 
@@ -78,7 +78,7 @@ To contribute a new UI component, for example, create a pull request (PR) with t
 
 ## Committing
 
-We prefer squash or rebase commits so that all changes from a branch are committed to `main` as a single commit. All pull requests are squashed when merged, but rebasing prior to merge gives you better control over the commit message. Run the `make pre-commit` command before committing.
+We prefer squash or rebase commits so that all changes from a branch are committed to `master` as a single commit. All pull requests are squashed when merged, but rebasing prior to merge gives you better control over the commit message. Run the `make pre-commit` command before committing.
 
 ## Installing and Setting Up Olake-UI
 
@@ -90,15 +90,8 @@ To contribute code, you’ll need the full development environment running local
 
 ### Quick Start Summary
 **Required Configurations:**  
-- In the frontend `.env` file: `VITE_IS_DEV=true`  
-- In the backend config (`server/conf/app.conf`): `runmode = dev`  
-
-➡️ To set both configurations automatically, run:
-
-```bash
-make init-config
-```
->This will create the required .env and app.conf files with default values, including a local PostgreSQL connection string.
+If you want to make changes to environment variables or configuration values, you can modify them in the Makefile. Otherwise, they are set to default values suitable for local development.
+You can also change the local PostgreSQL connection or any other settings based on your specific requirements.
 
 ### Prerequisites
 - **Go** ≥ 1.20  
@@ -155,7 +148,7 @@ make create-user username=admin password=admin123 email=admin@example.com
 ### Access Local Services
 - **Frontend**: http://localhost:5173  
 - **Backend API**: http://localhost:8000  
-- **Temporal UI**: http://localhost:8080  
+- **Temporal UI**: http://localhost:8081
 
 ## Getting Help
 
