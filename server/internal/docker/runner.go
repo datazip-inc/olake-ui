@@ -13,6 +13,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
 )
@@ -148,6 +149,30 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	}
 	return outputDir
 }
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (models.SpecOutput, error) {
+	// Prepare the command arguments
+	dockerArgs := []string{
+		"run",
+		r.GetDockerImageName(sourceType, version),
+		"spec",
+	}
+	// Add destination flag if provided
+	if destinationType != "" {
+		dockerArgs = append(dockerArgs, "--destination", destinationType)
+	}
+	// Run the command
+	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return models.SpecOutput{}, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
+	}
+	spec, err := utils.ParseSpecJSON(string(output))
+	if err != nil {
+		return models.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
+	}
+	return spec, nil
+}
 
 // TestConnection runs the check command and returns connection status
 func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
@@ -194,8 +219,6 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if err != nil {
 		return nil, err
 	}
-	logs.Info("working directory path %s\n", workDir)
-
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
