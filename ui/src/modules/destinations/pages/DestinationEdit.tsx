@@ -697,12 +697,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 							{!fromJobFlow && (
 								<div className="mb-4 mt-2">
-									<div className="flex w-fit rounded-md bg-[#f5f5f5] p-1">
+									<div className="flex w-fit rounded-md bg-background-primary p-1">
 										<button
-											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
+											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal text-center${
 												activeTab === TAB_TYPES.CONFIG
-													? "bg-primary text-center text-neutral-light"
-													: "bg-[#f5f5f5] text-center text-text-primary"
+													? "bg-primary text-neutral-light"
+													: "bg-background-primary text-text-primary"
 											}`}
 											onClick={() => setActiveTab(TAB_TYPES.CONFIG)}
 										>
@@ -710,10 +710,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 										</button>
 										{
 											<button
-												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal ${
+												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal text-center${
 													activeTab === TAB_TYPES.JOBS
-														? "bg-primary text-center text-neutral-light"
-														: "bg-[#f5f5f5] text-center text-text-primary"
+														? "bg-primary text-neutral-light"
+														: "bg-background-primary text-text-primary"
 												}`}
 												onClick={() => setActiveTab(TAB_TYPES.JOBS)}
 											>

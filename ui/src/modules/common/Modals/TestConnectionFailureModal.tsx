@@ -56,11 +56,13 @@ const TestConnectionFailureModal = ({
 					<div className="mt-2 flex w-[360px] items-center gap-1 overflow-scroll rounded-xl bg-gray-50 p-3 text-xs">
 						<Info
 							weight="bold"
-							className="size-4 text-danger"
+							className="size-4 flex-shrink-0 text-danger"
 						/>
-						{fromSources
-							? sourceTestConnectionError
-							: destinationTestConnectionError}
+						<span className="break-words">
+							{fromSources
+								? sourceTestConnectionError
+								: destinationTestConnectionError}
+						</span>
 					</div>
 				</div>
 				<div className="flex items-center gap-4">

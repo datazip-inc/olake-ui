@@ -86,14 +86,14 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 			<div className="mb-3">
 				<Input.Search
 					className="custom-search-input w-full"
-					placeholder="Search streams"
+					placeholder="Search Streams"
 					allowClear
 					onSearch={handleSearch}
 					onChange={handleSearchValueClear}
 				/>
 			</div>
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
-				<div className="flex items-center border-b border-gray-400 p-3 last:border-b-0 hover:bg-[#F5F5F5]">
+				<div className="flex items-center border-b border-gray-400 p-3 last:border-b-0 hover:bg-background-primary">
 					<Checkbox
 						checked={isAllSelected}
 						onChange={handleSelectAll}
@@ -106,7 +106,7 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 				{Object.keys(columnsToDisplay || {}).map(item => (
 					<div
 						key={item}
-						className="flex items-center justify-between border-b border-gray-400 p-3 last:border-b-0 hover:bg-[#F5F5F5]"
+						className="flex items-center justify-between border-b border-gray-400 p-3 last:border-b-0 hover:bg-background-primary"
 					>
 						<div className="flex items-center gap-2">
 							<Checkbox

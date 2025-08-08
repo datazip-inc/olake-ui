@@ -35,7 +35,7 @@ const Login: React.FC = () => {
 			<Card className="w-full max-w-md shadow-md">
 				<div className="mb-6 flex flex-col gap-2 text-center">
 					<div className="text-3xl font-bold">Login</div>
-					<div className="text-gray-400">
+					<div className="text-[#9ca3af]">
 						Please enter your credentials to continue
 					</div>
 				</div>
@@ -57,7 +57,7 @@ const Login: React.FC = () => {
 						<Input
 							prefix={
 								<User
-									className="site-form-item-icon text-gray-400"
+									className="site-form-item-icon text-gray-500"
 									weight="bold"
 									size={18}
 								/>
@@ -77,7 +77,7 @@ const Login: React.FC = () => {
 						<Input.Password
 							prefix={
 								<LockKey
-									className="site-form-item-icon text-gray-400"
+									className="site-form-item-icon text-gray-500"
 									weight="bold"
 									size={18}
 								/>

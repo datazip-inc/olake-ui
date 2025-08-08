@@ -439,7 +439,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			<div className="mb-4 mr-4 flex flex-wrap justify-start gap-4">
 				<div className="w-full lg:w-[55%] xl:w-[40%]">
 					<Search
-						placeholder="Search streams"
+						placeholder="Search Streams"
 						allowClear
 						className="custom-search-input w-full"
 						value={searchText}

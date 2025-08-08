@@ -48,7 +48,9 @@ const StreamConfiguration = ({
 			? "full"
 			: stream.stream.sync_mode === SyncMode.INCREMENTAL
 				? "incremental"
-				: "cdc",
+				: stream.stream.sync_mode === SyncMode.CDC
+					? "cdc"
+					: "strict_cdc",
 	)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
@@ -72,7 +74,6 @@ const StreamConfiguration = ({
 		})
 	const [formData, setFormData] = useState<any>({
 		sync_mode: stream.stream.sync_mode,
-		backfill: false,
 		partition_regex: initialPartitionRegex || "",
 	})
 
@@ -97,7 +98,6 @@ const StreamConfiguration = ({
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
-		let initialEnableBackfillForSwitch = true
 
 		// Parse cursor field for default value
 		if (
@@ -117,8 +117,7 @@ const StreamConfiguration = ({
 		} else if (initialApiSyncMode === SyncMode.CDC) {
 			setSyncMode("cdc")
 		} else if (initialApiSyncMode === SyncMode.STRICT_CDC) {
-			setSyncMode("cdc")
-			initialEnableBackfillForSwitch = false
+			setSyncMode("strict_cdc")
 		} else if (initialApiSyncMode === SyncMode.INCREMENTAL) {
 			setSyncMode("incremental")
 		}
@@ -181,7 +180,6 @@ const StreamConfiguration = ({
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
 			sync_mode: initialApiSyncMode,
-			backfill: initialEnableBackfillForSwitch,
 			partition_regex: initialPartitionRegex || "",
 		}))
 	}, [stream, initialNormalization, initialFullLoadFilter])
@@ -199,7 +197,6 @@ const StreamConfiguration = ({
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
 		let newApiSyncMode: SyncMode
-		let newEnableBackfillState = true
 		if (selectedRadioValue === "full") {
 			newApiSyncMode = SyncMode.FULL_REFRESH
 		} else if (selectedRadioValue === "incremental") {
@@ -226,7 +223,6 @@ const StreamConfiguration = ({
 		setFormData({
 			...formData,
 			sync_mode: newApiSyncMode,
-			backfill: newEnableBackfillState,
 		})
 	}
 
@@ -922,7 +918,7 @@ const StreamConfiguration = ({
 		<div>
 			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
 			<div className="mb-4 w-full">
-				<div className="grid grid-cols-3 gap-1 rounded-md bg-[#f5f5f5] p-1">
+				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton
 						id="config"
 						label="Config"

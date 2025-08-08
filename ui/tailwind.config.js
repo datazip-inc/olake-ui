@@ -66,6 +66,9 @@ export default {
 					placeholder: "#9F9F9F",
 					link: "#6E6E6E",
 				},
+				background: {
+					primary: "#F5F5F5",
+				},
 			},
 		},
 	},

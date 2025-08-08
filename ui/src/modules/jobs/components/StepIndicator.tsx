@@ -12,10 +12,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	const isActive = currentStepIndex >= index
 	const isNextActive = currentStepIndex >= index + 1
 	const isLastStep = index === steps.length - 1
-	const isClickable = isEditMode || currentStepIndex > index
 
 	const handleClick = () => {
-		if ((isClickable || isEditMode) && onStepClick) {
+		if (isEditMode && onStepClick) {
 			onStepClick(step)
 		}
 	}
@@ -28,9 +27,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 						isActive
 							? "border-primary outline outline-2 outline-primary"
 							: "border-gray-300 bg-white"
-					} ${isClickable || isEditMode ? "cursor-pointer hover:bg-[#e8ebff]" : "cursor-not-allowed"}`}
+					} ${isEditMode ? "cursor-pointer hover:bg-[#e8ebff]" : "cursor-not-allowed"}`}
 					onClick={handleClick}
-					disabled={!(isClickable || isEditMode)}
+					disabled={!isEditMode}
 					type="button"
 				></button>
 				{!isLastStep && (
@@ -45,9 +44,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 			<button
 				className={`mt-2 inline translate-x-[-40%] text-xs ${
 					isActive ? "text-primary" : "text-[#6b7280]"
-				} ${isClickable || isEditMode ? "cursor-pointer hover:text-primary" : "cursor-not-allowed"}`}
+				} ${isEditMode ? "cursor-pointer hover:text-primary" : "cursor-not-allowed"}`}
 				onClick={handleClick}
-				disabled={!(isClickable || isEditMode)}
+				disabled={!isEditMode}
 				type="button"
 			>
 				{step === "config"

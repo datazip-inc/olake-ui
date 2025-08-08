@@ -18,7 +18,9 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 	return (
 		<div
 			className={`flex w-full items-center justify-between border-b border-solid border-[#e5e7eb] py-3 pl-6 ${
-				isActiveStream ? "bg-primary-100" : "bg-white hover:bg-[#f5f5f5]"
+				isActiveStream
+					? "bg-primary-100"
+					: "bg-white hover:bg-background-primary"
 			}`}
 		>
 			<div
@@ -45,7 +47,7 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 				</div>
 				{!isActiveStream && (
 					<div className="mr-4">
-						<CaretRight className="size-4 text-gray-400" />
+						<CaretRight className="size-4 text-gray-500" />
 					</div>
 				)}
 			</div>

@@ -453,12 +453,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 							{!fromJobFlow && (
 								<div className="mb-4">
-									<div className="mt-2 flex w-fit rounded-md bg-[#f5f5f5] p-1">
+									<div className="mt-2 flex w-fit rounded-md bg-background-primary p-1">
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
 												activeTab === "config"
 													? "bg-primary text-neutral-light"
-													: "bg-[#f5f5f5] text-text-primary"
+													: "bg-background-primary text-text-primary"
 											}`}
 											onClick={() => setActiveTab("config")}
 										>
@@ -469,7 +469,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
 												activeTab === "jobs"
 													? "bg-primary text-neutral-light"
-													: "bg-gray-200 text-text-primary"
+													: "bg-background-primary text-text-primary"
 											}`}
 											onClick={() => setActiveTab("jobs")}
 										>

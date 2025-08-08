@@ -178,7 +178,7 @@ export const steps: string[] = [
 
 export const TAB_STYLES = {
 	active: "border border-primary bg-white text-primary rounded-md py-1 px-2",
-	inactive: "bg-[#F5F5F5] text-slate-900 py-1 px-2",
+	inactive: "bg-background-primary text-slate-900 py-1 px-2",
 	hover: "hover:text-primary",
 }
 
