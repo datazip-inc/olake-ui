@@ -339,19 +339,7 @@ const JobCreation: React.FC = () => {
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
-								initialConnector={
-									destinationConnector.toLowerCase() ===
-										DESTINATION_INTERNAL_TYPES.S3 ||
-									destinationConnector.toLowerCase() ===
-										DESTINATION_INTERNAL_TYPES.AMAZON_S3 // TODO: dont manage different types use single at every place
-										? DESTINATION_INTERNAL_TYPES.S3
-										: destinationConnector.toLowerCase() ===
-													DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG ||
-											  destinationConnector.toLowerCase() ===
-													DESTINATION_INTERNAL_TYPES.ICEBERG
-											? DESTINATION_INTERNAL_TYPES.ICEBERG
-											: destinationConnector.toLowerCase()
-								}
+								initialConnector={getConnectorInLowerCase(destinationConnector)}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}

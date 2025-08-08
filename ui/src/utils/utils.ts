@@ -71,20 +71,28 @@ export const getStatusClass = (status: string) => {
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	if (connector === "Amazon S3" || connector === "s3") {
-		return "s3"
-	} else if (connector === "Apache Iceberg" || connector === "iceberg") {
-		return "iceberg"
-	} else if (connector.toLowerCase() === "mongodb") {
+	const lowerConnector = connector.toLowerCase()
+
+	if (
+		lowerConnector === DESTINATION_INTERNAL_TYPES.S3 ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.AMAZON_S3
+	) {
+		return DESTINATION_INTERNAL_TYPES.S3
+	} else if (
+		lowerConnector === DESTINATION_INTERNAL_TYPES.ICEBERG ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
+	) {
+		return DESTINATION_INTERNAL_TYPES.ICEBERG
+	} else if (lowerConnector === "mongodb") {
 		return "mongodb"
-	} else if (connector.toLowerCase() === "postgres") {
+	} else if (lowerConnector === "postgres") {
 		return "postgres"
-	} else if (connector.toLowerCase() === "mysql") {
+	} else if (lowerConnector === "mysql") {
 		return "mysql"
-	} else if (connector.toLowerCase() === "oracle") {
+	} else if (lowerConnector === "oracle") {
 		return "oracle"
 	} else {
-		return connector.toLowerCase()
+		return lowerConnector
 	}
 }
 

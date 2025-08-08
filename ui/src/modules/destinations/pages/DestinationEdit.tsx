@@ -699,7 +699,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								<div className="mb-4 mt-2">
 									<div className="flex w-fit rounded-md bg-background-primary p-1">
 										<button
-											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal text-center${
+											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
 												activeTab === TAB_TYPES.CONFIG
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
@@ -710,7 +710,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 										</button>
 										{
 											<button
-												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-sm font-normal text-center${
+												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
 													activeTab === TAB_TYPES.JOBS
 														? "bg-primary text-neutral-light"
 														: "bg-background-primary text-text-primary"
