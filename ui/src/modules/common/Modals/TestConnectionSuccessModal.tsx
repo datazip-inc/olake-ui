@@ -15,7 +15,7 @@ const TestConnectionSuccessModal = () => {
 			<div className="flex flex-col items-center justify-center gap-7 py-6">
 				<img src={DestinationSuccess} />{" "}
 				<div className="flex flex-col items-center">
-					<p className="text-xs text-[#8A8A8A]">Successful</p>
+					<p className="text-xs text-text-tertiary">Successful</p>
 					<h2 className="text-lg font-medium">
 						Your test connection is successful
 					</h2>

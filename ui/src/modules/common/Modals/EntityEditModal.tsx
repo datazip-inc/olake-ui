@@ -1,13 +1,13 @@
-import { Button, Modal, Table } from "antd"
-import { useAppStore } from "../../../store"
-import { getConnectorImage } from "../../../utils/utils"
-import { Warning } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
-import { message } from "antd"
 import { formatDistanceToNow } from "date-fns"
+import { Button, Modal, Table, message } from "antd"
+import { Warning } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api"
 import { destinationService } from "../../../api/services/destinationService"
 import { EntityEditModalProps } from "../../../types"
+import { getConnectorImage } from "../../../utils/utils"
 
 const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 	const navigate = useNavigate()
@@ -107,8 +107,8 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 					<span
 						className={`rounded px-2 py-1 text-xs ${
 							!activate
-								? "bg-[#FFF1F0] text-[#F5222D]"
-								: "bg-[#E6F4FF] text-[#0958D9]"
+								? "bg-danger-light text-danger"
+								: "bg-primary-200 text-primary-700"
 						}`}
 					>
 						{activate ? "Active" : "Inactive"}
@@ -159,7 +159,7 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 					<div className="flex justify-center">
 						<Warning
 							weight="fill"
-							className="size-12 text-[#203FDD]"
+							className="size-12 text-primary"
 						/>
 					</div>
 				}

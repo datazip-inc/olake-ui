@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
-import { useAppStore } from "../../../store"
 import {
 	ArrowLeft,
 	ArrowRight,
 	ArrowsClockwise,
 	Eye,
 } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
 import {
 	getConnectorImage,
 	getStatusClass,
@@ -107,7 +108,7 @@ const JobHistory: React.FC = () => {
 			key: "status",
 			render: (status: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(status)}`}
 				>
 					{getStatusIcon(status.toLowerCase())}
 					<span>{getStatusLabel(status.toLowerCase())}</span>
@@ -156,7 +157,7 @@ const JobHistory: React.FC = () => {
 					<div className="flex items-start gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="size-5" />
 						</Link>
@@ -189,7 +190,7 @@ const JobHistory: React.FC = () => {
 			</div>
 
 			<div className="flex flex-1 flex-col overflow-hidden border-t border-gray-200 p-6">
-				<h2 className="mb-4 text-xl font-bold">Job history</h2>
+				<h2 className="mb-4 text-xl font-bold">Job Logs & History</h2>
 
 				<div className="mb-4 flex gap-2">
 					<Search

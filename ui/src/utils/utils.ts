@@ -1,13 +1,14 @@
+import { message } from "antd"
+import parser from "cron-parser"
+
+import { CronParseResult } from "../types"
+import { DAYS_MAP, DESTINATION_INTERNAL_TYPES } from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import { DAYS_MAP } from "./constants"
-import { CronParseResult } from "../types"
-import parser from "cron-parser"
-import { message } from "antd"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
@@ -20,11 +21,14 @@ export const getConnectorImage = (connector: string) => {
 		return MySQL
 	} else if (lowerConnector === "oracle") {
 		return Oracle
-	} else if (lowerConnector === "s3" || lowerConnector === "amazon") {
+	} else if (
+		lowerConnector === DESTINATION_INTERNAL_TYPES.S3 ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.AMAZON_S3
+	) {
 		return AWSS3
 	} else if (
-		lowerConnector === "iceberg" ||
-		lowerConnector === "apache iceberg"
+		lowerConnector === DESTINATION_INTERNAL_TYPES.ICEBERG ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
 	) {
 		return ApacheIceBerg
 	}
@@ -58,29 +62,37 @@ export const getStatusClass = (status: string) => {
 		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
 		case "running":
-			return "text-[#0958D9] bg-[#E6F4FF]"
+			return "text-primary-700 bg-primary-200"
 		case "scheduled":
-			return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
+			return "text-[rgba(0,0,0,88)] bg-neutral-light"
 		default:
 			return "text-[rgba(0,0,0,88)] bg-transparent"
 	}
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	if (connector === "Amazon S3" || connector === "s3") {
-		return "s3"
-	} else if (connector === "Apache Iceberg" || connector === "iceberg") {
-		return "iceberg"
-	} else if (connector.toLowerCase() === "mongodb") {
+	const lowerConnector = connector.toLowerCase()
+
+	if (
+		lowerConnector === DESTINATION_INTERNAL_TYPES.S3 ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.AMAZON_S3
+	) {
+		return DESTINATION_INTERNAL_TYPES.S3
+	} else if (
+		lowerConnector === DESTINATION_INTERNAL_TYPES.ICEBERG ||
+		lowerConnector === DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
+	) {
+		return DESTINATION_INTERNAL_TYPES.ICEBERG
+	} else if (lowerConnector === "mongodb") {
 		return "mongodb"
-	} else if (connector.toLowerCase() === "postgres") {
+	} else if (lowerConnector === "postgres") {
 		return "postgres"
-	} else if (connector.toLowerCase() === "mysql") {
+	} else if (lowerConnector === "mysql") {
 		return "mysql"
-	} else if (connector.toLowerCase() === "oracle") {
+	} else if (lowerConnector === "oracle") {
 		return "oracle"
 	} else {
-		return connector.toLowerCase()
+		return lowerConnector
 	}
 }
 

@@ -1,10 +1,11 @@
 import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { DestinationTableProps, Entity } from "../../../types"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
+
+import { DestinationTableProps, Entity } from "../../../types"
 import { getConnectorImage } from "../../../utils/utils"
-import DeleteModal from "../../common/Modals/DeleteModal"
 import JobConnection from "../../common/components/JobConnection"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
 	destinations,
@@ -68,7 +69,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 						src={getConnectorImage(text)}
 						className="mr-2 size-6"
 					/>
-					<span>{text === "iceberg" ? "Apache Iceberg" : "AWS S3"}</span>
+					<span>{text === "iceberg" ? "Apache Iceberg" : "Amazon S3"}</span>
 				</div>
 			),
 		},

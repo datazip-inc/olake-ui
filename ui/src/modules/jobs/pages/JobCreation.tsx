@@ -1,24 +1,22 @@
 import { useState, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
+import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import { v4 as uuidv4 } from "uuid"
+
 import { useAppStore } from "../../../store"
+import { destinationService, sourceService } from "../../../api"
+import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
-import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
-import { destinationService, sourceService } from "../../../api"
-import analyticsService from "../../../api/services/analyticsService"
-import { v4 as uuidv4 } from "uuid"
-import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
-
-// Components
+import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
 import JobConfiguration from "../components/JobConfiguration"
+import StepProgress from "../components/StepIndicator"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
 import SchemaConfiguration from "./SchemaConfiguration"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import StepProgress from "../components/StepIndicator"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
@@ -27,21 +25,43 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
+	const location = useLocation()
+	const initialData = location.state?.initialData || {}
+	const savedJobId = location.state?.savedJobId
+
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
-	const [docsMinimized, setDocsMinimized] = useState(true)
-	const [sourceName, setSourceName] = useState("")
-	const [sourceConnector, setSourceConnector] = useState("MongoDB")
-	const [sourceFormData, setSourceFormData] = useState<any>({})
-	const [sourceVersion, setSourceVersion] = useState("latest")
-	const [destinationName, setDestinationName] = useState("")
+	const [docsMinimized, setDocsMinimized] = useState(false)
+	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
+	const [sourceConnector, setSourceConnector] = useState(
+		initialData.sourceConnector || "MongoDB",
+	)
+	const [sourceFormData, setSourceFormData] = useState<any>(
+		initialData.sourceFormData || {},
+	)
+	const [sourceVersion, setSourceVersion] = useState(
+		initialData.sourceVersion || "latest",
+	)
+	const [destinationName, setDestinationName] = useState(
+		initialData.destinationName || "",
+	)
 	const [destinationCatalogType, setDestinationCatalogType] =
 		useState<CatalogType | null>(null)
-	const [destinationConnector, setDestinationConnector] = useState("s3")
-	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [destinationVersion, setDestinationVersion] = useState("latest")
-	const [selectedStreams, setSelectedStreams] = useState<any>([])
-	const [jobName, setJobName] = useState("")
-	const [cronExpression, setCronExpression] = useState("* * * * *")
+	const [destinationConnector, setDestinationConnector] = useState(
+		initialData.destinationConnector || DESTINATION_INTERNAL_TYPES.S3,
+	)
+	const [destinationFormData, setDestinationFormData] = useState<any>(
+		initialData.destinationFormData || {},
+	)
+	const [destinationVersion, setDestinationVersion] = useState(
+		initialData.destinationVersion || "latest",
+	)
+	const [selectedStreams, setSelectedStreams] = useState<any>(
+		initialData.selectedStreams || [],
+	)
+	const [jobName, setJobName] = useState(initialData.jobName || "")
+	const [cronExpression, setCronExpression] = useState(
+		initialData.cronExpression || "* * * * *",
+	)
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	const {
@@ -173,14 +193,23 @@ const JobCreation: React.FC = () => {
 				streams_config: JSON.stringify(selectedStreams),
 				frequency: cronExpression, // Use cron expression instead of frequency-value format
 			}
-			addJob(newJobData)
-				.then(() => {
-					setShowEntitySavedModal(true)
-				})
-				.catch(error => {
-					console.error("Error adding job:", error)
-					message.error("Failed to create job")
-				})
+			try {
+				await addJob(newJobData)
+				// If this was a saved job, remove it from localStorage
+				if (savedJobId) {
+					const savedJobs = JSON.parse(
+						localStorage.getItem("savedJobs") || "[]",
+					)
+					const updatedSavedJobs = savedJobs.filter(
+						(job: any) => job.id !== savedJobId,
+					)
+					localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+				}
+				setShowEntitySavedModal(true)
+			} catch (error) {
+				console.error("Error adding job:", error)
+				message.error("Failed to create job")
+			}
 		}
 	}
 
@@ -214,43 +243,42 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleSaveJob = () => {
-		const savedJob = {
-			id: uuidv4(),
-			name: jobName || "-",
+		const jobData = {
+			id: savedJobId || uuidv4(),
+			name: jobName,
 			source: {
-				name: sourceName || "-",
-				type: getConnectorInLowerCase(sourceConnector),
+				name: sourceName,
+				type: sourceConnector.toLowerCase(),
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
 			destination: {
-				name: destinationName || "-",
-				type: getConnectorInLowerCase(destinationConnector),
+				name: destinationName,
+				type: destinationConnector.toLowerCase(),
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
-			activate: false,
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			created_by: "user",
-			updated_by: "user",
-			last_run_state: "",
-			last_run_time: "",
 		}
-		const existingSavedJobs = JSON.parse(
-			localStorage.getItem("savedJobs") || "[]",
-		)
-		existingSavedJobs.push(savedJob)
-		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
-		analyticsService.trackEvent("save_job_clicked")
-		message.success("Job saved successfully!")
-		navigate("/jobs")
-	}
 
-	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+
+		if (savedJobId) {
+			// Update existing saved job
+			const updatedSavedJobs = savedJobs.map((job: any) =>
+				job.id === savedJobId ? jobData : job,
+			)
+			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+			message.success("Job saved successfully!")
+		} else {
+			// Create new saved job
+			savedJobs.push(jobData)
+			localStorage.setItem("savedJobs", JSON.stringify(savedJobs))
+			message.success("Job saved successfully!")
+		}
+
+		navigate("/jobs")
 	}
 
 	return (
@@ -261,7 +289,7 @@ const JobCreation: React.FC = () => {
 					<div className="flex items-center gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
@@ -275,15 +303,10 @@ const JobCreation: React.FC = () => {
 
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
-					className={`${
-						(currentStep === "schema" || currentStep === "config") &&
-						!docsMinimized
-							? "w-2/3"
-							: "w-full"
-					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={`w-full ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
-						<div className="w-full">
+						<div className="h-full w-full overflow-auto">
 							<CreateSource
 								fromJobFlow={true}
 								stepNumber={"I"}
@@ -302,27 +325,21 @@ const JobCreation: React.FC = () => {
 									setCurrentStep("destination")
 								}}
 								ref={sourceRef}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						</div>
 					)}
 
 					{currentStep === "destination" && (
-						<div className="w-full">
+						<div className="h-full w-full overflow-auto">
 							<CreateDestination
 								fromJobFlow={true}
 								stepNumber={2}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
-								initialConnector={
-									destinationConnector.toLowerCase() === "s3" ||
-									destinationConnector.toLowerCase() === "amazon s3" // TODO: dont manage different types use single at every place
-										? "s3"
-										: destinationConnector.toLowerCase() === "apache iceberg" ||
-											  destinationConnector.toLowerCase() === "iceberg"
-											? "iceberg"
-											: destinationConnector.toLowerCase()
-								}
+								initialConnector={getConnectorInLowerCase(destinationConnector)}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}
@@ -335,6 +352,8 @@ const JobCreation: React.FC = () => {
 									setCurrentStep("schema")
 								}}
 								ref={destinationRef}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						</div>
 					)}
@@ -362,6 +381,7 @@ const JobCreation: React.FC = () => {
 										? selectedStreams
 										: undefined
 								}
+								destinationType={destinationConnector.toLowerCase()}
 							/>
 						</div>
 					)}
@@ -377,46 +397,38 @@ const JobCreation: React.FC = () => {
 						/>
 					)}
 				</div>
-
-				{/* Documentation panel */}
-				{currentStep === "schema" && (
-					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${sourceConnector.toLowerCase()}/config`}
-						isMinimized={docsMinimized}
-						onToggle={toggleDocsPanel}
-						showResizer={true}
-					/>
-				)}
 			</div>
 
 			{/* Footer */}
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white"
 						onClick={handleCancel}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 					>
 						<DownloadSimple className="size-4" />
 						Save Job
 					</button>
 				</div>
-				<div className="flex items-center">
+				<div
+					className={`flex items-center transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === "source" || currentStep === "destination") ? "mr-[40%]" : "mr-[4%]"}`}
+				>
 					{currentStep !== "source" && (
 						<button
 							onClick={handleBack}
-							className="mr-4 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 						>
 							Back
 						</button>
 					)}
 					<button
-						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>
 						{currentStep === "config" ? "Create Job" : "Next"}

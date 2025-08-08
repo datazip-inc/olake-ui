@@ -1,15 +1,16 @@
 import { useState } from "react"
 import { NavLink, Link, useNavigate } from "react-router-dom"
-import OlakeLogo from "../../../assets/OlakeLogo.svg"
-import Olake from "../../../assets/OLake.svg"
+import { LayoutProps } from "antd"
 import { CaretLeft, Info, X, SignOut } from "@phosphor-icons/react"
+
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
-import { LayoutProps } from "antd"
+import OlakeLogo from "../../../assets/OlakeLogo.svg"
+import Olake from "../../../assets/OLake.svg"
 
 const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 	<div className="p-4">
-		<div className="relative rounded-xl border border-[#EFEFEF] bg-[#F6F6F6] p-3">
+		<div className="relative rounded-xl border border-gray-300 bg-gray-100 p-3">
 			<button
 				onClick={onClose}
 				className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200"
@@ -25,9 +26,9 @@ const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 					size={17}
 					color="#203FDD"
 				/>
-				<span className="text-sm font-medium text-[#193AE6]">New Update</span>
+				<span className="text-sm font-medium text-brand-blue">New Update</span>
 			</div>
-			<p className="mt-2 text-xs text-[#383838]">
+			<p className="mt-2 text-xs text-gray-900">
 				We have made fixes to our ingestion flow & new UI is implemented
 			</p>
 		</div>
@@ -77,8 +78,8 @@ const Sidebar: React.FC<{
 						className={({ isActive }) =>
 							`flex items-center rounded-xl p-3 ${
 								isActive
-									? "bg-[#E9EBFC] text-[#203FDD] hover:text-black"
-									: "text-gray-700 hover:bg-[#f6f6f6] hover:text-black"
+									? "bg-primary-100 text-primary hover:text-black"
+									: "text-gray-700 hover:bg-gray-100 hover:text-black"
 							}`
 						}
 					>
@@ -98,7 +99,7 @@ const Sidebar: React.FC<{
 			<div className="mt-auto p-4">
 				<button
 					onClick={onLogout}
-					className="flex w-full items-center rounded-xl p-3 text-gray-700 hover:bg-[#f6f6f6] hover:text-black"
+					className="flex w-full items-center rounded-xl p-3 text-gray-700 hover:bg-gray-100 hover:text-black"
 				>
 					<SignOut
 						className="mr-3 flex-shrink-0"
@@ -110,7 +111,7 @@ const Sidebar: React.FC<{
 
 			<button
 				onClick={onToggle}
-				className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-[#383838] shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
+				className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-gray-900 shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
 			>
 				<div
 					className={`transition-transform duration-500 ${
