@@ -256,6 +256,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								setFormData(initialFormData)
 							}
 						}
+					} else {
+						setFormData({})
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)

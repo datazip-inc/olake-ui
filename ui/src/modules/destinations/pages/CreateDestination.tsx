@@ -324,14 +324,11 @@ const CreateDestination = forwardRef<
 			const isValid = await validateDestination()
 			if (!isValid) return
 
-			const catalogInLowerCase = catalog
-				? getCatalogInLowerCase(catalog)
-				: undefined
 			const newDestinationData = {
 				name: destinationName,
 				type: connector === CONNECTOR_TYPES.AMAZON_S3 ? "s3" : "iceberg",
 				version,
-				config: JSON.stringify({ ...formData, catalog: catalogInLowerCase }),
+				config: JSON.stringify({ ...formData }),
 			}
 
 			try {
