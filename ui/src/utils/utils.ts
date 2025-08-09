@@ -67,9 +67,13 @@ export const getStatusClass = (status: string) => {
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	if (connector === "Amazon S3" || connector === "s3") {
+	const lowerConnector = connector.toLowerCase()
+	if (lowerConnector === "amazon s3" || lowerConnector === "s3") {
 		return "s3"
-	} else if (connector === "Apache Iceberg" || connector === "iceberg") {
+	} else if (
+		lowerConnector === "apache iceberg" ||
+		lowerConnector === "iceberg"
+	) {
 		return "iceberg"
 	} else if (connector.toLowerCase() === "mongodb") {
 		return "mongodb"
