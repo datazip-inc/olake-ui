@@ -384,6 +384,9 @@ const CreateDestination = forwardRef<
 			if (onCatalogTypeChange) {
 				onCatalogTypeChange(value as CatalogType)
 			}
+			if (onFormDataChange) {
+				onFormDataChange({})
+			}
 		}
 
 		const handleExistingDestinationSelect = (value: string) => {

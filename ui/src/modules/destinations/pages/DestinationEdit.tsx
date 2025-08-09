@@ -27,7 +27,7 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import { connectorOptions } from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { getStatusIcon } from "../../../utils/statusIcons"
-import { catalogOptions } from "../../../utils/constants"
+import { CATALOG_TYPES, catalogOptions } from "../../../utils/constants"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -395,6 +395,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSchema(null)
 		setUiSchema(null)
 		setConnector(value)
+		if (value === "Apache Iceberg") {
+			setCatalog(CATALOG_TYPES.AWS_GLUE)
+		} else {
+			setCatalog(CATALOG_TYPES.NONE)
+		}
 
 		if (onFormDataChange) {
 			onFormDataChange({})
