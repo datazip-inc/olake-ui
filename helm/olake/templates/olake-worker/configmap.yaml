@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: olake-workers-config
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
+data:
+  # Temporal Configuration
+  TEMPORAL_ADDRESS: "temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233"
+  TEMPORAL_TASK_QUEUE: "OLAKE_K8S_TASK_QUEUE"
+  
+  # Database Configuration
+  DB_HOST: "postgresql.{{ include "olake.namespace" . }}.svc.cluster.local"
+  DB_PORT: "5432"
+  DB_NAME: "postgres"
+  DB_USER: {{ .Values.postgresql.auth.postgresUser | quote }}
+  DB_PASSWORD: {{ .Values.postgresql.auth.postgresPassword | quote }}
+  DB_SSLMODE: "disable"
+  
+  # Timeout Configuration
+  TIMEOUT_WORKFLOW_DISCOVER: {{ .Values.olakeWorker.config.timeouts.workflow.discover | quote }}
+  TIMEOUT_WORKFLOW_TEST: {{ .Values.olakeWorker.config.timeouts.workflow.test | quote }}
+  TIMEOUT_WORKFLOW_SYNC: {{ .Values.olakeWorker.config.timeouts.workflow.sync | quote }}
+  TIMEOUT_ACTIVITY_DISCOVER: {{ .Values.olakeWorker.config.timeouts.activity.discover | quote }}
+  TIMEOUT_ACTIVITY_TEST: {{ .Values.olakeWorker.config.timeouts.activity.test | quote }}
+  TIMEOUT_ACTIVITY_SYNC: {{ .Values.olakeWorker.config.timeouts.activity.sync | quote }}
+  
+  # Kubernetes Configuration
+  WORKER_NAMESPACE: {{ include "olake.namespace" . | quote }}
+  IMAGE_REGISTRY: "olakego"
+  IMAGE_PULL_POLICY: "IfNotPresent"
+  SERVICE_ACCOUNT: {{ include "olake.workerServiceAccountName" . | quote }}
+  OLAKE_STORAGE_PVC_NAME: {{ include "olake.sharedStoragePVC" . | quote }}
+  
+  # Worker Configuration
+  MAX_CONCURRENT_ACTIVITIES: {{ .Values.olakeWorker.config.worker.maxConcurrentActivities | quote }}
+  MAX_CONCURRENT_WORKFLOWS: {{ .Values.olakeWorker.config.worker.maxConcurrentWorkflows | quote }}
+  
+  # Logging Configuration
+  LOG_LEVEL: {{ .Values.olakeWorker.config.logging.level | quote }}
+  LOG_FORMAT: {{ .Values.olakeWorker.config.logging.format | quote }}
+  
+  {{- if .Values.olakeWorker.env }}
+  # Additional Environment Variables
+  {{- range $key, $value := .Values.olakeWorker.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  
+  # =================================================================
+  # JOB MAPPING CONFIGURATION
+  # =================================================================
+  {{- if .Values.global.jobMapping }}
+  OLAKE_JOB_MAPPING: {{ .Values.global.jobMapping | toJson | quote }}
+  {{- end }}
+  
+  # =================================================================
+  # JOB SERVICE ACCOUNT CONFIGURATION
+  # =================================================================
+  JOB_SERVICE_ACCOUNT_NAME: {{ include "olake.jobServiceAccountName" . | quote }}

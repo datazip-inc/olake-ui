@@ -1,0 +1,49 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "olake.workerServiceAccountName" . }}
+  namespace: {{ include "olake.namespace" . }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "51"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
+rules:
+# Pod management for job execution (least privilege)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+- apiGroups: [""]
+  resources: ["pods/log", "pods/status"]
+  verbs: ["get", "list", "watch"]
+# Job management for batch processing
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Read-only access to configuration (no create/update/delete)
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "olake.workerServiceAccountName" . }}
+  namespace: {{ include "olake.namespace" . }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "52"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "olake.workerServiceAccountName" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "olake.workerServiceAccountName" . }}
+  namespace: {{ include "olake.namespace" . }}

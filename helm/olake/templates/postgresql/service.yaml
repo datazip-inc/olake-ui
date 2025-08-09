@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: {{ include "olake.namespace" . }}
+  {{- with ((.Values.postgresql.service).annotations | default dict) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: database
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+    name: postgres
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: database

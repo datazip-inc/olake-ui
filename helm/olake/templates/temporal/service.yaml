@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: temporal
+  namespace: {{ include "olake.namespace" . }}
+  {{- with ((.Values.temporal.server.service).annotations | default dict) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: temporal
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: workflow-engine
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 7233
+    targetPort: 7233
+    protocol: TCP
+    name: grpc
+  selector:
+    app.kubernetes.io/name: temporal
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: workflow-engine
