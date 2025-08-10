@@ -134,3 +134,8 @@ x-encryption:
   ```bash
   docker compose logs -f <service_name>
   ```
+
+###  Contributing
+
+We welcome contributions from everyone!  
+Please read our [Contribution Guide](CONTRIBUTING.md#olake-ui-contributor-agreement) for step-by-step instructions on how to get started.
