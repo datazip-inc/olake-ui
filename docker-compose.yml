@@ -11,7 +11,7 @@ x-signup-defaults:
   email: &defaultEmail "admin@example.com"
 
 x-encryption:
-  key: &encryptionKey ""
+  key: &encryptionKey "" 
 
 services:
   olake-ui:
@@ -35,7 +35,7 @@ services:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
-    healthcheck: # Updated healthcheck for olake-ui
+    healthcheck: # Updated healthcheck for olake-ui  
       test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
       interval: 15s
       timeout: 5s

@@ -252,6 +252,7 @@ func ToCron(frequency string) string {
 		return frequency
 	}
 }
+
 func CleanOldLogs(logDir string, retentionPeriod int) {
 	logs.Info("Running log cleaner...")
 	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
@@ -295,7 +296,6 @@ func CleanOldLogs(logDir string, retentionPeriod int) {
 		}
 	}
 }
-
 
 // starts a log cleaner that removes old logs from the specified directory based on the retention period
 func InitLogCleaner(logDir string, retentionPeriod int) {
