@@ -252,47 +252,53 @@ func ToCron(frequency string) string {
 		return frequency
 	}
 }
-
 func CleanOldLogs(logDir string, retentionPeriod int) {
-	logs.Info("Running log cleaner...")
 	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
 
-	// check if old logs are present
-	shouldDelete := func(path string, cutoff time.Time) bool {
-		entries, _ := os.ReadDir(path)
-		if len(entries) == 0 {
-			return true
+	shouldDelete := func(path string) (bool, error) {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, err
 		}
-
-		var foundOldLog bool
-		_ = filepath.Walk(path, func(filePath string, info os.FileInfo, _ error) error {
-			if info == nil || info.IsDir() {
-				return nil
+		if !info.IsDir() || !info.ModTime().Before(cutoff) {
+			return false, nil
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return false, err
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
 			}
-			if (strings.HasSuffix(filePath, ".log") || strings.HasSuffix(filePath, ".log.gz")) &&
-				info.ModTime().Before(cutoff) {
-				foundOldLog = true
-				return filepath.SkipDir
+			name := entry.Name()
+			if strings.HasSuffix(name, ".log") || strings.HasSuffix(name, ".log.gz") {
+				return true, nil
 			}
-			return nil
-		})
-		return foundOldLog
+		}
+		return false, nil
 	}
 
 	entries, err := os.ReadDir(logDir)
 	if err != nil {
-		logs.Error("failed to read log dir: %v", err)
 		return
 	}
-	// delete dir if old logs are found or is empty
+
 	for _, entry := range entries {
 		if !entry.IsDir() || entry.Name() == "telemetry" {
 			continue
 		}
+
 		dirPath := filepath.Join(logDir, entry.Name())
-		if toDelete := shouldDelete(dirPath, cutoff); toDelete {
-			logs.Info("Deleting folder: %s", dirPath)
-			_ = os.RemoveAll(dirPath)
+		ok, err := shouldDelete(dirPath)
+		if err != nil {
+			continue
+		}
+		if ok {
+			fmt.Printf("Deleting folder %s\n", dirPath)
+			if err := os.RemoveAll(dirPath); err != nil {
+				continue
+			}
 		}
 	}
 }

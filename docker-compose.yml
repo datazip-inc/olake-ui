@@ -20,6 +20,7 @@ services:
     container_name: olake-ui
     environment:
       PERSISTENT_DIR: *hostPersistencePath
+      POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
       OLAKE_SECRET_KEY: *encryptionKey
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
