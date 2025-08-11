@@ -142,6 +142,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						const catalogType =
 							config.writer.catalog_type || CATALOG_TYPES.AWS_GLUE
 						setCatalog(getCatalogName(catalogType) || null)
+						setInitialCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
 						setCatalog(CATALOG_TYPES.AWS_GLUE)
@@ -278,6 +279,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								setFormData(initialFormData)
 							}
 						}
+					} else {
+						setFormData({})
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)
@@ -420,6 +423,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSchema(null)
 		setUiSchema(null)
 		setConnector(value)
+
+		if (value === "Apache Iceberg") {
+			setCatalog(CATALOG_TYPES.AWS_GLUE)
+		} else {
+			setCatalog(CATALOG_TYPES.NONE)
+		}
 
 		if (onFormDataChange) {
 			onFormDataChange({})

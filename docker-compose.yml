@@ -11,7 +11,7 @@ x-signup-defaults:
   email: &defaultEmail "admin@example.com"
 
 x-encryption:
-  key: &encryptionKey "" 
+  key: &encryptionKey ""
 
 services:
   olake-ui:
@@ -20,7 +20,6 @@ services:
     container_name: olake-ui
     environment:
       PERSISTENT_DIR: *hostPersistencePath
-      POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
       OLAKE_SECRET_KEY: *encryptionKey
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
@@ -36,7 +35,7 @@ services:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
-    healthcheck: # Updated healthcheck for olake-ui  
+    healthcheck: # Updated healthcheck for olake-ui
       test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
       interval: 15s
       timeout: 5s

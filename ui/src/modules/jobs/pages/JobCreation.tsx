@@ -138,7 +138,7 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: `${destinationConnector}`,
+				type: `${getConnectorInLowerCase(destinationConnector.toLowerCase())}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
