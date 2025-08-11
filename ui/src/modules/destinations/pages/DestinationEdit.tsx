@@ -43,6 +43,7 @@ import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { connectorOptions } from "../components/connectorOptions"
 
+
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
 	stepNumber,
@@ -278,6 +279,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								setFormData(initialFormData)
 							}
 						}
+					} else {
+						setFormData({})
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)
@@ -420,6 +423,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSchema(null)
 		setUiSchema(null)
 		setConnector(value)
+		if (value === "Apache Iceberg") {
+			setCatalog(CATALOG_TYPES.AWS_GLUE)
+		} else {
+			setCatalog(CATALOG_TYPES.NONE)
+		}
 
 		if (onFormDataChange) {
 			onFormDataChange({})

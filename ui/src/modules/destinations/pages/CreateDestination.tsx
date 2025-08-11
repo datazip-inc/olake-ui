@@ -329,9 +329,6 @@ const CreateDestination = forwardRef<
 			const isValid = await validateDestination()
 			if (!isValid) return
 
-			const catalogInLowerCase = catalog
-				? getCatalogInLowerCase(catalog)
-				: undefined
 			const newDestinationData = {
 				name: destinationName,
 				type:
@@ -339,7 +336,7 @@ const CreateDestination = forwardRef<
 						? DESTINATION_INTERNAL_TYPES.S3
 						: DESTINATION_INTERNAL_TYPES.ICEBERG,
 				version,
-				config: JSON.stringify({ ...formData, catalog: catalogInLowerCase }),
+				config: JSON.stringify({ ...formData }),
 			}
 
 			try {
@@ -413,6 +410,9 @@ const CreateDestination = forwardRef<
 			setCatalog(value as CatalogType)
 			if (onCatalogTypeChange) {
 				onCatalogTypeChange(value as CatalogType)
+			}
+			if (onFormDataChange) {
+				onFormDataChange({})
 			}
 		}
 
