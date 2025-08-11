@@ -27,6 +27,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	jobId = -1,
 	destinationType,
 }) => {
+	const prevSourceConfig = useRef(sourceConfig)
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -150,8 +151,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		sourceConfig,
 		initialStreamsData,
 	])
-
-	const prevSourceConfig = useRef(sourceConfig)
 
 	const handleStreamSyncModeChange = (
 		streamName: string,

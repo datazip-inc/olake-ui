@@ -272,12 +272,9 @@ export const getCatalogName = (catalogType: string) => {
 }
 
 export const getDestinationType = (type: string) => {
-	if (type.toLowerCase() === "amazon s3" || type.toLowerCase() === "s3") {
+	if (type.toLowerCase() === "amazon s3") {
 		return "PARQUET"
-	} else if (
-		type.toLowerCase() === "apache iceberg" ||
-		type.toLowerCase() === "iceberg"
-	) {
+	} else if (type.toLowerCase() === "apache iceberg") {
 		return "ICEBERG"
 	}
 }

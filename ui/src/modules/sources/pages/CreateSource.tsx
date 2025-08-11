@@ -273,7 +273,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onSourceNameChange) onSourceNameChange("")
-				if (onConnectorChange) onConnectorChange("MongoDB")
+				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
 				if (onFormDataChange) onFormDataChange({})
 				if (onVersionChange) onVersionChange(DEFAULT_VERSION)
 			}
