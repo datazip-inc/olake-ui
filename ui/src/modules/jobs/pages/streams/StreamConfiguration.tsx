@@ -187,7 +187,7 @@ const StreamConfiguration = ({
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
-		
+
 		const newApiSyncMode = Object.entries(SYNC_MODE_MAP).find(
 			([, value]) => value === selectedRadioValue,
 		)?.[0] as SyncMode
