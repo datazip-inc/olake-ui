@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button, Tooltip } from "antd"
 import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
@@ -196,7 +197,10 @@ const JobLogs: React.FC = () => {
 					</div>
 				) : (
 					<div
-						className={`overflow-scroll rounded-xl ${filteredLogs.length > 0 ? "border" : ""} bg-white`}
+						className={clsx(
+							"overflow-scroll rounded-xl bg-white",
+							filteredLogs.length > 0 && "border",
+						)}
 					>
 						<table className="min-w-full">
 							<tbody>
@@ -224,15 +228,19 @@ const JobLogs: React.FC = () => {
 												</td>
 												<td className="w-24 px-4 py-3 text-sm">
 													<span
-														className={`rounded-md px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
-															taskLog.level,
-														)}`}
+														className={clsx(
+															"rounded-md px-2 py-[5px] text-xs capitalize",
+															getLogLevelClass(taskLog.level),
+														)}
 													>
 														{taskLog.level}
 													</span>
 												</td>
 												<td
-													className={`px-4 py-3 text-sm ${getLogTextColor(taskLog.level)}`}
+													className={clsx(
+														"px-4 py-3 text-sm",
+														getLogTextColor(taskLog.level),
+													)}
 												>
 													{taskLog.message}
 												</td>
@@ -250,15 +258,19 @@ const JobLogs: React.FC = () => {
 												</td>
 												<td className="w-24 px-4 py-3 text-sm">
 													<span
-														className={`rounded-xl px-2 py-[5px] text-xs capitalize ${getLogLevelClass(
-															jobLog.level,
-														)}`}
+														className={clsx(
+															"rounded-xl px-2 py-[5px] text-xs capitalize",
+															getLogLevelClass(jobLog.level),
+														)}
 													>
 														{jobLog.level}
 													</span>
 												</td>
 												<td
-													className={`px-4 py-3 text-sm text-gray-700 ${getLogTextColor(jobLog.level)}`}
+													className={clsx(
+														"px-4 py-3 text-sm text-gray-700",
+														getLogTextColor(jobLog.level),
+													)}
 												>
 													{jobLog.message}
 												</td>

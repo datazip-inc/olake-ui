@@ -1,4 +1,5 @@
 import { useState } from "react"
+import clsx from "clsx"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import { LayoutProps } from "antd"
 import { CaretLeft, Info, X, SignOut } from "@phosphor-icons/react"
@@ -44,9 +45,10 @@ const Sidebar: React.FC<{
 }> = ({ collapsed, onToggle, onLogout, showUpdate, onCloseUpdate }) => {
 	return (
 		<div
-			className={`${
-				collapsed ? "w-20" : "w-64"
-			} relative flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out`}
+			className={clsx(
+				"relative flex flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out",
+				collapsed ? "w-20" : "w-64",
+			)}
 		>
 			<div className="pl-4 pt-6">
 				<Link
@@ -56,9 +58,10 @@ const Sidebar: React.FC<{
 					<img
 						src={OlakeLogo}
 						alt="logo"
-						className={`transition-all duration-300 ease-in-out ${
-							collapsed ? "h-10 w-10 pl-1" : "h-6 w-6"
-						}`}
+						className={clsx(
+							"transition-all duration-300 ease-in-out",
+							collapsed ? "h-10 w-10 pl-1" : "h-6 w-6",
+						)}
 					/>
 					{!collapsed && (
 						<img
@@ -76,11 +79,12 @@ const Sidebar: React.FC<{
 						key={path}
 						to={path}
 						className={({ isActive }) =>
-							`flex items-center rounded-xl p-3 ${
+							clsx(
+								"flex items-center rounded-xl p-3",
 								isActive
 									? "bg-primary-100 text-primary hover:text-black"
-									: "text-gray-700 hover:bg-gray-100 hover:text-black"
-							}`
+									: "text-gray-700 hover:bg-gray-100 hover:text-black",
+							)
 						}
 					>
 						<Icon
@@ -114,9 +118,10 @@ const Sidebar: React.FC<{
 				className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-gray-900 shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
 			>
 				<div
-					className={`transition-transform duration-500 ${
-						collapsed ? "rotate-180" : "rotate-0"
-					}`}
+					className={clsx(
+						"transition-transform duration-500",
+						collapsed ? "rotate-180" : "rotate-0",
+					)}
 				>
 					<CaretLeft size={16} />
 				</div>

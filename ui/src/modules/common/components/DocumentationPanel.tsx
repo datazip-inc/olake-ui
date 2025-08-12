@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react"
+import clsx from "clsx"
 import { Button, Tooltip } from "antd"
 import {
 	CornersOut,
@@ -114,9 +115,10 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 						className="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-gray-900 shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
 					>
 						<div
-							className={`transition-transform duration-300 ${
-								isDocPanelCollapsed ? "rotate-180" : "rotate-0"
-							}`}
+							className={clsx(
+								"transition-transform duration-300",
+								isDocPanelCollapsed ? "rotate-180" : "rotate-0",
+							)}
 						>
 							<CaretRight size={16} />
 						</div>
@@ -131,7 +133,10 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 				style={{ width: isDocPanelCollapsed ? "80px" : `${initialWidth}%` }}
 			>
 				<div
-					className={`transition-opacity ${!isReady ? "opacity-0" : "h-full opacity-100"}`}
+					className={clsx(
+						"transition-opacity",
+						!isReady ? "opacity-0" : "h-full opacity-100",
+					)}
 					style={{ transition: "opacity 0.3s ease" }}
 				>
 					{!isDocPanelCollapsed && (

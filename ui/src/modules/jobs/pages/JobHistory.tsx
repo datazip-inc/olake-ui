@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react"
+import clsx from "clsx"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
 import {
@@ -108,7 +109,10 @@ const JobHistory: React.FC = () => {
 			key: "status",
 			render: (status: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(status)}`}
+					className={clsx(
+						"flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1",
+						getStatusClass(status),
+					)}
 				>
 					{getStatusIcon(status.toLowerCase())}
 					<span>{getStatusLabel(status.toLowerCase())}</span>

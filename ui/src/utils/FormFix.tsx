@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react"
+import clsx from "clsx"
 import { RJSFSchema } from "@rjsf/utils"
 import { Switch, Tooltip, Select, Button, Input } from "antd"
 import { Info, Eye, EyeSlash, Plus, Trash } from "@phosphor-icons/react"
@@ -261,7 +262,11 @@ const DirectFormField = ({
 					onChange={handleChange}
 					placeholder={schema.placeholder}
 					disabled={disabled}
-					className={`w-full rounded-md border ${localError ? "border-red-500" : "border-gray-400"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+					className={clsx(
+						"w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500",
+						localError ? "border-red-500" : "border-gray-400",
+						disabled && "cursor-not-allowed bg-gray-100",
+					)}
 				/>
 			)
 		}
@@ -306,7 +311,11 @@ const DirectFormField = ({
 						onChange={handleChange}
 						placeholder={schema.placeholder}
 						disabled={disabled}
-						className={`w-full rounded-md border ${localError ? "border-red-500" : "border-gray-400"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
+						className={clsx(
+							"w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500",
+							localError ? "border-red-500" : "border-gray-400",
+							disabled && "cursor-not-allowed bg-gray-100",
+						)}
 					/>
 					<button
 						type="button"

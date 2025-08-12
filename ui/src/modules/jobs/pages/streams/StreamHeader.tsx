@@ -1,6 +1,7 @@
 import { Checkbox } from "antd"
 import { StreamHeaderProps } from "../../../../types"
 import { CaretRight } from "@phosphor-icons/react"
+import clsx from "clsx"
 
 const StreamHeader: React.FC<StreamHeaderProps> = ({
 	stream,
@@ -17,11 +18,12 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 
 	return (
 		<div
-			className={`flex w-full items-center justify-between border-b border-solid border-[#e5e7eb] py-3 pl-6 ${
+			className={clsx(
+				"flex w-full items-center justify-between border-b border-solid border-[#e5e7eb] py-3 pl-6",
 				isActiveStream
 					? "bg-primary-100"
-					: "bg-white hover:bg-background-primary"
-			}`}
+					: "bg-white hover:bg-background-primary",
+			)}
 		>
 			<div
 				role="button"
@@ -40,7 +42,7 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 						<Checkbox
 							checked={checked}
 							onChange={toggle}
-							className={`text-lg ${checked && "text-[#1FA7C9"}`}
+							className={clsx("text-lg", checked && "text-[#1FA7C9]")}
 						/>
 					</div>
 					{name}

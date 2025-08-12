@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import { message, Spin } from "antd"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
@@ -444,7 +445,10 @@ const JobEdit: React.FC = () => {
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				{/* Left content */}
 				<div
-					className={`w-full ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={clsx(
+						"w-full pt-0 transition-all duration-300",
+						currentStep !== "schema" && "overflow-hidden",
+					)}
 				>
 					<div className="h-full">
 						{currentStep === "source" && sourceData && (
@@ -516,7 +520,13 @@ const JobEdit: React.FC = () => {
 					</button>
 				</div>
 				<div
-					className={`flex gap-2 transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === "source" || currentStep === "destination") ? "mr-[40%]" : "mr-[4%]"}`}
+					className={clsx(
+						"flex gap-2 transition-[margin] duration-500 ease-in-out",
+						!docsMinimized &&
+							(currentStep === "source" || currentStep === "destination")
+							? "mr-[40%]"
+							: "mr-[4%]",
+					)}
 				>
 					{currentStep === "schema" && jobId && (
 						<button

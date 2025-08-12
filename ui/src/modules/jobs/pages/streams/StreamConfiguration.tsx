@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import clsx from "clsx"
 import {
 	ExtendedStreamConfigurationProps,
 	FilterCondition,
@@ -502,7 +503,10 @@ const StreamConfiguration = ({
 
 		return (
 			<button
-				className={`${tabStyle} flex items-center justify-center gap-1 text-xs`}
+				className={clsx(
+					tabStyle,
+					"flex items-center justify-center gap-1 text-xs",
+				)}
 				style={{ fontWeight: 500, height: "28px", width: "100%" }}
 				onClick={() => setActiveTab(id)}
 				type="button"
@@ -665,7 +669,10 @@ const StreamConfiguration = ({
 				</div>
 
 				<div
-					className={`${!isSelected ? "font-normal text-text-disabled" : "font-medium"} ${CARD_STYLE}`}
+					className={clsx(
+						!isSelected ? "font-normal text-text-disabled" : "font-medium",
+						CARD_STYLE,
+					)}
 				>
 					<div className="flex items-center justify-between">
 						<label>Normalisation</label>
@@ -684,7 +691,11 @@ const StreamConfiguration = ({
 				)}
 
 				<div
-					className={`${!isSelected ? "font-normal text-text-disabled" : "font-medium"} ${CARD_STYLE} !p-0`}
+					className={clsx(
+						!isSelected ? "font-normal text-text-disabled" : "font-medium",
+						CARD_STYLE,
+						"!p-0",
+					)}
 				>
 					<div className="flex items-center justify-between !p-3">
 						<label className="">Data Filter</label>
@@ -795,11 +806,12 @@ const StreamConfiguration = ({
 								<button
 									type="button"
 									onClick={() => handleLogicalOperatorChange("and")}
-									className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+									className={clsx(
+										"rounded px-3 py-1 text-sm font-medium transition-colors",
 										multiFilterCondition.logicalOperator === "and"
 											? "bg-white text-gray-800 shadow-sm"
-											: "bg-transparent text-gray-600"
-									}`}
+											: "bg-transparent text-gray-600",
+									)}
 									disabled={isStreamInInitialSelection}
 								>
 									AND
@@ -807,11 +819,12 @@ const StreamConfiguration = ({
 								<button
 									type="button"
 									onClick={() => handleLogicalOperatorChange("or")}
-									className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+									className={clsx(
+										"rounded px-3 py-1 text-sm font-medium transition-colors",
 										multiFilterCondition.logicalOperator === "or"
 											? "bg-white text-gray-800 shadow-sm"
-											: "bg-transparent text-gray-600"
-									}`}
+											: "bg-transparent text-gray-600",
+									)}
 									disabled={isStreamInInitialSelection}
 								>
 									OR
