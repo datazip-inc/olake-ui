@@ -1,4 +1,3 @@
-{{- if .Values.elasticsearch.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -20,12 +19,7 @@ spec:
     targetPort: 9200
     protocol: TCP
     name: http
-  - port: 9300
-    targetPort: transport
-    protocol: TCP
-    name: transport
   selector:
     app.kubernetes.io/name: elasticsearch
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: search
-{{- end }}

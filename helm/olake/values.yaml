@@ -411,10 +411,6 @@ postgresql:
 
 # Elasticsearch is used by Temporal for advanced visibility features
 elasticsearch:
-  # -- Enable Elasticsearch deployment
-  # Set to false to disable advanced visibility in Temporal
-  enabled: true
-  
   # -- Elasticsearch image configuration
   image:
     repository: elasticsearch
@@ -447,3 +443,8 @@ elasticsearch:
   #       memory: "4Gi"
   #       cpu: "2000m"
   resources: {}
+  
+  # -- Elasticsearch persistence configuration
+  persistence:
+    # -- Size of persistent volume for Elasticsearch data
+    size: 8Gi

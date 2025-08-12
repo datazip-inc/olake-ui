@@ -1,6 +1,5 @@
-{{- if .Values.elasticsearch.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: elasticsearch
   namespace: {{ include "olake.namespace" . }}
@@ -12,6 +11,7 @@ metadata:
     {{- include "olake.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  serviceName: elasticsearch
   selector:
     matchLabels:
       app.kubernetes.io/name: elasticsearch
@@ -55,16 +55,24 @@ spec:
         - name: http
           containerPort: 9200
           protocol: TCP
-        - name: transport
-          containerPort: 9300
-          protocol: TCP
         env:
+        - name: cluster.routing.allocation.disk.threshold_enabled
+          value: "true"
+        - name: cluster.routing.allocation.disk.watermark.low
+          value: "512mb"
+        - name: cluster.routing.allocation.disk.watermark.high
+          value: "256mb"
+        - name: cluster.routing.allocation.disk.watermark.flood_stage
+          value: "128mb"
         - name: discovery.type
           value: "single-node"
         - name: ES_JAVA_OPTS
-          value: "-Xms512m -Xmx512m"
+          value: "-Xms256m -Xmx256m"
         - name: xpack.security.enabled
           value: "false"
+        volumeMounts:
+        - name: elasticsearch-data
+          mountPath: /usr/share/elasticsearch/data
         {{- $defaultResources := dict 
           "requests" (dict "memory" "1Gi" "cpu" "500m")
         }}
@@ -93,4 +101,19 @@ spec:
         {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.elasticsearch.livenessProbe | default dict) }}
         livenessProbe:
           {{- toYaml $livenessProbe | nindent 10 }}
-{{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-data
+      labels:
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: search
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      {{- if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.elasticsearch.persistence.size | default "8Gi" }}
