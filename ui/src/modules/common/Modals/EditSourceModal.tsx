@@ -1,11 +1,11 @@
-import { Button, Modal, Table } from "antd"
+import { Button, Modal, Table, message } from "antd"
+import { CheckCircle, Warning } from "@phosphor-icons/react"
+import { formatDistanceToNow } from "date-fns"
+import { useNavigate } from "react-router-dom"
+
+import { sourceService } from "../../../api"
 import { useAppStore } from "../../../store"
 import { getConnectorImage } from "../../../utils/utils"
-import { CheckCircle, Warning } from "@phosphor-icons/react"
-import { useNavigate } from "react-router-dom"
-import { message } from "antd"
-import { formatDistanceToNow } from "date-fns"
-import { sourceService } from "../../../api"
 
 const EditSourceModal = () => {
 	const navigate = useNavigate()

@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react"
-import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
-import { useAppStore } from "../../../store"
-import DestinationTable from "../components/DestinationTable"
 import { Path, Plus } from "@phosphor-icons/react"
+import { Button, Tabs, Empty, message, Spin } from "antd"
+
+import analyticsService from "../../../api/services/analyticsService"
+import { useAppStore } from "../../../store"
 import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
-import analyticsService from "../../../api/services/analyticsService"
+import DestinationTable from "../components/DestinationTable"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")

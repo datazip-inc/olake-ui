@@ -1,7 +1,7 @@
+import { useNavigate } from "react-router-dom"
+import { Warning } from "@phosphor-icons/react"
 import { Button, message, Modal } from "antd"
 import { useAppStore } from "../../../store"
-import { Warning } from "@phosphor-icons/react"
-import { useNavigate } from "react-router-dom"
 
 const ClearDestinationAndSyncModal = () => {
 	const {

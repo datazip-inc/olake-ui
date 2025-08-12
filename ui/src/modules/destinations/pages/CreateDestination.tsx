@@ -75,9 +75,7 @@ const CreateDestination = forwardRef<
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
 				? CONNECTOR_TYPES.AMAZON_S3
-				: initialConnector === DESTINATION_INTERNAL_TYPES.S3 ||
-					  initialConnector.toLowerCase() ===
-							DESTINATION_INTERNAL_TYPES.AMAZON_S3
+				: initialConnector === DESTINATION_INTERNAL_TYPES.S3
 					? CONNECTOR_TYPES.AMAZON_S3
 					: CONNECTOR_TYPES.APACHE_ICEBERG,
 		)

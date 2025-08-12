@@ -1,7 +1,8 @@
-import { Checkbox } from "antd"
-import { StreamHeaderProps } from "../../../../types"
 import { CaretRight } from "@phosphor-icons/react"
+import { Checkbox } from "antd"
 import clsx from "clsx"
+
+import { StreamHeaderProps } from "../../../../types"
 
 const StreamHeader: React.FC<StreamHeaderProps> = ({
 	stream,

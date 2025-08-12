@@ -8,6 +8,7 @@ import {
 	EntityTestResponse,
 } from "../../types"
 import { DESTINATION_INTERNAL_TYPES } from "../../utils/constants"
+import { getConnectorInLowerCase } from "../../utils/utils"
 
 const normalizeDestinationType = (type: string): string => {
 	const typeMap: Record<string, string> = {
@@ -97,13 +98,7 @@ export const destinationService = {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
-					type:
-						destination.type.toLowerCase() === "apache iceberg"
-							? DESTINATION_INTERNAL_TYPES.ICEBERG
-							: destination.type.toLowerCase() ===
-								  DESTINATION_INTERNAL_TYPES.AMAZON_S3
-								? DESTINATION_INTERNAL_TYPES.S3
-								: destination.type.toLowerCase(),
+					type: getConnectorInLowerCase(destination.type),
 					version: destination.version,
 					config: destination.config,
 					source_type: source_type,

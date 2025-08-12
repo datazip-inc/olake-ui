@@ -6,12 +6,15 @@ import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
 import { destinationService, sourceService } from "../../../api"
+
 import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
 import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+
+// Internal imports from components
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
 import CreateSource from "../../sources/pages/CreateSource"

@@ -23,10 +23,8 @@ export const getConnectorImage = (connector: string) => {
 		case "oracle":
 			return Oracle
 		case DESTINATION_INTERNAL_TYPES.S3:
-		case DESTINATION_INTERNAL_TYPES.AMAZON_S3:
 			return AWSS3
 		case DESTINATION_INTERNAL_TYPES.ICEBERG:
-		case DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG:
 			return ApacheIceBerg
 		default:
 			// Default placeholder

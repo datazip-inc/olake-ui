@@ -1,16 +1,6 @@
 import { useEffect, useState } from "react"
 import clsx from "clsx"
-import {
-	ExtendedStreamConfigurationProps,
-	FilterCondition,
-	FilterOperator,
-	LogicalOperator,
-	MultiFilterCondition,
-	CombinedStreamsData,
-	SyncMode,
-} from "../../../../types"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
-import StreamsSchema from "./StreamsSchema"
 import {
 	ColumnsPlusRight,
 	GridFour,
@@ -21,6 +11,17 @@ import {
 	X,
 	ArrowSquareOut,
 } from "@phosphor-icons/react"
+
+import {
+	ExtendedStreamConfigurationProps,
+	FilterCondition,
+	FilterOperator,
+	LogicalOperator,
+	MultiFilterCondition,
+	CombinedStreamsData,
+	SyncMode,
+} from "../../../../types"
+
 import {
 	CARD_STYLE,
 	DESTINATION_INTERNAL_TYPES,
@@ -29,6 +30,8 @@ import {
 	TAB_STYLES,
 } from "../../../../utils/constants"
 import { operatorOptions } from "../../../../utils/utils"
+
+import StreamsSchema from "./StreamsSchema"
 
 const StreamConfiguration = ({
 	stream,
