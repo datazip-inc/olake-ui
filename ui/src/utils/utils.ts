@@ -2,7 +2,11 @@ import { message } from "antd"
 import parser from "cron-parser"
 
 import { CronParseResult } from "../types"
-import { DAYS_MAP, DESTINATION_INTERNAL_TYPES } from "./constants"
+import {
+	DAYS_MAP,
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_LABELS,
+} from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
@@ -77,10 +81,10 @@ export const getConnectorInLowerCase = (connector: string) => {
 
 	switch (lowerConnector) {
 		case DESTINATION_INTERNAL_TYPES.S3:
-		case DESTINATION_INTERNAL_TYPES.AMAZON_S3:
+		case DESTINATION_LABELS.AMAZON_S3:
 			return DESTINATION_INTERNAL_TYPES.S3
 		case DESTINATION_INTERNAL_TYPES.ICEBERG:
-		case DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG:
+		case DESTINATION_LABELS.APACHE_ICEBERG:
 			return DESTINATION_INTERNAL_TYPES.ICEBERG
 		case "mongodb":
 			return "mongodb"
