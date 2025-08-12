@@ -45,9 +45,9 @@ const StreamConfiguration = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
-	const syncModeMap = SYNC_MODE_MAP
 	const [syncMode, setSyncMode] = useState(
-		syncModeMap[stream.stream.sync_mode as keyof typeof syncModeMap] ?? "full",
+		SYNC_MODE_MAP[stream.stream.sync_mode as keyof typeof SYNC_MODE_MAP] ??
+			"full",
 	)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
@@ -110,7 +110,7 @@ const StreamConfiguration = ({
 		}
 
 		setSyncMode(
-			syncModeMap[initialApiSyncMode as keyof typeof syncModeMap] ?? "full",
+			SYNC_MODE_MAP[initialApiSyncMode as keyof typeof SYNC_MODE_MAP] ?? "full",
 		)
 		setNormalisation(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
@@ -187,7 +187,8 @@ const StreamConfiguration = ({
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
-		const newApiSyncMode = Object.entries(syncModeMap).find(
+		
+		const newApiSyncMode = Object.entries(SYNC_MODE_MAP).find(
 			([, value]) => value === selectedRadioValue,
 		)?.[0] as SyncMode
 
