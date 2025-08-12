@@ -1,5 +1,6 @@
 import { FilterButtonProps } from "../../../types"
 import { COLORS } from "../../../utils/constants"
+import clsx from "clsx"
 
 const FilterButton: React.FC<FilterButtonProps> = ({
 	filter,
@@ -27,11 +28,15 @@ const FilterButton: React.FC<FilterButtonProps> = ({
 		])
 	}
 
-	const buttonStyles = `cursor-pointer rounded-md border border-solid px-2 py-2 text-sm capitalize ${
+	const buttonStyles = clsx(
+		"cursor-pointer rounded-md border border-solid px-2 py-2 text-sm capitalize",
 		isFilterSelected
 			? "border-primary text-primary"
-			: `border-[${COLORS.unselected.border}] text-[${COLORS.unselected.text}]`
-	}`
+			: [
+					`border-[${COLORS.unselected.border}]`,
+					`text-[${COLORS.unselected.text}]`,
+				],
+	)
 
 	return (
 		<button

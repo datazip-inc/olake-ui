@@ -13,43 +13,47 @@ import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
-	if (lowerConnector === "mongodb") {
-		return MongoDB
-	} else if (lowerConnector === "postgres") {
-		return Postgres
-	} else if (lowerConnector === "mysql") {
-		return MySQL
-	} else if (lowerConnector === "oracle") {
-		return Oracle
-	} else if (
-		lowerConnector === DESTINATION_INTERNAL_TYPES.S3 ||
-		lowerConnector === DESTINATION_INTERNAL_TYPES.AMAZON_S3
-	) {
-		return AWSS3
-	} else if (
-		lowerConnector === DESTINATION_INTERNAL_TYPES.ICEBERG ||
-		lowerConnector === DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
-	) {
-		return ApacheIceBerg
+	switch (lowerConnector) {
+		case "mongodb":
+			return MongoDB
+		case "postgres":
+			return Postgres
+		case "mysql":
+			return MySQL
+		case "oracle":
+			return Oracle
+		case DESTINATION_INTERNAL_TYPES.S3:
+		case DESTINATION_INTERNAL_TYPES.AMAZON_S3:
+			return AWSS3
+		case DESTINATION_INTERNAL_TYPES.ICEBERG:
+		case DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG:
+			return ApacheIceBerg
+		default:
+			// Default placeholder
+			return MongoDB
 	}
-
-	// Default placeholder
-	return MongoDB
 }
 
 export const getConnectorName = (connector: string, catalog: string | null) => {
-	if (connector === "Amazon S3") {
-		return "s3/config"
-	} else if (connector === "Apache Iceberg") {
-		if (catalog === "AWS Glue") {
-			return "iceberg/catalog/glue"
-		} else if (catalog === "REST Catalog") {
-			return "iceberg/catalog/rest"
-		} else if (catalog === "JDBC Catalog") {
-			return "iceberg/catalog/jdbc"
-		} else if (catalog === "Hive Catalog" || catalog === "HIVE Catalog") {
-			return "iceberg/catalog/hive"
-		}
+	switch (connector) {
+		case "Amazon S3":
+			return "s3/config"
+		case "Apache Iceberg":
+			switch (catalog) {
+				case "AWS Glue":
+					return "iceberg/catalog/glue"
+				case "REST Catalog":
+					return "iceberg/catalog/rest"
+				case "JDBC Catalog":
+					return "iceberg/catalog/jdbc"
+				case "Hive Catalog":
+				case "HIVE Catalog":
+					return "iceberg/catalog/hive"
+				default:
+					return undefined
+			}
+		default:
+			return undefined
 	}
 }
 
@@ -73,38 +77,42 @@ export const getStatusClass = (status: string) => {
 export const getConnectorInLowerCase = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
-	if (
-		lowerConnector === DESTINATION_INTERNAL_TYPES.S3 ||
-		lowerConnector === DESTINATION_INTERNAL_TYPES.AMAZON_S3
-	) {
-		return DESTINATION_INTERNAL_TYPES.S3
-	} else if (
-		lowerConnector === DESTINATION_INTERNAL_TYPES.ICEBERG ||
-		lowerConnector === DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
-	) {
-		return DESTINATION_INTERNAL_TYPES.ICEBERG
-	} else if (lowerConnector === "mongodb") {
-		return "mongodb"
-	} else if (lowerConnector === "postgres") {
-		return "postgres"
-	} else if (lowerConnector === "mysql") {
-		return "mysql"
-	} else if (lowerConnector === "oracle") {
-		return "oracle"
-	} else {
-		return lowerConnector
+	switch (lowerConnector) {
+		case DESTINATION_INTERNAL_TYPES.S3:
+		case DESTINATION_INTERNAL_TYPES.AMAZON_S3:
+			return DESTINATION_INTERNAL_TYPES.S3
+		case DESTINATION_INTERNAL_TYPES.ICEBERG:
+		case DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG:
+			return DESTINATION_INTERNAL_TYPES.ICEBERG
+		case "mongodb":
+			return "mongodb"
+		case "postgres":
+			return "postgres"
+		case "mysql":
+			return "mysql"
+		case "oracle":
+			return "oracle"
+		default:
+			return lowerConnector
 	}
 }
 
 export const getCatalogInLowerCase = (catalog: string) => {
-	if (catalog === "AWS Glue" || catalog === "glue") {
-		return "glue"
-	} else if (catalog === "REST Catalog" || catalog === "rest") {
-		return "rest"
-	} else if (catalog === "JDBC Catalog" || catalog === "jdbc") {
-		return "jdbc"
-	} else if (catalog === "Hive Catalog" || catalog === "hive") {
-		return "hive"
+	switch (catalog) {
+		case "AWS Glue":
+		case "glue":
+			return "glue"
+		case "REST Catalog":
+		case "rest":
+			return "rest"
+		case "JDBC Catalog":
+		case "jdbc":
+			return "jdbc"
+		case "Hive Catalog":
+		case "hive":
+			return "hive"
+		default:
+			return undefined
 	}
 }
 
@@ -151,12 +159,22 @@ export const getFrequencyValue = (frequency: string) => {
 		const parts = frequency.split(" ")
 		const unit = parts[1].toLowerCase()
 
-		if (unit.includes("hour")) return "hours"
-		if (unit.includes("minute")) return "minutes"
-		if (unit.includes("day")) return "days"
-		if (unit.includes("week")) return "weeks"
-		if (unit.includes("month")) return "months"
-		if (unit.includes("year")) return "years"
+		switch (true) {
+			case unit.includes("hour"):
+				return "hours"
+			case unit.includes("minute"):
+				return "minutes"
+			case unit.includes("day"):
+				return "days"
+			case unit.includes("week"):
+				return "weeks"
+			case unit.includes("month"):
+				return "months"
+			case unit.includes("year"):
+				return "years"
+			default:
+				return "hours"
+		}
 	}
 
 	switch (frequency) {

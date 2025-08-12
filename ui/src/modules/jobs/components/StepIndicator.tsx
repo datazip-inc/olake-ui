@@ -31,10 +31,10 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 					onClick={handleClick}
 					disabled={!isEditMode}
 					type="button"
-				></button>
+				/>
 				{!isLastStep && (
 					<div className="relative h-[2px] w-20">
-						<div className="absolute inset-0 bg-gray-300"></div>
+						<div className="absolute inset-0 bg-gray-300" />
 						{isNextActive && (
 							<div className="absolute inset-0 bg-primary transition-all duration-300" />
 						)}

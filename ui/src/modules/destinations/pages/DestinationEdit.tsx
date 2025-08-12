@@ -158,15 +158,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		if (initialData) {
 			setDestinationName(initialData.name || "")
 			let connectorType = initialData.type
-			if (
-				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.S3 ||
-				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.AMAZON_S3
-			) {
+			if (connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.S3) {
 				connectorType = CONNECTOR_TYPES.AMAZON_S3
 			} else if (
-				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.ICEBERG ||
-				connectorType?.toLowerCase() ===
-					DESTINATION_INTERNAL_TYPES.APACHE_ICEBERG
+				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.ICEBERG
 			) {
 				connectorType = CONNECTOR_TYPES.APACHE_ICEBERG
 			}

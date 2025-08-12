@@ -151,14 +151,14 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "source",
 			render: (text: EntityBase) => (
 				<div className="flex items-center">
-					{text?.name && (
+					{text.name && (
 						<img
-							src={getConnectorImage(text?.type)}
+							src={getConnectorImage(text.type)}
 							className="mr-2 h-5 w-5"
-							alt={`${text?.name} connector`}
+							alt={`${text.name} connector`}
 						/>
 					)}
-					{text?.name}
+					{text.name}
 				</div>
 			),
 		},
@@ -168,14 +168,14 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "destination",
 			render: (text: EntityBase) => (
 				<div className="flex items-center">
-					{text?.name && (
+					{text.name && (
 						<img
-							src={getConnectorImage(text?.type)}
+							src={getConnectorImage(text.type)}
 							className="mr-2 h-5 w-5"
-							alt={`${text?.name} connector`}
+							alt={`${text.name} connector`}
 						/>
 					)}
-					{text?.name}
+					{text.name}
 				</div>
 			),
 		},

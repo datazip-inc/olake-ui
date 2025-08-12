@@ -78,32 +78,57 @@ const JobCreation: React.FC = () => {
 	const sourceRef = useRef<any>(null)
 	const destinationRef = useRef<any>(null)
 
-	const handleNext = async () => {
-		if (currentStep === "source") {
-			if (sourceRef.current) {
-				const isValid = await sourceRef.current.validateSource()
-				if (!isValid) {
-					message.error("Please fill in all required fields for the source")
-					return
-				}
-			} else {
-				if (!sourceName.trim()) {
-					message.error("Source name is required")
-					return
-				}
+	// Validation functions
+	const validateSource = async (): Promise<boolean> => {
+		if (sourceRef.current) {
+			const isValid = await sourceRef.current.validateSource()
+			if (!isValid) {
+				message.error("Please fill in all required fields for the source")
+				return false
 			}
+		} else if (!sourceName.trim()) {
+			message.error("Source name is required")
+			return false
+		}
+		return true
+	}
 
-			const newSourceData = {
-				name: sourceName,
-				type: sourceConnector.toLowerCase(),
-				version: sourceVersion,
-				config:
-					typeof sourceFormData === "string"
-						? sourceFormData
-						: JSON.stringify(sourceFormData),
+	const validateDestination = async (): Promise<boolean> => {
+		if (destinationRef.current) {
+			const isValid = await destinationRef.current.validateDestination()
+			if (!isValid) {
+				message.error("Please fill in all required fields for the destination")
+				return false
 			}
-			setShowTestingModal(true)
-			const testResult = await sourceService.testSourceConnection(newSourceData)
+		} else if (!destinationName.trim()) {
+			message.error("Destination name is required")
+			return false
+		}
+		return true
+	}
+
+	const validateConfig = (): boolean => {
+		if (!jobName.trim()) {
+			message.error("Job name is required")
+			return false
+		}
+		return validateCronExpression(cronExpression)
+	}
+
+	// Connection test handler
+	const handleConnectionTest = async (
+		isSource: boolean,
+		data: any,
+		nextStep: JobCreationSteps,
+	): Promise<void> => {
+		setShowTestingModal(true)
+		try {
+			const testResult = isSource
+				? await sourceService.testSourceConnection(data)
+				: await destinationService.testDestinationConnection(
+						data,
+						sourceConnector.toLowerCase(),
+					)
 
 			setTimeout(() => {
 				setShowTestingModal(false)
@@ -111,105 +136,104 @@ const JobCreation: React.FC = () => {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
-						setCurrentStep("destination")
+						setCurrentStep(nextStep)
 					}, 1000)
 				} else {
-					setIsFromSources(true)
-					setSourceTestConnectionError(testResult.data?.message || "")
+					setIsFromSources(isSource)
+					if (isSource) {
+						setSourceTestConnectionError(testResult.data?.message || "")
+					} else {
+						setDestinationTestConnectionError(testResult.data?.message || "")
+					}
 					setShowFailureModal(true)
 				}
 			}, 1500)
-		} else if (currentStep === "destination") {
-			if (destinationRef.current) {
-				const isValid = await destinationRef.current.validateDestination()
-				if (!isValid) {
-					message.error(
-						"Please fill in all required fields for the destination",
-					)
-					return
-				}
-			} else {
-				// Fallback validation if ref isn't available
-				if (!destinationName.trim()) {
-					message.error("Destination name is required")
-					return
-				}
-			}
-
-			const newDestinationData = {
-				name: destinationName,
-				type: `${getConnectorInLowerCase(destinationConnector.toLowerCase())}`,
-				config:
-					typeof destinationFormData === "string"
-						? destinationFormData
-						: JSON.stringify(destinationFormData),
-				version: `${destinationVersion}`,
-			}
-
-			setShowTestingModal(true)
-			const testResult = await destinationService.testDestinationConnection(
-				newDestinationData,
-				sourceConnector.toLowerCase(),
+		} catch {
+			setShowTestingModal(false)
+			message.error(
+				isSource
+					? "Source connection test failed"
+					: "Destination connection test failed",
 			)
+		}
+	}
 
-			setTimeout(() => {
-				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
-					setShowSuccessModal(true)
-					setTimeout(() => {
-						setShowSuccessModal(false)
-						setCurrentStep("schema")
-					}, 1000)
-				} else {
-					setIsFromSources(false)
-					setDestinationTestConnectionError(testResult.data?.message || "")
-					setShowFailureModal(true)
-				}
-			}, 1500)
-		} else if (currentStep === "schema") {
-			setCurrentStep("config")
-		} else if (currentStep === "config") {
-			if (!jobName.trim()) {
-				message.error("Job name is required")
-				return
+	// Job creation handler
+	const handleJobCreation = async () => {
+		const newJobData: JobBase = {
+			name: jobName,
+			source: {
+				name: sourceName,
+				type: getConnectorInLowerCase(sourceConnector),
+				version: sourceVersion,
+				config: JSON.stringify(sourceFormData),
+			},
+			destination: {
+				name: destinationName,
+				type: getConnectorInLowerCase(destinationConnector),
+				version: destinationVersion,
+				config: JSON.stringify(destinationFormData),
+			},
+			streams_config: JSON.stringify(selectedStreams),
+			frequency: cronExpression,
+		}
+
+		try {
+			await addJob(newJobData)
+			if (savedJobId) {
+				const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+				const updatedSavedJobs = savedJobs.filter(
+					(job: any) => job.id !== savedJobId,
+				)
+				localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
 			}
-			if (!validateCronExpression(cronExpression)) {
-				return
-			}
-			const newJobData: JobBase = {
-				name: jobName,
-				source: {
+			setShowEntitySavedModal(true)
+		} catch (error) {
+			console.error("Error adding job:", error)
+			message.error("Failed to create job")
+		}
+	}
+
+	// Main handler
+	const handleNext = async () => {
+		switch (currentStep) {
+			case "source": {
+				if (!(await validateSource())) return
+				const sourceData = {
 					name: sourceName,
-					type: getConnectorInLowerCase(sourceConnector),
+					type: sourceConnector.toLowerCase(),
 					version: sourceVersion,
-					config: JSON.stringify(sourceFormData),
-				},
-				destination: {
-					name: destinationName,
-					type: getConnectorInLowerCase(destinationConnector),
-					version: destinationVersion,
-					config: JSON.stringify(destinationFormData),
-				},
-				streams_config: JSON.stringify(selectedStreams),
-				frequency: cronExpression, // Use cron expression instead of frequency-value format
-			}
-			try {
-				await addJob(newJobData)
-				// If this was a saved job, remove it from localStorage
-				if (savedJobId) {
-					const savedJobs = JSON.parse(
-						localStorage.getItem("savedJobs") || "[]",
-					)
-					const updatedSavedJobs = savedJobs.filter(
-						(job: any) => job.id !== savedJobId,
-					)
-					localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+					config:
+						typeof sourceFormData === "string"
+							? sourceFormData
+							: JSON.stringify(sourceFormData),
 				}
-				setShowEntitySavedModal(true)
-			} catch (error) {
-				console.error("Error adding job:", error)
-				message.error("Failed to create job")
+				await handleConnectionTest(true, sourceData, "destination")
+				break
 			}
+			case "destination": {
+				if (!(await validateDestination())) return
+				const destinationData = {
+					name: destinationName,
+					type: getConnectorInLowerCase(destinationConnector.toLowerCase()),
+					config:
+						typeof destinationFormData === "string"
+							? destinationFormData
+							: JSON.stringify(destinationFormData),
+					version: destinationVersion,
+				}
+				await handleConnectionTest(false, destinationData, "schema")
+				break
+			}
+			case "schema":
+				setCurrentStep("config")
+				break
+			case "config":
+				if (!validateConfig()) return
+				await handleJobCreation()
+				break
+			default:
+				console.warn("Unknown step:", currentStep)
 		}
 	}
 

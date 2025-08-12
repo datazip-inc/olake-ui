@@ -43,14 +43,14 @@ const StreamConfiguration = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
+	const syncModeMap = {
+		[SyncMode.FULL_REFRESH]: "full",
+		[SyncMode.INCREMENTAL]: "incremental",
+		[SyncMode.CDC]: "cdc",
+		[SyncMode.STRICT_CDC]: "strict_cdc",
+	}
 	const [syncMode, setSyncMode] = useState(
-		stream.stream.sync_mode === SyncMode.FULL_REFRESH
-			? "full"
-			: stream.stream.sync_mode === SyncMode.INCREMENTAL
-				? "incremental"
-				: stream.stream.sync_mode === SyncMode.CDC
-					? "cdc"
-					: "strict_cdc",
+		syncModeMap[stream.stream.sync_mode as keyof typeof syncModeMap] ?? "full",
 	)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
@@ -112,15 +112,9 @@ const StreamConfiguration = ({
 			setShowFallbackSelector(false)
 		}
 
-		if (initialApiSyncMode === SyncMode.FULL_REFRESH) {
-			setSyncMode("full")
-		} else if (initialApiSyncMode === SyncMode.CDC) {
-			setSyncMode("cdc")
-		} else if (initialApiSyncMode === SyncMode.STRICT_CDC) {
-			setSyncMode("strict_cdc")
-		} else if (initialApiSyncMode === SyncMode.INCREMENTAL) {
-			setSyncMode("incremental")
-		}
+		setSyncMode(
+			syncModeMap[initialApiSyncMode as keyof typeof syncModeMap] ?? "full",
+		)
 		setNormalisation(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
@@ -196,21 +190,16 @@ const StreamConfiguration = ({
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
-		let newApiSyncMode: SyncMode
-		if (selectedRadioValue === "full") {
-			newApiSyncMode = SyncMode.FULL_REFRESH
-		} else if (selectedRadioValue === "incremental") {
-			newApiSyncMode = SyncMode.INCREMENTAL
-			// Auto-select first available cursor field if none is selected
+		const newApiSyncMode = Object.entries(syncModeMap).find(
+			([, value]) => value === selectedRadioValue,
+		)?.[0] as SyncMode
+
+		// Auto-select first available cursor field for incremental mode
+		if (selectedRadioValue === "incremental") {
 			const availableCursorFields = stream.stream.available_cursor_fields || []
 			if (!stream.stream.cursor_field && availableCursorFields.length > 0) {
-				const firstCursorField = availableCursorFields[0]
-				stream.stream.cursor_field = firstCursorField
+				stream.stream.cursor_field = availableCursorFields[0]
 			}
-		} else if (selectedRadioValue === "cdc") {
-			newApiSyncMode = SyncMode.CDC
-		} else {
-			newApiSyncMode = SyncMode.STRICT_CDC
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
