@@ -201,7 +201,7 @@ const JobCreation: React.FC = () => {
 				if (!(await validateSource())) return
 				const sourceData = {
 					name: sourceName,
-					type: sourceConnector.toLowerCase(),
+					type: getConnectorInLowerCase(sourceConnector),
 					version: sourceVersion,
 					config:
 						typeof sourceFormData === "string"
@@ -215,7 +215,7 @@ const JobCreation: React.FC = () => {
 				if (!(await validateDestination())) return
 				const destinationData = {
 					name: destinationName,
-					type: getConnectorInLowerCase(destinationConnector.toLowerCase()),
+					type: getConnectorInLowerCase(destinationConnector),
 					config:
 						typeof destinationFormData === "string"
 							? destinationFormData

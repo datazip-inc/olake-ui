@@ -29,6 +29,8 @@ import {
 } from "../../../../utils/constants"
 import { operatorOptions } from "../../../../utils/utils"
 
+const DEFAULT_DESTINATION_TYPE = DESTINATION_INTERNAL_TYPES.S3
+
 const StreamConfiguration = ({
 	stream,
 	onSyncModeChange,
@@ -41,7 +43,7 @@ const StreamConfiguration = ({
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
-	destinationType = DESTINATION_INTERNAL_TYPES.S3,
+	destinationType = DEFAULT_DESTINATION_TYPE,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const syncModeMap = {
@@ -738,7 +740,7 @@ const StreamConfiguration = ({
 				</Tooltip>
 				<a
 					href={
-						destinationType === DESTINATION_INTERNAL_TYPES.S3
+						destinationType === DEFAULT_DESTINATION_TYPE
 							? "https://olake.io/docs/writers/parquet/partitioning"
 							: "https://olake.io/docs/writers/iceberg/partitioning"
 					}
