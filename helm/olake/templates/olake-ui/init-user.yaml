@@ -31,7 +31,7 @@ spec:
         - -c
         - |
           echo "Waiting for OLake UI to be ready..."
-          until nc -z olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local 8080; do
+          until nc -z olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local 8000; do
             echo "OLake UI is not ready yet. Waiting..."
             sleep 5
           done
@@ -66,7 +66,7 @@ spec:
           value: "{{ .Values.olakeUI.initUser.adminUser.email }}"
         {{- end }}
         - name: OLAKE_APP_URL
-          value: "http://olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local:8080/signup"
+          value: "http://olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local:8000/signup"
         command:
         - /bin/sh
         - -c

@@ -15,13 +15,6 @@ metadata:
 spec:
   type: {{ .Values.olakeUI.service.type }}
   ports:
-  - port: 8080
-    targetPort: backend
-    protocol: TCP
-    name: backend
-    {{- if eq .Values.olakeUI.service.type "NodePort" }}
-    nodePort: 30081
-    {{- end }}
   - port: 8000
     targetPort: frontend
     protocol: TCP

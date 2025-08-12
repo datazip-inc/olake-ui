@@ -41,7 +41,7 @@
 🔗 PORT-FORWARD ACCESS:
 
 1. Forward OLake UI ports:
-   kubectl port-forward -n {{ include "olake.namespace" . }} svc/olake-ui 8000:8000 8080:8080
+   kubectl port-forward -n {{ include "olake.namespace" . }} svc/olake-ui 8000:8000
 
 2. Access the application:
    - OLake UI: http://localhost:8000

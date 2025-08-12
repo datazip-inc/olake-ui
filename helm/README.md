@@ -157,7 +157,7 @@ global:
 
 OLake's "activity pods" (the pods by which the actual data sync is performed) can be allowed to securely access cloud resources(AWS Glue or S3) using IAM roles.
 
-**Note:** For detailed instructions on the creation of IAM roles and service accounts, the official documentation for [AWS IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html), [GCP Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity), or [Azure Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster) should be referred to.
+**Note:** For detailed instructions on the creation of IAM roles and service accounts, the official documentation for [AWS IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html), [GCP Workload Identity](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity), or [Azure Workload Identity](https://learn.microsoft.com/en-us/azure/aks/workload-identity-deploy-cluster) should be referred to. For a minimal Glue and S3 IAM access policy please refer: https://olake.io/docs/writers/iceberg/catalog/glue#required-iam-permissions
 
 ```yaml
 global:

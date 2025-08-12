@@ -16,8 +16,6 @@ data:
   DB_HOST: "postgresql.{{ include "olake.namespace" . }}.svc.cluster.local"
   DB_PORT: "5432"
   DB_NAME: "postgres"
-  DB_USER: {{ .Values.postgresql.auth.postgresUser | quote }}
-  DB_PASSWORD: {{ .Values.postgresql.auth.postgresPassword | quote }}
   DB_SSLMODE: "disable"
   
   # Timeout Configuration
@@ -31,7 +29,7 @@ data:
   # Kubernetes Configuration
   WORKER_NAMESPACE: {{ include "olake.namespace" . | quote }}
   IMAGE_REGISTRY: "olakego"
-  IMAGE_PULL_POLICY: "IfNotPresent"
+  IMAGE_PULL_POLICY: "Always"
   SERVICE_ACCOUNT: {{ include "olake.workerServiceAccountName" . | quote }}
   OLAKE_STORAGE_PVC_NAME: {{ include "olake.sharedStoragePVC" . | quote }}
   

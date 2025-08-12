@@ -1,16 +1,17 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: postgresql
   namespace: {{ include "olake.namespace" . }}
   annotations: {}
   labels:
+    {{- include "olake.labels" . | nindent 4 }}
     app.kubernetes.io/name: postgresql
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: database
-    {{- include "olake.labels" . | nindent 4 }}
 spec:
   replicas: 1
+  serviceName: postgresql
   selector:
     matchLabels:
       app.kubernetes.io/name: postgresql
@@ -61,7 +62,7 @@ spec:
         - secretRef:
             name: postgresql-secret
         {{- $defaultResources := dict 
-          "requests" (dict "memory" "256Mi" "cpu" "250m")
+          "requests" (dict "memory" "512Mi" "cpu" "500m")
         }}
         {{- $resources := mergeOverwrite $defaultResources (.Values.postgresql.resources | default dict) }}
         {{- $defaultReadinessProbe := dict 
@@ -88,14 +89,22 @@ spec:
           {{- toYaml $livenessProbe | nindent 10 }}
         resources:
           {{- toYaml $resources | nindent 10 }}
-        {{- if .Values.postgresql.persistence.enabled }}
         volumeMounts:
         - name: postgresql-storage
           mountPath: /var/lib/postgresql/data
-        {{- end }}
-      {{- if .Values.postgresql.persistence.enabled }}
-      volumes:
-      - name: postgresql-storage
-        persistentVolumeClaim:
-          claimName: postgresql-pvc
+  volumeClaimTemplates:
+  - metadata:
+      name: postgresql-storage
+      labels:
+        app.kubernetes.io/name: postgresql
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: database
+    spec:
+      accessModes:
+        {{- toYaml .Values.postgresql.persistence.accessModes | nindent 8 }}
+      {{- if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
       {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.postgresql.persistence.size }}

@@ -43,7 +43,7 @@ olakeUI:
   
   # -- OLake UI image configuration
   image:
-    repository: olakego/olake-ui
+    repository: olakego/ui
     tag: latest
     pullPolicy: Always
   
@@ -357,15 +357,6 @@ postgresql:
     # -- PostgreSQL application database
     database: "temporal"
     
-    # -- Name of existing secret containing PostgreSQL credentials
-    # Keys: postgres-password, password, username
-    existingSecret: ""
-    
-    # -- Key in existing secret containing PostgreSQL super user password
-    secretKeys:
-      adminPasswordKey: postgres-password
-      userPasswordKey: password
-      usernameKey: username
   
   # -- Pod scheduling constraints
   nodeSelector: {}
@@ -396,18 +387,12 @@ postgresql:
   
   # -- PostgreSQL persistence configuration
   persistence:
-    # -- Enable persistent storage
-    enabled: true
-    
-    # -- Size of persistent volume
+    # -- Size of persistent volume for PostgreSQL data
     size: 8Gi
     
     # -- Access modes for persistent volume
     accessModes:
       - ReadWriteOnce
-    
-    # -- Additional annotations for PVC
-    annotations: {}
 
 # Elasticsearch is used by Temporal for advanced visibility features
 elasticsearch:

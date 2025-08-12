@@ -74,9 +74,15 @@ spec:
         - name: DB_PORT
           value: "5432"
         - name: POSTGRES_USER
-          value: {{ .Values.postgresql.auth.postgresUser | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_USER
         - name: POSTGRES_PWD
-          value: {{ .Values.postgresql.auth.postgresPassword | quote }}
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_PASSWORD
         - name: POSTGRES_SEEDS
           value: "postgresql.{{ include "olake.namespace" . }}.svc.cluster.local"
         - name: ENABLE_ES

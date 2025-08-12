@@ -64,9 +64,6 @@ spec:
         image: "{{ .Values.olakeUI.image.repository }}:{{ .Values.olakeUI.image.tag }}"
         imagePullPolicy: {{ .Values.olakeUI.image.pullPolicy }}
         ports:
-        - name: backend
-          containerPort: 8080
-          protocol: TCP
         - name: frontend
           containerPort: 8000
           protocol: TCP
@@ -94,7 +91,7 @@ spec:
           "timeoutSeconds" 5
           "failureThreshold" 3
           "successThreshold" 1
-          "tcpSocket" (dict "port" 8080)
+          "tcpSocket" (dict "port" 8000)
         }}
         {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.olakeUI.readinessProbe | default dict) }}
         readinessProbe:
@@ -105,7 +102,7 @@ spec:
           "timeoutSeconds" 10
           "failureThreshold" 3
           "successThreshold" 1
-          "tcpSocket" (dict "port" 8080)
+          "tcpSocket" (dict "port" 8000)
         }}
         {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.olakeUI.livenessProbe | default dict) }}
         livenessProbe:
