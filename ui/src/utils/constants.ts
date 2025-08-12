@@ -239,3 +239,10 @@ export const PartitioningRegexTooltip =
 export const DEFAULT_VERSION = "latest"
 
 export const DISPLAYED_JOBS_COUNT = 5
+
+export const SYNC_MODE_MAP = {
+	FULL_REFRESH: "full",
+	INCREMENTAL: "incremental",
+	CDC: "cdc",
+	STRICT_CDC: "strict_cdc",
+}

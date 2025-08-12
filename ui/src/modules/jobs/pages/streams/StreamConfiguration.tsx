@@ -25,11 +25,10 @@ import {
 	CARD_STYLE,
 	DESTINATION_INTERNAL_TYPES,
 	PartitioningRegexTooltip,
+	SYNC_MODE_MAP,
 	TAB_STYLES,
 } from "../../../../utils/constants"
 import { operatorOptions } from "../../../../utils/utils"
-
-const DEFAULT_DESTINATION_TYPE = DESTINATION_INTERNAL_TYPES.S3
 
 const StreamConfiguration = ({
 	stream,
@@ -43,15 +42,10 @@ const StreamConfiguration = ({
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
-	destinationType = DEFAULT_DESTINATION_TYPE,
+	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
-	const syncModeMap = {
-		[SyncMode.FULL_REFRESH]: "full",
-		[SyncMode.INCREMENTAL]: "incremental",
-		[SyncMode.CDC]: "cdc",
-		[SyncMode.STRICT_CDC]: "strict_cdc",
-	}
+	const syncModeMap = SYNC_MODE_MAP
 	const [syncMode, setSyncMode] = useState(
 		syncModeMap[stream.stream.sync_mode as keyof typeof syncModeMap] ?? "full",
 	)
@@ -740,7 +734,7 @@ const StreamConfiguration = ({
 				</Tooltip>
 				<a
 					href={
-						destinationType === DEFAULT_DESTINATION_TYPE
+						destinationType === DESTINATION_INTERNAL_TYPES.S3
 							? "https://olake.io/docs/writers/parquet/partitioning"
 							: "https://olake.io/docs/writers/iceberg/partitioning"
 					}

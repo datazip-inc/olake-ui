@@ -127,7 +127,7 @@ const JobCreation: React.FC = () => {
 				? await sourceService.testSourceConnection(data)
 				: await destinationService.testDestinationConnection(
 						data,
-						sourceConnector.toLowerCase(),
+						getConnectorInLowerCase(sourceConnector),
 					)
 
 			setTimeout(() => {
@@ -272,13 +272,13 @@ const JobCreation: React.FC = () => {
 			name: jobName,
 			source: {
 				name: sourceName,
-				type: sourceConnector.toLowerCase(),
+				type: getConnectorInLowerCase(sourceConnector),
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
 			destination: {
 				name: destinationName,
-				type: destinationConnector.toLowerCase(),
+				type: getConnectorInLowerCase(destinationConnector),
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
@@ -391,7 +391,7 @@ const JobCreation: React.FC = () => {
 								stepTitle="Streams Selection"
 								useDirectForms={true}
 								sourceName={sourceName}
-								sourceConnector={sourceConnector.toLowerCase()}
+								sourceConnector={getConnectorInLowerCase(sourceConnector)}
 								sourceVersion={sourceVersion}
 								sourceConfig={
 									typeof sourceFormData === "string"
@@ -405,7 +405,7 @@ const JobCreation: React.FC = () => {
 										? selectedStreams
 										: undefined
 								}
-								destinationType={destinationConnector.toLowerCase()}
+								destinationType={getConnectorInLowerCase(destinationConnector)}
 							/>
 						</div>
 					)}
