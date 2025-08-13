@@ -5,6 +5,7 @@ import {
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
+	CombinedStreamsData,
 } from "../../../../types"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import StreamsSchema from "./StreamsSchema"
@@ -31,6 +32,7 @@ const StreamConfiguration = ({
 	initialFullLoadFilter = "",
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
+	initialSelectedStreams,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(
@@ -45,7 +47,8 @@ const StreamConfiguration = ({
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
 	const [partitionRegex, setPartitionRegex] = useState("")
-	const [defaultCursorField, setDefaultCursorField] = useState<string>("")
+	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
+	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
 	const [activePartitionRegex, setActivePartitionRegex] = useState(
 		initialPartitionRegex || "",
 	)
@@ -66,6 +69,24 @@ const StreamConfiguration = ({
 		partition_regex: initialPartitionRegex || "",
 	})
 
+	const [initialJobStreams, setInitialJobStreams] = useState<
+		CombinedStreamsData | undefined
+	>(undefined)
+
+	useEffect(() => {
+		// Set initial streams only once when component mounts
+		if (fromJobEditFlow && initialSelectedStreams && !initialJobStreams) {
+			setInitialJobStreams(initialSelectedStreams)
+		}
+	}, [fromJobEditFlow, initialSelectedStreams])
+
+	// Check if this stream was in the initial job streams
+	const isStreamInInitialSelection =
+		fromJobEditFlow &&
+		initialJobStreams?.selected_streams?.[stream.stream.namespace || ""]?.some(
+			(s: { stream_name: string }) => s.stream_name === stream.stream.name,
+		)
+
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
@@ -77,9 +98,11 @@ const StreamConfiguration = ({
 			stream.stream.cursor_field.includes(":")
 		) {
 			const [, defaultField] = stream.stream.cursor_field.split(":")
-			setDefaultCursorField(defaultField)
+			setFallBackCursorField(defaultField)
+			setShowFallbackSelector(true)
 		} else {
-			setDefaultCursorField("")
+			setFallBackCursorField("")
+			setShowFallbackSelector(false)
 		}
 
 		if (initialApiSyncMode === "full_refresh") {
@@ -408,18 +431,17 @@ const StreamConfiguration = ({
 		const cursorFields = (stream.stream.available_cursor_fields ||
 			[]) as string[]
 
-		// Combine fields in priority order, filter out duplicates
-		const orderedFields = [
-			...primaryKeys,
-			...cursorFields,
-			...Object.keys(properties),
-		]
-
-		// Convert to unique array while preserving order
-		return [...new Set(orderedFields)]
-			.filter(key => properties[key])
+		return cursorFields
+			.filter(key => properties[key.toLowerCase()])
+			.sort((a, b) => {
+				const aIsPK = primaryKeys.includes(a)
+				const bIsPK = primaryKeys.includes(b)
+				if (aIsPK && !bIsPK) return -1
+				if (!aIsPK && bIsPK) return 1
+				return a.localeCompare(b)
+			})
 			.map(key => {
-				const types = properties[key].type
+				const types = properties[key.toLowerCase()].type
 				// Get the first non-null type as primary type
 				const primaryType = Array.isArray(types)
 					? types.find(t => t !== "null") || types[0]
@@ -450,19 +472,6 @@ const StreamConfiguration = ({
 			})
 	}
 
-	const getFilteredOperatorOptions = (columnName: string) => {
-		const properties = stream.stream.type_schema?.properties || {}
-		const columnType = properties[columnName]?.type
-		const primaryType = Array.isArray(columnType)
-			? columnType.find(t => t !== "null") || columnType[0]
-			: columnType
-
-		if (primaryType === "string") {
-			return operatorOptions.filter(op => op.value === "=" || op.value === "!=")
-		}
-		return operatorOptions
-	}
-
 	const formatFilterValue = (columnName: string, value: string) => {
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type
@@ -479,26 +488,34 @@ const StreamConfiguration = ({
 		return value
 	}
 
-	const getFieldType = (fieldName: string): string => {
-		const properties = stream.stream.type_schema?.properties || {}
-		const fieldType = properties[fieldName]?.type
-		return Array.isArray(fieldType)
-			? fieldType.find(t => t !== "null") || fieldType[0]
-			: fieldType
-	}
-
-	const getFieldsOfSameType = (selectedField: string): string[] => {
-		const selectedType = getFieldType(selectedField)
+	const getColumnOptionsForCursor = (
+		isFallback: boolean = false,
+	): { label: React.ReactNode; value: string }[] => {
 		const availableCursorFields = stream.stream.available_cursor_fields || []
+		const selectedField = stream.stream.cursor_field?.split(":")[0]
 
-		return availableCursorFields.filter(field => {
-			// Skip the currently selected cursor field
-			if (field === selectedField) return false
-
-			// Check if field has the same type
-			const fieldType = getFieldType(field)
-			return fieldType === selectedType
-		})
+		return [...availableCursorFields]
+			.filter(field => !isFallback || field !== selectedField)
+			.sort((a, b) => {
+				const aIsPK =
+					stream.stream.source_defined_primary_key?.includes(a) || false
+				const bIsPK =
+					stream.stream.source_defined_primary_key?.includes(b) || false
+				if (aIsPK && !bIsPK) return -1
+				if (!aIsPK && bIsPK) return 1
+				return a.localeCompare(b)
+			})
+			.map((field: string) => ({
+				label: (
+					<div className="flex items-center justify-between">
+						<span>{field}</span>
+						{stream.stream.source_defined_primary_key?.includes(field) && (
+							<span className="text-[#203FDD]">PK</span>
+						)}
+					</div>
+				),
+				value: field,
+			}))
 	}
 
 	// Tab button component
@@ -573,18 +590,21 @@ const StreamConfiguration = ({
 								<div className="mb-4 mr-2">
 									<div className="flex w-full gap-4">
 										<div className="flex w-1/2 flex-col">
-											<label className="mb-1 font-medium text-[#575757]">
+											<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
 												Cursor field:
+												<Tooltip title="Column for identifying new/updated records ">
+													<Info className="size-3.5 cursor-pointer" />
+												</Tooltip>
 											</label>
 											<Select
 												placeholder="Select cursor field"
 												value={stream.stream.cursor_field?.split(":")[0]}
 												onChange={(value: string) => {
-													const newCursorField = defaultCursorField
-														? `${value}:${defaultCursorField}`
+													const newCursorField = fallBackCursorField
+														? `${value}:${fallBackCursorField}`
 														: value
 													stream.stream.cursor_field = newCursorField
-													setDefaultCursorField("")
+													setFallBackCursorField("")
 													onSyncModeChange?.(
 														stream.stream.name,
 														stream.stream.namespace || "",
@@ -593,79 +613,84 @@ const StreamConfiguration = ({
 												}}
 												optionLabelProp="label"
 											>
-												{[...stream.stream.available_cursor_fields]
-													.sort((a, b) => {
-														const aIsPK =
-															stream.stream.source_defined_primary_key?.includes(
-																a,
-															) || false
-														const bIsPK =
-															stream.stream.source_defined_primary_key?.includes(
-																b,
-															) || false
-														if (aIsPK && !bIsPK) return -1
-														if (!aIsPK && bIsPK) return 1
-														return a.localeCompare(b)
-													})
-													.map((field: string) => (
-														<Select.Option
-															key={field}
-															value={field}
-															label={field}
-														>
-															<div className="flex items-center justify-between">
-																<span>{field}</span>
-																{stream.stream.source_defined_primary_key?.includes(
-																	field,
-																) && <span className="text-[#203FDD]">PK</span>}
-															</div>
-														</Select.Option>
-													))}
+												{getColumnOptionsForCursor().map(option => (
+													<Select.Option
+														key={option.value}
+														value={option.value}
+														label={option.value}
+													>
+														{option.label}
+													</Select.Option>
+												))}
 											</Select>
 										</div>
-										{stream.stream.cursor_field && (
-											<div className="flex w-1/2 flex-col">
-												<label className="mb-1 font-medium text-[#575757]">
-													Default:
-												</label>
-												<Select
-													placeholder="Select default"
-													value={defaultCursorField}
-													onChange={(value: string) => {
-														const newCursorField = value
-															? `${stream.stream.cursor_field}:${value}`
-															: stream.stream.cursor_field
-														stream.stream.cursor_field = newCursorField
-														setDefaultCursorField(value)
-														onSyncModeChange?.(
-															stream.stream.name,
-															stream.stream.namespace || "",
-															"incremental",
-														)
-													}}
-													allowClear
-													optionLabelProp="label"
-												>
-													{getFieldsOfSameType(
-														stream.stream.cursor_field?.split(":")[0] ||
-															stream.stream.cursor_field,
-													).map((field: string) => (
-														<Select.Option
-															key={field}
-															value={field}
-															label={field}
+										{stream.stream.cursor_field &&
+											!showFallbackSelector &&
+											!fallBackCursorField && (
+												<div className="flex w-1/2 items-end">
+													<Tooltip title="Alternative cursor column in case cursor column encounters null values">
+														<Button
+															type="default"
+															icon={<Plus className="size-4" />}
+															onClick={() => setShowFallbackSelector(true)}
+															className="mb-[2px] flex items-center gap-1"
 														>
-															<div className="flex items-center justify-between">
-																<span>{field}</span>
-																{stream.stream.source_defined_primary_key?.includes(
-																	field,
-																) && <span className="text-[#203FDD]">PK</span>}
-															</div>
-														</Select.Option>
-													))}
-												</Select>
-											</div>
-										)}
+															Add Fallback Cursor
+														</Button>
+													</Tooltip>
+												</div>
+											)}
+
+										{stream.stream.cursor_field &&
+											(showFallbackSelector || fallBackCursorField) && (
+												<div className="flex w-1/2 flex-col">
+													<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
+														Fallback Cursor:
+														<Tooltip title="Alternative cursor column in case cursor column encounters null values">
+															<Info className="size-3.5 cursor-pointer text-[#575757]" />
+														</Tooltip>
+													</label>
+													<Select
+														placeholder="Select default"
+														value={fallBackCursorField}
+														onChange={(value: string) => {
+															const newCursorField = value
+																? `${stream.stream.cursor_field}:${value}`
+																: stream.stream.cursor_field
+															stream.stream.cursor_field = newCursorField
+															setFallBackCursorField(value)
+															onSyncModeChange?.(
+																stream.stream.name,
+																stream.stream.namespace || "",
+																"incremental",
+															)
+														}}
+														allowClear
+														onClear={() => {
+															setShowFallbackSelector(false)
+															setFallBackCursorField("")
+															stream.stream.cursor_field =
+																stream.stream.cursor_field?.split(":")[0]
+															onSyncModeChange?.(
+																stream.stream.name,
+																stream.stream.namespace || "",
+																"incremental",
+															)
+														}}
+														optionLabelProp="label"
+													>
+														{getColumnOptionsForCursor(true).map(option => (
+															<Select.Option
+																key={option.value}
+																value={option.value}
+																label={option.value}
+															>
+																{option.label}
+															</Select.Option>
+														))}
+													</Select>
+												</div>
+											)}
 									</div>
 								</div>
 							)}
@@ -681,7 +706,7 @@ const StreamConfiguration = ({
 							disabled={
 								syncMode === "full" ||
 								syncMode === "incremental" ||
-								fromJobEditFlow
+								isStreamInInitialSelection
 							}
 						/>
 					</div>
@@ -695,7 +720,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={normalisation}
 							onChange={handleNormalizationChange}
-							disabled={!isSelected || fromJobEditFlow}
+							disabled={!isSelected || isStreamInInitialSelection}
 						/>
 					</div>
 				</div>
@@ -714,7 +739,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={fullLoadFilter}
 							onChange={handleFullLoadFilterChange}
-							disabled={!isSelected || fromJobEditFlow}
+							disabled={!isSelected || isStreamInInitialSelection}
 						/>
 					</div>
 					{fullLoadFilter && isSelected && (
@@ -750,13 +775,13 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={!!activePartitionRegex || fromJobEditFlow}
+						disabled={!!activePartitionRegex || isStreamInInitialSelection}
 					/>
 					{!activePartitionRegex ? (
 						<Button
 							className="mt-2 w-fit bg-[#203FDD] px-1 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
-							disabled={!partitionRegex}
+							disabled={!partitionRegex || isStreamInInitialSelection}
 						>
 							Set Partition
 						</Button>
@@ -773,7 +798,7 @@ const StreamConfiguration = ({
 									size="small"
 									className="rounded-[6px] py-1 text-sm"
 									onClick={handleClearPartitionRegex}
-									disabled={fromJobEditFlow}
+									disabled={isStreamInInitialSelection}
 								>
 									Delete Partition
 								</Button>
@@ -805,7 +830,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600"
 									}`}
-									disabled={fromJobEditFlow}
+									disabled={isStreamInInitialSelection}
 								>
 									AND
 								</button>
@@ -817,7 +842,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600"
 									}`}
-									disabled={fromJobEditFlow}
+									disabled={isStreamInInitialSelection}
 								>
 									OR
 								</button>
@@ -827,7 +852,7 @@ const StreamConfiguration = ({
 								danger
 								icon={<X className="size-4" />}
 								onClick={() => handleRemoveFilter(index)}
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							>
 								Remove
 							</Button>
@@ -861,7 +886,7 @@ const StreamConfiguration = ({
 								options={getColumnOptions()}
 								labelInValue={false}
 								optionLabelProp="value"
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							/>
 						</div>
 						<div>
@@ -875,8 +900,8 @@ const StreamConfiguration = ({
 								onChange={value =>
 									handleFilterConditionChange(index, "operator", value)
 								}
-								options={getFilteredOperatorOptions(condition.columnName)}
-								disabled={fromJobEditFlow}
+								options={operatorOptions}
+								disabled={isStreamInInitialSelection}
 							/>
 						</div>
 						<div>
@@ -887,18 +912,19 @@ const StreamConfiguration = ({
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
-								disabled={fromJobEditFlow}
+								disabled={isStreamInInitialSelection}
 							/>
 						</div>
 					</div>
 				</div>
 			))}
-			{multiFilterCondition.conditions.length < 2 && !fromJobEditFlow && (
+			{multiFilterCondition.conditions.length < 2 && (
 				<Button
 					type="default"
 					icon={<Plus className="size-4" />}
 					onClick={handleAddFilter}
 					className="w-fit"
+					disabled={isStreamInInitialSelection}
 				>
 					New Column filter
 				</Button>

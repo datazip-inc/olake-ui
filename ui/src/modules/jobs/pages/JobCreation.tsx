@@ -2,7 +2,10 @@ import { useState, useRef } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { message } from "antd"
 import { useAppStore } from "../../../store"
-import { getConnectorInLowerCase } from "../../../utils/utils"
+import {
+	getConnectorInLowerCase,
+	validateCronExpression,
+} from "../../../utils/utils"
 import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
 import { destinationService, sourceService } from "../../../api"
 import analyticsService from "../../../api/services/analyticsService"
@@ -115,7 +118,7 @@ const JobCreation: React.FC = () => {
 
 			const newDestinationData = {
 				name: destinationName,
-				type: `${destinationConnector}`,
+				type: `${getConnectorInLowerCase(destinationConnector.toLowerCase())}`,
 				config:
 					typeof destinationFormData === "string"
 						? destinationFormData
@@ -150,8 +153,7 @@ const JobCreation: React.FC = () => {
 				message.error("Job name is required")
 				return
 			}
-			if (!cronExpression.trim()) {
-				message.error("Cron expression is required")
+			if (!validateCronExpression(cronExpression)) {
 				return
 			}
 			const newJobData: JobBase = {

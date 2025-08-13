@@ -20,11 +20,9 @@ services:
     container_name: olake-ui
     environment:
       PERSISTENT_DIR: *hostPersistencePath
-      POSTGRES_DB: "postgres://olake:olake@postgresql:5432/olakedb"
       OLAKE_SECRET_KEY: *encryptionKey
     ports:
-      - "8000:8000" # Expose UI port
-      - "8080:8080" # Expose backend API port
+      - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
       # Mount Docker socket to enable black box environment by managing local containers/images
       - /var/run/docker.sock:/var/run/docker.sock
@@ -37,8 +35,8 @@ services:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
-    healthcheck: # Updated healthcheck for olake-ui
-      test: ["CMD-SHELL", "nc -z localhost 8080"] # Check if port 8080 is listening
+    healthcheck: # Updated healthcheck for olake-ui  
+      test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
       interval: 15s
       timeout: 5s
       retries: 5
@@ -56,7 +54,7 @@ services:
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
       EMAIL: *defaultEmail
-      OLAKE_APP_URL: "http://olake-ui:8080/signup"
+      OLAKE_APP_URL: "http://olake-ui:8000/signup"
     command: >
       sh -c "
         echo 'signup-init: Initializing user setup...'
