@@ -86,6 +86,10 @@ spec:
             secretKeyRef:
               name: postgresql-secret
               key: POSTGRES_PASSWORD
+        {{- range $key, $value := .Values.olakeWorker.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
         envFrom:
         - configMapRef:
             name: olake-workers-config

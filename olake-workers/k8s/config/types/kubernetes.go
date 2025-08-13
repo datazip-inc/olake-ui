@@ -10,6 +10,7 @@ type KubernetesConfig struct {
 	Labels            map[string]string         `json:"labels"`
 	JobMapping        map[int]map[string]string `json:"job_mapping"`
 	JobServiceAccount string                    `json:"job_service_account"`
+	OLakeSecretKey    string                    `json:"secret_key"`
 }
 
 // KubernetesResourceLimits defines CPU and memory limits for K8s jobs

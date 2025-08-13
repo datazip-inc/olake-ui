@@ -58,12 +58,12 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 				"olake.io/workflow-id":    k8s.SanitizeName(spec.OriginalWorkflowID),
 			},
 			Annotations: map[string]string{
-				"olake.io/created-by-pod":       k8s.GenerateWorkerIdentity(),
-				"olake.io/created-at":           time.Now().Format(time.RFC3339),
-				"olake.io/workflow-id":          spec.OriginalWorkflowID,
-				"olake.io/operation-type":       string(spec.Operation),
-				"olake.io/connector-type":       spec.ConnectorType,
-				"olake.io/job-id":               strconv.Itoa(spec.JobID),
+				"olake.io/created-by-pod": k8s.GenerateWorkerIdentity(),
+				"olake.io/created-at":     time.Now().Format(time.RFC3339),
+				"olake.io/workflow-id":    spec.OriginalWorkflowID,
+				"olake.io/operation-type": string(spec.Operation),
+				"olake.io/connector-type": spec.ConnectorType,
+				"olake.io/job-id":         strconv.Itoa(spec.JobID),
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -95,6 +95,10 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 						{
 							Name:  "OLAKE_WORKFLOW_ID",
 							Value: spec.OriginalWorkflowID,
+						},
+						{
+							Name:  "OLAKE_SECRET_KEY",
+							Value: k.config.Kubernetes.OLakeSecretKey,
 						},
 					},
 				},

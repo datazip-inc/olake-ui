@@ -24,5 +24,6 @@ func LoadKubernetes() (types.KubernetesConfig, error) {
 		},
 		JobMapping:        jobMapping,
 		JobServiceAccount: env.GetEnv("JOB_SERVICE_ACCOUNT_NAME", ""),
+		OLakeSecretKey:    env.GetEnv("OLAKE_SECRET_KEY", ""),
 	}, nil
 }
