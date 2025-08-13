@@ -69,7 +69,9 @@ func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logger.Errorf("Failed to encode health response: %v", err)
+	}
 }
 
 // readinessHandler handles readiness probe requests
@@ -105,7 +107,9 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logger.Errorf("Failed to encode readiness response: %v", err)
+	}
 }
 
 // metricsHandler provides basic metrics
@@ -118,5 +122,7 @@ func (hs *HealthServer) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		logger.Errorf("Failed to encode metrics response: %v", err)
+	}
 }

@@ -6,41 +6,15 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/shared"
 	"olake-ui/olake-workers/k8s/utils/filesystem"
 	"olake-ui/olake-workers/k8s/utils/k8s"
-	"olake-ui/olake-workers/k8s/utils/parser"
 )
 
-// getPodLogs retrieves logs from a completed pod
-func (k *K8sPodManager) getPodLogs(ctx context.Context, podName string) (string, error) {
-	req := k.clientset.CoreV1().Pods(k.namespace).GetLogs(podName, &corev1.PodLogOptions{})
-	logs, err := req.Stream(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer logs.Close()
-
-	buf := make([]byte, 4096)
-	var result string
-	for {
-		n, err := logs.Read(buf)
-		if n > 0 {
-			result += string(buf[:n])
-		}
-		if err != nil {
-			break
-		}
-	}
-
-	return result, nil
-}
 
 // getPodResults extracts results from completed pod
-func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, operation shared.Command, workflowID string) (map[string]interface{}, error) {
+func (k *K8sPodManager) getPodResults(podName string, operation shared.Command, workflowID string) (map[string]interface{}, error) {
 	// For sync operations, prioritize reading the state.json file for results
 	if operation == shared.Sync && workflowID != "" {
 		fsHelper := filesystem.NewHelper()
@@ -52,11 +26,11 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, opera
 				return result, nil
 			} else {
 				// This case is unlikely if ReadAndValidateStateFile truly validates JSON, but it's safe to handle
-				logger.Warnf("Failed to parse validated state.json for sync pod %s: %v, falling back to logs", podName, unmarshalErr)
+				logger.Errorf("Failed to parse validated state.json for sync pod %s: %v", podName, unmarshalErr)
 			}
 		} else {
 			// Log the error from ReadAndValidateStateFile, which could be os.ErrNotExist or something else
-			logger.Warnf("Failed to read state.json for sync pod %s: %v, falling back to logs", podName, err)
+			logger.Warnf("Failed to read state.json for sync pod %s: %v", podName, err)
 		}
 	}
 
@@ -72,22 +46,16 @@ func (k *K8sPodManager) getPodResults(ctx context.Context, podName string, opera
 				return streamsResult, nil
 			} else {
 				// This case is unlikely if ReadAndValidateStreamsFile truly validates JSON, but it's safe to handle
-				logger.Warnf("Failed to parse validated streams.json for discover pod %s: %v, falling back to logs", podName, unmarshalErr)
+				logger.Errorf("Failed to parse validated streams.json for discover pod %s: %v", podName, unmarshalErr)
 			}
 		} else {
 			// Log the error from ReadAndValidateStreamsFile, which could be os.ErrNotExist or something else
-			logger.Warnf("Failed to read streams.json for discover pod %s: %v, falling back to logs", podName, err)
+			logger.Warnf("Failed to read streams.json for discover pod %s: %v", podName, err)
 		}
 	}
 
-	// Fallback/default: Parse logs from the pod
-	logger.Debugf("Parsing pod logs for pod %s", podName)
-	logs, err := k.getPodLogs(ctx, podName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get pod logs: %v", err)
-	}
-	logger.Debugf("Raw pod logs for pod %s:\n%s", podName, logs)
-	return parser.ParseJobOutput(logs)
+	// No fallback available - return error indicating file-based results are required
+	return nil, fmt.Errorf("failed to read results from filesystem for pod %s, operation %s", podName, operation)
 }
 
 // PodActivityRequest defines a request for executing a pod activity

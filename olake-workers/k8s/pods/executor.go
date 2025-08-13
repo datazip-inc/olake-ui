@@ -147,14 +147,13 @@ func (k *K8sPodManager) WaitForPodCompletion(ctx context.Context, podName string
 		// Check if pod completed successfully
 		if pod.Status.Phase == corev1.PodSucceeded {
 			logger.Infof("Pod %s completed successfully", podName)
-			return k.getPodResults(ctx, podName, operation, workflowID)
+			return k.getPodResults(podName, operation, workflowID)
 		}
 
 		// Check if pod failed
 		if pod.Status.Phase == corev1.PodFailed {
 			logger.Errorf("Pod %s failed", podName)
-			logs, _ := k.getPodLogs(ctx, podName)
-			return nil, fmt.Errorf("pod failed: %s", logs)
+			return nil, fmt.Errorf("pod %s failed with status: %s", podName, pod.Status.Phase)
 		}
 
 		// Wait before checking again

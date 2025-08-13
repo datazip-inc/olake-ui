@@ -37,9 +37,8 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 	activityLogger := activity.GetLogger(ctx)
 	activityLogger.Debug("Starting K8s discover catalog activity")
 
-	// Use injected pod manager
-
-	// Execute pod activity using common workflow
+	// Build the pod execution request with all necessary configuration for the discover operation
+	// This includes the container image, command arguments, config files, and timeout settings
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
@@ -98,9 +97,6 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
 
-	// Start state monitoring goroutine for incremental persistence
-	// go a.monitorState(ctx, params.JobID, params.WorkflowID)
-
 	// Get job details from database using injected service
 	jobData, err := a.jobService.GetJobData(params.JobID)
 	if err != nil {
@@ -138,6 +134,8 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		Timeout: helpers.GetActivityTimeout(a.config, "sync"),
 	}
 
+	// Execute the data sync operation by creating and managing a Kubernetes pod
+	// This orchestrates the entire pod lifecycle: creation, execution, monitoring, and cleanup
 	result, err := a.podManager.ExecutePodActivity(ctx, request)
 	if err != nil {
 		logger.Warnf("Activity failed for job %d: %v. Attempting final state save...", params.JobID, err)
@@ -162,7 +160,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		return nil, err
 	}
 
-	// Update job state similar to server implementation
+	// Update job state
 	if stateJSON, err := json.Marshal(result); err == nil {
 		if err := a.jobService.UpdateJobState(params.JobID, string(stateJSON), true); err != nil {
 			logger.Errorf("Failed to update job state for jobID %d: %v", params.JobID, err)
