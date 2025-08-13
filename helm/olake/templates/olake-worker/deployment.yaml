@@ -42,10 +42,6 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
       initContainers:
       - name: wait-for-temporal

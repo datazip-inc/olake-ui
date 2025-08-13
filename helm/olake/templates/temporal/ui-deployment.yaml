@@ -24,10 +24,6 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: workflow-ui
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        fsGroup: 1000
       initContainers:
       - name: wait-for-temporal
         image: busybox:latest
