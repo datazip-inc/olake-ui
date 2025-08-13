@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
 )
@@ -41,7 +41,7 @@ func (c *DestHandler) GetAllDestinations() {
 func (c *DestHandler) CreateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
-	var req models.CreateDestinationRequest
+	var req dto.CreateDestinationRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -61,7 +61,7 @@ func (c *DestHandler) CreateDestination() {
 func (c *DestHandler) UpdateDestination() {
 	id := GetIDFromPath(&c.Controller)
 
-	var req models.UpdateDestinationRequest
+	var req dto.UpdateDestinationRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -92,7 +92,7 @@ func (c *DestHandler) DeleteDestination() {
 
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
-	var req models.DestinationTestConnectionRequest
+	var req dto.DestinationTestConnectionRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -142,7 +142,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	_ = c.Ctx.Input.Param(":projectid")
 	// Will be used for multi-tenant filtering in the future
 
-	var req models.SpecRequest
+	var req dto.SpecRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return

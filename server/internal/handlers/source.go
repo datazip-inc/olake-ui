@@ -8,7 +8,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
 )
@@ -45,7 +45,7 @@ func (c *SourceHandler) GetAllSources() {
 // @router /project/:projectid/sources [post]
 func (c *SourceHandler) CreateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	var req models.CreateSourceRequest
+	var req dto.CreateSourceRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -61,7 +61,7 @@ func (c *SourceHandler) CreateSource() {
 // @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
 	id := GetIDFromPath(&c.Controller)
-	var req models.UpdateSourceRequest
+	var req dto.UpdateSourceRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -91,7 +91,7 @@ func (c *SourceHandler) DeleteSource() {
 
 // @router /project/:projectid/sources/test [post]
 func (c *SourceHandler) TestConnection() {
-	var req models.SourceTestConnectionRequest
+	var req dto.SourceTestConnectionRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -106,7 +106,7 @@ func (c *SourceHandler) TestConnection() {
 
 // @router /sources/streams[post]
 func (c *SourceHandler) GetSourceCatalog() {
-	var req models.StreamsRequest
+	var req dto.StreamsRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -155,7 +155,7 @@ func (c *SourceHandler) GetSourceVersions() {
 func (c *SourceHandler) GetProjectSourceSpec() {
 	_ = c.Ctx.Input.Param(":projectid")
 
-	var req models.SpecRequest
+	var req dto.SpecRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
@@ -472,7 +472,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.SpecResponse{
+	utils.SuccessResponse(&c.Controller, dto.SpecResponse{
 		Version: req.Version,
 		Type:    req.Type,
 		Spec:    spec,

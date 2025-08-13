@@ -8,6 +8,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
@@ -37,7 +38,7 @@ func NewSourceService() (*SourceService, error) {
 	}, nil
 }
 
-func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]models.SourceDataItem, error) {
+func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	logs.Info("Getting all sources")
 	// Get all sources
 	sources, err := s.sourceORM.GetAll()
@@ -67,9 +68,9 @@ func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]
 	}
 
 	// Build the response
-	sourceItems := make([]models.SourceDataItem, 0, len(sources))
+	sourceItems := make([]dto.SourceDataItem, 0, len(sources))
 	for _, source := range sources {
-		item := models.SourceDataItem{
+		item := dto.SourceDataItem{
 			ID:        source.ID,
 			Name:      source.Name,
 			Type:      source.Type,
@@ -95,7 +96,7 @@ func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]
 	return sourceItems, nil
 }
 
-func (s *SourceService) CreateSource(ctx context.Context, req models.CreateSourceRequest, projectID string, userID *int) error {
+func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRequest, projectID string, userID *int) error {
 	logs.Info("Creating source with projectID: %s", projectID)
 	source := &models.Source{
 		Name:      req.Name,
@@ -121,7 +122,7 @@ func (s *SourceService) CreateSource(ctx context.Context, req models.CreateSourc
 	return nil
 }
 
-func (s *SourceService) UpdateSource(ctx context.Context, id int, req models.UpdateSourceRequest, userID *int) error {
+func (s *SourceService) UpdateSource(ctx context.Context, id int, req dto.UpdateSourceRequest, userID *int) error {
 	logs.Info("Updating source with id: %d", id)
 	existingSource, err := s.sourceORM.GetByID(id)
 	if err != nil {
@@ -146,7 +147,7 @@ func (s *SourceService) UpdateSource(ctx context.Context, id int, req models.Upd
 	return nil
 }
 
-func (s *SourceService) DeleteSource(ctx context.Context, id int) (*models.DeleteSourceResponse, error) {
+func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
 	logs.Info("Deleting source with id: %d", id)
 	source, err := s.sourceORM.GetByID(id)
 	if err != nil {
@@ -177,12 +178,12 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*models.Delet
 		return nil, fmt.Errorf("%s source: %s", constants.ErrFailedToDelete, err)
 	}
 	telemetry.TrackSourcesStatus(ctx)
-	return &models.DeleteSourceResponse{
+	return &dto.DeleteSourceResponse{
 		Name: source.Name,
 	}, nil
 }
 
-func (s *SourceService) TestConnection(ctx context.Context, req models.SourceTestConnectionRequest) (map[string]interface{}, error) {
+func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestConnectionRequest) (map[string]interface{}, error) {
 	logs.Info("Testing connection for source: %v", req)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -212,7 +213,7 @@ func (s *SourceService) TestConnection(ctx context.Context, req models.SourceTes
 	return result, nil
 }
 
-func (s *SourceService) GetSourceCatalog(ctx context.Context, req models.StreamsRequest) (map[string]interface{}, error) {
+func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsRequest) (map[string]interface{}, error) {
 	logs.Info("Getting source catalog with config: %v", req.Config)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -281,11 +282,11 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 }
 
 // Helper methods
-func (s *SourceService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]models.JobDataItem, error) {
-	jobItems := make([]models.JobDataItem, 0, len(jobs))
+func (s *SourceService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
+	jobItems := make([]dto.JobDataItem, 0, len(jobs))
 
 	for _, job := range jobs {
-		item := models.JobDataItem{
+		item := dto.JobDataItem{
 			ID:   job.ID,
 			Name: job.Name,
 		}

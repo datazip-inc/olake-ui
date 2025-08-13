@@ -8,6 +8,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
@@ -25,7 +26,7 @@ func (c *AuthHandler) Prepare() {
 
 // @router /login [post]
 func (c *AuthHandler) Login() {
-	var req models.LoginRequest
+	var req dto.LoginRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
@@ -72,7 +73,7 @@ func (c *AuthHandler) CheckAuth() {
 		}
 	}
 
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
+	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Authenticated",
 		Success: true,
 	})
@@ -81,7 +82,7 @@ func (c *AuthHandler) CheckAuth() {
 // @router /logout [post]
 func (c *AuthHandler) Logout() {
 	_ = c.DestroySession()
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
+	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Logged out successfully",
 		Success: true,
 	})

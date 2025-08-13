@@ -8,6 +8,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
@@ -35,7 +36,7 @@ func NewDestinationService() (*DestinationService, error) {
 	}, nil
 }
 
-func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID string) ([]models.DestinationDataItem, error) {
+func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	logs.Info("Retrieving destinations for project with id: %s", projectID)
 	destinations, err := s.destORM.GetAllByProjectID(projectID)
 	if err != nil {
@@ -62,9 +63,9 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 		jobsByDestID[job.DestID.ID] = append(jobsByDestID[job.DestID.ID], job)
 	}
 
-	destItems := make([]models.DestinationDataItem, 0, len(destinations))
+	destItems := make([]dto.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
-		item := models.DestinationDataItem{
+		item := dto.DestinationDataItem{
 			ID:        dest.ID,
 			Name:      dest.Name,
 			Type:      dest.DestType,
@@ -90,7 +91,7 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 	return destItems, nil
 }
 
-func (s *DestinationService) CreateDestination(ctx context.Context, req models.CreateDestinationRequest, projectID string, userID *int) error {
+func (s *DestinationService) CreateDestination(ctx context.Context, req dto.CreateDestinationRequest, projectID string, userID *int) error {
 	logs.Info("Creating destination: %s", req.Name)
 	destination := &models.Destination{
 		Name:      req.Name,
@@ -114,7 +115,7 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req models.C
 	return nil
 }
 
-func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req models.UpdateDestinationRequest, userID *int) error {
+func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req dto.UpdateDestinationRequest, userID *int) error {
 	logs.Info("Updating destination with id: %d", id)
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
@@ -141,7 +142,7 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req 
 	return nil
 }
 
-func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*models.DeleteDestinationResponse, error) {
+func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
 	logs.Info("Deleting destination with id: %d", id)
 	dest, err := s.destORM.GetByID(id)
 	if err != nil {
@@ -169,10 +170,10 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*mo
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
-	return &models.DeleteDestinationResponse{Name: dest.Name}, nil
+	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *DestinationService) TestConnection(ctx context.Context, req models.DestinationTestConnectionRequest) (map[string]interface{}, error) {
+func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, error) {
 	logs.Info("Testing connection with config: %v", req.Config)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -222,10 +223,10 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 }
 
 // Helper function
-func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]models.JobDataItem, error) {
-	jobItems := make([]models.JobDataItem, 0, len(jobs))
+func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
+	jobItems := make([]dto.JobDataItem, 0, len(jobs))
 	for _, job := range jobs {
-		item := models.JobDataItem{
+		item := dto.JobDataItem{
 			ID:   job.ID,
 			Name: job.Name,
 		}

@@ -14,6 +14,7 @@ import (
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
@@ -42,14 +43,14 @@ func NewJobService() (*JobService, error) {
 	}, nil
 }
 
-func (s *JobService) GetAllJobsByProject(projectID string) ([]models.JobResponse, error) {
+func (s *JobService) GetAllJobsByProject(projectID string) ([]dto.JobResponse, error) {
 	logs.Info("Retrieving jobs by project ID: %s", projectID)
 	jobs, err := s.jobORM.GetAllByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("%s jobs by project ID: %s", constants.ErrFailedToRetrieve, err)
 	}
 
-	jobResponses := make([]models.JobResponse, 0, len(jobs))
+	jobResponses := make([]dto.JobResponse, 0, len(jobs))
 	for _, job := range jobs {
 		jobResp := s.buildJobResponse(job, projectID)
 		jobResponses = append(jobResponses, jobResp)
@@ -58,7 +59,7 @@ func (s *JobService) GetAllJobsByProject(projectID string) ([]models.JobResponse
 	return jobResponses, nil
 }
 
-func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest, projectID string, userID *int) error {
+func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
 	logs.Info("Creating job: %s", req.Name)
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
@@ -104,7 +105,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *models.CreateJobRequest
 	return nil
 }
 
-func (s *JobService) UpdateJob(ctx context.Context, req *models.UpdateJobRequest, projectID string, jobID int, userID *int) error {
+func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
 	logs.Info("Updating job: %s", req.Name)
 	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
@@ -218,17 +219,17 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 	return nil
 }
 
-func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]models.JobTask, error) {
+func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
 	if s.tempClient == nil {
-		return []models.JobTask{}, nil
+		return []dto.JobTask{}, nil
 	}
 
-	var tasks []models.JobTask
+	var tasks []dto.JobTask
 	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
 
 	resp, err := s.tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
@@ -244,7 +245,7 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 		if execution.CloseTime != nil {
 			runTime = execution.CloseTime.AsTime().Sub(startTime)
 		}
-		tasks = append(tasks, models.JobTask{
+		tasks = append(tasks, dto.JobTask{
 			Runtime:   runTime.String(),
 			StartTime: startTime.UTC().Format(time.RFC3339),
 			Status:    execution.Status.String(),
@@ -310,8 +311,8 @@ func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string
 	return logs, nil
 }
 
-func (s *JobService) buildJobResponse(job *models.Job, projectID string) models.JobResponse {
-	jobResp := models.JobResponse{
+func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.JobResponse {
+	jobResp := dto.JobResponse{
 		ID:            job.ID,
 		Name:          job.Name,
 		StreamsConfig: job.StreamsConfig,
@@ -322,7 +323,7 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) models.
 	}
 
 	if job.SourceID != nil {
-		jobResp.Source = models.JobSourceConfig{
+		jobResp.Source = dto.JobSourceConfig{
 			Name:    job.SourceID.Name,
 			Type:    job.SourceID.Type,
 			Config:  job.SourceID.Config,
@@ -331,7 +332,7 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) models.
 	}
 
 	if job.DestID != nil {
-		jobResp.Destination = models.JobDestinationConfig{
+		jobResp.Destination = dto.JobDestinationConfig{
 			Name:    job.DestID.Name,
 			Type:    job.DestID.DestType,
 			Config:  job.DestID.Config,
@@ -360,7 +361,7 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) models.
 	return jobResp
 }
 
-func (s *JobService) getOrCreateSource(config models.JobSourceConfig, projectID string, userID *int) (*models.Source, error) {
+func (s *JobService) getOrCreateSource(config dto.JobSourceConfig, projectID string, userID *int) (*models.Source, error) {
 	sources, err := s.sourceORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(sources) > 0 {
 		source := sources[0]
@@ -392,7 +393,7 @@ func (s *JobService) getOrCreateSource(config models.JobSourceConfig, projectID 
 	return source, nil
 }
 
-func (s *JobService) getOrCreateDestination(config models.JobDestinationConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, projectID string, userID *int) (*models.Destination, error) {
 	destinations, err := s.destORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(destinations) > 0 {
 		dest := destinations[0]

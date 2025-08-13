@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
 )
@@ -38,7 +38,7 @@ func (c *JobHandler) GetAllJobs() {
 // @router /project/:projectid/jobs [post]
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	var req models.CreateJobRequest
+	var req dto.CreateJobRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
@@ -55,7 +55,7 @@ func (c *JobHandler) CreateJob() {
 func (c *JobHandler) UpdateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	jobID := GetIDFromPath(&c.Controller)
-	var req models.UpdateJobRequest
+	var req dto.UpdateJobRequest
 	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
