@@ -87,6 +87,22 @@ spec:
         volumeMounts:
         - name: export-volume
           mountPath: /export
+        readinessProbe:
+          tcpSocket:
+            port: 2049
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        livenessProbe:
+          tcpSocket:
+            port: 2049
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
         resources:
           requests:
             cpu: 250m
