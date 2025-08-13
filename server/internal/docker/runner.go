@@ -120,7 +120,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
-	repositoryBase := strings.ToLower(os.Getenv("REPOSITORY_BASE"))
+	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 	imageName := r.GetDockerImageName(sourceType, version)
 	// If using ECR, ensure login before run
 	if strings.Contains(repositoryBase, "ecr") {

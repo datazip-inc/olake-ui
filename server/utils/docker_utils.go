@@ -32,7 +32,7 @@ type DockerHubTagsResponse struct {
 
 // GetDriverImageTags returns image tags from ECR or Docker Hub based on REPOSITORY_BASE
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, error) {
-	repositoryBase := strings.ToLower(os.Getenv("REPOSITORY_BASE"))
+	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 
 	// Always ensure imageName is just repo name (e.g., olakego/source-postgres)
 	if strings.Contains(repositoryBase, "ecr") {
@@ -225,7 +225,7 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	}
 	username := parts[0]
 	password := parts[1]
-	registryURL := aws.ToString(authData.ProxyEndpoint) // e.g., https://672919669757.dkr.ecr.ap-south-1.amazonaws.com
+	registryURL := aws.ToString(authData.ProxyEndpoint) // e.g., https://678819669750.dkr.ecr.ap-south-1.amazonaws.com
 
 	// Perform docker login
 	cmd := exec.CommandContext(ctx, "docker", "login", "-u", username, "--password-stdin", registryURL)
