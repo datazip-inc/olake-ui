@@ -244,7 +244,7 @@ const CreateDestination = forwardRef<
 			}
 
 			fetchVersions()
-		}, [connector, onVersionChange])
+		}, [connector, onVersionChange, setupType])
 
 		useEffect(() => {
 			const fetchDestinationSpec = async () => {
