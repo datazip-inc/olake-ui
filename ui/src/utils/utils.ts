@@ -4,6 +4,10 @@ import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
+import { DAYS_MAP } from "./constants"
+import { CronParseResult } from "../types"
+import parser from "cron-parser"
+import { message } from "antd"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
@@ -63,9 +67,13 @@ export const getStatusClass = (status: string) => {
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	if (connector === "Amazon S3" || connector === "s3") {
+	const lowerConnector = connector.toLowerCase()
+	if (lowerConnector === "amazon s3" || lowerConnector === "s3") {
 		return "s3"
-	} else if (connector === "Apache Iceberg" || connector === "iceberg") {
+	} else if (
+		lowerConnector === "apache iceberg" ||
+		lowerConnector === "iceberg"
+	) {
 		return "iceberg"
 	} else if (connector.toLowerCase() === "mongodb") {
 		return "mongodb"
@@ -161,6 +169,8 @@ export const getFrequencyValue = (frequency: string) => {
 			return "years"
 		case "minutes":
 			return "minutes"
+		case "custom":
+			return "custom"
 		default:
 			return "hours"
 	}
@@ -262,4 +272,177 @@ export const getDestinationType = (type: string) => {
 	) {
 		return "ICEBERG"
 	}
+}
+
+export const getDayNumber = (day: string): number => {
+	return DAYS_MAP[day as keyof typeof DAYS_MAP]
+}
+
+export const generateCronExpression = (
+	frequency: string,
+	time: string,
+	ampm: "AM" | "PM",
+	day: string,
+) => {
+	let hour = parseInt(time)
+	if (ampm === "PM" && hour !== 12) {
+		hour += 12
+	} else if (ampm === "AM" && hour === 12) {
+		hour = 0
+	}
+
+	let cronExp = ""
+	switch (frequency) {
+		case "minutes":
+			cronExp = "* * * * *" // Every minute
+			break
+		case "hours":
+			cronExp = "0 * * * *" // Every hour at minute 0
+			break
+		case "days":
+			cronExp = `0 ${hour} * * *` // Every day at specified hour
+			break
+		case "weeks":
+			const dayNumber = getDayNumber(day)
+			cronExp = `0 ${hour} * * ${dayNumber}` // Every week on specified day at specified hour
+			break
+		default:
+			cronExp = "* * * * *" // Default to every minute if no frequency specified
+	}
+	return cronExp
+}
+
+export const operatorOptions = [
+	{ label: "=", value: "=" },
+	{ label: "!=", value: "!=" },
+	{ label: ">", value: ">" },
+	{ label: "<", value: "<" },
+	{ label: ">=", value: ">=" },
+	{ label: "<=", value: "<=" },
+]
+
+export const isValidCronExpression = (cron: string): boolean => {
+	// Check if the cron has exactly 5 parts
+	const parts = cron.trim().split(" ")
+	if (parts.length !== 5) return false
+
+	try {
+		parser.parse(cron)
+		return true
+	} catch {
+		return false
+	}
+}
+
+export const parseCronExpression = (
+	cronExpression: string,
+	DAYS: string[],
+): CronParseResult => {
+	try {
+		const parts = cronExpression.split(" ")
+		if (parts.length !== 5) {
+			return { frequency: "custom", customCronExpression: cronExpression }
+		}
+
+		const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
+
+		// Check if it's a custom pattern first
+		if (
+			!(
+				// Minutes pattern
+				(
+					(minute === "*" &&
+						hour === "*" &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						dayOfWeek === "*") ||
+					// Hours pattern
+					(minute === "0" &&
+						hour === "*" &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						dayOfWeek === "*") ||
+					// Days pattern
+					(minute === "0" &&
+						/^\d+$/.test(hour) &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						dayOfWeek === "*") ||
+					// Weeks pattern
+					(minute === "0" &&
+						/^\d+$/.test(hour) &&
+						dayOfMonth === "*" &&
+						month === "*" &&
+						/^[0-6]$/.test(dayOfWeek))
+				)
+			)
+		) {
+			return { frequency: "custom", customCronExpression: cronExpression }
+		}
+
+		// Determine frequency and set states based on cron pattern
+		if (minute === "*" && hour === "*") {
+			return { frequency: "minutes" }
+		}
+
+		if (minute === "0" && hour === "*") {
+			return { frequency: "hours" }
+		}
+
+		if (
+			minute === "0" &&
+			dayOfMonth === "*" &&
+			month === "*" &&
+			dayOfWeek === "*"
+		) {
+			const hourNum = parseInt(hour)
+			return {
+				frequency: "days",
+				selectedTime:
+					hourNum > 12
+						? (hourNum - 12).toString()
+						: hourNum === 0
+							? "12"
+							: hourNum.toString(),
+				selectedAmPm: hourNum >= 12 ? "PM" : "AM",
+			}
+		}
+
+		if (
+			minute === "0" &&
+			dayOfMonth === "*" &&
+			month === "*" &&
+			/^[0-6]$/.test(dayOfWeek)
+		) {
+			const hourNum = parseInt(hour)
+			return {
+				frequency: "weeks",
+				selectedTime:
+					hourNum > 12
+						? (hourNum - 12).toString()
+						: hourNum === 0
+							? "12"
+							: hourNum.toString(),
+				selectedAmPm: hourNum >= 12 ? "PM" : "AM",
+				selectedDay: DAYS[parseInt(dayOfWeek)],
+			}
+		}
+
+		return { frequency: "custom", customCronExpression: cronExpression }
+	} catch (error) {
+		console.error("Error parsing cron expression:", error)
+		return { frequency: "custom", customCronExpression: cronExpression }
+	}
+}
+
+export const validateCronExpression = (cronExpression: string): boolean => {
+	if (!cronExpression.trim()) {
+		message.error("Cron expression is required")
+		return false
+	}
+	if (!isValidCronExpression(cronExpression)) {
+		message.error("Invalid cron expression")
+		return false
+	}
+	return true
 }

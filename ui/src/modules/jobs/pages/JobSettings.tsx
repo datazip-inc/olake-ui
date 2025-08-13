@@ -1,29 +1,49 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Switch, message, Select } from "antd"
+import { Input, Button, Switch, message, Select, Radio } from "antd"
 import { ArrowRight } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { ArrowLeft } from "@phosphor-icons/react"
-import { getConnectorImage } from "../../../utils/utils"
+import {
+	getConnectorImage,
+	generateCronExpression,
+	parseCronExpression,
+	validateCronExpression,
+	isValidCronExpression,
+} from "../../../utils/utils"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
 import { jobService } from "../../../api"
+import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
+import parser from "cron-parser"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
-	const [replicationFrequencyValue, setReplicationFrequencyValue] =
-		useState("1")
 	const [jobName, setJobName] = useState("")
 	const navigate = useNavigate()
 
-	const {
-		jobs,
-		fetchJobs,
-		setShowDeleteJobModal,
-		setSelectedJobId,
-		// setShowClearDestinationAndSyncModal,
-	} = useAppStore()
+	// Cron-related states
+	const [selectedTime, setSelectedTime] = useState("1")
+	const [selectedAmPm, setSelectedAmPm] = useState<"AM" | "PM">("AM")
+	const [selectedDay, setSelectedDay] = useState("Sunday")
+	const [frequency, setFrequency] = useState("minutes")
+	const [customCronExpression, setCustomCronExpression] = useState("")
+	const [cronExpression, setCronExpression] = useState("* * * * *")
+	const [nextRuns, setNextRuns] = useState<string[]>([])
+
+	// Configuration object for all select options
+	const selectConfig = {
+		frequency: FREQUENCY_OPTIONS,
+		time: Array.from({ length: 12 }, (_, i) => ({
+			value: (i + 1).toString(),
+			label: (i + 1).toString(),
+		})),
+		days: DAYS.map(day => ({ value: day, label: day })),
+	}
+
+	const { jobs, fetchJobs, setShowDeleteJobModal, setSelectedJobId } =
+		useAppStore()
 
 	useEffect(() => {
 		if (!jobs.length) {
@@ -32,8 +52,62 @@ const JobSettings: React.FC = () => {
 	}, [fetchJobs, jobs.length])
 
 	const job = jobs.find(j => j.id.toString() === jobId)
-
 	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
+
+	const getParsedDate = (value: Date) => value.toUTCString()
+
+	const updateNextRuns = (cronValue: string) => {
+		if (!cronValue || !isValidCronExpression(cronValue)) {
+			setNextRuns([])
+			return
+		}
+
+		try {
+			const interval = parser.parse(cronValue, {
+				currentDate: new Date(),
+				tz: "UTC",
+			})
+			const data = []
+			for (let i = 0; i < 3; i++) {
+				data.push(getParsedDate(interval.next().toDate()))
+			}
+			setNextRuns(data)
+		} catch (error) {
+			console.error(
+				"Invalid cron expression:",
+				error instanceof Error ? error.message : String(error),
+			)
+			setNextRuns([])
+		}
+	}
+
+	// Parse initial cron expression and set states
+	useEffect(() => {
+		if (job?.frequency) {
+			const result = parseCronExpression(job.frequency, DAYS)
+
+			setFrequency(result.frequency)
+			if (result.customCronExpression) {
+				setCustomCronExpression(result.customCronExpression)
+			}
+			if (result.selectedTime) {
+				setSelectedTime(result.selectedTime)
+			}
+			if (result.selectedAmPm) {
+				setSelectedAmPm(result.selectedAmPm)
+			}
+			if (result.selectedDay) {
+				setSelectedDay(result.selectedDay)
+			}
+
+			setCronExpression(job.frequency)
+			updateNextRuns(job.frequency)
+		}
+		if (job) {
+			setPauseJob(!job.activate)
+			setJobName(job.name)
+		}
+	}, [job])
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
@@ -48,35 +122,64 @@ const JobSettings: React.FC = () => {
 		}
 	}
 
-	const [replicationFrequency, setReplicationFrequency] = useState(
-		job?.frequency ? job.frequency.split("-")[1] : "minutes",
-	)
+	// Unified handler for all cron expression updates
+	const updateCronExpression = (
+		freq?: string,
+		time?: string,
+		amPm?: "AM" | "PM",
+		day?: string,
+	) => {
+		const f = freq || frequency
+		const t = time || selectedTime
+		const ap = amPm || selectedAmPm
+		const d = day || selectedDay
 
-	useEffect(() => {
-		if (job?.frequency) {
-			const parts = job.frequency.split("-")
-			if (parts.length === 2) {
-				setReplicationFrequencyValue(parts[0])
-				setReplicationFrequency(parts[1])
-			} else {
-				setReplicationFrequencyValue("1")
-				setReplicationFrequency("minutes")
-			}
-		} else if (job) {
-			setReplicationFrequencyValue("1")
-			setReplicationFrequency("minutes")
+		if (f === "custom") {
+			setCronExpression(customCronExpression)
+			updateNextRuns(customCronExpression)
+		} else {
+			const newCronExpression = generateCronExpression(f, t, ap, d)
+			setCronExpression(newCronExpression)
+			updateNextRuns(newCronExpression)
 		}
-		if (job) {
-			setPauseJob(!job.activate)
-		}
-		if (job?.name) {
-			setJobName(job.name)
-		}
-	}, [job])
+	}
 
-	// const handleClearDestinationAndSync = () => {
-	// 	setShowClearDestinationAndSyncModal(true)
-	// }
+	const handleFrequencyChange = (selectedUnit: string) => {
+		setFrequency(selectedUnit)
+		if (selectedUnit === "custom") {
+			setCronExpression(customCronExpression)
+			updateNextRuns(customCronExpression)
+		} else {
+			updateCronExpression(selectedUnit)
+		}
+	}
+
+	const handleTimeChange = (value: string) => {
+		setSelectedTime(value)
+		if (frequency !== "custom") {
+			updateCronExpression(undefined, value)
+		}
+	}
+
+	const handleAmPmChange = (value: "AM" | "PM") => {
+		setSelectedAmPm(value)
+		if (frequency !== "custom") {
+			updateCronExpression(undefined, undefined, value)
+		}
+	}
+
+	const handleDayChange = (value: string) => {
+		setSelectedDay(value)
+		if (frequency !== "custom") {
+			updateCronExpression(undefined, undefined, undefined, value)
+		}
+	}
+
+	const handleCustomCronChange = (value: string) => {
+		setCustomCronExpression(value)
+		setCronExpression(value)
+		updateNextRuns(value)
+	}
 
 	const handleDeleteJob = () => {
 		if (jobId) {
@@ -85,18 +188,32 @@ const JobSettings: React.FC = () => {
 		setShowDeleteJobModal(true)
 	}
 
+	// Helper to determine if time selection should be shown
+	const isTimeSelectionFrequency = (freq: string): boolean => {
+		return freq === "days" || freq === "weeks"
+	}
+
+	const shouldShowTimeSelection =
+		isTimeSelectionFrequency(frequency) && frequency !== "custom"
+
 	const handleSaveSettings = async () => {
 		if (!jobId || !job) {
 			message.error("Job details not found.")
 			return
 		}
 
-		const updatedFrequency = `${replicationFrequencyValue}-${replicationFrequency}`
+		if (!jobName.trim()) {
+			message.error("Job name is required")
+			return
+		}
+		if (!validateCronExpression(cronExpression)) {
+			return
+		}
 
 		try {
 			const jobUpdatePayload = {
 				name: jobName,
-				frequency: updatedFrequency,
+				frequency: cronExpression,
 				activate: job.activate,
 				source: {
 					...job.source,
@@ -173,7 +290,6 @@ const JobSettings: React.FC = () => {
 					</div>
 
 					<div className="flex h-full border-t px-6">
-						{/* Main content */}
 						<div className="mt-2 w-full pr-6 transition-all duration-300">
 							<h2 className="mb-4 text-xl font-medium">Job settings</h2>
 
@@ -185,7 +301,6 @@ const JobSettings: React.FC = () => {
 										</label>
 										<Input
 											placeholder="Enter your job name"
-											defaultValue={job?.name}
 											value={jobName}
 											onChange={e => setJobName(e.target.value)}
 											className="max-w-md"
@@ -193,31 +308,91 @@ const JobSettings: React.FC = () => {
 									</div>
 
 									<div className="mb-6 w-2/3">
-										<label className="mb-2 block text-sm text-gray-700">
-											Replication frequency:
-										</label>
-										<div className="flex w-full items-center gap-2">
-											<Input
-												value={replicationFrequencyValue}
-												defaultValue={replicationFrequencyValue}
-												onChange={e =>
-													setReplicationFrequencyValue(e.target.value)
-												}
-												className="w-2/5"
-											/>
-											<Select
-												className="w-3/5"
-												value={replicationFrequency}
-												onChange={setReplicationFrequency}
-											>
-												<Select.Option value="minutes">Minutes</Select.Option>
-												<Select.Option value="hours">Hours</Select.Option>
-												<Select.Option value="days">Days</Select.Option>
-												<Select.Option value="weeks">Weeks</Select.Option>
-												<Select.Option value="months">Months</Select.Option>
-												<Select.Option value="years">Years</Select.Option>
-											</Select>
+										<div className="flex gap-4">
+											<div>
+												<label className="mb-2 block text-sm">Frequency</label>
+												<Select
+													className="w-40"
+													value={frequency}
+													onChange={handleFrequencyChange}
+													options={selectConfig.frequency}
+												/>
+											</div>
+
+											{frequency === "custom" && (
+												<div>
+													<label className="mb-2 block text-sm">
+														Cron Expression
+													</label>
+													<Input
+														className="w-64"
+														placeholder="Enter cron expression (Eg : * * * * *)"
+														value={customCronExpression}
+														onChange={e =>
+															handleCustomCronChange(e.target.value)
+														}
+													/>
+												</div>
+											)}
+
+											{frequency === "weeks" && (
+												<div>
+													<label className="mb-2 block text-sm">
+														Select Day
+													</label>
+													<Select
+														className="w-36"
+														value={selectedDay}
+														onChange={handleDayChange}
+														options={selectConfig.days}
+														placeholder="Select Day"
+													/>
+												</div>
+											)}
+
+											{shouldShowTimeSelection && (
+												<div className={frequency === "weeks" ? "" : "ml-4"}>
+													<label className="mb-2 block text-sm">
+														Job Start Time{" "}
+														<span className="text-[#A7A7A7]">
+															(12H Format UTC)
+														</span>
+													</label>
+													<div className="flex items-center gap-1">
+														<Select
+															className="w-24"
+															value={selectedTime}
+															onChange={handleTimeChange}
+															options={selectConfig.time}
+														/>
+														<Radio.Group
+															value={selectedAmPm}
+															onChange={e => handleAmPmChange(e.target.value)}
+														>
+															<Radio.Button value="AM">AM</Radio.Button>
+															<Radio.Button value="PM">PM</Radio.Button>
+														</Radio.Group>
+													</div>
+												</div>
+											)}
 										</div>
+										{nextRuns.length > 0 && (
+											<div className="mt-4 flex gap-2">
+												<span className="text-sm font-medium">
+													Next 3 Runs (UTC):
+												</span>
+												<div className="flex gap-4">
+													{nextRuns.map((run, index) => (
+														<span
+															key={index}
+															className="text-sm text-gray-600"
+														>
+															{run}
+														</span>
+													))}
+												</div>
+											</div>
+										)}
 									</div>
 								</div>
 
@@ -236,26 +411,6 @@ const JobSettings: React.FC = () => {
 							</div>
 
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
-								{/* <div className="mb-3 border-gray-200">
-									<div className="flex items-center justify-between">
-										<div className="flex flex-col gap-2">
-											<div className="font-medium">
-												Clear destination and sync:
-											</div>
-											<div className="text-sm text-[#8A8A8A]">
-												It will delete all the data in the destination and then
-												sync the data from the source
-											</div>
-										</div>
-										<Button
-											onClick={handleClearDestinationAndSync}
-											className="py-4"
-										>
-											Clear destination and sync
-										</Button>
-									</div>
-								</div> */}
-
 								<div className="border-gray-200 pt-4">
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
@@ -280,7 +435,6 @@ const JobSettings: React.FC = () => {
 					</div>
 				</div>
 
-				{/* Footer */}
 				<div className="flex justify-end border-t border-gray-200 bg-white p-4 shadow-sm">
 					<Button
 						type="primary"

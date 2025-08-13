@@ -139,3 +139,31 @@ export const connectorTypeMap: Record<string, string> = {
 	mysql: "MySQL",
 	oracle: "Oracle",
 }
+
+export const DAYS_MAP = {
+	Sunday: 0,
+	Monday: 1,
+	Tuesday: 2,
+	Wednesday: 3,
+	Thursday: 4,
+	Friday: 5,
+	Saturday: 6,
+}
+
+export const DAYS = [
+	"Sunday",
+	"Monday",
+	"Tuesday",
+	"Wednesday",
+	"Thursday",
+	"Friday",
+	"Saturday",
+]
+
+export const FREQUENCY_OPTIONS = [
+	{ value: "minutes", label: "Every Minute" },
+	{ value: "hours", label: "Every Hour" },
+	{ value: "days", label: "Every Day" },
+	{ value: "weeks", label: "Every Week" },
+	{ value: "custom", label: "Custom" },
+]
