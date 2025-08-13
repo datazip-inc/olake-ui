@@ -11,6 +11,18 @@ global:
   # Examples: gp2, standard, managed
   storageClass: ""
   
+  # -- Global image pull secrets for private container registries
+  # List of Kubernetes secret names containing registry credentials
+  # NOTE: Secrets must be created separately using kubectl or other means
+  # Examples:
+  #   Create secret: kubectl create secret docker-registry my-registry-secret \
+  #     --docker-server=my-registry.com --docker-username=user --docker-password=pass
+  #   Reference in values:
+  #   imagePullSecrets:
+  #     - name: "my-registry-secret"
+  #     - name: "docker-hub-secret"
+  imagePullSecrets: []
+  
   # -- JobID-based node mapping configuration for pods created by olake-workers
   # Maps JobID (integer) to specific node labels for pod scheduling
   # Format: { jobID: { node_label: node_value } }
