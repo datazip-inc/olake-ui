@@ -97,7 +97,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 		return nil, err
 	}
 
-	dockerArgs := r.buildDockerArgs(flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
+	dockerArgs := r.buildDockerArgs(ctx, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
 
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 
@@ -117,17 +117,36 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 }
 
 // buildDockerArgs constructs Docker command arguments
-func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
+func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
+
+	repositoryBase := strings.ToLower(os.Getenv("REPOSITORY_BASE"))
+
+	// If using ECR, ensure login before run
+	if strings.Contains(repositoryBase, "ecr") {
+		accountID, region, _, err := utils.ParseECRDetails(repositoryBase)
+		if err != nil {
+			fmt.Printf("Warning: ECR login failed: %v\n", err)
+		}
+		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
+			fmt.Printf("Warning: ECR login failed: %v\n", err)
+		}
+	}
+
 	dockerArgs := []string{"run", "--rm"}
 
 	if version == "latest" {
 		dockerArgs = append(dockerArgs, "--pull=always")
 	}
+	imageName := r.GetDockerImageName(sourceType, version)
+	// Full image name (ECR or Docker Hub)
+	if strings.Contains(repositoryBase, "ecr") {
+		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
+	}
 
 	dockerArgs = append(dockerArgs,
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
-		r.GetDockerImageName(sourceType, version),
+		imageName,
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	)
