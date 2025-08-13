@@ -121,15 +121,16 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	repositoryBase := strings.ToLower(os.Getenv("REPOSITORY_BASE"))
-
+	imageName := r.GetDockerImageName(sourceType, version)
 	// If using ECR, ensure login before run
 	if strings.Contains(repositoryBase, "ecr") {
-		accountID, region, _, err := utils.ParseECRDetails(repositoryBase)
+		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
+		accountID, region, _, err := utils.ParseECRDetails(imageName)
 		if err != nil {
-			fmt.Printf("Warning: ECR login failed: %v\n", err)
+			logs.Critical("ECR login failed: %s\n", err)
 		}
 		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
-			fmt.Printf("Warning: ECR login failed: %v\n", err)
+			logs.Critical("ECR login failed: %s\n", err)
 		}
 	}
 
@@ -137,11 +138,6 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 
 	if version == "latest" {
 		dockerArgs = append(dockerArgs, "--pull=always")
-	}
-	imageName := r.GetDockerImageName(sourceType, version)
-	// Full image name (ECR or Docker Hub)
-	if strings.Contains(repositoryBase, "ecr") {
-		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
 	}
 
 	dockerArgs = append(dockerArgs,

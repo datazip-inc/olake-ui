@@ -194,7 +194,7 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	// Load AWS credentials & config
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
-		return fmt.Errorf("failed to load AWS config: %w", err)
+		return fmt.Errorf("failed to load AWS config: %s", err)
 	}
 
 	client := ecr.NewFromConfig(cfg)
@@ -204,7 +204,7 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 		RegistryIds: []string{registryID},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get ECR authorization token: %w", err)
+		return fmt.Errorf("failed to get ECR authorization token: %s", err)
 	}
 
 	if len(authResp.AuthorizationData) == 0 {
@@ -216,7 +216,7 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	// Decode token
 	decodedToken, err := base64.StdEncoding.DecodeString(aws.ToString(authData.AuthorizationToken))
 	if err != nil {
-		return fmt.Errorf("failed to decode authorization token: %w", err)
+		return fmt.Errorf("failed to decode authorization token: %s", err)
 	}
 
 	parts := strings.SplitN(string(decodedToken), ":", 2)
@@ -232,7 +232,7 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	cmd.Stdin = strings.NewReader(password)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("docker login failed: %w\nOutput: %s", err, output)
+		return fmt.Errorf("docker login failed: %s\nOutput: %s", err, output)
 	}
 
 	return nil
