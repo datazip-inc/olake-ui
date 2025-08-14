@@ -98,6 +98,15 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}, [connector, setupType, fetchSources])
 
+		const resetVersionState = () => {
+			setVersions([])
+			setSelectedVersion("")
+			setSchema(null)
+			if (onVersionChange) {
+				onVersionChange("")
+			}
+		}
+
 		useEffect(() => {
 			if (
 				initialVersion &&
@@ -130,14 +139,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							}
 						}
 					} else {
-						setVersions([])
-						setSelectedVersion("")
-						setSchema(null)
-						if (onVersionChange) {
-							onVersionChange("")
-						}
+						resetVersionState()
 					}
 				} catch (error) {
+					resetVersionState()
 					console.error("Error fetching versions:", error)
 				} finally {
 					setLoadingVersions(false)

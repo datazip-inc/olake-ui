@@ -153,6 +153,15 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		}
 	}, [connector, selectedVersion])
 
+	const resetVersionState = () => {
+		setAvailableVersions([])
+		setSelectedVersion("")
+		setSchema(null)
+		if (onVersionChange) {
+			onVersionChange("")
+		}
+	}
+
 	useEffect(() => {
 		const fetchVersions = async () => {
 			if (!connector) return
@@ -187,16 +196,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 						}
 					}
 				} else {
-					setAvailableVersions([])
-					setSelectedVersion("")
-					setSchema(null)
-					if (onVersionChange) {
-						onVersionChange("")
-					}
+					resetVersionState()
 				}
 			} catch (error) {
+				resetVersionState()
 				console.error("Error fetching versions:", error)
-				message.error("Failed to fetch versions")
 			}
 		}
 

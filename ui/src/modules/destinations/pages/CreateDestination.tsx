@@ -67,6 +67,15 @@ const CreateDestination = forwardRef<
 		},
 		ref,
 	) => {
+		const resetVersionState = () => {
+			setVersions([])
+			setVersion("")
+			setSchema(null)
+			if (onVersionChange) {
+				onVersionChange("")
+			}
+		}
+
 		const [setupType, setSetupType] = useState(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
@@ -235,14 +244,10 @@ const CreateDestination = forwardRef<
 							}
 						}
 					} else {
-						setVersions([])
-						setVersion("")
-						setSchema(null)
-						if (onVersionChange) {
-							onVersionChange("")
-						}
+						resetVersionState()
 					}
 				} catch (error) {
+					resetVersionState()
 					console.error("Error fetching versions:", error)
 				} finally {
 					setLoadingVersions(false)

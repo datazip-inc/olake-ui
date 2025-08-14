@@ -180,6 +180,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}, [initialData])
 
+	const resetVersionState = () => {
+		setVersions([])
+		setSelectedVersion("")
+		setSchema(null)
+		if (onVersionChange) {
+			onVersionChange("")
+		}
+	}
+
 	useEffect(() => {
 		const fetchVersions = async () => {
 			if (!connector) return
@@ -208,14 +217,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						}
 					}
 				} else {
-					setVersions([])
-					setSelectedVersion("")
-					setSchema(null)
-					if (onVersionChange) {
-						onVersionChange("")
-					}
+					resetVersionState()
 				}
 			} catch (error) {
+				resetVersionState()
 				console.error("Error fetching versions:", error)
 			} finally {
 				setLoadingVersions(false)
