@@ -138,7 +138,7 @@ export const sourceService = {
 					name,
 					type,
 					job_id: job_id ? job_id : -1,
-					version: version === "" ? "latest" : version,
+					version: version,
 					config,
 				},
 				{ timeout: 0 },

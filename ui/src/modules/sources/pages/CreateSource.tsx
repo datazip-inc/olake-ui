@@ -2,7 +2,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { message, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
@@ -45,9 +45,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
-		const [selectedVersion, setSelectedVersion] = useState(
-			initialVersion || "latest",
-		)
+		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<any>({})
@@ -103,7 +101,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		useEffect(() => {
 			if (
 				initialVersion &&
-				initialVersion !== "latest" &&
+				initialVersion !== "" &&
 				initialConnector === connector
 			) {
 				setSelectedVersion(initialVersion)
@@ -117,19 +115,26 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data && response.data.version) {
+					if (response.data && response.data.version.length > 100) {
 						setVersions(response.data.version)
 						if (
 							response.data.version.length > 0 &&
 							(!initialVersion ||
 								connector !== initialConnector ||
-								initialVersion === "latest")
+								initialVersion === "")
 						) {
 							const defaultVersion = response.data.version[0]
 							setSelectedVersion(defaultVersion)
 							if (onVersionChange) {
 								onVersionChange(defaultVersion)
 							}
+						}
+					} else {
+						setVersions([])
+						setSelectedVersion("")
+						setSchema(null)
+						if (onVersionChange) {
+							onVersionChange("")
 						}
 					}
 				} catch (error) {
@@ -146,14 +151,16 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			const fetchSourceSpec = async () => {
 				try {
 					setLoading(true)
-					const response = await sourceService.getSourceSpec(
-						connector,
-						selectedVersion,
-					)
-					if (response.success && response.data?.spec) {
-						setSchema(response.data.spec)
-					} else {
-						console.error("Failed to get source spec:", response.message)
+					if (selectedVersion != "") {
+						const response = await sourceService.getSourceSpec(
+							connector,
+							selectedVersion,
+						)
+						if (response.success && response.data?.spec) {
+							setSchema(response.data.spec)
+						} else {
+							console.error("Failed to get source spec:", response.message)
+						}
 					}
 				} catch (error) {
 					console.error("Error fetching source spec:", error)
@@ -161,8 +168,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					setLoading(false)
 				}
 			}
-
-			fetchSourceSpec()
+			if (selectedVersion != "") {
+				fetchSourceSpec()
+			}
 		}, [connector, selectedVersion])
 
 		useEffect(() => {
@@ -179,18 +187,30 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setValidating(true)
 			let isValid = true
 			if (setupType === "new") {
-				if (!sourceName.trim()) {
+				if (!sourceName.trim() && selectedVersion.trim() != "") {
 					setSourceNameError("Source name is required")
 					message.error("Source name is required")
 					isValid = false
 				} else {
 					setSourceNameError(null)
 				}
+
+				if (selectedVersion.trim() === "") {
+					message.error("No versions available")
+					isValid = false
+				}
 			}
 			if (setupType === "new" && schema) {
 				const schemaErrors = validateFormData(formData, schema)
 				setFormErrors(schemaErrors)
 				isValid = isValid && Object.keys(schemaErrors).length === 0
+			} else if (setupType === "existing") {
+				if (sourceName.trim() == "") {
+					message.error("Source name is required")
+					isValid = false
+				} else {
+					setSourceNameError(null)
+				}
 			}
 			return isValid
 		}
@@ -331,17 +351,29 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						<label className="mb-2 block text-sm font-medium text-gray-700">
 							OLake Version:
 						</label>
-						<Select
-							value={selectedVersion}
-							onChange={handleVersionChange}
-							className="w-full"
-							loading={loadingVersions}
-							placeholder="Select version"
-							options={versions.map(version => ({
-								value: version,
-								label: version,
-							}))}
-						/>
+						{loadingVersions ? (
+							<div className="flex h-8 items-center justify-center">
+								<Spin size="small" />
+							</div>
+						) : versions && versions.length > 0 ? (
+							<>
+								<Select
+									value={selectedVersion}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									options={versions.map(version => ({
+										value: version,
+										label: version,
+									}))}
+								/>
+							</>
+						) : (
+							<div className="flex items-center gap-1 text-sm text-red-500">
+								<Info />
+								No versions available
+							</div>
+						)}
 					</div>
 				</div>
 

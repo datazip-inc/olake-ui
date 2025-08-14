@@ -213,7 +213,7 @@ const JobEdit: React.FC = () => {
 				database: "",
 				collection: "",
 			},
-			version: "latest",
+			version: "",
 		})
 
 		setDestinationData({
@@ -225,7 +225,7 @@ const JobEdit: React.FC = () => {
 				s3_region: "",
 				type: "PARQUET",
 			},
-			version: "latest",
+			version: "",
 		})
 
 		setJobName("New Job")
@@ -305,7 +305,7 @@ const JobEdit: React.FC = () => {
 					typeof sourceData?.config === "string"
 						? sourceData?.config
 						: JSON.stringify(sourceData?.config),
-				version: sourceData?.version || "latest",
+				version: sourceData?.version || "",
 			},
 			destination: {
 				name: destinationData?.name || "",
@@ -314,7 +314,7 @@ const JobEdit: React.FC = () => {
 					typeof destinationData?.config === "string"
 						? destinationData?.config
 						: JSON.stringify(destinationData?.config),
-				version: destinationData?.version || "latest",
+				version: destinationData?.version || "",
 			},
 			streams_config:
 				typeof selectedStreams === "string"
@@ -367,7 +367,7 @@ const JobEdit: React.FC = () => {
 					const testData = {
 						name: sourceData.name,
 						type: sourceData.type.toLowerCase(),
-						version: sourceData.version || "latest",
+						version: sourceData.version || "",
 						config:
 							typeof sourceData.config === "string"
 								? sourceData.config
@@ -403,7 +403,7 @@ const JobEdit: React.FC = () => {
 							typeof sourceData.config === "string"
 								? sourceData.config
 								: JSON.stringify(sourceData.config),
-						version: sourceData.version || "latest",
+						version: sourceData.version || "",
 					}
 					setShowTestingModal(true)
 					setIsFromSources(true)
@@ -431,7 +431,7 @@ const JobEdit: React.FC = () => {
 					const testData = {
 						name: destinationData.name,
 						type: destinationData.type.toLowerCase(),
-						version: destinationData.version || "latest",
+						version: destinationData.version || "",
 						config:
 							typeof destinationData.config === "string"
 								? destinationData.config
@@ -468,7 +468,7 @@ const JobEdit: React.FC = () => {
 							typeof destinationData.config === "string"
 								? destinationData.config
 								: JSON.stringify(destinationData.config),
-						version: destinationData.version || "latest",
+						version: destinationData.version || "",
 					}
 					setShowTestingModal(true)
 					setIsFromSources(false)
@@ -596,7 +596,7 @@ const JobEdit: React.FC = () => {
 									stepTitle="Streams Selection"
 									sourceName={sourceData?.name || ""}
 									sourceConnector={sourceData?.type.toLowerCase() || ""}
-									sourceVersion={sourceData?.version || "latest"}
+									sourceVersion={sourceData?.version || ""}
 									sourceConfig={JSON.stringify(sourceData?.config || {})}
 									fromJobEditFlow={true}
 									jobId={jobId ? parseInt(jobId) : -1}

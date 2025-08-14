@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
-import { GenderNeuter, Notebook, ArrowLeft } from "@phosphor-icons/react"
+import { GenderNeuter, Notebook, ArrowLeft, Info } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import type { ColumnsType } from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -104,7 +104,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			// Only set connector if it's not already set or if it's the same as initialData
 			if (!connector || connector === normalizedType) {
 				setConnector(normalizedType)
-				setSelectedVersion(initialData.version || "latest")
+				setSelectedVersion(initialData.version || "")
 
 				// Set form data from initialData only if connector matches
 				if (initialData.config) {
@@ -144,7 +144,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			}
 		}
 
-		if (connector) {
+		if (connector && selectedVersion != "") {
 			fetchSourceSpec()
 		}
 
@@ -185,6 +185,13 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								onVersionChange(initialData.version)
 							}
 						}
+					}
+				} else {
+					setAvailableVersions([])
+					setSelectedVersion("")
+					setSchema(null)
+					if (onVersionChange) {
+						onVersionChange("")
 					}
 				}
 			} catch (error) {
@@ -515,17 +522,24 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											OLake Version:
 											<span className="text-red-500">*</span>
 										</label>
-										<Select
-											value={selectedVersion}
-											onChange={value => {
-												setSelectedVersion(value)
-												if (onVersionChange) {
-													onVersionChange(value)
-												}
-											}}
-											className="h-8 w-full"
-											options={availableVersions}
-										/>
+										{availableVersions.length > 0 ? (
+											<Select
+												value={selectedVersion}
+												onChange={value => {
+													setSelectedVersion(value)
+													if (onVersionChange) {
+														onVersionChange(value)
+													}
+												}}
+												className="h-8 w-full"
+												options={availableVersions}
+											/>
+										) : (
+											<div className="flex items-center gap-1 text-sm text-red-500">
+												<Info />
+												No versions available
+											</div>
+										)}
 									</div>
 								</div>
 							</div>

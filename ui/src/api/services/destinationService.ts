@@ -146,7 +146,7 @@ export const destinationService = {
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
-				version: version === "" ? "latest" : version,
+				version: version,
 				catalog: normalizedCatalog,
 			},
 		)

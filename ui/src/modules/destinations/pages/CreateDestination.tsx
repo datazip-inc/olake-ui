@@ -2,7 +2,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
@@ -224,13 +224,22 @@ const CreateDestination = forwardRef<
 					const response = await destinationService.getDestinationVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data?.version) {
-						setVersions(response.data.version)
-						const defaultVersion = response.data.version[0] || ""
-						setVersion(defaultVersion)
-
+					if (response.data && response.data.version) {
+						const receivedVersions = response.data.version
+						setVersions(receivedVersions)
+						if (receivedVersions.length > 0) {
+							const defaultVersion = receivedVersions[0]
+							setVersion(defaultVersion)
+							if (onVersionChange) {
+								onVersionChange(defaultVersion)
+							}
+						}
+					} else {
+						setVersions([])
+						setVersion("")
+						setSchema(null)
 						if (onVersionChange) {
-							onVersionChange(defaultVersion)
+							onVersionChange("")
 						}
 					}
 				} catch (error) {
@@ -264,8 +273,9 @@ const CreateDestination = forwardRef<
 					setLoading(false)
 				}
 			}
-
-			fetchDestinationSpec()
+			if (version != "") {
+				fetchDestinationSpec()
+			}
 		}, [connector, catalog, version])
 
 		useEffect(() => {
@@ -283,12 +293,16 @@ const CreateDestination = forwardRef<
 			let isValid = true
 
 			if (setupType === SETUP_TYPES.NEW) {
-				if (!destinationName.trim()) {
+				if (!destinationName.trim() && version.trim() != "") {
 					setDestinationNameError("Destination name is required")
 					message.error("Destination name is required")
 					isValid = false
 				} else {
 					setDestinationNameError(null)
+				}
+				if (version.trim() === "") {
+					message.error("No versions available")
+					isValid = false
 				}
 			}
 
@@ -311,6 +325,13 @@ const CreateDestination = forwardRef<
 				const schemaErrors = validateFormData(enrichedFormData, schema)
 				setFormErrors(schemaErrors)
 				isValid = isValid && Object.keys(schemaErrors).length === 0
+			} else if (setupType === SETUP_TYPES.EXISTING) {
+				if (destinationName.trim() == "") {
+					message.error("Destination name is required")
+					isValid = false
+				} else {
+					setDestinationNameError(null)
+				}
 			}
 
 			return isValid
@@ -481,17 +502,27 @@ const CreateDestination = forwardRef<
 						</FormField>
 
 						<FormField label="Version:">
-							<Select
-								value={version}
-								onChange={handleVersionChange}
-								className="w-full"
-								loading={loadingVersions}
-								placeholder="Select version"
-								options={versions.map(v => ({
-									value: v,
-									label: v,
-								}))}
-							/>
+							{loadingVersions ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : versions && versions.length > 0 ? (
+								<Select
+									value={version}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									options={versions.map(v => ({
+										value: v,
+										label: v,
+									}))}
+								/>
+							) : (
+								<div className="flex items-center gap-1 text-sm text-red-500">
+									<Info />
+									No versions available
+								</div>
+							)}
 						</FormField>
 					</div>
 				</>
