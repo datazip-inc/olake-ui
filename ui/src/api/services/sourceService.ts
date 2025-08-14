@@ -100,6 +100,9 @@ export const sourceService = {
 		try {
 			const response = await api.get<APIResponse<{ version: string[] }>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+				{
+					timeout: 0,
+				},
 			)
 			return response.data
 		} catch (error) {
