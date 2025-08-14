@@ -30,7 +30,7 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
-// GetDriverImageTags returns image tags from ECR or Docker Hub based on REPOSITORY_BASE
+// GetDriverImageTags returns image tags from ECR or Docker Hub based on CONTAINER_REGISTRY_BASE
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, error) {
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 
@@ -107,9 +107,11 @@ func getDockerHubImageTags(ctx context.Context, imageName string, cachedTags boo
 		sort.Slice(tags, func(i, j int) bool {
 			return tags[i] > tags[j] // '>' for descending order
 		})
+
 		if len(tags) == 0 {
 			return nil, fmt.Errorf("no tags found for image: %s", imageName)
 		}
+
 		return tags, nil
 	}
 

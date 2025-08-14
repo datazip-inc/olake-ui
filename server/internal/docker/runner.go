@@ -127,10 +127,10 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
 		accountID, region, _, err := utils.ParseECRDetails(imageName)
 		if err != nil {
-			logs.Critical("ECR login failed: %s\n", err)
+			logs.Critical("failed to parse ECR details: %s", err)
 		}
 		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
-			logs.Critical("ECR login failed: %s\n", err)
+			logs.Critical("failed to login to ECR: %s", err)
 		}
 	}
 
