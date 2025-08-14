@@ -224,8 +224,8 @@ const CreateDestination = forwardRef<
 					const response = await destinationService.getDestinationVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data && response.data.version) {
-						const receivedVersions = response.data.version
+					if (response.data && response.data?.version) {
+						const receivedVersions = response.data?.version
 						setVersions(receivedVersions)
 						if (receivedVersions.length > 0) {
 							const defaultVersion = receivedVersions[0]

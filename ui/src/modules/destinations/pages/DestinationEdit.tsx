@@ -197,7 +197,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					connectorType.toLowerCase(),
 				)
 
-				if (response.data && response.data.version) {
+				if (response.data && response.data?.version) {
 					setVersions(response.data.version)
 
 					// If no version is selected, set the first one as default

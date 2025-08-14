@@ -115,7 +115,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data && response.data.version.length > 100) {
+					if (response.data && response.data?.version) {
 						setVersions(response.data.version)
 						if (
 							response.data.version.length > 0 &&
