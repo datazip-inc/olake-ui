@@ -30,20 +30,28 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
-// GetDriverImageTags returns image tags from ECR or Docker Hub based on CONTAINER_REGISTRY_BASE
+// GetDriverImageTags returns image tags from ECR or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, error) {
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
+	var tags []string
+	var err error
 
-	// Always ensure imageName is just repo name (e.g., olakego/source-postgres)
 	if strings.Contains(repositoryBase, "ecr") {
 		fullImage := fmt.Sprintf("%s/%s", repositoryBase, imageName)
-		return getECRImageTags(ctx, fullImage)
+		tags, err = getECRImageTags(ctx, fullImage)
+	} else {
+		tags, err = getDockerHubImageTags(ctx, imageName)
 	}
 
-	// Default to Docker Hub behavior
-	return getDockerHubImageTags(ctx, imageName, cachedTags)
+	// Fallback to cached if online fetch fails or explicitly requested
+	if err != nil && cachedTags {
+		return fetchCachedImageTags(ctx, imageName)
+	}
+
+	return tags, err
 }
 
+// getECRImageTags fetches tags from AWS ECR
 func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error) {
 	accountID, region, repoName, err := ParseECRDetails(fullImageName)
 	if err != nil {
@@ -78,85 +86,76 @@ func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error
 	return tags, nil
 }
 
-// getDockerHubImageTags fetches tags from Docker Hub or cached images
-func getDockerHubImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, error) {
-	fetchCachedImageTags := func(ctx context.Context, imageName string) ([]string, error) {
-		imagePrefix := Ternary(imageName != "", fmt.Sprintf("%s:", imageName), "olakego/source-").(string)
-		images, err := GetCachedImages(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get cached images: %s", err)
-		}
-
-		tagsMap := make(map[string]struct{})
-		for _, image := range images {
-			if strings.HasPrefix(image, imagePrefix) {
-				parts := strings.Split(image, ":")
-				if len(parts) != 2 || !isValidTag(parts[1]) {
-					continue
-				}
-				tagsMap[parts[1]] = struct{}{}
-			}
-		}
-
-		var tags []string
-		for tag := range tagsMap {
-			tags = append(tags, tag)
-		}
-
-		// Sort tags in descending order
-		sort.Slice(tags, func(i, j int) bool {
-			return tags[i] > tags[j] // '>' for descending order
-		})
-
-		if len(tags) == 0 {
-			return nil, fmt.Errorf("no tags found for image: %s", imageName)
-		}
-
-		return tags, nil
-	}
-
-	fetchTagsFromDockerHub := func(ctx context.Context, imageName string) ([]string, error) {
-		// use default postgres if empty
-		imageName = Ternary(imageName == "", "olakego/source-postgres", imageName).(string)
-		// Create a new HTTP request with context
-		req, err := http.NewRequestWithContext(ctx, "GET",
-			fmt.Sprintf(dockerHubTagsURLTemplate, imageName), http.NoBody)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %s", err)
-		}
-
-		// Make the HTTP request
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch tags from Docker Hub: %s", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("docker hub api request failed with status code: %d", resp.StatusCode)
-		}
-
-		var responseData DockerHubTagsResponse
-		if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
-			return nil, fmt.Errorf("failed to decode Docker Hub response: %s", err)
-		}
-
-		var tags []string
-		for _, tagData := range responseData.Results {
-			if isValidTag(tagData.Name) {
-				tags = append(tags, tagData.Name)
-			}
-		}
-		return tags, nil
-	}
-
-	tags, err := fetchTagsFromDockerHub(ctx, imageName)
+// getDockerHubImageTags fetches tags from Docker Hub
+func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, error) {
+	imageName = Ternary(imageName == "", "olakego/source-postgres", imageName).(string)
+	// Create a new HTTP request with context
+	req, err := http.NewRequestWithContext(ctx, "GET",
+		fmt.Sprintf(dockerHubTagsURLTemplate, imageName), http.NoBody)
 	if err != nil {
-		if cachedTags {
-			// check for cached images on local
-			return fetchCachedImageTags(ctx, imageName)
+		return nil, fmt.Errorf("failed to create request: %s", err)
+	}
+	// Make the HTTP request
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch tags from Docker Hub: %s", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("docker hub api request failed with status code: %d", resp.StatusCode)
+	}
+
+	var responseData DockerHubTagsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&responseData); err != nil {
+		return nil, fmt.Errorf("failed to decode Docker Hub response: %s", err)
+	}
+
+	var tags []string
+	for _, tagData := range responseData.Results {
+		if isValidTag(tagData.Name) {
+			tags = append(tags, tagData.Name)
 		}
-		return nil, err
+	}
+	sort.Slice(tags, func(i, j int) bool { return tags[i] > tags[j] })
+	return tags, nil
+}
+
+// fetchCachedImageTags retrieves locally cached tags for an image
+func fetchCachedImageTags(ctx context.Context, imageName string) ([]string, error) {
+	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
+
+	defaultImage := "olakego/source-"
+	if strings.Contains(repositoryBase, "ecr") {
+		defaultImage = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), defaultImage)
+	}
+
+	imagePrefix := Ternary(imageName != "", fmt.Sprintf("%s%s", defaultImage, imageName), defaultImage).(string)
+
+	images, err := GetCachedImages(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cached images: %s", err)
+	}
+
+	tagsMap := make(map[string]struct{})
+	for _, image := range images {
+		if strings.HasPrefix(image, imagePrefix) {
+			parts := strings.Split(image, ":")
+			if len(parts) != 2 || !isValidTag(parts[1]) {
+				continue
+			}
+			tagsMap[parts[1]] = struct{}{}
+		}
+	}
+
+	var tags []string
+	for tag := range tagsMap {
+		tags = append(tags, tag)
+	}
+	sort.Slice(tags, func(i, j int) bool { return tags[i] > tags[j] })
+
+	if len(tags) == 0 {
+		return nil, fmt.Errorf("no cached tags found for image: %s", imageName)
 	}
 	return tags, nil
 }
@@ -174,14 +173,12 @@ func GetCachedImages(ctx context.Context) ([]string, error) {
 
 // ParseECRDetails extracts account ID, region, and repository name from ECR URI
 func ParseECRDetails(fullImageName string) (accountID, region, repoName string, err error) {
-	// Expected: <accountID>.dkr.ecr.<region>.amazonaws.com/<repoName>
 	re := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com/(.+)$`)
 	matches := re.FindStringSubmatch(fullImageName)
 	if len(matches) != 4 {
 		return "", "", "", fmt.Errorf("failed to parse ECR URI: %s", fullImageName)
 	}
-	accountID, region, repoName = matches[1], matches[2], matches[3]
-	return accountID, region, repoName, nil
+	return matches[1], matches[2], matches[3], nil
 }
 
 // isValidTag centralizes tag filtering logic

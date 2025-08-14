@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -221,8 +222,8 @@ func (c *DestHandler) TestConnection() {
 		}
 		for _, image := range images {
 			if strings.HasSuffix(image, version) {
-				untagged := strings.Split(image, ":")[0]         // olakego/source-postgres
-				lastPart := strings.Split(untagged, "/")[1]      // source-postgres
+				untagged := strings.Split(image, ":")[0]         // remove tag
+				lastPart := path.Base(untagged)                  // get part after last "/"
 				driver = strings.TrimPrefix(lastPart, "source-") // postgres
 				break
 			}
