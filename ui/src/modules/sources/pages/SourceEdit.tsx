@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
-import { GenderNeuter, Notebook, ArrowLeft } from "@phosphor-icons/react"
+import { GenderNeuter, Notebook, ArrowLeft, Info } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import type { ColumnsType } from "antd/es/table"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -51,6 +51,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
 	const [source, setSource] = useState<Entity | null>(null)
 	const [loading, setLoading] = useState(false)
+	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 
 	const {
@@ -104,7 +105,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			// Only set connector if it's not already set or if it's the same as initialData
 			if (!connector || connector === normalizedType) {
 				setConnector(normalizedType)
-				setSelectedVersion(initialData.version || "latest")
+				setSelectedVersion(initialData.version || "")
 
 				// Set form data from initialData only if connector matches
 				if (initialData.config) {
@@ -125,6 +126,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}, [initialData])
 
 	useEffect(() => {
+		if (!selectedVersion || !connector) {
+			setSchema(null)
+			return
+		}
+
 		const fetchSourceSpec = async () => {
 			try {
 				setLoading(true)
@@ -144,18 +150,26 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			}
 		}
 
-		if (connector) {
-			fetchSourceSpec()
-		}
+		fetchSourceSpec()
 
 		return () => {
 			setLoading(false)
 		}
 	}, [connector, selectedVersion])
 
+	const resetVersionState = () => {
+		setAvailableVersions([])
+		setSelectedVersion("")
+		setSchema(null)
+		if (onVersionChange) {
+			onVersionChange("")
+		}
+	}
+
 	useEffect(() => {
 		const fetchVersions = async () => {
 			if (!connector) return
+			setLoadingVersions(true)
 			try {
 				const response = await sourceService.getSourceVersions(
 					getConnectorInLowerCase(connector),
@@ -186,10 +200,14 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 							}
 						}
 					}
+				} else {
+					resetVersionState()
 				}
 			} catch (error) {
+				resetVersionState()
 				console.error("Error fetching versions:", error)
-				message.error("Failed to fetch versions")
+			} finally {
+				setLoadingVersions(false)
 			}
 		}
 
@@ -515,17 +533,28 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											OLake Version:
 											<span className="text-red-500">*</span>
 										</label>
-										<Select
-											value={selectedVersion}
-											onChange={value => {
-												setSelectedVersion(value)
-												if (onVersionChange) {
-													onVersionChange(value)
-												}
-											}}
-											className="h-8 w-full"
-											options={availableVersions}
-										/>
+										{loadingVersions ? (
+											<div className="flex h-8 items-center justify-center">
+												<Spin size="small" />
+											</div>
+										) : availableVersions.length > 0 ? (
+											<Select
+												value={selectedVersion}
+												onChange={value => {
+													setSelectedVersion(value)
+													if (onVersionChange) {
+														onVersionChange(value)
+													}
+												}}
+												className="h-8 w-full"
+												options={availableVersions}
+											/>
+										) : (
+											<div className="flex items-center gap-1 text-sm text-red-500">
+												<Info />
+												No versions available
+											</div>
+										)}
 									</div>
 								</div>
 							</div>
