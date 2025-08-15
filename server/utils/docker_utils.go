@@ -199,36 +199,51 @@ func isValidTag(tag string) bool {
 		tag >= "v0.1.0"
 }
 
-// DockerAuthECR fetches AWS ECR auth token (no login)
-func DockerAuthECR(ctx context.Context, region, registryID string) (username, password, registryURL string, err error) {
+// DockerLoginECR logs in to an AWS ECR repository using the AWS SDK
+func DockerLoginECR(ctx context.Context, region, registryID string) error {
+	// Load AWS credentials & config
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to load AWS config: %s", err)
+		return fmt.Errorf("failed to load AWS config: %s", err)
 	}
 
 	client := ecr.NewFromConfig(cfg)
 
+	// Get ECR authorization token
 	authResp, err := client.GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{
 		RegistryIds: []string{registryID},
 	})
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get ECR authorization token: %s", err)
+		return fmt.Errorf("failed to get ECR authorization token: %s", err)
 	}
 
 	if len(authResp.AuthorizationData) == 0 {
-		return "", "", "", fmt.Errorf("no authorization data received from ECR")
+		return fmt.Errorf("no authorization data received from ECR")
 	}
 
 	authData := authResp.AuthorizationData[0]
+
+	// Decode token
 	decodedToken, err := base64.StdEncoding.DecodeString(aws.ToString(authData.AuthorizationToken))
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to decode authorization token: %s", err)
+		return fmt.Errorf("failed to decode authorization token: %s", err)
 	}
 
 	parts := strings.SplitN(string(decodedToken), ":", 2)
 	if len(parts) != 2 {
-		return "", "", "", fmt.Errorf("invalid authorization token format")
+		return fmt.Errorf("invalid authorization token format")
+	}
+	username := parts[0]
+	password := parts[1]
+	registryURL := aws.ToString(authData.ProxyEndpoint) // e.g., https://678819669750.dkr.ecr.ap-south-1.amazonaws.com
+
+	// Perform docker login
+	cmd := exec.CommandContext(ctx, "docker", "login", "-u", username, "--password-stdin", registryURL)
+	cmd.Stdin = strings.NewReader(password)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker login failed: %s\nOutput: %s", err, output)
 	}
 
-	return parts[0], parts[1], aws.ToString(authData.ProxyEndpoint), nil
+	return nil
 }

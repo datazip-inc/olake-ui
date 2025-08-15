@@ -116,20 +116,13 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 	return output, nil
 }
 
-// buildDockerArgs constructs Docker command arguments with inline ECR credentials
+// buildDockerArgs constructs Docker command arguments
 func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 	imageName := r.GetDockerImageName(sourceType, version)
-
-	dockerArgs := []string{"run", "--rm"}
-
-	if version == "latest" {
-		dockerArgs = append(dockerArgs, "--pull=always")
-	}
-
-	// If using ECR, fetch token and set DOCKER_AUTH_CONFIG env
+	// If using ECR, ensure login before run
 	if strings.Contains(repositoryBase, "ecr") {
 		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
 		accountID, region, _, err := utils.ParseECRDetails(imageName)
@@ -137,20 +130,18 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 			logs.Critical("failed to parse ECR details: %s", err)
 			return nil
 		}
-
-		username, password, registryURL, err := utils.DockerAuthECR(ctx, region, accountID)
-		if err != nil {
-			logs.Critical("failed to get ECR auth token: %s", err)
+		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
+			logs.Critical("failed to login to ECR: %s", err)
 			return nil
 		}
-
-		// Inline auth config so no login is needed
-		authConfigJSON := fmt.Sprintf(`{"auths":{"%s":{"username":"%s","password":"%s"}}}`,
-			registryURL, username, password)
-		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("DOCKER_AUTH_CONFIG=%s", authConfigJSON))
 	}
 
-	// Mount config and add image/command
+	dockerArgs := []string{"run", "--rm"}
+
+	if version == "latest" {
+		dockerArgs = append(dockerArgs, "--pull=always")
+	}
+
 	dockerArgs = append(dockerArgs,
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		imageName,
