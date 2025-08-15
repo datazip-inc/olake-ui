@@ -2,7 +2,7 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
@@ -67,6 +67,15 @@ const CreateDestination = forwardRef<
 		},
 		ref,
 	) => {
+		const resetVersionState = () => {
+			setVersions([])
+			setVersion("")
+			setSchema(null)
+			if (onVersionChange) {
+				onVersionChange("")
+			}
+		}
+
 		const [setupType, setSetupType] = useState(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
@@ -225,15 +234,20 @@ const CreateDestination = forwardRef<
 						connector.toLowerCase(),
 					)
 					if (response.data?.version) {
-						setVersions(response.data.version)
-						const defaultVersion = response.data.version[0] || ""
-						setVersion(defaultVersion)
-
-						if (onVersionChange) {
-							onVersionChange(defaultVersion)
+						const receivedVersions = response.data.version
+						setVersions(receivedVersions)
+						if (receivedVersions.length > 0) {
+							const defaultVersion = receivedVersions[0]
+							setVersion(defaultVersion)
+							if (onVersionChange) {
+								onVersionChange(defaultVersion)
+							}
 						}
+					} else {
+						resetVersionState()
 					}
 				} catch (error) {
+					resetVersionState()
 					console.error("Error fetching versions:", error)
 				} finally {
 					setLoadingVersions(false)
@@ -244,9 +258,15 @@ const CreateDestination = forwardRef<
 		}, [connector, onVersionChange])
 
 		useEffect(() => {
+			if (!version) {
+				setSchema(null)
+				setUiSchema(null)
+				return
+			}
+
 			const fetchDestinationSpec = async () => {
-				setLoading(true)
 				try {
+					setLoading(true)
 					const response = await destinationService.getDestinationSpec(
 						connector,
 						catalog,
@@ -280,40 +300,61 @@ const CreateDestination = forwardRef<
 
 		const validateDestination = async (): Promise<boolean> => {
 			setValidating(true)
-			let isValid = true
 
-			if (setupType === SETUP_TYPES.NEW) {
-				if (!destinationName.trim()) {
-					setDestinationNameError("Destination name is required")
-					message.error("Destination name is required")
-					isValid = false
-				} else {
-					setDestinationNameError(null)
+			try {
+				if (setupType === SETUP_TYPES.NEW) {
+					if (!destinationName.trim() && version.trim() !== "") {
+						setDestinationNameError("Destination name is required")
+						message.error("Destination name is required")
+						return false
+					} else {
+						setDestinationNameError(null)
+					}
+
+					if (version.trim() === "") {
+						message.error("No versions available")
+						return false
+					}
+
+					if (schema) {
+						// Enrich form data with default values
+						const enrichedFormData = { ...formData }
+						if (schema.properties) {
+							Object.entries(schema.properties).forEach(
+								([key, propValue]: [string, any]) => {
+									if (
+										propValue.default !== undefined &&
+										(enrichedFormData[key] === undefined ||
+											enrichedFormData[key] === null)
+									) {
+										enrichedFormData[key] = propValue.default
+									}
+								},
+							)
+						}
+
+						const schemaErrors = validateFormData(enrichedFormData, schema)
+						setFormErrors(schemaErrors)
+						if (Object.keys(schemaErrors).length > 0) {
+							return false
+						}
+					}
 				}
-			}
 
-			if (setupType === SETUP_TYPES.NEW && schema) {
-				const enrichedFormData = { ...formData }
-				if (schema.properties) {
-					Object.entries(schema.properties).forEach(
-						([key, propValue]: [string, any]) => {
-							if (
-								propValue.default !== undefined &&
-								(enrichedFormData[key] === undefined ||
-									enrichedFormData[key] === null)
-							) {
-								enrichedFormData[key] = propValue.default
-							}
-						},
-					)
+				if (setupType === SETUP_TYPES.EXISTING) {
+					// Name required always for "existing"
+					if (destinationName.trim() === "") {
+						message.error("Destination name is required")
+						return false
+					} else {
+						setDestinationNameError(null)
+					}
 				}
 
-				const schemaErrors = validateFormData(enrichedFormData, schema)
-				setFormErrors(schemaErrors)
-				isValid = isValid && Object.keys(schemaErrors).length === 0
+				return true
+			} finally {
+				setValidating(false)
 			}
-
-			return isValid
 		}
 
 		useImperativeHandle(ref, () => ({
@@ -481,17 +522,27 @@ const CreateDestination = forwardRef<
 						</FormField>
 
 						<FormField label="Version:">
-							<Select
-								value={version}
-								onChange={handleVersionChange}
-								className="w-full"
-								loading={loadingVersions}
-								placeholder="Select version"
-								options={versions.map(v => ({
-									value: v,
-									label: v,
-								}))}
-							/>
+							{loadingVersions ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : versions && versions.length > 0 ? (
+								<Select
+									value={version}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									options={versions.map(v => ({
+										value: v,
+										label: v,
+									}))}
+								/>
+							) : (
+								<div className="flex items-center gap-1 text-sm text-red-500">
+									<Info />
+									No versions available
+								</div>
+							)}
 						</FormField>
 					</div>
 				</>
