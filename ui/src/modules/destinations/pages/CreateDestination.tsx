@@ -233,8 +233,8 @@ const CreateDestination = forwardRef<
 					const response = await destinationService.getDestinationVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data && response.data?.version) {
-						const receivedVersions = response.data?.version
+					if (response.data?.version) {
+						const receivedVersions = response.data.version
 						setVersions(receivedVersions)
 						if (receivedVersions.length > 0) {
 							const defaultVersion = receivedVersions[0]
@@ -258,9 +258,15 @@ const CreateDestination = forwardRef<
 		}, [connector, onVersionChange])
 
 		useEffect(() => {
+			if (!version) {
+				setSchema(null)
+				setUiSchema(null)
+				return
+			}
+
 			const fetchDestinationSpec = async () => {
-				setLoading(true)
 				try {
+					setLoading(true)
 					const response = await destinationService.getDestinationSpec(
 						connector,
 						catalog,
@@ -278,9 +284,8 @@ const CreateDestination = forwardRef<
 					setLoading(false)
 				}
 			}
-			if (version != "") {
-				fetchDestinationSpec()
-			}
+
+			fetchDestinationSpec()
 		}, [connector, catalog, version])
 
 		useEffect(() => {
@@ -295,51 +300,61 @@ const CreateDestination = forwardRef<
 
 		const validateDestination = async (): Promise<boolean> => {
 			setValidating(true)
-			let isValid = true
 
-			if (setupType === SETUP_TYPES.NEW) {
-				if (!destinationName.trim() && version.trim() != "") {
-					setDestinationNameError("Destination name is required")
-					message.error("Destination name is required")
-					isValid = false
-				} else {
-					setDestinationNameError(null)
+			try {
+				if (setupType === SETUP_TYPES.NEW) {
+					if (!destinationName.trim() && version.trim() !== "") {
+						setDestinationNameError("Destination name is required")
+						message.error("Destination name is required")
+						return false
+					} else {
+						setDestinationNameError(null)
+					}
+
+					if (version.trim() === "") {
+						message.error("No versions available")
+						return false
+					}
+
+					if (schema) {
+						// Enrich form data with default values
+						const enrichedFormData = { ...formData }
+						if (schema.properties) {
+							Object.entries(schema.properties).forEach(
+								([key, propValue]: [string, any]) => {
+									if (
+										propValue.default !== undefined &&
+										(enrichedFormData[key] === undefined ||
+											enrichedFormData[key] === null)
+									) {
+										enrichedFormData[key] = propValue.default
+									}
+								},
+							)
+						}
+
+						const schemaErrors = validateFormData(enrichedFormData, schema)
+						setFormErrors(schemaErrors)
+						if (Object.keys(schemaErrors).length > 0) {
+							return false
+						}
+					}
 				}
-				if (version.trim() === "") {
-					message.error("No versions available")
-					isValid = false
+
+				if (setupType === SETUP_TYPES.EXISTING) {
+					// Name required always for "existing"
+					if (destinationName.trim() === "") {
+						message.error("Destination name is required")
+						return false
+					} else {
+						setDestinationNameError(null)
+					}
 				}
+
+				return true
+			} finally {
+				setValidating(false)
 			}
-
-			if (setupType === SETUP_TYPES.NEW && schema) {
-				const enrichedFormData = { ...formData }
-				if (schema.properties) {
-					Object.entries(schema.properties).forEach(
-						([key, propValue]: [string, any]) => {
-							if (
-								propValue.default !== undefined &&
-								(enrichedFormData[key] === undefined ||
-									enrichedFormData[key] === null)
-							) {
-								enrichedFormData[key] = propValue.default
-							}
-						},
-					)
-				}
-
-				const schemaErrors = validateFormData(enrichedFormData, schema)
-				setFormErrors(schemaErrors)
-				isValid = isValid && Object.keys(schemaErrors).length === 0
-			} else if (setupType === SETUP_TYPES.EXISTING) {
-				if (destinationName.trim() == "") {
-					message.error("Destination name is required")
-					isValid = false
-				} else {
-					setDestinationNameError(null)
-				}
-			}
-
-			return isValid
 		}
 
 		useImperativeHandle(ref, () => ({

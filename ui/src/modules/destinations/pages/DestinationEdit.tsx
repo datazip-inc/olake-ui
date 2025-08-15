@@ -206,7 +206,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					connectorType.toLowerCase(),
 				)
 
-				if (response.data && response.data?.version) {
+				if (response.data?.version) {
 					setVersions(response.data.version)
 
 					// If no version is selected, set the first one as default
@@ -238,8 +238,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}, [connector])
 
 	useEffect(() => {
+		if (!selectedVersion || !connector) {
+			setSchema(null)
+			setUiSchema(null)
+			setFormData({})
+			return
+		}
+
 		const fetchDestinationSpec = async () => {
-			if (!connector) return
 			try {
 				setIsLoading(true)
 				const response = await destinationService.getDestinationSpec(
@@ -280,9 +286,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setIsLoading(false)
 			}
 		}
-		if (selectedVersion != "") {
-			fetchDestinationSpec()
-		}
+
+		fetchDestinationSpec()
 	}, [connector, selectedVersion, catalog])
 
 	const handleVersionChange = (value: string) => {
@@ -574,12 +579,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Version:
 							</label>
-							{versions.length > 0 ? (
+							{loadingVersions ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : versions.length > 0 ? (
 								<Select
 									value={selectedVersion}
 									onChange={handleVersionChange}
 									className="w-full"
-									loading={loadingVersions}
 									placeholder="Select version"
 									options={versions.map(version => ({
 										value: version,

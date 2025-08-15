@@ -51,6 +51,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
 	const [source, setSource] = useState<Entity | null>(null)
 	const [loading, setLoading] = useState(false)
+	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 
 	const {
@@ -125,6 +126,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}, [initialData])
 
 	useEffect(() => {
+		if (!selectedVersion || !connector) {
+			setSchema(null)
+			return
+		}
+
 		const fetchSourceSpec = async () => {
 			try {
 				setLoading(true)
@@ -144,9 +150,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			}
 		}
 
-		if (connector && selectedVersion != "") {
-			fetchSourceSpec()
-		}
+		fetchSourceSpec()
 
 		return () => {
 			setLoading(false)
@@ -165,6 +169,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		const fetchVersions = async () => {
 			if (!connector) return
+			setLoadingVersions(true)
 			try {
 				const response = await sourceService.getSourceVersions(
 					getConnectorInLowerCase(connector),
@@ -201,6 +206,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			} catch (error) {
 				resetVersionState()
 				console.error("Error fetching versions:", error)
+			} finally {
+				setLoadingVersions(false)
 			}
 		}
 
@@ -526,7 +533,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											OLake Version:
 											<span className="text-red-500">*</span>
 										</label>
-										{availableVersions.length > 0 ? (
+										{loadingVersions ? (
+											<div className="flex h-8 items-center justify-center">
+												<Spin size="small" />
+											</div>
+										) : availableVersions.length > 0 ? (
 											<Select
 												value={selectedVersion}
 												onChange={value => {

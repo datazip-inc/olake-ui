@@ -18,6 +18,7 @@ import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import connectorOptions from "../components/connectorOptions"
 import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import { SETUP_TYPES } from "../../../utils/constants"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -90,7 +91,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}, [initialFormData])
 
 		useEffect(() => {
-			if (setupType === "existing") {
+			if (setupType === SETUP_TYPES.EXISTING) {
 				fetchSources()
 				setFilteredSources(
 					sources.filter(source => source.type === connector.toLowerCase()),
@@ -124,7 +125,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data && response.data?.version) {
+					if (response.data?.version) {
 						setVersions(response.data.version)
 						if (
 							response.data.version.length > 0 &&
@@ -153,19 +154,22 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}, [connector, onVersionChange, initialVersion, initialConnector])
 
 		useEffect(() => {
+			if (!selectedVersion) {
+				setSchema(null)
+				return
+			}
+
 			const fetchSourceSpec = async () => {
 				try {
 					setLoading(true)
-					if (selectedVersion != "") {
-						const response = await sourceService.getSourceSpec(
-							connector,
-							selectedVersion,
-						)
-						if (response.success && response.data?.spec) {
-							setSchema(response.data.spec)
-						} else {
-							console.error("Failed to get source spec:", response.message)
-						}
+					const response = await sourceService.getSourceSpec(
+						connector,
+						selectedVersion,
+					)
+					if (response.success && response.data?.spec) {
+						setSchema(response.data.spec)
+					} else {
+						console.error("Failed to get source spec:", response.message)
 					}
 				} catch (error) {
 					console.error("Error fetching source spec:", error)
@@ -173,9 +177,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					setLoading(false)
 				}
 			}
-			if (selectedVersion != "") {
-				fetchSourceSpec()
-			}
+
+			fetchSourceSpec()
 		}, [connector, selectedVersion])
 
 		useEffect(() => {
@@ -190,34 +193,44 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const validateSource = async (): Promise<boolean> => {
 			setValidating(true)
-			let isValid = true
-			if (setupType === "new") {
-				if (!sourceName.trim() && selectedVersion.trim() != "") {
-					setSourceNameError("Source name is required")
-					message.error("Source name is required")
-					isValid = false
-				} else {
-					setSourceNameError(null)
+
+			try {
+				if (setupType === SETUP_TYPES.NEW) {
+					if (!sourceName.trim() && selectedVersion.trim() !== "") {
+						setSourceNameError("Source name is required")
+						message.error("Source name is required")
+						return false
+					} else {
+						setSourceNameError(null)
+					}
+
+					if (selectedVersion.trim() === "") {
+						message.error("No versions available")
+						return false
+					}
+
+					if (schema) {
+						const schemaErrors = validateFormData(formData, schema)
+						setFormErrors(schemaErrors)
+						if (Object.keys(schemaErrors).length > 0) {
+							return false
+						}
+					}
 				}
 
-				if (selectedVersion.trim() === "") {
-					message.error("No versions available")
-					isValid = false
+				if (setupType === SETUP_TYPES.EXISTING) {
+					if (sourceName.trim() === "") {
+						message.error("Source name is required")
+						return false
+					} else {
+						setSourceNameError(null)
+					}
 				}
+
+				return true
+			} finally {
+				setValidating(false)
 			}
-			if (setupType === "new" && schema) {
-				const schemaErrors = validateFormData(formData, schema)
-				setFormErrors(schemaErrors)
-				isValid = isValid && Object.keys(schemaErrors).length === 0
-			} else if (setupType === "existing") {
-				if (sourceName.trim() == "") {
-					message.error("Source name is required")
-					isValid = false
-				} else {
-					setSourceNameError(null)
-				}
-			}
-			return isValid
 		}
 
 		useImperativeHandle(ref, () => ({
@@ -337,9 +350,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						value={connector}
 						onChange={handleConnectorChange}
-						className={setupType === "new" ? "h-8 w-full" : "w-full"}
+						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
 						options={connectorOptions}
-						{...(setupType !== "new"
+						{...(setupType !== SETUP_TYPES.NEW
 							? { style: { boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" } }
 							: {})}
 					/>
@@ -433,7 +446,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		)
 
 		const renderSchemaForm = () =>
-			setupType === "new" && (
+			setupType === SETUP_TYPES.NEW && (
 				<>
 					{loading ? (
 						<div className="flex h-32 items-center justify-center">
@@ -488,7 +501,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 								{renderSetupTypeSelector()}
 
-								{setupType === "new"
+								{setupType === SETUP_TYPES.NEW
 									? renderNewSourceForm()
 									: renderExistingSourceForm()}
 							</div>
