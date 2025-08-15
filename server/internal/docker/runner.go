@@ -116,13 +116,20 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 	return output, nil
 }
 
-// buildDockerArgs constructs Docker command arguments
+// buildDockerArgs constructs Docker command arguments with inline ECR credentials
 func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 	imageName := r.GetDockerImageName(sourceType, version)
-	// If using ECR, pull image with token (no login persistence)
+
+	dockerArgs := []string{"run", "--rm"}
+
+	if version == "latest" {
+		dockerArgs = append(dockerArgs, "--pull=always")
+	}
+
+	// If using ECR, fetch token and set DOCKER_AUTH_CONFIG env
 	if strings.Contains(repositoryBase, "ecr") {
 		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
 		accountID, region, _, err := utils.ParseECRDetails(imageName)
@@ -131,27 +138,19 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 			return nil
 		}
 
-		username, password, _, err := utils.DockerAuthECR(ctx, region, accountID)
+		username, password, registryURL, err := utils.DockerAuthECR(ctx, region, accountID)
 		if err != nil {
 			logs.Critical("failed to get ECR auth token: %s", err)
 			return nil
 		}
 
-		// Pull with token (no login persistence)
-		pullCmd := exec.CommandContext(ctx, "docker", "pull", "-u", username, "--password-stdin", imageName)
-		pullCmd.Stdin = strings.NewReader(password)
-		if out, err := pullCmd.CombinedOutput(); err != nil {
-			logs.Critical("docker pull failed: %s\nOutput: %s", err, string(out))
-			return nil
-		}
+		// Inline auth config so no login is needed
+		authConfigJSON := fmt.Sprintf(`{"auths":{"%s":{"username":"%s","password":"%s"}}}`,
+			registryURL, username, password)
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("DOCKER_AUTH_CONFIG=%s", authConfigJSON))
 	}
 
-	dockerArgs := []string{"run", "--rm"}
-
-	if version == "latest" {
-		dockerArgs = append(dockerArgs, "--pull=always")
-	}
-
+	// Mount config and add image/command
 	dockerArgs = append(dockerArgs,
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		imageName,
