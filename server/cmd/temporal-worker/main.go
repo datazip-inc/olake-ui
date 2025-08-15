@@ -7,13 +7,13 @@ import (
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/internal/logger"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/internal/temporal"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/internal/temporal"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 func main() {
@@ -38,15 +38,17 @@ func main() {
 	}
 
 	logs.Info("Starting Olake Temporal worker...")
-
-	// Create a new worker
-	worker, err := temporal.NewWorker()
+	// create temporal client
+	tClient, err := temporal.NewClient()
 	if err != nil {
-		logs.Critical("Failed to create worker: %v", err)
+		logs.Critical("Failed to create Temporal client: %v", err)
 		os.Exit(1)
 	}
+	defer tClient.Close()
+	// create temporal worker
+	worker := temporal.NewWorker(tClient)
 
-	// Start the worker in a goroutine
+	// start the worker in a goroutine
 	go func() {
 		err := worker.Start()
 		if err != nil {
@@ -55,15 +57,15 @@ func main() {
 		}
 	}()
 
-	// Setup signal handling for graceful shutdown
+	// setup signal handling for graceful shutdown
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
-	// Wait for termination signal
+	// wait for termination signal
 	sig := <-signalChan
 	logs.Info("Received signal %v, shutting down worker...", sig)
 
-	// Stop the worker
+	// stop the worker
 	worker.Stop()
 	telemetry.Close()
 	logs.Info("Worker stopped. Goodbye!")

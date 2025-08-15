@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )

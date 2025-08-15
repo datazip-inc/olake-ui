@@ -1,4 +1,4 @@
-package models
+package dto
 
 // Common fields for source/destination config
 type ConnectorConfig struct {
@@ -11,14 +11,14 @@ type ConnectorConfig struct {
 
 // LoginRequest represents the expected JSON structure for login requests
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username,required"`
+	Password string `json:"password,required"`
 }
 
 // Spec request for getting specs
 type SpecRequest struct {
-	Type    string `json:"type"`
-	Version string `json:"version"`
+	Type    string `json:"type,required"`
+	Version string `json:"version,required"`
 	Catalog string `json:"catalog"`
 }
 

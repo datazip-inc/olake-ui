@@ -1,49 +1,47 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/beego/beego/v2/server/web"
-	"golang.org/x/crypto/bcrypt"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/services"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 type AuthHandler struct {
 	web.Controller
-	userORM *database.UserORM
+	authService *services.AuthService
 }
 
 func (c *AuthHandler) Prepare() {
-	c.userORM = database.NewUserORM()
+	c.authService = services.NewAuthService()
 }
 
 // @router /login [post]
 func (c *AuthHandler) Login() {
-	var req models.LoginRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	var req dto.LoginRequest
+	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	user, err := c.userORM.FindByUsername(req.Username)
+	user, err := c.authService.Login(req.Username, req.Password)
 	if err != nil {
-		ErrorResponse := "Invalid credentials"
-		if strings.Contains(err.Error(), "no row found") {
-			ErrorResponse = "user not found, sign up first"
+		switch {
+		case errors.Is(err, constants.ErrUserNotFound):
+			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "user not found, sign up first")
+		case errors.Is(err, constants.ErrInvalidCredentials):
+			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid credentials")
+		default:
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Login failed")
 		}
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, ErrorResponse)
-		return
-	}
-
-	if err := c.userORM.ComparePassword(user.Password, req.Password); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid credentials")
 		return
 	}
 
@@ -52,7 +50,7 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	telemetry.TrackUserLogin(c.Ctx.Request.Context(), user)
+	telemetry.TrackUserLogin(context.Background(), user)
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,
@@ -61,12 +59,21 @@ func (c *AuthHandler) Login() {
 
 // @router /checkauth [get]
 func (c *AuthHandler) CheckAuth() {
-	if userID := c.GetSession(constants.SessionUserID); userID == nil {
+	userID := c.GetSession(constants.SessionUserID)
+	if userID == nil {
 		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated")
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
+	// Optional: Validate that the user still exists in the database
+	if userIDInt, ok := userID.(int); ok {
+		if err := c.authService.ValidateUser(userIDInt); err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session")
+			return
+		}
+	}
+
+	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Authenticated",
 		Success: true,
 	})
@@ -75,7 +82,7 @@ func (c *AuthHandler) CheckAuth() {
 // @router /logout [post]
 func (c *AuthHandler) Logout() {
 	_ = c.DestroySession()
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
+	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Logged out successfully",
 		Success: true,
 	})
@@ -84,21 +91,20 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := bindJSON(&c.Controller, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password")
-		return
-	}
-	req.Password = string(hashedPassword)
-
-	if err := c.userORM.Create(&req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists")
+	if err := c.authService.Signup(&req); err != nil {
+		switch {
+		case errors.Is(err, constants.ErrUserAlreadyExists):
+			utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists")
+		case errors.Is(err, constants.ErrPasswordProcessing):
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password")
+		default:
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user")
+		}
 		return
 	}
 
