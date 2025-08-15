@@ -222,6 +222,17 @@ func (c *DestHandler) TestConnection() {
 		}
 		for _, image := range images {
 			if strings.HasSuffix(image, version) {
+				// Example (Docker Hub):
+				//   image     = "olakego/source-postgres:0.0.1"
+				//   untagged  = "olakego/source-postgres"
+				//   lastPart  = "source-postgres"
+				//   driver    = "postgres"
+				//
+				// Example (ECR):
+				//   image     = "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-postgres:0.0.1"
+				//   untagged  = "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-postgres"
+				//   lastPart  = "source-postgres"
+				//   driver    = "postgres"
 				untagged := strings.Split(image, ":")[0]         // remove tag
 				lastPart := path.Base(untagged)                  // get part after last "/"
 				driver = strings.TrimPrefix(lastPart, "source-") // postgres

@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	"github.com/beego/beego/v2/core/logs"
 )
 
 // docker hub tags api url template
@@ -45,6 +46,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 	// Fallback to cached if online fetch fails or explicitly requested
 	if err != nil && cachedTags {
+		logs.Error("failed to fetch image tags online for %s: %v, falling back to cached tags", imageName, err)
 		return fetchCachedImageTags(ctx, imageName)
 	}
 
@@ -127,6 +129,7 @@ func fetchCachedImageTags(ctx context.Context, imageName string) ([]string, erro
 
 	defaultImage := "olakego/source-"
 	if strings.Contains(repositoryBase, "ecr") {
+		// after making it ecr, it will be like "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-"
 		defaultImage = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), defaultImage)
 	}
 
@@ -172,6 +175,12 @@ func GetCachedImages(ctx context.Context) ([]string, error) {
 }
 
 // ParseECRDetails extracts account ID, region, and repository name from ECR URI
+// Example:
+//
+//	Input:  "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-mysql:latest"
+//	Output: accountID = "123456789012"
+//	        region    = "us-west-2"
+//	        repoName  = "olakego/source-mysql:latest"
 func ParseECRDetails(fullImageName string) (accountID, region, repoName string, err error) {
 	re := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com/(.+)$`)
 	matches := re.FindStringSubmatch(fullImageName)
@@ -190,51 +199,36 @@ func isValidTag(tag string) bool {
 		tag >= "v0.1.0"
 }
 
-// DockerLoginECR logs in to an AWS ECR repository using the AWS SDK
-func DockerLoginECR(ctx context.Context, region, registryID string) error {
-	// Load AWS credentials & config
+// DockerAuthECR fetches AWS ECR auth token (no login)
+func DockerAuthECR(ctx context.Context, region, registryID string) (username, password, registryURL string, err error) {
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
 	if err != nil {
-		return fmt.Errorf("failed to load AWS config: %s", err)
+		return "", "", "", fmt.Errorf("failed to load AWS config: %s", err)
 	}
 
 	client := ecr.NewFromConfig(cfg)
 
-	// Get ECR authorization token
 	authResp, err := client.GetAuthorizationToken(ctx, &ecr.GetAuthorizationTokenInput{
 		RegistryIds: []string{registryID},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get ECR authorization token: %s", err)
+		return "", "", "", fmt.Errorf("failed to get ECR authorization token: %s", err)
 	}
 
 	if len(authResp.AuthorizationData) == 0 {
-		return fmt.Errorf("no authorization data received from ECR")
+		return "", "", "", fmt.Errorf("no authorization data received from ECR")
 	}
 
 	authData := authResp.AuthorizationData[0]
-
-	// Decode token
 	decodedToken, err := base64.StdEncoding.DecodeString(aws.ToString(authData.AuthorizationToken))
 	if err != nil {
-		return fmt.Errorf("failed to decode authorization token: %s", err)
+		return "", "", "", fmt.Errorf("failed to decode authorization token: %s", err)
 	}
 
 	parts := strings.SplitN(string(decodedToken), ":", 2)
 	if len(parts) != 2 {
-		return fmt.Errorf("invalid authorization token format")
-	}
-	username := parts[0]
-	password := parts[1]
-	registryURL := aws.ToString(authData.ProxyEndpoint) // e.g., https://678819669750.dkr.ecr.ap-south-1.amazonaws.com
-
-	// Perform docker login
-	cmd := exec.CommandContext(ctx, "docker", "login", "-u", username, "--password-stdin", registryURL)
-	cmd.Stdin = strings.NewReader(password)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("docker login failed: %s\nOutput: %s", err, output)
+		return "", "", "", fmt.Errorf("invalid authorization token format")
 	}
 
-	return nil
+	return parts[0], parts[1], aws.ToString(authData.ProxyEndpoint), nil
 }

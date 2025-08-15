@@ -122,15 +122,27 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 	imageName := r.GetDockerImageName(sourceType, version)
-	// If using ECR, ensure login before run
+	// If using ECR, pull image with token (no login persistence)
 	if strings.Contains(repositoryBase, "ecr") {
 		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
 		accountID, region, _, err := utils.ParseECRDetails(imageName)
 		if err != nil {
 			logs.Critical("failed to parse ECR details: %s", err)
+			return nil
 		}
-		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
-			logs.Critical("failed to login to ECR: %s", err)
+
+		username, password, _, err := utils.DockerAuthECR(ctx, region, accountID)
+		if err != nil {
+			logs.Critical("failed to get ECR auth token: %s", err)
+			return nil
+		}
+
+		// Pull with token (no login persistence)
+		pullCmd := exec.CommandContext(ctx, "docker", "pull", "-u", username, "--password-stdin", imageName)
+		pullCmd.Stdin = strings.NewReader(password)
+		if out, err := pullCmd.CombinedOutput(); err != nil {
+			logs.Critical("docker pull failed: %s\nOutput: %s", err, string(out))
+			return nil
 		}
 	}
 
