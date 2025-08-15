@@ -365,6 +365,12 @@ func (c *DestHandler) GetDestinationSpec() {
 							"order":       5,
 							"default":     "",
 						},
+						"s3_endpoint": map[string]interface{}{
+							"type":        "string",
+							"title":       "S3 Endpoint",
+							"description": "Specifies the endpoint URL for the S3 service (e.g., MinIO)",
+							"order":       6,
+						},
 					},
 					"required": []string{"s3_bucket", "s3_region"},
 				},
