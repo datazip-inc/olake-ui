@@ -207,7 +207,7 @@ func (c *DestHandler) TestConnection() {
 
 	// Determine driver and available tags
 	driver := req.Source
-	if req.Source != "" {
+	if req.Source == "" {
 		var err error
 		_, driver, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 		if err != nil {
@@ -222,6 +222,7 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
+	logs.Debug("driver: %s, version: %s", driver, version)
 
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
