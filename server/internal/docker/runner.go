@@ -96,6 +96,9 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 	}
 
 	dockerArgs := r.buildDockerArgs(ctx, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
+	if len(dockerArgs) == 0 {
+		return nil, fmt.Errorf("failed to build docker args")
+	}
 
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 
