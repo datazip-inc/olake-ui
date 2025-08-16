@@ -145,7 +145,7 @@ func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, err
 }
 
 // fetchCachedImageTags retrieves locally cached tags for an image
-func fetchCachedImageTags(ctx context.Context, imageName string, repositoryBase string) ([]string, error) {
+func fetchCachedImageTags(ctx context.Context, imageName, repositoryBase string) ([]string, error) {
 	if strings.Contains(repositoryBase, "ecr") {
 		// after making it ecr, it will be like "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-mysql"
 		imageName = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
@@ -198,7 +198,7 @@ func GetCachedImages(ctx context.Context) ([]string, error) {
 //	        region    = "us-west-2"
 //	        repoName  = "olakego/source-mysql:latest"
 func ParseECRDetails(fullImageName string) (accountID, region, repoName string, err error) {
-	//handle private and public ecr and china ecr
+	// handle private and public ecr and china ecr
 	privateRe := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?/(.+)$`)
 	publicRe := regexp.MustCompile(`^public\.ecr\.aws/(.+)$`)
 
