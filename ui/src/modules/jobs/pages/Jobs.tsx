@@ -9,7 +9,7 @@ import { jobService } from "../../../api"
 
 import { EmptyStateType } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
-import CommonEmptyState from "../../common/components/EmptyState"
+import EmptyState from "../../common/components/EmptyState"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -161,7 +161,7 @@ const Jobs: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<CommonEmptyState
+						<EmptyState
 							type={EmptyStateType.JOB}
 							onButtonClick={handleCreateJob}
 						/>

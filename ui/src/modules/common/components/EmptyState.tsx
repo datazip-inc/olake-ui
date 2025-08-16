@@ -2,17 +2,13 @@ import { PlayCircle, Plus, GitCommit } from "@phosphor-icons/react"
 import { Button } from "antd"
 import { EmptyStateType, EmptyStateConfig } from "../../../utils/constants"
 
-interface CommonEmptyStateProps {
+interface EmptyStateProps {
 	type: EmptyStateType
 	onButtonClick: () => void
 }
 
-const CommonEmptyState = ({ type, onButtonClick }: CommonEmptyStateProps) => {
+const EmptyState = ({ type, onButtonClick }: EmptyStateProps) => {
 	const config = EmptyStateConfig[type]
-
-	const buttonIcon =
-		config.buttonIcon === "GitCommit" ? <GitCommit /> : <Plus />
-
 	return (
 		<div className="flex flex-col items-center justify-center py-16">
 			<img
@@ -23,9 +19,14 @@ const CommonEmptyState = ({ type, onButtonClick }: CommonEmptyStateProps) => {
 
 			<div className={`mb-2 text-[#193AE6]`}>Welcome User !</div>
 
-			<h2 className="mb-2 text-2xl font-bold">{config.title}</h2>
+			<h2 className="mb-2 text-2xl font-bold">
+				Ready to run your first {config.title}
+			</h2>
 
-			<p className={`mb-8 text-[#0A0A0A]`}>{config.description}</p>
+			<p className={`mb-8 text-[#0A0A0A]`}>
+				Get started and experience the speed of OLake by setting up
+				{config.description}
+			</p>
 
 			<Button
 				type="primary"
@@ -36,9 +37,9 @@ const CommonEmptyState = ({ type, onButtonClick }: CommonEmptyStateProps) => {
 				}`}
 				onClick={onButtonClick}
 			>
-				{buttonIcon} {config.buttonText}
+				{type === EmptyStateType.JOB ? <GitCommit /> : <Plus />}
+				{config.buttonText}
 			</Button>
-
 			{config.tutorial && (
 				<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-4 shadow-sm">
 					<div className="flex items-center gap-4">
@@ -70,4 +71,4 @@ const CommonEmptyState = ({ type, onButtonClick }: CommonEmptyStateProps) => {
 	)
 }
 
-export default CommonEmptyState
+export default EmptyState

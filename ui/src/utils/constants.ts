@@ -141,42 +141,36 @@ export enum EmptyStateType {
 export const EmptyStateConfig = {
 	[EmptyStateType.SOURCE]: {
 		color: "#1E90FF",
-		title: "Ready to create your first source",
-		description:
-			"Get started and experience the speed of OLake by running jobs",
+		title: " source",
+		description: " running jobs",
 		image: FirstSource,
 		tutorial: {
 			image: SourcesTutorial,
 			link: "https://youtu.be/ndCHGlK5NCM?si=jvPy-aMrpEXCQA-8",
 		},
 		buttonText: "New Source",
-		buttonIcon: "Plus",
 	},
 	[EmptyStateType.DESTINATION]: {
 		color: "#de184d",
-		title: "Ready to create your first destination",
-		description:
-			"Get started and experience the speed of OLake by setting up destinations",
+		title: "destination",
+		description: " destinations",
 		image: FirstDestination,
 		tutorial: {
 			image: DestinationTutorial,
 			link: "https://youtu.be/Ub1pcLg0WsM?si=V2tEtXvx54wDoa8Y",
 		},
 		buttonText: "New Destination",
-		buttonIcon: "Plus",
 	},
 	[EmptyStateType.JOB]: {
 		color: "#193AE6",
-		title: "Ready to run your first Job",
-		description:
-			"Get started and experience the speed of OLake by running jobs",
+		title: " Job",
+		description: " running jobs",
 		image: FirstJob,
 		tutorial: {
 			image: JobsTutorial,
 			link: "https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP",
 		},
 		buttonText: "Create your first Job",
-		buttonIcon: "GitCommit",
 	},
 } as const
 

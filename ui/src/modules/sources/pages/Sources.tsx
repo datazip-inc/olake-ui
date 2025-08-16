@@ -7,7 +7,7 @@ import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
 import { EmptyStateType, sourceTabs } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
-import CommonEmptyState from "../../common/components/EmptyState"
+import EmptyState from "../../common/components/EmptyState"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -129,7 +129,7 @@ const Sources: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<CommonEmptyState
+						<EmptyState
 							type={EmptyStateType.SOURCE}
 							onButtonClick={handleCreateSource}
 						/>

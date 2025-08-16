@@ -7,7 +7,7 @@ import { Path, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
 import { destinationTabs, EmptyStateType } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
-import CommonEmptyState from "../../common/components/EmptyState"
+import EmptyState from "../../common/components/EmptyState"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -127,7 +127,7 @@ const Destinations: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<CommonEmptyState
+						<EmptyState
 							type={EmptyStateType.DESTINATION}
 							onButtonClick={handleCreateDestination}
 						/>
