@@ -32,13 +32,13 @@ const JobCreation: React.FC = () => {
 	const [sourceName, setSourceName] = useState("")
 	const [sourceConnector, setSourceConnector] = useState("MongoDB")
 	const [sourceFormData, setSourceFormData] = useState<any>({})
-	const [sourceVersion, setSourceVersion] = useState("latest")
+	const [sourceVersion, setSourceVersion] = useState("")
 	const [destinationName, setDestinationName] = useState("")
 	const [destinationCatalogType, setDestinationCatalogType] =
 		useState<CatalogType | null>(null)
 	const [destinationConnector, setDestinationConnector] = useState("s3")
 	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [destinationVersion, setDestinationVersion] = useState("latest")
+	const [destinationVersion, setDestinationVersion] = useState("")
 	const [selectedStreams, setSelectedStreams] = useState<any>([])
 	const [jobName, setJobName] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
@@ -63,11 +63,10 @@ const JobCreation: React.FC = () => {
 			if (sourceRef.current) {
 				const isValid = await sourceRef.current.validateSource()
 				if (!isValid) {
-					message.error("Please fill in all required fields for the source")
 					return
 				}
 			} else {
-				if (!sourceName.trim()) {
+				if (!sourceName.trim() && sourceVersion.trim() != "") {
 					message.error("Source name is required")
 					return
 				}
@@ -103,14 +102,11 @@ const JobCreation: React.FC = () => {
 			if (destinationRef.current) {
 				const isValid = await destinationRef.current.validateDestination()
 				if (!isValid) {
-					message.error(
-						"Please fill in all required fields for the destination",
-					)
 					return
 				}
 			} else {
 				// Fallback validation if ref isn't available
-				if (!destinationName.trim()) {
+				if (!destinationName.trim() && destinationVersion.trim() != "") {
 					message.error("Destination name is required")
 					return
 				}
