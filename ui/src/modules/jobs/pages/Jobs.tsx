@@ -6,9 +6,8 @@ import JobTable from "../components/JobTable"
 import { GitCommit, Plus } from "@phosphor-icons/react"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import { jobService } from "../../../api"
-import FirstJob from "../../../assets/FirstJob.svg"
-import JobsTutorial from "../../../assets/JobsTutorial.svg"
-import { JobTutorialYTLink } from "../../../utils/constants"
+
+import { EmptyStateType } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
 import CommonEmptyState from "../../common/components/EmptyState"
 
@@ -163,18 +162,8 @@ const Jobs: React.FC = () => {
 						</div>
 					) : tab.key === "active" && showEmpty ? (
 						<CommonEmptyState
-							image={FirstJob}
-							welcomeText="Welcome User !"
-							welcomeTextColor="text-[#193AE6]"
-							title="Ready to run your first Job"
-							description="Get started and experience the speed of OLake by running jobs"
-							descriptionColor="text-[#0A0A0A]"
-							buttonText="Create your first Job"
-							buttonIcon={<GitCommit />}
+							type={EmptyStateType.JOB}
 							onButtonClick={handleCreateJob}
-							buttonClassName="mb-12 bg-[#193AE6] text-sm"
-							tutorialImage={JobsTutorial}
-							tutorialLink={JobTutorialYTLink}
 						/>
 					) : filteredJobs.length === 0 ? (
 						<Empty

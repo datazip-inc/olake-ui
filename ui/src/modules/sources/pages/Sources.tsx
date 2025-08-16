@@ -5,13 +5,8 @@ import { useAppStore } from "../../../store"
 import SourceTable from "../components/SourceTable"
 import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
-import { sourceTabs } from "../../../utils/constants"
-
+import { EmptyStateType, sourceTabs } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
-
-import FirstSource from "../../../assets/FirstSource.svg"
-import SourcesTutorial from "../../../assets/SourcesTutorial.svg"
-import { SourceTutorialYTLink } from "../../../utils/constants"
 import CommonEmptyState from "../../common/components/EmptyState"
 
 const Sources: React.FC = () => {
@@ -135,18 +130,8 @@ const Sources: React.FC = () => {
 						</div>
 					) : tab.key === "active" && showEmpty ? (
 						<CommonEmptyState
-							image={FirstSource}
-							welcomeText="Welcome User !"
-							welcomeTextColor="text-blue-600"
-							title="Ready to create your first source"
-							description="Get started and experience the speed of OLake by running jobs"
-							descriptionColor="text-gray-600"
-							buttonText="New Source"
-							buttonIcon={<Plus />}
+							type={EmptyStateType.SOURCE}
 							onButtonClick={handleCreateSource}
-							buttonClassName="border-1 mb-12 border-[1px] border-[#D9D9D9] bg-white px-6 py-4 text-black"
-							tutorialImage={SourcesTutorial}
-							tutorialLink={SourceTutorialYTLink}
 						/>
 					) : filteredSources().length === 0 ? (
 						<Empty

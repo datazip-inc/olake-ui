@@ -5,14 +5,8 @@ import { useAppStore } from "../../../store"
 import DestinationTable from "../components/DestinationTable"
 import { Path, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
-import { destinationTabs } from "../../../utils/constants"
-
+import { destinationTabs, EmptyStateType } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
-
-import FirstDestination from "../../../assets/FirstDestination.svg"
-import DestinationTutorial from "../../../assets/DestinationTutorial.svg"
-
-import { DestinationTutorialYTLink } from "../../../utils/constants"
 import CommonEmptyState from "../../common/components/EmptyState"
 
 const Destinations: React.FC = () => {
@@ -134,19 +128,8 @@ const Destinations: React.FC = () => {
 						</div>
 					) : tab.key === "active" && showEmpty ? (
 						<CommonEmptyState
-							image={FirstDestination} // You'll need to check the actual image path
-							welcomeText="Welcome User !"
-							welcomeTextColor="text-blue-600" // Adjust based on actual DestinationEmptyState
-							title="Ready to create your first destination" // Adjust based on actual content
-							description="Get started and experience the speed of OLake by setting up destinations"
-							descriptionColor="text-gray-600"
-							buttonText="New Destination"
-							buttonIcon={<Plus />}
+							type={EmptyStateType.DESTINATION}
 							onButtonClick={handleCreateDestination}
-							buttonClassName="border-1 mb-12 border-[1px] border-[#D9D9D9] bg-white px-6 py-4 text-black"
-							tutorialImage={DestinationTutorial} // Check if this exists
-							tutorialLink={DestinationTutorialYTLink} // Check if this exists
-							showTutorial={true} // Set to false if destinations don't have tutorials
 						/>
 					) : filteredDestinations().length === 0 ? (
 						<Empty
