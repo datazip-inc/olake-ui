@@ -222,7 +222,6 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-	logs.Debug("driver: %s, version: %s", driver, version)
 
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
