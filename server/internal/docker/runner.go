@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
@@ -84,9 +85,6 @@ func (r *Runner) writeConfigFiles(workDir string, configs []FileConfig) error {
 
 // GetDockerImageName constructs a Docker image name based on source type and version
 func (r *Runner) GetDockerImageName(sourceType, version string) string {
-	if version == "" {
-		version = "latest"
-	}
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
@@ -120,7 +118,11 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
-	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
+	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
+	if err != nil {
+		logs.Critical("failed to get CONTAINER_REGISTRY_BASE: %s", err)
+		return nil
+	}
 	imageName := r.GetDockerImageName(sourceType, version)
 	// If using ECR, ensure login before run
 	if strings.Contains(repositoryBase, "ecr") {

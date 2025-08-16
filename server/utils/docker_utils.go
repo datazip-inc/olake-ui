@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"os/exec"
 	"regexp"
 	"sort"
@@ -16,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web"
 )
 
 // docker hub tags api url template
@@ -35,9 +35,11 @@ var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", 
 
 // GetDriverImageTags returns image tags from ECR or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
-	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
+	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %v", err)
+	}
 	var tags []string
-	var err error
 	images := []string{imageName}
 	if imageName == "" {
 		images = defaultImages
@@ -53,8 +55,11 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
-			logs.Error("failed to fetch image tags online for %s: %v, falling back to cached tags", imageName, err)
-			tags, err = fetchCachedImageTags(ctx, imageName)
+			logs.Error("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
+			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
+			if err != nil {
+				logs.Error("failed to fetch cached image tags for %s: %s", imageName, err)
+			}
 		}
 
 		if err == nil {
@@ -62,7 +67,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 			break
 		}
 	}
-
+	// TODO : return highest tag out of all sources
 	if len(tags) == 0 {
 		return nil, "", fmt.Errorf("no tags found for image: %s", imageName)
 	}
@@ -140,9 +145,7 @@ func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, err
 }
 
 // fetchCachedImageTags retrieves locally cached tags for an image
-func fetchCachedImageTags(ctx context.Context, imageName string) ([]string, error) {
-	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
-
+func fetchCachedImageTags(ctx context.Context, imageName string, repositoryBase string) ([]string, error) {
 	if strings.Contains(repositoryBase, "ecr") {
 		// after making it ecr, it will be like "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-mysql"
 		imageName = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
@@ -195,12 +198,20 @@ func GetCachedImages(ctx context.Context) ([]string, error) {
 //	        region    = "us-west-2"
 //	        repoName  = "olakego/source-mysql:latest"
 func ParseECRDetails(fullImageName string) (accountID, region, repoName string, err error) {
-	re := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com/(.+)$`)
-	matches := re.FindStringSubmatch(fullImageName)
-	if len(matches) != 4 {
-		return "", "", "", fmt.Errorf("failed to parse ECR URI: %s", fullImageName)
+	//handle private and public ecr and china ecr
+	privateRe := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?/(.+)$`)
+	publicRe := regexp.MustCompile(`^public\.ecr\.aws/(.+)$`)
+
+	if matches := privateRe.FindStringSubmatch(fullImageName); len(matches) == 5 {
+		return matches[1], matches[2], matches[4], nil
 	}
-	return matches[1], matches[2], matches[3], nil
+
+	if matches := publicRe.FindStringSubmatch(fullImageName); len(matches) == 2 {
+		// Public ECR doesn’t have accountID/region
+		return "public", "global", matches[1], nil
+	}
+
+	return "", "", "", fmt.Errorf("failed to parse ECR URI: %s", fullImageName)
 }
 
 // isValidTag centralizes tag filtering logic
