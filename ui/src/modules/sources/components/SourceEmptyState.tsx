@@ -4,7 +4,7 @@ import { Button } from "antd"
 import SourcesTutorial from "../../../assets/SourcesTutorial.svg"
 import { SourceTutorialYTLink } from "../../../utils/constants"
 
-const SourceEmptyState = ({
+const EmptyState = ({
 	handleCreateSource,
 }: {
 	handleCreateSource: () => void
@@ -60,4 +60,4 @@ const SourceEmptyState = ({
 	)
 }
 
-export default SourceEmptyState
+export default EmptyState
