@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
-	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -191,7 +189,6 @@ func (c *DestHandler) DeleteDestination() {
 
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
-	// Will be used for multi-tenant filtering in the future
 	var req models.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -208,46 +205,24 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
-	driver := utils.Ternary(req.Source == "", "postgres", req.Source).(string)
-	version := req.Version
-
-	// check if tags available through dockerhub
-	_, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", false)
-	if err != nil {
-		// if dockerhub api fails then check for cached images and use any of them with same version
-		images, err := utils.GetCachedImages(c.Ctx.Request.Context())
+	// Determine driver and available tags
+	driver := req.Source
+	if req.Source != "" {
+		var err error
+		_, driver, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to getc cached images config: %s", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to determine driver image: %s", err))
 			return
-		}
-		for _, image := range images {
-			if strings.HasSuffix(image, version) {
-				// Example (Docker Hub):
-				//   image     = "olakego/source-postgres:0.0.1"
-				//   untagged  = "olakego/source-postgres"
-				//   lastPart  = "source-postgres"
-				//   driver    = "postgres"
-				//
-				// Example (ECR):
-				//   image     = "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-postgres:0.0.1"
-				//   untagged  = "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-postgres"
-				//   lastPart  = "source-postgres"
-				//   driver    = "postgres"
-				untagged := strings.Split(image, ":")[0]         // remove tag
-				lastPart := path.Base(untagged)                  // get part after last "/"
-				driver = strings.TrimPrefix(lastPart, "source-") // postgres
-				break
-			}
 		}
 	}
 
+	version := req.Version
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
 
-	// check if destination asociated with job
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
@@ -292,7 +267,7 @@ func (c *DestHandler) GetDestinationVersions() {
 	}
 
 	// get available driver versions
-	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
+	versions, _, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
 		return

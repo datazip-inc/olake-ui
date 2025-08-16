@@ -31,26 +31,43 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
+var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb"}
+
 // GetDriverImageTags returns image tags from ECR or Docker Hub with fallback to cached images
-func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, error) {
+func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 	var tags []string
 	var err error
+	images := []string{imageName}
+	if imageName == "" {
+		images = defaultImages
+	}
+	driverImage := ""
+	for _, imageName := range images {
+		if strings.Contains(repositoryBase, "ecr") {
+			fullImage := fmt.Sprintf("%s/%s", repositoryBase, imageName)
+			tags, err = getECRImageTags(ctx, fullImage)
+		} else {
+			tags, err = getDockerHubImageTags(ctx, imageName)
+		}
 
-	if strings.Contains(repositoryBase, "ecr") {
-		fullImage := fmt.Sprintf("%s/%s", repositoryBase, imageName)
-		tags, err = getECRImageTags(ctx, fullImage)
-	} else {
-		tags, err = getDockerHubImageTags(ctx, imageName)
+		// Fallback to cached if online fetch fails or explicitly requested
+		if err != nil && cachedTags {
+			logs.Error("failed to fetch image tags online for %s: %v, falling back to cached tags", imageName, err)
+			tags, err = fetchCachedImageTags(ctx, imageName)
+		}
+
+		if err == nil {
+			driverImage = imageName
+			break
+		}
 	}
 
-	// Fallback to cached if online fetch fails or explicitly requested
-	if err != nil && cachedTags {
-		logs.Error("failed to fetch image tags online for %s: %v, falling back to cached tags", imageName, err)
-		return fetchCachedImageTags(ctx, imageName)
+	if len(tags) == 0 {
+		return nil, "", fmt.Errorf("no tags found for image: %s", imageName)
 	}
-
-	return tags, err
+	driverImage = strings.TrimPrefix(driverImage, "olakego/source-")
+	return tags, driverImage, err
 }
 
 // getECRImageTags fetches tags from AWS ECR
@@ -90,7 +107,6 @@ func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error
 
 // getDockerHubImageTags fetches tags from Docker Hub
 func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, error) {
-	imageName = Ternary(imageName == "", "olakego/source-postgres", imageName).(string)
 	// Create a new HTTP request with context
 	req, err := http.NewRequestWithContext(ctx, "GET",
 		fmt.Sprintf(dockerHubTagsURLTemplate, imageName), http.NoBody)
@@ -127,13 +143,10 @@ func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, err
 func fetchCachedImageTags(ctx context.Context, imageName string) ([]string, error) {
 	repositoryBase := strings.ToLower(os.Getenv("CONTAINER_REGISTRY_BASE"))
 
-	defaultImage := "olakego/source-"
 	if strings.Contains(repositoryBase, "ecr") {
-		// after making it ecr, it will be like "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-"
-		defaultImage = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), defaultImage)
+		// after making it ecr, it will be like "123456789012.dkr.ecr.us-west-2.amazonaws.com/olakego/source-mysql"
+		imageName = fmt.Sprintf("%s/%s", strings.TrimSuffix(repositoryBase, "/"), imageName)
 	}
-
-	imagePrefix := Ternary(imageName != "", fmt.Sprintf("%s%s", defaultImage, imageName), defaultImage).(string)
 
 	images, err := GetCachedImages(ctx)
 	if err != nil {
@@ -142,7 +155,7 @@ func fetchCachedImageTags(ctx context.Context, imageName string) ([]string, erro
 
 	tagsMap := make(map[string]struct{})
 	for _, image := range images {
-		if strings.HasPrefix(image, imagePrefix) {
+		if strings.HasPrefix(image, imageName) {
 			parts := strings.Split(image, ":")
 			if len(parts) != 2 || !isValidTag(parts[1]) {
 				continue
