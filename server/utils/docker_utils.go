@@ -35,6 +35,7 @@ var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", 
 
 // GetDriverImageTags returns image tags from ECR or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
+	// TODO: make constants file and validate all env vars in start of server
 	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %v", err)
@@ -58,16 +59,20 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 			logs.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			if err != nil {
-				logs.Warn("failed to fetch cached image tags for %s: %s", imageName, err)
+				return nil, "", fmt.Errorf("failed to fetch cached image tags for %s: %s", imageName, err)
 			}
 		}
 
-		if err == nil {
-			driverImage = imageName
-			break
+		if len(tags) == 0 {
+			// if no tags found continue
+			continue
 		}
+
+		// TODO : return highest tag out of all sources (currently breaking loop once any tag found on any image)
+		driverImage = imageName
+		break
 	}
-	// TODO : return highest tag out of all sources
+
 	if len(tags) == 0 {
 		return nil, "", fmt.Errorf("no tags found for image: %s", imageName)
 	}
@@ -172,10 +177,6 @@ func fetchCachedImageTags(ctx context.Context, imageName, repositoryBase string)
 		tags = append(tags, tag)
 	}
 	sort.Slice(tags, func(i, j int) bool { return tags[i] > tags[j] })
-
-	if len(tags) == 0 {
-		return nil, fmt.Errorf("no cached tags found for image: %s", imageName)
-	}
 	return tags, nil
 }
 

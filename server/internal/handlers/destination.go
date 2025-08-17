@@ -196,27 +196,27 @@ func (c *DestHandler) TestConnection() {
 	}
 
 	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination type is required")
 		return
 	}
 
-	if req.Version == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+	if req.Version == "" || req.Version == "latest" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination version required")
 		return
 	}
 
 	// Determine driver and available tags
+	version := req.Version
 	driver := req.Source
-	if req.Source == "" {
+	if driver == "" {
 		var err error
 		_, driver, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to determine driver image: %s", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
 			return
 		}
 	}
 
-	version := req.Version
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
