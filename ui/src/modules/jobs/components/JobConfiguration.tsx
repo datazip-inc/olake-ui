@@ -1,14 +1,16 @@
-import { Input, Select, Radio } from "antd"
-import StepTitle from "../../common/components/StepTitle"
+import { useEffect, useState } from "react"
+import { Input, Select, Radio, Tooltip } from "antd"
+import { Info } from "@phosphor-icons/react"
+import parser from "cron-parser"
+
+import { JobConfigurationProps } from "../../../types"
 import {
 	generateCronExpression,
 	parseCronExpression,
 	isValidCronExpression,
 } from "../../../utils/utils"
-import { JobConfigurationProps } from "../../../types"
-import { useEffect, useState } from "react"
-import parser from "cron-parser"
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
+import StepTitle from "../../common/components/StepTitle"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobName,
@@ -195,7 +197,15 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 							{/* Custom Cron Input */}
 							{frequency === "custom" && (
 								<div>
-									<label className="mb-2 block text-sm">Cron Expression</label>
+									<div className="mb-2 flex items-center gap-1">
+										<label className="block text-sm">Cron Expression</label>
+										<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
+											<Info
+												size={16}
+												className="cursor-help text-slate-900"
+											/>
+										</Tooltip>
+									</div>
 									<Input
 										className="w-64"
 										placeholder="Enter cron expression (Eg : * * * * *)"
@@ -224,7 +234,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								<div className={frequency === "weeks" ? "" : "ml-4"}>
 									<label className="mb-2 block text-sm">
 										Job Start Time{" "}
-										<span className="text-[#A7A7A7]">(12H Format UTC)</span>
+										<span className="text-gray-500">(12H Format UTC)</span>
 									</label>
 									<div className="flex items-center gap-1">
 										<Select

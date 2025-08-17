@@ -7,6 +7,8 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
+import { DESTINATION_INTERNAL_TYPES } from "../../utils/constants"
+import { getConnectorInLowerCase } from "../../utils/utils"
 
 const normalizeDestinationType = (type: string): string => {
 	const typeMap: Record<string, string> = {
@@ -96,12 +98,7 @@ export const destinationService = {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
-					type:
-						destination.type.toLowerCase() === "apache iceberg"
-							? "iceberg"
-							: destination.type.toLowerCase() === "amazon s3"
-								? "s3"
-								: destination.type.toLowerCase(),
+					type: getConnectorInLowerCase(destination.type),
 					version: destination.version,
 					config: destination.config,
 					source_type: source_type,
@@ -126,6 +123,9 @@ export const destinationService = {
 	getDestinationVersions: async (type: string) => {
 		const response = await api.get<APIResponse<{ version: string[] }>>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+			{
+				timeout: 0,
+			},
 		)
 		return response.data
 	},
@@ -138,7 +138,10 @@ export const destinationService = {
 		const normalizedType = normalizeDestinationType(type)
 		let normalizedCatalog = normalizeCatalogType(catalog)
 
-		if (normalizedType === "iceberg" && normalizedCatalog === "none") {
+		if (
+			normalizedType === DESTINATION_INTERNAL_TYPES.ICEBERG &&
+			normalizedCatalog === "none"
+		) {
 			normalizedCatalog = "glue"
 		}
 
@@ -146,7 +149,7 @@ export const destinationService = {
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
-				version: version === "" ? "latest" : version,
+				version: version,
 				catalog: normalizedCatalog,
 			},
 		)

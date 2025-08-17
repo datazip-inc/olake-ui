@@ -1,51 +1,61 @@
+import { message } from "antd"
+import parser from "cron-parser"
+
+import { CronParseResult } from "../types"
+import {
+	DAYS_MAP,
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_LABELS,
+} from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import { DAYS_MAP } from "./constants"
-import { CronParseResult } from "../types"
-import parser from "cron-parser"
-import { message } from "antd"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
-	if (lowerConnector === "mongodb") {
-		return MongoDB
-	} else if (lowerConnector === "postgres") {
-		return Postgres
-	} else if (lowerConnector === "mysql") {
-		return MySQL
-	} else if (lowerConnector === "oracle") {
-		return Oracle
-	} else if (lowerConnector === "s3" || lowerConnector === "amazon") {
-		return AWSS3
-	} else if (
-		lowerConnector === "iceberg" ||
-		lowerConnector === "apache iceberg"
-	) {
-		return ApacheIceBerg
+	switch (lowerConnector) {
+		case "mongodb":
+			return MongoDB
+		case "postgres":
+			return Postgres
+		case "mysql":
+			return MySQL
+		case "oracle":
+			return Oracle
+		case DESTINATION_INTERNAL_TYPES.S3:
+			return AWSS3
+		case DESTINATION_INTERNAL_TYPES.ICEBERG:
+			return ApacheIceBerg
+		default:
+			// Default placeholder
+			return MongoDB
 	}
-
-	// Default placeholder
-	return MongoDB
 }
 
 export const getConnectorName = (connector: string, catalog: string | null) => {
-	if (connector === "Amazon S3") {
-		return "s3/config"
-	} else if (connector === "Apache Iceberg") {
-		if (catalog === "AWS Glue") {
-			return "iceberg/catalog/glue"
-		} else if (catalog === "REST Catalog") {
-			return "iceberg/catalog/rest"
-		} else if (catalog === "JDBC Catalog") {
-			return "iceberg/catalog/jdbc"
-		} else if (catalog === "Hive Catalog" || catalog === "HIVE Catalog") {
-			return "iceberg/catalog/hive"
-		}
+	switch (connector) {
+		case "Amazon S3":
+			return "s3/config"
+		case "Apache Iceberg":
+			switch (catalog) {
+				case "AWS Glue":
+					return "iceberg/catalog/glue"
+				case "REST Catalog":
+					return "iceberg/catalog/rest"
+				case "JDBC Catalog":
+					return "iceberg/catalog/jdbc"
+				case "Hive Catalog":
+				case "HIVE Catalog":
+					return "iceberg/catalog/hive"
+				default:
+					return undefined
+			}
+		default:
+			return undefined
 	}
 }
 
@@ -58,9 +68,9 @@ export const getStatusClass = (status: string) => {
 		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
 		case "running":
-			return "text-[#0958D9] bg-[#E6F4FF]"
+			return "text-primary-700 bg-primary-200"
 		case "scheduled":
-			return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
+			return "text-[rgba(0,0,0,88)] bg-neutral-light"
 		default:
 			return "text-[rgba(0,0,0,88)] bg-transparent"
 	}
@@ -68,35 +78,43 @@ export const getStatusClass = (status: string) => {
 
 export const getConnectorInLowerCase = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
-	if (lowerConnector === "amazon s3" || lowerConnector === "s3") {
-		return "s3"
-	} else if (
-		lowerConnector === "apache iceberg" ||
-		lowerConnector === "iceberg"
-	) {
-		return "iceberg"
-	} else if (connector.toLowerCase() === "mongodb") {
-		return "mongodb"
-	} else if (connector.toLowerCase() === "postgres") {
-		return "postgres"
-	} else if (connector.toLowerCase() === "mysql") {
-		return "mysql"
-	} else if (connector.toLowerCase() === "oracle") {
-		return "oracle"
-	} else {
-		return connector.toLowerCase()
+
+	switch (lowerConnector) {
+		case DESTINATION_INTERNAL_TYPES.S3:
+		case DESTINATION_LABELS.AMAZON_S3:
+			return DESTINATION_INTERNAL_TYPES.S3
+		case DESTINATION_INTERNAL_TYPES.ICEBERG:
+		case DESTINATION_LABELS.APACHE_ICEBERG:
+			return DESTINATION_INTERNAL_TYPES.ICEBERG
+		case "mongodb":
+			return "mongodb"
+		case "postgres":
+			return "postgres"
+		case "mysql":
+			return "mysql"
+		case "oracle":
+			return "oracle"
+		default:
+			return lowerConnector
 	}
 }
 
 export const getCatalogInLowerCase = (catalog: string) => {
-	if (catalog === "AWS Glue" || catalog === "glue") {
-		return "glue"
-	} else if (catalog === "REST Catalog" || catalog === "rest") {
-		return "rest"
-	} else if (catalog === "JDBC Catalog" || catalog === "jdbc") {
-		return "jdbc"
-	} else if (catalog === "Hive Catalog" || catalog === "hive") {
-		return "hive"
+	switch (catalog) {
+		case "AWS Glue":
+		case "glue":
+			return "glue"
+		case "REST Catalog":
+		case "rest":
+			return "rest"
+		case "JDBC Catalog":
+		case "jdbc":
+			return "jdbc"
+		case "Hive Catalog":
+		case "hive":
+			return "hive"
+		default:
+			return undefined
 	}
 }
 
@@ -143,12 +161,22 @@ export const getFrequencyValue = (frequency: string) => {
 		const parts = frequency.split(" ")
 		const unit = parts[1].toLowerCase()
 
-		if (unit.includes("hour")) return "hours"
-		if (unit.includes("minute")) return "minutes"
-		if (unit.includes("day")) return "days"
-		if (unit.includes("week")) return "weeks"
-		if (unit.includes("month")) return "months"
-		if (unit.includes("year")) return "years"
+		switch (true) {
+			case unit.includes("hour"):
+				return "hours"
+			case unit.includes("minute"):
+				return "minutes"
+			case unit.includes("day"):
+				return "days"
+			case unit.includes("week"):
+				return "weeks"
+			case unit.includes("month"):
+				return "months"
+			case unit.includes("year"):
+				return "years"
+			default:
+				return "hours"
+		}
 	}
 
 	switch (frequency) {
@@ -264,12 +292,9 @@ export const getCatalogName = (catalogType: string) => {
 }
 
 export const getDestinationType = (type: string) => {
-	if (type.toLowerCase() === "amazon s3" || type.toLowerCase() === "s3") {
+	if (type.toLowerCase() === "amazon s3") {
 		return "PARQUET"
-	} else if (
-		type.toLowerCase() === "apache iceberg" ||
-		type.toLowerCase() === "iceberg"
-	) {
+	} else if (type.toLowerCase() === "apache iceberg") {
 		return "ICEBERG"
 	}
 }

@@ -284,7 +284,7 @@ func (c *SourceHandler) GetSourceVersions() {
 		return
 	}
 
-	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), fmt.Sprintf("olakego/source-%s", sourceType), true)
+	versions, _, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), fmt.Sprintf("olakego/source-%s", sourceType), true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
 		return

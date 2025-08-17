@@ -1,17 +1,17 @@
-import { useEffect, useState, useMemo } from "react"
+import React, { useEffect, useState, useMemo, useRef } from "react"
 import { Input, Empty, Spin } from "antd"
-import FilterButton from "../components/FilterButton"
-import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+
+import { sourceService } from "../../../api"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
 	StreamData,
+	SyncMode,
 } from "../../../types"
-import StreamConfiguration from "./streams/StreamConfiguration"
+import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
-import { sourceService } from "../../../api"
-import StreamsDefault from "../../../assets/StreamsDefault.svg"
-import React from "react"
+import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+import StreamConfiguration from "./streams/StreamConfiguration"
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
@@ -25,7 +25,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	initialStreamsData,
 	fromJobEditFlow = false,
 	jobId = -1,
+	destinationType,
 }) => {
+	const prevSourceConfig = useRef(sourceConfig)
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -47,9 +49,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [loading, setLoading] = useState(!initialStreamsData)
 
 	// Use ref to track if we've initialized to prevent double updates
-	const initialized = React.useRef(!!initialStreamsData)
+	const initialized = useRef(false)
 
 	useEffect(() => {
+		// Reset initialized ref when source config changes
+		if (sourceConfig !== prevSourceConfig.current) {
+			initialized.current = false
+			prevSourceConfig.current = sourceConfig
+		}
+
 		if (
 			initialStreamsData &&
 			initialStreamsData.selected_streams &&
@@ -59,6 +67,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			setSelectedStreams(initialStreamsData)
 			setLoading(false)
 			initialized.current = true
+
+			// Select first stream if no stream is currently active
+			if (!activeStreamData && initialStreamsData.streams.length > 0) {
+				setActiveStreamData(initialStreamsData.streams[0])
+			}
 			return
 		}
 
@@ -114,6 +127,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 				setApiResponse(processedResponseData)
 				setSelectedStreams(processedResponseData)
+
+				// Always select first stream if no stream is currently active
+				if (processedResponseData.streams.length > 0 && !activeStreamData) {
+					setActiveStreamData(processedResponseData.streams[0])
+				}
+
 				initialized.current = true
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
@@ -122,20 +141,21 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			}
 		}
 
-		fetchSourceStreams()
+		if (!initialized.current && sourceConfig && sourceConnector) {
+			fetchSourceStreams()
+		}
 	}, [
 		sourceName,
 		sourceConnector,
 		sourceVersion,
 		sourceConfig,
 		initialStreamsData,
-		setSelectedStreams,
 	])
 
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
-		newSyncMode: "full_refresh" | "cdc" | "incremental",
+		newSyncMode: SyncMode,
 	) => {
 		setApiResponse(prev => {
 			if (!prev) return prev
@@ -354,41 +374,29 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 
 		return tempFilteredStreams.filter(stream => {
-			const cdcIsActive = selectedFilters.includes("CDC")
-			const frIsActive = selectedFilters.includes("Full refresh")
-			const hasSelectedFilter = selectedFilters.includes("Selected")
-			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
+			const fullRefreshIsActive = selectedFilters.includes("Full Refresh")
+			const incrementalIsActive = selectedFilters.includes(
+				"Full Refresh + Incremental",
+			)
+			const cdcIsActive = selectedFilters.includes("Full Refresh + CDC")
+			const strictCdcIsActive = selectedFilters.includes("CDC Only")
 
 			// Sync mode filtering
 			let passesSyncModeFilter = true
-			if (cdcIsActive && frIsActive) {
-				passesSyncModeFilter =
-					stream.stream.sync_mode === "cdc" ||
-					stream.stream.sync_mode === "full_refresh"
-			} else if (cdcIsActive) {
-				passesSyncModeFilter = stream.stream.sync_mode === "cdc"
-			} else if (frIsActive) {
-				passesSyncModeFilter = stream.stream.sync_mode === "full_refresh"
+			const activeSyncModeFilters = [
+				fullRefreshIsActive ? SyncMode.FULL_REFRESH : false,
+				incrementalIsActive ? SyncMode.INCREMENTAL : false,
+				cdcIsActive ? SyncMode.CDC : false,
+				strictCdcIsActive ? SyncMode.STRICT_CDC : false,
+			].filter((mode): mode is SyncMode => mode !== false)
+
+			if (activeSyncModeFilters.length > 0) {
+				passesSyncModeFilter = activeSyncModeFilters.includes(
+					stream.stream.sync_mode as SyncMode,
+				)
 			}
 
-			if (!passesSyncModeFilter) {
-				return false
-			}
-
-			// Selection status filtering
-			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || ""
-			]?.some(s => s.stream_name === stream.stream.name)
-
-			if (hasSelectedFilter && hasNotSelectedFilter) {
-				// No filtering based on selection status if both are selected
-			} else if (hasSelectedFilter) {
-				if (!isSelected) return false
-			} else if (hasNotSelectedFilter) {
-				if (isSelected) return false
-			}
-
-			return true
+			return passesSyncModeFilter
 		})
 	}, [apiResponse, searchText, selectedFilters])
 
@@ -404,10 +412,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	const filters = [
 		"All tables",
-		"CDC",
-		"Full refresh",
-		"Selected",
-		"Not selected",
+		"Full Refresh",
+		"Full Refresh + Incremental",
+		"Full Refresh + CDC",
+		"CDC Only",
 	]
 
 	useEffect(() => {
@@ -430,7 +438,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			<div className="mb-4 mr-4 flex flex-wrap justify-start gap-4">
 				<div className="w-full lg:w-[55%] xl:w-[40%]">
 					<Search
-						placeholder="Search streams"
+						placeholder="Search Streams"
 						allowClear
 						className="custom-search-input w-full"
 						value={searchText}
@@ -483,7 +491,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
@@ -495,7 +503,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onSyncModeChange={(
 								streamName: string,
 								namespace: string,
-								syncMode: "full_refresh" | "cdc" | "incremental",
+								syncMode: SyncMode,
 							) => {
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
@@ -528,23 +536,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onFullLoadFilterChange={handleFullLoadFilterChange}
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
+							destinationType={destinationType}
 						/>
-					) : (
-						!loading && (
-							<div className="flex flex-col">
-								<img
-									src={StreamsDefault}
-									alt="StreamsDefault"
-									className="size-10"
-								/>
-
-								<div className="mt-2 font-semibold">No stream selected</div>
-								<div className="text-sm text-[#787878]">
-									Please select a stream to configure
-								</div>
-							</div>
-						)
-					)}
+					) : null}
 				</div>
 			</div>
 		</div>

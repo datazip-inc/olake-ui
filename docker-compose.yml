@@ -15,10 +15,11 @@ x-encryption:
 
 services:
   olake-ui:
-    image: olakego/ui:latest
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest    
     pull_policy: always
     container_name: olake-ui
     environment:
+      CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
       PERSISTENT_DIR: *hostPersistencePath
       OLAKE_SECRET_KEY: *encryptionKey
     ports:
@@ -43,7 +44,7 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: curlimages/curl:latest
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
     container_name: olake-signup-init
     networks:
       - temporal-network
@@ -85,7 +86,7 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: olakego/ui-worker:latest
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
@@ -94,6 +95,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     environment:
+      CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
       TEMPORAL_ADDRESS: "temporal:7233"
       OLAKE_SECRET_KEY: *encryptionKey
       PERSISTENT_DIR: *hostPersistencePath
@@ -106,7 +108,7 @@ services:
 
   postgresql:
     container_name: temporal-postgresql
-    image: postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
@@ -127,7 +129,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.22.3
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/auto-setup:1.22.3
     depends_on:
       postgresql:
         condition: service_healthy
@@ -152,7 +154,7 @@ services:
 
   temporal-ui:
     container_name: temporal-ui
-    image: temporalio/ui:2.16.2
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.16.2
     depends_on:
       temporal:
         condition: service_started
@@ -166,7 +168,7 @@ services:
 
   elasticsearch:
     container_name: temporal-elasticsearch
-    image: elasticsearch:7.17.10
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/elasticsearch:7.17.10
     environment:
       - cluster.routing.allocation.disk.threshold_enabled=true
       - cluster.routing.allocation.disk.watermark.low=512mb
