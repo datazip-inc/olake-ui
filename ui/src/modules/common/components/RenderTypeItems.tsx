@@ -2,7 +2,7 @@ const RenderTypeItems = ({ initialList, item }: any) => {
 	if (typeof initialList[item]?.type === "string") {
 		return (
 			<div>
-				<span className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-sm uppercase text-[#203FDD]">
+				<span className="rounded-md bg-primary-200 px-2 py-1 text-sm uppercase text-primary">
 					{initialList[item].type}
 				</span>
 			</div>
@@ -14,7 +14,7 @@ const RenderTypeItems = ({ initialList, item }: any) => {
 				{initialList[item].type.map((val: any) => (
 					<span
 						key={val}
-						className="rounded-[6px] bg-[#E6F4FF] px-2 py-1 text-sm uppercase text-[#203FDD]"
+						className="rounded-md bg-primary-200 px-2 py-1 text-sm uppercase text-primary"
 					>
 						{val}
 					</span>

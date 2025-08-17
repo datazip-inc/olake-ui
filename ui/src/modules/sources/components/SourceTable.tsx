@@ -1,12 +1,12 @@
-import { useState } from "react"
+import React, { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
-import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
-import React from "react"
-import DeleteModal from "../../common/Modals/DeleteModal"
+
 import { Entity, SourceTableProps } from "../../../types"
+import { getConnectorImage, getConnectorLabel } from "../../../utils/utils"
 import { PAGE_SIZE } from "../../../utils/constants"
 import JobConnection from "../../common/components/JobConnection"
+import DeleteModal from "../../common/Modals/DeleteModal"
 
 const renderJobConnection = (record: Entity) => {
 	const jobs = record.jobs as any[]

@@ -1,6 +1,7 @@
 import { ConnectorOption } from "../../../types"
 import AWSS3 from "../../../assets/AWSS3.svg"
 import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
+import { CONNECTOR_TYPES } from "../../../utils/constants"
 
 export const connectorOptions: ConnectorOption[] = [
 	{
@@ -9,7 +10,7 @@ export const connectorOptions: ConnectorOption[] = [
 			<div className="flex items-center">
 				<img
 					src={AWSS3}
-					alt="AWS S3"
+					alt={CONNECTOR_TYPES.AMAZON_S3}
 					className="mr-2 size-5"
 				/>
 				<span>Amazon S3</span>

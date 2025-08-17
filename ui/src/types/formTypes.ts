@@ -16,6 +16,7 @@ export interface DynamicSchemaFormProps {
 	className?: string
 	errors?: Record<string, string>
 	validate?: boolean
+	disabled?: boolean
 }
 
 export type FieldSchema = {
@@ -40,16 +41,18 @@ export interface DirectFormFieldProps {
 	value: any
 	onChange: (name: string, value: any) => void
 	required?: boolean
-	uiSchema?: UiSchema
+	uiSchema?: Record<string, any>
 	error?: string
 	validate?: boolean
+	disabled?: boolean
 }
 
 export interface DirectInputFormProps {
 	schema: RJSFSchema
 	formData: Record<string, any>
-	onChange: (data: Record<string, any>) => void
-	uiSchema?: UiSchema
+	onChange: (formData: Record<string, any>) => void
+	uiSchema?: Record<string, any>
 	errors?: Record<string, string>
 	validate?: boolean
+	disabled?: boolean
 }

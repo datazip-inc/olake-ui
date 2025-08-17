@@ -8,13 +8,13 @@
 
 .ant-radio-checked .ant-radio-inner {
 	background-color: white !important;
-	border: 2px solid #203fdd !important;
+	border: 2px solid theme("colors.primary.DEFAULT") !important;
 }
 
 .ant-radio-inner::after {
 	width: 8px;
 	height: 8px;
-	background-color: #203fdd !important;
+	background-color: theme("colors.primary.DEFAULT") !important;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
