@@ -42,7 +42,7 @@ const JobCreation: React.FC = () => {
 		initialData.sourceFormData || {},
 	)
 	const [sourceVersion, setSourceVersion] = useState(
-		initialData.sourceVersion || "latest",
+		initialData.sourceVersion || "",
 	)
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
@@ -56,7 +56,7 @@ const JobCreation: React.FC = () => {
 		initialData.destinationFormData || {},
 	)
 	const [destinationVersion, setDestinationVersion] = useState(
-		initialData.destinationVersion || "latest",
+		initialData.destinationVersion || "",
 	)
 	const [selectedStreams, setSelectedStreams] = useState<any>(
 		initialData.selectedStreams || [],
@@ -89,7 +89,7 @@ const JobCreation: React.FC = () => {
 				message.error("Please fill in all required fields for the source")
 				return false
 			}
-		} else if (!sourceName.trim()) {
+		} else if (!sourceName.trim() && sourceVersion.trim() != "") {
 			message.error("Source name is required")
 			return false
 		}
@@ -103,7 +103,7 @@ const JobCreation: React.FC = () => {
 				message.error("Please fill in all required fields for the destination")
 				return false
 			}
-		} else if (!destinationName.trim()) {
+		} else if (!destinationName.trim() && destinationVersion.trim() != "") {
 			message.error("Destination name is required")
 			return false
 		}

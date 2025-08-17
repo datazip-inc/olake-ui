@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import type { ColumnsType } from "antd/es/table"
-import { ArrowLeft, Notebook, PencilSimple } from "@phosphor-icons/react"
+import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
@@ -61,7 +61,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [catalog, setCatalog] = useState<string | null>(null)
 	const catalogName = CATALOG_TYPES.AWS_GLUE
 	const [destinationName, setDestinationName] = useState("")
-	const [selectedVersion, setSelectedVersion] = useState("latest")
+	const [selectedVersion, setSelectedVersion] = useState("")
 	const [versions, setVersions] = useState<string[]>([])
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
@@ -169,7 +169,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			// Only set connector if it's not already set or if it's the same as initialData
 			if (!connector || connector === connectorType) {
 				setConnector(connectorType)
-				setSelectedVersion(initialData.version || "latest")
+				setSelectedVersion(initialData.version || "")
 				if (initialData.config) {
 					let parsedConfig = initialData.config
 					if (typeof initialData.config === "string") {
@@ -198,6 +198,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}, [initialData])
 
+	const resetVersionState = () => {
+		setVersions([])
+		setSelectedVersion("")
+		setSchema(null)
+		if (onVersionChange) {
+			onVersionChange("")
+		}
+	}
+
 	useEffect(() => {
 		const fetchVersions = async () => {
 			if (!connector) return
@@ -215,7 +224,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					connectorType.toLowerCase(),
 				)
 
-				if (response.data && response.data.version) {
+				if (response.data?.version) {
 					setVersions(response.data.version)
 
 					// If no version is selected, set the first one as default
@@ -225,8 +234,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							onVersionChange(response.data.version[0])
 						}
 					}
+				} else {
+					resetVersionState()
 				}
 			} catch (error) {
+				resetVersionState()
 				console.error("Error fetching versions:", error)
 			} finally {
 				setLoadingVersions(false)
@@ -244,8 +256,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}, [connector])
 
 	useEffect(() => {
+		if (!selectedVersion || !connector) {
+			setSchema(null)
+			setUiSchema(null)
+			setFormData({})
+			return
+		}
+
 		const fetchDestinationSpec = async () => {
-			if (!connector) return
 			try {
 				setIsLoading(true)
 				const response = await destinationService.getDestinationSpec(
@@ -587,18 +605,28 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Version:
 							</label>
-							<Select
-								value={selectedVersion}
-								onChange={handleVersionChange}
-								className="w-full"
-								loading={loadingVersions}
-								placeholder="Select version"
-								disabled={fromJobFlow}
-								options={versions.map(version => ({
-									value: version,
-									label: version,
-								}))}
-							/>
+							{loadingVersions ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : versions.length > 0 ? (
+								<Select
+									value={selectedVersion}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									disabled={fromJobFlow}
+									options={versions.map(version => ({
+										value: version,
+										label: version,
+									}))}
+								/>
+							) : (
+								<div className="flex items-center gap-1 text-sm text-red-500">
+									<Info />
+									No versions available
+								</div>
+							)}
 						</div>
 					</div>
 				</div>

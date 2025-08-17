@@ -123,6 +123,9 @@ export const destinationService = {
 	getDestinationVersions: async (type: string) => {
 		const response = await api.get<APIResponse<{ version: string[] }>>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+			{
+				timeout: 0,
+			},
 		)
 		return response.data
 	},
@@ -146,7 +149,7 @@ export const destinationService = {
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
-				version: version === "" ? "latest" : version,
+				version: version,
 				catalog: normalizedCatalog,
 			},
 		)
