@@ -31,6 +31,24 @@ spec:
   - name: rpcbind-udp
     port: 111
     protocol: UDP
+  - name: nlockmgr-tcp
+    port: 32803
+    protocol: TCP
+  - name: nlockmgr-udp
+    port: 32803
+    protocol: UDP
+  - name: status-tcp
+    port: 662
+    protocol: TCP
+  - name: status-udp
+    port: 662
+    protocol: UDP
+  - name: rquotad-tcp
+    port: 875
+    protocol: TCP
+  - name: rquotad-udp
+    port: 875
+    protocol: UDP
   selector:
     app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
     app.kubernetes.io/instance: {{ .Release.Name }}

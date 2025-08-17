@@ -51,7 +51,7 @@ spec:
       serviceAccountName: {{ include "olake.fullname" . }}-nfs-server
       containers:
       - name: nfs-server
-        image: "devxygmbh/nfs-server-provisioner:6.5"
+        image: "registry.k8s.io/sig-storage/nfs-provisioner:v4.0.8"
         imagePullPolicy: IfNotPresent
         ports:
         - name: nfs
@@ -68,6 +68,21 @@ spec:
           containerPort: 111
         - name: rpcbind-udp
           containerPort: 111
+          protocol: UDP
+        - name: nlockmgr-tcp
+          containerPort: 32803
+        - name: nlockmgr-udp
+          containerPort: 32803
+          protocol: UDP
+        - name: status-tcp
+          containerPort: 662
+        - name: status-udp
+          containerPort: 662
+          protocol: UDP
+        - name: rquotad-tcp
+          containerPort: 875
+        - name: rquotad-udp
+          containerPort: 875
           protocol: UDP
         securityContext:
           capabilities:
