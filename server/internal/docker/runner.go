@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
@@ -84,9 +85,6 @@ func (r *Runner) writeConfigFiles(workDir string, configs []FileConfig) error {
 
 // GetDockerImageName constructs a Docker image name based on source type and version
 func (r *Runner) GetDockerImageName(sourceType, version string) string {
-	if version == "" {
-		version = "latest"
-	}
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
@@ -97,7 +95,10 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 		return nil, err
 	}
 
-	dockerArgs := r.buildDockerArgs(flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
+	dockerArgs := r.buildDockerArgs(ctx, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
+	if len(dockerArgs) == 0 {
+		return nil, fmt.Errorf("failed to build docker args")
+	}
 
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 
@@ -117,17 +118,34 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 }
 
 // buildDockerArgs constructs Docker command arguments
-func (r *Runner) buildDockerArgs(flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
+func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
-	dockerArgs := []string{"run", "--rm"}
 
-	if version == "latest" {
-		dockerArgs = append(dockerArgs, "--pull=always")
+	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
+	if err != nil {
+		logs.Critical("failed to get CONTAINER_REGISTRY_BASE: %s", err)
+		return nil
 	}
+	imageName := r.GetDockerImageName(sourceType, version)
+	// If using ECR, ensure login before run
+	if strings.Contains(repositoryBase, "ecr") {
+		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
+		accountID, region, _, err := utils.ParseECRDetails(imageName)
+		if err != nil {
+			logs.Critical("failed to parse ECR details: %s", err)
+			return nil
+		}
+		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
+			logs.Critical("failed to login to ECR: %s", err)
+			return nil
+		}
+	}
+
+	dockerArgs := []string{"run", "--rm"}
 
 	dockerArgs = append(dockerArgs,
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
-		r.GetDockerImageName(sourceType, version),
+		imageName,
 		string(command),
 		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
 	)
