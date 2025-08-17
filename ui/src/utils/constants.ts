@@ -1,5 +1,12 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
 import { CatalogOption, CatalogType, NavItem } from "../types"
+import FirstSource from "../assets/FirstSource.svg"
+import FirstDestination from "../assets/FirstDestination.svg"
+import FirstJob from "../assets/FirstJob.svg"
+
+import SourcesTutorial from "../assets/SourcesTutorial.svg"
+import DestinationTutorial from "../assets/DestinationTutorial.svg"
+import JobsTutorial from "../assets/JobsTutorial.svg"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -125,6 +132,47 @@ export const catalogOptions: CatalogOption[] = [
 	{ value: "JDBC Catalog", label: "JDBC Catalog" },
 	{ value: "HIVE Catalog", label: "Hive Catalog" },
 ]
+export enum EmptyStateType {
+	SOURCE = "SOURCE",
+	DESTINATION = "DESTINATION",
+	JOB = "JOB",
+}
+
+export const EmptyStateConfig = {
+	[EmptyStateType.SOURCE]: {
+		color: "#1E90FF",
+		title: " source",
+		description: " running jobs",
+		image: FirstSource,
+		tutorial: {
+			image: SourcesTutorial,
+			link: "https://youtu.be/ndCHGlK5NCM?si=jvPy-aMrpEXCQA-8",
+		},
+		buttonText: "New Source",
+	},
+	[EmptyStateType.DESTINATION]: {
+		color: "#de184d",
+		title: "destination",
+		description: " destinations",
+		image: FirstDestination,
+		tutorial: {
+			image: DestinationTutorial,
+			link: "https://youtu.be/Ub1pcLg0WsM?si=V2tEtXvx54wDoa8Y",
+		},
+		buttonText: "New Destination",
+	},
+	[EmptyStateType.JOB]: {
+		color: "#193AE6",
+		title: " Job",
+		description: " running jobs",
+		image: FirstJob,
+		tutorial: {
+			image: JobsTutorial,
+			link: "https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP",
+		},
+		buttonText: "Create your first Job",
+	},
+} as const
 
 export const JobTutorialYTLink =
 	"https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP"

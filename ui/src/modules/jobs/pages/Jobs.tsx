@@ -6,8 +6,10 @@ import JobTable from "../components/JobTable"
 import { GitCommit, Plus } from "@phosphor-icons/react"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import { jobService } from "../../../api"
-import JobEmptyState from "../components/JobEmptyState"
+
+import { EmptyStateType } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
+import EmptyState from "../../common/components/EmptyState"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -159,7 +161,10 @@ const Jobs: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<JobEmptyState handleCreateJob={handleCreateJob} />
+						<EmptyState
+							type={EmptyStateType.JOB}
+							onButtonClick={handleCreateJob}
+						/>
 					) : filteredJobs.length === 0 ? (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}

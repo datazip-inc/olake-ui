@@ -5,9 +5,9 @@ import { useAppStore } from "../../../store"
 import SourceTable from "../components/SourceTable"
 import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
-import { sourceTabs } from "../../../utils/constants"
-import SourceEmptyState from "../components/SourceEmptyState"
+import { EmptyStateType, sourceTabs } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
+import EmptyState from "../../common/components/EmptyState"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -129,7 +129,10 @@ const Sources: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<SourceEmptyState handleCreateSource={handleCreateSource} />
+						<EmptyState
+							type={EmptyStateType.SOURCE}
+							onButtonClick={handleCreateSource}
+						/>
 					) : filteredSources().length === 0 ? (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}

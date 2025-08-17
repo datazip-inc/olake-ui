@@ -5,9 +5,9 @@ import { useAppStore } from "../../../store"
 import DestinationTable from "../components/DestinationTable"
 import { Path, Plus } from "@phosphor-icons/react"
 import { Entity } from "../../../types"
-import { destinationTabs } from "../../../utils/constants"
-import DestinationEmptyState from "../components/DestinationEmptyState"
+import { destinationTabs, EmptyStateType } from "../../../utils/constants"
 import analyticsService from "../../../api/services/analyticsService"
+import EmptyState from "../../common/components/EmptyState"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -127,8 +127,9 @@ const Destinations: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<DestinationEmptyState
-							handleCreateDestination={handleCreateDestination}
+						<EmptyState
+							type={EmptyStateType.DESTINATION}
+							onButtonClick={handleCreateDestination}
 						/>
 					) : filteredDestinations().length === 0 ? (
 						<Empty
