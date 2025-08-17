@@ -14,34 +14,21 @@
     <a href="https://join.slack.com/t/getolake/shared_invite/zt-2utw44do6-g4XuKKeqBghBMy2~LcJ4ag"><img alt="slack" src="https://img.shields.io/badge/Join%20Our%20Community-Slack-blue"/></a>
 </p>
 
-## Overview
+## 🧊 TL;DR: OLake UI — Simplify Data Replication
 
-Olake-UI is built on top of Olake CLI to execute commands via UI.
+> **OLake UI** is an intuitive web interface for managing data replication from databases like **PostgreSQL, MySQL, MongoDB, Oracle, and Kafka** to **Apache Iceberg** and **Amazon S3**. Built on top of the powerful OLake CLI, it offers a self-serve experience to configure, monitor, and schedule jobs in minutes.
 
-- [UI Readme](/olake_frontend/README.md)
-- [Server Readme](/server/README.md)
-- [UI Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake-Design-Community?node-id=1-46&p=f&t=y3BIsLTUaXhHwYLG-0)
-- [Contributor Guidlines](/CONTRIBUTING.md)
-- [API Contracts](/api-contract.md)
+## 🧪 Quickstart (Docker Compose)
 
-## Contributing
-
-We ❤️ contributions big or small check our [Bounty Program](https://olake.io/docs/community/issues-and-prs#goodies). As always, thanks to our amazing contributors!.
-
-- To contribute to Olake-UI visit [CONTRIBUTING.md](CONTRIBUTING.md)
-- To contribute to Olake Main Repo, visit [OLake Main Repository](https://github.com/datazip-inc/olake).
-- To contribute to OLake website and documentation (olake.io), visit [Olake Docs Repository][https://github.com/datazip-inc/olake-docs/].
-
-## Running with Docker Compose
-
-This Docker Compose setup provides a comprehensive environment(UI, backend, Temporal worker, Temporal services, and dependencies) for demonstrating and exploring Olake's capabilities. This is the recommended way to get started for local development or evaluation.
+OLake UI provides a web-based interface for managing OLake jobs, sources, destinations, and configurations. Run the entire stack (UI, backend, Temporal worker, and dependencies) using Docker Compose for a quick start.
 
 ### Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) installed and running (Docker Desktop recommended for Mac/Windows)
-- [Docker Compose](https://docs.docker.com/compose/) (comes with Docker Desktop)
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/) installed
+- 4GB RAM and 2 CPU cores recommended
+- Port `8000` available
 
-### Quick Start
+### Steps
 
 1. **Clone the repository:**
 
@@ -50,13 +37,13 @@ This Docker Compose setup provides a comprehensive environment(UI, backend, Temp
    cd olake-ui
    ```
 
-2. **Start all services:**
+2. **Start the stack:**
 
    ```bash
    docker compose up -d
    ```
 
-3. **Check that everything is running:**
+3. **Check services:**
 
    ```bash
    docker compose ps
@@ -68,7 +55,7 @@ This Docker Compose setup provides a comprehensive environment(UI, backend, Temp
    - **Default login:** Username: `admin`, Password: `password`
    - **Make sure port `8000` is exposed and accessible**, as both the frontend and backend run on this single port.
 
-5. **Stopping the stack:**
+5. **Stop the stack:**
    ```bash
    docker compose down
    ```
@@ -123,19 +110,31 @@ x-encryption:
 - Local: Uses AES-256-GCM with key derived from your passphrase
 - Empty: No encryption (for development only)
 
-### Troubleshooting
 
-- If there are any file permission error, ensure the host persistence/config directory is writable by Docker.
-- For complete logs, use:
-  ```bash
-  docker-compose logs -f
-  ```
-- For logs specific to a service, use:
-  ```bash
-  docker compose logs -f <service_name>
-  ```
+### 🛠️ Creating Your First Job
+1. Navigate to Jobs: Open the Jobs tab in the UI.
+2. Configure Source: Add a source (e.g., PostgreSQL, MySQL) with connection details.
+3. Configure Destination: Set up Apache Iceberg or Parquet with your preferred catalog (e.g., Glue, Hive).
+4. Select Streams: Choose tables to sync and set the mode (Full Refresh or CDC).
+5. Run Job: Name your job, set a schedule, and click Create Job.
 
-###  Contributing
+### 🛠️ Troubleshooting
 
-We welcome contributions from everyone!  
-Please read our [Contribution Guide](CONTRIBUTING.md#olake-ui-contributor-agreement) for step-by-step instructions on how to get started.
+* UI not loading? Ensure port 8000 is free and Docker is running.
+* Permission errors? Verify the host persistence directory is writable.
+* Authentication issues? Check default credentials or custom settings in docker-compose.yml.
+* View logs:
+
+```bash
+docker compose logs -f
+```
+
+* More help: Troubleshooting Guide(#troubleshooting)
+
+### Contributing
+
+We ❤️ contributions! Join our community and help shape OLake UI.
+* Contribute to UI: See [CONTRIBUTING.md](CONTRIBUTING.md)
+* Contribute to CLI: Visit [OLake Main Repository](https://github.com/datazip-inc/olake)
+* Contribute to Docs: Visit [OLake Docs Repository](https://github.com/datazip-inc/olake-docs)
+* Community: Join our [Slack](https://join.slack.com/t/getolake/shared_invite/zt-2utw44do6-g4XuKKeqBghBMy2~LcJ4ag) or [GitHub Discussions](https://github.com/datazip-inc/olake-ui/discussions)
