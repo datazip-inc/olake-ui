@@ -55,10 +55,10 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
-			logs.Error("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
+			logs.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			if err != nil {
-				logs.Error("failed to fetch cached image tags for %s: %s", imageName, err)
+				logs.Warn("failed to fetch cached image tags for %s: %s", imageName, err)
 			}
 		}
 

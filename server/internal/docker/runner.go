@@ -143,10 +143,6 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 
 	dockerArgs := []string{"run", "--rm"}
 
-	if version == "latest" {
-		dockerArgs = append(dockerArgs, "--pull=always")
-	}
-
 	dockerArgs = append(dockerArgs,
 		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
 		imageName,
