@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react"
-import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
-import { useAppStore } from "../../../store"
-import DestinationTable from "../components/DestinationTable"
 import { Path, Plus } from "@phosphor-icons/react"
+import { Button, Tabs, Empty, message, Spin } from "antd"
+
+import analyticsService from "../../../api/services/analyticsService"
+import { useAppStore } from "../../../store"
 import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
-import analyticsService from "../../../api/services/analyticsService"
+import DestinationTable from "../components/DestinationTable"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -103,7 +104,7 @@ const Destinations: React.FC = () => {
 				</div>
 				<button
 					onClick={handleCreateDestination}
-					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white hover:bg-[#132685]"
+					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 				>
 					<Plus className="size-4 text-white" />
 					Create Destination

@@ -1,30 +1,39 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
-import { GenderNeuter, Notebook, ArrowLeft, Info } from "@phosphor-icons/react"
-import { useAppStore } from "../../../store"
 import type { ColumnsType } from "antd/es/table"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import FixedSchemaForm from "../../../utils/FormFix"
-import StepTitle from "../../common/components/StepTitle"
-import DeleteModal from "../../common/Modals/DeleteModal"
+import {
+	GenderNeuter,
+	Notebook,
+	ArrowLeft,
+	PencilSimple,
+	Info,
+} from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
+import { sourceService, jobService } from "../../../api"
+import { Entity, SourceEditProps, SourceJob } from "../../../types"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import { sourceService } from "../../../api"
-import { formatDistanceToNow } from "date-fns"
-import { jobService } from "../../../api"
-import { Entity, SourceEditProps, SourceJob } from "../../../types"
+import FixedSchemaForm from "../../../utils/FormFix"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import connectorOptions from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
+import connectorOptions from "../components/connectorOptions"
 import { getStatusIcon } from "../../../utils/statusIcons"
-import { connectorTypeMap } from "../../../utils/constants"
+import {
+	connectorTypeMap,
+	DISPLAYED_JOBS_COUNT,
+} from "../../../utils/constants"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -35,6 +44,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	onConnectorChange,
 	onFormDataChange,
 	onVersionChange,
+	docsMinimized = false,
+	onDocsMinimizedChange,
 }) => {
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
@@ -45,7 +56,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		{ label: string; value: string }[]
 	>([])
 	const [sourceName, setSourceName] = useState("")
-	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
@@ -228,7 +238,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 	const displayedJobs = showAllJobs
 		? transformJobs(source?.jobs || [])
-		: transformJobs((source?.jobs || []).slice(0, 5))
+		: transformJobs((source?.jobs || []).slice(0, DISPLAYED_JOBS_COUNT))
 
 	const getSourceData = () => {
 		const configStr =
@@ -341,7 +351,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	// }
 
 	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+		if (onDocsMinimizedChange) {
+			onDocsMinimizedChange(prev => !prev)
+		}
 	}
 
 	const columns: ColumnsType<SourceJob> = [
@@ -358,8 +370,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				<span
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
-							? "bg-[#FFF1F0] text-[#F5222D]"
-							: "bg-[#E6F4FF] text-[#0958D9]"
+							? "bg-danger-light text-danger"
+							: "bg-primary-200 text-primary-700"
 					}`}
 				>
 					{activate ? "Active" : "Inactive"}
@@ -382,7 +394,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
 					{getStatusIcon(last_run_state.toLowerCase())}
 					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
@@ -419,246 +431,246 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	]
 
 	return (
-		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
-			{/* Header */}
-			{!fromJobFlow && (
-				<div className="flex items-center gap-2 px-6 pb-0 pt-6">
-					<Link
-						to="/sources"
-						className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
-					>
-						<ArrowLeft className="size-5" />
-					</Link>
-
-					<div className="flex items-center">
-						<h1 className="text-2xl font-bold">{sourceName}</h1>
+		<div className="flex h-screen">
+			<div className="flex flex-1 flex-col">
+				{!fromJobFlow && (
+					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+						<Link
+							to="/sources"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
+						>
+							<ArrowLeft className="size-5" />
+						</Link>
+						<div className="text-lg font-bold">{sourceName}</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			<div className="mt-2 flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
-				{/* Left content */}
-				<div
-					className={`${
-						docsMinimized ? "w-full" : "w-3/4"
-					} overflow-auto p-6 pt-4 transition-all duration-300`}
-				>
-					{fromJobFlow && stepNumber && stepTitle && (
-						<div>
-							<StepTitle
-								stepNumber={stepNumber}
-								stepTitle={stepTitle}
-							/>
-						</div>
-					)}
-
-					{!fromJobFlow && (
-						<div className="mb-4">
-							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
-								<button
-									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-										activeTab === "config"
-											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-									}`}
-									onClick={() => setActiveTab("config")}
-								>
-									Config
-								</button>
-
-								<button
-									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-										activeTab === "jobs"
-											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-									}`}
-									onClick={() => setActiveTab("jobs")}
-								>
-									Associated jobs
-								</button>
-							</div>
-						</div>
-					)}
-
-					{activeTab === "config" ? (
-						<div className="bg-white">
-							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
-								<div className="mb-4 flex items-center gap-1 text-lg font-medium">
-									<Notebook className="size-5" />
-									Capture information
-								</div>
-
-								<div className="grid grid-cols-2 gap-6">
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Connector:
-										</label>
-										<div className="flex items-center">
-											<Select
-												value={connector}
-												onChange={value => {
-													setConnector(value)
-													setFormData({})
-													setSchema(null)
-													if (onConnectorChange) {
-														onConnectorChange(value)
-													}
-												}}
-												className="h-8 w-full"
-												options={connectorOptions}
-											/>
-										</div>
-									</div>
-
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											Name of your source:
-											<span className="text-red-500">*</span>
-										</label>
-										<Input
-											placeholder="Enter the name of your source"
-											value={sourceName}
-											onChange={e => {
-												setSourceName(e.target.value)
-												if (onNameChange) {
-													onNameChange(e.target.value)
-												}
-											}}
-											className="h-8"
+				<div className="flex flex-1 overflow-hidden">
+					<div className="flex flex-1 flex-col">
+						<div className="flex-1 overflow-auto p-6 pt-0">
+							{fromJobFlow && stepNumber && stepTitle && (
+								<div className="mb-4">
+									<div className="flex items-center justify-between">
+										<StepTitle
+											stepNumber={stepNumber}
+											stepTitle={stepTitle}
 										/>
+										<Link
+											to={
+												sourceId
+													? `/sources/${sourceId}`
+													: `/sources/${sources.find(s => s.name === sourceName)?.id || ""}`
+											}
+											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
+										>
+											<PencilSimple className="size-4" />
+											Edit Source
+										</Link>
 									</div>
-
-									<div>
-										<label className="mb-2 block text-sm font-medium text-gray-700">
-											OLake Version:
-											<span className="text-red-500">*</span>
-										</label>
-										{loadingVersions ? (
-											<div className="flex h-8 items-center justify-center">
-												<Spin size="small" />
-											</div>
-										) : availableVersions.length > 0 ? (
-											<Select
-												value={selectedVersion}
-												onChange={value => {
-													setSelectedVersion(value)
-													if (onVersionChange) {
-														onVersionChange(value)
-													}
-												}}
-												className="h-8 w-full"
-												options={availableVersions}
-											/>
-										) : (
-											<div className="flex items-center gap-1 text-sm text-red-500">
-												<Info />
-												No versions available
-											</div>
-										)}
-									</div>
-								</div>
-							</div>
-
-							<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
-								<div className="mb-2 flex items-center gap-1">
-									<GenderNeuter className="size-6" />
-									<div className="text-lg font-medium">Endpoint config</div>
-								</div>
-								{loading ? (
-									<div className="flex h-32 items-center justify-center">
-										<Spin tip="Loading schema..." />
-									</div>
-								) : (
-									schema && (
-										<FixedSchemaForm
-											schema={schema}
-											formData={formData}
-											onChange={(updatedFormData: Record<string, any>) => {
-												setFormData(updatedFormData)
-												if (onFormDataChange) {
-													onFormDataChange(updatedFormData)
-												}
-											}}
-											hideSubmit={true}
-										/>
-									)
-								)}
-							</div>
-						</div>
-					) : (
-						<div className="rounded-lg p-6">
-							<h3 className="mb-4 text-lg font-medium">Associated jobs</h3>
-
-							<Table
-								columns={columns}
-								dataSource={displayedJobs}
-								pagination={false}
-								rowKey={record => record.id}
-								className="min-w-full"
-								rowClassName={() => "custom-row"}
-							/>
-
-							{!showAllJobs && source?.jobs && source.jobs.length > 5 && (
-								<div className="mt-6 flex justify-center">
-									<Button
-										type="default"
-										onClick={handleViewAllJobs}
-										className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
-									>
-										View all associated jobs
-									</Button>
 								</div>
 							)}
 
-							{/* <div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] p-4">
-								<span className="font-medium">Pause all associated jobs</span>
-								<Switch
-									onChange={handlePauseAllJobs}
-									className="bg-gray-200"
-								/>
-							</div> */}
-						</div>
-					)}
-				</div>
+							{!fromJobFlow && (
+								<div className="mb-4">
+									<div className="mt-2 flex w-fit rounded-md bg-background-primary p-1">
+										<button
+											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
+												activeTab === "config"
+													? "bg-primary text-neutral-light"
+													: "bg-background-primary text-text-primary"
+											}`}
+											onClick={() => setActiveTab("config")}
+										>
+											Config
+										</button>
 
-				<DocumentationPanel
-					docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}/config`}
-					isMinimized={docsMinimized}
-					onToggle={toggleDocsPanel}
-					showResizer={true}
-				/>
+										<button
+											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
+												activeTab === "jobs"
+													? "bg-primary text-neutral-light"
+													: "bg-background-primary text-text-primary"
+											}`}
+											onClick={() => setActiveTab("jobs")}
+										>
+											Associated jobs
+										</button>
+									</div>
+								</div>
+							)}
+
+							{activeTab === "config" ? (
+								<div className="bg-white">
+									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
+										<div className="mb-4 flex items-center gap-1 text-lg font-medium">
+											<Notebook className="size-5" />
+											Capture information
+										</div>
+
+										<div className="grid grid-cols-2 gap-6">
+											<div>
+												<label className="mb-2 block text-sm font-medium text-gray-700">
+													Connector:
+												</label>
+												<div className="flex items-center">
+													<Select
+														value={connector}
+														onChange={value => {
+															setConnector(value)
+															setFormData({})
+															setSchema(null)
+															if (onConnectorChange) {
+																onConnectorChange(value)
+															}
+														}}
+														className="h-8 w-full"
+														options={connectorOptions}
+														disabled={fromJobFlow}
+													/>
+												</div>
+											</div>
+
+											<div>
+												<label className="mb-2 block text-sm font-medium text-gray-700">
+													Name of your source:
+													<span className="text-red-500">*</span>
+												</label>
+												<Input
+													placeholder="Enter the name of your source"
+													value={sourceName}
+													onChange={e => {
+														setSourceName(e.target.value)
+														if (onNameChange) {
+															onNameChange(e.target.value)
+														}
+													}}
+													className="h-8"
+													disabled={fromJobFlow}
+												/>
+											</div>
+
+											<div>
+												<label className="mb-2 block text-sm font-medium text-gray-700">
+													OLake Version:
+													<span className="text-red-500">*</span>
+												</label>
+												{loadingVersions ? (
+													<div className="flex h-8 items-center justify-center">
+														<Spin size="small" />
+													</div>
+												) : availableVersions.length > 0 ? (
+													<Select
+														value={selectedVersion}
+														onChange={value => {
+															setSelectedVersion(value)
+															if (onVersionChange) {
+																onVersionChange(value)
+															}
+														}}
+														disabled={fromJobFlow}
+														className="h-8 w-full"
+														options={availableVersions}
+													/>
+												) : (
+													<div className="flex items-center gap-1 text-sm text-red-500">
+														<Info />
+														No versions available
+													</div>
+												)}
+											</div>
+										</div>
+									</div>
+
+									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
+										<div className="mb-2 flex items-center gap-1">
+											<GenderNeuter className="size-6" />
+											<div className="text-lg font-medium">Endpoint config</div>
+										</div>
+										{loading ? (
+											<div className="flex h-32 items-center justify-center">
+												<Spin tip="Loading schema..." />
+											</div>
+										) : (
+											schema && (
+												<FixedSchemaForm
+													schema={schema}
+													formData={formData}
+													onChange={(updatedFormData: Record<string, any>) => {
+														setFormData(updatedFormData)
+														if (onFormDataChange) {
+															onFormDataChange(updatedFormData)
+														}
+													}}
+													hideSubmit={true}
+													disabled={fromJobFlow}
+												/>
+											)
+										)}
+									</div>
+								</div>
+							) : (
+								<div className="rounded-lg p-6">
+									<h3 className="mb-4 text-lg font-medium">Associated jobs</h3>
+
+									<Table
+										columns={columns}
+										dataSource={displayedJobs}
+										pagination={false}
+										rowKey={record => record.id}
+										className="min-w-full"
+										rowClassName={() => "custom-row"}
+									/>
+
+									{!showAllJobs && source?.jobs && source.jobs.length > 5 && (
+										<div className="mt-6 flex justify-center">
+											<Button
+												type="default"
+												onClick={handleViewAllJobs}
+												className="w-full border-none bg-primary-100 font-medium text-primary"
+											>
+												View all associated jobs
+											</Button>
+										</div>
+									)}
+								</div>
+							)}
+						</div>
+
+						{/* Footer */}
+						{!fromJobFlow && (
+							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+								<div>
+									<button
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+										onClick={handleDelete}
+									>
+										Delete
+									</button>
+								</div>
+								<div className="flex space-x-4">
+									<button
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+										onClick={handleSave}
+									>
+										Save changes
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+
+					<DocumentationPanel
+						docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}/config`}
+						isMinimized={docsMinimized}
+						onToggle={toggleDocsPanel}
+						showResizer={true}
+					/>
+				</div>
 			</div>
 
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={true} />
-
-			{/* Delete Modal */}
 			<DeleteModal fromSource={true} />
-
-			{/* Footer */}
-			{!fromJobFlow && (
-				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-					<div>
-						<button
-							className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-							onClick={handleDelete}
-						>
-							Delete
-						</button>
-					</div>
-					<div className="flex space-x-4">
-						<button
-							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
-							onClick={handleSave}
-						>
-							Save changes
-						</button>
-					</div>
-				</div>
-			)}
-
-			{/* Entity Edit Modal */}
 			<EntityEditModal entityType="source" />
 		</div>
 	)
