@@ -1,11 +1,11 @@
-import { Button, Modal, Table } from "antd"
+import { Button, Modal, Table, message } from "antd"
+import { CheckCircle, Warning } from "@phosphor-icons/react"
+import { formatDistanceToNow } from "date-fns"
+import { useNavigate } from "react-router-dom"
+
+import { sourceService } from "../../../api"
 import { useAppStore } from "../../../store"
 import { getConnectorImage } from "../../../utils/utils"
-import { CheckCircle, Warning } from "@phosphor-icons/react"
-import { useNavigate } from "react-router-dom"
-import { message } from "antd"
-import { formatDistanceToNow } from "date-fns"
-import { sourceService } from "../../../api"
 
 const EditSourceModal = () => {
 	const navigate = useNavigate()
@@ -77,7 +77,7 @@ const EditSourceModal = () => {
 					<div className="flex justify-center">
 						<Warning
 							weight="fill"
-							className="size-12 text-[#203FDD]"
+							className="size-12 text-primary"
 						/>
 					</div>
 				}
@@ -128,8 +128,8 @@ const EditSourceModal = () => {
 									<span
 										className={`rounded px-2 py-1 text-xs ${
 											!activate
-												? "bg-[#FFF1F0] text-[#F5222D]"
-												: "bg-[#E6F4FF] text-[#0958D9]"
+												? "bg-danger-light text-danger"
+												: "bg-primary-200 text-primary-700"
 										}`}
 									>
 										{activate ? "Active" : "Inactive"}
@@ -185,7 +185,7 @@ const EditSourceModal = () => {
 				<div className="flex flex-col items-center justify-center gap-7 py-6">
 					<CheckCircle
 						weight="fill"
-						className="size-16 text-[#13AA52]"
+						className="size-16 text-success"
 					/>
 					<div className="flex flex-col items-center text-xl font-medium">
 						Changes are saved successfully

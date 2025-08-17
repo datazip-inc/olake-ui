@@ -1,8 +1,9 @@
-import { Modal } from "antd"
-import ErrorIcon from "../../../assets/ErrorIcon.svg"
-import { useAppStore } from "../../../store"
-import { Info } from "@phosphor-icons/react"
 import { useNavigate } from "react-router-dom"
+import { Modal } from "antd"
+import { Info } from "@phosphor-icons/react"
+
+import { useAppStore } from "../../../store"
+import ErrorIcon from "../../../assets/ErrorIcon.svg"
 
 const TestConnectionFailureModal = ({
 	fromSources,
@@ -36,7 +37,7 @@ const TestConnectionFailureModal = ({
 			footer={null}
 			closable={false}
 			centered
-			width={400}
+			width={420}
 		>
 			<div className="flex flex-col items-center justify-center gap-7 py-6">
 				<div className="relative">
@@ -48,18 +49,20 @@ const TestConnectionFailureModal = ({
 					</div>
 				</div>
 				<div className="flex flex-col items-center">
-					<p className="text-sm text-[#8A8A8A]">Failed</p>
+					<p className="text-sm text-text-tertiary">Failed</p>
 					<h2 className="text-center text-lg font-medium">
 						Your test connection has failed
 					</h2>
-					<div className="mt-2 flex w-[360px] items-center gap-1 overflow-scroll rounded-xl bg-[#f8f8f8] p-3 text-xs">
+					<div className="mt-2 flex w-[360px] items-center gap-1 overflow-scroll rounded-xl bg-gray-50 p-3 text-xs">
 						<Info
 							weight="bold"
-							className="size-4 text-[#f5222d]"
+							className="size-4 flex-shrink-0 text-danger"
 						/>
-						{fromSources
-							? sourceTestConnectionError
-							: destinationTestConnectionError}
+						<span className="break-words">
+							{fromSources
+								? sourceTestConnectionError
+								: destinationTestConnectionError}
+						</span>
 					</div>
 				</div>
 				<div className="flex items-center gap-4">
@@ -71,9 +74,9 @@ const TestConnectionFailureModal = ({
 					</button>
 					<button
 						onClick={handleCancel}
-						className="w-fit flex-1 rounded-md border border-[#f5222d] px-4 py-2 text-[#f5222d]"
+						className="w-fit flex-1 rounded-md border border-danger px-4 py-2 text-danger"
 					>
-						Update
+						{fromSources ? "Edit  Source" : "Edit  Destination"}
 					</button>
 				</div>
 			</div>
