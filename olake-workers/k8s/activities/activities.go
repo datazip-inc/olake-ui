@@ -8,7 +8,7 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/config/helpers"
+	"olake-ui/olake-workers/k8s/utils/helpers"
 	"olake-ui/olake-workers/k8s/database/service"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
@@ -37,8 +37,8 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 	activityLogger := activity.GetLogger(ctx)
 	activityLogger.Debug("Starting K8s discover catalog activity")
 
-	// Build the pod execution request with all necessary configuration for the discover operation
-	// This includes the container image, command arguments, config files, and timeout settings
+	// Transform Temporal activity parameters into Kubernetes pod execution request
+	// Maps connector type/version to container image, mounts config as files, sets operation-specific timeout
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
@@ -52,6 +52,7 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 		Timeout: helpers.GetActivityTimeout(a.config, "discover"),
 	}
 
+	// Execute discover operation by creating K8s pod, wait for completion, retrieve results from streams.json file
 	return a.podManager.ExecutePodActivity(ctx, request)
 }
 
@@ -66,7 +67,8 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for connection test")
 
-	// Execute pod activity using common workflow
+	// Transform Temporal activity parameters into Kubernetes pod execution request
+	// Maps connector type/version to container image, includes flag parameter, mounts config as files
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
@@ -75,7 +77,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args: []string{
 			string(shared.Check),
-			fmt.Sprintf("--%s", params.Flag),
+			"--check",
 			"/mnt/config/config.json",
 		},
 		Configs: []shared.JobConfig{
@@ -84,6 +86,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Timeout: helpers.GetActivityTimeout(a.config, "test"),
 	}
 
+	// Execute check operation by creating K8s pod, wait for completion, retrieve results from pod logs
 	return a.podManager.ExecutePodActivity(ctx, request)
 }
 
@@ -97,7 +100,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
 
-	// Get job details from database using injected service
+	// Retrieve job configuration from database to get all required sync parameters
 	jobData, err := a.jobService.GetJobData(params.JobID)
 	if err != nil {
 		logger.Errorf("Failed to get job data for jobID %d: %v", params.JobID, err)
@@ -111,7 +114,8 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		logger.Infof("Job %d has empty/null state, defaulting to: {}", params.JobID)
 	}
 
-	// Execute pod activity using common workflow
+	// Transform job data and Temporal activity parameters into Kubernetes pod execution request
+	// Maps all sync configuration files (config, catalog, destination, state) as mounted files
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
@@ -134,13 +138,12 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		Timeout: helpers.GetActivityTimeout(a.config, "sync"),
 	}
 
-	// Execute the data sync operation by creating and managing a Kubernetes pod
-	// This orchestrates the entire pod lifecycle: creation, execution, monitoring, and cleanup
+	// Execute sync operation by creating K8s pod, wait for completion, retrieve results from state.json file
 	result, err := a.podManager.ExecutePodActivity(ctx, request)
 	if err != nil {
 		logger.Warnf("Activity failed for job %d: %v. Attempting final state save...", params.JobID, err)
 
-		// Use the shared utility to read and validate the state file
+		// Attempt to read final state from shared filesystem even on failure for data recovery
 		fsHelper := filesystem.NewHelper()
 		stateData, readErr := fsHelper.ReadAndValidateStateFile(params.WorkflowID)
 
@@ -160,7 +163,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		return nil, err
 	}
 
-	// Update job state
+	// Persist final sync state back to database for job tracking and resume capabilities
 	if stateJSON, err := json.Marshal(result); err == nil {
 		if err := a.jobService.UpdateJobState(params.JobID, string(stateJSON), true); err != nil {
 			logger.Errorf("Failed to update job state for jobID %d: %v", params.JobID, err)

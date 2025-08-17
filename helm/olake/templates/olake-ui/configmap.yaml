@@ -13,7 +13,7 @@ data:
   # Beego App Configuration File
   app.conf: |
     appname = olake-server
-    httpport = {{ .Values.olakeUI.env.httpPort | default "8080" }}
+    httpport = {{ .Values.olakeUI.env.httpPort | default "8000" }}
     runmode = {{ .Values.olakeUI.env.runMode | default "dev" }}
     autorender = false
     copyrequestbody = true

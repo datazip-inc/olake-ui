@@ -14,56 +14,84 @@ import (
 	"olake-ui/olake-workers/k8s/utils/k8s"
 )
 
+// PodActivityRequest defines a request for executing a pod activity
+// This struct encapsulates all the information needed to execute a Temporal activity
+// as a Kubernetes pod, bridging the gap between Temporal's activity model and K8s execution.
+type PodActivityRequest struct {
+	WorkflowID    string                // Unique identifier for the Temporal workflow instance
+	JobID         int                   // Database job ID for labeling and resource mapping
+	Operation     shared.Command        // Type of operation (sync, discover, check) - affects result retrieval
+	ConnectorType string                // Source connector type (mysql, postgres, etc.) for labeling
+	Image         string                // Full Docker image name for the connector container
+	Args          []string              // Command-line arguments passed to the connector
+	Configs       []shared.JobConfig    // Configuration files to mount into the pod
+	Timeout       time.Duration         // Maximum execution time before pod is considered failed
+}
+
 // PodSpec defines the specification for creating a Kubernetes Pod
+// This is an internal representation used during pod creation, containing both
+// the container specification and metadata needed for proper labeling and organization.
 type PodSpec struct {
-	Name               string
-	Image              string
-	Command            []string
-	Args               []string
-	OriginalWorkflowID string
-	JobID              int
-	Operation          shared.Command
-	ConnectorType      string
+	Name               string         // Sanitized pod name derived from WorkflowID
+	Image              string         // Docker image for the connector container
+	Command            []string       // Container entrypoint command (usually empty, uses image default)
+	Args               []string       // Arguments passed to the container command
+	OriginalWorkflowID string         // Original unsanitized WorkflowID for directory naming
+	JobID              int            // Job ID for resource mapping and labeling
+	Operation          shared.Command // Operation type for labeling and result retrieval strategy
+	ConnectorType      string         // Connector type for labeling and identification
 }
 
 // CreatePod creates a Kubernetes Pod for running job operations
+// This function handles the complete pod creation process: preparing shared storage,
+// writing configuration files, constructing the pod specification with proper labels/annotations,
+// and submitting it to the Kubernetes API server for execution.
 func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []shared.JobConfig) (*corev1.Pod, error) {
-	// Get workflow directory using filesystem helper with the actual operation type
+	// Determine the workflow directory name based on operation type and workflow ID
+	// Different operations use different directory naming strategies (hash vs direct)
 	workflowDir := k.filesystemHelper.GetWorkflowDirectory(spec.Operation, spec.OriginalWorkflowID)
 
-	// Use filesystem helper to setup directory and write config files
+	// Prepare the shared storage directory for this workflow
+	// This creates the directory structure on the NFS/shared volume
 	if err := k.filesystemHelper.SetupWorkDirectory(workflowDir); err != nil {
 		return nil, fmt.Errorf("failed to setup work directory: %v", err)
 	}
 
+	// Write all configuration files to the shared storage directory
+	// These files (config.json, streams.json, etc.) will be mounted into the pod
 	if err := k.filesystemHelper.WriteConfigFiles(workflowDir, configs); err != nil {
 		return nil, fmt.Errorf("failed to write config files: %v", err)
 	}
 
-	// Create Pod with PV mount
+	// Construct the complete Kubernetes Pod specification
+	// This includes metadata (labels/annotations), container spec, volumes, and scheduling preferences
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      spec.Name,
-			Namespace: k.namespace,
+			Name:      spec.Name,      // Sanitized name safe for Kubernetes
+			Namespace: k.namespace,    // Target namespace for pod creation
+			
+			// Labels are used for querying, filtering, and organizing pods
 			Labels: map[string]string{
-				// Standard Kubernetes labels
-				"app.kubernetes.io/name":       "olake",
-				"app.kubernetes.io/component":  fmt.Sprintf("%s-%s", spec.ConnectorType, string(spec.Operation)),
-				"app.kubernetes.io/managed-by": "olake-workers",
+				// Standard Kubernetes labels for ecosystem compatibility
+				"app.kubernetes.io/name":       "olake",                                                        // Application name
+				"app.kubernetes.io/component":  fmt.Sprintf("%s-%s", spec.ConnectorType, string(spec.Operation)), // Component identifier
+				"app.kubernetes.io/managed-by": "olake-workers",                                               // Management tool
 
-				// Custom Olake labels
-				"olake.io/operation-type": string(spec.Operation),
-				"olake.io/connector":      spec.ConnectorType,
-				"olake.io/job-id":         strconv.Itoa(spec.JobID),
-				"olake.io/workflow-id":    k8s.SanitizeName(spec.OriginalWorkflowID),
+				// Custom Olake labels for internal operations and queries
+				"olake.io/operation-type": string(spec.Operation),                    // sync, discover, or check
+				"olake.io/connector":      spec.ConnectorType,                        // mysql, postgres, etc.
+				"olake.io/job-id":         strconv.Itoa(spec.JobID),                  // Database job reference
+				"olake.io/workflow-id":    k8s.SanitizeName(spec.OriginalWorkflowID), // Sanitized workflow ID
 			},
+			
+			// Annotations store metadata that doesn't affect pod selection/scheduling
 			Annotations: map[string]string{
-				"olake.io/created-by-pod": k8s.GenerateWorkerIdentity(),
-				"olake.io/created-at":     time.Now().Format(time.RFC3339),
-				"olake.io/workflow-id":    spec.OriginalWorkflowID,
-				"olake.io/operation-type": string(spec.Operation),
-				"olake.io/connector-type": spec.ConnectorType,
-				"olake.io/job-id":         strconv.Itoa(spec.JobID),
+				"olake.io/created-by-pod": k8s.GenerateWorkerIdentity(),     // Which worker pod created this
+				"olake.io/created-at":     time.Now().Format(time.RFC3339), // Creation timestamp
+				"olake.io/workflow-id":    spec.OriginalWorkflowID,          // Original unsanitized workflow ID
+				"olake.io/operation-type": string(spec.Operation),           // Operation type for reference
+				"olake.io/connector-type": spec.ConnectorType,               // Connector type for reference
+				"olake.io/job-id":         strconv.Itoa(spec.JobID),         // Job ID for reference
 			},
 		},
 		Spec: corev1.PodSpec{
@@ -286,4 +314,42 @@ func (k *K8sPodManager) buildAffinityForJob(jobID int, operation shared.Command)
 	}
 
 	return affinity
+}
+
+// ExecutePodActivity executes a pod activity with common workflow
+// This is the main entry point for executing Temporal activities as Kubernetes pods.
+// It orchestrates the complete lifecycle: pod creation, execution monitoring, result retrieval, and cleanup.
+func (k *K8sPodManager) ExecutePodActivity(ctx context.Context, req PodActivityRequest) (map[string]interface{}, error) {
+	// Transform the high-level activity request into a concrete Kubernetes pod specification
+	// This bridges the gap between Temporal's activity model and Kubernetes execution
+	podSpec := &PodSpec{
+		Name:               k8s.SanitizeName(req.WorkflowID), // Safe Kubernetes pod name
+		OriginalWorkflowID: req.WorkflowID,                   // Original ID for directory naming
+		JobID:              req.JobID,                        // Database job reference
+		Image:              req.Image,                        // Connector container image
+		Command:            []string{},                       // Use image default entrypoint
+		Args:               req.Args,                         // Connector-specific arguments
+		Operation:          req.Operation,                    // Operation type (affects result retrieval)
+		ConnectorType:      req.ConnectorType,               // Connector type for labeling
+	}
+
+	// Create the Kubernetes pod with all necessary configuration and volume mounts
+	pod, err := k.CreatePod(ctx, podSpec, req.Configs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pod: %v", err)
+	}
+
+	// Ensure pod cleanup happens regardless of success or failure
+	// This prevents resource leaks and maintains cluster hygiene
+	defer func() {
+		if err := k.CleanupPod(ctx, pod.Name); err != nil {
+			logger.Errorf("Failed to cleanup pod %s for %s operation (workflow: %s): %v",
+				pod.Name, req.Operation, req.WorkflowID, err)
+			// Note: We continue execution despite cleanup failure as the core operation may have succeeded
+			// and cleanup failures shouldn't invalidate successful work results
+		}
+	}()
+
+	// Wait for pod completion
+	return k.WaitForPodCompletion(ctx, pod.Name, req.Timeout, req.Operation, req.WorkflowID)
 }

@@ -10,10 +10,11 @@ import (
 
 	"olake-ui/olake-workers/k8s/activities"
 	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/config/helpers"
+	"olake-ui/olake-workers/k8s/utils/helpers"
 	"olake-ui/olake-workers/k8s/database/service"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
+	"olake-ui/olake-workers/k8s/utils/k8s"
 	"olake-ui/olake-workers/k8s/workflows"
 )
 
@@ -29,6 +30,10 @@ type K8sWorker struct {
 
 // NewK8sWorkerWithConfig creates a new K8s worker with full configuration
 func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
+	// Set computed values that depend on runtime environment
+	cfg.Kubernetes.JobMapping = k8s.LoadJobMappingFromEnv()
+	cfg.Worker.WorkerIdentity = k8s.GenerateWorkerIdentity()
+
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
 
 	// Set global config for workflows to use

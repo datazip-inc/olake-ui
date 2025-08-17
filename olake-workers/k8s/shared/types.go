@@ -30,7 +30,6 @@ type ActivityParams struct {
 	DestID       int
 	WorkflowID   string
 	StreamConfig string
-	Flag         string
 	JobID        int
 }
 

@@ -3,11 +3,11 @@ package helpers
 import (
 	"time"
 
-	"olake-ui/olake-workers/k8s/config/types"
+	"olake-ui/olake-workers/k8s/config"
 )
 
 // GetActivityTimeout returns the activity timeout for the given operation
-func GetActivityTimeout(cfg *types.Config, operation string) time.Duration {
+func GetActivityTimeout(cfg *config.Config, operation string) time.Duration {
 	switch operation {
 	case "discover":
 		return cfg.Timeouts.Activity.Discover

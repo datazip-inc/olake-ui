@@ -71,7 +71,7 @@ spec:
           "timeoutSeconds" 5
           "failureThreshold" 6
           "successThreshold" 1
-          "exec" (dict "command" (list "/bin/sh" "-c" "exec pg_isready -U \"postgres\" -h 127.0.0.1 -p 5432"))
+          "exec" (dict "command" (list "/bin/sh" "-c" "exec pg_isready -U ${POSTGRES_USER} -h 127.0.0.1 -p 5432"))
         }}
         {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.postgresql.readinessProbe | default dict) }}
         readinessProbe:
@@ -82,7 +82,7 @@ spec:
           "timeoutSeconds" 5
           "failureThreshold" 6
           "successThreshold" 1
-          "exec" (dict "command" (list "/bin/sh" "-c" "exec pg_isready -U \"postgres\" -h 127.0.0.1 -p 5432"))
+          "exec" (dict "command" (list "/bin/sh" "-c" "exec pg_isready -U ${POSTGRES_USER} -h 127.0.0.1 -p 5432"))
         }}
         {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.postgresql.livenessProbe | default dict) }}
         livenessProbe:

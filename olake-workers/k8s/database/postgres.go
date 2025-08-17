@@ -50,7 +50,7 @@ func NewDB() (*DB, error) {
 		conn.SetMaxOpenConns(cfg.Database.MaxOpenConns)
 		conn.SetMaxIdleConns(cfg.Database.MaxIdleConns)
 		conn.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
-		logger.Infof("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v", 
+		logger.Infof("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v",
 			cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
 	}
 
@@ -59,10 +59,10 @@ func NewDB() (*DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	logger.Info("Successfully connected to PostgreSQL database")
+
 	// Initialize table names based on environment
 	tableNames := getTableNames()
-
-	logger.Info("Successfully connected to PostgreSQL database")
 
 	return &DB{
 		conn:       conn,
@@ -81,7 +81,6 @@ func (db *DB) Close() error {
 }
 
 // Helper functions
-
 func getDBURL() string {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {

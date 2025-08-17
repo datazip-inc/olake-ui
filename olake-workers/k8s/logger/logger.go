@@ -6,15 +6,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog"
+	"olake-ui/olake-workers/k8s/config"
 
-	"olake-ui/olake-workers/k8s/config/types"
+	"github.com/rs/zerolog"
 )
 
 var logger zerolog.Logger
 
 // Init initializes the global logger based on the provided configuration
-func Init(config types.LoggingConfig) {
+func Init(config *config.LoggingConfig) {
 	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
 
 	var writer io.Writer
@@ -25,8 +25,6 @@ func Init(config types.LoggingConfig) {
 			Out:        os.Stdout,
 			TimeFormat: time.RFC3339,
 		}
-	case "json":
-		writer = os.Stdout
 	default:
 		// Default to JSON for production safety
 		writer = os.Stdout
@@ -34,14 +32,6 @@ func Init(config types.LoggingConfig) {
 
 	logger = zerolog.New(writer).With().Timestamp().Logger()
 	zerolog.SetGlobalLevel(parseLogLevel(config.Level))
-}
-
-// InitDefault initializes the logger with default settings for backward compatibility
-func InitDefault() {
-	Init(types.LoggingConfig{
-		Level:  "info",
-		Format: "console",
-	})
 }
 
 // parseLogLevel converts a string level to a zerolog.Level
