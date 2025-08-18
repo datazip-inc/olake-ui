@@ -101,7 +101,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
 
 	// Retrieve job configuration from database to get all required sync parameters
-	jobData, err := a.jobService.GetJobData(params.JobID)
+	jobData, err := a.jobService.GetJobData(ctx, params.JobID)
 	if err != nil {
 		logger.Errorf("Failed to get job data for jobID %d: %v", params.JobID, err)
 		return nil, fmt.Errorf("failed to get job data: %v", err)
@@ -149,7 +149,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 
 		if readErr == nil {
 			// If the state file is valid, attempt to save it
-			if updateErr := a.jobService.UpdateJobState(params.JobID, string(stateData), false); updateErr != nil {
+			if updateErr := a.jobService.UpdateJobState(ctx, params.JobID, string(stateData), false); updateErr != nil {
 				logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
 			} else {
 				logger.Infof("Saved final state on failure for job %d", params.JobID)
@@ -165,7 +165,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 
 	// Persist final sync state back to database for job tracking and resume capabilities
 	if stateJSON, err := json.Marshal(result); err == nil {
-		if err := a.jobService.UpdateJobState(params.JobID, string(stateJSON), true); err != nil {
+		if err := a.jobService.UpdateJobState(ctx, params.JobID, string(stateJSON), true); err != nil {
 			logger.Errorf("Failed to update job state for jobID %d: %v", params.JobID, err)
 			return nil, fmt.Errorf("failed to update job state: %v", err)
 		}

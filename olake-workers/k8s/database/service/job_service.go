@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"olake-ui/olake-workers/k8s/database"
 	"olake-ui/olake-workers/k8s/logger"
 )
@@ -23,8 +25,8 @@ type JobData struct {
 
 // JobDataService defines the interface for job data operations
 type JobDataService interface {
-	GetJobData(jobID int) (*JobData, error)
-	UpdateJobState(jobID int, state string, active bool) error
+	GetJobData(ctx context.Context, jobID int) (*JobData, error)
+	UpdateJobState(ctx context.Context, jobID int, state string, active bool) error
 	HealthCheck() error
 	Close() error
 }
@@ -46,13 +48,13 @@ func NewPostgresJobService() (*PostgresJobService, error) {
 }
 
 // GetJobData retrieves job configuration from database
-func (s *PostgresJobService) GetJobData(jobID int) (*JobData, error) {
+func (s *PostgresJobService) GetJobData(ctx context.Context, jobID int) (*JobData, error) {
 	logger.Debugf("Getting job data for jobID: %d", jobID)
-	dbJobData, err := s.db.GetJobData(jobID)
+	dbJobData, err := s.db.GetJobData(ctx, jobID)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Convert from internal database jobData to service JobData
 	return &JobData{
 		ID:            dbJobData.ID,
@@ -71,9 +73,9 @@ func (s *PostgresJobService) GetJobData(jobID int) (*JobData, error) {
 }
 
 // UpdateJobState updates the job state and active status in the database
-func (s *PostgresJobService) UpdateJobState(jobID int, state string, active bool) error {
+func (s *PostgresJobService) UpdateJobState(ctx context.Context, jobID int, state string, active bool) error {
 	logger.Debugf("Updating job state for jobID: %d", jobID)
-	return s.db.UpdateJobState(jobID, state, active)
+	return s.db.UpdateJobState(ctx, jobID, state, active)
 }
 
 // HealthCheck pings the database to verify connectivity

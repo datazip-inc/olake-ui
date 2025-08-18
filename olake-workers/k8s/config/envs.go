@@ -16,17 +16,16 @@ func InitConfig() {
 	once.Do(func() {
 		globalViper = viper.New()
 		globalViper.AutomaticEnv()
-		globalViper.SetEnvPrefix("") // No prefix, use exact env var names
+		globalViper.SetEnvPrefix("")
 	})
 }
 
 // GetEnv returns environment variable value or default if not set
-// Drop-in replacement for utils/env/env.go GetEnv function
 func GetEnv(key, defaultValue string) string {
 	if globalViper == nil {
 		InitConfig()
 	}
-	
+
 	globalViper.SetDefault(key, defaultValue)
 	return globalViper.GetString(key)
 }
@@ -36,7 +35,7 @@ func LoadConfig() (*Config, error) {
 	if globalViper == nil {
 		InitConfig()
 	}
-	
+
 	// Bind environment variables to structured config
 	bindEnvironmentVariables(globalViper)
 
