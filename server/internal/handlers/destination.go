@@ -323,8 +323,9 @@ func (c *DestHandler) GetDestinationSpec() {
 	}
 
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    spec,
+		Version:  req.Version,
+		Type:     req.Type,
+		Spec:     spec.Spec,
+		UISchema: spec.UISchema,
 	})
 }
