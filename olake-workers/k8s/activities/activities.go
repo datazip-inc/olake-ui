@@ -8,12 +8,12 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/utils/helpers"
 	"olake-ui/olake-workers/k8s/database/service"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
 	"olake-ui/olake-workers/k8s/shared"
 	"olake-ui/olake-workers/k8s/utils/filesystem"
+	"olake-ui/olake-workers/k8s/utils/helpers"
 )
 
 // Activities holds the dependencies for activity functions
@@ -77,7 +77,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args: []string{
 			string(shared.Check),
-			"--config",
+			fmt.Sprintf("--%s", params.Flag),
 			"/mnt/config/config.json",
 		},
 		Configs: []shared.JobConfig{
