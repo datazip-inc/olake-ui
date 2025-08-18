@@ -338,7 +338,7 @@ func ParseSpecJSON(output string) (models.SpecOutput, error) {
 
 			// Extract both spec and uischema if available
 			spec, okSpec := fullMap["spec"].(map[string]interface{})
-			uischema, okUI := fullMap["uischema"].(map[string]interface{})
+			uischema, okUI := fullMap["uischema"].(string)
 
 			if okSpec || okUI {
 				return models.SpecOutput{Spec: spec, UISchema: uischema}, nil
