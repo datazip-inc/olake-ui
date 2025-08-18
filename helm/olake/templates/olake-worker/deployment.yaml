@@ -10,7 +10,6 @@ metadata:
 spec:
   replicas: 1
   minReadySeconds: 30
-  progressDeadlineSeconds: 600
   selector:
     matchLabels:
       {{- include "olake.selectorLabels" . | nindent 6 }}
