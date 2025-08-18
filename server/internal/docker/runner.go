@@ -9,11 +9,12 @@ import (
 	"path/filepath"
 
 	"github.com/beego/beego/v2/core/logs"
+	"github.com/docker/docker/client"
+
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/utils"
-	"github.com/docker/docker/client"
 )
 
 // NewRunner creates a new Docker runner

@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/utils"
 )
@@ -17,7 +16,7 @@ func GetIDFromPath(c *web.Controller) int {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid id")
+		respondWithError(c, http.StatusBadRequest, "Invalid id", err)
 		return 0
 	}
 	return id
@@ -37,14 +36,6 @@ func GetUserIDFromSession(c *web.Controller) *int {
 		if uid, ok := sessionUserID.(int); ok {
 			return &uid
 		}
-	}
-	return nil
-}
-
-// Helper to bind and validate JSON request
-func bindJSON(c *web.Controller, target interface{}) error {
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, target); err != nil {
-		return fmt.Errorf("invalid request format: %s", err)
 	}
 	return nil
 }

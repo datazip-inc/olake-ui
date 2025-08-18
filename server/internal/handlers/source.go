@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -46,7 +47,11 @@ func (c *SourceHandler) GetAllSources() {
 func (c *SourceHandler) CreateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	var req dto.CreateSourceRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -62,7 +67,11 @@ func (c *SourceHandler) CreateSource() {
 func (c *SourceHandler) UpdateSource() {
 	id := GetIDFromPath(&c.Controller)
 	var req dto.UpdateSourceRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -92,7 +101,7 @@ func (c *SourceHandler) DeleteSource() {
 // @router /project/:projectid/sources/test [post]
 func (c *SourceHandler) TestConnection() {
 	var req dto.SourceTestConnectionRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -107,7 +116,11 @@ func (c *SourceHandler) TestConnection() {
 // @router /sources/streams[post]
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -156,7 +169,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	_ = c.Ctx.Input.Param(":projectid")
 
 	var req dto.SpecRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}

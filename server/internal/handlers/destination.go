@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
@@ -30,7 +31,7 @@ func (c *DestHandler) GetAllDestinations() {
 
 	destinations, err := c.destService.GetAllDestinations(context.Background(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destinations", err)
 		return
 	}
 
@@ -40,9 +41,17 @@ func (c *DestHandler) GetAllDestinations() {
 // @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
+	if projectID == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "project ID is required", nil)
+		return
+	}
 
 	var req dto.CreateDestinationRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -50,7 +59,7 @@ func (c *DestHandler) CreateDestination() {
 	userID := GetUserIDFromSession(&c.Controller)
 
 	if err := c.destService.CreateDestination(context.Background(), req, projectID, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
 		return
 	}
 
@@ -62,7 +71,11 @@ func (c *DestHandler) UpdateDestination() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req dto.UpdateDestinationRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -70,7 +83,7 @@ func (c *DestHandler) UpdateDestination() {
 	userID := GetUserIDFromSession(&c.Controller)
 
 	if err := c.destService.UpdateDestination(context.Background(), id, req, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
 
@@ -83,7 +96,7 @@ func (c *DestHandler) DeleteDestination() {
 
 	response, err := c.destService.DeleteDestination(context.Background(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
 		return
 	}
 
@@ -93,14 +106,18 @@ func (c *DestHandler) DeleteDestination() {
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
 	result, err := c.destService.TestConnection(context.Background(), req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
+		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, result)
@@ -112,7 +129,7 @@ func (c *DestHandler) GetDestinationJobs() {
 
 	jobs, err := c.destService.GetDestinationJobs(context.Background(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
 		return
 	}
 
@@ -127,7 +144,7 @@ func (c *DestHandler) GetDestinationVersions() {
 
 	versions, err := c.destService.GetDestinationVersions(context.Background(), destType)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, err.Error())
+		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
 	}
 
@@ -143,18 +160,18 @@ func (c *DestHandler) GetDestinationSpec() {
 	// Will be used for multi-tenant filtering in the future
 
 	var req dto.SpecRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
 	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		respondWithError(&c.Controller, http.StatusBadRequest, "Destination type is required", nil)
 		return
 	}
 
 	if req.Version == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+		respondWithError(&c.Controller, http.StatusBadRequest, "Destination version is required", nil)
 		return
 	}
 

@@ -1,42 +1,64 @@
 package dto
 
+import (
+	"fmt"
+
+	"github.com/go-playground/validator/v10"
+)
+
+// ValidateStruct validates any struct that has `validate` tags.
+func Validate(s interface{}) error {
+	validate := validator.New()
+	err := validate.Struct(s)
+	if err != nil {
+		if _, ok := err.(*validator.InvalidValidationError); ok {
+			return fmt.Errorf("invalid validation error: %v", err)
+		}
+
+		// collect all validation errors into a single message
+		var errorMessages string
+		for _, err := range err.(validator.ValidationErrors) {
+			errorMessages += fmt.Sprintf("Field '%s' failed validation rule '%s'; ", err.Field(), err.Tag())
+		}
+		return fmt.Errorf("validation failed: %s", errorMessages)
+	}
+	return nil
+}
+
 // Common fields for source/destination config
 type ConnectorConfig struct {
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Version string `json:"version"`
-	Source  string `json:"source_type"`
-	Config  string `json:"config" orm:"type(jsonb)"`
+	Name    string `json:"name" validate:"required"`
+	Type    string `json:"type" validate:"required"`
+	Version string `json:"version" validate:"required"`
+	Source  string `json:"source_type" validate:"required"`
+	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
 }
 
-// LoginRequest represents the expected JSON structure for login requests
 type LoginRequest struct {
-	Username string `json:"username,required"`
-	Password string `json:"password,required"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
 }
 
-// Spec request for getting specs
 type SpecRequest struct {
-	Type    string `json:"type,required"`
-	Version string `json:"version,required"`
+	Type    string `json:"type" validate:"required"`
+	Version string `json:"version" validate:"required"`
 	Catalog string `json:"catalog"`
 }
 
-// Test connection requests
 type SourceTestConnectionRequest struct {
 	ConnectorConfig
-	SourceID int `json:"source_id"`
+	SourceID int `json:"source_id" validate:"required"`
 }
+
 type StreamsRequest struct {
 	ConnectorConfig
-	JobID int `json:"job_id"`
+	JobID int `json:"job_id" validate:"required"`
 }
 
 type DestinationTestConnectionRequest struct {
 	ConnectorConfig
 }
 
-// Create/Update source and destination requests
 type CreateSourceRequest struct {
 	ConnectorConfig
 }
@@ -57,21 +79,24 @@ type UpdateDestinationRequest struct {
 type JobSourceConfig = ConnectorConfig
 type JobDestinationConfig = ConnectorConfig
 
-// Create and update job requests
 type CreateJobRequest struct {
-	Name          string               `json:"name"`
-	Source        JobSourceConfig      `json:"source"`
-	Destination   JobDestinationConfig `json:"destination"`
-	Frequency     string               `json:"frequency"`
-	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)"`
+	Name          string               `json:"name" validate:"required"`
+	Source        JobSourceConfig      `json:"source" validate:"required,dive"`
+	Destination   JobDestinationConfig `json:"destination" validate:"required,dive"`
+	Frequency     string               `json:"frequency" validate:"required"`
+	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
 	Activate      bool                 `json:"activate,omitempty"`
 }
 
 type UpdateJobRequest struct {
-	Name          string               `json:"name"`
-	Source        JobSourceConfig      `json:"source"`
-	Destination   JobDestinationConfig `json:"destination"`
-	Frequency     string               `json:"frequency"`
-	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)"`
+	Name          string               `json:"name" validate:"required"`
+	Source        JobSourceConfig      `json:"source" validate:"required,dive"`
+	Destination   JobDestinationConfig `json:"destination" validate:"required,dive"`
+	Frequency     string               `json:"frequency" validate:"required"`
+	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
 	Activate      bool                 `json:"activate,omitempty"`
+}
+
+type JobTaskRequest struct {
+	FilePath string `json:"file_path" validate:"required"`
 }

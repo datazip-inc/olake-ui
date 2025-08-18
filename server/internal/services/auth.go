@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
 )
 
 type AuthService struct {
@@ -21,7 +23,7 @@ func NewAuthService() *AuthService {
 	}
 }
 
-func (s *AuthService) Login(username, password string) (*models.User, error) {
+func (s *AuthService) Login(ctx context.Context, username, password string) (*models.User, error) {
 	user, err := s.userORM.FindByUsername(username)
 	if err != nil {
 		if strings.Contains(err.Error(), "no row found") {
@@ -34,10 +36,12 @@ func (s *AuthService) Login(username, password string) (*models.User, error) {
 		return nil, constants.ErrInvalidCredentials
 	}
 
+	telemetry.TrackUserLogin(ctx, user)
+
 	return user, nil
 }
 
-func (s *AuthService) Signup(user *models.User) error {
+func (s *AuthService) Signup(ctx context.Context, user *models.User) error {
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -52,7 +56,6 @@ func (s *AuthService) Signup(user *models.User) error {
 		}
 		return fmt.Errorf("%s user: %w", constants.ErrFailedToCreate, err)
 	}
-
 	return nil
 }
 

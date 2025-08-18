@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -27,20 +28,24 @@ func (c *AuthHandler) Prepare() {
 // @router /login [post]
 func (c *AuthHandler) Login() {
 	var req dto.LoginRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	user, err := c.authService.Login(req.Username, req.Password)
+	user, err := c.authService.Login(context.Background(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "user not found, sign up first")
+			respondWithError(&c.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
 		case errors.Is(err, constants.ErrInvalidCredentials):
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid credentials")
+			respondWithError(&c.Controller, http.StatusUnauthorized, "Invalid credentials", err)
 		default:
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Login failed")
+			respondWithError(&c.Controller, http.StatusInternalServerError, "Login failed", err)
 		}
 		return
 	}
@@ -49,8 +54,6 @@ func (c *AuthHandler) Login() {
 	if web.BConfig.WebConfig.Session.SessionOn {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
-
-	telemetry.TrackUserLogin(context.Background(), user)
 
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,
@@ -91,19 +94,23 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := bindJSON(&c.Controller, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	if err := c.authService.Signup(&req); err != nil {
+	if err := c.authService.Signup(context.Background(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
-			utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists")
+			respondWithError(&c.Controller, http.StatusConflict, "Username already exists", err)
 		case errors.Is(err, constants.ErrPasswordProcessing):
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password")
+			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to process password", err)
 		default:
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user")
+			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
 		}
 		return
 	}

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
+
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
@@ -19,7 +21,7 @@ func (c *JobHandler) Prepare() {
 	var err error
 	c.jobService, err = services.NewJobService()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to initialize job service")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize job service", err)
 		return
 	}
 }
@@ -29,7 +31,7 @@ func (c *JobHandler) GetAllJobs() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	jobs, err := c.jobService.GetAllJobsByProject(projectID)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, jobs)
@@ -39,13 +41,17 @@ func (c *JobHandler) GetAllJobs() {
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	var req dto.CreateJobRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.CreateJob(context.Background(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req.Name)
@@ -56,13 +62,17 @@ func (c *JobHandler) UpdateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	jobID := GetIDFromPath(&c.Controller)
 	var req dto.UpdateJobRequest
-	if err := bindJSON(&c.Controller, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(context.Background(), &req, projectID, jobID, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req.Name)
@@ -73,7 +83,7 @@ func (c *JobHandler) DeleteJob() {
 	id := GetIDFromPath(&c.Controller)
 	jobName, err := c.jobService.DeleteJob(context.Background(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, jobName)
@@ -85,7 +95,7 @@ func (c *JobHandler) SyncJob() {
 	id := GetIDFromPath(&c.Controller)
 	result, err := c.jobService.SyncJob(context.Background(), projectID, id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to sync job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, result)
@@ -97,8 +107,12 @@ func (c *JobHandler) ActivateJob() {
 	var req struct {
 		Activate bool `json:"activate"`
 	}
-	if err := bindJSON(&c.Controller, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
@@ -107,7 +121,7 @@ func (c *JobHandler) ActivateJob() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		utils.ErrorResponse(&c.Controller, statusCode, err.Error())
+		respondWithError(&c.Controller, statusCode, "Failed to activate job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, nil)
@@ -123,7 +137,7 @@ func (c *JobHandler) GetJobTasks() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		utils.ErrorResponse(&c.Controller, statusCode, err.Error())
+		respondWithError(&c.Controller, statusCode, "Failed to get job tasks", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, tasks)
@@ -133,11 +147,13 @@ func (c *JobHandler) GetJobTasks() {
 func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	// Parse request body
-	var req struct {
-		FilePath string `json:"file_path"`
+	var req dto.JobTaskRequest
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
 	}
-	if err := bindJSON(&c.Controller, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 	logs, err := c.jobService.GetTaskLogs(context.Background(), id, req.FilePath)
@@ -146,7 +162,7 @@ func (c *JobHandler) GetTaskLogs() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		utils.ErrorResponse(&c.Controller, statusCode, err.Error())
+		respondWithError(&c.Controller, statusCode, "Failed to get task logs", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, logs)
