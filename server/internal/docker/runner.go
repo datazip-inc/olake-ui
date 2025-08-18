@@ -176,7 +176,7 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	}
 	// Add destination flag if provided
 	if destinationType != "" {
-		dockerArgs = append(dockerArgs, "--destination", destinationType)
+		dockerArgs = append(dockerArgs, "--destination-type", destinationType)
 	}
 	// Run the command
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
