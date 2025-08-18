@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/utils/env"
+	appConfig "olake-ui/olake-workers/k8s/config"
 )
 
 // SplitLines splits text into lines, removing empty lines
@@ -127,7 +127,7 @@ func parseConnectionTestOutput(output string) (map[string]interface{}, error) {
 
 // ParseDuration parses a duration string with error handling and fallback
 func ParseDuration(envKey, defaultValue string) time.Duration {
-	value := env.GetEnv(envKey, defaultValue)
+	value := appConfig.GetEnv(envKey, defaultValue)
 	duration, err := time.ParseDuration(value)
 	if err != nil {
 		logger.Warnf("Failed to parse duration for %s, using default: %s", envKey, defaultValue)

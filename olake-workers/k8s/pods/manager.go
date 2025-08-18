@@ -6,9 +6,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	"olake-ui/olake-workers/k8s/config"
+	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/utils/env"
 	"olake-ui/olake-workers/k8s/utils/filesystem"
 )
 
@@ -20,14 +19,14 @@ type K8sPodManager struct {
 	clientset        kubernetes.Interface // Kubernetes API client for pod operations
 	namespace        string               // Target namespace where all activity pods are created
 	filesystemHelper *filesystem.Helper  // Utility for managing shared storage and config files
-	config           *config.Config      // Application configuration including timeouts, storage, etc.
+	config           *appConfig.Config      // Application configuration including timeouts, storage, etc.
 }
 
 // NewK8sPodManager creates a new Kubernetes Pod manager
 // This initializes the pod manager with in-cluster Kubernetes configuration,
 // which allows the worker running inside a pod to communicate with the K8s API server.
 // The manager will be responsible for creating, monitoring, and cleaning up activity pods.
-func NewK8sPodManager(cfg *config.Config) (*K8sPodManager, error) {
+func NewK8sPodManager(cfg *appConfig.Config) (*K8sPodManager, error) {
 	// Use in-cluster configuration - this reads the service account token and CA cert
 	// that Kubernetes automatically mounts into every pod at /var/run/secrets/kubernetes.io/serviceaccount/
 	config, err := rest.InClusterConfig()
@@ -44,7 +43,7 @@ func NewK8sPodManager(cfg *config.Config) (*K8sPodManager, error) {
 
 	// Get the target namespace from environment variable, defaulting to "olake"
 	// All activity pods will be created in this namespace
-	namespace := env.GetEnv("WORKER_NAMESPACE", "olake")
+	namespace := appConfig.GetEnv("WORKER_NAMESPACE", "olake")
 
 	logger.Infof("Initialized K8s pod manager for namespace: %s", namespace)
 

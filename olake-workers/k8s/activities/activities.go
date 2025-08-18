@@ -77,7 +77,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
 		Args: []string{
 			string(shared.Check),
-			"--check",
+			"--config",
 			"/mnt/config/config.json",
 		},
 		Configs: []shared.JobConfig{

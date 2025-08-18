@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"olake-ui/olake-workers/k8s/config"
+	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/utils/env"
 
 	_ "github.com/lib/pq"
 )
@@ -43,7 +42,7 @@ func NewDB() (*DB, error) {
 	}
 
 	// Apply connection pool settings
-	cfg, err := config.LoadConfig()
+	cfg, err := appConfig.LoadConfig()
 	if err != nil {
 		logger.Warnf("Failed to load database config, using defaults: %v", err)
 	} else {
@@ -85,12 +84,12 @@ func getDBURL() string {
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		// Fallback to individual components
-		host := env.GetEnv("DB_HOST", "localhost")
-		port := env.GetEnv("DB_PORT", "5432")
-		user := env.GetEnv("DB_USER", "olake")
-		password := env.GetEnv("DB_PASSWORD", "password")
-		dbname := env.GetEnv("DB_NAME", "olake")
-		sslmode := env.GetEnv("DB_SSLMODE", "disable")
+		host := appConfig.GetEnv("DB_HOST", "localhost")
+		port := appConfig.GetEnv("DB_PORT", "5432")
+		user := appConfig.GetEnv("DB_USER", "olake")
+		password := appConfig.GetEnv("DB_PASSWORD", "password")
+		dbname := appConfig.GetEnv("DB_NAME", "olake")
+		sslmode := appConfig.GetEnv("DB_SSLMODE", "disable")
 
 		dbURL = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 			host, port, user, password, dbname, sslmode)
@@ -100,7 +99,7 @@ func getDBURL() string {
 
 func getTableNames() map[string]string {
 	// Get environment mode (development, production, etc.)
-	runMode := env.GetEnv("RUN_MODE", "dev")
+	runMode := appConfig.GetEnv("RUN_MODE", "dev")
 
 	// Table name patterns matching server implementation
 	tableNames := map[string]string{

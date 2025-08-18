@@ -1,24 +1,49 @@
 package config
 
 import (
-	"fmt"
+	"sync"
 
 	"github.com/spf13/viper"
 )
 
+var (
+	globalViper *viper.Viper
+	once        sync.Once
+)
+
+// InitConfig initializes the global Viper instance
+func InitConfig() {
+	once.Do(func() {
+		globalViper = viper.New()
+		globalViper.AutomaticEnv()
+		globalViper.SetEnvPrefix("") // No prefix, use exact env var names
+	})
+}
+
+// GetEnv returns environment variable value or default if not set
+// Drop-in replacement for utils/env/env.go GetEnv function
+func GetEnv(key, defaultValue string) string {
+	if globalViper == nil {
+		InitConfig()
+	}
+	
+	globalViper.SetDefault(key, defaultValue)
+	return globalViper.GetString(key)
+}
+
 // LoadConfig loads configuration using Viper from environment variables
 func LoadConfig() (*Config, error) {
-	v := viper.New()
-
-	// Configure environment variable binding
-	v.AutomaticEnv()
-	v.SetEnvPrefix("") // No prefix, use exact env var names
-	bindEnvironmentVariables(v)
+	if globalViper == nil {
+		InitConfig()
+	}
+	
+	// Bind environment variables to structured config
+	bindEnvironmentVariables(globalViper)
 
 	// Unmarshal into struct
 	var config Config
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	if err := globalViper.Unmarshal(&config); err != nil {
+		return nil, err
 	}
 
 	return &config, nil

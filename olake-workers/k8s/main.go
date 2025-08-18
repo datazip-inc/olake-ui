@@ -1,14 +1,17 @@
 package main
 
 import (
-	"olake-ui/olake-workers/k8s/config"
+	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/worker"
 )
 
 func main() {
+	// Initialize Viper global instance first
+	appConfig.InitConfig()
+	
 	// Load full configuration (including logging config)
-	cfg, err := config.LoadConfig()
+	cfg, err := appConfig.LoadConfig()
 	if err != nil {
 		panic(err)
 	}
