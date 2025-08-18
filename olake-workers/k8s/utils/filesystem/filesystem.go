@@ -71,11 +71,6 @@ func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
 		return nil, fmt.Errorf("read failed: %w", err)
 	}
 
-	// Validate file size first (cheaper than JSON parsing)
-	if len(stateData) < 10 {
-		return nil, fmt.Errorf("state file too small (%d bytes)", len(stateData))
-	}
-
 	// Validate JSON structure
 	var js json.RawMessage
 	if err := json.Unmarshal(stateData, &js); err != nil {

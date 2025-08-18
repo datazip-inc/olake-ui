@@ -96,8 +96,8 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			NodeSelector:  k.getNodeSelectorForJob(spec.JobID),
-			Tolerations:   k.getTolerationsForJob(spec.JobID),
+			NodeSelector:  k.getNodeSelectorForJob(spec.JobID, spec.Operation),
+			Tolerations:   []corev1.Toleration{}, // No tolerations supported yet
 			Affinity:      k.buildAffinityForJob(spec.JobID, spec.Operation),
 			Containers: []corev1.Container{
 				{
@@ -209,22 +209,19 @@ func (k *K8sPodManager) CleanupPod(ctx context.Context, podName string) error {
 
 // getNodeSelectorForJob returns node selector configuration for the given jobID
 // Returns empty map if no mapping is found (graceful fallback)
-func (k *K8sPodManager) getNodeSelectorForJob(jobID int) map[string]string {
+// Only applies node mapping for sync operations
+func (k *K8sPodManager) getNodeSelectorForJob(jobID int, operation shared.Command) map[string]string {
+	// Only apply node mapping for sync operations
+	if operation != shared.Sync {
+		return make(map[string]string)
+	}
+
 	if mapping, exists := k.config.Kubernetes.JobMapping[jobID]; exists {
 		logger.Infof("Found node mapping for JobID %d: %v", jobID, mapping)
 		return mapping
 	}
 	logger.Debugf("No node mapping found for JobID %d, using default scheduling", jobID)
 	return make(map[string]string)
-}
-
-// getTolerationsForJob returns tolerations configuration for the given jobID
-// Returns empty slice if no mapping is found (graceful fallback)
-func (k *K8sPodManager) getTolerationsForJob(jobID int) []corev1.Toleration {
-	// TODO: Implement Helm ConfigMap lookup for jobID-based tolerations
-	// For now, return empty slice as graceful fallback
-	logger.Debugf("JobID-based tolerations lookup for job %d - returning empty (no mapping)", jobID)
-	return []corev1.Toleration{}
 }
 
 // buildNodeAffinity creates node affinity from JobID mapping configuration
@@ -294,7 +291,7 @@ func (k *K8sPodManager) buildAffinityForJob(jobID int, operation shared.Command)
 	}
 
 	// Add JobID-based node affinity using jobMapping configuration
-	nodeMapping := k.getNodeSelectorForJob(jobID)
+	nodeMapping := k.getNodeSelectorForJob(jobID, operation)
 	if len(nodeMapping) > 0 {
 		nodeAffinity, err := k.buildNodeAffinity(nodeMapping)
 		if err != nil {
