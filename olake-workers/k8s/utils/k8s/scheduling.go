@@ -32,8 +32,7 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	var jobMapping map[string]map[string]string
 	if err := json.Unmarshal([]byte(jobMappingJSON), &jobMapping); err != nil {
 		logger.Errorf("Failed to parse JobID to Node mapping as JSON: %v", err)
-		logger.Errorf("Raw configuration (first 200 chars): %s",
-			truncateForLog(jobMappingJSON, 200))
+		logger.Errorf("Raw configuration: %s", jobMappingJSON)
 		return make(map[int]map[string]string)
 	}
 
@@ -132,7 +131,7 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	// Log comprehensive statistics
 	logger.Infof("Job mapping loaded: %d valid entries out of %d total",
 		stats.ValidEntries, stats.TotalEntries)
-	
+
 	// Print the valid job mapping configuration as JSON
 	if len(result) > 0 {
 		if jsonBytes, err := json.Marshal(result); err == nil {
@@ -157,12 +156,4 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	}
 
 	return result
-}
-
-// truncateForLog safely truncates a string for logging to prevent log spam
-func truncateForLog(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
 }
