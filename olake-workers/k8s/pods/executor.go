@@ -267,6 +267,11 @@ func (k *K8sPodManager) buildNodeAffinity(nodeSelectorMap map[string]string) (*c
 // buildAffinityForJob builds affinity rules for the given jobID and operation type
 // Implements operation-based anti-affinity and JobID-based node affinity
 func (k *K8sPodManager) buildAffinityForJob(jobID int, operation shared.Command) *corev1.Affinity {
+	// Skip affinity rules for jobID 0 (test/discover operations)
+	if jobID == 0 {
+		return nil
+	}
+
 	var affinity *corev1.Affinity
 
 	// Apply anti-affinity rules for sync operations to spread pods across nodes
