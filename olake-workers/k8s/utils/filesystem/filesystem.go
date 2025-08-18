@@ -10,8 +10,6 @@ import (
 	"olake-ui/olake-workers/k8s/shared"
 )
 
-const minStateFileSize = 10
-
 // Helper handles file system operations for job configuration
 type Helper struct {
 	basePath string
@@ -38,7 +36,7 @@ func (fs *Helper) GetWorkflowDirectory(operation shared.Command, originalWorkflo
 // SetupWorkDirectory creates the work directory for a workflow
 func (fs *Helper) SetupWorkDirectory(workflowDir string) error {
 	workDir := filepath.Join(fs.basePath, workflowDir)
-	return createDirectory(workDir, 0755)
+	return os.MkdirAll(workDir, 0755)
 }
 
 // WriteConfigFiles writes configuration files to the workflow directory
@@ -47,25 +45,11 @@ func (fs *Helper) WriteConfigFiles(workflowDir string, configs []shared.JobConfi
 
 	for _, config := range configs {
 		filePath := filepath.Join(workDir, config.Name)
-		if err := writeFile(filePath, []byte(config.Data), 0644); err != nil {
+		if err := os.WriteFile(filePath, []byte(config.Data), 0644); err != nil {
 			return fmt.Errorf("failed to write %s: %v", config.Name, err)
 		}
 	}
 	return nil
-}
-
-// GetFilePath returns the full path to a file in the workflow directory
-func (fs *Helper) GetFilePath(workflowDir, fileName string) string {
-	return filepath.Join(fs.basePath, workflowDir, fileName)
-}
-
-// Private helper functions for filesystem operations
-func createDirectory(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
-func writeFile(filename string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(filename, data, perm)
 }
 
 // ReadAndValidateStateFile reads and validates the state.json file for the given workflow.
@@ -77,7 +61,7 @@ func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
 	}
 
 	workflowDir := fs.GetWorkflowDirectory(shared.Sync, workflowID)
-	statePath := fs.GetFilePath(workflowDir, "state.json")
+	statePath := filepath.Join(fs.basePath, workflowDir, "state.json")
 
 	stateData, err := os.ReadFile(statePath)
 	if err != nil {
@@ -88,7 +72,7 @@ func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
 	}
 
 	// Validate file size first (cheaper than JSON parsing)
-	if len(stateData) < minStateFileSize {
+	if len(stateData) < 10 {
 		return nil, fmt.Errorf("state file too small (%d bytes)", len(stateData))
 	}
 
@@ -110,7 +94,7 @@ func (fs *Helper) ReadAndValidateStreamsFile(workflowID string) ([]byte, error) 
 	}
 
 	workflowDir := fs.GetWorkflowDirectory(shared.Discover, workflowID)
-	streamsPath := fs.GetFilePath(workflowDir, "streams.json")
+	streamsPath := filepath.Join(fs.basePath, workflowDir, "streams.json")
 
 	streamsData, err := os.ReadFile(streamsPath)
 	if err != nil {

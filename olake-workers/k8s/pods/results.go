@@ -26,19 +26,14 @@ func (k *K8sPodManager) getPodResults(podName string, operation shared.Command, 
 	// Sync operations write their final state (including metrics, counts, etc.) to state.json
 	// This file contains the complete sync results and is the authoritative source for sync status
 	if operation == shared.Sync && workflowID != "" {
-		fsHelper := filesystem.NewHelper()
-		stateData, err := fsHelper.ReadAndValidateStateFile(workflowID)
-		if err == nil {
+		if data, err := filesystem.NewHelper().ReadAndValidateStateFile(workflowID); err == nil {
 			var result map[string]interface{}
-			if unmarshalErr := json.Unmarshal(stateData, &result); unmarshalErr == nil {
+			if err := json.Unmarshal(data, &result); err == nil {
 				logger.Debugf("Successfully read state.json for sync pod %s", podName)
 				return result, nil
-			} else {
-				// This case is unlikely if ReadAndValidateStateFile truly validates JSON, but it's safe to handle
-				logger.Errorf("Failed to parse validated state.json for sync pod %s: %v", podName, unmarshalErr)
 			}
+			logger.Errorf("Failed to parse validated state.json for sync pod %s: %v", podName, err)
 		} else {
-			// Log the error from ReadAndValidateStateFile, which could be os.ErrNotExist or something else
 			logger.Warnf("Failed to read state.json for sync pod %s: %v", podName, err)
 		}
 	}
@@ -47,20 +42,15 @@ func (k *K8sPodManager) getPodResults(podName string, operation shared.Command, 
 	// Discover operations scan the data source and write discovered streams/tables to streams.json
 	// This file contains the catalog of available data streams and their schema information
 	if operation == shared.Discover && workflowID != "" {
-		fsHelper := filesystem.NewHelper()
-		streamsData, err := fsHelper.ReadAndValidateStreamsFile(workflowID)
-		if err == nil {
-			var streamsResult map[string]interface{}
-			if unmarshalErr := json.Unmarshal(streamsData, &streamsResult); unmarshalErr == nil {
+		if data, err := filesystem.NewHelper().ReadAndValidateStreamsFile(workflowID); err == nil {
+			var result map[string]interface{}
+			if err := json.Unmarshal(data, &result); err == nil {
 				logger.Debugf("Successfully read streams.json for discover pod %s", podName)
-				logger.Debugf("Discovered streams configuration: %s", string(streamsData))
-				return streamsResult, nil
-			} else {
-				// This case is unlikely if ReadAndValidateStreamsFile truly validates JSON, but it's safe to handle
-				logger.Errorf("Failed to parse validated streams.json for discover pod %s: %v", podName, unmarshalErr)
+				logger.Debugf("Discovered streams configuration: %s", string(data))
+				return result, nil
 			}
+			logger.Errorf("Failed to parse validated streams.json for discover pod %s: %v", podName, err)
 		} else {
-			// Log the error from ReadAndValidateStreamsFile, which could be os.ErrNotExist or something else
 			logger.Warnf("Failed to read streams.json for discover pod %s: %v", podName, err)
 		}
 	}
@@ -69,23 +59,18 @@ func (k *K8sPodManager) getPodResults(podName string, operation shared.Command, 
 	// Check operations test connectivity and write status messages to stdout
 	// Unlike sync/discover, check operations don't write files - they only output to logs
 	if operation == shared.Check {
-		// Retrieve the complete stdout/stderr logs from the completed pod
-		logs, err := k.getPodLogs(context.Background(), podName)
-		if err != nil {
+		if logs, err := k.getPodLogs(context.Background(), podName); err == nil {
+			if result, err := parser.ParseJobOutput(logs); err == nil {
+				logger.Debugf("Successfully parsed connection status from logs for check pod %s", podName)
+				return result, nil
+			} else {
+				logger.Errorf("Failed to parse connection status from logs for check pod %s: %v", podName, err)
+				return nil, fmt.Errorf("failed to parse connection status from logs: %v", err)
+			}
+		} else {
 			logger.Errorf("Failed to get logs for check pod %s: %v", podName, err)
 			return nil, fmt.Errorf("failed to get logs for check pod %s: %v", podName, err)
 		}
-
-		// Parse the log output to extract structured connection status information
-		// This looks for specific JSON patterns that connectors emit to indicate success/failure
-		result, err := parser.ParseJobOutput(logs)
-		if err != nil {
-			logger.Errorf("Failed to parse connection status from logs for check pod %s: %v", podName, err)
-			return nil, fmt.Errorf("failed to parse connection status from logs: %v", err)
-		}
-
-		logger.Debugf("Successfully parsed connection status from logs for check pod %s", podName)
-		return result, nil
 	}
 
 	// No fallback available - return error indicating file-based results are required
