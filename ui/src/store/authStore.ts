@@ -1,6 +1,7 @@
 import { StateCreator } from "zustand"
-import { authService } from "../api/services/authService"
 import { persist, createJSONStorage } from "zustand/middleware"
+
+import { authService } from "../api/services/authService"
 import { identifyUser } from "../api/services/analyticsService"
 
 export interface AuthSlice {

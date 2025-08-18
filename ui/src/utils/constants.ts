@@ -22,6 +22,12 @@ export const PARTITIONING_COLUMNS = [
 export const CONNECTOR_TYPES = {
 	AMAZON_S3: "Amazon S3",
 	APACHE_ICEBERG: "Apache Iceberg",
+	MONGODB: "MongoDB",
+	POSTGRES: "Postgres",
+	MYSQL: "MySQL",
+	ORACLE: "Oracle",
+	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
+	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
 
 export const CATALOG_TYPES = {
@@ -35,6 +41,64 @@ export const CATALOG_TYPES = {
 export const SETUP_TYPES = {
 	NEW: "new",
 	EXISTING: "existing",
+}
+
+export const STATUS = {
+	ACTIVE: "active",
+	INACTIVE: "inactive",
+	PENDING: "pending",
+	FAILED: "failed",
+	RUNNING: "running",
+	SUCCESS: "success",
+	COMPLETED: "completed",
+	CANCELLED: "cancelled",
+}
+
+export const STATUS_LABELS = {
+	ACTIVE: "Active",
+	INACTIVE: "Inactive",
+	PENDING: "Pending",
+	FAILED: "Failed",
+	RUNNING: "Running",
+	SUCCESS: "Success",
+	COMPLETED: "Completed",
+	CANCELLED: "Cancelled",
+}
+
+export const JOB_CREATION_STEPS = {
+	SOURCE: "source",
+	DESTINATION: "destination",
+	SCHEMA: "schema",
+	CONFIG: "config",
+}
+
+export const TAB_TYPES = {
+	CONFIG: "config",
+	SCHEMA: "schema",
+	JOBS: "jobs",
+}
+
+export const ENTITY_TYPES = {
+	SOURCE: "source",
+	DESTINATION: "destination",
+	JOB: "job",
+}
+
+export const DESTINATION_INTERNAL_TYPES = {
+	ICEBERG: "iceberg",
+	S3: "s3",
+}
+
+export const DESTINATION_LABELS = {
+	AMAZON_S3: "amazon s3",
+	APACHE_ICEBERG: "apache iceberg",
+}
+
+export const JOB_TYPES = {
+	ACTIVE: "active",
+	INACTIVE: "inactive",
+	SAVED: "saved",
+	FAILED: "failed",
 }
 
 export const PAGE_SIZE = 8
@@ -70,8 +134,8 @@ export const NAV_ITEMS: NavItem[] = [
 ]
 
 export const sourceTabs = [
-	{ key: "active", label: "Active sources" },
-	{ key: "inactive", label: "Inactive sources" },
+	{ key: STATUS.ACTIVE, label: "Active sources" },
+	{ key: STATUS.INACTIVE, label: "Inactive sources" },
 ]
 
 export const mapCatalogValueToType = (
@@ -93,8 +157,8 @@ export const IcebergCatalogTypes = [
 ]
 
 export const destinationTabs = [
-	{ key: "active", label: "Active destinations" },
-	{ key: "inactive", label: "Inactive destinations" },
+	{ key: STATUS.ACTIVE, label: "Active destinations" },
+	{ key: STATUS.INACTIVE, label: "Inactive destinations" },
 ]
 
 export const COLORS = {
@@ -108,13 +172,17 @@ export const COLORS = {
 	},
 } as const
 
-export const steps: string[] = ["source", "destination", "schema", "config"]
+export const steps: string[] = [
+	JOB_CREATION_STEPS.SOURCE,
+	JOB_CREATION_STEPS.DESTINATION,
+	JOB_CREATION_STEPS.SCHEMA,
+	JOB_CREATION_STEPS.CONFIG,
+]
 
 export const TAB_STYLES = {
-	active:
-		"border border-[#203FDD] bg-white text-[#203FDD] rounded-[6px] py-1 px-2",
-	inactive: "bg-[#F5F5F5] text-slate-900 py-1 px-2",
-	hover: "hover:text-[#203FDD]",
+	active: "border border-primary bg-white text-primary rounded-md py-1 px-2",
+	inactive: "bg-background-primary text-slate-900 py-1 px-2",
+	hover: "hover:text-primary",
 }
 
 export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
@@ -167,3 +235,15 @@ export const FREQUENCY_OPTIONS = [
 	{ value: "weeks", label: "Every Week" },
 	{ value: "custom", label: "Custom" },
 ]
+
+export const PartitioningRegexTooltip =
+	"Choose a column to partition your data for faster reads and better performance"
+
+export const DISPLAYED_JOBS_COUNT = 5
+
+export const SYNC_MODE_MAP = {
+	FULL_REFRESH: "full",
+	INCREMENTAL: "incremental",
+	CDC: "cdc",
+	STRICT_CDC: "strict_cdc",
+}

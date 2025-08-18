@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -200,7 +199,6 @@ func (c *DestHandler) DeleteDestination() {
 
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
-	// Will be used for multi-tenant filtering in the future
 	var req models.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -214,34 +212,24 @@ func (c *DestHandler) TestConnection() {
 	}
 
 	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination type is required")
 		return
 	}
 
-	if req.Version == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination version is required")
+	if req.Version == "" || req.Version == "latest" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination version required")
 		return
 	}
 
-	driver := utils.Ternary(req.Source == "", "postgres", req.Source).(string)
+	// Determine driver and available tags
 	version := req.Version
-
-	// check if tags available through dockerhub
-	_, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", false)
-	if err != nil {
-		// if dockerhub api fails then check for cached images and use any of them with same version
-		images, err := utils.GetCachedImages(c.Ctx.Request.Context())
+	driver := req.Source
+	if driver == "" {
+		var err error
+		_, driver, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to getc cached images config: %s", err))
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
 			return
-		}
-		for _, image := range images {
-			if strings.HasSuffix(image, version) {
-				untagged := strings.Split(image, ":")[0]         // olakego/source-postgres
-				lastPart := strings.Split(untagged, "/")[1]      // source-postgres
-				driver = strings.TrimPrefix(lastPart, "source-") // postgres
-				break
-			}
 		}
 	}
 
@@ -251,7 +239,6 @@ func (c *DestHandler) TestConnection() {
 		return
 	}
 
-	// check if destination asociated with job
 	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
@@ -296,7 +283,7 @@ func (c *DestHandler) GetDestinationVersions() {
 	}
 
 	// get available driver versions
-	versions, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
+	versions, _, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
 		return

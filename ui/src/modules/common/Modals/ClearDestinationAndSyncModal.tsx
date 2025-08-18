@@ -1,7 +1,7 @@
+import { useNavigate } from "react-router-dom"
+import { Warning } from "@phosphor-icons/react"
 import { Button, message, Modal } from "antd"
 import { useAppStore } from "../../../store"
-import { Warning } from "@phosphor-icons/react"
-import { useNavigate } from "react-router-dom"
 
 const ClearDestinationAndSyncModal = () => {
 	const {
@@ -19,11 +19,11 @@ const ClearDestinationAndSyncModal = () => {
 		>
 			<div className="flex w-full flex-col items-center justify-center gap-8">
 				<Warning
-					className="size-16 text-[#203FDD]"
+					className="size-16 text-primary"
 					weight="fill"
 				/>
 
-				<div className="text-center text-xl font-medium text-[#2B2B2B]">
+				<div className="text-center text-xl font-medium text-gray-950">
 					Clear destination and sync deletes all the data in your destination
 					and sync your job
 				</div>
@@ -31,7 +31,7 @@ const ClearDestinationAndSyncModal = () => {
 				<div className="flex w-full justify-end gap-4">
 					<Button
 						type="primary"
-						className="bg-[#203FDD] text-white"
+						className="bg-primary text-white"
 						onClick={() => {
 							setShowClearDestinationAndSyncModal(false)
 							message.success("Destination cleared and sync initiated")
