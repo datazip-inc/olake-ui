@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	defaultPort               = 8080
+	defaultPort               = 8000
 	version                   = "Not Set"
 	commitsha                 = "Not Set"
 	releasechannel            = "Not Set"

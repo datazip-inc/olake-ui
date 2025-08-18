@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
+import type { ColumnsType } from "antd/es/table"
+import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
+
 import { useAppStore } from "../../../store"
-import { ArrowLeft, Notebook } from "@phosphor-icons/react"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import FixedSchemaForm from "../../../utils/FormFix"
 import { destinationService } from "../../../api/services/destinationService"
 import { jobService } from "../../../api"
-import StepTitle from "../../common/components/StepTitle"
-import DeleteModal from "../../common/Modals/DeleteModal"
+import {
+	DestinationEditProps,
+	DestinationJob,
+	Entity,
+	EntityType,
+} from "../../../types"
 import {
 	getCatalogInLowerCase,
 	getCatalogName,
@@ -18,16 +23,25 @@ import {
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import { DestinationEditProps, DestinationJob, Entity } from "../../../types"
-import type { ColumnsType } from "antd/es/table"
-import { formatDistanceToNow } from "date-fns"
+import { getStatusIcon } from "../../../utils/statusIcons"
+import {
+	catalogOptions,
+	CONNECTOR_TYPES,
+	CATALOG_TYPES,
+	DESTINATION_INTERNAL_TYPES,
+	TAB_TYPES,
+	ENTITY_TYPES,
+	DISPLAYED_JOBS_COUNT,
+} from "../../../utils/constants"
+import FixedSchemaForm from "../../../utils/FormFix"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
+import DeleteModal from "../../common/Modals/DeleteModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import { connectorOptions } from "../components/connectorOptions"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
-import { getStatusIcon } from "../../../utils/statusIcons"
-import { catalogOptions } from "../../../utils/constants"
+import { connectorOptions } from "../components/connectorOptions"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -38,18 +52,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	onConnectorChange,
 	onVersionChange,
 	onFormDataChange,
+	docsMinimized = false,
+	onDocsMinimizedChange,
 }) => {
 	const { destinationId } = useParams<{ destinationId: string }>()
-	const isNewDestination = destinationId === "new"
-	const [activeTab, setActiveTab] = useState("config")
+	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
-	const catalogName = "AWS Glue"
+	const catalogName = CATALOG_TYPES.AWS_GLUE
 	const [destinationName, setDestinationName] = useState("")
-	const [selectedVersion, setSelectedVersion] = useState("latest")
+	const [selectedVersion, setSelectedVersion] = useState("")
 	const [versions, setVersions] = useState<string[]>([])
 	const [loadingVersions, setLoadingVersions] = useState(false)
-	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [schema, setSchema] = useState<Record<string, any> | null>(null)
 	const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
@@ -94,7 +108,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const displayedJobs = showAllJobs
 		? transformJobs(destination?.jobs || [])
-		: transformJobs((destination?.jobs || []).slice(0, 5))
+		: transformJobs((destination?.jobs || []).slice(0, DISPLAYED_JOBS_COUNT))
 
 	useEffect(() => {
 		fetchDestinations()
@@ -109,7 +123,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setDestination(destination)
 				setDestinationName(destination.name)
 				const connectorType =
-					destination.type === "iceberg" ? "Apache Iceberg" : "Amazon S3"
+					destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG
+						? CONNECTOR_TYPES.APACHE_ICEBERG
+						: CONNECTOR_TYPES.AMAZON_S3
 				setConnector(connectorType)
 				setSelectedVersion(destination.version || "")
 
@@ -121,16 +137,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setFormData(config)
 				setInitialFormData(config)
 
-				if (destination.type === "iceberg") {
+				if (destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG) {
 					try {
-						const catalogType = config.writer.catalog_type || "AWS Glue"
+						const catalogType =
+							config.writer.catalog_type || CATALOG_TYPES.AWS_GLUE
 						setCatalog(getCatalogName(catalogType) || null)
+						setInitialCatalog(getCatalogName(catalogType) || null)
 					} catch (error) {
 						console.error("Error parsing config for catalog:", error)
-						setCatalog("AWS Glue")
+						setCatalog(CATALOG_TYPES.AWS_GLUE)
 					}
 				} else {
-					setInitialCatalog("s3")
+					setInitialCatalog(DESTINATION_INTERNAL_TYPES.S3)
 				}
 			}
 		}
@@ -140,22 +158,18 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		if (initialData) {
 			setDestinationName(initialData.name || "")
 			let connectorType = initialData.type
-			if (
-				connectorType?.toLowerCase() === "s3" ||
-				connectorType?.toLowerCase() === "amazon s3"
-			) {
-				connectorType = "Amazon S3"
+			if (connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.S3) {
+				connectorType = CONNECTOR_TYPES.AMAZON_S3
 			} else if (
-				connectorType?.toLowerCase() === "iceberg" ||
-				connectorType?.toLowerCase() === "apache iceberg"
+				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.ICEBERG
 			) {
-				connectorType = "Apache Iceberg"
+				connectorType = CONNECTOR_TYPES.APACHE_ICEBERG
 			}
 
 			// Only set connector if it's not already set or if it's the same as initialData
 			if (!connector || connector === connectorType) {
 				setConnector(connectorType)
-				setSelectedVersion(initialData.version || "latest")
+				setSelectedVersion(initialData.version || "")
 				if (initialData.config) {
 					let parsedConfig = initialData.config
 					if (typeof initialData.config === "string") {
@@ -168,17 +182,30 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					}
 					setFormData(parsedConfig)
 					setInitialFormData(parsedConfig)
-					if (connectorType === "Apache Iceberg") {
+					if (connectorType === CONNECTOR_TYPES.APACHE_ICEBERG) {
 						let writerCatalogType = parsedConfig?.writer?.catalog_type
-						setCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
-						setInitialCatalog(getCatalogName(writerCatalogType) || "AWS Glue")
+						setCatalog(
+							getCatalogName(writerCatalogType) || CATALOG_TYPES.AWS_GLUE,
+						)
+						setInitialCatalog(
+							getCatalogName(writerCatalogType) || CATALOG_TYPES.AWS_GLUE,
+						)
 					} else {
-						setInitialCatalog("s3")
+						setInitialCatalog(DESTINATION_INTERNAL_TYPES.S3)
 					}
 				}
 			}
 		}
 	}, [initialData])
+
+	const resetVersionState = () => {
+		setVersions([])
+		setSelectedVersion("")
+		setSchema(null)
+		if (onVersionChange) {
+			onVersionChange("")
+		}
+	}
 
 	useEffect(() => {
 		const fetchVersions = async () => {
@@ -187,17 +214,17 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			setLoadingVersions(true)
 			try {
 				let connectorType = connector
-				if (connector === "Apache Iceberg") {
-					connectorType = "iceberg"
+				if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+					connectorType = DESTINATION_INTERNAL_TYPES.ICEBERG
 				} else {
-					connectorType = "s3"
+					connectorType = DESTINATION_INTERNAL_TYPES.S3
 				}
 
 				const response = await destinationService.getDestinationVersions(
 					connectorType.toLowerCase(),
 				)
 
-				if (response.data && response.data.version) {
+				if (response.data?.version) {
 					setVersions(response.data.version)
 
 					// If no version is selected, set the first one as default
@@ -207,8 +234,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							onVersionChange(response.data.version[0])
 						}
 					}
+				} else {
+					resetVersionState()
 				}
 			} catch (error) {
+				resetVersionState()
 				console.error("Error fetching versions:", error)
 			} finally {
 				setLoadingVersions(false)
@@ -217,17 +247,23 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 		fetchVersions()
 		if (!initialData) {
-			if (connector === "Apache Iceberg") {
-				setCatalog("AWS Glue")
+			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
+				setCatalog(CATALOG_TYPES.AWS_GLUE)
 			} else {
-				setCatalog("None")
+				setCatalog(CATALOG_TYPES.NONE)
 			}
 		}
 	}, [connector])
 
 	useEffect(() => {
+		if (!selectedVersion || !connector) {
+			setSchema(null)
+			setUiSchema(null)
+			setFormData({})
+			return
+		}
+
 		const fetchDestinationSpec = async () => {
-			if (!connector) return
 			try {
 				setIsLoading(true)
 				const response = await destinationService.getDestinationSpec(
@@ -256,6 +292,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								setFormData(initialFormData)
 							}
 						}
+					} else {
+						setFormData({})
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)
@@ -284,7 +322,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		const destinationData = {
 			...(destination || {}),
 			name: destinationName,
-			type: connector === "Apache Iceberg" ? "iceberg" : "s3",
+			type:
+				connector === CONNECTOR_TYPES.APACHE_ICEBERG
+					? DESTINATION_INTERNAL_TYPES.ICEBERG
+					: DESTINATION_INTERNAL_TYPES.S3,
 			version: selectedVersion,
 			config: configStr,
 		}
@@ -385,7 +426,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+		if (onDocsMinimizedChange) {
+			onDocsMinimizedChange(prev => !prev)
+		}
 	}
 
 	const updateConnector = (value: string) => {
@@ -393,6 +436,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSchema(null)
 		setUiSchema(null)
 		setConnector(value)
+
+		if (value === "Apache Iceberg") {
+			setCatalog(CATALOG_TYPES.AWS_GLUE)
+		} else {
+			setCatalog(CATALOG_TYPES.NONE)
+		}
 
 		if (onFormDataChange) {
 			onFormDataChange({})
@@ -430,8 +479,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				<span
 					className={`rounded px-2 py-1 text-xs ${
 						!activate
-							? "bg-[#FFF1F0] text-[#F5222D]"
-							: "bg-[#E6F4FF] text-[#0958D9]"
+							? "bg-danger-light text-danger"
+							: "bg-primary-200 text-primary-700"
 					}`}
 				>
 					{activate ? "Active" : "Inactive"}
@@ -454,7 +503,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			key: "last_run_state",
 			render: (last_run_state: string) => (
 				<div
-					className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(last_run_state)}`}
+					className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(last_run_state)}`}
 				>
 					{getStatusIcon(last_run_state.toLowerCase())}
 					<span>{getStatusLabel(last_run_state.toLowerCase())}</span>
@@ -510,6 +559,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									onChange={updateConnector}
 									className="h-8 w-full"
 									options={connectorOptions}
+									disabled={fromJobFlow}
 								/>
 							</div>
 						</div>
@@ -521,13 +571,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<Select
 								className="h-8 w-full"
 								placeholder="Select catalog"
-								disabled={connector === "Amazon S3" || connector === "AWS S3"}
+								disabled={
+									connector === CONNECTOR_TYPES.AMAZON_S3 || fromJobFlow
+								}
 								options={catalogOptions}
 								value={
 									catalog ||
-									(connector === "Amazon S3" || connector === "AWS S3"
-										? "None"
-										: undefined)
+									(connector === CONNECTOR_TYPES.AMAZON_S3 ? "None" : undefined)
 								}
 								onChange={value => {
 									setCatalog(value)
@@ -547,6 +597,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								value={destinationName}
 								onChange={e => updateDestinationName(e.target.value)}
 								className="h-8"
+								disabled={fromJobFlow}
 							/>
 						</div>
 
@@ -554,17 +605,28 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Version:
 							</label>
-							<Select
-								value={selectedVersion}
-								onChange={handleVersionChange}
-								className="w-full"
-								loading={loadingVersions}
-								placeholder="Select version"
-								options={versions.map(version => ({
-									value: version,
-									label: version,
-								}))}
-							/>
+							{loadingVersions ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : versions.length > 0 ? (
+								<Select
+									value={selectedVersion}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									disabled={fromJobFlow}
+									options={versions.map(version => ({
+										value: version,
+										label: version,
+									}))}
+								/>
+							) : (
+								<div className="flex items-center gap-1 text-sm text-red-500">
+									<Info />
+									No versions available
+								</div>
+							)}
 						</div>
 					</div>
 				</div>
@@ -582,6 +644,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						formData={formData}
 						onChange={updateFormData}
 						hideSubmit={true}
+						disabled={fromJobFlow}
 						{...(uiSchema ? { uiSchema } : {})}
 					/>
 				) : null}
@@ -607,7 +670,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					<Button
 						type="default"
 						onClick={handleViewAllJobs}
-						className="w-full border-none bg-[#E9EBFC] font-medium text-[#203FDD]"
+						className="w-full border-none bg-primary-100 font-medium text-primary"
 					>
 						View all associated jobs
 					</Button>
@@ -625,114 +688,118 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	)
 
 	return (
-		<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
-			{/* Header */}
-			{!fromJobFlow && (
-				<div className="flex gap-2 px-6 pb-0 pt-6">
-					<Link
-						to="/destinations"
-						className="mb-4 flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
-					>
-						<ArrowLeft className="size-5" />
-					</Link>
-
-					<div className="mb-4 flex items-center">
-						<h1 className="text-2xl font-bold">
-							{isNewDestination
-								? "Create New Destination"
-								: destinationName || "<Destination_name>"}
-						</h1>
+		<div className="flex h-screen">
+			<div className="flex flex-1 flex-col">
+				{!fromJobFlow && (
+					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+						<Link
+							to="/destinations"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
+						>
+							<ArrowLeft className="size-5" />
+						</Link>
+						<div className="text-lg font-bold">{destinationName}</div>
 					</div>
-				</div>
-			)}
+				)}
 
-			{/* Main content */}
-			<div className="flex flex-1 overflow-hidden border border-t border-[#D9D9D9]">
-				{/* Left content */}
-				<div
-					className={`${
-						docsMinimized ? "w-full" : "w-3/4"
-					} mt-4 overflow-auto p-6 pt-0 transition-all duration-300`}
-				>
-					{fromJobFlow && stepNumber && stepTitle && (
-						<div>
-							<StepTitle
-								stepNumber={stepNumber}
-								stepTitle={stepTitle}
-							/>
+				<div className="flex flex-1 overflow-hidden">
+					<div className="flex flex-1 flex-col">
+						<div className="flex-1 overflow-auto p-6 pt-0">
+							{fromJobFlow && stepNumber && stepTitle && (
+								<div className="mb-4">
+									<div className="flex items-center justify-between">
+										<StepTitle
+											stepNumber={stepNumber}
+											stepTitle={stepTitle}
+										/>
+										<Link
+											to={
+												destinationId
+													? `/destinations/${destinationId}`
+													: `/destinations/${destinations.find(d => d.name === destinationName)?.id || ""}`
+											}
+											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
+										>
+											<PencilSimple className="size-4" />
+											Edit Destination
+										</Link>
+									</div>
+								</div>
+							)}
+
+							{!fromJobFlow && (
+								<div className="mb-4 mt-2">
+									<div className="flex w-fit rounded-md bg-background-primary p-1">
+										<button
+											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
+												activeTab === TAB_TYPES.CONFIG
+													? "bg-primary text-neutral-light"
+													: "bg-background-primary text-text-primary"
+											}`}
+											onClick={() => setActiveTab(TAB_TYPES.CONFIG)}
+										>
+											Config
+										</button>
+										{
+											<button
+												className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
+													activeTab === TAB_TYPES.JOBS
+														? "bg-primary text-neutral-light"
+														: "bg-background-primary text-text-primary"
+												}`}
+												onClick={() => setActiveTab(TAB_TYPES.JOBS)}
+											>
+												Associated jobs
+											</button>
+										}
+									</div>
+								</div>
+							)}
+
+							{activeTab === TAB_TYPES.CONFIG
+								? renderConfigTab()
+								: renderJobsTab()}
 						</div>
-					)}
 
-					{!fromJobFlow && (
-						<div className="mb-4">
-							<div className="flex w-fit rounded-[6px] bg-[#f5f5f5] p-1">
-								<button
-									className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-										activeTab === "config"
-											? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-											: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-									}`}
-									onClick={() => setActiveTab("config")}
-								>
-									Config
-								</button>
-								{!isNewDestination && (
+						{/* Footer */}
+						{!fromJobFlow && (
+							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+								<div>
+									{
+										<button
+											className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+											onClick={handleDelete}
+										>
+											Delete
+										</button>
+									}
+								</div>
+								<div className="flex space-x-4">
 									<button
-										className={`w-56 rounded-[6px] px-3 py-1.5 text-sm font-normal ${
-											activeTab === "jobs"
-												? "mr-1 bg-[#203fdd] text-center text-[#F0F0F0]"
-												: "mr-1 bg-[#F5F5F5] text-center text-[#0A0A0A]"
-										}`}
-										onClick={() => setActiveTab("jobs")}
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+										onClick={handleSaveChanges}
 									>
-										Associated jobs
+										Save Changes
 									</button>
-								)}
+								</div>
 							</div>
-						</div>
-					)}
+						)}
+					</div>
 
-					{activeTab === "config" ? renderConfigTab() : renderJobsTab()}
+					<DocumentationPanel
+						docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
+						isMinimized={docsMinimized}
+						onToggle={toggleDocsPanel}
+						showResizer={true}
+					/>
 				</div>
-
-				{/* Documentation panel */}
-				<DocumentationPanel
-					docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
-					isMinimized={docsMinimized}
-					onToggle={toggleDocsPanel}
-					showResizer={true}
-				/>
 			</div>
-			{/* Delete Modal */}
+
 			<DeleteModal fromSource={false} />
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={false} />
-			<EntityEditModal entityType="destination" />
-
-			{/* Footer with buttons */}
-			{!fromJobFlow && (
-				<div className="flex justify-between border-t border-gray-200 bg-white p-4">
-					<div>
-						{!isNewDestination && (
-							<button
-								className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
-								onClick={handleDelete}
-							>
-								Delete
-							</button>
-						)}
-					</div>
-					<div className="flex space-x-4">
-						<button
-							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
-							onClick={handleSaveChanges}
-						>
-							Save Changes
-						</button>
-					</div>
-				</div>
-			)}
+			<EntityEditModal entityType={ENTITY_TYPES.DESTINATION as EntityType} />
 		</div>
 	)
 }

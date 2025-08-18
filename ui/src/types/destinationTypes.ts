@@ -42,6 +42,8 @@ export interface CreateDestinationProps {
 	onFormDataChange?: (formData: DestinationConfig) => void
 	onVersionChange?: (version: string) => void
 	onCatalogTypeChange?: (catalog: CatalogType | null) => void
+	docsMinimized?: boolean
+	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export interface DestinationTableProps {
@@ -77,4 +79,6 @@ export interface DestinationEditProps {
 	onConnectorChange?: (type: string) => void
 	onVersionChange?: (version: string) => void
 	onFormDataChange?: (config: Record<string, any>) => void
+	docsMinimized?: boolean
+	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }

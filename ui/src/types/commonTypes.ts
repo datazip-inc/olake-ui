@@ -53,10 +53,14 @@ export interface StepIndicatorProps {
 	step: string
 	index: number
 	currentStep: string
+	onStepClick?: (step: string) => void
+	isEditMode?: boolean
 }
 
 export interface StepProgressProps {
 	currentStep: string
+	onStepClick?: (step: string) => void
+	isEditMode?: boolean
 }
 
 export interface CatalogOption {
@@ -66,4 +70,12 @@ export interface CatalogOption {
 
 export interface LayoutProps {
 	children: React.ReactNode
+}
+
+export interface CronParseResult {
+	frequency: string
+	selectedTime?: string
+	selectedAmPm?: "AM" | "PM"
+	selectedDay?: string
+	customCronExpression?: string
 }

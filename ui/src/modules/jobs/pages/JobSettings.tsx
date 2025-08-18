@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Switch, message, Select, Radio } from "antd"
-import { ArrowRight } from "@phosphor-icons/react"
+import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
+import { ArrowRight, Info, ArrowLeft } from "@phosphor-icons/react"
+import parser from "cron-parser"
+
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
-import { getConnectorImage, generateCronExpression } from "../../../utils/utils"
+import { jobService } from "../../../api"
+import {
+	getConnectorImage,
+	generateCronExpression,
+	parseCronExpression,
+	validateCronExpression,
+	isValidCronExpression,
+} from "../../../utils/utils"
+import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
-import { jobService } from "../../../api"
-import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
-import parser from "cron-parser"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -51,6 +57,11 @@ const JobSettings: React.FC = () => {
 	const getParsedDate = (value: Date) => value.toUTCString()
 
 	const updateNextRuns = (cronValue: string) => {
+		if (!cronValue || !isValidCronExpression(cronValue)) {
+			setNextRuns([])
+			return
+		}
+
 		try {
 			const interval = parser.parse(cronValue, {
 				currentDate: new Date(),
@@ -73,61 +84,24 @@ const JobSettings: React.FC = () => {
 	// Parse initial cron expression and set states
 	useEffect(() => {
 		if (job?.frequency) {
-			try {
-				const parts = job.frequency.split(" ")
-				if (parts.length !== 5) return
+			const result = parseCronExpression(job.frequency, DAYS)
 
-				const [minute, hour, dayOfMonth, month, dayOfWeek] = parts
-
-				// Determine frequency and set states based on cron pattern
-				if (minute === "*" && hour === "*") {
-					setFrequency("minutes")
-				} else if (minute === "0" && hour === "*") {
-					setFrequency("hours")
-				} else if (
-					minute === "0" &&
-					dayOfMonth === "*" &&
-					month === "*" &&
-					dayOfWeek === "*"
-				) {
-					setFrequency("days")
-					const hourNum = parseInt(hour)
-					setSelectedTime(
-						hourNum > 12
-							? (hourNum - 12).toString()
-							: hourNum === 0
-								? "12"
-								: hourNum.toString(),
-					)
-					setSelectedAmPm(hourNum >= 12 ? "PM" : "AM")
-				} else if (
-					minute === "0" &&
-					dayOfMonth === "*" &&
-					month === "*" &&
-					/^[0-6]$/.test(dayOfWeek)
-				) {
-					setFrequency("weeks")
-					const hourNum = parseInt(hour)
-					setSelectedTime(
-						hourNum > 12
-							? (hourNum - 12).toString()
-							: hourNum === 0
-								? "12"
-								: hourNum.toString(),
-					)
-					setSelectedAmPm(hourNum >= 12 ? "PM" : "AM")
-					setSelectedDay(DAYS[parseInt(dayOfWeek)])
-				} else {
-					setFrequency("custom")
-					setCustomCronExpression(job.frequency)
-				}
-
-				setCronExpression(job.frequency)
-				updateNextRuns(job.frequency)
-			} catch (error) {
-				console.error("Error parsing cron expression:", error)
-				setFrequency("minutes")
+			setFrequency(result.frequency)
+			if (result.customCronExpression) {
+				setCustomCronExpression(result.customCronExpression)
 			}
+			if (result.selectedTime) {
+				setSelectedTime(result.selectedTime)
+			}
+			if (result.selectedAmPm) {
+				setSelectedAmPm(result.selectedAmPm)
+			}
+			if (result.selectedDay) {
+				setSelectedDay(result.selectedDay)
+			}
+
+			setCronExpression(job.frequency)
+			updateNextRuns(job.frequency)
 		}
 		if (job) {
 			setPauseJob(!job.activate)
@@ -228,6 +202,14 @@ const JobSettings: React.FC = () => {
 			return
 		}
 
+		if (!jobName.trim()) {
+			message.error("Job name is required")
+			return
+		}
+		if (!validateCronExpression(cronExpression)) {
+			return
+		}
+
 		try {
 			const jobUpdatePayload = {
 				name: jobName,
@@ -273,16 +255,14 @@ const JobSettings: React.FC = () => {
 								<div className="flex items-center gap-2">
 									<Link
 										to="/jobs"
-										className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 									>
 										<ArrowLeft className="size-5" />
 									</Link>
 
-									<div className="text-2xl font-bold">
-										{job?.name || "<Job_name>"}
-									</div>
+									<div className="text-2xl font-bold">{job?.name}</div>
 								</div>
-								<div className="ml-10 mt-1.5 w-fit rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
+								<div className="ml-10 mt-1.5 w-fit rounded bg-primary-200 px-2 py-1 text-xs text-primary-700">
 									{job?.activate ? "Active" : "Inactive"}
 								</div>
 							</div>
@@ -339,12 +319,20 @@ const JobSettings: React.FC = () => {
 
 											{frequency === "custom" && (
 												<div>
-													<label className="mb-2 block text-sm">
-														Cron Expression
-													</label>
+													<div className="mb-2 flex items-center gap-1">
+														<label className="block text-sm">
+															Cron Expression
+														</label>
+														<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
+															<Info
+																size={16}
+																className="cursor-help text-slate-900"
+															/>
+														</Tooltip>
+													</div>
 													<Input
 														className="w-64"
-														placeholder="Enter cron expression (e.g., */5 * * * *)"
+														placeholder="Enter cron expression (Eg : * * * * *)"
 														value={customCronExpression}
 														onChange={e =>
 															handleCustomCronChange(e.target.value)
@@ -372,7 +360,7 @@ const JobSettings: React.FC = () => {
 												<div className={frequency === "weeks" ? "" : "ml-4"}>
 													<label className="mb-2 block text-sm">
 														Job Start Time{" "}
-														<span className="text-[#A7A7A7]">
+														<span className="text-gray-500">
 															(12H Format UTC)
 														</span>
 													</label>
@@ -433,13 +421,13 @@ const JobSettings: React.FC = () => {
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">Delete the job:</div>
-											<div className="text-sm text-[#8A8A8A]">
+											<div className="text-sm text-text-tertiary">
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
 										<button
 											onClick={handleDeleteJob}
-											className="rounded-[6px] border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
+											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
 										>
 											Delete this job
 										</button>
@@ -457,7 +445,7 @@ const JobSettings: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleSaveSettings}
-						className="flex items-center gap-1 bg-[#203FDD] hover:bg-[#132685]"
+						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
 					>
 						Save{" "}
 						<ArrowRight

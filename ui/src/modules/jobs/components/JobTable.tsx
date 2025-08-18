@@ -1,7 +1,7 @@
 import { useState } from "react"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { EntityBase, Job, JobTableProps } from "../../../types"
 import { useNavigate } from "react-router-dom"
+import { formatDistanceToNow } from "date-fns"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
 	ArrowsClockwise,
 	ClockCounterClockwise,
@@ -12,13 +12,14 @@ import {
 	Play,
 	Trash,
 } from "@phosphor-icons/react"
+
+import { EntityBase, Job, JobTableProps } from "../../../types"
 import {
 	getConnectorImage,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
-import { formatDistanceToNow } from "date-fns"
 import { PAGE_SIZE } from "../../../utils/constants"
 
 const formatLastSyncTime = (text?: string) => {
@@ -86,7 +87,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								{
 									key: "edit",
 									icon: <PencilSimple className="size-4" />,
-									label: "Edit",
+									label: "Edit Streams",
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
@@ -102,7 +103,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								{
 									key: "history",
 									icon: <ClockCounterClockwise className="size-4" />,
-									label: "Job history",
+									label: "Job Logs & History",
 									onClick: () => handleViewHistory(record.id.toString()),
 								},
 								{
@@ -135,6 +136,11 @@ const JobTable: React.FC<JobTableProps> = ({
 			},
 		},
 		{
+			title: "Job ID",
+			dataIndex: "id",
+			key: "id",
+		},
+		{
 			title: "Job Name",
 			dataIndex: "name",
 			key: "name",
@@ -145,12 +151,14 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "source",
 			render: (text: EntityBase) => (
 				<div className="flex items-center">
-					<img
-						src={getConnectorImage(text?.type)}
-						className="mr-2 h-5 w-5"
-						alt={`${text?.name} connector`}
-					/>
-					{text?.name}
+					{text.name && (
+						<img
+							src={getConnectorImage(text.type)}
+							className="mr-2 h-5 w-5"
+							alt={`${text.name} connector`}
+						/>
+					)}
+					{text.name}
 				</div>
 			),
 		},
@@ -160,12 +168,14 @@ const JobTable: React.FC<JobTableProps> = ({
 			key: "destination",
 			render: (text: EntityBase) => (
 				<div className="flex items-center">
-					<img
-						src={getConnectorImage(text?.type)}
-						className="mr-2 h-5 w-5"
-						alt={`${text?.name} connector`}
-					/>
-					{text?.name}
+					{text.name && (
+						<img
+							src={getConnectorImage(text.type)}
+							className="mr-2 h-5 w-5"
+							alt={`${text.name} connector`}
+						/>
+					)}
+					{text.name}
 				</div>
 			),
 		},
@@ -183,7 +193,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				if (!status) return <div className="pl-4">-</div>
 				return (
 					<div
-						className={`flex w-fit items-center justify-center gap-1 rounded-[6px] px-4 py-1 ${getStatusClass(status)}`}
+						className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getStatusClass(status)}`}
 					>
 						{getStatusIcon(status.toLowerCase())}
 						<span>{getStatusLabel(status.toLowerCase())}</span>
