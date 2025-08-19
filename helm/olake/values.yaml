@@ -45,12 +45,12 @@ global:
     #   AWS IRSA: eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/olake-job-role"
     #   GCP Workload Identity: iam.gke.io/gcp-service-account: "olake-job@project.iam.gserviceaccount.com"
     #   Azure Workload Identity: azure.workload.identity/client-id: "12345678-1234-1234-1234-123456789012"
+    # Permissions for AWS Glue catalog: https://olake.io/docs/writers/iceberg/catalog/glue#required-iam-permissions
     annotations: {}
 
 # OLake UI - Main application
 olakeUI:
   # -- Number of OLake UI replicas
-  # For production, consider 2+ replicas for high availability
   replicaCount: 1
   
   # -- OLake UI image configuration
@@ -355,13 +355,9 @@ postgresql:
   auth:
     # -- PostgreSQL super user name
     postgresUser: "temporal"
-    
+
     # -- PostgreSQL super user password
-    # In production, consider using existingSecret
     postgresPassword: "temporal"
-    
-    # -- PostgreSQL application database
-    database: "temporal"
     
   
   # -- Pod scheduling constraints
@@ -395,10 +391,6 @@ postgresql:
   persistence:
     # -- Size of persistent volume for PostgreSQL data
     size: 8Gi
-    
-    # -- Access modes for persistent volume
-    accessModes:
-      - ReadWriteOnce
 
 # Elasticsearch is used by Temporal for advanced visibility features
 elasticsearch:

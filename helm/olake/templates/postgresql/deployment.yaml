@@ -101,7 +101,7 @@ spec:
         app.kubernetes.io/component: database
     spec:
       accessModes:
-        {{- toYaml .Values.postgresql.persistence.accessModes | nindent 8 }}
+        - ReadWriteOnce
       {{- if .Values.global.storageClass }}
       storageClassName: {{ .Values.global.storageClass | quote }}
       {{- end }}
