@@ -20,6 +20,7 @@ go.work.sum
 vendor/
 server/server
 server/olake-server
+olake-workers/k8s/go.sum
 
 # Build directories
 /bin/

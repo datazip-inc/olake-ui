@@ -9,7 +9,7 @@ import (
 func main() {
 	// Initialize Viper global instance first
 	appConfig.InitConfig()
-	
+
 	// Load full configuration (including logging config)
 	cfg, err := appConfig.LoadConfig()
 	if err != nil {

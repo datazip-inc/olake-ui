@@ -42,16 +42,16 @@ func (a *Activities) getTimeoutFromContext(ctx context.Context) time.Duration {
 	}
 
 	activityTimeout := time.Until(deadline)
-	
+
 	// Pod timeout = activity timeout minus 2 minutes cleanup buffer
 	// This ensures pods terminate before Temporal activity timeout
 	podTimeout := activityTimeout - (2 * time.Minute)
-	
+
 	// Minimum pod timeout of 1 minute
 	if podTimeout < time.Minute {
 		return time.Minute
 	}
-	
+
 	return podTimeout
 }
 
@@ -164,37 +164,35 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	// Execute sync operation by creating K8s pod, wait for completion, retrieve results from state.json file
 	result, err := a.podManager.ExecutePodActivity(ctx, request)
 	if err != nil {
-		logger.Warnf("Activity failed for job %d: %v. Attempting final state save...", params.JobID, err)
+		logger.Warnf("Activity failed for job %d: %v. Attempting final state save", params.JobID, err)
 
 		// Attempt to read final state from shared filesystem even on failure for data recovery
 		fsHelper := filesystem.NewHelper()
-		stateData, readErr := fsHelper.ReadAndValidateStateFile(params.WorkflowID)
-
-		if readErr == nil {
+		if stateData, readErr := fsHelper.ReadAndValidateStateFile(params.WorkflowID); readErr != nil {
+			// Log if reading or validation fails, but don't block the process
+			// This covers file not existing or containing invalid JSON
+			logger.Warnf("Failed to read/validate final state on error: %v", readErr)
+		} else {
 			// If the state file is valid, attempt to save it
 			if updateErr := a.jobService.UpdateJobState(ctx, params.JobID, string(stateData), false); updateErr != nil {
 				logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
 			} else {
 				logger.Infof("Saved final state on failure for job %d", params.JobID)
 			}
-		} else {
-			// Log if reading or validation fails, but don't block the process
-			// This covers file not existing, being too small, or containing invalid JSON
-			logger.Warnf("Failed to read/validate final state on error: %v", readErr)
 		}
 
 		return nil, err
 	}
 
 	// Persist final sync state back to database for job tracking and resume capabilities
-	if stateJSON, err := json.Marshal(result); err == nil {
+	if stateJSON, err := json.Marshal(result); err != nil {
+		logger.Warnf("Failed to marshal result for jobID %d: %v", params.JobID, err)
+	} else {
 		if err := a.jobService.UpdateJobState(ctx, params.JobID, string(stateJSON), true); err != nil {
 			logger.Errorf("Failed to update job state for jobID %d: %v", params.JobID, err)
 			return nil, fmt.Errorf("failed to update job state: %v", err)
 		}
 		logger.Infof("Successfully updated job state for jobID %d", params.JobID)
-	} else {
-		logger.Warnf("Failed to marshal result for jobID %d: %v", params.JobID, err)
 	}
 
 	return result, nil

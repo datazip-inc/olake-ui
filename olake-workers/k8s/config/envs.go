@@ -1,33 +1,15 @@
 package config
 
 import (
-	"sync"
-
 	"github.com/spf13/viper"
 )
 
-var (
-	globalViper *viper.Viper
-	once        sync.Once
-)
+var globalViper *viper.Viper
 
 // InitConfig initializes the global Viper instance
 func InitConfig() {
-	once.Do(func() {
-		globalViper = viper.New()
-		globalViper.AutomaticEnv()
-		globalViper.SetEnvPrefix("")
-	})
-}
-
-// GetEnv returns environment variable value or default if not set
-func GetEnv(key, defaultValue string) string {
-	if globalViper == nil {
-		InitConfig()
-	}
-
-	globalViper.SetDefault(key, defaultValue)
-	return globalViper.GetString(key)
+	globalViper = viper.New()
+	globalViper.AutomaticEnv()
 }
 
 // LoadConfig loads configuration using Viper from environment variables
@@ -91,4 +73,14 @@ func bindEnvironmentVariables(v *viper.Viper) {
 	// Logging bindings
 	v.BindEnv("logging.level", "LOG_LEVEL")
 	v.BindEnv("logging.format", "LOG_FORMAT")
+}
+
+// GetEnv returns environment variable value or default if not set
+func GetEnv(key, defaultValue string) string {
+	if globalViper == nil {
+		InitConfig()
+	}
+
+	globalViper.SetDefault(key, defaultValue)
+	return globalViper.GetString(key)
 }

@@ -18,8 +18,8 @@ import (
 type K8sPodManager struct {
 	clientset        kubernetes.Interface // Kubernetes API client for pod operations
 	namespace        string               // Target namespace where all activity pods are created
-	filesystemHelper *filesystem.Helper  // Utility for managing shared storage and config files
-	config           *appConfig.Config      // Application configuration including timeouts, storage, etc.
+	filesystemHelper *filesystem.Helper   // Utility for managing shared storage and config files
+	config           *appConfig.Config    // Application configuration including timeouts, storage, etc.
 }
 
 // NewK8sPodManager creates a new Kubernetes Pod manager
@@ -49,10 +49,10 @@ func NewK8sPodManager(cfg *appConfig.Config) (*K8sPodManager, error) {
 
 	// Initialize and return the pod manager with all required dependencies
 	return &K8sPodManager{
-		clientset:        clientset,                    // K8s API client
-		namespace:        namespace,                    // Target namespace for pods
-		filesystemHelper: filesystem.NewHelper(),      // Shared storage utilities
-		config:           cfg,                          // Application configuration
+		clientset:        clientset,              // K8s API client
+		namespace:        namespace,              // Target namespace for pods
+		filesystemHelper: filesystem.NewHelper(), // Shared storage utilities
+		config:           cfg,                    // Application configuration
 	}, nil
 }
 
@@ -66,7 +66,7 @@ func (k *K8sPodManager) GetDockerImageName(sourceType, version string) string {
 	if version == "" {
 		version = "latest"
 	}
-	
+
 	// Construct the full image name using the olakego registry convention
 	// Examples: olakego/source-mysql:v0.1.7, olakego/source-postgres:latest
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
