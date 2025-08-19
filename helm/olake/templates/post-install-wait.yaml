@@ -57,7 +57,7 @@ spec:
 
           echo "Waiting for OLake stack to be ready..."
           
-          check_service "olake-workers" "http://olake-workers.{{ include "olake.namespace" . }}.svc.cluster.local:8090/health"
+          check_service "olake-workers" "http://olake-workers.{{ include "olake.namespace" . }}.svc.cluster.local:8090/ready"
           
           echo "✓ OLake stack is fully operational."
           exit 0
