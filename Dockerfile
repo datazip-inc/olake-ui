@@ -40,16 +40,19 @@ FROM alpine:latest
 # Install only what's needed at runtime
 RUN apk add --no-cache docker-cli
 
+# Set working directory to non-privileged path
+WORKDIR /app/olake-ui
+
 # Create directories for applications
-RUN mkdir -p /opt/backend/conf /opt/frontend/dist
+RUN mkdir -p conf /opt/frontend/dist
 
 # Copy built artifacts from builder stages
-COPY --from=go-builder /app/olake-server /opt/backend/olake-server
-COPY server/conf/app.conf /opt/backend/conf/app.conf
+COPY --from=go-builder /app/olake-server ./olake-server
+COPY server/conf/app.conf ./conf/app.conf
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
 
 # Expose the Go backend port (which serves both API and frontend)
 EXPOSE 8000
 
 # Run the Go server directly
-CMD ["/opt/backend/olake-server"]
+CMD ["./olake-server"]
