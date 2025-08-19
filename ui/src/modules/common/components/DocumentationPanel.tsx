@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react"
-import { Button } from "antd"
+import clsx from "clsx"
+import { Button, Tooltip } from "antd"
 import {
-	DotsThreeVertical,
 	CornersOut,
 	CaretRight,
 	Info,
+	ArrowSquareOut,
 } from "@phosphor-icons/react"
+
 import { DocumentationPanelProps } from "../../../types"
 
 const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
@@ -13,18 +15,14 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	isMinimized = false,
 	onToggle,
 	showResizer = true,
-	initialWidth = 30,
+	initialWidth = 40,
 }) => {
-	const [docPanelWidth, setDocPanelWidth] = useState(initialWidth)
 	const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(isMinimized)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isReady, setIsReady] = useState(false)
 
-	const resizerRef = useRef<HTMLDivElement>(null)
 	const iframeRef = useRef<HTMLIFrameElement>(null)
 	const panelRef = useRef<HTMLDivElement>(null)
-	const isDragging = useRef(false)
-	const animationFrame = useRef<number>()
 
 	// Sync collapsed state with isMinimized prop
 	useEffect(() => {
@@ -62,64 +60,32 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		return () => iframe.removeEventListener("load", handleLoad)
 	}, [docUrl])
 
-	const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
-		e.preventDefault()
-		e.stopPropagation()
-
-		const startX = e.clientX
-		const panel = panelRef.current
-		const startWidth = panel?.getBoundingClientRect().width || 0
-		const containerWidth = window.innerWidth
-
-		isDragging.current = true
-		panel?.classList.add("resizing")
-
-		const updateWidth = (clientX: number) => {
-			if (!panel) return
-			const delta = startX - clientX
-			const newWidthPx = startWidth + delta
-			const newWidthPercent = Math.max(
-				15,
-				Math.min(75, (newWidthPx / containerWidth) * 100),
-			)
-			panel.style.width = `${newWidthPercent}%`
-		}
-
-		const onMouseMove = (e: MouseEvent) => {
-			if (!isDragging.current) return
-			if (animationFrame.current) cancelAnimationFrame(animationFrame.current)
-			animationFrame.current = requestAnimationFrame(() =>
-				updateWidth(e.clientX),
-			)
-		}
-
-		const onMouseUp = () => {
-			isDragging.current = false
-			if (animationFrame.current) cancelAnimationFrame(animationFrame.current)
-
-			const widthStr = panel?.style.width.replace("%", "")
-			if (widthStr) {
-				setDocPanelWidth(parseFloat(widthStr))
-			}
-
-			panel?.classList.remove("resizing")
-			document.removeEventListener("mousemove", onMouseMove)
-			document.removeEventListener("mouseup", onMouseUp)
-		}
-
-		document.addEventListener("mousemove", onMouseMove)
-		document.addEventListener("mouseup", onMouseUp)
-	}
-
 	const toggleDocPanel = () => {
 		setIsDocPanelCollapsed(!isDocPanelCollapsed)
 		onToggle?.()
 	}
 
+	const openInNewTab = () => {
+		window.open(docUrl, "_blank")
+	}
+
 	// Show only the button when panel is collapsed and resizer is hidden
 	if (isDocPanelCollapsed && !showResizer) {
 		return (
-			<div className="fixed bottom-6 right-6">
+			<div className="fixed bottom-6 right-6 flex gap-2">
+				<Button
+					type="default"
+					className="flex items-center"
+					onClick={openInNewTab}
+					icon={
+						<ArrowSquareOut
+							size={16}
+							className="mr-2"
+						/>
+					}
+				>
+					Open Docs
+				</Button>
 				<Button
 					type="primary"
 					className="flex items-center bg-blue-600"
@@ -144,29 +110,15 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					className="relative z-10"
 					style={{ width: isDocPanelCollapsed ? "16px" : "0" }}
 				>
-					<div
-						ref={resizerRef}
-						className="group absolute left-0 top-1/2 flex h-20 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center"
-						onMouseDown={handleResizeStart}
-						onClick={e => {
-							e.stopPropagation()
-							toggleDocPanel()
-						}}
-					>
-						<DotsThreeVertical
-							size={16}
-							className="text-gray-500"
-						/>
-					</div>
-
 					<button
 						onClick={toggleDocPanel}
-						className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-[#383838] shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
+						className="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-gray-900 shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
 					>
 						<div
-							className={`transition-transform duration-300 ${
-								isDocPanelCollapsed ? "rotate-180" : "rotate-0"
-							}`}
+							className={clsx(
+								"transition-transform duration-300",
+								isDocPanelCollapsed ? "rotate-180" : "rotate-0",
+							)}
 						>
 							<CaretRight size={16} />
 						</div>
@@ -178,12 +130,33 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 			<div
 				ref={panelRef}
 				className="relative overflow-hidden border-l-4 border-gray-200 bg-white transition-all duration-500 ease-in-out"
-				style={{ width: isDocPanelCollapsed ? "80px" : `${docPanelWidth}%` }}
+				style={{ width: isDocPanelCollapsed ? "80px" : `${initialWidth}%` }}
 			>
 				<div
-					className={`transition-opacity ${!isReady ? "opacity-0" : "h-full opacity-100"}`}
+					className={clsx(
+						"transition-opacity",
+						!isReady ? "opacity-0" : "h-full opacity-100",
+					)}
 					style={{ transition: "opacity 0.3s ease" }}
 				>
+					{!isDocPanelCollapsed && (
+						<div className="absolute right-16 top-3.5 z-10">
+							<Button
+								type="default"
+								icon={
+									<ArrowSquareOut
+										size={20}
+										weight="bold"
+										className="text-primary"
+									/>
+								}
+								onClick={openInNewTab}
+								className="flex items-center gap-2 border border-gray-200 px-2 py-3 hover:border-blue-600 hover:text-blue-600"
+							>
+								Open Docs
+							</Button>
+						</div>
+					)}
 					<iframe
 						ref={iframeRef}
 						src={docUrl}
@@ -198,12 +171,26 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					/>
 					{isDocPanelCollapsed && (
 						<div className="flex h-full w-full items-start justify-center">
-							<div className="absolute right-3 top-10 z-10 rounded-xl border border-gray-200 bg-[#F0F0F0] p-2">
-								<Info
-									size={25}
-									className="cursor-pointer text-gray-500 transition-all duration-300 ease-in-out"
-									onClick={toggleDocPanel}
-								/>
+							<div className="absolute right-3 top-10 z-10 flex flex-col gap-2">
+								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
+									<Info
+										size={25}
+										className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
+										onClick={toggleDocPanel}
+									/>
+								</div>
+								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
+									<Tooltip
+										title="Open documentation in new tab"
+										placement="left"
+									>
+										<ArrowSquareOut
+											size={25}
+											className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
+											onClick={openInNewTab}
+										/>
+									</Tooltip>
+								</div>
 							</div>
 						</div>
 					)}
