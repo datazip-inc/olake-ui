@@ -37,10 +37,10 @@ RUN pnpm build
 # Stage 3: Final Runtime Image
 FROM alpine:latest
 
-# Install only what's needed at runtime
+# Install docker-cli
 RUN apk add --no-cache docker-cli
 
-# Set working directory to non-privileged path
+# Set working directory
 WORKDIR /app/olake-ui
 
 # Create directories for applications
@@ -54,5 +54,5 @@ COPY --from=node-builder /app/ui/dist /opt/frontend/dist
 # Expose the Go backend port (which serves both API and frontend)
 EXPOSE 8000
 
-# Run the Go server directly
+# Run the olake-ui app
 CMD ["./olake-server"]
