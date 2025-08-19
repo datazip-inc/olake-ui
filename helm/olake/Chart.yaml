@@ -17,4 +17,6 @@ maintainers:
   - name: Schitiz Sharma
     email: schitiz@datazip.io
 dependencies: []
-annotations: {}
+annotations:
+  # Enable schema validation for this chart
+  helm.sh/schema-validation: "true"

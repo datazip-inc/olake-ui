@@ -237,12 +237,6 @@ olakeWorker:
     
     # -- Timeout configuration for different operation types
     timeouts:
-      # -- Workflow execution timeouts
-      workflow:
-        discover: 3h
-        test: 3h
-        sync: 720h
-
       # -- Activity execution timeouts
       activity:
         discover: 2h

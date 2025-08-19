@@ -78,18 +78,8 @@ type WorkerConfig struct {
 
 // TimeoutConfig contains all timeout-related settings
 type TimeoutConfig struct {
-	// Workflow execution timeouts (client-side)
-	WorkflowExecution WorkflowTimeouts `mapstructure:"workflow_execution"`
-
 	// Activity timeouts (workflow-side)
 	Activity ActivityTimeouts `mapstructure:"activity"`
-}
-
-// WorkflowTimeouts contains workflow execution timeout settings
-type WorkflowTimeouts struct {
-	Discover time.Duration `mapstructure:"discover"`
-	Test     time.Duration `mapstructure:"test"`
-	Sync     time.Duration `mapstructure:"sync"`
 }
 
 // ActivityTimeouts contains activity execution timeout settings

@@ -58,6 +58,11 @@ func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
+	// Check both Temporal client and worker components for complete health validation:
+	// - temporalClient: The client connection to Temporal server (required for communication)
+	// - worker: The actual Temporal worker instance (required for activity/workflow execution)
+	// Both must be operational for the pod to process work. If either fails, Kubernetes
+	// should restart the pod via liveness probe to restore functionality.
 	if hs.worker.temporalClient == nil || hs.worker.worker == nil {
 		response.Status = "unhealthy"
 		if hs.worker.temporalClient == nil {
@@ -85,7 +90,11 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 		},
 	}
 
-	// Check Temporal connection
+	// Check Temporal connection - verifies worker and client are both initialized.
+	// Readiness requires both components to be available before accepting traffic:
+	// - worker: Must be non-nil (initialization completed)
+	// - temporalClient: Must be connected (can communicate with Temporal server)
+	// This prevents routing requests to pods that can't process workflows/activities.
 	if hs.worker != nil && hs.worker.temporalClient != nil {
 		response.Checks["temporal"] = "connected"
 	} else {
@@ -93,7 +102,12 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 		response.Checks["temporal"] = "disconnected"
 	}
 
-	// Check database connectivity
+	// Check database connectivity - ensures job metadata can be read/written.
+	// Database access is required for:
+	// - Fetching job configurations and state
+	// - Updating job progress and results
+	// - Temporal workflow coordination
+	// Without database access, workflows will fail during execution.
 	if hs.worker.jobService.HealthCheck() == nil {
 		response.Checks["database"] = "connected"
 	} else {

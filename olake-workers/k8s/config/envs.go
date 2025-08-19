@@ -84,9 +84,6 @@ func bindEnvironmentVariables(v *viper.Viper) {
 	v.BindEnv("worker.heartbeat_interval", "HEARTBEAT_INTERVAL")
 
 	// Timeout bindings
-	v.BindEnv("timeouts.workflow_execution.discover", "TIMEOUT_WORKFLOW_DISCOVER")
-	v.BindEnv("timeouts.workflow_execution.test", "TIMEOUT_WORKFLOW_TEST")
-	v.BindEnv("timeouts.workflow_execution.sync", "TIMEOUT_WORKFLOW_SYNC")
 	v.BindEnv("timeouts.activity.discover", "TIMEOUT_ACTIVITY_DISCOVER")
 	v.BindEnv("timeouts.activity.test", "TIMEOUT_ACTIVITY_TEST")
 	v.BindEnv("timeouts.activity.sync", "TIMEOUT_ACTIVITY_SYNC")

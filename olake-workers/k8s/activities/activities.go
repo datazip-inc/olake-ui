@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"go.temporal.io/sdk/activity"
 
@@ -13,7 +14,6 @@ import (
 	"olake-ui/olake-workers/k8s/pods"
 	"olake-ui/olake-workers/k8s/shared"
 	"olake-ui/olake-workers/k8s/utils/filesystem"
-	"olake-ui/olake-workers/k8s/utils/helpers"
 )
 
 // Activities holds the dependencies for activity functions
@@ -30,6 +30,29 @@ func NewActivities(jobService service.JobDataService, podManager *pods.K8sPodMan
 		podManager: podManager,
 		config:     cfg,
 	}
+}
+
+// getTimeoutFromContext extracts timeout from Temporal activity context deadline
+// Pod timeout is set to activity timeout minus 2 minutes to allow cleanup time
+func (a *Activities) getTimeoutFromContext(ctx context.Context) time.Duration {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		// Fallback to 30 minutes if no deadline set
+		return time.Minute * 30
+	}
+
+	activityTimeout := time.Until(deadline)
+	
+	// Pod timeout = activity timeout minus 2 minutes cleanup buffer
+	// This ensures pods terminate before Temporal activity timeout
+	podTimeout := activityTimeout - (2 * time.Minute)
+	
+	// Minimum pod timeout of 1 minute
+	if podTimeout < time.Minute {
+		return time.Minute
+	}
+	
+	return podTimeout
 }
 
 // DiscoverCatalogActivity discovers data source catalog using Kubernetes Pod
@@ -49,7 +72,7 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
 		},
-		Timeout: helpers.GetActivityTimeout(a.config, "discover"),
+		Timeout: a.getTimeoutFromContext(ctx),
 	}
 
 	// Execute discover operation by creating K8s pod, wait for completion, retrieve results from streams.json file
@@ -83,7 +106,7 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
 		},
-		Timeout: helpers.GetActivityTimeout(a.config, "test"),
+		Timeout: a.getTimeoutFromContext(ctx),
 	}
 
 	// Execute check operation by creating K8s pod, wait for completion, retrieve results from pod logs
@@ -135,7 +158,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 			{Name: "writer.json", Data: jobData.DestConfig},
 			{Name: "state.json", Data: stateData},
 		},
-		Timeout: helpers.GetActivityTimeout(a.config, "sync"),
+		Timeout: a.getTimeoutFromContext(ctx),
 	}
 
 	// Execute sync operation by creating K8s pod, wait for completion, retrieve results from state.json file

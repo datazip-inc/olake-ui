@@ -3,10 +3,10 @@ package k8s
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
+	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
 
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -20,10 +20,84 @@ type JobMappingStats struct {
 	InvalidMappings []string
 }
 
+// validateJobMapping validates a single job mapping entry
+func validateJobMapping(jobIDStr string, nodeLabels map[string]string, stats *JobMappingStats) (int, map[string]string, bool) {
+	// Parse and validate JobID
+	jobID, err := strconv.Atoi(jobIDStr)
+	if err != nil || jobID <= 0 {
+		stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
+		if err != nil {
+			logger.Errorf("Invalid JobID format (must be integer): '%s'", jobIDStr)
+		} else {
+			logger.Errorf("JobID must be positive integer, got: %d", jobID)
+		}
+		return 0, nil, false
+	}
+
+	// Handle null/empty mappings
+	if nodeLabels == nil {
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: null mapping", jobID))
+		logger.Errorf("JobID %d has null node mapping", jobID)
+		return 0, nil, false
+	}
+
+	if len(nodeLabels) == 0 {
+		logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
+		return jobID, make(map[string]string), true
+	}
+
+	// Validate all labels
+	validMapping := make(map[string]string)
+	for key, value := range nodeLabels {
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+
+		if err := validateLabelPair(jobID, key, value, stats); err != nil {
+			return 0, nil, false
+		}
+
+		validMapping[key] = value
+	}
+
+	return jobID, validMapping, true
+}
+
+// validateLabelPair validates a single key-value label pair
+func validateLabelPair(jobID int, key, value string, stats *JobMappingStats) error {
+	if key == "" {
+		err := fmt.Errorf("empty label key")
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
+		logger.Errorf("JobID %d has %s", jobID, err)
+		return err
+	}
+
+	if value == "" {
+		err := fmt.Errorf("empty label value for key '%s'", key)
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
+		logger.Errorf("JobID %d has %s", jobID, err)
+		return err
+	}
+
+	if errs := validation.IsQualifiedName(key); len(errs) > 0 {
+		err := fmt.Errorf("invalid label key '%s': %v", key, errs)
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
+		logger.Errorf("JobID %d has %s", jobID, err)
+		return err
+	}
+
+	if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
+		err := fmt.Errorf("invalid label value '%s' for key '%s': %v", value, key, errs)
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
+		logger.Errorf("JobID %d has %s", jobID, err)
+		return err
+	}
+
+	return nil
+}
+
 // LoadJobMappingFromEnv loads the JobID to node mapping configuration from environment variables
 // with enhanced error handling and detailed validation
 func LoadJobMappingFromEnv() map[int]map[string]string {
-	jobMappingJSON := os.Getenv("OLAKE_JOB_MAPPING")
+	jobMappingJSON := appConfig.GetEnv("OLAKE_JOB_MAPPING", "")
 	if jobMappingJSON == "" {
 		logger.Info("No JobID to Node mapping found, using empty mapping")
 		return make(map[int]map[string]string)
@@ -46,83 +120,7 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	result := make(map[int]map[string]string)
 
 	for jobIDStr, nodeLabels := range jobMapping {
-		// Validate JobID format
-		jobID, err := strconv.Atoi(jobIDStr)
-		if err != nil {
-			stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
-			logger.Errorf("Invalid JobID format (must be integer): '%s'", jobIDStr)
-			continue
-		}
-
-		// Validate jobID is positive
-		if jobID <= 0 {
-			stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
-			logger.Errorf("JobID must be positive integer, got: %d", jobID)
-			continue
-		}
-
-		// Validate node labels structure
-		if nodeLabels == nil {
-			stats.InvalidMappings = append(stats.InvalidMappings,
-				fmt.Sprintf("JobID %d: null mapping", jobID))
-			logger.Errorf("JobID %d has null node mapping", jobID)
-			continue
-		}
-
-		if len(nodeLabels) == 0 {
-			logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
-			result[jobID] = make(map[string]string)
-			stats.ValidEntries++
-			continue
-		}
-
-		// Validate node label keys and values using Kubernetes validation
-		// Treat each JobID mapping as atomic: either all labels are valid or reject the entire entry
-		validMapping := make(map[string]string)
-		isEntryValid := true
-
-		for key, value := range nodeLabels {
-			key = strings.TrimSpace(key)
-			value = strings.TrimSpace(value)
-
-			// Validate empty key/value
-			if key == "" {
-				stats.InvalidMappings = append(stats.InvalidMappings,
-					fmt.Sprintf("JobID %d: empty label key", jobID))
-				logger.Errorf("JobID %d has empty node label key", jobID)
-				isEntryValid = false
-				break
-			}
-			if value == "" {
-				stats.InvalidMappings = append(stats.InvalidMappings,
-					fmt.Sprintf("JobID %d: empty label value for key '%s'", jobID, key))
-				logger.Errorf("JobID %d has empty value for node label key '%s'", jobID, key)
-				isEntryValid = false
-				break
-			}
-
-			// Validate Kubernetes label key (qualified name format)
-			if errs := validation.IsQualifiedName(key); len(errs) > 0 {
-				stats.InvalidMappings = append(stats.InvalidMappings,
-					fmt.Sprintf("JobID %d: invalid label key '%s'", jobID, key))
-				logger.Errorf("JobID %d has invalid node label key '%s': %v", jobID, key, errs)
-				isEntryValid = false
-				break
-			}
-
-			// Validate Kubernetes label value (RFC 1123 label format)
-			if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
-				stats.InvalidMappings = append(stats.InvalidMappings,
-					fmt.Sprintf("JobID %d: invalid label value '%s' for key '%s'", jobID, value, key))
-				logger.Errorf("JobID %d has invalid node label value '%s' for key '%s': %v", jobID, value, key, errs)
-				isEntryValid = false
-				break
-			}
-
-			validMapping[key] = value
-		}
-
-		if isEntryValid {
+		if jobID, validMapping, isValid := validateJobMapping(jobIDStr, nodeLabels, &stats); isValid {
 			result[jobID] = validMapping
 			stats.ValidEntries++
 		}

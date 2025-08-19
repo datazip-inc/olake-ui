@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
-
-	"olake-ui/olake-workers/k8s/logger"
-	appConfig "olake-ui/olake-workers/k8s/config"
 )
 
 // SplitLines splits text into lines, removing empty lines
@@ -123,15 +119,4 @@ func parseConnectionTestOutput(output string) (map[string]interface{}, error) {
 		"message": logMessage.ConnectionStatus.Message,
 		"status":  logMessage.ConnectionStatus.Status,
 	}, nil
-}
-
-// ParseDuration parses a duration string with error handling and fallback
-func ParseDuration(envKey, defaultValue string) time.Duration {
-	value := appConfig.GetEnv(envKey, defaultValue)
-	duration, err := time.ParseDuration(value)
-	if err != nil {
-		logger.Warnf("Failed to parse duration for %s, using default: %s", envKey, defaultValue)
-		duration, _ = time.ParseDuration(defaultValue)
-	}
-	return duration
 }

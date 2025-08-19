@@ -10,7 +10,6 @@ import (
 
 	"olake-ui/olake-workers/k8s/activities"
 	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/utils/helpers"
 	"olake-ui/olake-workers/k8s/database/service"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
@@ -35,10 +34,6 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	cfg.Worker.WorkerIdentity = k8s.GenerateWorkerIdentity()
 
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
-
-	// Set global config for workflows to use
-	workflows.SetConfig(cfg)
-	logger.Info("Set global configuration for workflows")
 
 	// Create database service
 	jobService, err := service.NewPostgresJobService()
@@ -71,12 +66,6 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	})
 
 	logger.Infof("Registering workflows and activities for task queue: %s", cfg.Temporal.TaskQueue)
-
-	// Log timeout configuration
-	logger.Infof("Activity timeouts configured - Discover: %v, Test: %v, Sync: %v",
-		helpers.GetActivityTimeout(cfg, "discover"),
-		helpers.GetActivityTimeout(cfg, "test"),
-		helpers.GetActivityTimeout(cfg, "sync"))
 
 	// Register workflows - these will set WorkflowID from Temporal execution context
 	w.RegisterWorkflow(workflows.DiscoverCatalogWorkflow)
@@ -119,12 +108,8 @@ func (w *K8sWorker) Start() error {
 		}
 	}()
 
-	// Log success before blocking
-	logger.Info("K8s Worker started successfully")
-
 	// Start temporal worker using blocking Run method
 	// This will block until the worker is stopped
-	logger.Info("Starting Temporal worker...")
 	err := w.worker.Run(worker.InterruptCh())
 	if err != nil {
 		return fmt.Errorf("temporal worker failed: %w", err)
@@ -132,9 +117,4 @@ func (w *K8sWorker) Start() error {
 
 	logger.Info("Temporal worker stopped")
 	return nil
-}
-
-// GetUptime returns how long the worker has been running
-func (w *K8sWorker) GetUptime() time.Duration {
-	return time.Since(w.startTime)
 }

@@ -49,7 +49,7 @@ func NewDB() (*DB, error) {
 		conn.SetMaxOpenConns(cfg.Database.MaxOpenConns)
 		conn.SetMaxIdleConns(cfg.Database.MaxIdleConns)
 		conn.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
-		logger.Infof("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v",
+		logger.Debugf("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v",
 			cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
 	}
 
