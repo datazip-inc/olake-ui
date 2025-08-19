@@ -138,6 +138,10 @@ export const sourceTabs = [
 	{ key: STATUS.INACTIVE, label: "Inactive sources" },
 ]
 
+export const LoaderComponentSize={
+	small:50,
+	large:135
+}
 export const mapCatalogValueToType = (
 	catalogValue: string,
 ): CatalogType | null => {

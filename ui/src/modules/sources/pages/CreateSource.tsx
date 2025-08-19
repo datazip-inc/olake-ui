@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { message, Select, Spin } from "antd"
+import { message, Select } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -21,6 +21,7 @@ import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import connectorOptions from "../components/connectorOptions"
 import { SETUP_TYPES } from "../../../utils/constants"
+import Loader from "../../common/components/Loader"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -393,7 +394,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						</label>
 						{loadingVersions ? (
 							<div className="flex h-8 items-center justify-center">
-								<Spin size="small" />
+								<Loader size="small" />
 							</div>
 						) : versions && versions.length > 0 ? (
 							<>
@@ -472,7 +473,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				<>
 					{loading ? (
 						<div className="flex h-32 items-center justify-center">
-							<Spin tip="Loading schema..." />
+							<Loader tip="Loading schema..." />
 						</div>
 					) : (
 						schema && (

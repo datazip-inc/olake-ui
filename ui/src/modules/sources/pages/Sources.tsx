@@ -9,6 +9,7 @@ import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
+import Loader from "../../common/components/Loader"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -112,6 +113,14 @@ const Sources: React.FC = () => {
 					Create Source
 				</button>
 			</div>
+			<Loader
+				size="large"
+				tip="Loading sources..."
+			/>
+			<Spin
+				size="large"
+				tip="Loading sources..."
+			/>
 
 			<p className="mb-6 text-gray-600">A list of all your sources</p>
 
@@ -124,7 +133,7 @@ const Sources: React.FC = () => {
 					label: tab.label,
 					children: isLoadingSources ? (
 						<div className="flex items-center justify-center py-16">
-							<Spin
+							<Loader
 								size="large"
 								tip="Loading sources..."
 							/>

@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { Input, message, Select, Spin } from "antd"
+import { Input, message, Select } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -38,6 +38,7 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import { connectorOptions } from "../components/connectorOptions"
+import Loader from "../../common/components/Loader"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
@@ -547,9 +548,10 @@ const CreateDestination = forwardRef<
 						</FormField>
 
 						<FormField label="Version:">
-							{loadingVersions ? (
+							{loadingVersions || true ? (
 								<div className="flex h-8 items-center justify-center">
-									<Spin size="small" />
+
+									<Loader tip="" size="small"></Loader>
 								</div>
 							) : versions && versions.length > 0 ? (
 								<Select
@@ -618,7 +620,8 @@ const CreateDestination = forwardRef<
 				<>
 					{loading ? (
 						<div className="flex h-32 items-center justify-center">
-							<Spin tip="Loading schema..." />
+
+							<Loader tip="Loading schema"/>
 						</div>
 					) : (
 						schema && (

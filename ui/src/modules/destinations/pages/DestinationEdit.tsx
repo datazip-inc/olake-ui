@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
+import { Input, Button, Select, Switch, message, Table } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
 
@@ -42,6 +42,7 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { connectorOptions } from "../components/connectorOptions"
+import Loader from "../../common/components/Loader"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -607,7 +608,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							</label>
 							{loadingVersions ? (
 								<div className="flex h-8 items-center justify-center">
-									<Spin size="small" />
+									<Loader size="small" />
 								</div>
 							) : versions.length > 0 ? (
 								<Select
@@ -636,7 +637,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
 				{isLoading ? (
 					<div className="flex h-32 items-center justify-center">
-						<Spin tip="Loading schema..." />
+						<Loader tip="Loading schema..." />
 					</div>
 				) : schema ? (
 					<FixedSchemaForm
