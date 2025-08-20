@@ -263,8 +263,7 @@ http://localhost:8000
   ```json
   {
     "type": "string",
-    "version": "string",
-    "catalog": "string"
+    "version": "string"
   }
   ```
 - **Response**:
@@ -275,7 +274,6 @@ http://localhost:8000
     "data": {
       "type": "string",
       "version": "string",
-      "catalog": "string",
       "spec": "json"
     }
   }

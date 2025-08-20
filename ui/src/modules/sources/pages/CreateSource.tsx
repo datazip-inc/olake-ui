@@ -1,4 +1,10 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import {
+	useState,
+	useEffect,
+	forwardRef,
+	useImperativeHandle,
+	useRef,
+} from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { message, Select, Spin } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
@@ -7,8 +13,8 @@ import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
 import { getConnectorLabel } from "../../../utils/utils"
-import { CONNECTOR_TYPES } from "../../../utils/constants"
-import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
+import { CONNECTOR_TYPES, widgets } from "../../../utils/constants"
+import Form from "@rjsf/antd"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -21,6 +27,11 @@ import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import connectorOptions from "../components/connectorOptions"
 import { SETUP_TYPES } from "../../../utils/constants"
+import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import { validateFormData } from "../../../utils/validateFormData"
+import validator from "@rjsf/validator-ajv8"
+import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -47,6 +58,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		},
 		ref,
 	) => {
+		const formRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
@@ -55,11 +67,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<any>({})
 		const [schema, setSchema] = useState<any>(null)
+		const [uiSchema, setUiSchema] = useState<any>(null)
 		const [loading, setLoading] = useState(false)
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
-		const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
-		const [validating, setValidating] = useState(false)
 
 		const navigate = useNavigate()
 
@@ -171,6 +182,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					)
 					if (response.success && response.data?.spec) {
 						setSchema(response.data.spec)
+						if (typeof response.data.uischema === "string") {
+							setUiSchema(JSON.parse(response.data.uischema))
+						}
 					} else {
 						console.error("Failed to get source spec:", response.message)
 					}
@@ -195,8 +209,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const validateSource = async (): Promise<boolean> => {
-			setValidating(true)
-
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
 					if (!sourceName.trim() && selectedVersion.trim() !== "") {
@@ -212,9 +224,21 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						return false
 					}
 
+					// Trigger RJSF validation UI to show red borders on invalid fields in job flow
+					if (
+						fromJobFlow &&
+						schema &&
+						formRef.current &&
+						formRef.current.submit
+					) {
+						try {
+							formRef.current.submit()
+						} catch {}
+					}
+
+					// Block flow if schema validation fails
 					if (schema) {
 						const schemaErrors = validateFormData(formData, schema)
-						setFormErrors(schemaErrors)
 						if (Object.keys(schemaErrors).length > 0) {
 							return false
 						}
@@ -231,8 +255,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				}
 
 				return true
-			} finally {
-				setValidating(false)
+			} catch (error) {
+				console.error("Error validating source:", error)
+				return false
 			}
 		}
 
@@ -241,14 +266,19 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}))
 
 		const handleCreate = async () => {
+			// In job flow, submission is only used to surface validation errors; avoid side effects
+			if (fromJobFlow) {
+				return
+			}
 			const isValid = await validateSource()
 			if (!isValid) return
+			const dataToUse = formData
 
 			const newSourceData = {
 				name: sourceName,
 				type: connector.toLowerCase(),
 				version: selectedVersion,
-				config: JSON.stringify(formData),
+				config: JSON.stringify(dataToUse),
 			}
 
 			try {
@@ -302,13 +332,19 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
+			if (onDocsMinimizedChange) {
+				if (type === SETUP_TYPES.EXISTING) {
+					onDocsMinimizedChange(true) // Close doc panel
+				} else if (type === SETUP_TYPES.NEW) {
+					onDocsMinimizedChange(false)
+				}
+			}
 			// Clear form data when switching to new source
 			if (type === "new") {
 				setSourceName("")
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
-
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onSourceNameChange) onSourceNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
@@ -341,14 +377,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
-		const handleFormChange = (newFormData: any) => {
-			setFormData(newFormData)
-
-			if (onFormDataChange) {
-				onFormDataChange(newFormData)
-			}
-		}
-
 		const handleVersionChange = (value: string) => {
 			setSelectedVersion(value)
 			if (onVersionChange) {
@@ -362,9 +390,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
-		// UI component renderers
 		const renderConnectorSelection = () => (
-			<div className="w-1/3">
+			<div className="w-1/2">
 				<label className="mb-2 block text-sm font-medium text-gray-700">
 					Connector:
 				</label>
@@ -387,7 +414,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				<div className="flex w-full gap-6">
 					{renderConnectorSelection()}
 
-					<div className="w-1/3">
+					<div className="w-1/2">
 						<label className="mb-2 block text-sm font-medium text-gray-700">
 							OLake Version:
 						</label>
@@ -439,7 +466,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			<div className="flex-start flex w-full gap-6">
 				{renderConnectorSelection()}
 
-				<div className="w-1/3">
+				<div className="w-1/2">
 					<label className="mb-2 block text-sm font-medium text-gray-700">
 						Select existing source:
 					</label>
@@ -478,13 +505,29 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						schema && (
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 								<EndpointTitle title="Endpoint config" />
-								<FixedSchemaForm
+								<Form
+									ref={formRef}
 									schema={schema}
+									templates={{
+										ObjectFieldTemplate: ObjectFieldTemplate,
+										FieldTemplate: CustomFieldTemplate,
+										ArrayFieldTemplate: ArrayFieldTemplate,
+										ButtonTemplates: {
+											SubmitButton: () => null,
+										},
+									}}
+									widgets={widgets}
 									formData={formData}
-									onChange={handleFormChange}
-									hideSubmit={true}
-									errors={formErrors}
-									validate={validating}
+									onChange={e => {
+										setFormData(e.formData)
+										if (onFormDataChange) onFormDataChange(e.formData)
+									}}
+									uiSchema={uiSchema}
+									validator={validator}
+									omitExtraData
+									liveOmit
+									showErrorList={false}
+									onSubmit={handleCreate}
 								/>
 							</div>
 						)
@@ -534,7 +577,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								{renderSchemaForm()}
 							</div>
 
-							{/* Footer - moved inside center section */}
+							{/* Footer  */}
 							{!fromJobFlow && (
 								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 									<button
@@ -545,7 +588,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									</button>
 									<button
 										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={handleCreate}
+										onClick={() => {
+											if (formRef.current) {
+												formRef.current.submit()
+											}
+										}}
 									>
 										Create
 										<ArrowRight className="size-4 text-white" />

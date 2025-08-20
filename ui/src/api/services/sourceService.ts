@@ -119,6 +119,7 @@ export const sourceService = {
 					type: type.toLowerCase(),
 					version,
 				},
+				{ timeout: 0 },
 			)
 			return response.data
 		} catch (error) {

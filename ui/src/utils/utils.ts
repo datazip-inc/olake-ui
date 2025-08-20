@@ -43,11 +43,15 @@ export const getConnectorName = (connector: string, catalog: string | null) => {
 		case "Apache Iceberg":
 			switch (catalog) {
 				case "AWS Glue":
+				case "glue":
 					return "iceberg/catalog/glue"
 				case "REST Catalog":
+				case "rest":
 					return "iceberg/catalog/rest"
+				case "jdbc":
 				case "JDBC Catalog":
 					return "iceberg/catalog/jdbc"
+				case "hive":
 				case "Hive Catalog":
 				case "HIVE Catalog":
 					return "iceberg/catalog/hive"
