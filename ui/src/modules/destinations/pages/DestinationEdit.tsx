@@ -158,12 +158,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					let parsedConfig = initialData.config
 					if (typeof initialData.config === "string") {
 						try {
-							parsedConfig = JSON.parse(initialData.config)
+							parsedConfig = JSON.parse(initialData.config.writer)
 						} catch (error) {
 							console.error("Error parsing destination config:", error)
 							parsedConfig = {}
 						}
+					} else {
+						parsedConfig = parsedConfig.writer
 					}
+
 					setFormData(parsedConfig)
 				}
 			}
