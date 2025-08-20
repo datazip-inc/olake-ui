@@ -5,44 +5,63 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	step,
 	index,
 	currentStep,
+	onStepClick,
+	isEditMode,
 }) => {
-	const isActive = steps.indexOf(currentStep) >= index
-	const isNextActive = steps.indexOf(currentStep) >= index + 1
+	const currentStepIndex = steps.indexOf(currentStep)
+	const isActive = currentStepIndex >= index
+	const isNextActive = currentStepIndex >= index + 1
 	const isLastStep = index === steps.length - 1
+
+	const handleClick = () => {
+		if (isEditMode && onStepClick) {
+			onStepClick(step)
+		}
+	}
 
 	return (
 		<div className="flex flex-col items-start">
 			<div className="flex items-center">
-				<div
+				<button
 					className={`z-10 size-3 rounded-full border ${
 						isActive
-							? "border-[#203FDD] outline outline-2 outline-[#203fDD]"
+							? "border-primary outline outline-2 outline-primary"
 							: "border-gray-300 bg-white"
-					}`}
-				></div>
+					} ${isEditMode ? "cursor-pointer hover:bg-[#e8ebff]" : "cursor-not-allowed"}`}
+					onClick={handleClick}
+					disabled={!isEditMode}
+					type="button"
+				/>
 				{!isLastStep && (
 					<div className="relative h-[2px] w-20">
-						<div className="absolute inset-0 bg-gray-300"></div>
+						<div className="absolute inset-0 bg-gray-300" />
 						{isNextActive && (
-							<div className="absolute inset-0 bg-[#203FDD] transition-all duration-300" />
+							<div className="absolute inset-0 bg-primary transition-all duration-300" />
 						)}
 					</div>
 				)}
 			</div>
-			<span
-				className={`mt-2 translate-x-[-40%] text-xs ${
-					isActive ? "text-[#203FDD]" : "text-gray-500"
-				}`}
+			<button
+				className={`mt-2 inline translate-x-[-40%] text-xs ${
+					isActive ? "text-primary" : "text-[#6b7280]"
+				} ${isEditMode ? "cursor-pointer hover:text-primary" : "cursor-not-allowed"}`}
+				onClick={handleClick}
+				disabled={!isEditMode}
+				type="button"
 			>
 				{step === "config"
 					? "Job Config"
 					: step.charAt(0).toUpperCase() + step.slice(1)}
-			</span>
+			</button>
 		</div>
 	)
 }
 
-const StepProgress: React.FC<StepProgressProps> = ({ currentStep }) => {
+const StepProgress: React.FC<StepProgressProps> = ({
+	currentStep,
+	onStepClick,
+	isEditMode,
+}) => {
 	return (
 		<div className="flex items-center">
 			{steps.map((step, index) => (
@@ -51,6 +70,8 @@ const StepProgress: React.FC<StepProgressProps> = ({ currentStep }) => {
 					step={step}
 					index={index}
 					currentStep={currentStep}
+					onStepClick={onStepClick}
+					isEditMode={isEditMode}
 				/>
 			))}
 		</div>

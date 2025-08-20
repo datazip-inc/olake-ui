@@ -45,10 +45,11 @@ BACKEND_ENV_VARS = \
       HTTP_PORT=8000 \
       RUN_MODE=localdev \
       COPY_REQUEST_BODY=true \
-      POSTGRES_DB=postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable \
+      POSTGRES_DB=postgres://temporal:temporal@localhost:5432/postgres?sslmode=disable \
       LOGS_DIR=./logger/logs \
       SESSION_ON=true \
-      TEMPORAL_ADDRESS=localhost:7233
+      TEMPORAL_ADDRESS=localhost:7233 \
+	  CONTAINER_REGISTRY_BASE=registry-1.docker.io
 
 # Frontend environment variables
 FRONTEND_ENV_VARS = \
