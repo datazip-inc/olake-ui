@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
@@ -20,7 +20,6 @@ import {
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
-import FixedSchemaForm from "../../../utils/FormFix"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
@@ -33,7 +32,13 @@ import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
+	widgets,
 } from "../../../utils/constants"
+import Form from "@rjsf/antd"
+import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import validator from "@rjsf/validator-ajv8"
+import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -42,11 +47,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	initialData,
 	onNameChange,
 	onConnectorChange,
-	onFormDataChange,
 	onVersionChange,
 	docsMinimized = false,
 	onDocsMinimizedChange,
 }) => {
+	const formRef = useRef<any>(null)
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
 	const [activeTab, setActiveTab] = useState("config")
@@ -62,7 +67,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [source, setSource] = useState<Entity | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [loadingVersions, setLoadingVersions] = useState(false)
-	const [schema, setSchema] = useState<Record<string, any> | null>(null)
+	const [schema, setSchema] = useState<any>(null)
+	const [uiSchema, setUiSchema] = useState<any>(null)
 
 	const {
 		sources,
@@ -150,6 +156,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				)
 				if (response.success && response.data?.spec) {
 					setSchema(response.data.spec)
+					if (typeof response.data.uischema === "string") {
+						setUiSchema(JSON.parse(response.data.uischema))
+					}
 				} else {
 					console.error("Failed to get source spec:", response.message)
 				}
@@ -591,17 +600,27 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											</div>
 										) : (
 											schema && (
-												<FixedSchemaForm
+												<Form
+													ref={formRef}
 													schema={schema}
-													formData={formData}
-													onChange={(updatedFormData: Record<string, any>) => {
-														setFormData(updatedFormData)
-														if (onFormDataChange) {
-															onFormDataChange(updatedFormData)
-														}
+													templates={{
+														ObjectFieldTemplate: ObjectFieldTemplate,
+														FieldTemplate: CustomFieldTemplate,
+														ArrayFieldTemplate: ArrayFieldTemplate,
+														ButtonTemplates: {
+															SubmitButton: () => null,
+														},
 													}}
-													hideSubmit={true}
+													widgets={widgets}
+													formData={formData}
+													onChange={e => setFormData(e.formData)}
+													onSubmit={() => handleSave()}
+													uiSchema={uiSchema}
+													validator={validator}
 													disabled={fromJobFlow}
+													showErrorList={false}
+													omitExtraData
+													liveOmit
 												/>
 											)
 										)}
@@ -649,7 +668,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								<div className="flex space-x-4">
 									<button
 										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={handleSave}
+										onClick={() => {
+											if (formRef.current) {
+												formRef.current.submit()
+											}
+										}}
 									>
 										Save changes
 									</button>
