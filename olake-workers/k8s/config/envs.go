@@ -77,10 +77,6 @@ func bindEnvironmentVariables(v *viper.Viper) {
 
 // GetEnv returns environment variable value or default if not set
 func GetEnv(key, defaultValue string) string {
-	if globalViper == nil {
-		InitConfig()
-	}
-
 	globalViper.SetDefault(key, defaultValue)
 	return globalViper.GetString(key)
 }
