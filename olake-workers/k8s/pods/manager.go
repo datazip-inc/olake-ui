@@ -41,9 +41,8 @@ func NewK8sPodManager(cfg *appConfig.Config) (*K8sPodManager, error) {
 		return nil, fmt.Errorf("failed to create Kubernetes client: %v", err)
 	}
 
-	// Get the target namespace from environment variable, defaulting to "olake"
-	// All activity pods will be created in this namespace
-	namespace := appConfig.GetEnv("WORKER_NAMESPACE", "olake")
+	// Use namespace from config
+	namespace := cfg.Kubernetes.Namespace
 
 	logger.Infof("Initialized K8s pod manager for namespace: %s", namespace)
 

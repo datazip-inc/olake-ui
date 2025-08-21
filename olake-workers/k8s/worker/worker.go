@@ -36,7 +36,7 @@ func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
 
 	// Create database service
-	jobService, err := service.NewPostgresJobService()
+	jobService, err := service.NewPostgresJobService(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job service: %v", err)
 	}

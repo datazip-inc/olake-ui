@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"os"
 
 	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/logger"
@@ -33,25 +32,20 @@ type jobData struct {
 }
 
 // NewDB creates a new database connection
-func NewDB() (*DB, error) {
-	dbURL := getDBURL()
+func NewDB(cfg *appConfig.Config) (*DB, error) {
+	dbURL := getDBURLFromConfig(cfg)
 
 	conn, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Apply connection pool settings
-	cfg, err := appConfig.LoadConfig()
-	if err != nil {
-		logger.Warnf("Failed to load database config, using defaults: %v", err)
-	} else {
-		conn.SetMaxOpenConns(cfg.Database.MaxOpenConns)
-		conn.SetMaxIdleConns(cfg.Database.MaxIdleConns)
-		conn.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
-		logger.Debugf("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v",
-			cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
-	}
+	// Apply connection pool settings from config
+	conn.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	conn.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	conn.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+	logger.Debugf("Applied database connection pool settings: MaxOpen=%d, MaxIdle=%d, MaxLifetime=%v",
+		cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
 
 	// Test connection
 	if err := conn.Ping(); err != nil {
@@ -60,8 +54,8 @@ func NewDB() (*DB, error) {
 
 	logger.Info("Successfully connected to PostgreSQL database")
 
-	// Initialize table names based on environment
-	tableNames := getTableNames()
+	// Initialize table names based on config
+	tableNames := getTableNamesFromConfig(cfg)
 
 	return &DB{
 		conn:       conn,
@@ -80,26 +74,20 @@ func (db *DB) Close() error {
 }
 
 // Helper functions
-func getDBURL() string {
-	dbURL := os.Getenv("DATABASE_URL")
+func getDBURLFromConfig(cfg *appConfig.Config) string {
+	dbURL := cfg.Database.URL
 	if dbURL == "" {
-		// Fallback to individual components
-		host := appConfig.GetEnv("DB_HOST", "localhost")
-		port := appConfig.GetEnv("DB_PORT", "5432")
-		user := appConfig.GetEnv("DB_USER", "olake")
-		password := appConfig.GetEnv("DB_PASSWORD", "password")
-		dbname := appConfig.GetEnv("DB_NAME", "olake")
-		sslmode := appConfig.GetEnv("DB_SSLMODE", "disable")
-
+		// Use config values instead of direct env access
 		dbURL = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-			host, port, user, password, dbname, sslmode)
+			cfg.Database.Host, cfg.Database.Port, cfg.Database.User,
+			cfg.Database.Password, cfg.Database.Database, cfg.Database.SSLMode)
 	}
 	return dbURL
 }
 
-func getTableNames() map[string]string {
-	// Get environment mode (development, production, etc.)
-	runMode := appConfig.GetEnv("RUN_MODE", "dev")
+func getTableNamesFromConfig(cfg *appConfig.Config) map[string]string {
+	// Use config RunMode instead of direct env access
+	runMode := cfg.Database.RunMode
 
 	// Table name patterns matching server implementation
 	tableNames := map[string]string{

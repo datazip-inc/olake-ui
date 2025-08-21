@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/database"
 	"olake-ui/olake-workers/k8s/logger"
 )
@@ -37,8 +38,8 @@ type PostgresJobService struct {
 }
 
 // NewPostgresJobService creates a new PostgreSQL job service
-func NewPostgresJobService() (*PostgresJobService, error) {
-	db, err := database.NewDB()
+func NewPostgresJobService(cfg *appConfig.Config) (*PostgresJobService, error) {
+	db, err := database.NewDB(cfg)
 	if err != nil {
 		logger.Errorf("Failed to create database connection: %v", err)
 		return nil, err
