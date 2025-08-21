@@ -32,7 +32,6 @@
   {{- $host := .host }}
   {{- range .paths }}
   - Frontend: http{{- if $.Values.olakeUI.ingress.tls }}s{{- end }}://{{ $host }}{{ .path }}
-  - Backend:  http{{- if $.Values.olakeUI.ingress.tls }}s{{- end }}://{{ $host }}{{ .path }}/api
   {{- end }}
 {{- end }}
 

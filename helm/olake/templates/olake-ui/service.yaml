@@ -10,19 +10,19 @@ metadata:
   labels:
     app.kubernetes.io/name: olake-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: ui
+    app.kubernetes.io/component: olake-ui
     {{- include "olake.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.olakeUI.service.type }}
   ports:
   - port: 8000
-    targetPort: frontend
+    targetPort: olake-ui
     protocol: TCP
-    name: frontend
+    name: olake-ui
     {{- if eq .Values.olakeUI.service.type "NodePort" }}
     nodePort: 30082
     {{- end }}
   selector:
     app.kubernetes.io/name: olake-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: ui
+    app.kubernetes.io/component: olake-ui

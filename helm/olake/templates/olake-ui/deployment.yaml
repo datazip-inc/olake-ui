@@ -65,7 +65,7 @@ spec:
         image: "{{ .Values.olakeUI.image.repository }}:{{ .Values.olakeUI.image.tag }}"
         imagePullPolicy: {{ .Values.olakeUI.image.pullPolicy }}
         ports:
-        - name: frontend
+        - name: olake-ui
           containerPort: 8000
           protocol: TCP
         env:
