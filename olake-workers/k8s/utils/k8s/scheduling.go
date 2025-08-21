@@ -26,23 +26,18 @@ func validateJobMapping(jobIDStr string, nodeLabels map[string]string, stats *Jo
 	jobID, err := strconv.Atoi(jobIDStr)
 	if err != nil || jobID <= 0 {
 		stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
-		if err != nil {
-			logger.Errorf("Invalid JobID format (must be integer): '%s'", jobIDStr)
-		} else {
-			logger.Errorf("JobID must be positive integer, got: %d", jobID)
-		}
 		return 0, nil, false
 	}
 
 	// Handle null/empty mappings
 	if nodeLabels == nil {
 		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: null mapping", jobID))
-		logger.Errorf("JobID %d has null node mapping", jobID)
+		// logger.Errorf("JobID %d has null node mapping", jobID)
 		return 0, nil, false
 	}
 
 	if len(nodeLabels) == 0 {
-		logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
+		// logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
 		return jobID, make(map[string]string), true
 	}
 
@@ -66,28 +61,28 @@ func validateLabelPair(jobID int, key, value string, stats *JobMappingStats) err
 	if key == "" {
 		err := fmt.Errorf("empty label key")
 		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
-		logger.Errorf("JobID %d has %s", jobID, err)
+		// logger.Errorf("JobID %d has %s", jobID, err)
 		return err
 	}
 
 	if value == "" {
 		err := fmt.Errorf("empty label value for key '%s'", key)
 		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
-		logger.Errorf("JobID %d has %s", jobID, err)
+		// logger.Errorf("JobID %d has %s", jobID, err)
 		return err
 	}
 
 	if errs := validation.IsQualifiedName(key); len(errs) > 0 {
 		err := fmt.Errorf("invalid label key '%s': %v", key, errs)
 		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
-		logger.Errorf("JobID %d has %s", jobID, err)
+		// logger.Errorf("JobID %d has %s", jobID, err)
 		return err
 	}
 
 	if errs := validation.IsValidLabelValue(value); len(errs) > 0 {
 		err := fmt.Errorf("invalid label value '%s' for key '%s': %v", value, key, errs)
 		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: %s", jobID, err))
-		logger.Errorf("JobID %d has %s", jobID, err)
+		// logger.Errorf("JobID %d has %s", jobID, err)
 		return err
 	}
 
