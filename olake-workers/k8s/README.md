@@ -9,7 +9,8 @@ A cloud-native Temporal worker that executes OLake data integration activities a
 - Docker
 - Access to a Kubernetes cluster with kubectl configured
 - Temporal server running and accessible
-- Olake UI running and accessible
+- OLake UI running and accessible
+- Postgres instance up and running
 
 ### Build and Run Locally
 
@@ -144,9 +145,6 @@ Configure activity and workflow timeouts:
 
 | Variable                    | Description               | Default |
 |-----------------------------|---------------------------|---------|
-| `TIMEOUT_WORKFLOW_DISCOVER` | Discover workflow timeout | `3h`    |
-| `TIMEOUT_WORKFLOW_TEST`     | Test workflow timeout     | `3h`    |
-| `TIMEOUT_WORKFLOW_SYNC`     | Sync workflow timeout     | `720h`  |
 | `TIMEOUT_ACTIVITY_DISCOVER` | Discover activity timeout | `2h`    |
 | `TIMEOUT_ACTIVITY_TEST`     | Test activity timeout     | `2h`    |
 | `TIMEOUT_ACTIVITY_SYNC`     | Sync activity timeout     | `700h`  |
