@@ -1,14 +1,13 @@
 package workflows
 
 import (
-	"strconv"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
-	"github.com/spf13/viper"
 
 	"olake-ui/olake-workers/k8s/shared"
+	"olake-ui/olake-workers/k8s/utils/helpers"
 )
 
 // Retry policy matching server-side configuration
@@ -22,7 +21,7 @@ var DefaultRetryPolicy = &temporal.RetryPolicy{
 // DiscoverCatalogWorkflow is a workflow for discovering catalogs using K8s Jobs
 func DiscoverCatalogWorkflow(ctx workflow.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: getActivityTimeout("discover"),
+		StartToCloseTimeout: helpers.GetActivityTimeout("discover"),
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
@@ -35,7 +34,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *shared.ActivityParams
 // TestConnectionWorkflow is a workflow for testing connections using K8s Jobs
 func TestConnectionWorkflow(ctx workflow.Context, params *shared.ActivityParams) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: getActivityTimeout("test"),
+		StartToCloseTimeout: helpers.GetActivityTimeout("test"),
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
@@ -48,7 +47,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params *shared.ActivityParams)
 // RunSyncWorkflow is a workflow for running data synchronization using K8s Jobs
 func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: getActivityTimeout("sync"),
+		StartToCloseTimeout: helpers.GetActivityTimeout("sync"),
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	params := shared.SyncParams{
@@ -62,34 +61,3 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	return result, err
 }
 
-// parseTimeout parses a timeout from viper with fallback
-func parseTimeout(envKey string, defaultValue time.Duration) time.Duration {
-	timeoutStr := viper.GetString(envKey)
-	if timeoutStr == "" {
-		return defaultValue
-	}
-
-	if seconds, err := strconv.Atoi(timeoutStr); err == nil {
-		return time.Duration(seconds) * time.Second
-	}
-
-	if duration, err := time.ParseDuration(timeoutStr); err == nil {
-		return duration
-	}
-
-	return defaultValue
-}
-
-// getActivityTimeout reads activity timeout from viper configuration
-func getActivityTimeout(operation string) time.Duration {
-	switch operation {
-	case "discover":
-		return parseTimeout("timeouts.activity.discover", 2*time.Hour)
-	case "test":
-		return parseTimeout("timeouts.activity.test", 2*time.Hour)
-	case "sync":
-		return parseTimeout("timeouts.activity.sync", 700*time.Hour)
-	default:
-		return 30 * time.Minute
-	}
-}
