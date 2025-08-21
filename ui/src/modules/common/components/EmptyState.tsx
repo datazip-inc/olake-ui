@@ -17,7 +17,7 @@ const EmptyState = ({ type, onButtonClick }: EmptyStateProps) => {
 				className="mb-8 h-64 w-96"
 			/>
 
-			<div className={`mb-2 text-[#193AE6]`}>Welcome User !</div>
+			<div className={`mb-2 text-brand-blue`}>Welcome User !</div>
 
 			<h2 className="mb-2 text-2xl font-bold">
 				Ready to run your first {config.title}
