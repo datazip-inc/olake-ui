@@ -6,8 +6,8 @@ import (
 
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
+	"github.com/spf13/viper"
 
-	appConfig "olake-ui/olake-workers/k8s/config"
 	"olake-ui/olake-workers/k8s/shared"
 )
 
@@ -62,9 +62,9 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	return result, err
 }
 
-// parseTimeout parses a timeout from environment variable with fallback
+// parseTimeout parses a timeout from viper with fallback
 func parseTimeout(envKey string, defaultValue time.Duration) time.Duration {
-	timeoutStr := appConfig.GetEnv(envKey, "")
+	timeoutStr := viper.GetString(envKey)
 	if timeoutStr == "" {
 		return defaultValue
 	}
@@ -80,15 +80,15 @@ func parseTimeout(envKey string, defaultValue time.Duration) time.Duration {
 	return defaultValue
 }
 
-// getActivityTimeout reads activity timeout from environment variables
+// getActivityTimeout reads activity timeout from viper configuration
 func getActivityTimeout(operation string) time.Duration {
 	switch operation {
 	case "discover":
-		return parseTimeout("TIMEOUT_ACTIVITY_DISCOVER", 2*time.Hour)
+		return parseTimeout("timeouts.activity.discover", 2*time.Hour)
 	case "test":
-		return parseTimeout("TIMEOUT_ACTIVITY_TEST", 2*time.Hour)
+		return parseTimeout("timeouts.activity.test", 2*time.Hour)
 	case "sync":
-		return parseTimeout("TIMEOUT_ACTIVITY_SYNC", 700*time.Hour)
+		return parseTimeout("timeouts.activity.sync", 700*time.Hour)
 	default:
 		return 30 * time.Minute
 	}

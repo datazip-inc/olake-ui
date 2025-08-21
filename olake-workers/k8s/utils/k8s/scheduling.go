@@ -3,7 +3,6 @@ package k8s
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	appConfig "olake-ui/olake-workers/k8s/config"
@@ -23,24 +22,23 @@ type JobMappingStats struct {
 }
 
 // validateJobMapping validates a single job mapping entry
-func validateJobMapping(jobIDStr string, nodeLabels map[string]string, stats *JobMappingStats) (int, map[string]string, bool) {
-	// Parse and validate JobID
-	jobID, err := strconv.Atoi(jobIDStr)
-	if err != nil || jobID <= 0 {
-		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("Invalid JobID: '%s'", jobIDStr))
-		return 0, nil, false
+func validateJobMapping(jobID int, nodeLabels map[string]string, stats *JobMappingStats) (map[string]string, bool) {
+	// Validate JobID
+	if jobID <= 0 {
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("Invalid JobID: %d", jobID))
+		return nil, false
 	}
 
 	// Handle null/empty mappings
 	if nodeLabels == nil {
 		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("JobID %d: null mapping", jobID))
 		// logger.Errorf("JobID %d has null node mapping", jobID)
-		return 0, nil, false
+		return nil, false
 	}
 
 	if len(nodeLabels) == 0 {
 		// logger.Warnf("JobID %d has empty node mapping (will use default scheduling)", jobID)
-		return jobID, make(map[string]string), true
+		return make(map[string]string), true
 	}
 
 	// Validate all labels
@@ -49,13 +47,13 @@ func validateJobMapping(jobIDStr string, nodeLabels map[string]string, stats *Jo
 		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
 
 		if err := validateLabelPair(jobID, key, value, stats); err != nil {
-			return 0, nil, false
+			return nil, false
 		}
 
 		validMapping[key] = value
 	}
 
-	return jobID, validMapping, true
+	return validMapping, true
 }
 
 // validateLabelPair validates a single key-value label pair
@@ -91,40 +89,25 @@ func validateLabelPair(jobID int, key, value string, stats *JobMappingStats) err
 	return nil
 }
 
-// LoadJobMappingFromEnv loads the JobID to node mapping configuration from environment variables
+// LoadJobMapping loads the JobID to node mapping configuration from config
 // with enhanced error handling and detailed validation
-func LoadJobMappingFromEnv() map[int]map[string]string {
-	jobMappingJSON := appConfig.GetEnv("OLAKE_JOB_MAPPING", "")
-	if jobMappingJSON == "" {
-		logger.Info("No JobID to Node mapping found, using empty mapping")
-		return make(map[int]map[string]string)
-	}
-
-	var jobMapping map[string]map[string]string
-	if err := json.Unmarshal([]byte(jobMappingJSON), &jobMapping); err != nil {
-		logger.Errorf("Failed to parse JobID to Node mapping as JSON: %v", err)
-		logger.Errorf("Raw configuration: %s", jobMappingJSON)
-
-		// Fallback to last valid mapping if available
-		if lastValidMapping != nil {
-			logger.Debug("Falling back to previous valid mapping with %d entries", len(lastValidMapping))
-			return lastValidMapping
-		}
-
-		logger.Errorf("No previous mapping available, using empty mapping")
+func LoadJobMapping(cfg *appConfig.Config) map[int]map[string]string {
+	// Use only config-provided mapping; no direct env reads
+	if cfg.Kubernetes.JobMapping == nil {
+		logger.Info("No JobID to Node mapping found in config, using empty mapping")
 		return make(map[int]map[string]string)
 	}
 
 	// Enhanced validation and conversion with detailed error tracking
 	stats := JobMappingStats{
-		TotalEntries:    len(jobMapping),
+		TotalEntries:    len(cfg.Kubernetes.JobMapping),
 		InvalidMappings: make([]string, 0),
 	}
 
 	result := make(map[int]map[string]string)
 
-	for jobIDStr, nodeLabels := range jobMapping {
-		if jobID, validMapping, isValid := validateJobMapping(jobIDStr, nodeLabels, &stats); isValid {
+	for jobID, nodeLabels := range cfg.Kubernetes.JobMapping {
+		if validMapping, ok := validateJobMapping(jobID, nodeLabels, &stats); ok {
 			result[jobID] = validMapping
 			stats.ValidEntries++
 		}
@@ -150,6 +133,12 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	if stats.ValidEntries == 0 && stats.TotalEntries > 0 {
 		logger.Errorf("No valid job mappings loaded despite %d entries in configuration",
 			stats.TotalEntries)
+	}
+
+	// Fallback to last valid mapping if available
+	if stats.ValidEntries == 0 && lastValidMapping != nil {
+		logger.Debugf("Falling back to previous valid mapping with %d entries", len(lastValidMapping))
+		return lastValidMapping
 	}
 
 	// Store successful result as fallback for future failures

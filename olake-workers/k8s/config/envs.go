@@ -64,6 +64,7 @@ func bindEnvironmentVariables(v *viper.Viper) {
 	v.BindEnv("worker.max_concurrent_activities", "MAX_CONCURRENT_ACTIVITIES")
 	v.BindEnv("worker.max_concurrent_workflows", "MAX_CONCURRENT_WORKFLOWS")
 	v.BindEnv("worker.heartbeat_interval", "HEARTBEAT_INTERVAL")
+	v.BindEnv("worker.worker_identity", "POD_NAME")
 
 	// Timeout bindings
 	v.BindEnv("timeouts.activity.discover", "TIMEOUT_ACTIVITY_DISCOVER")
@@ -73,10 +74,4 @@ func bindEnvironmentVariables(v *viper.Viper) {
 	// Logging bindings
 	v.BindEnv("logging.level", "LOG_LEVEL")
 	v.BindEnv("logging.format", "LOG_FORMAT")
-}
-
-// GetEnv returns environment variable value or default if not set
-func GetEnv(key, defaultValue string) string {
-	globalViper.SetDefault(key, defaultValue)
-	return globalViper.GetString(key)
 }

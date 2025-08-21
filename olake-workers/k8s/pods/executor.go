@@ -86,12 +86,12 @@ func (k *K8sPodManager) CreatePod(ctx context.Context, spec *PodSpec, configs []
 
 			// Annotations store metadata that doesn't affect pod selection/scheduling
 			Annotations: map[string]string{
-				"olake.io/created-by-pod": k8s.GenerateWorkerIdentity(),    // Which worker pod created this
-				"olake.io/created-at":     time.Now().Format(time.RFC3339), // Creation timestamp
-				"olake.io/workflow-id":    spec.OriginalWorkflowID,         // Original unsanitized workflow ID
-				"olake.io/operation-type": string(spec.Operation),          // Operation type for reference
-				"olake.io/connector-type": spec.ConnectorType,              // Connector type for reference
-				"olake.io/job-id":         strconv.Itoa(spec.JobID),        // Job ID for reference
+				"olake.io/created-by-pod": fmt.Sprintf("olake.io/olake-workers/%s", k.config.Worker.WorkerIdentity), // Which worker pod created this
+				"olake.io/created-at":     time.Now().Format(time.RFC3339),                                          // Creation timestamp
+				"olake.io/workflow-id":    spec.OriginalWorkflowID,                                                  // Original unsanitized workflow ID
+				"olake.io/operation-type": string(spec.Operation),                                                   // Operation type for reference
+				"olake.io/connector-type": spec.ConnectorType,                                                       // Connector type for reference
+				"olake.io/job-id":         strconv.Itoa(spec.JobID),                                                 // Job ID for reference
 			},
 		},
 		Spec: corev1.PodSpec{

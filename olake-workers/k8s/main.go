@@ -22,7 +22,7 @@ func main() {
 	logger.Infof("Environment: %s", cfg.Database.RunMode)
 
 	// Create K8s worker with configuration
-	w, err := worker.NewK8sWorkerWithConfig(cfg)
+	w, err := worker.NewK8sWorker(cfg)
 	if err != nil {
 		logger.Fatalf("Failed to create K8s worker: %v", err)
 	}

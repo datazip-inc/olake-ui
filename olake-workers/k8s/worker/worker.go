@@ -28,10 +28,9 @@ type K8sWorker struct {
 }
 
 // NewK8sWorkerWithConfig creates a new K8s worker with full configuration
-func NewK8sWorkerWithConfig(cfg *config.Config) (*K8sWorker, error) {
-	// Set computed values that depend on runtime environment
-	cfg.Kubernetes.JobMapping = k8s.LoadJobMappingFromEnv()
-	cfg.Worker.WorkerIdentity = k8s.GenerateWorkerIdentity()
+func NewK8sWorker(cfg *config.Config) (*K8sWorker, error) {
+	cfg.Kubernetes.JobMapping = k8s.LoadJobMapping(cfg)
+	cfg.Worker.WorkerIdentity = fmt.Sprintf("olake.io/olake-workers/%s", cfg.Worker.WorkerIdentity)
 
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
 
