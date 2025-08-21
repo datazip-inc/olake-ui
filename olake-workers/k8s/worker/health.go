@@ -9,6 +9,8 @@ import (
 	"olake-ui/olake-workers/k8s/logger"
 )
 
+const healthPort = 8090
+
 // HealthServer provides health check endpoints
 type HealthServer struct {
 	server *http.Server
@@ -22,6 +24,17 @@ type HealthResponse struct {
 	Checks    map[string]string `json:"checks,omitempty"`
 }
 
+// writeJSON writes a JSON response with status and common headers
+func writeJSON(w http.ResponseWriter, status int, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if status > 0 {
+		w.WriteHeader(status)
+	}
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		logger.Errorf("Failed to encode response: %v", err)
+	}
+}
+
 // NewHealthServer creates a new health check server
 func NewHealthServer(worker *K8sWorker, port int) *HealthServer {
 	mux := http.NewServeMux()
@@ -29,7 +42,7 @@ func NewHealthServer(worker *K8sWorker, port int) *HealthServer {
 	hs := &HealthServer{
 		worker: worker,
 		server: &http.Server{
-			Addr:    fmt.Sprintf(":%d", 8090),
+			Addr:    fmt.Sprintf(":%d", healthPort),
 			Handler: mux,
 		},
 	}
@@ -44,7 +57,7 @@ func NewHealthServer(worker *K8sWorker, port int) *HealthServer {
 
 // Start starts the health check server
 func (hs *HealthServer) Start() error {
-	logger.Infof("Starting health check server on port 8090")
+	logger.Infof("Starting health check server on port %d", healthPort)
 	return hs.server.ListenAndServe()
 }
 
@@ -63,20 +76,21 @@ func (hs *HealthServer) healthHandler(w http.ResponseWriter, r *http.Request) {
 	// - worker: The actual Temporal worker instance (required for activity/workflow execution)
 	// Both must be operational for the pod to process work. If either fails, Kubernetes
 	// should restart the pod via liveness probe to restore functionality.
-	if hs.worker.temporalClient == nil || hs.worker.worker == nil {
+	if hs.worker.temporalClient == nil {
 		response.Status = "unhealthy"
-		if hs.worker.temporalClient == nil {
-			response.Checks["worker"] = "temporal_client_disconnected"
-		} else {
-			response.Checks["worker"] = "temporal_worker_failed"
-		}
-		w.WriteHeader(http.StatusServiceUnavailable)
+		response.Checks["worker"] = "temporal_client_disconnected"
+		writeJSON(w, http.StatusServiceUnavailable, response)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		logger.Errorf("Failed to encode health response: %v", err)
+	if hs.worker.worker == nil {
+		response.Status = "unhealthy"
+		response.Checks["worker"] = "temporal_worker_failed"
+		writeJSON(w, http.StatusServiceUnavailable, response)
+		return
 	}
+
+	writeJSON(w, http.StatusOK, response)
 }
 
 // readinessHandler handles readiness probe requests
@@ -117,13 +131,11 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 
 	// Set HTTP status code based on overall health
 	if response.Status == "not_ready" {
-		w.WriteHeader(http.StatusServiceUnavailable)
+		writeJSON(w, http.StatusServiceUnavailable, response)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		logger.Errorf("Failed to encode readiness response: %v", err)
-	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 // metricsHandler provides basic metrics
@@ -135,8 +147,5 @@ func (hs *HealthServer) metricsHandler(w http.ResponseWriter, r *http.Request) {
 		"timestamp":      time.Now(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(metrics); err != nil {
-		logger.Errorf("Failed to encode metrics response: %v", err)
-	}
+	writeJSON(w, http.StatusOK, metrics)
 }
