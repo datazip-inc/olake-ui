@@ -165,9 +165,9 @@ export default function ObjectFieldTemplate<
 								</Col>
 							)}
 							{uiSchema?.["ui:grid"] && Array.isArray(uiSchema["ui:grid"])
-								? uiSchema["ui:grid"].map(ui_row => {
-										return Object.keys(ui_row).map(row_item => {
-											let element = properties.find(p => p.name == row_item)
+								? uiSchema["ui:grid"].map((ui_row, rowIdx) => {
+										const rowElements = Object.keys(ui_row).map(row_item => {
+											const element = properties.find(p => p.name == row_item)
 											if (element) {
 												return (
 													<Col
@@ -177,10 +177,25 @@ export default function ObjectFieldTemplate<
 														{element.content}
 													</Col>
 												)
-											} else {
-												return <></>
 											}
+											return null
 										})
+										// Calculate total span for the row
+										const totalSpan = Object.values(ui_row).reduce(
+											(sum: number, val) =>
+												sum + (typeof val === "number" ? val : 0),
+											0,
+										)
+										// If totalSpan < 24, add an empty Col to fill the row
+										if (totalSpan < 24) {
+											rowElements.push(
+												<Col
+													key={`empty-col-${rowIdx}`}
+													span={24 - totalSpan}
+												></Col>,
+											)
+										}
+										return rowElements
 									})
 								: properties
 										.filter(e => !e.hidden)
