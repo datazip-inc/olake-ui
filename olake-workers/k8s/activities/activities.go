@@ -62,12 +62,16 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 
 	// Transform Temporal activity parameters into Kubernetes pod execution request
 	// Maps connector type/version to container image, mounts config as files, sets operation-specific timeout
+	imageName, err := a.podManager.GetDockerImageName(params.SourceType, params.Version); if err != nil {
+		return nil, fmt.Errorf("failed to get docker image name: %v", err)
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Discover,
 		ConnectorType: params.SourceType,
-		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
+		Image:         imageName,
 		Args:          []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
@@ -92,12 +96,16 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 
 	// Transform Temporal activity parameters into Kubernetes pod execution request
 	// Maps connector type/version to container image, includes flag parameter, mounts config as files
+	imageName, err := a.podManager.GetDockerImageName(params.SourceType, params.Version); if err != nil {
+		return nil, fmt.Errorf("failed to get docker image name: %v", err)
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Check,
 		ConnectorType: params.SourceType,
-		Image:         a.podManager.GetDockerImageName(params.SourceType, params.Version),
+		Image:         imageName,
 		Args: []string{
 			string(shared.Check),
 			fmt.Sprintf("--%s", params.Flag),
@@ -139,12 +147,16 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 
 	// Transform job data and Temporal activity parameters into Kubernetes pod execution request
 	// Maps all sync configuration files (config, catalog, destination, state) as mounted files
+	imageName, err := a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion); if err != nil {
+		return nil, fmt.Errorf("failed to get docker image name: %v", err)
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Sync,
 		ConnectorType: jobData.SourceType,
-		Image:         a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion),
+		Image:         imageName,
 		Args: []string{
 			string(shared.Sync),
 			"--config", "/mnt/config/config.json",

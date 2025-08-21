@@ -60,14 +60,13 @@ func NewK8sPodManager(cfg *appConfig.Config) (*K8sPodManager, error) {
 // This maps abstract connector references (e.g., "mysql", "postgres") to concrete container images
 // that contain the actual connector implementation. Each connector type has its own Docker image
 // in the "olakego" registry with naming convention: olakego/source-{type}:{version}
-func (k *K8sPodManager) GetDockerImageName(sourceType, version string) string {
-	// Default to "latest" tag if no specific version is provided
-	// This ensures we always have a valid image tag for container pulls
+func (k *K8sPodManager) GetDockerImageName(sourceType, version string) (string, error) {
+	// Strict validation: version is required (no 'latest' fallback)
 	if version == "" {
-		version = "latest"
+		return "", fmt.Errorf("version cannot be empty - no 'latest' tag exists for connector images")
 	}
 
 	// Construct the full image name using the olakego registry convention
-	// Examples: olakego/source-mysql:v0.1.7, olakego/source-postgres:latest
-	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
+	// Examples: olakego/source-mysql:v0.1.7, olakego/source-postgres:v1.2.3
+	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version), nil
 }
