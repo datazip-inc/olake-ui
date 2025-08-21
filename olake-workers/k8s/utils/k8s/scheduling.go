@@ -12,11 +12,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+// Package-level variable to store last known good mapping for fallback
+var lastValidMapping map[int]map[string]string
+
 // JobMappingStats contains statistics about job mapping loading
 type JobMappingStats struct {
 	TotalEntries    int
 	ValidEntries    int
-	InvalidJobIDs   []string
 	InvalidMappings []string
 }
 
@@ -25,7 +27,7 @@ func validateJobMapping(jobIDStr string, nodeLabels map[string]string, stats *Jo
 	// Parse and validate JobID
 	jobID, err := strconv.Atoi(jobIDStr)
 	if err != nil || jobID <= 0 {
-		stats.InvalidJobIDs = append(stats.InvalidJobIDs, jobIDStr)
+		stats.InvalidMappings = append(stats.InvalidMappings, fmt.Sprintf("Invalid JobID: '%s'", jobIDStr))
 		return 0, nil, false
 	}
 
@@ -102,13 +104,20 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	if err := json.Unmarshal([]byte(jobMappingJSON), &jobMapping); err != nil {
 		logger.Errorf("Failed to parse JobID to Node mapping as JSON: %v", err)
 		logger.Errorf("Raw configuration: %s", jobMappingJSON)
+
+		// Fallback to last valid mapping if available
+		if lastValidMapping != nil {
+			logger.Debug("Falling back to previous valid mapping with %d entries", len(lastValidMapping))
+			return lastValidMapping
+		}
+
+		logger.Errorf("No previous mapping available, using empty mapping")
 		return make(map[int]map[string]string)
 	}
 
 	// Enhanced validation and conversion with detailed error tracking
 	stats := JobMappingStats{
 		TotalEntries:    len(jobMapping),
-		InvalidJobIDs:   make([]string, 0),
 		InvalidMappings: make([]string, 0),
 	}
 
@@ -132,11 +141,6 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 		}
 	}
 
-	if len(stats.InvalidJobIDs) > 0 {
-		logger.Errorf("Found %d invalid JobIDs: %v",
-			len(stats.InvalidJobIDs), stats.InvalidJobIDs)
-	}
-
 	if len(stats.InvalidMappings) > 0 {
 		logger.Errorf("Found %d invalid mappings: %v",
 			len(stats.InvalidMappings), stats.InvalidMappings)
@@ -146,6 +150,12 @@ func LoadJobMappingFromEnv() map[int]map[string]string {
 	if stats.ValidEntries == 0 && stats.TotalEntries > 0 {
 		logger.Errorf("No valid job mappings loaded despite %d entries in configuration",
 			stats.TotalEntries)
+	}
+
+	// Store successful result as fallback for future failures
+	if len(result) > 0 || stats.ValidEntries > 0 {
+		lastValidMapping = result
+		logger.Debugf("Cached valid mapping with %d entries for future fallback", len(result))
 	}
 
 	return result
