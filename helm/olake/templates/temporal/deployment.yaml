@@ -70,7 +70,7 @@ spec:
           protocol: TCP
         env:
         - name: DB
-          value: "postgres12"
+          value: "postgres14"
         - name: DB_PORT
           value: "5432"
         - name: POSTGRES_USER
