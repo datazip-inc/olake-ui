@@ -8,8 +8,9 @@ type LoaderProps = {
 	tip?: string
 }
 
-const Loader: React.FC<LoaderProps> = ({ size = "small" ,tip }) => {
-	const width = size === "large" ? LoaderComponentSize.large : LoaderComponentSize.small
+const Loader: React.FC<LoaderProps> = ({ size = "small", tip }) => {
+	const width =
+		size === "large" ? LoaderComponentSize.large : LoaderComponentSize.small
 
 	return (
 		<div className="flex h-full w-full items-center justify-center">
@@ -18,6 +19,7 @@ const Loader: React.FC<LoaderProps> = ({ size = "small" ,tip }) => {
 				src={LoaderSquares}
 				alt="Loading..."
 			/>
+			{tip && <span className="invisible">{tip}</span>}
 		</div>
 	)
 }

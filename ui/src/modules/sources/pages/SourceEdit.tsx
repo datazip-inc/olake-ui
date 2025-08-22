@@ -589,7 +589,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 										{loading ? (
 											<div className="flex h-32 items-center justify-center">
 												<Loader tip="Loading schema..." />
-
 											</div>
 										) : (
 											schema && (

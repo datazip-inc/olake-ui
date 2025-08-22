@@ -550,8 +550,10 @@ const CreateDestination = forwardRef<
 						<FormField label="Version:">
 							{loadingVersions || true ? (
 								<div className="flex h-8 items-center justify-center">
-
-									<Loader tip="" size="small"></Loader>
+									<Loader
+										tip=""
+										size="small"
+									></Loader>
 								</div>
 							) : versions && versions.length > 0 ? (
 								<Select
@@ -620,8 +622,7 @@ const CreateDestination = forwardRef<
 				<>
 					{loading ? (
 						<div className="flex h-32 items-center justify-center">
-
-							<Loader tip="Loading schema"/>
+							<Loader tip="Loading schema" />
 						</div>
 					) : (
 						schema && (

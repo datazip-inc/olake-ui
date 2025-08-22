@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button, Tabs, Empty, message, Spin } from "antd"
+import { Button, Tabs, Empty, message } from "antd"
 import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -113,14 +113,6 @@ const Sources: React.FC = () => {
 					Create Source
 				</button>
 			</div>
-			<Loader
-				size="large"
-				tip="Loading sources..."
-			/>
-			<Spin
-				size="large"
-				tip="Loading sources..."
-			/>
 
 			<p className="mb-6 text-gray-600">A list of all your sources</p>
 
