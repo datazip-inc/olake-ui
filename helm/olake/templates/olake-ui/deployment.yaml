@@ -7,7 +7,7 @@ metadata:
   labels:
     app.kubernetes.io/name: olake-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/component: ui
+    app.kubernetes.io/component: olake-ui
     {{- include "olake.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.olakeUI.replicaCount }}
@@ -15,7 +15,7 @@ spec:
     matchLabels:
       app.kubernetes.io/name: olake-ui
       app.kubernetes.io/instance: {{ .Release.Name }}
-      app.kubernetes.io/component: ui
+      app.kubernetes.io/component: olake-ui
   template:
     metadata:
       annotations:
@@ -25,7 +25,7 @@ spec:
       labels:
         app.kubernetes.io/name: olake-ui
         app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/component: ui
+        app.kubernetes.io/component: olake-ui
         {{- with .Values.olakeUI.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
