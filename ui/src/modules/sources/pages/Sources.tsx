@@ -6,9 +6,8 @@ import EmptyState from "../../common/components/EmptyState"
 import { useAppStore } from "../../../store"
 import analyticsService from "../../../api/services/analyticsService"
 import { Entity } from "../../../types"
-import {EmptyStateType, sourceTabs } from "../../../utils/constants"
+import { EmptyStateType, sourceTabs } from "../../../utils/constants"
 import SourceTable from "../components/SourceTable"
-
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
