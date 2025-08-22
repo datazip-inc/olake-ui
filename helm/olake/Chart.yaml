@@ -11,6 +11,9 @@ keywords:
   - data-pipeline
   - elt
   - kubernetes
+  - apache
+  - iceberg
+  - data-lakehouse
   - workflow
   - olake
 maintainers:
