@@ -8,7 +8,7 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/database/service"
+	"olake-ui/olake-workers/k8s/database"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
 	"olake-ui/olake-workers/k8s/shared"
@@ -18,20 +18,19 @@ import (
 
 // Activities holds the dependencies for activity functions
 type Activities struct {
-	jobService service.JobDataService
+	db         *database.DB
 	podManager *pods.K8sPodManager
 	config     *config.Config
 }
 
 // NewActivities creates a new Activities instance with injected dependencies
-func NewActivities(jobService service.JobDataService, podManager *pods.K8sPodManager, cfg *config.Config) *Activities {
+func NewActivities(db *database.DB, podManager *pods.K8sPodManager, cfg *config.Config) *Activities {
 	return &Activities{
-		jobService: jobService,
+		db:         db,
 		podManager: podManager,
 		config:     cfg,
 	}
 }
-
 
 // DiscoverCatalogActivity discovers data source catalog using Kubernetes Pod
 func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.ActivityParams) (map[string]interface{}, error) {
@@ -40,7 +39,8 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 
 	// Transform Temporal activity parameters into Kubernetes pod execution request
 	// Maps connector type/version to container image, mounts config as files, sets operation-specific timeout
-	imageName, err := a.podManager.GetDockerImageName(params.SourceType, params.Version); if err != nil {
+	imageName, err := a.podManager.GetDockerImageName(params.SourceType, params.Version)
+	if err != nil {
 		return nil, fmt.Errorf("failed to get docker image name: %v", err)
 	}
 
@@ -74,7 +74,8 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 
 	// Transform Temporal activity parameters into Kubernetes pod execution request
 	// Maps connector type/version to container image, includes flag parameter, mounts config as files
-	imageName, err := a.podManager.GetDockerImageName(params.SourceType, params.Version); if err != nil {
+	imageName, err := a.podManager.GetDockerImageName(params.SourceType, params.Version)
+	if err != nil {
 		return nil, fmt.Errorf("failed to get docker image name: %v", err)
 	}
 
@@ -110,14 +111,14 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	activity.RecordHeartbeat(ctx, "Creating Kubernetes Pod for data sync")
 
 	// Retrieve job configuration from database to get all required sync parameters
-	jobData, err := a.jobService.GetJobData(ctx, params.JobID)
+	jobData, err := a.db.GetJobData(ctx, params.JobID)
 	if err != nil {
 		logger.Errorf("Failed to get job data for jobID %d: %v", params.JobID, err)
 		return nil, fmt.Errorf("failed to get job data: %v", err)
 	}
 
 	// Validate and fix empty/null state
-	stateData := jobData.State
+	stateData := jobData["state"].(string)
 	if stateData == "" || stateData == "null" || stateData == "NULL" {
 		stateData = "{}"
 		logger.Infof("Job %d has empty/null state, defaulting to: {}", params.JobID)
@@ -125,7 +126,8 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 
 	// Transform job data and Temporal activity parameters into Kubernetes pod execution request
 	// Maps all sync configuration files (config, catalog, destination, state) as mounted files
-	imageName, err := a.podManager.GetDockerImageName(jobData.SourceType, jobData.SourceVersion); if err != nil {
+	imageName, err := a.podManager.GetDockerImageName(jobData["source_type"].(string), jobData["source_version"].(string))
+	if err != nil {
 		return nil, fmt.Errorf("failed to get docker image name: %v", err)
 	}
 
@@ -133,7 +135,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Sync,
-		ConnectorType: jobData.SourceType,
+		ConnectorType: jobData["source_type"].(string),
 		Image:         imageName,
 		Args: []string{
 			string(shared.Sync),
@@ -143,9 +145,9 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 			"--state", "/mnt/config/state.json",
 		},
 		Configs: []shared.JobConfig{
-			{Name: "config.json", Data: jobData.SourceConfig},
-			{Name: "streams.json", Data: jobData.StreamsConfig},
-			{Name: "writer.json", Data: jobData.DestConfig},
+			{Name: "config.json", Data: jobData["source_config"].(string)},
+			{Name: "streams.json", Data: jobData["streams_config"].(string)},
+			{Name: "writer.json", Data: jobData["dest_config"].(string)},
 			{Name: "state.json", Data: stateData},
 		},
 		Timeout: helpers.GetActivityTimeout("sync"),
@@ -164,7 +166,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 			logger.Warnf("Failed to read/validate final state on error: %v", readErr)
 		} else {
 			// If the state file is valid, attempt to save it
-			if updateErr := a.jobService.UpdateJobState(ctx, params.JobID, string(stateData), false); updateErr != nil {
+			if updateErr := a.db.UpdateJobState(ctx, params.JobID, string(stateData), false); updateErr != nil {
 				logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
 			} else {
 				logger.Infof("Saved final state on failure for job %d", params.JobID)
@@ -178,7 +180,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 	if stateJSON, err := json.Marshal(result); err != nil {
 		logger.Warnf("Failed to marshal result for jobID %d: %v", params.JobID, err)
 	} else {
-		if err := a.jobService.UpdateJobState(ctx, params.JobID, string(stateJSON), true); err != nil {
+		if err := a.db.UpdateJobState(ctx, params.JobID, string(stateJSON), true); err != nil {
 			logger.Errorf("Failed to update job state for jobID %d: %v", params.JobID, err)
 			return nil, fmt.Errorf("failed to update job state: %v", err)
 		}

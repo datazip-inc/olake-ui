@@ -10,7 +10,7 @@ import (
 
 	"olake-ui/olake-workers/k8s/activities"
 	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/database/service"
+	"olake-ui/olake-workers/k8s/database"
 	"olake-ui/olake-workers/k8s/logger"
 	"olake-ui/olake-workers/k8s/pods"
 	"olake-ui/olake-workers/k8s/utils/k8s"
@@ -22,7 +22,7 @@ type K8sWorker struct {
 	worker         worker.Worker
 	config         *config.Config
 	healthServer   *HealthServer
-	jobService     service.JobDataService
+	db             *database.DB
 	podManager     *pods.K8sPodManager
 	startTime      time.Time
 }
@@ -34,12 +34,12 @@ func NewK8sWorker(cfg *config.Config) (*K8sWorker, error) {
 
 	logger.Infof("Connecting to Temporal at: %s", cfg.Temporal.Address)
 
-	// Create database service
-	jobService, err := service.NewPostgresJobService(cfg)
+	// Create database connection
+	db, err := database.NewDB(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create job service: %v", err)
+		return nil, fmt.Errorf("failed to create database: %v", err)
 	}
-	logger.Info("Created database job service")
+	logger.Info("Created database connection")
 
 	// Create pod manager
 	podManager, err := pods.NewK8sPodManager(cfg)
@@ -72,7 +72,7 @@ func NewK8sWorker(cfg *config.Config) (*K8sWorker, error) {
 	w.RegisterWorkflow(workflows.RunSyncWorkflow)
 
 	// Create activities with injected dependencies
-	activitiesInstance := activities.NewActivities(jobService, podManager, cfg)
+	activitiesInstance := activities.NewActivities(db, podManager, cfg)
 
 	// Register activities - these receive WorkflowID from workflows
 	w.RegisterActivity(activitiesInstance.DiscoverCatalogActivity)
@@ -86,7 +86,7 @@ func NewK8sWorker(cfg *config.Config) (*K8sWorker, error) {
 		temporalClient: c,
 		worker:         w,
 		config:         cfg,
-		jobService:     jobService,
+		db:             db,
 		podManager:     podManager,
 		startTime:      time.Now(),
 	}

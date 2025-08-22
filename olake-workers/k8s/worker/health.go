@@ -122,7 +122,7 @@ func (hs *HealthServer) readinessHandler(w http.ResponseWriter, r *http.Request)
 	// - Updating job progress and results
 	// - Temporal workflow coordination
 	// Without database access, workflows will fail during execution.
-	if hs.worker.jobService.HealthCheck() == nil {
+	if hs.worker.db.Ping() == nil {
 		response.Checks["database"] = "connected"
 	} else {
 		response.Status = "not_ready"
