@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react"
-import { Input, Empty, Spin } from "antd"
+import { Input, Empty } from "antd"
 
 import { sourceService } from "../../../api"
 import {
@@ -12,6 +12,7 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
+import Loader from "../../common/components/Loader"
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
@@ -483,7 +484,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						/>
 					) : loading ? (
 						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
-							<Spin size="large"></Spin>
+							<Loader size="large" />
 						</div>
 					) : (
 						<Empty className="flex h-full flex-col items-center justify-center" />

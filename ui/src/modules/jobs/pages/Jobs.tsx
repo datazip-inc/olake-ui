@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button, Tabs, Empty, message, Spin } from "antd"
+import { Button, Tabs, Empty, message } from "antd"
 import { GitCommit, Plus } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -11,6 +11,7 @@ import { JOB_TYPES } from "../../../utils/constants"
 import JobTable from "../components/JobTable"
 import JobEmptyState from "../components/JobEmptyState"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
+import Loader from "../../common/components/Loader"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobType>(
@@ -191,7 +192,7 @@ const Jobs: React.FC = () => {
 					label: tab.label,
 					children: isLoadingJobs ? (
 						<div className="flex items-center justify-center py-16">
-							<Spin
+							<Loader
 								size="large"
 								tip="Loading sources..."
 							/>

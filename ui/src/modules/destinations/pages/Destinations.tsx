@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Path, Plus } from "@phosphor-icons/react"
-import { Button, Tabs, Empty, message, Spin } from "antd"
+import { Button, Tabs, Empty, message } from "antd"
 
 import analyticsService from "../../../api/services/analyticsService"
 import { useAppStore } from "../../../store"
@@ -9,6 +9,7 @@ import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"
+import Loader from "../../common/components/Loader"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -122,7 +123,7 @@ const Destinations: React.FC = () => {
 					label: tab.label,
 					children: isLoadingDestinations ? (
 						<div className="flex items-center justify-center py-16">
-							<Spin
+							<Loader
 								size="large"
 								tip="Loading destinations..."
 							/>

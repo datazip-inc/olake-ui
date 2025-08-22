@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, message, Button, Tooltip } from "antd"
+import { Input, message, Button, Tooltip } from "antd"
 import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -10,6 +10,7 @@ import {
 	getLogLevelClass,
 	getLogTextColor,
 } from "../../../utils/utils"
+import Loader from "../../common/components/Loader"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -193,7 +194,7 @@ const JobLogs: React.FC = () => {
 
 				{isLoadingTaskLogs ? (
 					<div className="flex items-center justify-center p-12">
-						<Spin size="large" />
+						<Loader size="large" />
 					</div>
 				) : (
 					<div

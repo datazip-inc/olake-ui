@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
+import { Table, Button, Input, message, Pagination, Tooltip } from "antd"
 import {
 	ArrowLeft,
 	ArrowRight,
@@ -16,6 +16,7 @@ import {
 	getStatusLabel,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
+import Loader from "../../common/components/Loader"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -225,7 +226,7 @@ const JobHistory: React.FC = () => {
 
 				{isDelayingCall || isLoadingJobTasks ? (
 					<div className="flex items-center justify-center p-12">
-						<Spin size="large" />
+						<Loader size="large" />
 					</div>
 				) : (
 					<>
