@@ -371,4 +371,3 @@ func AddWriterType(configStr, writerType string) (string, error) {
 
 	return string(output), nil
 }
-
