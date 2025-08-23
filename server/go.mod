@@ -14,6 +14,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
 	golang.org/x/crypto v0.35.0
+	golang.org/x/mod v0.27.0
 )
 
 require (
