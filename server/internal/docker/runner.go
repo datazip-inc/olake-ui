@@ -167,7 +167,7 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	}
 	return outputDir
 }
-func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (models.SpecOutput, error) {
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, _ string) (models.SpecOutput, error) {
 	// Prepare the command arguments
 	dockerArgs := []string{
 		"run",
