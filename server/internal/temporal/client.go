@@ -13,6 +13,12 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
+// Task queue names
+const (
+	TaskQueueDocker = "OLAKE_DOCKER_TASK_QUEUE"
+	TaskQueueK8s    = "OLAKE_K8S_TASK_QUEUE"
+)
+
 var TaskQueue string
 
 var (
@@ -37,9 +43,9 @@ func init() {
 	// Choose task queue based on deployment mode
 	deploymentMode := web.AppConfig.DefaultString("DEPLOYMENT_MODE", "docker")
 	if deploymentMode == "kubernetes" {
-		TaskQueue = "OLAKE_K8S_TASK_QUEUE"
+		TaskQueue = TaskQueueK8s
 	} else {
-		TaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
+		TaskQueue = TaskQueueDocker
 	}
 }
 
