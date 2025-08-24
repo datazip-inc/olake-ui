@@ -17,8 +17,6 @@ keywords:
   - workflow
   - olake
 maintainers:
-  - name: Schitiz Sharma
-    email: schitiz@datazip.io
   - name: Team OLake
     email: hello@olake.io
 dependencies: []
