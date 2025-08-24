@@ -99,7 +99,8 @@ olakeUI:
   #   env:
   #     CUSTOM_VAR: "value"
   #     FEATURE_FLAG: "true"
-  env: {}
+  env:
+    RUN_MODE: staging
   
   # -- Ingress configuration for external access
   ingress:
@@ -212,7 +213,7 @@ olakeWorker:
   #     FEATURE_FLAG: "true"
   #     OLAKE_SECRET_KEY: "your-encryption-key"  # For job metadata encryption
   env:
-    RUN_MODE: dev
+    RUN_MODE: staging
     # OLAKE_SECRET_KEY: ""  # Set encryption key for job metadata (empty = no encryption)
   
   # -- Service Account configuration for Kubernetes API access
