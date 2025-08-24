@@ -27,18 +27,6 @@
 
 -   Kubernetes 1.19+
 -   Helm 3.2.0+
--   Default StorageClass: This is required by the chart to dynamically provision persistent volumes for PostgreSQL and the shared storage volume.
-    ```bash
-    # Check if there is a default StorageClass
-    kubectl get sc
-
-    # The output should have one class with (default) next to its name.
-    # If not, default storage class must be set up. 
-    # https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/
-    
-    # On Minikube, storage class support needs to be added: 
-    # minikube addons enable storage-provisioner
-    ```
 
 ## Installation
 
@@ -176,6 +164,23 @@ global:
       
       # Azure Workload Identity
       azure.workload.identity/client-id: "12345678-1234-1234-1234-123456789012"
+```
+
+### Encryption Configuration
+
+Configure encryption of job metadata stored in Postgres database by setting the `OLAKE_SECRET_KEY` environment variable in the OLake Worker:
+
+```yaml
+olakeWorker:
+  env:
+    # 1. For AWS KMS (starts with 'arn:aws:kms:'):
+    OLAKE_SECRET_KEY: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"
+    
+    # 2. For local AES-256 (any other non-empty string):
+    OLAKE_SECRET_KEY: "your-secret-encryption-key"  # Auto-hashed to 256-bit key
+    
+    # 3. For no encryption (not recommended for production):
+    # OLAKE_SECRET_KEY: ""  # Empty = no encryption
 ```
 
 ### Shared Storage Configuration
