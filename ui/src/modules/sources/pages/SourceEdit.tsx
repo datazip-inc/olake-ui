@@ -10,6 +10,8 @@ import {
 	PencilSimple,
 	Info,
 } from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
+import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService, jobService } from "../../../api"
@@ -32,13 +34,11 @@ import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
-	widgets,
 } from "../../../utils/constants"
-import Form from "@rjsf/antd"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
-import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,

@@ -4,6 +4,8 @@ import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
+import validator from "@rjsf/validator-ajv8"
+import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
@@ -16,7 +18,7 @@ import {
 } from "../../../types"
 import {
 	getConnectorImage,
-	getConnectorName,
+	getConnectorDocumentationPath,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
@@ -28,7 +30,6 @@ import {
 	TAB_TYPES,
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
-	widgets,
 	mapCatalogValueToType,
 } from "../../../utils/constants"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -39,12 +40,11 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { connectorOptions } from "../components/connectorOptions"
-import Form from "@rjsf/antd"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 
-import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -728,7 +728,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
+						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : catalogName)}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

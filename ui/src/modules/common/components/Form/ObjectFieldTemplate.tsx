@@ -1,4 +1,4 @@
-import classNames from "classnames"
+import clsx from "clsx"
 import {
 	FormContextType,
 	GenericObjectType,
@@ -126,7 +126,7 @@ export default function ObjectFieldTemplate<
 				const { getPrefixCls } = configProps
 				const prefixCls = getPrefixCls("form")
 				const labelClsBasic = `${prefixCls}-item-label`
-				const labelColClassName = classNames(
+				const labelColClassName = clsx(
 					labelClsBasic,
 					labelAlign === "left" && `${labelClsBasic}-left`,
 					// labelCol.className,

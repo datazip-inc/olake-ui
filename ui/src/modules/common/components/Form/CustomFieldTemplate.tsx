@@ -98,7 +98,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	} = props
 
 	// --- Derived Variables ---
-	const hasDescription = rawDescription
+	const hasDescription = !!rawDescription
 	const isDynamicObject = schema.additionalProperties === true
 	const objectTitle =
 		typeof schema.title === "string" && schema.title.trim().length > 0

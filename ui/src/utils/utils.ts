@@ -36,7 +36,10 @@ export const getConnectorImage = (connector: string) => {
 	}
 }
 
-export const getConnectorName = (connector: string, catalog: string | null) => {
+export const getConnectorDocumentationPath = (
+	connector: string,
+	catalog: string | null,
+) => {
 	switch (connector) {
 		case "Amazon S3":
 			return "s3/config"

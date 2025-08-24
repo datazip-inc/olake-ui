@@ -8,6 +8,7 @@ import {
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
@@ -18,15 +19,16 @@ import {
 	ExtendedDestination,
 	SetupType,
 } from "../../../types"
-import { getConnectorInLowerCase, getConnectorName } from "../../../utils/utils"
+import {
+	getConnectorInLowerCase,
+	getConnectorDocumentationPath,
+} from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	mapCatalogValueToType,
 	SETUP_TYPES,
-	widgets,
 } from "../../../utils/constants"
-import Form from "@rjsf/antd"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -43,6 +45,7 @@ import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplat
 import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { validateFormData } from "../../../utils/validateFormData"
+import { widgets } from "../../common/components/Form/widgets"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
@@ -690,7 +693,7 @@ const CreateDestination = forwardRef<
 						</div>
 
 						<DocumentationPanel
-							docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
+							docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog)}`}
 							showResizer={true}
 							isMinimized={docsMinimized}
 							onToggle={handleToggleDocPanel}

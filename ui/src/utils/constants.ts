@@ -1,7 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
 import { CatalogType, NavItem } from "../types"
-import { RegistryWidgetsType, RJSFSchema } from "@rjsf/utils"
-import BooleanSwitchWidget from "../modules/common/components/Form/BooleanSwitchWidget"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -241,8 +239,4 @@ export const SYNC_MODE_MAP = {
 	INCREMENTAL: "incremental",
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
-}
-
-export const widgets: RegistryWidgetsType<any, RJSFSchema, any> = {
-	boolean: BooleanSwitchWidget,
 }

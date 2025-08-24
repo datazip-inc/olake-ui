@@ -8,13 +8,14 @@ import {
 import { Link, useNavigate } from "react-router-dom"
 import { message, Select, Spin } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
+import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
 import { getConnectorLabel } from "../../../utils/utils"
-import { CONNECTOR_TYPES, widgets } from "../../../utils/constants"
-import Form from "@rjsf/antd"
+import { CONNECTOR_TYPES } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -30,8 +31,8 @@ import { SETUP_TYPES } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import { validateFormData } from "../../../utils/validateFormData"
-import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -272,13 +273,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 			const isValid = await validateSource()
 			if (!isValid) return
-			const dataToUse = formData
 
 			const newSourceData = {
 				name: sourceName,
 				type: connector.toLowerCase(),
 				version: selectedVersion,
-				config: JSON.stringify(dataToUse),
+				config: JSON.stringify(formData),
 			}
 
 			try {
