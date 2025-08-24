@@ -38,7 +38,7 @@ RUN pnpm build
 FROM alpine:latest
 
 # Install docker-cli
-RUN apk add --no-cache docker-cli
+RUN apk update && apk add --no-cache docker-cli
 
 # Set working directory
 WORKDIR /app/olake-ui
