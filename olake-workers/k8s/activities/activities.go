@@ -44,17 +44,30 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 		return nil, fmt.Errorf("failed to get docker image name: %v", err)
 	}
 
+	// Build arguments for discover command
+	args := []string{string(shared.Discover), "--config", "/mnt/config/config.json"}
+	configs := []shared.JobConfig{
+		{Name: "config.json", Data: params.Config},
+	}
+
+	// Add streams configuration if provided (for stream merging)
+	if params.StreamsConfig != "" {
+		args = append(args, "--catalog", "/mnt/config/streams.json")
+		configs = append(configs, shared.JobConfig{
+			Name: "streams.json",
+			Data: params.StreamsConfig,
+		})
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Discover,
 		ConnectorType: params.SourceType,
 		Image:         imageName,
-		Args:          []string{string(shared.Discover), "--config", "/mnt/config/config.json"},
-		Configs: []shared.JobConfig{
-			{Name: "config.json", Data: params.Config},
-		},
-		Timeout: helpers.GetActivityTimeout("discover"),
+		Args:          args,
+		Configs:       configs,
+		Timeout:       helpers.GetActivityTimeout("discover"),
 	}
 
 	// Execute discover operation by creating K8s pod, wait for completion, retrieve results from streams.json file
