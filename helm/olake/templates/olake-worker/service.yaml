@@ -14,6 +14,6 @@ spec:
     protocol: TCP
     name: health
   selector:
-    {{- include "olake.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/name: olake-workers
+    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: workers
