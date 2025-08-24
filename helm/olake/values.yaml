@@ -215,11 +215,8 @@ olakeWorker:
   
   # -- Service Account configuration for Kubernetes API access
   serviceAccount:
-    # -- Create service account
-    create: true
-    
     # -- Service account name
-    # If not set and create is true, a name is generated using the fullname template
+    # If not set, a name is generated using the fullname template
     name: ""
     
     # -- Service account annotations
