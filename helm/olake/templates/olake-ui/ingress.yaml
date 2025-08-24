@@ -1,6 +1,6 @@
 {{- if .Values.olakeUI.ingress.enabled -}}
 {{- $fullName := include "olake.fullname" . -}}
-{{- $svcPort := 8000 -}}
+{{- $svcPort := (.Values.olakeUI.env.HTTP_PORT | default "8000" | int) -}}
 {{- if and .Values.olakeUI.ingress.className (not (hasKey .Values.olakeUI.ingress.annotations "kubernetes.io/ingress.class")) }}
   {{- $_ := set .Values.olakeUI.ingress.annotations "kubernetes.io/ingress.class" .Values.olakeUI.ingress.className}}
 {{- end }}
