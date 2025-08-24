@@ -15,7 +15,7 @@ metadata:
 spec:
   type: {{ .Values.olakeUI.service.type }}
   ports:
-  - port: 8000
+  - port: {{ .Values.olakeUI.env.HTTP_PORT | default "8000" | int }}
     targetPort: olake-ui
     protocol: TCP
     name: olake-ui
