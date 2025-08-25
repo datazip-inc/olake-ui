@@ -179,7 +179,7 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 			logger.Warnf("Failed to read/validate final state on error: %v", readErr)
 		} else {
 			// If the state file is valid, attempt to save it
-			if updateErr := a.db.UpdateJobState(ctx, params.JobID, string(stateData), false); updateErr != nil {
+			if updateErr := a.db.UpdateJobState(ctx, params.JobID, string(stateData), true); updateErr != nil {
 				logger.Errorf("Failed to save final state on error for job %d: %v", params.JobID, updateErr)
 			} else {
 				logger.Infof("Saved final state on failure for job %d", params.JobID)
