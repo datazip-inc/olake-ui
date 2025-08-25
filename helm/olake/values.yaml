@@ -48,6 +48,26 @@ global:
     # Permissions for AWS Glue catalog: https://olake.io/docs/writers/iceberg/catalog/glue#required-iam-permissions
     annotations: {}
 
+  # -- Global environment variables that apply to all OLake components
+  # These variables are inherited by all services (olakeUI, olakeWorker)
+  # Individual component env sections can override these values if needed
+  # 
+  # OLAKE_SECRET_KEY: Used for encrypting job metadata and sensitive data
+  #   - Leave empty or unset to disable encryption
+  #   - Set to a secure random string. Example: "LewgLVrgCZMadJverZdn"
+  #   - AWS KMS Key ARN can also be used. Example: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+  # 
+  # RUN_MODE: Sets the deployment environment mode
+  #   - "development": Local development with debug features
+  #   - "staging": Pre-production testing environment  
+  #   - "production": Production deployment with optimizations
+  # 
+  # Example configuration:
+  #   env:
+  #     OLAKE_SECRET_KEY: "your-secure-encryption-key-here"
+  #     RUN_MODE: "production"
+  env: {}
+
 # OLake UI - Main application
 olakeUI:
   # -- Number of OLake UI replicas
@@ -99,8 +119,7 @@ olakeUI:
   #   env:
   #     CUSTOM_VAR: "value"
   #     FEATURE_FLAG: "true"
-  env:
-    RUN_MODE: staging
+  env: {}
   
   # -- Ingress configuration for external access
   ingress:
@@ -211,11 +230,8 @@ olakeWorker:
   #   env:
   #     CUSTOM_VAR: "value"
   #     FEATURE_FLAG: "true"
-  #     OLAKE_SECRET_KEY: "your-encryption-key"  # For job metadata encryption
-  env:
-    RUN_MODE: staging
-    # OLAKE_SECRET_KEY: ""  # Set encryption key for job metadata (empty = no encryption)
-  
+  env: {}
+
   # -- Service Account configuration for Kubernetes API access
   serviceAccount:
     # -- Service account name

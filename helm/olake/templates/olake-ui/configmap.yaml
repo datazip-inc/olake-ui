@@ -14,7 +14,7 @@ data:
   app.conf: |
     appname = olake-server
     httpport = {{ .Values.olakeUI.env.HTTP_PORT | default "8000" }}
-    runmode = {{ .Values.olakeUI.env.RUN_MODE | default "dev" }}
+    runmode = {{ .Values.olakeUI.env.RUN_MODE | default .Values.global.env.RUN_MODE | default "dev" }}
     autorender = false
     copyrequestbody = true
     EnableDocs = true

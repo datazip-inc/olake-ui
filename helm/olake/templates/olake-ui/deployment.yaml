@@ -74,6 +74,10 @@ spec:
         env:
         - name: PERSISTENT_DIR
           value: "/tmp/olake-config"
+        {{- range $key, $value := .Values.global.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
         {{- range $key, $value := .Values.olakeUI.env }}
         - name: {{ $key }}
           value: {{ $value | quote }}

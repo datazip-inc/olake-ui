@@ -89,6 +89,10 @@ spec:
             secretKeyRef:
               name: postgresql-secret
               key: POSTGRES_PASSWORD
+        {{- range $key, $value := .Values.global.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
         {{- range $key, $value := .Values.olakeWorker.env }}
         - name: {{ $key }}
           value: {{ $value | quote }}
