@@ -93,7 +93,7 @@ func validateLabelPair(jobID int, key, value string, stats *JobMappingStats) err
 // with enhanced error handling and detailed validation
 func LoadJobMapping(cfg *appConfig.Config) map[int]map[string]string {
 	// Use only config-provided mapping; no direct env reads
-	if cfg.Kubernetes.JobMapping == nil {
+	if cfg.Kubernetes.JobMappingRaw == "" {
 		logger.Info("No JobID to Node mapping found in config, using empty mapping")
 		return make(map[int]map[string]string)
 	}
@@ -106,7 +106,12 @@ func LoadJobMapping(cfg *appConfig.Config) map[int]map[string]string {
 
 	result := make(map[int]map[string]string)
 
-	for jobID, nodeLabels := range cfg.Kubernetes.JobMapping {
+	if err := json.Unmarshal([]byte(cfg.Kubernetes.JobMappingRaw), &result); err != nil {
+		logger.Errorf("Failed to parse OLAKE_JOB_MAPPING as JSON: %v", err)
+		return make(map[int]map[string]string)
+	}
+
+	for jobID, nodeLabels := range result {
 		if validMapping, ok := validateJobMapping(jobID, nodeLabels, &stats); ok {
 			result[jobID] = validMapping
 			stats.ValidEntries++

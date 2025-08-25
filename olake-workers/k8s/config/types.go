@@ -55,6 +55,7 @@ type KubernetesConfig struct {
 	ServiceAccount    string                    `mapstructure:"service_account"`
 	PVCName           string                    `mapstructure:"storage_pvc_name"`
 	Labels            map[string]string         `mapstructure:"labels"`
+	JobMappingRaw     string                    `mapstructure:"job_mapping_raw"`
 	JobMapping        map[int]map[string]string `mapstructure:"job_mapping"`
 	JobServiceAccount string                    `mapstructure:"job_service_account"`
 	OLakeSecretKey    string                    `mapstructure:"secret_key"`

@@ -57,6 +57,7 @@ func bindEnvironmentVariables(v *viper.Viper) {
 	v.BindEnv("kubernetes.service_account", "SERVICE_ACCOUNT")
 	v.BindEnv("kubernetes.storage_pvc_name", "OLAKE_STORAGE_PVC_NAME")
 	v.BindEnv("kubernetes.job_service_account", "JOB_SERVICE_ACCOUNT_NAME")
+	v.BindEnv("kubernetes.job_mapping_raw", "OLAKE_JOB_MAPPING")
 	v.BindEnv("kubernetes.secret_key", "OLAKE_SECRET_KEY")
 	v.BindEnv("kubernetes.labels.version", "WORKER_VERSION")
 
