@@ -10,7 +10,7 @@ metadata:
 data:
   # Temporal Configuration
   TEMPORAL_ADDRESS: "temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233"
-  TEMPORAL_TASK_QUEUE: "OLAKE_K8S_TASK_QUEUE"
+  TEMPORAL_TASK_QUEUE: {{ .Values.olakeWorker.env.TEMPORAL_TASK_QUEUE | default "OLAKE_K8S_TASK_QUEUE" | quote }}
   
   # Database Configuration
   DB_HOST: "postgresql.{{ include "olake.namespace" . }}.svc.cluster.local"
