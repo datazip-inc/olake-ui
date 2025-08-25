@@ -59,6 +59,11 @@ func (a *Activities) DiscoverCatalogActivity(ctx context.Context, params shared.
 		})
 	}
 
+	// Add encryption key if configured
+	if a.config.Kubernetes.OLakeSecretKey != "" {
+		args = append(args, "--encryption-key", a.config.Kubernetes.OLakeSecretKey)
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
@@ -92,17 +97,23 @@ func (a *Activities) TestConnectionActivity(ctx context.Context, params shared.A
 		return nil, fmt.Errorf("failed to get docker image name: %v", err)
 	}
 
+	// Build args slice with encryption key if configured
+	args := []string{
+		string(shared.Check),
+		fmt.Sprintf("--%s", params.Flag),
+		"/mnt/config/config.json",
+	}
+	if a.config.Kubernetes.OLakeSecretKey != "" {
+		args = append(args, "--encryption-key", a.config.Kubernetes.OLakeSecretKey)
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Check,
 		ConnectorType: params.SourceType,
 		Image:         imageName,
-		Args: []string{
-			string(shared.Check),
-			fmt.Sprintf("--%s", params.Flag),
-			"/mnt/config/config.json",
-		},
+		Args:          args,
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: params.Config},
 		},
@@ -144,19 +155,25 @@ func (a *Activities) SyncActivity(ctx context.Context, params shared.SyncParams)
 		return nil, fmt.Errorf("failed to get docker image name: %v", err)
 	}
 
+	// Build args slice with encryption key if configured
+	args := []string{
+		string(shared.Sync),
+		"--config", "/mnt/config/config.json",
+		"--catalog", "/mnt/config/streams.json",
+		"--destination", "/mnt/config/writer.json",
+		"--state", "/mnt/config/state.json",
+	}
+	if a.config.Kubernetes.OLakeSecretKey != "" {
+		args = append(args, "--encryption-key", a.config.Kubernetes.OLakeSecretKey)
+	}
+
 	request := pods.PodActivityRequest{
 		WorkflowID:    params.WorkflowID,
 		JobID:         params.JobID,
 		Operation:     shared.Sync,
 		ConnectorType: jobData["source_type"].(string),
 		Image:         imageName,
-		Args: []string{
-			string(shared.Sync),
-			"--config", "/mnt/config/config.json",
-			"--catalog", "/mnt/config/streams.json",
-			"--destination", "/mnt/config/writer.json",
-			"--state", "/mnt/config/state.json",
-		},
+		Args:          args,
 		Configs: []shared.JobConfig{
 			{Name: "config.json", Data: jobData["source_config"].(string)},
 			{Name: "streams.json", Data: jobData["streams_config"].(string)},
