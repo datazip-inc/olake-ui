@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    app.kubernetes.io/name: temporal
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: workflow-engine
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: temporal
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: workflow-engine
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.temporal.server.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/name: temporal
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: workflow-engine
+        {{- with .Values.temporal.server.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.temporal.server.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.temporal.server.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.temporal.server.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+      - name: wait-for-postgresql
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until nc -z postgresql.{{ include "olake.namespace" . }}.svc.cluster.local 5432; do
+            echo "PostgreSQL is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "PostgreSQL is ready!"
+      containers:
+      - name: temporal
+        image: "{{ .Values.temporal.server.image.repository }}:{{ .Values.temporal.server.image.tag }}"
+        imagePullPolicy: {{ .Values.temporal.server.image.pullPolicy }}
+        ports:
+        - name: grpc
+          containerPort: 7233
+          protocol: TCP
+        env:
+        - name: DB
+          value: "postgres12"
+        - name: DB_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PWD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_SEEDS
+          value: "postgresql.{{ include "olake.namespace" . }}.svc.cluster.local"
+        - name: ENABLE_ES
+          value: "true"
+        - name: ES_SEEDS
+          value: "elasticsearch.{{ include "olake.namespace" . }}.svc.cluster.local"
+        - name: ES_VERSION
+          value: "v7"
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "512Mi" "cpu" "500m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.temporal.server.resources | default dict) }}
+        resources:
+          {{- toYaml $resources | nindent 10 }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 10
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" 7233)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.temporal.server.readinessProbe | default dict) }}
+        readinessProbe:
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 150
+          "periodSeconds" 60
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" 7233)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.temporal.server.livenessProbe | default dict) }}
+        livenessProbe:
+          {{- toYaml $livenessProbe | nindent 10 }}

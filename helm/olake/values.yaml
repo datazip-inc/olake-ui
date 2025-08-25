@@ -1,0 +1,449 @@
+# -- Provide a name in place of olake for `app:` labels
+nameOverride: ""
+
+# -- Provide a name to substitute for the full names of resources
+fullnameOverride: ""
+
+# -- Global configuration that applies to all components
+global:
+  # -- Global storage class for all persistent volumes
+  # Set to "" to use default storage class
+  # Examples: gp2, standard, managed
+  storageClass: ""
+  
+  # -- Global image pull secrets for private container registries
+  # List of Kubernetes secret names containing registry credentials
+  # NOTE: Secrets must be created separately using kubectl or other means
+  # Examples:
+  #   Create secret: kubectl create secret docker-registry my-registry-secret \
+  #     --docker-server=my-registry.com --docker-username=user --docker-password=pass
+  #   Reference in values:
+  #   imagePullSecrets:
+  #     - name: "my-registry-secret"
+  #     - name: "docker-hub-secret"
+  imagePullSecrets: []
+  
+  # -- JobID-based node mapping configuration for pods created by olake-workers
+  # Maps JobID (integer) to specific node labels for pod scheduling
+  # Format: { jobID: { node_label: node_value } }
+  # Example:
+  #   jobMapping:
+  #     123:
+  #       olake.io/workload-type: "heavy"
+  #     456:
+  #       node-type: "high-cpu"
+  jobMapping: {}
+
+  # -- Service account configuration for job pods created by olake-workers
+  # Used for cloud provider IAM integration (AWS IRSA, GCP Workload Identity, Azure Workload Identity)
+  jobServiceAccount:
+    create: false
+    name: ""
+    
+    # Used for cloud provider IAM role association
+    # Examples:
+    #   AWS IRSA: eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/olake-job-role"
+    #   GCP Workload Identity: iam.gke.io/gcp-service-account: "olake-job@project.iam.gserviceaccount.com"
+    #   Azure Workload Identity: azure.workload.identity/client-id: "12345678-1234-1234-1234-123456789012"
+    # Permissions for AWS Glue catalog: https://olake.io/docs/writers/iceberg/catalog/glue#required-iam-permissions
+    annotations: {}
+
+  # -- Global environment variables that apply to all OLake components
+  # These variables are inherited by all services (olakeUI, olakeWorker)
+  # Individual component env sections can override these values if needed
+  # 
+  # OLAKE_SECRET_KEY: Used for encrypting job metadata and sensitive data
+  #   - Leave empty or unset to disable encryption
+  #   - Set to a secure random string. Example: "LewgLVrgCZMadJverZdn"
+  #   - AWS KMS Key ARN can also be used. Example: "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+  # 
+  # RUN_MODE: Sets the deployment environment mode
+  #   - "development": Local development with debug features
+  #   - "staging": Pre-production testing environment  
+  #   - "production": Production deployment with optimizations
+  # 
+  # Example configuration:
+  #   env:
+  #     OLAKE_SECRET_KEY: "your-secure-encryption-key-here"
+  #     RUN_MODE: "production"
+  env: {}
+
+# OLake UI - Main application
+olakeUI:
+  # -- Number of OLake UI replicas
+  replicaCount: 1
+  
+  # -- OLake UI image configuration
+  image:
+    repository: olakego/ui
+    tag: latest
+    pullPolicy: Always
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- OLake UI service configuration
+  # For external access, change type to NodePort or LoadBalancer  
+  service:
+    # -- Service type (ClusterIP for internal, NodePort/LoadBalancer for external access)
+    type: ClusterIP
+    annotations: {}
+  
+  # -- OLake UI resource requirements (optional overrides)
+  # Defaults: requests: memory=512Mi, cpu=500m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "1Gi"
+  #       cpu: "750m"
+  #     limits:
+  #       memory: "2Gi"
+  #       cpu: "1500m"
+  resources: {}
+  
+  # -- Environment variables for OLake UI
+  # Add custom environment variables here
+  # Example:
+  #   env:
+  #     CUSTOM_VAR: "value"
+  #     FEATURE_FLAG: "true"
+  env: {}
+  
+  # -- Ingress configuration for external access
+  ingress:
+    # -- Enable ingress
+    enabled: false
+    
+    # -- Ingress class name
+    # Examples: nginx, traefik, alb
+    className: ""
+    
+    # -- Ingress annotations
+    # Add custom annotations for your ingress controller here.
+    # Examples:
+    #   nginx.ingress.kubernetes.io/rewrite-target: /
+    #   kubernetes.io/ingress.class: nginx
+    #   kubernetes.io/tls-acme: "true"
+    #   cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    annotations: {}
+    
+    # -- Ingress hosts configuration
+    # List of host definitions for ingress. Each host can have multiple paths.
+    # Examples:
+    #   hosts:
+    #     - host: olake.local
+    #       paths:
+    #         - path: /
+    #           pathType: Prefix
+    #     - host: olake.example.com
+    #       paths:
+    #         - path: /
+    #           pathType: Prefix
+    hosts: []
+    
+    # -- TLS configuration
+    # Examples:
+    #   tls:
+    #     - secretName: olake-tls
+    #       hosts:
+    #         - olake.example.com
+    tls: []
+  
+  # -- Initialization user configuration
+  initUser:
+    # -- Use an existing Kubernetes secret for the admin user credentials.
+    # If you provide a secret name, the job will use it instead of the direct values below.
+    # The secret must contain keys for username, password, and email.
+    # Example:
+    # existingSecret: "my-olake-admin-secret"
+    existingSecret: ""
+
+    # -- Map the keys from your existing secret to the required fields.
+    # This is required only if `existingSecret` is set.
+    secretKeys:
+      username: "username"
+      password: "password"
+      email: "email"
+
+    # -- Credentials for the initial admin user.
+    # These values are used only if `existingSecret` is not provided.
+    adminUser:
+      # -- Admin username
+      username: "admin"
+      
+      # -- Admin password (change this in production!)
+      password: "password"
+      
+      # -- Admin email address
+      email: "admin@example.com"
+
+# OLake K8s Worker - Executes data pipeline tasks as Kubernetes pods
+olakeWorker:
+  # -- OLake Worker image configuration
+  image:
+    repository: olakego/k8s-worker
+    tag: latest
+    pullPolicy: Always
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- OLake Worker resource requirements (optional overrides)
+  # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "512Mi"
+  #       cpu: "500m"
+  #     limits:
+  #       memory: "1Gi"
+  #       cpu: "1000m"
+  resources: {}
+  
+  # -- Environment variables for OLake Worker
+  # Add custom environment variables here
+  # Example:
+  #   env:
+  #     CUSTOM_VAR: "value"
+  #     FEATURE_FLAG: "true"
+  env: {}
+
+  # -- Service Account configuration for Kubernetes API access
+  serviceAccount:
+    # -- Service account name
+    # If not set, a name is generated using the fullname template
+    name: ""
+    
+    # -- Service account annotations
+    annotations: {}
+  
+  # -- OLake Worker application configuration
+  config:
+    worker:
+      # -- Maximum concurrent activities(https://docs.temporal.io/activities) per worker
+      # Increase for higher throughput, decrease for resource constraints
+      maxConcurrentActivities: 15
+      
+      # -- Maximum concurrent workflows(https://docs.temporal.io/workflows) per worker
+      maxConcurrentWorkflows: 10
+    
+    # -- Timeout configuration for different operation types
+    timeouts:
+      # -- Activity execution timeouts
+      activity:
+        discover: 2h
+        test: 2h
+        sync: 700h
+    
+    # -- Logging configuration
+    logging:
+      level: info
+      format: console
+
+# Storage configuration for shared data exchange between pods
+nfsServer:
+  # -- Enable NFS server deployment with dynamic provisioning
+  # IMPORTANT: NFS components are created once and persist across helm operations.
+  # They will NOT be deleted on 'helm uninstall' or modified on 'helm upgrade'.
+  # This ensures data persistence but requires manual management for updates.
+  enabled: true
+
+  # -- External storage configuration (used when enabled: false)
+  # When disabled, you must provide an existing ReadWriteMany (RWX) PersistentVolumeClaim
+  # 
+  # CLOUD PROVIDER GUIDES FOR RWX STORAGE:
+  # 
+  # AWS EFS: Use the Amazon EFS CSI driver with 'efs.csi.aws.com' provisioner
+  # See: https://github.com/kubernetes-sigs/aws-efs-csi-driver
+  # 
+  # Azure Files: Use 'azurefile' StorageClass with 'kubernetes.io/azure-file' provisioner  
+  # See: https://docs.microsoft.com/en-us/azure/aks/azure-files-csi
+  # 
+  # GCP Filestore: Use Google Cloud Filestore CSI driver with 'filestore.csi.storage.gke.io' provisioner
+  # See: https://cloud.google.com/filestore/docs/csi-driver
+  external:
+    # -- The name of the PersistentVolumeClaim for the external RWX storage
+    # Example: "efs-pvc" or "azure-files-pvc" or "gcp-filestore-pvc"
+    name: ""
+  
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- Persistence configuration for NFS server backing storage
+  persistence:
+    # -- Size of backing storage for NFS server
+    size: 20Gi
+  
+  # -- StorageClass configuration for dynamic provisioning
+  storageClass:
+    # -- Name of the StorageClass created by NFS server
+    name: "nfs-server"
+
+# Temporal configuration for workflow orchestration
+temporal:
+  # -- Temporal server configuration
+  server:
+    
+    # -- Temporal server image configuration
+    image:
+      repository: temporalio/auto-setup
+      tag: "1.22.3"
+      pullPolicy: Always
+    
+    # -- Pod scheduling constraints
+    nodeSelector: {}
+    
+    # -- Tolerations for pod assignment
+    tolerations: []
+    
+    # -- Affinity settings for pod assignment
+    affinity: {}
+    
+    # -- Additional pod annotations
+    podAnnotations: {}
+    
+    # -- Additional pod labels
+    podLabels: {}
+    
+    # -- Temporal server resource requirements (optional overrides)
+    # Defaults: requests: memory=512Mi, cpu=500m (no limits by default)
+    # Example customizations:
+    #   resources:
+    #     requests:
+    #       memory: "1Gi"
+    #       cpu: "750m"
+    #     limits:
+    #       memory: "2Gi"
+    #       cpu: "1500m"
+    resources: {}
+  
+  # -- Temporal Web UI configuration (disabled by default)
+  ui:
+    # -- Enable Temporal Web UI
+    enabled: false
+
+# PostgreSQL is used as the backend database for Temporal and OLake
+postgresql:
+  # -- PostgreSQL image configuration
+  image:
+    repository: postgres
+    tag: "14-alpine"
+    pullPolicy: Always
+  
+  # -- Authentication configuration
+  auth:
+    # -- PostgreSQL super user name
+    postgresUser: "temporal"
+
+    # -- PostgreSQL super user password
+    postgresPassword: "temporal"
+    
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- PostgreSQL resource requirements (optional overrides)
+  # Defaults: requests: memory=256Mi, cpu=250m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "512Mi"
+  #       cpu: "500m"
+  #     limits:
+  #       memory: "1Gi"
+  #       cpu: "1000m"
+  resources: {}
+  
+  # -- PostgreSQL persistence configuration
+  persistence:
+    # -- Size of persistent volume for PostgreSQL data
+    size: 8Gi
+
+# Elasticsearch is used by Temporal for advanced visibility features
+elasticsearch:
+  # -- Elasticsearch image configuration
+  image:
+    repository: elasticsearch
+    tag: "7.17.10"
+    pullPolicy: Always
+  
+  # -- Pod scheduling constraints
+  nodeSelector: {}
+  
+  # -- Tolerations for pod assignment
+  tolerations: []
+  
+  # -- Affinity settings for pod assignment
+  affinity: {}
+  
+  # -- Additional pod annotations
+  podAnnotations: {}
+  
+  # -- Additional pod labels
+  podLabels: {}
+  
+  # -- Elasticsearch resource requirements (optional overrides)
+  # Defaults: requests: memory=1Gi, cpu=500m (no limits by default)
+  # Example customizations:
+  #   resources:
+  #     requests:
+  #       memory: "2Gi"
+  #       cpu: "1000m"
+  #     limits:
+  #       memory: "4Gi"
+  #       cpu: "2000m"
+  resources: {}
+  
+  # -- Elasticsearch persistence configuration
+  persistence:
+    # -- Size of persistent volume for Elasticsearch data
+    size: 8Gi

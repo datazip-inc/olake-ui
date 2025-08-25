@@ -39,6 +39,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
       DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
+      K8S_REPO_WORKER: ${{ secrets.K8S_REPO_WORKER || 'olakego' }}
       ENVIRONMENT: ${{ inputs.environment }}
       VERSION: ${{ inputs.version }}
 

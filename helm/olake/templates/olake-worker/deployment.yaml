@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: olake-workers
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    {{- include "olake.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workers
+spec:
+  replicas: 1
+  minReadySeconds: 30
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: olake-workers
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: workers
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.olakeWorker.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/name: olake-workers
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: workers
+        {{- with .Values.olakeWorker.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.olakeWorker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeWorker.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeWorker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "olake.workerServiceAccountName" . }}
+      initContainers:
+      - name: wait-for-temporal
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Temporal to be ready..."
+          until nc -z temporal.{{ include "olake.namespace" . }}.svc.cluster.local 7233; do
+            echo "Temporal is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Temporal is ready!"
+      containers:
+      - name: olake-workers
+        image: "{{ .Values.olakeWorker.image.repository }}:{{ .Values.olakeWorker.image.tag }}"
+        imagePullPolicy: {{ .Values.olakeWorker.image.pullPolicy }}
+        ports:
+        - name: health
+          containerPort: 8090
+          protocol: TCP
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgresql-secret
+              key: POSTGRES_PASSWORD
+        {{- range $key, $value := .Values.global.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- range $key, $value := .Values.olakeWorker.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        envFrom:
+        - configMapRef:
+            name: olake-workers-config
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "256Mi" "cpu" "250m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeWorker.resources | default dict) }}
+        resources:
+          {{- toYaml $resources | nindent 10 }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 30
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/ready" "port" 8090)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.olakeWorker.readinessProbe | default dict) }}
+        readinessProbe:
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 60
+          "periodSeconds" 30
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/health" "port" 8090)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.olakeWorker.livenessProbe | default dict) }}
+        livenessProbe:
+          {{- toYaml $livenessProbe | nindent 10 }}
+        volumeMounts:
+        - name: shared-storage
+          mountPath: /data/olake-jobs
+      volumes:
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ include "olake.sharedStoragePVC" . }}

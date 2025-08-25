@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: olake-ui
+  namespace: {{ include "olake.namespace" . }}
+  {{- with (.Values.olakeUI.service.annotations | default dict) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: olake-ui
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.olakeUI.service.type }}
+  ports:
+  - port: {{ .Values.olakeUI.env.HTTP_PORT | default "8000" | int }}
+    targetPort: olake-ui
+    protocol: TCP
+    name: olake-ui
+    {{- if eq .Values.olakeUI.service.type "NodePort" }}
+    nodePort: 30082
+    {{- end }}
+  selector:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: olake-ui

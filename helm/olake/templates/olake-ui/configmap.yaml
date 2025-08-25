@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: olake-ui-config
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: olake-ui
+    {{- include "olake.labels" . | nindent 4 }}
+data:
+  # Beego App Configuration File
+  app.conf: |
+    appname = olake-server
+    httpport = {{ .Values.olakeUI.env.HTTP_PORT | default "8000" }}
+    runmode = {{ .Values.olakeUI.env.RUN_MODE | default .Values.global.env.RUN_MODE | default "dev" }}
+    autorender = false
+    copyrequestbody = true
+    EnableDocs = true
+    postgresdb = postgres://{{ .Values.postgresql.auth.postgresUser }}:{{ .Values.postgresql.auth.postgresPassword }}@postgresql.{{ include "olake.namespace" . }}.svc.cluster.local:5432/postgres?sslmode=disable
+    logsdir = ./logger/logs
+    sessionon = true
+    
+    # Deployment Mode
+    DEPLOYMENT_MODE = kubernetes
+    
+    # Temporal Configuration
+    TEMPORAL_ADDRESS = temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233

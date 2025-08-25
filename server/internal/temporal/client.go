@@ -13,8 +13,13 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-// TaskQueue is the default task queue for Olake Docker workflows
-const TaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
+// Task queue names
+const (
+	TaskQueueDocker = "OLAKE_DOCKER_TASK_QUEUE"
+	TaskQueueK8s    = "OLAKE_K8S_TASK_QUEUE"
+)
+
+var TaskQueue string
 
 var (
 	TemporalAddress string
@@ -34,6 +39,14 @@ const (
 
 func init() {
 	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+
+	// Choose task queue based on deployment mode
+	deploymentMode := web.AppConfig.DefaultString("DEPLOYMENT_MODE", "docker")
+	if deploymentMode == "kubernetes" {
+		TaskQueue = TaskQueueK8s
+	} else {
+		TaskQueue = TaskQueueDocker
+	}
 }
 
 // Client provides methods to interact with Temporal

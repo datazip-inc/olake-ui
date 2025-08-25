@@ -1,0 +1,56 @@
+{{- if .Values.nfsServer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "olake.fullname" . }}-nfs-server
+  namespace: {{ include "olake.namespace" . }}
+  annotations:
+    "helm.sh/resource-policy": keep
+  labels:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+spec:
+  type: ClusterIP
+  ports:
+  - name: nfs
+    port: 2049
+    protocol: TCP
+  - name: nfs-udp
+    port: 2049
+    protocol: UDP
+  - name: mountd
+    port: 20048
+    protocol: TCP
+  - name: mountd-udp
+    port: 20048
+    protocol: UDP
+  - name: rpcbind
+    port: 111
+    protocol: TCP
+  - name: rpcbind-udp
+    port: 111
+    protocol: UDP
+  - name: nlockmgr-tcp
+    port: 32803
+    protocol: TCP
+  - name: nlockmgr-udp
+    port: 32803
+    protocol: UDP
+  - name: status-tcp
+    port: 662
+    protocol: TCP
+  - name: status-udp
+    port: 662
+    protocol: UDP
+  - name: rquotad-tcp
+    port: 875
+    protocol: TCP
+  - name: rquotad-udp
+    port: 875
+    protocol: UDP
+  selector:
+    app.kubernetes.io/name: {{ include "olake.name" . }}-nfs-server
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: nfs-server
+{{- end }}

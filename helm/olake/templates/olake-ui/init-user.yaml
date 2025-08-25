@@ -1,0 +1,109 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: olake-signup-init
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    app.kubernetes.io/name: olake-ui-init
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: init
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  # Ensure job runs only once
+  completions: 1
+  parallelism: 1
+  backoffLimit: 0  # Don't retry on failure
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: olake-ui-init
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: init
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: wait-for-olake-ui
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for OLake UI to be ready..."
+          until nc -z olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local 8000; do
+            echo "OLake UI is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "OLake UI is ready!"
+      containers:
+      - name: signup-init
+        image: curlimages/curl:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        {{- if .Values.olakeUI.initUser.existingSecret }}
+        - name: USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.olakeUI.initUser.existingSecret }}
+              key: {{ required "A username key must be provided in olakeUI.initUser.secretKeys" .Values.olakeUI.initUser.secretKeys.username }}
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.olakeUI.initUser.existingSecret }}
+              key: {{ required "A password key must be provided in olakeUI.initUser.secretKeys" .Values.olakeUI.initUser.secretKeys.password }}
+        - name: EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.olakeUI.initUser.existingSecret }}
+              key: {{ required "An email key must be provided in olakeUI.initUser.secretKeys" .Values.olakeUI.initUser.secretKeys.email }}
+        {{- else }}
+        - name: USERNAME
+          value: "{{ .Values.olakeUI.initUser.adminUser.username }}"
+        - name: PASSWORD
+          value: "{{ .Values.olakeUI.initUser.adminUser.password }}"
+        - name: EMAIL
+          value: "{{ .Values.olakeUI.initUser.adminUser.email }}"
+        {{- end }}
+        - name: OLAKE_APP_URL
+          value: "http://olake-ui.{{ include "olake.namespace" . }}.svc.cluster.local:8000/signup"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo 'signup-init: Starting signup initialization...'
+          echo "signup-init: Target URL: $OLAKE_APP_URL"
+          
+          echo 'signup-init: Attempting to create admin user...'
+          
+          response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
+            -X POST "$OLAKE_APP_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"$USERNAME\",\"password\":\"$PASSWORD\",\"email\":\"$EMAIL\"}")
+          
+          # The actual response body from olake-ui will be printed to stderr by the '-o /dev/stderr' curl option.
+          # A newline after stderr output from curl can make logs cleaner.
+          echo ''
+          
+          if ! [ "$response" -eq "$response" ] 2>/dev/null; then
+              echo "signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$response'"
+              exit 1
+          fi
+          
+          if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
+            echo "signup-init: User '$USERNAME' creation request successful (HTTP $response)."
+          elif [ "$response" = "409" ] || [ "$response" = "400" ]; then
+            echo "signup-init: User '$USERNAME' may already exist (HTTP $response). This is okay."
+          else
+            echo "signup-init: User '$USERNAME' creation request FAILED (HTTP $response). Server response body above."
+            exit 1
+          fi
+          echo 'signup-init: User setup process complete.'
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "128Mi" "cpu" "100m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeUI.initUser.resources | default dict) }}
+        resources:
+          {{- toYaml $resources | nindent 10 }}
+  # Automatically clean up completed jobs after 1 hour
+  ttlSecondsAfterFinished: 3600

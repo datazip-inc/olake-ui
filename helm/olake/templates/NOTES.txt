@@ -1,0 +1,67 @@
+***************************************************************
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+           &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+                                                    &&&&&&&&&&&
+                                                  &&&&&&&&&&&&&
+ ██████╗ ██╗      █████╗ ██╗  ██╗███████╗   &&&&&&&&&&&&&&&&&&&
+██╔═══██╗██║     ██╔══██╗██║ ██╔╝██╔════╝  &&&&&&&&&&&&&&&&&&&&
+██║   ██║██║     ███████║█████╔╝ █████╗    &&&&&&&&&&&&&&&&&&&&
+██║   ██║██║     ██╔══██║██╔═██╗ ██╔══╝         &&&&&&&&&&&&&&&
+╚██████╔╝███████╗██║  ██║██║  ██╗███████╗           &&&&&&&&&&&
+ ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝               &&&&&&&
+                               By DataZip                  &&&&
+                                                             &&
+
+🎉 OLake has been successfully deployed!
+
+📋 ACCESS INSTRUCTIONS:
+
+{{- if .Values.olakeUI.ingress.enabled }}
+
+🌐 INGRESS ACCESS:
+{{- range .Values.olakeUI.ingress.hosts }}
+  {{- $host := .host }}
+  {{- range .paths }}
+  - Frontend: http{{- if $.Values.olakeUI.ingress.tls }}s{{- end }}://{{ $host }}{{ .path }}
+  {{- end }}
+{{- end }}
+
+{{- else }}
+
+🔗 PORT-FORWARD ACCESS:
+
+1. Forward OLake UI ports:
+   kubectl port-forward -n {{ include "olake.namespace" . }} svc/olake-ui 8000:8000
+
+2. Access the application:
+   - OLake UI: http://localhost:8000
+
+{{- if .Values.temporal.ui.enabled }}
+
+3. Forward Temporal UI (optional):
+   kubectl port-forward -n {{ include "olake.namespace" . }} svc/temporal-ui 8081:8081
+   - Temporal UI: http://localhost:8081
+{{- end }}
+
+{{- end }}
+
+📚 NEXT STEPS:
+
+1. Log into the OLake UI using the admin credentials
+   - Username: {{ .Values.olakeUI.initUser.adminUser.username }}
+   - Password: {{ .Values.olakeUI.initUser.adminUser.password }}
+2. Configure data sources and destinations
+3. Setup Jobs to start syncing
+
+For more information, visit: https://olake.io/docs
+
+Happy data processing! 🚀

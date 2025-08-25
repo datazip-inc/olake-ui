@@ -1,0 +1,81 @@
+{{- if .Values.temporal.ui.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-ui
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    app.kubernetes.io/name: temporal-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: workflow-ui
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: temporal-ui
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: workflow-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: temporal-ui
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: workflow-ui
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+      - name: wait-for-temporal
+        image: busybox:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Temporal server to be ready..."
+          until nc -z temporal.{{ include "olake.namespace" . }}.svc.cluster.local 7233; do
+            echo "Temporal server is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Temporal server is ready!"
+      containers:
+      - name: temporal-ui
+        image: "temporalio/ui:2.16.2"
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: TEMPORAL_ADDRESS
+          value: "temporal.{{ include "olake.namespace" . }}.svc.cluster.local:7233"
+        - name: TEMPORAL_UI_PORT
+          value: "8081"
+        - name: TEMPORAL_CORS_ORIGINS
+          value: "http://localhost:3000"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+          httpGet:
+            path: /
+            port: 8081
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+          httpGet:
+            path: /
+            port: 8081
+{{- end }}

@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: search
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: elasticsearch
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: search
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.elasticsearch.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: search
+        {{- with .Values.elasticsearch.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+      {{- with .Values.elasticsearch.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.elasticsearch.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.elasticsearch.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: elasticsearch
+        image: "{{ .Values.elasticsearch.image.repository }}:{{ .Values.elasticsearch.image.tag }}"
+        imagePullPolicy: {{ .Values.elasticsearch.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 9200
+          protocol: TCP
+        env:
+        - name: cluster.routing.allocation.disk.threshold_enabled
+          value: "true"
+        - name: cluster.routing.allocation.disk.watermark.low
+          value: "512mb"
+        - name: cluster.routing.allocation.disk.watermark.high
+          value: "256mb"
+        - name: cluster.routing.allocation.disk.watermark.flood_stage
+          value: "128mb"
+        - name: discovery.type
+          value: "single-node"
+        - name: ES_JAVA_OPTS
+          value: "-Xms256m -Xmx256m"
+        - name: xpack.security.enabled
+          value: "false"
+        volumeMounts:
+        - name: elasticsearch-data
+          mountPath: /usr/share/elasticsearch/data
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "1Gi" "cpu" "500m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.elasticsearch.resources | default dict) }}
+        resources:
+          {{- toYaml $resources | nindent 10 }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 10
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/_cluster/health?local=true" "port" 9200)
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.elasticsearch.readinessProbe | default dict) }}
+        readinessProbe:
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 90
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "httpGet" (dict "path" "/_cluster/health?local=true" "port" 9200)
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.elasticsearch.livenessProbe | default dict) }}
+        livenessProbe:
+          {{- toYaml $livenessProbe | nindent 10 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: elasticsearch-data
+      labels:
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: search
+    spec:
+      accessModes:
+        - ReadWriteOnce
+      {{- if .Values.global.storageClass }}
+      storageClassName: {{ .Values.global.storageClass | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.elasticsearch.persistence.size | default "8Gi" }}

@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: olake-ui
+  namespace: {{ include "olake.namespace" . }}
+  annotations: {}
+  labels:
+    app.kubernetes.io/name: olake-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: olake-ui
+    {{- include "olake.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.olakeUI.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: olake-ui
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: olake-ui
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.olakeUI.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/name: olake-ui
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: olake-ui
+        {{- with .Values.olakeUI.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.olakeUI.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeUI.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.olakeUI.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if (include "olake.jobServiceAccountName" .) }}
+      serviceAccountName: {{ include "olake.jobServiceAccountName" . }}
+      {{- end }}
+      initContainers:
+      - name: wait-for-temporal
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for Temporal to be ready..."
+          until nc -z temporal.{{ include "olake.namespace" . }}.svc.cluster.local 7233; do
+            echo "Temporal is not ready yet. Waiting..."
+            sleep 5
+          done
+          echo "Temporal is ready!"
+      containers:
+      - name: olake-ui
+        image: "{{ .Values.olakeUI.image.repository }}:{{ .Values.olakeUI.image.tag }}"
+        imagePullPolicy: {{ .Values.olakeUI.image.pullPolicy }}
+        ports:
+        - name: olake-ui
+          containerPort: {{ .Values.olakeUI.env.HTTP_PORT | default "8000" | int }}
+          protocol: TCP
+        env:
+        - name: PERSISTENT_DIR
+          value: "/tmp/olake-config"
+        {{- range $key, $value := .Values.global.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- range $key, $value := .Values.olakeUI.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        volumeMounts:
+        - name: olake-config
+          mountPath: /app/olake-ui/conf
+        - name: shared-storage
+          mountPath: /tmp/olake-config
+        {{- $defaultResources := dict 
+          "requests" (dict "memory" "512Mi" "cpu" "500m")
+        }}
+        {{- $resources := mergeOverwrite $defaultResources (.Values.olakeUI.resources | default dict) }}
+        resources:
+          {{- toYaml $resources | nindent 10 }}
+        {{- $defaultReadinessProbe := dict 
+          "initialDelaySeconds" 30
+          "periodSeconds" 10
+          "timeoutSeconds" 5
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" (.Values.olakeUI.env.HTTP_PORT | default "8000" | int))
+        }}
+        {{- $readinessProbe := mergeOverwrite $defaultReadinessProbe (.Values.olakeUI.readinessProbe | default dict) }}
+        readinessProbe:
+          {{- toYaml $readinessProbe | nindent 10 }}
+        {{- $defaultLivenessProbe := dict 
+          "initialDelaySeconds" 60
+          "periodSeconds" 30
+          "timeoutSeconds" 10
+          "failureThreshold" 3
+          "successThreshold" 1
+          "tcpSocket" (dict "port" (.Values.olakeUI.env.HTTP_PORT | default "8000" | int))
+        }}
+        {{- $livenessProbe := mergeOverwrite $defaultLivenessProbe (.Values.olakeUI.livenessProbe | default dict) }}
+        livenessProbe:
+          {{- toYaml $livenessProbe | nindent 10 }}
+      volumes:
+      - name: olake-config
+        configMap:
+          name: olake-ui-config
+      - name: shared-storage
+        persistentVolumeClaim:
+          claimName: {{ include "olake.sharedStoragePVC" . }}
