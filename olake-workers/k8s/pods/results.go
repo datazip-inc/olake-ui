@@ -59,7 +59,7 @@ func (k *K8sPodManager) getPodResults(podName string, operation shared.Command, 
 	// Check operations test connectivity and write status messages to stdout
 	// Unlike sync/discover, check operations don't write files - they only output to logs
 	if operation == shared.Check {
-		if logs, err := k.getPodLogs(context.Background(), podName); err == nil {
+		if logs, err := k.getPodLogs(context.Background(), podName); err == nil { // TODO: set context at parent i.e. context to be received from whoever calls getPodResults(...)
 			if result, err := parser.ParseJobOutput(logs); err == nil {
 				logger.Debugf("Successfully parsed connection status from logs for check pod %s", podName)
 				return result, nil

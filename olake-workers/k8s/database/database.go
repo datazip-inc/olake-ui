@@ -108,7 +108,7 @@ func (db *DB) GetJobData(ctx context.Context, jobID int) (map[string]interface{}
 
 // UpdateJobState updates job status
 func (db *DB) UpdateJobState(ctx context.Context, jobID int, state string, active bool) error {
-	query := fmt.Sprintf(`UPDATE %q SET state = $1, active = $2, updated_at = NOW() WHERE id = $3`, db.tableNames["job"])
+	query := fmt.Sprintf(`UPDATE %q SET state = $1, active = $2, updated_at = NOW() WHERE id = $3`, db.tableNames["job"]) // TODO: Remove job active logic from this query
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

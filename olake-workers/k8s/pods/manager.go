@@ -62,7 +62,7 @@ func NewK8sPodManager(cfg *appConfig.Config) (*K8sPodManager, error) {
 func (k *K8sPodManager) GetDockerImageName(sourceType, version string) (string, error) {
 	// Strict validation: version is required (no 'latest' fallback)
 	if version == "" {
-		return "", fmt.Errorf("version cannot be empty - no 'latest' tag exists for connector images")
+		return "", fmt.Errorf("version cannot be empty")
 	}
 
 	// Construct the full image name using the olakego registry convention

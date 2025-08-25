@@ -55,6 +55,7 @@ func (fs *Helper) WriteConfigFiles(workflowDir string, configs []shared.JobConfi
 // ReadAndValidateStateFile reads and validates the state.json file for the given workflow.
 // Returns the raw file contents as []byte if the file exists and is valid JSON.
 // Returns os.ErrNotExist if the file does not exist.
+// TODO: Return map from state.json instead of []byte
 func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
 	if workflowID == "" {
 		return nil, fmt.Errorf("workflowID cannot be empty")
@@ -83,6 +84,7 @@ func (fs *Helper) ReadAndValidateStateFile(workflowID string) ([]byte, error) {
 // ReadAndValidateStreamsFile reads and validates the streams.json file for the given workflow.
 // Returns the raw file contents as []byte if the file exists and is valid JSON.
 // Returns os.ErrNotExist if the file does not exist.
+// TODO: Return map from streams.json instead of []byte
 func (fs *Helper) ReadAndValidateStreamsFile(workflowID string) ([]byte, error) {
 	if workflowID == "" {
 		return nil, fmt.Errorf("workflowID cannot be empty")

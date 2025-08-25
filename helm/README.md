@@ -57,7 +57,7 @@ kubectl port-forward svc/olake-ui 8000:8000
 ```
 Perform the login with the default credentials: `admin` / `password`.
 
-**Note:** If you installed OLake with Ingress enabled, port-forwarding is not necessary. Simply access the application using the configured Ingress hostname.
+**Note:** If OLake is installed with Ingress enabled, port-forwarding is not necessary. Access the application using the configured Ingress hostname.
 
 ## Upgrading
 
@@ -139,7 +139,9 @@ global:
   # - Label Values: Must be valid Kubernetes label values (63 chars max, alphanumeric with hyphens)
 ```
 
-**Note on Default Behavior:** For any JobID that is not specified in the jobMapping configuration, the corresponding job's pod will be scheduled by the standard Kubernetes scheduler, which places it on any available node in the cluster.
+**Note on Default Behavior:** 
+- A **rollout restart** of the olake-workers deployment is necessary after updating this map and running helm upgrade.
+- For any JobID that is not specified in the jobMapping configuration, the corresponding job's pod will be scheduled by the standard Kubernetes scheduler, which places it on any available node in the cluster. 
 
 ### Cloud IAM Integration
 
@@ -171,7 +173,7 @@ global:
 Configure encryption of job metadata stored in Postgres database by setting the `OLAKE_SECRET_KEY` environment variable in the OLake Worker:
 
 ```yaml
-olakeWorker:
+global:
   env:
     # 1. For AWS KMS (starts with 'arn:aws:kms:'):
     OLAKE_SECRET_KEY: "arn:aws:kms:us-west-2:123456789012:key/12345678-1234-1234-1234-123456789012"

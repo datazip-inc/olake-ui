@@ -193,7 +193,7 @@ olakeUI:
 olakeWorker:
   # -- OLake Worker image configuration
   image:
-    repository: olakego/olake-workers
+    repository: olakego/k8s-worker
     tag: latest
     pullPolicy: Always
   
