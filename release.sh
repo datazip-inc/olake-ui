@@ -145,6 +145,49 @@ function release_worker() {
     echo "$(chalk green "Worker release successful for $image_name version $tag_version")"
 }
 
+function release_k8s_worker() {
+    local version=$1
+    local platform=$2
+    local environment=$3
+    local image_name="$K8S_REPO_WORKER"
+    
+    # Set tag based on environment
+    local tag_version=""
+    local latest_tag=""
+    
+    case "$environment" in
+        "master")
+            tag_version="${version}"
+            latest_tag="latest"
+            ;;
+        "staging")
+            tag_version="stag-${version}"
+            latest_tag="stag-latest"
+            ;;
+        "dev"|*) # Default to dev prefix if not master or staging
+            tag_version="dev-${version}"
+            latest_tag="dev-latest"
+            ;;
+    esac
+
+    echo "Logging into Docker (if not already logged in by a previous function call)..."
+    docker login -u="$DOCKER_LOGIN" -p="$DOCKER_PASSWORD" || fail "Docker login failed for $DOCKER_LOGIN"
+    
+    echo "**** Releasing K8s worker image $image_name for platforms [$platform] with version [$tag_version] ****"
+
+    echo "Building and pushing K8s worker Docker image..."
+    
+    # Build K8s worker from olake-workers/k8s directory
+    docker buildx build --platform "$platform" --push \
+        -t "${image_name}:${tag_version}" \
+        -t "${image_name}:${latest_tag}" \
+        --build-arg ENVIRONMENT="$environment" \
+        --build-arg APP_VERSION="$version" \
+        -f olake-workers/k8s/Dockerfile olake-workers/k8s || fail "K8s Worker build failed. Exiting..."
+    
+    echo "$(chalk green "K8s Worker release successful for $image_name version $tag_version")"
+}
+
 SEMVER_EXPRESSION='v([0-9]+\.[0-9]+\.[0-9]+)$'
 STAGING_VERSION_EXPRESSION='v([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z0-9_.-]+'
 
@@ -194,5 +237,6 @@ chalk green "=== Release version: $VERSION ==="
 # Call the frontend-only release function
 release_frontend "$VERSION" "$platform" "$ENVIRONMENT"
 release_worker "$VERSION" "$platform" "$ENVIRONMENT"
+release_k8s_worker "$VERSION" "$platform" "$ENVIRONMENT"
 
 echo "$(chalk green "✅ Frontend release process completed successfully")" 
