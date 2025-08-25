@@ -38,6 +38,9 @@ data:
   LOG_LEVEL: {{ .Values.olakeWorker.config.logging.level | quote }}
   LOG_FORMAT: {{ .Values.olakeWorker.config.logging.format | quote }}
   
+  # Runtime Configuration
+  RUN_MODE: {{ .Values.olakeWorker.env.RUN_MODE | default .Values.global.env.RUN_MODE | default "staging" | quote }}
+  
   # =================================================================
   # JOB MAPPING CONFIGURATION
   # =================================================================
