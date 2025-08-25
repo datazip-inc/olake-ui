@@ -1,4 +1,4 @@
-module olake-ui/olake-workers/k8s
+module github.com/datazip-inc/olake-ui/olake-workers/k8s
 
 go 1.23.0
 

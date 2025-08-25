@@ -6,9 +6,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
-	appConfig "olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/utils/filesystem"
+	appConfig "github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/filesystem"
 )
 
 // K8sPodManager handles Kubernetes Pod operations only

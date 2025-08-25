@@ -6,8 +6,8 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
-	"olake-ui/olake-workers/k8s/shared"
-	"olake-ui/olake-workers/k8s/utils/helpers"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/shared"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/helpers"
 )
 
 // Retry policy matching server-side configuration
@@ -60,4 +60,3 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	err := workflow.ExecuteActivity(ctx, "SyncActivity", params).Get(ctx, &result)
 	return result, err
 }
-

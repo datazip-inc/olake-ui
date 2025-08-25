@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	appConfig "olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/logger"
+	appConfig "github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
 
 	"k8s.io/apimachinery/pkg/util/validation"
 )

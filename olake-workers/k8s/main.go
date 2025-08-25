@@ -1,9 +1,9 @@
 package main
 
 import (
-	appConfig "olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/worker"
+	appConfig "github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/worker"
 )
 
 func main() {

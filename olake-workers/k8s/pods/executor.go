@@ -9,9 +9,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/shared"
-	"olake-ui/olake-workers/k8s/utils/k8s"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/shared"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/k8s"
 )
 
 // PodActivityRequest defines a request for executing a pod activity

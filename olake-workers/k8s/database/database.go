@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	appConfig "olake-ui/olake-workers/k8s/config"
+	appConfig "github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
 
 	_ "github.com/lib/pq"
 )

@@ -8,13 +8,13 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
-	"olake-ui/olake-workers/k8s/activities"
-	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/database"
-	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/pods"
-	"olake-ui/olake-workers/k8s/utils/k8s"
-	"olake-ui/olake-workers/k8s/workflows"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/activities"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/database"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/pods"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/k8s"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/workflows"
 )
 
 type K8sWorker struct {

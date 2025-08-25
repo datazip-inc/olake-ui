@@ -7,13 +7,13 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
-	"olake-ui/olake-workers/k8s/config"
-	"olake-ui/olake-workers/k8s/database"
-	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/pods"
-	"olake-ui/olake-workers/k8s/shared"
-	"olake-ui/olake-workers/k8s/utils/filesystem"
-	"olake-ui/olake-workers/k8s/utils/helpers"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/database"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/pods"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/shared"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/filesystem"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/helpers"
 )
 
 // Activities holds the dependencies for activity functions

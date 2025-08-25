@@ -9,10 +9,10 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"olake-ui/olake-workers/k8s/logger"
-	"olake-ui/olake-workers/k8s/shared"
-	"olake-ui/olake-workers/k8s/utils/filesystem"
-	"olake-ui/olake-workers/k8s/utils/parser"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/logger"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/shared"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/filesystem"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/utils/parser"
 )
 
 // getPodResults extracts results from completed pod

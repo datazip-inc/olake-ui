@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"olake-ui/olake-workers/k8s/config"
+	"github.com/datazip-inc/olake-ui/olake-workers/k8s/config"
 
 	"github.com/rs/zerolog"
 )
