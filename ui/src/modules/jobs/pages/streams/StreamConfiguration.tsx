@@ -48,10 +48,7 @@ const StreamConfiguration = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
-	const [syncMode, setSyncMode] = useState(
-		SYNC_MODE_MAP[stream.stream.sync_mode as keyof typeof SYNC_MODE_MAP] ??
-			"full",
-	)
+	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
@@ -112,9 +109,7 @@ const StreamConfiguration = ({
 			setShowFallbackSelector(false)
 		}
 
-		setSyncMode(
-			SYNC_MODE_MAP[initialApiSyncMode as keyof typeof SYNC_MODE_MAP] ?? "full",
-		)
+		setSyncMode(initialApiSyncMode ?? "full_refresh")
 		setNormalisation(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
@@ -191,9 +186,11 @@ const StreamConfiguration = ({
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
 
-		const newApiSyncMode = Object.entries(SYNC_MODE_MAP).find(
-			([, value]) => value === selectedRadioValue,
-		)?.[0] as SyncMode
+		const newApiSyncMode = (
+			Object.entries(SYNC_MODE_MAP).find(
+				([, value]) => value === selectedRadioValue,
+			)?.[0] || ""
+		).toLowerCase() as SyncMode
 
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
@@ -532,7 +529,7 @@ const StreamConfiguration = ({
 							onChange={e => handleSyncModeChange(e.target.value)}
 						>
 							<Radio
-								value="full"
+								value="full_refresh"
 								disabled={!isSyncModeSupported(SyncMode.FULL_REFRESH)}
 							>
 								Full Refresh
