@@ -163,13 +163,15 @@ const StreamConfiguration = ({
 				],
 				logicalOperator: "and",
 			})
-			setFullLoadFilter(false)
+			// Keep the fullLoadFilter state from formData if it exists
+			setFullLoadFilter(formData.fullLoadFilter || false)
 		}
 
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
 			sync_mode: initialApiSyncMode,
 			partition_regex: initialPartitionRegex || "",
+			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
 	}, [stream, initialNormalization, initialFullLoadFilter])
 
@@ -275,6 +277,11 @@ const StreamConfiguration = ({
 				"",
 			)
 		}
+		// Keep the toggle state in formData
+		setFormData({
+			...formData,
+			fullLoadFilter: checked,
+		})
 	}
 
 	const handleFilterConditionChange = (
@@ -672,7 +679,7 @@ const StreamConfiguration = ({
 					)}
 				>
 					<div className="flex items-center justify-between">
-						<label>Normalisation</label>
+						<label>Normalization</label>
 						<Switch
 							checked={normalisation}
 							onChange={handleNormalizationChange}
@@ -683,7 +690,7 @@ const StreamConfiguration = ({
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 						<Info className="size-4" />
-						Select the stream to configure Normalisation
+						Select the stream to configure Normalization
 					</div>
 				)}
 

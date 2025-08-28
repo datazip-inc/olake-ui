@@ -13,6 +13,8 @@ import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
 
+const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
+
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
 	stepNumber = 3,
@@ -373,30 +375,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			return tempFilteredStreams
 		}
 
+		const showSelected = selectedFilters.includes("Selected")
+		const showNotSelected = selectedFilters.includes("Not Selected")
+
 		return tempFilteredStreams.filter(stream => {
-			const fullRefreshIsActive = selectedFilters.includes("Full Refresh")
-			const incrementalIsActive = selectedFilters.includes(
-				"Full Refresh + Incremental",
+			const ns = stream.stream.namespace || ""
+			const isSelected = apiResponse.selected_streams[ns]?.some(
+				s => s.stream_name === stream.stream.name,
 			)
-			const cdcIsActive = selectedFilters.includes("Full Refresh + CDC")
-			const strictCdcIsActive = selectedFilters.includes("CDC Only")
-
-			// Sync mode filtering
-			let passesSyncModeFilter = true
-			const activeSyncModeFilters = [
-				fullRefreshIsActive ? SyncMode.FULL_REFRESH : false,
-				incrementalIsActive ? SyncMode.INCREMENTAL : false,
-				cdcIsActive ? SyncMode.CDC : false,
-				strictCdcIsActive ? SyncMode.STRICT_CDC : false,
-			].filter((mode): mode is SyncMode => mode !== false)
-
-			if (activeSyncModeFilters.length > 0) {
-				passesSyncModeFilter = activeSyncModeFilters.includes(
-					stream.stream.sync_mode as SyncMode,
-				)
-			}
-
-			return passesSyncModeFilter
+			if (showSelected && showNotSelected) return true
+			if (showSelected) return isSelected
+			if (showNotSelected) return !isSelected
+			return false
 		})
 	}, [apiResponse, searchText, selectedFilters])
 
@@ -409,14 +399,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		})
 		return grouped
 	}, [filteredStreams])
-
-	const filters = [
-		"All tables",
-		"Full Refresh",
-		"Full Refresh + Incremental",
-		"Full Refresh + CDC",
-		"CDC Only",
-	]
 
 	useEffect(() => {
 		if (selectedFilters.length === 0) {
@@ -446,7 +428,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					/>
 				</div>
 				<div className="flex flex-wrap gap-2">
-					{filters.map(filter => (
+					{STREAM_FILTERS.map(filter => (
 						<FilterButton
 							key={filter}
 							filter={filter}
