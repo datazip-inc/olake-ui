@@ -235,7 +235,7 @@ export const PartitioningRegexTooltip =
 export const DISPLAYED_JOBS_COUNT = 5
 
 export const SYNC_MODE_MAP = {
-	FULL_REFRESH: "full",
+	FULL_REFRESH: "full_refresh",
 	INCREMENTAL: "incremental",
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
