@@ -524,7 +524,7 @@ const CreateDestination = forwardRef<
 						</div>
 					</div>
 
-					<div className="mt-4 flex w-2/3 gap-6">
+					<div className="mt-4 flex w-1/2 gap-6">
 						<FormField
 							label="Name of your destination:"
 							required

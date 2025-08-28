@@ -171,7 +171,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				}
 			}
 		}
-	}, [initialData])
+	}, [initialData, selectedVersion])
 
 	const resetVersionState = () => {
 		setVersions([])

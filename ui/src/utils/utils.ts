@@ -59,7 +59,7 @@ export const getConnectorDocumentationPath = (
 				case "HIVE Catalog":
 					return "iceberg/catalog/hive"
 				default:
-					return undefined
+					return "iceberg/catalog/glue"
 			}
 		default:
 			return undefined
