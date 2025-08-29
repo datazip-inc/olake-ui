@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { CatalogOption, CatalogType, NavItem } from "../types"
+import { CatalogType, NavItem } from "../types"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -186,13 +186,6 @@ export const TAB_STYLES = {
 }
 
 export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
-
-export const catalogOptions: CatalogOption[] = [
-	{ value: "AWS Glue", label: "AWS Glue" },
-	{ value: "REST Catalog", label: "REST Catalog" },
-	{ value: "JDBC Catalog", label: "JDBC Catalog" },
-	{ value: "HIVE Catalog", label: "Hive Catalog" },
-]
 
 export const JobTutorialYTLink =
 	"https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP"
