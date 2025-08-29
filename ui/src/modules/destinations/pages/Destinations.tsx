@@ -6,8 +6,9 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import analyticsService from "../../../api/services/analyticsService"
 import { useAppStore } from "../../../store"
 import { Entity } from "../../../types"
-import { destinationTabs } from "../../../utils/constants"
-import DestinationEmptyState from "../components/DestinationEmptyState"
+
+import { destinationTabs, EmptyStateType } from "../../../utils/constants"
+import EmptyState from "../../common/components/EmptyState"
 import DestinationTable from "../components/DestinationTable"
 
 const Destinations: React.FC = () => {
@@ -128,8 +129,9 @@ const Destinations: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<DestinationEmptyState
-							handleCreateDestination={handleCreateDestination}
+						<EmptyState
+							type={EmptyStateType.DESTINATION}
+							onButtonClick={handleCreateDestination}
 						/>
 					) : filteredDestinations().length === 0 ? (
 						<Empty
