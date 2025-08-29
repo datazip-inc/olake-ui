@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
-import { message, Spin } from "antd"
+import { message } from "antd"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -28,6 +28,7 @@ import {
 	validateCronExpression,
 } from "../../../utils/utils"
 import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+import Loader from "../../common/components/Loader"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -411,7 +412,7 @@ const JobEdit: React.FC = () => {
 	if (!job && jobId) {
 		return (
 			<div className="flex h-screen items-center justify-center">
-				<Spin tip="Loading job data..." />
+				<Loader tip="Loading job data..." />
 			</div>
 		)
 	}
