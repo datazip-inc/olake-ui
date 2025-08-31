@@ -148,7 +148,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								connector !== initialConnector ||
 								initialVersion === "")
 						) {
-							const defaultVersion = response.data.version[0]
+							let defaultVersion = response.data.version[0]
+							if (
+								connector.toLowerCase() === initialConnector &&
+								initialVersion
+							) {
+								defaultVersion = initialVersion
+							}
 							setSelectedVersion(defaultVersion)
 							if (onVersionChange) {
 								onVersionChange(defaultVersion)
@@ -166,7 +172,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 
 			fetchVersions()
-		}, [connector, onVersionChange, initialVersion, initialConnector])
+		}, [connector, initialConnector])
 
 		useEffect(() => {
 			if (!selectedVersion) {

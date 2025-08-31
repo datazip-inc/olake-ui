@@ -131,6 +131,7 @@ const JobCreation: React.FC = () => {
 				: await destinationService.testDestinationConnection(
 						data,
 						getConnectorInLowerCase(sourceConnector),
+						sourceVersion,
 					)
 
 			setTimeout(() => {
@@ -367,6 +368,7 @@ const JobCreation: React.FC = () => {
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
 								initialConnector={getConnectorInLowerCase(destinationConnector)}
+								initialVersion={destinationVersion}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}
@@ -381,6 +383,8 @@ const JobCreation: React.FC = () => {
 								ref={destinationRef}
 								docsMinimized={docsMinimized}
 								onDocsMinimizedChange={setDocsMinimized}
+								sourceConnector={sourceConnector}
+								sourceVersion={sourceVersion}
 							/>
 						</div>
 					)}

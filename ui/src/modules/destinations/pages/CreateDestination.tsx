@@ -68,6 +68,7 @@ const CreateDestination = forwardRef<
 			initialFormData,
 			initialName,
 			initialConnector,
+			initialVersion,
 			initialCatalog,
 			onDestinationNameChange,
 			onConnectorChange,
@@ -75,6 +76,8 @@ const CreateDestination = forwardRef<
 			onVersionChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
+			sourceConnector,
+			sourceVersion,
 		},
 		ref,
 	) => {
@@ -91,7 +94,7 @@ const CreateDestination = forwardRef<
 			initialCatalog || null,
 		)
 		const [destinationName, setDestinationName] = useState(initialName || "")
-		const [version, setVersion] = useState("")
+		const [version, setVersion] = useState(initialVersion || "")
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<DestinationConfig>({})
@@ -218,7 +221,13 @@ const CreateDestination = forwardRef<
 						const receivedVersions = response.data.version
 						setVersions(receivedVersions)
 						if (receivedVersions.length > 0) {
-							const defaultVersion = receivedVersions[0]
+							let defaultVersion = receivedVersions[0]
+							if (
+								getConnectorInLowerCase(connector) === initialConnector &&
+								initialVersion
+							) {
+								defaultVersion = initialVersion
+							}
 							setVersion(defaultVersion)
 							if (onVersionChange) {
 								onVersionChange(defaultVersion)
@@ -248,10 +257,20 @@ const CreateDestination = forwardRef<
 			const fetchDestinationSpec = async () => {
 				try {
 					setLoading(true)
-					const response = await destinationService.getDestinationSpec(
-						connector,
-						version,
-					)
+					let response
+					if (fromJobFlow) {
+						response = await destinationService.getDestinationSpec(
+							connector,
+							version,
+							sourceConnector,
+							sourceVersion,
+						)
+					} else {
+						response = await destinationService.getDestinationSpec(
+							connector,
+							version,
+						)
+					}
 					if (response.success && response.data?.spec) {
 						setSchema(response.data.spec)
 						setUiSchema(JSON.parse(response.data.uischema))
@@ -266,7 +285,14 @@ const CreateDestination = forwardRef<
 			}
 
 			fetchDestinationSpec()
-		}, [connector, version, setupType])
+		}, [
+			connector,
+			version,
+			setupType,
+			fromJobFlow,
+			sourceConnector,
+			sourceVersion,
+		])
 
 		useEffect(() => {
 			if (!fromJobFlow) {

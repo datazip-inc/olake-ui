@@ -302,7 +302,7 @@ const JobEdit: React.FC = () => {
 				config:
 					typeof destinationData?.config === "string"
 						? destinationData?.config
-						: JSON.stringify(destinationData?.config),
+						: JSON.stringify(destinationData?.config?.writer),
 				version: destinationData?.version || "",
 			},
 			streams_config:

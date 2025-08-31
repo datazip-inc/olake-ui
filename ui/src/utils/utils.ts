@@ -94,11 +94,15 @@ export const getConnectorInLowerCase = (connector: string) => {
 		case DESTINATION_LABELS.APACHE_ICEBERG:
 			return DESTINATION_INTERNAL_TYPES.ICEBERG
 		case "mongodb":
+		case "MongoDB":
 			return "mongodb"
+		case "Postgres":
 		case "postgres":
 			return "postgres"
+		case "MySQL":
 		case "mysql":
 			return "mysql"
+		case "Oracle":
 		case "oracle":
 			return "oracle"
 		default:

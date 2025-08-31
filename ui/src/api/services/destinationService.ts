@@ -80,6 +80,7 @@ export const destinationService = {
 	testDestinationConnection: async (
 		destination: EntityTestRequest,
 		source_type: string = "",
+		source_version: string = "",
 	) => {
 		try {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
@@ -89,6 +90,7 @@ export const destinationService = {
 					version: destination.version,
 					config: destination.config,
 					source_type: source_type,
+					source_version: source_version,
 				},
 				{ timeout: 0 },
 			)
@@ -117,13 +119,20 @@ export const destinationService = {
 		return response.data
 	},
 
-	getDestinationSpec: async (type: string, version: string) => {
+	getDestinationSpec: async (
+		type: string,
+		version: string,
+		source_type: string = "",
+		source_version: string = "",
+	) => {
 		const normalizedType = normalizeDestinationType(type)
 		const response = await api.post<APIResponse<any>>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
 				version: version,
+				source_type: source_type,
+				source_version: source_version,
 			},
 			{ timeout: 0 },
 		)

@@ -57,6 +57,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	onFormDataChange,
 	docsMinimized = false,
 	onDocsMinimizedChange,
+	sourceConnector,
+	sourceVersion,
 }) => {
 	const formRef = useRef<any>(null)
 	const { destinationId } = useParams<{ destinationId: string }>()
@@ -234,10 +236,20 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		const fetchDestinationSpec = async () => {
 			try {
 				setIsLoading(true)
-				const response = await destinationService.getDestinationSpec(
-					connector,
-					selectedVersion,
-				)
+				let response
+				if (fromJobFlow) {
+					response = await destinationService.getDestinationSpec(
+						connector,
+						selectedVersion,
+						sourceConnector,
+						sourceVersion,
+					)
+				} else {
+					response = await destinationService.getDestinationSpec(
+						connector,
+						selectedVersion,
+					)
+				}
 
 				if (response.success && response.data?.spec) {
 					setSchema(response.data.spec)
@@ -255,7 +267,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchDestinationSpec()
-	}, [connector, selectedVersion])
+	}, [connector, selectedVersion, fromJobFlow, sourceConnector, sourceVersion])
 
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
