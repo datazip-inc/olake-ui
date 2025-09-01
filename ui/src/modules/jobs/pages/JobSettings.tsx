@@ -226,7 +226,7 @@ const JobSettings: React.FC = () => {
 					...job.destination,
 					config:
 						typeof job.destination.config === "string"
-							? job.destination.config
+							? JSON.stringify(JSON.parse(job.destination.config).writer)
 							: JSON.stringify(job.destination.config),
 				},
 				streams_config:
