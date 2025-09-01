@@ -254,6 +254,8 @@ const CreateDestination = forwardRef<
 				return
 			}
 
+			if (setupType === SETUP_TYPES.EXISTING) return
+
 			const fetchDestinationSpec = async () => {
 				try {
 					setLoading(true)

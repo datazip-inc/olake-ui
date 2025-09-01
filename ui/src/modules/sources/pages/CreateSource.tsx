@@ -180,6 +180,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				return
 			}
 
+			if (setupType === SETUP_TYPES.EXISTING) return
+
 			const fetchSourceSpec = async () => {
 				try {
 					setLoading(true)
