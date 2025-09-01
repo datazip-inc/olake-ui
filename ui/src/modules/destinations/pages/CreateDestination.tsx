@@ -262,7 +262,7 @@ const CreateDestination = forwardRef<
 						response = await destinationService.getDestinationSpec(
 							connector,
 							version,
-							sourceConnector,
+							getConnectorInLowerCase(sourceConnector || ""),
 							sourceVersion,
 						)
 					} else {
