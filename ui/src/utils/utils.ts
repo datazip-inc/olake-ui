@@ -94,38 +94,15 @@ export const getConnectorInLowerCase = (connector: string) => {
 		case DESTINATION_LABELS.APACHE_ICEBERG:
 			return DESTINATION_INTERNAL_TYPES.ICEBERG
 		case "mongodb":
-		case "MongoDB":
 			return "mongodb"
-		case "Postgres":
 		case "postgres":
 			return "postgres"
-		case "MySQL":
 		case "mysql":
 			return "mysql"
-		case "Oracle":
 		case "oracle":
 			return "oracle"
 		default:
 			return lowerConnector
-	}
-}
-
-export const getCatalogInLowerCase = (catalog: string) => {
-	switch (catalog) {
-		case "AWS Glue":
-		case "glue":
-			return "glue"
-		case "REST Catalog":
-		case "rest":
-			return "rest"
-		case "JDBC Catalog":
-		case "jdbc":
-			return "jdbc"
-		case "Hive Catalog":
-		case "hive":
-			return "hive"
-		default:
-			return undefined
 	}
 }
 

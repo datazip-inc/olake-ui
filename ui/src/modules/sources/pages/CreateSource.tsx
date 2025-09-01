@@ -450,7 +450,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					</div>
 				</div>
 
-				<div className="w-2/3">
+				<div className="w-1/2">
 					<FormField
 						label="Name of your source"
 						required

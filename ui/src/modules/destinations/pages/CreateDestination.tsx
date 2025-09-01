@@ -305,8 +305,6 @@ const CreateDestination = forwardRef<
 		}
 
 		const validateDestination = async (): Promise<boolean> => {
-			// setValidating(true)
-
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
 					if (!destinationName.trim() && version.trim() !== "") {
