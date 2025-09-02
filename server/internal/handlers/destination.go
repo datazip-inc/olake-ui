@@ -81,12 +81,6 @@ func (c *DestHandler) CreateDestination() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var err error
-	req.Config, err = utils.AddWriterType(req.Config, req.Type)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to add writer type to config")
-		return
-	}
 	// Convert request to Destination model
 	destination := &models.Destination{
 		Name:      req.Name,
@@ -122,12 +116,6 @@ func (c *DestHandler) UpdateDestination() {
 	var req models.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-	var err error
-	req.Config, err = utils.AddWriterType(req.Config, req.Type)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to add writer type to config")
 		return
 	}
 	// Get existing destination
@@ -204,13 +192,6 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var err error
-	req.Config, err = utils.AddWriterType(req.Config, req.Type)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to add writer type to config")
-		return
-	}
-
 	if req.Type == "" {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination type is required")
 		return

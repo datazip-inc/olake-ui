@@ -347,27 +347,3 @@ func ParseSpecJSON(output string) (models.SpecOutput, error) {
 	}
 	return models.SpecOutput{}, fmt.Errorf("no top-level 'spec' or 'uischema' JSON block found in output")
 }
-
-// AddWriterType takes a JSON string config and adds the "type" field
-func AddWriterType(configStr, writerType string) (string, error) {
-	var writer map[string]interface{}
-	if err := json.Unmarshal([]byte(configStr), &writer); err != nil {
-		return "", fmt.Errorf("invalid input JSON: %w", err)
-	}
-
-	if writerType == "s3" {
-		writerType = "PARQUET"
-	}
-	writerType = strings.ToUpper(writerType)
-	result := map[string]interface{}{
-		"writer": writer,
-		"type":   writerType,
-	}
-
-	output, err := json.Marshal(result)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal result: %w", err)
-	}
-
-	return string(output), nil
-}

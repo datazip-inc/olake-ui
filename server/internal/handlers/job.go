@@ -594,15 +594,11 @@ func (c *JobHandler) getOrCreateSource(config *models.JobSourceConfig, projectID
 // getOrCreateDestination finds or creates a destination based on the provided config
 func (c *JobHandler) getOrCreateDestination(config *models.JobDestinationConfig, projectIDStr string) (*models.Destination, error) {
 	// Try to find an existing destination matching the criteria
-	destConfig, err := utils.AddWriterType(config.Config, config.Type)
-	if err != nil {
-		return nil, err
-	}
 	destinations, err := c.destORM.GetByNameAndType(config.Name, config.Type, projectIDStr)
 	if err == nil && len(destinations) > 0 {
 		// Update the existing destination if found
 		dest := destinations[0]
-		dest.Config = destConfig
+		dest.Config = config.Config
 		dest.Version = config.Version
 
 		// Get user info for update
@@ -623,7 +619,7 @@ func (c *JobHandler) getOrCreateDestination(config *models.JobDestinationConfig,
 	dest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,
-		Config:    destConfig,
+		Config:    config.Config,
 		Version:   config.Version,
 		ProjectID: projectIDStr,
 	}
