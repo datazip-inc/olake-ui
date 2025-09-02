@@ -173,7 +173,7 @@ const CreateDestination = forwardRef<
 		useEffect(() => {
 			if (initialFormData) {
 				setFormData(initialFormData)
-				setCatalog(initialFormData?.catalog_type ?? null)
+				setCatalog(initialFormData?.writer?.catalog_type ?? null)
 			}
 		}, [initialFormData])
 
@@ -474,14 +474,8 @@ const CreateDestination = forwardRef<
 						config = ""
 					}
 				}
-				if (
-					config &&
-					typeof config === "object" &&
-					config !== null &&
-					Object.prototype.hasOwnProperty.call(config, "writer") &&
-					typeof (config as any).writer === "object"
-				) {
-					configObj = (config as any).writer || {}
+				if (config && typeof config === "object" && config !== null) {
+					configObj = config || {}
 				} else {
 					configObj = {}
 				}
@@ -627,7 +621,7 @@ const CreateDestination = forwardRef<
 									onChange={e => {
 										setFormData(e.formData)
 										if (onFormDataChange) onFormDataChange(e.formData)
-										const catalogValue = e.formData?.catalog_type
+										const catalogValue = e.formData?.writer?.catalog_type
 										if (catalogValue) {
 											const mappedCatalogType =
 												mapCatalogValueToType(catalogValue)

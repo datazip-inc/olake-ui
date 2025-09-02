@@ -135,7 +135,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					typeof destination.config === "string"
 						? JSON.parse(destination.config)
 						: destination.config
-				setFormData(config.writer)
+				setFormData(config)
 			}
 		}
 	}, [destinationId, destinations, fetchDestinations])
@@ -160,13 +160,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					let parsedConfig = initialData.config
 					if (typeof initialData.config === "string") {
 						try {
-							parsedConfig = JSON.parse(initialData.config.writer)
+							parsedConfig = JSON.parse(initialData.config)
 						} catch (error) {
 							console.error("Error parsing destination config:", error)
 							parsedConfig = {}
 						}
 					} else {
-						parsedConfig = parsedConfig.writer
+						parsedConfig = parsedConfig
 					}
 
 					setFormData(parsedConfig)
@@ -580,7 +580,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						formData={formData}
 						onChange={e => {
 							setFormData(e.formData)
-							const catalogValue = e.formData?.catalog_type
+							const catalogValue = e.formData?.writer?.catalog_type
 							if (catalogValue) {
 								const mappedCatalogType = mapCatalogValueToType(catalogValue)
 								if (mappedCatalogType) {
