@@ -112,19 +112,8 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	const labelText = objectTitle ?? label
 	const [newKey, setNewKey] = useState("")
 	const [newValue, setNewValue] = useState("")
-	const [isTouched, setIsTouched] = useState(false)
-
-	// Show errors only if RJSF provides them OR if field has been touched and is invalid
-	const hasValidationErrors = rawErrors && rawErrors.length > 0
-	const isInvalid = required && (!formData || formData === "")
-	const shouldShowError = hasValidationErrors || (isTouched && isInvalid)
-
-	const inputErrorWrapperClass = shouldShowError ? "rjsf-error" : ""
-
-	// --- Handlers ---
-	const handleFieldInteraction = () => {
-		if (!isTouched) setIsTouched(true)
-	}
+	const inputErrorWrapperClass =
+		rawErrors && rawErrors.length > 0 ? "rjsf-error" : ""
 
 	const handleAddKeyValue = () => {
 		if (!newKey.trim()) return
@@ -204,13 +193,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 					/>
 				</div>
 			) : (
-				<div
-					className={inputErrorWrapperClass}
-					onFocus={handleFieldInteraction}
-					onBlur={handleFieldInteraction}
-				>
-					{children}
-				</div>
+				<div className={inputErrorWrapperClass}>{children}</div>
 			)}
 		</div>
 	)
