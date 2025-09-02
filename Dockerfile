@@ -37,26 +37,22 @@ RUN pnpm build
 # Stage 3: Final Runtime Image
 FROM alpine:latest
 
-# Install dependencies: supervisor and docker-cli
-RUN apk add --no-cache supervisor docker-cli
+# Install docker-cli
+RUN apk update && apk add --no-cache docker-cli
 
-# Create directories for applications, logs, and supervisor config
-RUN mkdir -p /opt/backend/conf \
-             /opt/frontend/dist \
-             /var/log/supervisor \
-             /etc/supervisor/conf.d
+# Set working directory
+WORKDIR /app/olake-ui
+
+# Create directories for applications
+RUN mkdir -p conf /opt/frontend/dist
 
 # Copy built artifacts from builder stages
-COPY --from=go-builder /app/olake-server /opt/backend/olake-server
-# Copy the backend configuration file
-COPY server/conf/app.conf /opt/backend/conf/app.conf
+COPY --from=go-builder /app/olake-server ./olake-server
+COPY server/conf/app.conf ./conf/app.conf
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
-RUN apk update && apk add --no-cache docker-cli
-# Copy supervisor configuration file
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose only the Go backend port (which serves both API and frontend)
+# Expose the Go backend port (which serves both API and frontend)
 EXPOSE 8000
 
-# Set the default command to run Supervisor
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Run the olake-ui app
+CMD ["./olake-server"]
