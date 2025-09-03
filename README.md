@@ -16,68 +16,35 @@
 
 ## Overview
 
-Olake-UI is built on top of Olake CLI to execute commands via UI.
+Olake-UI offers an intuitive web interface to configure, monitor, and manage your data replication jobs.
 
 - [UI Readme](/olake_frontend/README.md)
 - [Server Readme](/server/README.md)
 - [UI Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake-Design-Community?node-id=1-46&p=f&t=y3BIsLTUaXhHwYLG-0)
-- [Contributor Guidlines](/CONTRIBUTING.md)
 - [API Contracts](/api-contract.md)
-
-## Contributing
-
-We ❤️ contributions big or small check our [Bounty Program](https://olake.io/docs/community/issues-and-prs#goodies). As always, thanks to our amazing contributors!.
-
-- To contribute to Olake-UI visit [CONTRIBUTING.md](CONTRIBUTING.md)
-- To contribute to Olake Main Repo, visit [OLake Main Repository](https://github.com/datazip-inc/olake).
-- To contribute to OLake website and documentation (olake.io), visit [Olake Docs Repository][https://github.com/datazip-inc/olake-docs/].
 
 ## Running with Docker Compose
 
-This Docker Compose setup provides a comprehensive environment(UI, backend, Temporal worker, Temporal services, and dependencies) for demonstrating and exploring Olake's capabilities. This is the recommended way to get started for local development or evaluation.
+This Docker Compose setup provides a comprehensive environment(OLake UI, Temporal worker, Temporal service, and dependencies) for demonstrating and exploring Olake's capabilities. This is the recommended way to get started for local development or evaluation.
 
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) installed and running (Docker Desktop recommended for Mac/Windows)
 - [Docker Compose](https://docs.docker.com/compose/) (comes with Docker Desktop)
+- Make sure port `8000` is available, as OLake UI is exposed on that port.
 
 ### Quick Start
 
-1. **Clone the repository:**
+1. **One-Command Setup:**
 
-   ```bash
-   git clone https://github.com/datazip-inc/olake-ui.git
-   cd olake-ui
-   ```
+```sh
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
+```
 
-2. **Start all services:**
+2. **Access the services:**
 
-   ```bash
-   docker compose up -d
-   ```
-
-3. **Check that everything is running:**
-
-   ```bash
-   docker compose ps
-   ```
-
-4. **Access the services:**
-
-   - **Frontend UI:** [http://localhost:8000](http://localhost:8000)
+   - **OLake UI:** [http://localhost:8000](http://localhost:8000)
    - **Default login:** Username: `admin`, Password: `password`
-   - **Make sure port `8000` is exposed and accessible**, as both the frontend and backend run on this single port.
-
-5. **Stopping the stack:**
-   ```bash
-   docker compose down
-   ```
-
-### Notes
-
-- On first run, docker will pull all required images.
-- Data and configuration are persisted in the directory set in `docker-compose.yml`.
-- The Temporal worker requires access to the Docker socket to launch containers for jobs. This is handled by the volume mount in the compose file.
 
 ### Optional Configuration
 
@@ -135,7 +102,21 @@ x-encryption:
   docker compose logs -f <service_name>
   ```
 
-###  Contributing
+### Updating OLake UI Version
 
-We welcome contributions from everyone!  
-Please read our [Contribution Guide](CONTRIBUTING.md#olake-ui-contributor-agreement) for step-by-step instructions on how to get started.
+To update OLake UI to the latest version, use the following command:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
+```
+
+**Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
+
+## Contributing
+
+We ❤️ contributions big or small check our [Bounty Program](https://olake.io/docs/community/issues-and-prs#goodies). As always, thanks to our amazing contributors!.
+
+- To contribute to Olake-UI visit [CONTRIBUTING.md](CONTRIBUTING.md)
+- To contribute to Olake Main Repo, visit [OLake Main Repository](https://github.com/datazip-inc/olake).
+- To contribute to OLake website and [documentation](https://olake.io/docs), visit [Olake Docs Repository](https://github.com/datazip-inc/olake-docs/).
