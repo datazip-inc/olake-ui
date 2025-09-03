@@ -106,7 +106,6 @@ x-encryption:
 The stack can be completely reset with:
 ```bash
 docker compose up -d    # Fresh start
-docker compose down -v  # Removes containers and volumes along with all job data and configurations.
 ```
 
 ## Contributing
