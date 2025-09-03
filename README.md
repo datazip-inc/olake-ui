@@ -105,7 +105,7 @@ x-encryption:
 ### Reset Everything
 The stack can be completely reset with:
 ```bash
-docker compose up -d    # Fresh start
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d    # Fresh start
 ```
 
 ## Contributing
