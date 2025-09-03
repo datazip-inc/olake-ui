@@ -68,7 +68,7 @@ export const STATUS_LABELS = {
 export const JOB_CREATION_STEPS = {
 	SOURCE: "source",
 	DESTINATION: "destination",
-	SCHEMA: "schema",
+	STREAMS: "streams",
 	CONFIG: "config",
 }
 
@@ -173,10 +173,10 @@ export const COLORS = {
 } as const
 
 export const steps: string[] = [
+	JOB_CREATION_STEPS.CONFIG,
 	JOB_CREATION_STEPS.SOURCE,
 	JOB_CREATION_STEPS.DESTINATION,
-	JOB_CREATION_STEPS.SCHEMA,
-	JOB_CREATION_STEPS.CONFIG,
+	JOB_CREATION_STEPS.STREAMS,
 ]
 
 export const TAB_STYLES = {

@@ -23,7 +23,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 				<div className="rounded-xl bg-neutral-light p-2">
 					{type === "source" ? (
 						<LinktreeLogo className="z-10 size-5 text-text-link" />
-					) : type === "config" ? (
+					) : type === "streams" ? (
 						<GitCommit className="z-10 size-5 text-text-link" />
 					) : (
 						<Path className="z-10 size-5 text-text-link" />
@@ -40,7 +40,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					<div className="flex items-center gap-1">
 						{type === "source" ? (
 							<LinktreeLogo className="size-5" />
-						) : type === "config" ? (
+						) : type === "streams" ? (
 							<GitCommit className="size-5" />
 						) : (
 							<Path className="size-5" />
@@ -49,7 +49,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							{entityName ||
 								(type === "source"
 									? "Source-Name"
-									: type === "config"
+									: type === "streams"
 										? "Job-Name"
 										: "Destination-Name")}
 						</span>
@@ -60,7 +60,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					</div>
 				</div>
 				<div className="flex space-x-4">
-					{type !== "config" && !fromJobFlow && (
+					{type !== "streams" && !fromJobFlow && (
 						<Button
 							type={fromJobFlow ? "primary" : "default"}
 							className="border border-[#D9D9D9]"
@@ -81,13 +81,13 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							type="primary"
 							onClick={() => {
 								setShowEntitySavedModal(false)
-								navigate(type === "config" ? "/jobs" : "/jobs/new")
+								navigate(type === "streams" ? "/jobs" : "/jobs/new")
 							}}
 						>
-							{type === "config" ? "Jobs →" : "Create a job →"}
+							{type === "streams" ? "Jobs →" : "Create a job →"}
 						</Button>
 					)}
-					{type === "config" && fromJobFlow && (
+					{type === "streams" && fromJobFlow && (
 						<Button
 							type="primary"
 							onClick={() => {

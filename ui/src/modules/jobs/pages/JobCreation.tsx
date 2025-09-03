@@ -32,7 +32,7 @@ const JobCreation: React.FC = () => {
 	const initialData = location.state?.initialData || {}
 	const savedJobId = location.state?.savedJobId
 
-	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("config")
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
@@ -225,15 +225,15 @@ const JobCreation: React.FC = () => {
 							: JSON.stringify(destinationFormData),
 					version: destinationVersion,
 				}
-				await handleConnectionTest(false, destinationData, "schema")
+				await handleConnectionTest(false, destinationData, "streams")
 				break
 			}
-			case "schema":
-				setCurrentStep("config")
+			case "streams":
+				await handleJobCreation()
 				break
 			case "config":
 				if (!validateConfig()) return
-				await handleJobCreation()
+				setCurrentStep("source")
 				break
 			default:
 				console.warn("Unknown step:", currentStep)
@@ -244,19 +244,19 @@ const JobCreation: React.FC = () => {
 		if (currentStep === "source") {
 			setCurrentStep("destination")
 		} else if (currentStep === "destination") {
-			setCurrentStep("schema")
-		} else if (currentStep === "schema") {
-			setCurrentStep("config")
+			setCurrentStep("streams")
+		} else if (currentStep === "config") {
+			setCurrentStep("source")
 		}
 	}
 
 	const handleBack = () => {
 		if (currentStep === "destination") {
 			setCurrentStep("source")
-		} else if (currentStep === "schema") {
+		} else if (currentStep === "streams") {
 			setCurrentStep("destination")
-		} else if (currentStep === "config") {
-			setCurrentStep("schema")
+		} else if (currentStep === "source") {
+			setCurrentStep("config")
 		}
 	}
 
@@ -330,13 +330,13 @@ const JobCreation: React.FC = () => {
 
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
-					className={`w-full ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={`w-full ${currentStep === "streams" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
 					{currentStep === "source" && (
 						<div className="h-full w-full overflow-auto">
 							<CreateSource
 								fromJobFlow={true}
-								stepNumber={"I"}
+								stepNumber={2}
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
@@ -362,7 +362,7 @@ const JobCreation: React.FC = () => {
 						<div className="h-full w-full overflow-auto">
 							<CreateDestination
 								fromJobFlow={true}
-								stepNumber={2}
+								stepNumber={3}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
@@ -376,7 +376,7 @@ const JobCreation: React.FC = () => {
 								onCatalogTypeChange={setDestinationCatalogType}
 								onVersionChange={setDestinationVersion}
 								onComplete={() => {
-									setCurrentStep("schema")
+									setCurrentStep("streams")
 								}}
 								ref={destinationRef}
 								docsMinimized={docsMinimized}
@@ -385,12 +385,12 @@ const JobCreation: React.FC = () => {
 						</div>
 					)}
 
-					{currentStep === "schema" && (
+					{currentStep === "streams" && (
 						<div className="h-full overflow-scroll">
 							<SchemaConfiguration
 								selectedStreams={selectedStreams}
 								setSelectedStreams={setSelectedStreams}
-								stepNumber={3}
+								stepNumber={4}
 								stepTitle="Streams Selection"
 								useDirectForms={true}
 								sourceName={sourceName}
@@ -419,7 +419,7 @@ const JobCreation: React.FC = () => {
 							setJobName={setJobName}
 							cronExpression={cronExpression}
 							setCronExpression={setCronExpression}
-							stepNumber={4}
+							stepNumber={1}
 							stepTitle="Job Configuration"
 						/>
 					)}
@@ -446,7 +446,7 @@ const JobCreation: React.FC = () => {
 				<div
 					className={`flex items-center transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === "source" || currentStep === "destination") ? "mr-[40%]" : "mr-[4%]"}`}
 				>
-					{currentStep !== "source" && (
+					{currentStep !== "config" && (
 						<button
 							onClick={handleBack}
 							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
@@ -458,7 +458,7 @@ const JobCreation: React.FC = () => {
 						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>
-						{currentStep === "config" ? "Create Job" : "Next"}
+						{currentStep === "streams" ? "Create Job" : "Next"}
 						<ArrowRight className="size-4 text-white" />
 					</button>
 					<TestConnectionModal />
@@ -472,7 +472,7 @@ const JobCreation: React.FC = () => {
 								? sourceName
 								: currentStep === "destination"
 									? destinationName
-									: currentStep === "config"
+									: currentStep === "streams"
 										? jobName
 										: ""
 						}
