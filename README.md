@@ -102,11 +102,16 @@ x-encryption:
   docker compose logs -f <service_name>
   ```
 
-### Reset Everything
-The stack can be completely reset with:
+### Updating OLake UI Version
+
+To update OLake UI to the latest version, use the following command:
+
 ```bash
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d    # Fresh start
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
 ```
+
+**Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
 
 ## Contributing
 

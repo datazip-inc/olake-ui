@@ -158,6 +158,8 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
     networks:
       - olake-network
+    ports:
+      - "8081:8080"
     restart: unless-stopped
 
   elasticsearch:
