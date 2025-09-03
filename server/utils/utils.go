@@ -14,6 +14,7 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/oklog/ulid"
 	"github.com/robfig/cron"
 
@@ -320,4 +321,44 @@ func GetLogRetentionPeriod() int {
 		}
 	}
 	return constants.DefaultLogRetentionPeriod
+}
+
+// RetryWithBackoff retries the given operation with exponential backoff.
+//
+// Params:
+//   - operation: function to retry (return error to trigger retry)
+//   - maxRetries: maximum number of retries (0 = unlimited)
+//   - initialInterval: initial delay before retrying (e.g., 1s)
+//   - maxInterval: maximum delay between retries (e.g., 2m)
+//   - notify: optional callback called on every retry
+//
+// Returns:
+//   - error: last error if retries failed, or nil if successful.
+func RetryWithBackoff(
+	operation func() error,
+	maxRetries int,
+	initialInterval, maxInterval time.Duration,
+	notify func(err error, next time.Duration),
+) error {
+	// Configure exponential backoff
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.InitialInterval = initialInterval
+	expBackoff.MaxInterval = maxInterval
+
+	// If maxRetries > 0, we cap the elapsed time
+	if maxRetries > 0 {
+		expBackoff.MaxElapsedTime = time.Duration(maxRetries) * maxInterval
+	} else {
+		expBackoff.MaxElapsedTime = 0 // unlimited
+	}
+
+	// Default notify if not provided
+	if notify == nil {
+		notify = func(err error, next time.Duration) {
+			logs.Info("Operation failed: %s. Retrying in %s...\n", err, next)
+		}
+	}
+
+	// Execute the operation with retry
+	return backoff.RetryNotify(operation, expBackoff, notify)
 }

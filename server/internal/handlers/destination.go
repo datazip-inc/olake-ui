@@ -222,12 +222,19 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
+	var result map[string]interface{}
+	if c.tempClient != nil {
+		result, err = c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
 
-	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
+		if result == nil {
+			result = map[string]interface{}{
+				"message": err.Error(),
+				"status":  "failed",
+			}
+		}
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to test connection: %s", err))
+			return
 		}
 	}
 	utils.SuccessResponse(&c.Controller, result)

@@ -1,29 +1,18 @@
 package temporal
 
 import (
-	"fmt"
-
-	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 )
 
 // Worker handles Temporal worker functionality
 type Worker struct {
-	temporalClient client.Client
-	worker         worker.Worker
+	client *Client
+	worker worker.Worker
 }
 
 // NewWorker creates a new Temporal worker
-func NewWorker() (*Worker, error) {
-	c, err := client.Dial(client.Options{
-		HostPort: TemporalAddress,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
-	}
-
-	// Create a worker
-	w := worker.New(c, TaskQueue, worker.Options{})
+func NewWorker(c *Client) (*Worker, error) {
+	w := worker.New(c.GetClient(), TaskQueue, worker.Options{})
 
 	// Register workflows
 	w.RegisterWorkflow(DiscoverCatalogWorkflow)
@@ -36,8 +25,8 @@ func NewWorker() (*Worker, error) {
 	w.RegisterActivity(SyncActivity)
 
 	return &Worker{
-		temporalClient: c,
-		worker:         w,
+		client: c,
+		worker: w,
 	}, nil
 }
 
@@ -49,5 +38,5 @@ func (w *Worker) Start() error {
 // Stop stops the worker
 func (w *Worker) Stop() {
 	w.worker.Stop()
-	w.temporalClient.Close()
+	w.client.Close()
 }

@@ -423,6 +423,10 @@ func (c *JobHandler) GetJobTasks() {
 	// Construct a query for workflows related to this project and job
 	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectIDStr, job.ID, projectIDStr, job.ID)
 	// List workflows using the direct query
+	if c.tempClient == nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Temporal client is not initialized")
+		return
+	}
 	resp, err := c.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
 	})

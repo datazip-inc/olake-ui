@@ -204,13 +204,21 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
+	var result map[string]interface{}
+	if c.tempClient != nil {
+		result, err = c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
+		if result == nil {
+			result = map[string]interface{}{
+				"message": err.Error(),
+				"status":  "failed",
+			}
+		}
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to test connection: %s", err))
+			return
 		}
 	}
+
 	utils.SuccessResponse(&c.Controller, result)
 }
 

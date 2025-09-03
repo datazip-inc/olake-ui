@@ -34,7 +34,7 @@ services:
       postgresql:
         condition: service_healthy # Wait for postgres to be healthy
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_healthy # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
     healthcheck: # Updated healthcheck for olake-ui  
       test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
@@ -101,7 +101,7 @@ services:
       PERSISTENT_DIR: *hostPersistencePath
     depends_on:
       temporal:
-        condition: service_started # Or service_healthy if temporal has a healthcheck
+        condition: service_healthy # Or service_healthy if temporal has a healthcheck
       olake-ui:
         condition: service_healthy
     restart: unless-stopped
@@ -151,6 +151,11 @@ services:
     ports:
       - "7233:7233"
     restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'tctl', '--address', '127.0.0.1:7233', 'cluster', 'health']
+      interval: 1s
+      timeout: 5s
+      start_period: 2s
 
   temporal-ui:
     container_name: temporal-ui

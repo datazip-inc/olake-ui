@@ -39,10 +39,17 @@ func main() {
 
 	logs.Info("Starting Olake Temporal worker...")
 
-	// Create a new worker
-	worker, err := temporal.NewWorker()
+	// create temporal client
+	tClient, err := temporal.NewClient()
 	if err != nil {
-		logs.Critical("Failed to create worker: %v", err)
+		logs.Critical("Failed to create Temporal client: %v", err)
+		os.Exit(1)
+	}
+	defer tClient.Close()
+	// create temporal worker
+	worker, err := temporal.NewWorker(tClient)
+	if err != nil {
+		logs.Critical("Failed to create Temporal worker: %v", err)
 		os.Exit(1)
 	}
 
