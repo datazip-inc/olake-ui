@@ -100,7 +100,8 @@ http://localhost:8000
     "data": {
       "type": "string",
       "version": "string",
-      "spec": "json"
+      "jsonschema": "object",
+      "uischema": "string"
     }
   }
   ```
@@ -274,7 +275,8 @@ http://localhost:8000
     "data": {
       "type": "string",
       "version": "string",
-      "spec": "json"
+      "jsonschema": "string",
+      "uischema": "string"
     }
   }
   ```

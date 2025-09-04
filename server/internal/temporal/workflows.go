@@ -43,7 +43,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (models.SpecOutput, error) {
 	// Execute the FetchSpecActivity directly
 	options := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute * 10,
+		StartToCloseTimeout: time.Minute * 5,
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
