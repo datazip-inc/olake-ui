@@ -322,7 +322,7 @@ func GetLogRetentionPeriod() int {
 	return constants.DefaultLogRetentionPeriod
 }
 
-// ParseSpecJSON extracts and returns the "spec" and "uischema" objects from the last valid JSON block
+// ParseSpecJSON extracts and returns the "jsonschema" and "uischema" objects from the last valid JSON block
 func ParseSpecJSON(output string) (models.SpecOutput, error) {
 	lines := strings.Split(output, "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -337,13 +337,13 @@ func ParseSpecJSON(output string) (models.SpecOutput, error) {
 			}
 
 			// Extract both spec and uischema if available
-			spec, okSpec := fullMap["spec"].(map[string]interface{})
+			jsonschema, okJsonschema := fullMap["jsonschema"].(map[string]interface{})
 			uischema, okUI := fullMap["uischema"].(string)
 
-			if okSpec || okUI {
-				return models.SpecOutput{Spec: spec, UISchema: uischema}, nil
+			if okJsonschema || okUI {
+				return models.SpecOutput{JsonSchema: jsonschema, UISchema: uischema}, nil
 			}
 		}
 	}
-	return models.SpecOutput{}, fmt.Errorf("no top-level 'spec' or 'uischema' JSON block found in output")
+	return models.SpecOutput{}, fmt.Errorf("no top-level 'jsonschema' or 'uischema' JSON block found in output")
 }
