@@ -922,7 +922,7 @@ const StreamConfiguration = ({
 	// Main render
 	return (
 		<div>
-			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
+			<div className="pb-4 font-medium">{stream.stream.name}</div>
 			<div className="mb-4 w-full">
 				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton
