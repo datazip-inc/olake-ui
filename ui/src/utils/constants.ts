@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { CatalogType, NavItem } from "../types"
+import { NavItem } from "../types"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -136,24 +136,6 @@ export const NAV_ITEMS: NavItem[] = [
 export const sourceTabs = [
 	{ key: STATUS.ACTIVE, label: "Active sources" },
 	{ key: STATUS.INACTIVE, label: "Inactive sources" },
-]
-
-export const mapCatalogValueToType = (
-	catalogValue: string,
-): CatalogType | null => {
-	if (catalogValue === "none") return CATALOG_TYPES.NONE
-	if (catalogValue === "glue") return CATALOG_TYPES.AWS_GLUE
-	if (catalogValue === "rest") return CATALOG_TYPES.REST_CATALOG
-	if (catalogValue === "jdbc") return CATALOG_TYPES.JDBC_CATALOG
-	if (catalogValue === "hive") return CATALOG_TYPES.HIVE_CATALOG
-	return null
-}
-
-export const IcebergCatalogTypes = [
-	{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
-	{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
-	{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC Catalog" },
-	{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive Catalog" },
 ]
 
 export const destinationTabs = [

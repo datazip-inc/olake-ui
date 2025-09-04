@@ -30,7 +30,6 @@ import connectorOptions from "../components/connectorOptions"
 import { SETUP_TYPES } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
-import { validateFormData } from "../../../utils/validateFormData"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
 
@@ -189,8 +188,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						connector,
 						selectedVersion,
 					)
-					if (response.success && response.data?.spec) {
-						setSchema(response.data.spec)
+					if (response.success && response.data?.jsonschema) {
+						setSchema(response.data.jsonschema)
 						if (typeof response.data.uischema === "string") {
 							setUiSchema(JSON.parse(response.data.uischema))
 						}
@@ -233,22 +232,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						return false
 					}
 
-					// Trigger RJSF validation UI to show red borders on invalid fields in job flow
-					if (
-						fromJobFlow &&
-						schema &&
-						formRef.current &&
-						formRef.current.submit
-					) {
-						try {
-							formRef.current.submit()
-						} catch {}
-					}
-
-					// Block flow if schema validation fails
-					if (schema) {
-						const schemaErrors = validateFormData(formData, schema)
-						if (Object.keys(schemaErrors).length > 0) {
+					// Use RJSF's built-in validation - validate returns validation state
+					if (schema && formRef.current) {
+						const validationResult = formRef.current.validateForm()
+						if (validationResult.errors && validationResult.errors.length > 0) {
 							return false
 						}
 					}

@@ -45,17 +45,13 @@ export const getConnectorDocumentationPath = (
 			return "s3/config"
 		case "Apache Iceberg":
 			switch (catalog) {
-				case "AWS Glue":
 				case "glue":
 					return "iceberg/catalog/glue"
-				case "REST Catalog":
 				case "rest":
 					return "iceberg/catalog/rest"
 				case "jdbc":
-				case "JDBC Catalog":
 					return "iceberg/catalog/jdbc"
 				case "hive":
-				case "Hive Catalog":
 					return "iceberg/catalog/hive"
 				default:
 					return "iceberg/catalog/glue"
@@ -256,25 +252,6 @@ export const getLogTextColor = (level: string) => {
 			return "text-[#F5222D]"
 		default:
 			return "text-[#000000"
-	}
-}
-
-export const getCatalogName = (catalogType: string) => {
-	switch (catalogType?.toLowerCase()) {
-		case "glue":
-		case "aws glue":
-			return "AWS Glue"
-		case "rest":
-		case "rest catalog":
-			return "REST Catalog"
-		case "jdbc":
-		case "jdbc catalog":
-			return "JDBC Catalog"
-		case "hive":
-		case "hive catalog":
-			return "Hive Catalog"
-		default:
-			return null
 	}
 }
 
