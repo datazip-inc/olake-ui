@@ -14,11 +14,11 @@ type JSONResponse struct {
 type SpecResponse struct {
 	Version    string      `json:"version"`
 	Type       string      `json:"type"`
-	JsonSchema interface{} `json:"jsonschema" orm:"type(jsonb)"`
+	JSONSchema interface{} `json:"jsonschema" orm:"type(jsonb)"`
 	UISchema   string      `json:"uischema"`
 }
 type SpecOutput struct {
-	JsonSchema map[string]interface{} `json:"jsonschema"`
+	JSONSchema map[string]interface{} `json:"jsonschema"`
 	UISchema   string                 `json:"uischema"`
 }
 

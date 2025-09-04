@@ -307,7 +307,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
 		Version:    req.Version,
 		Type:       req.Type,
-		JsonSchema: spec.JsonSchema,
+		JSONSchema: spec.JSONSchema,
 		UISchema:   spec.UISchema,
 	})
 }

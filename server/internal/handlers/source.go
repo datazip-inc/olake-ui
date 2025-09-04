@@ -321,7 +321,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
 		Version:    req.Version,
 		Type:       req.Type,
-		JsonSchema: specOutput.JsonSchema,
+		JSONSchema: specOutput.JSONSchema,
 		UISchema:   specOutput.UISchema,
 	})
 }

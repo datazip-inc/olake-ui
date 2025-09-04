@@ -341,7 +341,7 @@ func ParseSpecJSON(output string) (models.SpecOutput, error) {
 			uischema, okUI := fullMap["uischema"].(string)
 
 			if okJsonschema || okUI {
-				return models.SpecOutput{JsonSchema: jsonschema, UISchema: uischema}, nil
+				return models.SpecOutput{JSONSchema: jsonschema, UISchema: uischema}, nil
 			}
 		}
 	}
