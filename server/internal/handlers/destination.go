@@ -286,7 +286,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	}
 	var spec models.SpecOutput
 	var err error
-	// TODO: standardize on parquet/iceberg destination types, remove s3 type mapping
+	// TODO: make destinationType consistent. Only use parquet and iceberg.
 	destinationType := "iceberg"
 	if req.Type == "s3" {
 		destinationType = "parquet"
