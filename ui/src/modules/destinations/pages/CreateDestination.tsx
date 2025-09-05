@@ -26,7 +26,6 @@ import {
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
-	mapCatalogValueToType,
 	SETUP_TYPES,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
@@ -44,7 +43,6 @@ import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplat
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
-import { validateFormData } from "../../../utils/validateFormData"
 import { widgets } from "../../common/components/Form/widgets"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
@@ -273,8 +271,8 @@ const CreateDestination = forwardRef<
 							version,
 						)
 					}
-					if (response.success && response.data?.spec) {
-						setSchema(response.data.spec)
+					if (response.success && response.data?.jsonschema) {
+						setSchema(response.data.jsonschema)
 						setUiSchema(JSON.parse(response.data.uischema))
 					} else {
 						console.error("Failed to get destination spec:", response.message)
@@ -322,22 +320,9 @@ const CreateDestination = forwardRef<
 						return false
 					}
 
-					// Trigger RJSF validation UI to show red borders on invalid fields in job flow
-					if (
-						fromJobFlow &&
-						schema &&
-						formRef.current &&
-						formRef.current.submit
-					) {
-						try {
-							formRef.current.submit()
-						} catch {}
-					}
-
-					// Block flow if schema validation fails
-					if (schema) {
-						const schemaErrors = validateFormData(formData, schema)
-						if (Object.keys(schemaErrors).length > 0) {
+					if (schema && formRef.current) {
+						const validationResult = formRef.current.validateForm()
+						if (validationResult.errors && validationResult.errors.length > 0) {
 							return false
 						}
 					}
@@ -463,23 +448,11 @@ const CreateDestination = forwardRef<
 			if (onConnectorChange) onConnectorChange(selectedDestination.type)
 			if (onVersionChange) onVersionChange(selectedDestination.version)
 
-			let configObj: any = {}
-			if (selectedDestination.config) {
-				let config = selectedDestination.config
-				if (typeof config === "string") {
-					try {
-						config = JSON.parse(config)
-					} catch (e) {
-						console.error("Error parsing config string:", e)
-						config = ""
-					}
-				}
-				if (config && typeof config === "object" && config !== null) {
-					configObj = config || {}
-				} else {
-					configObj = {}
-				}
-			}
+			const configObj =
+				selectedDestination.config &&
+				typeof selectedDestination.config === "object"
+					? selectedDestination.config
+					: {}
 
 			if (onFormDataChange) onFormDataChange(configObj)
 			setDestinationName(selectedDestination.name)
@@ -622,13 +595,7 @@ const CreateDestination = forwardRef<
 										setFormData(e.formData)
 										if (onFormDataChange) onFormDataChange(e.formData)
 										const catalogValue = e.formData?.writer?.catalog_type
-										if (catalogValue) {
-											const mappedCatalogType =
-												mapCatalogValueToType(catalogValue)
-											if (mappedCatalogType) {
-												setCatalog(mappedCatalogType)
-											}
-										}
+										if (catalogValue) setCatalog(catalogValue)
 									}}
 									onSubmit={handleCreate}
 									uiSchema={uiSchema}

@@ -30,7 +30,6 @@ import {
 	TAB_TYPES,
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
-	mapCatalogValueToType,
 } from "../../../utils/constants"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -251,8 +250,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					)
 				}
 
-				if (response.success && response.data?.spec) {
-					setSchema(response.data.spec)
+				if (response.success && response.data?.jsonschema) {
+					setSchema(response.data.jsonschema)
 					if (typeof response.data.uischema === "string") {
 						setUiSchema(JSON.parse(response.data.uischema))
 					}
@@ -581,12 +580,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						onChange={e => {
 							setFormData(e.formData)
 							const catalogValue = e.formData?.writer?.catalog_type
-							if (catalogValue) {
-								const mappedCatalogType = mapCatalogValueToType(catalogValue)
-								if (mappedCatalogType) {
-									setCatalog(mappedCatalogType)
-								}
-							}
+							if (catalogValue) setCatalog(catalogValue)
 						}}
 						onSubmit={handleSaveChanges}
 						uiSchema={uiSchema}

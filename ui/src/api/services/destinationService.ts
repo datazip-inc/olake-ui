@@ -134,7 +134,7 @@ export const destinationService = {
 				source_type: source_type,
 				source_version: source_version,
 			},
-			{ timeout: 0 },
+			{ timeout: 300000 },
 		)
 		return response.data
 	},

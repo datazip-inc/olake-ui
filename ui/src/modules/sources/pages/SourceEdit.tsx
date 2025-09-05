@@ -154,8 +154,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					connector as string,
 					selectedVersion,
 				)
-				if (response.success && response.data?.spec) {
-					setSchema(response.data.spec)
+				if (response.success && response.data?.jsonschema) {
+					setSchema(response.data.jsonschema)
 					if (typeof response.data.uischema === "string") {
 						setUiSchema(JSON.parse(response.data.uischema))
 					}
