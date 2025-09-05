@@ -284,7 +284,7 @@ func (c *DestHandler) GetDestinationSpec() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-	var spec models.SpecOutput
+	var specOutput models.SpecOutput
 	var err error
 	// TODO: make destinationType consistent. Only use parquet and iceberg.
 	destinationType := "iceberg"
@@ -292,7 +292,7 @@ func (c *DestHandler) GetDestinationSpec() {
 		destinationType = "parquet"
 	}
 	if c.tempClient != nil {
-		spec, err = c.tempClient.FetchSpec(
+		specOutput, err = c.tempClient.FetchSpec(
 			c.Ctx.Request.Context(),
 			destinationType,
 			"postgres",
@@ -307,6 +307,6 @@ func (c *DestHandler) GetDestinationSpec() {
 	utils.SuccessResponse(&c.Controller, models.SpecResponse{
 		Version: req.Version,
 		Type:    req.Type,
-		Spec:    spec,
+		Spec:    specOutput.Spec,
 	})
 }
