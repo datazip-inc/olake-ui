@@ -331,19 +331,20 @@ func ParseSpecJSON(output string) (models.SpecOutput, error) {
 		end := strings.LastIndex(line, "}")
 		if start != -1 && end != -1 && end > start {
 			jsonPart := line[start : end+1]
-			var fullMap map[string]interface{}
-			if err := json.Unmarshal([]byte(jsonPart), &fullMap); err != nil {
+			var spec map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonPart), &spec); err != nil {
 				continue // Skip invalid JSON
 			}
 
-			// Extract both spec and uischema if available
-			jsonschema, okJsonschema := fullMap["jsonschema"].(map[string]interface{})
-			uischema, okUI := fullMap["uischema"].(string)
-
-			if okJsonschema || okUI {
-				return models.SpecOutput{JSONSchema: jsonschema, UISchema: uischema}, nil
+			if _, ok := spec["jsonschema"]; !ok {
+				return models.SpecOutput{}, fmt.Errorf("no 'jsonschema' field found in spec")
 			}
+			if _, ok := spec["uischema"]; !ok {
+				return models.SpecOutput{}, fmt.Errorf("no 'uischema' field found in spec")
+			}
+
+			return models.SpecOutput{Spec: spec}, nil
 		}
 	}
-	return models.SpecOutput{}, fmt.Errorf("no top-level 'jsonschema' or 'uischema' JSON block found in output")
+	return models.SpecOutput{}, fmt.Errorf("no top-level 'spec' JSON block found in output")
 }
