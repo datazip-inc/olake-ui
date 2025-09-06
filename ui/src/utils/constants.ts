@@ -222,3 +222,28 @@ export const SYNC_MODE_MAP = {
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
 }
+
+export const transformErrors = (errors: any[]) => {
+	const allowed = new Set([
+		"required",
+		"minLength",
+		"maxLength",
+		"pattern",
+		"format",
+		"minimum",
+		"maximum",
+		"exclusiveMinimum",
+		"exclusiveMaximum",
+		"multipleOf",
+		"type",
+		"minItems",
+		"maxItems",
+		"uniqueItems",
+		"minProperties",
+		"maxProperties",
+		"enum",
+	])
+
+	// Filter errors to only show the allowed types
+	return errors.filter(error => allowed.has(error.name))
+}

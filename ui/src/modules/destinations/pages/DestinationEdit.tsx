@@ -30,6 +30,7 @@ import {
 	TAB_TYPES,
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
+	transformErrors,
 } from "../../../utils/constants"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -250,10 +251,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					)
 				}
 
-				if (response.success && response.data?.jsonschema) {
-					setSchema(response.data.jsonschema)
-					if (typeof response.data.uischema === "string") {
-						setUiSchema(JSON.parse(response.data.uischema))
+				if (response.success && response.data?.spec?.jsonschema) {
+					setSchema(response.data.spec.jsonschema)
+					if (typeof response.data.spec.uischema === "string") {
+						setUiSchema(JSON.parse(response.data.spec.uischema))
 					}
 				} else {
 					console.error("Failed to get destination spec:", response.message)
@@ -582,6 +583,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							const catalogValue = e.formData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
 						}}
+						transformErrors={transformErrors}
 						onSubmit={handleSaveChanges}
 						uiSchema={uiSchema}
 						validator={validator}

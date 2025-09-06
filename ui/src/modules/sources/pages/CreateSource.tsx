@@ -188,10 +188,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						connector,
 						selectedVersion,
 					)
-					if (response.success && response.data?.jsonschema) {
-						setSchema(response.data.jsonschema)
-						if (typeof response.data.uischema === "string") {
-							setUiSchema(JSON.parse(response.data.uischema))
+					if (response.success && response.data?.spec?.jsonschema) {
+						setSchema(response.data.spec.jsonschema)
+						if (typeof response.data.spec.uischema === "string") {
+							setUiSchema(JSON.parse(response.data.spec.uischema))
 						}
 					} else {
 						console.error("Failed to get source spec:", response.message)
@@ -235,9 +235,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					// Use RJSF's built-in validation - validate returns validation state
 					if (schema && formRef.current) {
 						const validationResult = formRef.current.validateForm()
-						if (validationResult.errors && validationResult.errors.length > 0) {
-							return false
-						}
+						return validationResult
 					}
 				}
 

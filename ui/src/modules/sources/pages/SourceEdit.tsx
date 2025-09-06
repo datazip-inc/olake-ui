@@ -154,10 +154,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					connector as string,
 					selectedVersion,
 				)
-				if (response.success && response.data?.jsonschema) {
-					setSchema(response.data.jsonschema)
-					if (typeof response.data.uischema === "string") {
-						setUiSchema(JSON.parse(response.data.uischema))
+				if (response.success && response.data?.spec?.jsonschema) {
+					setSchema(response.data.spec.jsonschema)
+					if (typeof response.data.spec.uischema === "string") {
+						setUiSchema(JSON.parse(response.data.spec.uischema))
 					}
 				} else {
 					console.error("Failed to get source spec:", response.message)

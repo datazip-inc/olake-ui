@@ -113,7 +113,7 @@ export const sourceService = {
 
 	getSourceSpec: async (type: string, version: string) => {
 		try {
-			const response = await api.post<APIResponse<Record<string, unknown>>>(
+			const response = await api.post<APIResponse<any>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: type.toLowerCase(),

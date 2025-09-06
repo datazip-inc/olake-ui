@@ -27,6 +27,7 @@ import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	SETUP_TYPES,
+	transformErrors,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
@@ -271,9 +272,9 @@ const CreateDestination = forwardRef<
 							version,
 						)
 					}
-					if (response.success && response.data?.jsonschema) {
-						setSchema(response.data.jsonschema)
-						setUiSchema(JSON.parse(response.data.uischema))
+					if (response.success && response.data?.spec?.jsonschema) {
+						setSchema(response.data.spec.jsonschema)
+						setUiSchema(JSON.parse(response.data.spec.uischema))
 					} else {
 						console.error("Failed to get destination spec:", response.message)
 					}
@@ -322,9 +323,7 @@ const CreateDestination = forwardRef<
 
 					if (schema && formRef.current) {
 						const validationResult = formRef.current.validateForm()
-						if (validationResult.errors && validationResult.errors.length > 0) {
-							return false
-						}
+						return validationResult
 					}
 				}
 
@@ -581,6 +580,7 @@ const CreateDestination = forwardRef<
 								<Form
 									ref={formRef}
 									schema={schema}
+									transformErrors={transformErrors}
 									templates={{
 										ObjectFieldTemplate: ObjectFieldTemplate,
 										FieldTemplate: CustomFieldTemplate,
