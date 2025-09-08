@@ -167,10 +167,12 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	}
 	return outputDir
 }
+
 func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, _ string) (models.SpecOutput, error) {
 	// Prepare the command arguments
 	dockerArgs := []string{
 		"run",
+		"--rm",
 		r.GetDockerImageName(sourceType, version),
 		"spec",
 	}
@@ -185,11 +187,11 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	if err != nil {
 		return models.SpecOutput{}, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
 	}
-	spec, err := utils.ParseSpecJSON(string(output))
+	spec, err := utils.ExtractJSON(string(output))
 	if err != nil {
 		return models.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
 	}
-	return spec, nil
+	return models.SpecOutput{Spec: spec}, nil
 }
 
 // TestConnection runs the check command and returns connection status
@@ -216,18 +218,25 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 
 	logs.Info("check command output: %s\n", string(output))
 
-	logMsg, err := utils.ExtractAndParseLastLogMessage(output)
+	logMsg, err := utils.ExtractJSON(string(output))
 	if err != nil {
 		return nil, err
 	}
 
-	if logMsg.ConnectionStatus == nil {
+	connectionStatus, ok := logMsg["connectionStatus"].(map[string]interface{})
+	if !ok || connectionStatus == nil {
+		return nil, fmt.Errorf("connection status not found")
+	}
+
+	status, statusOk := connectionStatus["status"].(string)
+	message, _ := connectionStatus["message"].(string) // message is optional
+	if !statusOk {
 		return nil, fmt.Errorf("connection status not found")
 	}
 
 	return map[string]interface{}{
-		"message": logMsg.ConnectionStatus.Message,
-		"status":  logMsg.ConnectionStatus.Status,
+		"message": message,
+		"status":  status,
 	}, nil
 }
 
