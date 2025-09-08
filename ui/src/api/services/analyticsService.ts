@@ -1,9 +1,28 @@
-import { AnalyticsBrowser } from "@segment/analytics-next"
 import api from "../axios"
 
-const analytics = AnalyticsBrowser.load({
-	writeKey: "e2lmlXGqXwqBBkSAnP7BxsjBpAGZNbWk",
-})
+const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"
+
+const sendAnalyticsEvent = async (
+	eventName: string,
+	properties: Record<string, any>,
+) => {
+	const eventData = {
+		event: eventName,
+		properties,
+	}
+
+	const response = await fetch(ANALYTICS_ENDPOINT, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(eventData),
+	})
+
+	if (!response.ok) {
+		throw new Error(`Failed to send analytics event: ${response.statusText}`)
+	}
+}
 
 const getIPAddress = async (): Promise<string> => {
 	try {
@@ -55,26 +74,6 @@ const getTelemetryID = async (): Promise<string> => {
 	}
 }
 
-export const identifyUser = async () => {
-	try {
-		const username = localStorage.getItem("username")
-		const systemInfo = await getSystemInfo()
-		const telemetryId = await getTelemetryID()
-
-		if (telemetryId && telemetryId !== "") {
-			await analytics.identify(telemetryId, {
-				username,
-				...systemInfo,
-			})
-			return true
-		}
-		return false
-	} catch (error) {
-		console.error("Error identifying user:", error)
-		return false
-	}
-}
-
 export const trackEvent = async (
 	eventName: string,
 	properties?: Record<string, any>,
@@ -89,11 +88,14 @@ export const trackEvent = async (
 		const systemInfo = await getSystemInfo()
 
 		const eventProperties = {
+			distinct_id: telemetryId,
+			event_original_name: eventName,
 			...properties,
 			...systemInfo,
 			...(username && { username }),
 		}
-		await analytics.track(eventName, eventProperties)
+
+		await sendAnalyticsEvent(eventName, eventProperties)
 	} catch (error) {
 		console.error("Error tracking event:", error)
 	}
@@ -101,5 +103,4 @@ export const trackEvent = async (
 
 export default {
 	trackEvent,
-	identifyUser,
 }

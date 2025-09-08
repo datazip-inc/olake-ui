@@ -19,7 +19,6 @@
 		"@babel/runtime": "7.26.10",
 		"@phosphor-icons/react": "^2.1.7",
 		"@rjsf/utils": "^5.24.8",
-		"@segment/analytics-next": "^1.81.0",
 		"antd": "^5.24.2",
 		"axios": "^1.8.2",
 		"clsx": "^2.1.1",
