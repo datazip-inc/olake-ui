@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button, Tabs, Empty, message, Spin } from "antd"
+import { Button, Tabs, Empty, message } from "antd"
 import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -9,6 +9,7 @@ import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
+import Loader from "../../common/components/Loader"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -124,7 +125,7 @@ const Sources: React.FC = () => {
 					label: tab.label,
 					children: isLoadingSources ? (
 						<div className="flex items-center justify-center py-16">
-							<Spin
+							<Loader
 								size="large"
 								tip="Loading sources..."
 							/>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
+import { Input, Button, Select, Switch, message, Table } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
 	GenderNeuter,
@@ -34,6 +34,7 @@ import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
 } from "../../../utils/constants"
+import Loader from "../../common/components/Loader"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -555,7 +556,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												</label>
 												{loadingVersions ? (
 													<div className="flex h-8 items-center justify-center">
-														<Spin size="small" />
+														<Loader size="small" />
 													</div>
 												) : availableVersions.length > 0 ? (
 													<Select
@@ -587,7 +588,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 										</div>
 										{loading ? (
 											<div className="flex h-32 items-center justify-center">
-												<Spin tip="Loading schema..." />
+												<Loader tip="Loading schema..." />
 											</div>
 										) : (
 											schema && (
