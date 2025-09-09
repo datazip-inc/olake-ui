@@ -152,25 +152,30 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
-	properties["olake_version"] = instance.platform.OlakeVersion
-	properties["os"] = instance.platform.OS
-	properties["arch"] = instance.platform.Arch
-	properties["device_cpu"] = instance.platform.DeviceCPU
-	properties["ip_address"] = instance.ipAddress
-	properties["location"] = instance.locationInfo
-	properties["distinct_id"] = instance.TempUserID
-	properties["time"] = time.Now().Unix()
-	properties["event_original_name"] = eventName
-
 	// Add username to properties if available
 	if instance.username != "" {
 		properties["username"] = instance.username
+	}
+	props := map[string]interface{}{
+		"olake_version":       instance.platform.OlakeVersion,
+		"os":                  instance.platform.OS,
+		"arch":                instance.platform.Arch,
+		"device_cpu":          instance.platform.DeviceCPU,
+		"ip_address":          instance.ipAddress,
+		"location":            instance.locationInfo,
+		"distinct_id":         instance.TempUserID,
+		"time":                time.Now().Unix(),
+		"event_original_name": eventName,
+	}
+	for key, value := range props {
+		properties[key] = value
 	}
 
 	body := map[string]interface{}{
 		"event":      eventName,
 		"properties": properties,
 	}
+
 	propsBody, err := json.Marshal(body)
 	if err != nil {
 		return err
