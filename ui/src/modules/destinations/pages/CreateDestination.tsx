@@ -13,7 +13,6 @@ import Form from "@rjsf/antd"
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
 import {
-	CatalogType,
 	CreateDestinationProps,
 	DestinationConfig,
 	ExtendedDestination,
@@ -22,6 +21,8 @@ import {
 import {
 	getConnectorInLowerCase,
 	getConnectorDocumentationPath,
+	handleSpecResponse,
+	withAbortController,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -89,7 +90,7 @@ const CreateDestination = forwardRef<
 					? CONNECTOR_TYPES.AMAZON_S3
 					: CONNECTOR_TYPES.APACHE_ICEBERG,
 		)
-		const [catalog, setCatalog] = useState<CatalogType | null>(
+		const [catalog, setCatalog] = useState<string | null>(
 			initialCatalog || null,
 		)
 		const [destinationName, setDestinationName] = useState(initialName || "")
@@ -255,37 +256,27 @@ const CreateDestination = forwardRef<
 
 			if (setupType === SETUP_TYPES.EXISTING) return
 
-			const fetchDestinationSpec = async () => {
-				try {
-					setLoading(true)
-					let response
-					if (fromJobFlow) {
-						response = await destinationService.getDestinationSpec(
-							connector,
-							version,
-							getConnectorInLowerCase(sourceConnector || ""),
-							sourceVersion,
-						)
-					} else {
-						response = await destinationService.getDestinationSpec(
-							connector,
-							version,
-						)
-					}
-					if (response.success && response.data?.spec?.jsonschema) {
-						setSchema(response.data.spec.jsonschema)
-						setUiSchema(JSON.parse(response.data.spec.uischema))
-					} else {
-						console.error("Failed to get destination spec:", response.message)
-					}
-				} catch (error) {
+			setLoading(true)
+			return withAbortController(
+				signal =>
+					destinationService.getDestinationSpec(
+						connector,
+						version,
+						fromJobFlow
+							? getConnectorInLowerCase(sourceConnector || "")
+							: undefined,
+						fromJobFlow ? sourceVersion : undefined,
+						signal,
+					),
+				response =>
+					handleSpecResponse(response, setSchema, setUiSchema, "destination"),
+				error => {
+					setSchema({})
+					setUiSchema({})
 					console.error("Error fetching destination spec:", error)
-				} finally {
-					setLoading(false)
-				}
-			}
-
-			fetchDestinationSpec()
+				},
+				() => setLoading(false),
+			)
 		}, [
 			connector,
 			version,
@@ -349,7 +340,6 @@ const CreateDestination = forwardRef<
 		}))
 
 		const handleCreate = async () => {
-			// In job flow, submission is only used to surface validation errors; avoid side effects
 			if (fromJobFlow) {
 				return
 			}
@@ -582,9 +572,9 @@ const CreateDestination = forwardRef<
 									schema={schema}
 									transformErrors={transformErrors}
 									templates={{
-										ObjectFieldTemplate: ObjectFieldTemplate,
+										ObjectFieldTemplate,
 										FieldTemplate: CustomFieldTemplate,
-										ArrayFieldTemplate: ArrayFieldTemplate,
+										ArrayFieldTemplate,
 										ButtonTemplates: {
 											SubmitButton: () => null,
 										},

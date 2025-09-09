@@ -21,6 +21,8 @@ import {
 	getConnectorInLowerCase,
 	getStatusClass,
 	getStatusLabel,
+	handleSpecResponse,
+	withAbortController,
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -34,6 +36,7 @@ import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
+	transformErrors,
 } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
@@ -147,33 +150,23 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			return
 		}
 
-		const fetchSourceSpec = async () => {
-			try {
-				setLoading(true)
-				const response = await sourceService.getSourceSpec(
+		setLoading(true)
+		return withAbortController(
+			signal =>
+				sourceService.getSourceSpec(
 					connector as string,
 					selectedVersion,
-				)
-				if (response.success && response.data?.spec?.jsonschema) {
-					setSchema(response.data.spec.jsonschema)
-					if (typeof response.data.spec.uischema === "string") {
-						setUiSchema(JSON.parse(response.data.spec.uischema))
-					}
-				} else {
-					console.error("Failed to get source spec:", response.message)
-				}
-			} catch (error) {
+					signal,
+				),
+			response =>
+				handleSpecResponse(response, setSchema, setUiSchema, "source"),
+			error => {
+				setSchema({})
+				setUiSchema({})
 				console.error("Error fetching source spec:", error)
-			} finally {
-				setLoading(false)
-			}
-		}
-
-		fetchSourceSpec()
-
-		return () => {
-			setLoading(false)
-		}
+			},
+			() => setLoading(false),
+		)
 	}, [connector, selectedVersion])
 
 	const resetVersionState = () => {
@@ -604,9 +597,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													ref={formRef}
 													schema={schema}
 													templates={{
-														ObjectFieldTemplate: ObjectFieldTemplate,
+														ObjectFieldTemplate,
 														FieldTemplate: CustomFieldTemplate,
-														ArrayFieldTemplate: ArrayFieldTemplate,
+														ArrayFieldTemplate,
 														ButtonTemplates: {
 															SubmitButton: () => null,
 														},
@@ -614,6 +607,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													widgets={widgets}
 													formData={formData}
 													onChange={e => setFormData(e.formData)}
+													transformErrors={transformErrors}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchema}
 													validator={validator}

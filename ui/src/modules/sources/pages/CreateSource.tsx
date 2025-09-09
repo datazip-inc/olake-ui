@@ -14,8 +14,12 @@ import validator from "@rjsf/validator-ajv8"
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
-import { getConnectorLabel } from "../../../utils/utils"
-import { CONNECTOR_TYPES } from "../../../utils/constants"
+import {
+	getConnectorLabel,
+	handleSpecResponse,
+	withAbortController,
+} from "../../../utils/utils"
+import { CONNECTOR_TYPES, transformErrors } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -181,29 +185,19 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 			if (setupType === SETUP_TYPES.EXISTING) return
 
-			const fetchSourceSpec = async () => {
-				try {
-					setLoading(true)
-					const response = await sourceService.getSourceSpec(
-						connector,
-						selectedVersion,
-					)
-					if (response.success && response.data?.spec?.jsonschema) {
-						setSchema(response.data.spec.jsonschema)
-						if (typeof response.data.spec.uischema === "string") {
-							setUiSchema(JSON.parse(response.data.spec.uischema))
-						}
-					} else {
-						console.error("Failed to get source spec:", response.message)
-					}
-				} catch (error) {
+			setLoading(true)
+			return withAbortController(
+				signal =>
+					sourceService.getSourceSpec(connector, selectedVersion, signal),
+				response =>
+					handleSpecResponse(response, setSchema, setUiSchema, "source"),
+				error => {
+					setSchema({})
+					setUiSchema({})
 					console.error("Error fetching source spec:", error)
-				} finally {
-					setLoading(false)
-				}
-			}
-
-			fetchSourceSpec()
+				},
+				() => setLoading(false),
+			)
 		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {
@@ -260,7 +254,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}))
 
 		const handleCreate = async () => {
-			// In job flow, submission is only used to surface validation errors; avoid side effects
 			if (fromJobFlow) {
 				return
 			}
@@ -502,9 +495,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									ref={formRef}
 									schema={schema}
 									templates={{
-										ObjectFieldTemplate: ObjectFieldTemplate,
+										ObjectFieldTemplate,
 										FieldTemplate: CustomFieldTemplate,
-										ArrayFieldTemplate: ArrayFieldTemplate,
+										ArrayFieldTemplate,
 										ButtonTemplates: {
 											SubmitButton: () => null,
 										},
@@ -515,6 +508,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 										setFormData(e.formData)
 										if (onFormDataChange) onFormDataChange(e.formData)
 									}}
+									transformErrors={transformErrors}
 									uiSchema={uiSchema}
 									validator={validator}
 									omitExtraData

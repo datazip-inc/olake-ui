@@ -21,11 +21,12 @@ import {
 	getConnectorDocumentationPath,
 	getStatusClass,
 	getStatusLabel,
+	handleSpecResponse,
+	withAbortController,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	CONNECTOR_TYPES,
-	CATALOG_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	TAB_TYPES,
 	ENTITY_TYPES,
@@ -65,7 +66,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
-	const catalogName = CATALOG_TYPES.AWS_GLUE
 	const [destinationName, setDestinationName] = useState("")
 	const [selectedVersion, setSelectedVersion] = useState("")
 	const [versions, setVersions] = useState<string[]>([])
@@ -157,19 +157,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setConnector(connectorType)
 				setSelectedVersion(initialData.version || "")
 				if (initialData.config) {
-					let parsedConfig = initialData.config
-					if (typeof initialData.config === "string") {
-						try {
-							parsedConfig = JSON.parse(initialData.config)
-						} catch (error) {
-							console.error("Error parsing destination config:", error)
-							parsedConfig = {}
-						}
-					} else {
-						parsedConfig = parsedConfig
-					}
-
-					setFormData(parsedConfig)
+					setFormData(initialData.config)
 				}
 			}
 		}
@@ -233,40 +221,25 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			return
 		}
 
-		const fetchDestinationSpec = async () => {
-			try {
-				setIsLoading(true)
-				let response
-				if (fromJobFlow) {
-					response = await destinationService.getDestinationSpec(
-						connector,
-						selectedVersion,
-						sourceConnector,
-						sourceVersion,
-					)
-				} else {
-					response = await destinationService.getDestinationSpec(
-						connector,
-						selectedVersion,
-					)
-				}
-
-				if (response.success && response.data?.spec?.jsonschema) {
-					setSchema(response.data.spec.jsonschema)
-					if (typeof response.data.spec.uischema === "string") {
-						setUiSchema(JSON.parse(response.data.spec.uischema))
-					}
-				} else {
-					console.error("Failed to get destination spec:", response.message)
-				}
-			} catch (error) {
+		setIsLoading(true)
+		return withAbortController(
+			signal =>
+				destinationService.getDestinationSpec(
+					connector,
+					selectedVersion,
+					fromJobFlow ? sourceConnector : undefined,
+					fromJobFlow ? sourceVersion : undefined,
+					signal,
+				),
+			response =>
+				handleSpecResponse(response, setSchema, setUiSchema, "destination"),
+			error => {
+				setSchema({})
+				setUiSchema({})
 				console.error("Error fetching destination spec:", error)
-			} finally {
-				setIsLoading(false)
-			}
-		}
-
-		fetchDestinationSpec()
+			},
+			() => setIsLoading(false),
+		)
 	}, [connector, selectedVersion, fromJobFlow, sourceConnector, sourceVersion])
 
 	const handleVersionChange = (value: string) => {
@@ -569,9 +542,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						ref={formRef}
 						schema={schema}
 						templates={{
-							ObjectFieldTemplate: ObjectFieldTemplate,
+							ObjectFieldTemplate,
 							FieldTemplate: CustomFieldTemplate,
-							ArrayFieldTemplate: ArrayFieldTemplate,
+							ArrayFieldTemplate,
 							ButtonTemplates: {
 								SubmitButton: () => null,
 							},
@@ -736,7 +709,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : catalogName)}`}
+						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue")}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

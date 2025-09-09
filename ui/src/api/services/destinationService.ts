@@ -9,6 +9,7 @@ import {
 } from "../../types"
 import { getConnectorInLowerCase } from "../../utils/utils"
 
+// TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {
 	const typeMap: Record<string, string> = {
 		"amazon s3": "s3",
@@ -124,6 +125,7 @@ export const destinationService = {
 		version: string,
 		source_type: string = "",
 		source_version: string = "",
+		signal?: AbortSignal,
 	) => {
 		const normalizedType = normalizeDestinationType(type)
 		const response = await api.post<APIResponse<any>>(
@@ -134,7 +136,7 @@ export const destinationService = {
 				source_type: source_type,
 				source_version: source_version,
 			},
-			{ timeout: 300000 },
+			{ timeout: 300000, signal },
 		)
 		return response.data
 	},

@@ -1,7 +1,7 @@
 import { FieldTemplateProps } from "@rjsf/utils"
 import { Info, Plus, Trash } from "@phosphor-icons/react"
 import { Tooltip, Button } from "antd"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 // --- KeyValueRow: Renders a single key-value pair with edit/delete ---
 function KeyValueRow({
@@ -17,12 +17,18 @@ function KeyValueRow({
 	onValueChange: (key: string, value: string) => void
 	onDelete: (key: string) => void
 }) {
+	const [editedKey, setEditedKey] = useState(keyName)
+
+	useEffect(() => {
+		setEditedKey(keyName)
+	}, [keyName])
 	return (
 		<div className="flex items-center gap-2">
 			<input
 				type="text"
-				value={keyName}
-				onChange={e => onKeyChange(keyName, e.target.value, value)}
+				value={editedKey}
+				onChange={e => setEditedKey(e.target.value)}
+				onBlur={() => onKeyChange(keyName, editedKey, value)}
 				className="h-8 w-1/3 rounded-[6px] border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 				placeholder="Key"
 			/>
@@ -115,6 +121,8 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	const inputErrorWrapperClass =
 		rawErrors && rawErrors.length > 0 ? "rjsf-error" : ""
 
+	const trimmedNewKey = newKey.trim()
+
 	const handleAddKeyValue = () => {
 		if (!newKey.trim()) return
 		const updatedFormData = {
@@ -148,6 +156,32 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 		onChange(updatedFormData)
 	}
 
+	const handleNewKeyInputChange = (nextKey: string) => {
+		setNewKey(nextKey)
+		const previousKey = newKey.trim()
+		const currentKey = nextKey.trim()
+		const updatedFormData = { ...(formData || {}) }
+
+		if (previousKey && previousKey !== currentKey) {
+			delete updatedFormData[previousKey]
+		}
+
+		if (currentKey) {
+			updatedFormData[currentKey] = newValue
+		}
+
+		onChange(updatedFormData)
+	}
+
+	const handleNewValueInputChange = (nextValue: string) => {
+		setNewValue(nextValue)
+		const currentKey = newKey.trim()
+		if (!currentKey) return
+		const updatedFormData = { ...(formData || {}) }
+		updatedFormData[currentKey] = nextValue
+		onChange(updatedFormData)
+	}
+
 	// --- Render ---
 	return (
 		<div className="mb-4">
@@ -173,22 +207,24 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 				<div className="space-y-3">
 					{/* Existing key-value pairs */}
 					{formData &&
-						Object.entries(formData).map(([key, value]) => (
-							<KeyValueRow
-								key={key}
-								keyName={key}
-								value={value as string}
-								onKeyChange={handleKeyChange}
-								onValueChange={handleValueChange}
-								onDelete={handleDeleteKeyValue}
-							/>
-						))}
+						Object.entries(formData)
+							.filter(([key]) => key !== trimmedNewKey)
+							.map(([key, value]) => (
+								<KeyValueRow
+									key={key}
+									keyName={key}
+									value={value as string}
+									onKeyChange={handleKeyChange}
+									onValueChange={handleValueChange}
+									onDelete={handleDeleteKeyValue}
+								/>
+							))}
 					{/* Add new key-value pair */}
 					<NewKeyValueRow
 						newKey={newKey}
 						newValue={newValue}
-						setNewKey={setNewKey}
-						setNewValue={setNewValue}
+						setNewKey={handleNewKeyInputChange}
+						setNewValue={handleNewValueInputChange}
 						onAdd={handleAddKeyValue}
 					/>
 				</div>

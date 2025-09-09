@@ -30,14 +30,6 @@ export const CONNECTOR_TYPES = {
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
 
-export const CATALOG_TYPES = {
-	AWS_GLUE: "AWS Glue",
-	REST_CATALOG: "REST Catalog",
-	JDBC_CATALOG: "JDBC Catalog",
-	HIVE_CATALOG: "Hive Catalog",
-	NONE: "None",
-}
-
 export const SETUP_TYPES = {
 	NEW: "new",
 	EXISTING: "existing",
@@ -224,26 +216,5 @@ export const SYNC_MODE_MAP = {
 }
 
 export const transformErrors = (errors: any[]) => {
-	const allowed = new Set([
-		"required",
-		"minLength",
-		"maxLength",
-		"pattern",
-		"format",
-		"minimum",
-		"maximum",
-		"exclusiveMinimum",
-		"exclusiveMaximum",
-		"multipleOf",
-		"type",
-		"minItems",
-		"maxItems",
-		"uniqueItems",
-		"minProperties",
-		"maxProperties",
-		"enum",
-	])
-
-	// Filter errors to only show the allowed types
-	return errors.filter(error => allowed.has(error.name))
+	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }

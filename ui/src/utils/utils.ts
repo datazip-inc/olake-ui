@@ -255,14 +255,6 @@ export const getLogTextColor = (level: string) => {
 	}
 }
 
-export const getDestinationType = (type: string) => {
-	if (type.toLowerCase() === "amazon s3") {
-		return "PARQUET"
-	} else if (type.toLowerCase() === "apache iceberg") {
-		return "ICEBERG"
-	}
-}
-
 export const getDayNumber = (day: string): number => {
 	return DAYS_MAP[day as keyof typeof DAYS_MAP]
 }
@@ -434,4 +426,66 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 		return false
 	}
 	return true
+}
+
+export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
+
+export const withAbortController = <T>(
+	fn: AbortableFunction<T>,
+	onSuccess: (data: T) => void,
+	onError?: (error: unknown) => void,
+	onFinally?: () => void,
+) => {
+	let isMounted = true
+	const abortController = new AbortController()
+
+	const execute = async () => {
+		try {
+			const response = await fn(abortController.signal)
+			if (isMounted) {
+				onSuccess(response)
+			}
+		} catch (error: unknown) {
+			if (isMounted && error instanceof Error && error.name !== "AbortError") {
+				if (onError) {
+					onError(error)
+				} else {
+					console.error("Error in abortable function:", error)
+				}
+			}
+		} finally {
+			if (isMounted && onFinally) {
+				onFinally()
+			}
+		}
+	}
+
+	execute()
+
+	return () => {
+		isMounted = false
+		abortController.abort()
+		if (onFinally) {
+			onFinally()
+		}
+	}
+}
+
+export const handleSpecResponse = (
+	response: any,
+	setSchema: (schema: any) => void,
+	setUiSchema: (uiSchema: any) => void,
+	errorType: "source" | "destination" = "source",
+) => {
+	try {
+		if (response.success && response.data?.spec?.jsonschema) {
+			setSchema(response.data.spec.jsonschema)
+			setUiSchema(JSON.parse(response.data.spec.uischema))
+		} else {
+			console.error(`Failed to get ${errorType} spec:`, response.message)
+		}
+	} catch {
+		setSchema({})
+		setUiSchema({})
+	}
 }
