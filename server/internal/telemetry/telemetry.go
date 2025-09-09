@@ -12,9 +12,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
-
-	analytics "github.com/segmentio/analytics-go/v3"
+	// analytics "github.com/segmentio/analytics-go/v3"
 )
 
 var instance *Telemetry
@@ -33,7 +33,7 @@ type PlatformInfo struct {
 }
 
 type Telemetry struct {
-	client       analytics.Client
+	httpClient   *http.Client
 	platform     PlatformInfo
 	ipAddress    string
 	locationInfo *LocationInfo
@@ -48,7 +48,6 @@ func InitTelemetry() {
 		}
 
 		ip := getOutboundIP()
-		client := analytics.New(TelemetrySegmentAPIKey)
 
 		// Generate user ID during initialization
 		tempUserID := func() string {
@@ -73,7 +72,7 @@ func InitTelemetry() {
 		}()
 
 		instance = &Telemetry{
-			client: client,
+			httpClient: &http.Client{Timeout: TelemetryClientTimeout},
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
@@ -147,41 +146,57 @@ func getLocationFromIP(ip string) *LocationInfo {
 
 // TrackEvent sends a custom event to Segment
 func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
+	if instance.httpClient == nil {
+		return fmt.Errorf("telemetry client is nil")
+	}
+
 	if properties == nil {
 		properties = make(map[string]interface{})
 	}
+	properties["olake_version"] = instance.platform.OlakeVersion
+	properties["os"] = instance.platform.OS
+	properties["arch"] = instance.platform.Arch
+	properties["device_cpu"] = instance.platform.DeviceCPU
+	properties["ip_address"] = instance.ipAddress
+	properties["location"] = instance.locationInfo
+	properties["distinct_id"] = instance.TempUserID
+	properties["time"] = time.Now().Unix()
+	properties["event_original_name"] = eventName
 
 	// Add username to properties if available
 	if instance.username != "" {
 		properties["username"] = instance.username
 	}
 
-	props := map[string]interface{}{
-		"olake_version": instance.platform.OlakeVersion,
-		"os":            instance.platform.OS,
-		"arch":          instance.platform.Arch,
-		"device_cpu":    instance.platform.DeviceCPU,
-		"ip_address":    instance.ipAddress,
-		"location":      instance.locationInfo,
+	body := map[string]interface{}{
+		"event":      eventName,
+		"properties": properties,
+	}
+	propsBody, err := json.Marshal(body)
+	if err != nil {
+		return err
 	}
 
-	// Add common properties that needs to be sent with every event
-	for key, value := range props {
-		properties[key] = value
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), TelemetryConfigTimeout)
+	defer cancel()
 
-	return instance.client.Enqueue(analytics.Track{
-		UserId:     instance.TempUserID,
-		Event:      eventName,
-		Properties: properties,
-	})
-}
-
-func Close() {
-	if instance == nil {
-		return
+	req, err := http.NewRequestWithContext(ctx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
+	if err != nil {
+		return err
 	}
-	_ = instance.client.Close()
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := instance.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to send telemetry event, status: %s, response: %s", resp.Status, string(respBody))
+	}
+	return nil
 }
 
 // SetUsername sets the username for telemetry tracking
