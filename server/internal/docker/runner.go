@@ -128,6 +128,7 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 		return nil
 	}
 	imageName := r.GetDockerImageName(sourceType, version)
+
 	// If using ECR, ensure login before run
 	if strings.Contains(repositoryBase, "ecr") {
 		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
@@ -142,14 +143,22 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 		}
 	}
 
+	// base docker args
 	dockerArgs := []string{"run", "--rm"}
 
-	dockerArgs = append(dockerArgs,
-		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
-		imageName,
-		string(command),
-		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-	)
+	if hostOutputDir != "" {
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
+	}
+
+	dockerArgs = append(dockerArgs, imageName, string(command))
+
+	if flag != "" {
+		dockerArgs = append(dockerArgs, fmt.Sprintf("--%s", flag))
+	}
+
+	if configPath != "" {
+		dockerArgs = append(dockerArgs, fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)))
+	}
 
 	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
 		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
@@ -169,18 +178,9 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 }
 
 func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, _ string) (models.SpecOutput, error) {
-	// Prepare the command arguments
-	dockerArgs := []string{
-		"run",
-		"--rm",
-		r.GetDockerImageName(sourceType, version),
-		"spec",
-	}
-	// Add destination flag if provided
-	if destinationType != "" {
-		dockerArgs = append(dockerArgs, "--destination-type", destinationType)
-	}
-	// Run the command
+	flag := utils.Ternary(destinationType != "", "destination-type", "").(string)
+	dockerArgs := r.buildDockerArgs(ctx, flag, Spec, sourceType, version, "", "", destinationType)
+
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
 	output, err := cmd.CombinedOutput()
