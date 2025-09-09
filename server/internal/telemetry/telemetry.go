@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	// analytics "github.com/segmentio/analytics-go/v3"
 )
 
 var instance *Telemetry
