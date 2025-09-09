@@ -52,6 +52,9 @@ const StreamConfiguration = ({
 	const [normalisation, setNormalisation] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
+	const [streamFilterStates, setStreamFilterStates] = useState<
+		Record<string, boolean>
+	>({})
 	const [partitionRegex, setPartitionRegex] = useState("")
 	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
 	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
@@ -77,6 +80,10 @@ const StreamConfiguration = ({
 	const [initialJobStreams, setInitialJobStreams] = useState<
 		CombinedStreamsData | undefined
 	>(undefined)
+
+	// Helper function to get unique stream key
+	const getStreamKey = () =>
+		`${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	useEffect(() => {
 		// Set initial streams only once when component mounts
@@ -113,6 +120,9 @@ const StreamConfiguration = ({
 		setNormalisation(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
+
+		// Get the current stream key
+		const currentStreamKey = getStreamKey()
 
 		// Parse initial filter if exists
 		if (initialFullLoadFilter) {
@@ -151,6 +161,11 @@ const StreamConfiguration = ({
 					logicalOperator,
 				})
 				setFullLoadFilter(true)
+				// Store the filter state for this stream
+				setStreamFilterStates(prev => ({
+					...prev,
+					[currentStreamKey]: true,
+				}))
 			}
 		} else {
 			setMultiFilterCondition({
@@ -163,8 +178,9 @@ const StreamConfiguration = ({
 				],
 				logicalOperator: "and",
 			})
-			// Keep the fullLoadFilter state from formData if it exists
-			setFullLoadFilter(formData.fullLoadFilter || false)
+			// Restore filter state for this stream or default to false
+			const savedFilterState = streamFilterStates[currentStreamKey] || false
+			setFullLoadFilter(savedFilterState)
 		}
 
 		setFormData((prevFormData: any) => ({
@@ -259,7 +275,15 @@ const StreamConfiguration = ({
 	}
 
 	const handleFullLoadFilterChange = (checked: boolean) => {
+		const currentStreamKey = getStreamKey()
+
 		setFullLoadFilter(checked)
+		// Persist the filter state for this stream
+		setStreamFilterStates(prev => ({
+			...prev,
+			[currentStreamKey]: checked,
+		}))
+
 		if (!checked) {
 			setMultiFilterCondition({
 				conditions: [
@@ -277,11 +301,6 @@ const StreamConfiguration = ({
 				"",
 			)
 		}
-		// Keep the toggle state in formData
-		setFormData({
-			...formData,
-			fullLoadFilter: checked,
-		})
 	}
 
 	const handleFilterConditionChange = (
