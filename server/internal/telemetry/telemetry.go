@@ -71,7 +71,7 @@ func InitTelemetry() {
 		}()
 
 		instance = &Telemetry{
-			httpClient: &http.Client{Timeout: TelemetryClientTimeout},
+			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
@@ -144,7 +144,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 }
 
 // TrackEvent sends a custom event to Segment
-func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
+func TrackEvent(ctx context.Context, eventName string, properties map[string]interface{}) error {
 	if instance.httpClient == nil {
 		return fmt.Errorf("telemetry client is nil")
 	}
@@ -180,9 +180,6 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 	if err != nil {
 		return err
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), TelemetryConfigTimeout)
-	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
 	if err != nil {

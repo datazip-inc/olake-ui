@@ -8,7 +8,6 @@ const (
 	OlakeVersion             = "0.0.4"
 	IPNotFound               = "NA"
 	TelemetryConfigTimeout   = 5 * time.Second
-	TelemetryClientTimeout   = 5 * time.Second
 	ProxyTrackURL            = "https://analytics.olake.io/mp/track"
 	IPUrl                    = "https://api.ipify.org?format=text"
 	EventUserLogin           = "user_login"
