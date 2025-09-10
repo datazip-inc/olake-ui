@@ -1,4 +1,5 @@
 import api from "../axios"
+import axios from "axios"
 
 const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"
 
@@ -11,24 +12,13 @@ const sendAnalyticsEvent = async (
 		properties,
 	}
 
-	const response = await fetch(ANALYTICS_ENDPOINT, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(eventData),
-	})
-
-	if (!response.ok) {
-		throw new Error(`Failed to send analytics event: ${response.statusText}`)
-	}
+	await axios.post(ANALYTICS_ENDPOINT, eventData)
 }
 
 const getIPAddress = async (): Promise<string> => {
 	try {
-		const response = await fetch("https://api.ipify.org?format=json")
-		const data = await response.json()
-		return data.ip
+		const response = await axios.get("https://api.ipify.org?format=json")
+		return response.data.ip
 	} catch (error) {
 		console.error("Error fetching IP:", error)
 		return ""
@@ -37,12 +27,11 @@ const getIPAddress = async (): Promise<string> => {
 
 const getLocationInfo = async (ip: string) => {
 	try {
-		const response = await fetch(`https://ipinfo.io/${ip}/json`)
-		const data = await response.json()
+		const response = await axios.get(`https://ipinfo.io/${ip}/json`)
 		return {
-			country: data.country,
-			region: data.region,
-			city: data.city,
+			country: response.data.country,
+			region: response.data.region,
+			city: response.data.city,
 		}
 	} catch (error) {
 		console.error("Error fetching location:", error)
