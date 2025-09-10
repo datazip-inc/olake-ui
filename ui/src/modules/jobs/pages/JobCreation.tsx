@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid"
 import { useAppStore } from "../../../store"
 import { destinationService, sourceService } from "../../../api"
 
-import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
+import { JobBase, JobCreationSteps } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
@@ -47,8 +47,10 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
-	const [destinationCatalogType, setDestinationCatalogType] =
-		useState<CatalogType | null>(null)
+	const [destinationCatalogType, setDestinationCatalogType] = useState<
+		string | null
+	>(null)
+
 	const [destinationConnector, setDestinationConnector] = useState(
 		initialData.destinationConnector || DESTINATION_INTERNAL_TYPES.S3,
 	)
@@ -131,6 +133,7 @@ const JobCreation: React.FC = () => {
 				: await destinationService.testDestinationConnection(
 						data,
 						getConnectorInLowerCase(sourceConnector),
+						sourceVersion,
 					)
 
 			setTimeout(() => {
@@ -367,6 +370,7 @@ const JobCreation: React.FC = () => {
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
 								initialConnector={getConnectorInLowerCase(destinationConnector)}
+								initialVersion={destinationVersion}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}
@@ -381,6 +385,8 @@ const JobCreation: React.FC = () => {
 								ref={destinationRef}
 								docsMinimized={docsMinimized}
 								onDocsMinimizedChange={setDocsMinimized}
+								sourceConnector={sourceConnector}
+								sourceVersion={sourceVersion}
 							/>
 						</div>
 					)}
