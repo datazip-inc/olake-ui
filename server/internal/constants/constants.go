@@ -22,7 +22,7 @@ var (
 	TableNameMap              = map[TableType]string{}
 	DefaultConfigDir          = "/tmp/olake-config"
 	DefaultLogRetentionPeriod = 30
-	DefaultSpecVersion        = "v0.1.12"
+	DefaultSpecVersion        = "v0.2.0"
 )
 
 var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
