@@ -7,12 +7,16 @@ const sendAnalyticsEvent = async (
 	eventName: string,
 	properties: Record<string, any>,
 ) => {
-	const eventData = {
-		event: eventName,
-		properties,
-	}
+	try {
+		const eventData = {
+			event: eventName,
+			properties,
+		}
 
-	await axios.post(ANALYTICS_ENDPOINT, eventData)
+		await axios.post(ANALYTICS_ENDPOINT, eventData)
+	} catch (error) {
+		console.error("Failed to send analytics event:", error)
+	}
 }
 
 const getIPAddress = async (): Promise<string> => {
