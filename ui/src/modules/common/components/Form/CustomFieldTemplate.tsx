@@ -118,10 +118,9 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	const labelText = objectTitle ?? label
 	const [newKey, setNewKey] = useState("")
 	const [newValue, setNewValue] = useState("")
+	const [currentTempKey, setCurrentTempKey] = useState<string | null>(null)
 	const inputErrorWrapperClass =
 		rawErrors && rawErrors.length > 0 ? "rjsf-error" : ""
-
-	const trimmedNewKey = newKey.trim()
 
 	const handleAddKeyValue = () => {
 		if (!newKey.trim()) return
@@ -132,11 +131,18 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 		onChange(updatedFormData)
 		setNewKey("")
 		setNewValue("")
+		setCurrentTempKey(null)
 	}
 
 	const handleDeleteKeyValue = (key: string) => {
 		const updatedFormData = { ...formData }
 		delete updatedFormData[key]
+
+		// If we're deleting the current temp key, clear the reference
+		if (currentTempKey === key) {
+			setCurrentTempKey(null)
+		}
+
 		onChange(updatedFormData)
 	}
 
@@ -157,28 +163,46 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	}
 
 	const handleNewKeyInputChange = (nextKey: string) => {
+		const trimmedNextKey = nextKey.trim()
 		setNewKey(nextKey)
-		const previousKey = newKey.trim()
-		const currentKey = nextKey.trim()
+
 		const updatedFormData = { ...(formData || {}) }
 
-		if (previousKey && previousKey !== currentKey) {
-			delete updatedFormData[previousKey]
+		// Remove the old temp key if it exists and is different
+		if (currentTempKey && currentTempKey !== trimmedNextKey) {
+			delete updatedFormData[currentTempKey]
 		}
 
-		if (currentKey) {
-			updatedFormData[currentKey] = newValue
+		// Create/update the new temp key if both key and value exist
+		if (trimmedNextKey && newValue.trim()) {
+			updatedFormData[trimmedNextKey] = newValue
+			setCurrentTempKey(trimmedNextKey)
+		} else {
+			setCurrentTempKey(null)
 		}
 
 		onChange(updatedFormData)
 	}
 
 	const handleNewValueInputChange = (nextValue: string) => {
+		const trimmedNextValue = nextValue.trim()
+		const trimmedKey = newKey.trim()
 		setNewValue(nextValue)
-		const currentKey = newKey.trim()
-		if (!currentKey) return
+
 		const updatedFormData = { ...(formData || {}) }
-		updatedFormData[currentKey] = nextValue
+
+		// If we have a key, create or update the temp pair
+		if (trimmedKey) {
+			if (trimmedNextValue) {
+				updatedFormData[trimmedKey] = trimmedNextValue
+				setCurrentTempKey(trimmedKey)
+			} else if (currentTempKey === trimmedKey) {
+				// Value was cleared, remove the temp key
+				delete updatedFormData[trimmedKey]
+				setCurrentTempKey(null)
+			}
+		}
+
 		onChange(updatedFormData)
 	}
 
@@ -208,7 +232,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 					{/* Existing key-value pairs */}
 					{formData &&
 						Object.entries(formData)
-							.filter(([key]) => key !== trimmedNewKey)
+							.filter(([key]) => key !== currentTempKey)
 							.map(([key, value]) => (
 								<KeyValueRow
 									key={key}
