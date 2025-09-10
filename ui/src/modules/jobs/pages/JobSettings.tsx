@@ -53,6 +53,14 @@ const JobSettings: React.FC = () => {
 
 	const job = jobs.find(j => j.id.toString() === jobId)
 	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
+	const [isPauseLoading, setIsPauseLoading] = useState(false)
+
+	// Sync local pauseJob state with job data when job changes
+	useEffect(() => {
+		if (job) {
+			setPauseJob(!job.activate)
+		}
+	}, [job])
 
 	const getParsedDate = (value: Date) => value.toUTCString()
 
@@ -110,6 +118,10 @@ const JobSettings: React.FC = () => {
 	}, [job])
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		// Optimistic update - immediately update UI
+		setPauseJob(checked)
+		setIsPauseLoading(true)
+
 		try {
 			await jobService.activateJob(jobId, !checked)
 			message.success(
@@ -119,6 +131,10 @@ const JobSettings: React.FC = () => {
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+			// Revert optimistic update on error
+			setPauseJob(!checked)
+		} finally {
+			setIsPauseLoading(false)
 		}
 	}
 
@@ -412,6 +428,7 @@ const JobSettings: React.FC = () => {
 											}
 										}}
 										className={pauseJob ? "bg-blue-600" : ""}
+										loading={isPauseLoading}
 									/>
 								</div>
 							</div>

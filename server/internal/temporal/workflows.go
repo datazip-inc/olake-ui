@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -33,6 +34,24 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 	err := workflow.ExecuteActivity(ctx, DiscoverCatalogActivity, params).Get(ctx, &result)
 	if err != nil {
 		return nil, err
+	}
+
+	return result, nil
+}
+
+// FetchSpecWorkflow is a workflow for fetching connector specifications
+func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (models.SpecOutput, error) {
+	// Execute the FetchSpecActivity directly
+	options := workflow.ActivityOptions{
+		StartToCloseTimeout: time.Minute * 5,
+		RetryPolicy:         DefaultRetryPolicy,
+	}
+	ctx = workflow.WithActivityOptions(ctx, options)
+
+	var result models.SpecOutput
+	err := workflow.ExecuteActivity(ctx, FetchSpecActivity, params).Get(ctx, &result)
+	if err != nil {
+		return models.SpecOutput{}, err
 	}
 
 	return result, nil

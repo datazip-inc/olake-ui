@@ -1,4 +1,3 @@
-import { CatalogType } from "./commonTypes"
 import { Entity, EntityJob } from "./entityTypes"
 
 export interface DestinationConfig {
@@ -36,14 +35,17 @@ export interface CreateDestinationProps {
 	initialFormData?: DestinationConfig
 	initialName?: string
 	initialConnector?: string
-	initialCatalog?: CatalogType | null
+	initialVersion?: string
+	initialCatalog?: string | null
 	onDestinationNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: DestinationConfig) => void
 	onVersionChange?: (version: string) => void
-	onCatalogTypeChange?: (catalog: CatalogType | null) => void
+	onCatalogTypeChange?: (catalog: string | null) => void
 	docsMinimized?: boolean
 	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
+	sourceConnector?: string
+	sourceVersion?: string
 }
 
 export interface DestinationTableProps {
@@ -81,4 +83,6 @@ export interface DestinationEditProps {
 	onFormDataChange?: (config: Record<string, any>) => void
 	docsMinimized?: boolean
 	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
+	sourceConnector?: string
+	sourceVersion?: string
 }

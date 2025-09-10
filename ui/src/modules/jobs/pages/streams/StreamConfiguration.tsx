@@ -622,10 +622,13 @@ const StreamConfiguration = ({
 														placeholder="Select default"
 														value={fallBackCursorField}
 														onChange={(value: string) => {
-															const newCursorField = value
-																? `${stream.stream.cursor_field}:${value}`
-																: stream.stream.cursor_field
-															stream.stream.cursor_field = newCursorField
+															const [field] = (
+																stream.stream.cursor_field ?? ""
+															).split(":")
+
+															stream.stream.cursor_field = value
+																? `${field}:${value}`
+																: field
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,

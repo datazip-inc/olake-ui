@@ -70,11 +70,13 @@ const JobSourceEdit = ({
 // Custom wrapper component for DestinationEdit to use in job flow
 const JobDestinationEdit = ({
 	destinationData,
+	sourceData,
 	updateDestinationData,
 	docsMinimized,
 	onDocsMinimizedChange,
 }: {
 	destinationData: DestinationData
+	sourceData: SourceData | null
 	updateDestinationData: (data: DestinationData) => void
 	docsMinimized: boolean
 	onDocsMinimizedChange: React.Dispatch<React.SetStateAction<boolean>>
@@ -107,6 +109,8 @@ const JobDestinationEdit = ({
 				}
 				docsMinimized={docsMinimized}
 				onDocsMinimizedChange={onDocsMinimizedChange}
+				sourceConnector={getConnectorInLowerCase(sourceData?.type || "")}
+				sourceVersion={sourceData?.version || ""}
 			/>
 		</div>
 	</div>
@@ -463,6 +467,7 @@ const JobEdit: React.FC = () => {
 						{currentStep === "destination" && destinationData && (
 							<JobDestinationEdit
 								destinationData={destinationData}
+								sourceData={sourceData}
 								updateDestinationData={setDestinationData}
 								docsMinimized={docsMinimized}
 								onDocsMinimizedChange={setDocsMinimized}
