@@ -22,7 +22,6 @@ func main() {
 
 	// start telemetry service
 	telemetry.InitTelemetry()
-	defer telemetry.Close()
 
 	// check constants
 	constants.Init()
