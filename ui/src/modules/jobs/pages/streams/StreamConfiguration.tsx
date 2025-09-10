@@ -49,7 +49,7 @@ const StreamConfiguration = ({
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
-	const [normalisation, setNormalisation] =
+	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
 	const [streamFilterStates, setStreamFilterStates] = useState<
@@ -117,7 +117,7 @@ const StreamConfiguration = ({
 		}
 
 		setSyncMode(initialApiSyncMode ?? "full_refresh")
-		setNormalisation(initialNormalization)
+		setNormalization(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
 
@@ -232,7 +232,7 @@ const StreamConfiguration = ({
 	}
 
 	const handleNormalizationChange = (checked: boolean) => {
-		setNormalisation(checked)
+		setNormalization(checked)
 		onNormalizationChange(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -703,7 +703,7 @@ const StreamConfiguration = ({
 					<div className="flex items-center justify-between">
 						<label>Normalization</label>
 						<Switch
-							checked={normalisation}
+							checked={normalization}
 							onChange={handleNormalizationChange}
 							disabled={!isSelected || isStreamInInitialSelection}
 						/>

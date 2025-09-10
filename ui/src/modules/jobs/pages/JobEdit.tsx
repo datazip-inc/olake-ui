@@ -238,6 +238,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	useEffect(() => {
+		// TODO: when user refreshes specifc data should be retained
 		let job = jobs.find(j => j.id.toString() === jobId)
 		if (job) {
 			setJob(job)
