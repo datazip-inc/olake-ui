@@ -7,27 +7,15 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
-import { DESTINATION_INTERNAL_TYPES } from "../../utils/constants"
 import { getConnectorInLowerCase } from "../../utils/utils"
 
+// TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {
 	const typeMap: Record<string, string> = {
 		"amazon s3": "s3",
 		"apache iceberg": "iceberg",
 	}
 	return typeMap[type.toLowerCase()] || type.toLowerCase()
-}
-
-const normalizeCatalogType = (catalog: string | null): string => {
-	if (!catalog) return "none"
-
-	const catalogMap: Record<string, string> = {
-		"aws glue": "glue",
-		"rest catalog": "rest",
-		"jdbc catalog": "jdbc",
-		"hive catalog": "hive",
-	}
-	return catalogMap[catalog.toLowerCase()] || catalog.toLowerCase()
 }
 
 export const destinationService = {
@@ -93,6 +81,7 @@ export const destinationService = {
 	testDestinationConnection: async (
 		destination: EntityTestRequest,
 		source_type: string = "",
+		source_version: string = "",
 	) => {
 		try {
 			const response = await api.post<APIResponse<EntityTestResponse>>(
@@ -102,6 +91,7 @@ export const destinationService = {
 					version: destination.version,
 					config: destination.config,
 					source_type: source_type,
+					source_version: source_version,
 				},
 				{ timeout: 0 },
 			)
@@ -132,26 +122,21 @@ export const destinationService = {
 
 	getDestinationSpec: async (
 		type: string,
-		catalog: string | null,
 		version: string,
+		source_type: string = "",
+		source_version: string = "",
+		signal?: AbortSignal,
 	) => {
 		const normalizedType = normalizeDestinationType(type)
-		let normalizedCatalog = normalizeCatalogType(catalog)
-
-		if (
-			normalizedType === DESTINATION_INTERNAL_TYPES.ICEBERG &&
-			normalizedCatalog === "none"
-		) {
-			normalizedCatalog = "glue"
-		}
-
 		const response = await api.post<APIResponse<any>>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
 				version: version,
-				catalog: normalizedCatalog,
+				source_type: source_type,
+				source_version: source_version,
 			},
+			{ timeout: 300000, signal },
 		)
 		return response.data
 	},
