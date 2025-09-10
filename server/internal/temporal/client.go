@@ -6,12 +6,14 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
+	"golang.org/x/mod/semver"
 )
 
 // TaskQueue is the default task queue for Olake Docker workflows
@@ -107,6 +109,11 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 
 // FetchSpec runs a workflow to fetch connector specifications
 func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (models.SpecOutput, error) {
+	// spec version >= DefaultSpecVersion is required
+	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
+		version = constants.DefaultSpecVersion
+	}
+
 	params := &ActivityParams{
 		SourceType:      sourceType,
 		Version:         version,
