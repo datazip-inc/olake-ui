@@ -291,9 +291,9 @@ func (c *DestHandler) GetDestinationSpec() {
 	if req.Type == "s3" {
 		destinationType = "parquet"
 	}
-	// Determine driver and available tags
 	version := req.Version
 
+	// Determine driver and available tags
 	_, driver, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
