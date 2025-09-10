@@ -76,7 +76,7 @@ func (c *Client) Close() {
 }
 
 // GetCatalog runs a workflow to discover catalog data
-func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
+func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -84,6 +84,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
 		Command:       docker.Discover,
 		StreamsConfig: streamsConfig,
+		JobName:       jobName,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{

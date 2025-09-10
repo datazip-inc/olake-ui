@@ -29,7 +29,8 @@ type SourceTestConnectionRequest struct {
 }
 type StreamsRequest struct {
 	ConnectorConfig
-	JobID int `json:"job_id"`
+	JobID   int    `json:"job_id"`
+	JobName string `json:"job_name"`
 }
 
 type DestinationTestConnectionRequest struct {
