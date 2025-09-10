@@ -1,32 +1,35 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import {
+	useState,
+	useEffect,
+	forwardRef,
+	useImperativeHandle,
+	useRef,
+} from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
 import {
-	CatalogType,
 	CreateDestinationProps,
 	DestinationConfig,
 	ExtendedDestination,
-	SelectOption,
 	SetupType,
 } from "../../../types"
 import {
-	getCatalogInLowerCase,
 	getConnectorInLowerCase,
-	getConnectorName,
+	getConnectorDocumentationPath,
+	handleSpecResponse,
+	withAbortController,
 } from "../../../utils/utils"
 import {
-	CATALOG_TYPES,
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
-	IcebergCatalogTypes,
-	mapCatalogValueToType,
 	SETUP_TYPES,
+	transformErrors,
 } from "../../../utils/constants"
-import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -38,6 +41,11 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import { connectorOptions } from "../components/connectorOptions"
+import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import validator from "@rjsf/validator-ajv8"
+import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
@@ -60,26 +68,20 @@ const CreateDestination = forwardRef<
 			initialFormData,
 			initialName,
 			initialConnector,
+			initialVersion,
 			initialCatalog,
 			onDestinationNameChange,
 			onConnectorChange,
 			onFormDataChange,
 			onVersionChange,
-			onCatalogTypeChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
+			sourceConnector,
+			sourceVersion,
 		},
 		ref,
 	) => {
-		const resetVersionState = () => {
-			setVersions([])
-			setVersion("")
-			setSchema(null)
-			if (onVersionChange) {
-				onVersionChange("")
-			}
-		}
-
+		const formRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState(SETUP_TYPES.NEW)
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
@@ -88,26 +90,33 @@ const CreateDestination = forwardRef<
 					? CONNECTOR_TYPES.AMAZON_S3
 					: CONNECTOR_TYPES.APACHE_ICEBERG,
 		)
-		const [catalog, setCatalog] = useState<CatalogType | null>(
+		const [catalog, setCatalog] = useState<string | null>(
 			initialCatalog || null,
 		)
 		const [destinationName, setDestinationName] = useState(initialName || "")
-		const [version, setVersion] = useState("")
+		const [version, setVersion] = useState(initialVersion || "")
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<DestinationConfig>({})
-		const [schema, setSchema] = useState<Record<string, any> | null>(null)
+		const [schema, setSchema] = useState<any>(null)
 		const [loading, setLoading] = useState(false)
-		const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
+		const [uiSchema, setUiSchema] = useState<any>(null)
 		const [filteredDestinations, setFilteredDestinations] = useState<
 			ExtendedDestination[]
 		>([])
-		const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 		const [destinationNameError, setDestinationNameError] = useState<
 			string | null
 		>(null)
-		const [validating, setValidating] = useState(false)
 		const navigate = useNavigate()
+
+		const resetVersionState = () => {
+			setVersions([])
+			setVersion("")
+			setSchema(null)
+			if (onVersionChange) {
+				onVersionChange("")
+			}
+		}
 
 		const {
 			destinations,
@@ -156,8 +165,15 @@ const CreateDestination = forwardRef<
 		}, [initialConfig])
 
 		useEffect(() => {
+			if (onDocsMinimizedChange) {
+				onDocsMinimizedChange(false)
+			}
+		}, [])
+
+		useEffect(() => {
 			if (initialFormData) {
 				setFormData(initialFormData)
+				setCatalog(initialFormData?.writer?.catalog_type ?? null)
 			}
 		}, [initialFormData])
 
@@ -178,56 +194,21 @@ const CreateDestination = forwardRef<
 		}, [initialConnector])
 
 		useEffect(() => {
-			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
-				setCatalog(CATALOG_TYPES.AWS_GLUE)
-			} else {
-				setCatalog(null)
-			}
-		}, [connector])
-
-		useEffect(() => {
-			if (initialCatalog) {
-				setCatalog(initialCatalog)
-				if (onCatalogTypeChange) {
-					onCatalogTypeChange(initialCatalog)
-				}
-			}
-		}, [initialCatalog, onCatalogTypeChange])
-
-		useEffect(() => {
 			if (setupType !== SETUP_TYPES.EXISTING) return
 
-			const filterDestinationsByConnectorAndCatalog = () => {
+			const filterDestinationsByConnector = () => {
 				const connectorLowerCase = getConnectorInLowerCase(connector)
-				const isIceberg = connector === CONNECTOR_TYPES.APACHE_ICEBERG
-				const catalogValue = isIceberg
-					? catalog || CATALOG_TYPES.AWS_GLUE
-					: null
-				const catalogLowerCase = catalogValue
-					? getCatalogInLowerCase(catalogValue)
-					: null
 
 				return destinations
-					.filter(destination => {
-						if (destination.type !== connectorLowerCase) return false
-
-						if (!isIceberg) return true
-
-						try {
-							const config = parseDestinationConfig(destination.config)
-							return config?.writer?.catalog_type === catalogLowerCase
-						} catch {
-							return false
-						}
-					})
+					.filter(destination => destination.type === connectorLowerCase)
 					.map(dest => ({
 						...dest,
 						config: parseDestinationConfig(dest.config),
 					}))
 			}
 
-			setFilteredDestinations(filterDestinationsByConnectorAndCatalog())
-		}, [connector, setupType, destinations, catalog])
+			setFilteredDestinations(filterDestinationsByConnector())
+		}, [connector, setupType, destinations])
 
 		useEffect(() => {
 			const fetchVersions = async () => {
@@ -240,7 +221,13 @@ const CreateDestination = forwardRef<
 						const receivedVersions = response.data.version
 						setVersions(receivedVersions)
 						if (receivedVersions.length > 0) {
-							const defaultVersion = receivedVersions[0]
+							let defaultVersion = receivedVersions[0]
+							if (
+								getConnectorInLowerCase(connector) === initialConnector &&
+								initialVersion
+							) {
+								defaultVersion = initialVersion
+							}
 							setVersion(defaultVersion)
 							if (onVersionChange) {
 								onVersionChange(defaultVersion)
@@ -267,43 +254,49 @@ const CreateDestination = forwardRef<
 				return
 			}
 
-			const fetchDestinationSpec = async () => {
-				try {
-					setLoading(true)
-					const response = await destinationService.getDestinationSpec(
-						connector,
-						catalog,
-						version,
-					)
-					if (response.success && response.data?.spec) {
-						setSchema(response.data.spec)
-						setUiSchema(response.data.uiSchema || null)
-					} else {
-						console.error("Failed to get destination spec:", response.message)
-					}
-				} catch (error) {
-					console.error("Error fetching destination spec:", error)
-				} finally {
-					setLoading(false)
-				}
-			}
+			if (setupType === SETUP_TYPES.EXISTING) return
 
-			fetchDestinationSpec()
-		}, [connector, catalog, version, setupType])
+			setLoading(true)
+			return withAbortController(
+				signal =>
+					destinationService.getDestinationSpec(
+						connector,
+						version,
+						fromJobFlow
+							? getConnectorInLowerCase(sourceConnector || "")
+							: undefined,
+						fromJobFlow ? sourceVersion : undefined,
+						signal,
+					),
+				response =>
+					handleSpecResponse(response, setSchema, setUiSchema, "destination"),
+				error => {
+					setSchema({})
+					setUiSchema({})
+					console.error("Error fetching destination spec:", error)
+				},
+				() => setLoading(false),
+			)
+		}, [
+			connector,
+			version,
+			setupType,
+			fromJobFlow,
+			sourceConnector,
+			sourceVersion,
+		])
 
 		useEffect(() => {
 			if (!fromJobFlow) {
 				setFormData({})
 			}
-		}, [connector, catalog])
+		}, [connector])
 
 		const handleCancel = () => {
 			setShowSourceCancelModal(true)
 		}
 
 		const validateDestination = async (): Promise<boolean> => {
-			setValidating(true)
-
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
 					if (!destinationName.trim() && version.trim() !== "") {
@@ -319,28 +312,9 @@ const CreateDestination = forwardRef<
 						return false
 					}
 
-					if (schema) {
-						// Enrich form data with default values
-						const enrichedFormData = { ...formData }
-						if (schema.properties) {
-							Object.entries(schema.properties).forEach(
-								([key, propValue]: [string, any]) => {
-									if (
-										propValue.default !== undefined &&
-										(enrichedFormData[key] === undefined ||
-											enrichedFormData[key] === null)
-									) {
-										enrichedFormData[key] = propValue.default
-									}
-								},
-							)
-						}
-
-						const schemaErrors = validateFormData(enrichedFormData, schema)
-						setFormErrors(schemaErrors)
-						if (Object.keys(schemaErrors).length > 0) {
-							return false
-						}
+					if (schema && formRef.current) {
+						const validationResult = formRef.current.validateForm()
+						return validationResult
 					}
 				}
 
@@ -355,8 +329,9 @@ const CreateDestination = forwardRef<
 				}
 
 				return true
-			} finally {
-				setValidating(false)
+			} catch (error) {
+				console.error("Error validating destination:", error)
+				return false
 			}
 		}
 
@@ -365,6 +340,9 @@ const CreateDestination = forwardRef<
 		}))
 
 		const handleCreate = async () => {
+			if (fromJobFlow) {
+				return
+			}
 			const isValid = await validateDestination()
 			if (!isValid) return
 
@@ -419,7 +397,6 @@ const CreateDestination = forwardRef<
 		const handleConnectorChange = (value: string) => {
 			setFormData({})
 			setSchema(null)
-			setUiSchema(null)
 			setConnector(value as ConnectorType)
 			if (onConnectorChange) {
 				onConnectorChange(value)
@@ -428,30 +405,24 @@ const CreateDestination = forwardRef<
 
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
+			if (onDocsMinimizedChange) {
+				if (type === SETUP_TYPES.EXISTING) {
+					onDocsMinimizedChange(true)
+				} else if (type === SETUP_TYPES.NEW) {
+					onDocsMinimizedChange(false)
+				}
+			}
 			// Clear form data when switching to new destination
 			if (type === SETUP_TYPES.NEW) {
 				setDestinationName("")
 				setFormData({})
 				setSchema(null)
-				setUiSchema(null)
-				setCatalog(null)
 				setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onDestinationNameChange) onDestinationNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
 				if (onFormDataChange) onFormDataChange({})
 				if (onVersionChange) onVersionChange("")
-				if (onCatalogTypeChange) onCatalogTypeChange(null)
-			}
-		}
-
-		const handleCatalogChange = (value: string) => {
-			setCatalog(value as CatalogType)
-			if (onCatalogTypeChange) {
-				onCatalogTypeChange(value as CatalogType)
-			}
-			if (onFormDataChange) {
-				onFormDataChange({})
 			}
 		}
 
@@ -465,25 +436,16 @@ const CreateDestination = forwardRef<
 				onDestinationNameChange(selectedDestination.name)
 			if (onConnectorChange) onConnectorChange(selectedDestination.type)
 			if (onVersionChange) onVersionChange(selectedDestination.version)
-			const configObj = parseDestinationConfig(selectedDestination.config)
+
+			const configObj =
+				selectedDestination.config &&
+				typeof selectedDestination.config === "object"
+					? selectedDestination.config
+					: {}
+
 			if (onFormDataChange) onFormDataChange(configObj)
-
 			setDestinationName(selectedDestination.name)
-
-			if (configObj.catalog || configObj.catalog_type) {
-				const catalogValue =
-					configObj.catalog || configObj.catalog_type || "none"
-				const catalogType = mapCatalogValueToType(catalogValue)
-				if (catalogType) setCatalog(catalogType)
-			}
 			setFormData(configObj)
-		}
-
-		const handleFormChange = (newFormData: DestinationConfig) => {
-			setFormData(newFormData)
-			if (onFormDataChange) {
-				onFormDataChange(newFormData)
-			}
 		}
 
 		const handleVersionChange = (value: string) => {
@@ -492,11 +454,6 @@ const CreateDestination = forwardRef<
 				onVersionChange(value)
 			}
 		}
-
-		const catalogOptions: SelectOption[] =
-			connector === CONNECTOR_TYPES.APACHE_ICEBERG
-				? IcebergCatalogTypes
-				: [{ value: CATALOG_TYPES.NONE, label: "None" }]
 
 		const setupTypeSelector = () => (
 			<SetupTypeSelector
@@ -511,28 +468,45 @@ const CreateDestination = forwardRef<
 		const newDestinationForm = () =>
 			setupType === SETUP_TYPES.NEW ? (
 				<>
-					<div className="flex-start flex w-full gap-12">
-						<FormField label="Connector:">
-							<Select
-								value={connector}
-								onChange={handleConnectorChange}
-								className="w-full"
-								options={connectorOptions}
-							/>
-						</FormField>
-
-						<FormField label="Catalog:">
-							<Select
-								value={catalog || CATALOG_TYPES.NONE}
-								onChange={handleCatalogChange}
-								className="w-full"
-								disabled={connector !== CONNECTOR_TYPES.APACHE_ICEBERG}
-								options={catalogOptions}
-							/>
-						</FormField>
+					<div className="flex gap-6">
+						<div className="flex-start flex w-1/2">
+							<FormField label="Connector:">
+								<Select
+									value={connector}
+									onChange={handleConnectorChange}
+									className="w-full"
+									options={connectorOptions}
+								/>
+							</FormField>
+						</div>
+						<div className="w-1/2">
+							<FormField label="Version:">
+								{loadingVersions ? (
+									<div className="flex h-8 items-center justify-center">
+										<Spin size="small" />
+									</div>
+								) : versions && versions.length > 0 ? (
+									<Select
+										value={version}
+										onChange={handleVersionChange}
+										className="w-full"
+										placeholder="Select version"
+										options={versions.map(v => ({
+											value: v,
+											label: v,
+										}))}
+									/>
+								) : (
+									<div className="flex items-center gap-1 text-sm text-red-500">
+										<Info />
+										No versions available
+									</div>
+								)}
+							</FormField>
+						</div>
 					</div>
 
-					<div className="mt-4 flex w-full gap-12">
+					<div className="mt-4 flex w-1/2 gap-6">
 						<FormField
 							label="Name of your destination:"
 							required
@@ -545,69 +519,37 @@ const CreateDestination = forwardRef<
 								status={destinationNameError ? "error" : ""}
 							/>
 						</FormField>
-
-						<FormField label="Version:">
-							{loadingVersions ? (
-								<div className="flex h-8 items-center justify-center">
-									<Spin size="small" />
-								</div>
-							) : versions && versions.length > 0 ? (
-								<Select
-									value={version}
-									onChange={handleVersionChange}
-									className="w-full"
-									placeholder="Select version"
-									options={versions.map(v => ({
-										value: v,
-										label: v,
-									}))}
-								/>
-							) : (
-								<div className="flex items-center gap-1 text-sm text-red-500">
-									<Info />
-									No versions available
-								</div>
-							)}
-						</FormField>
 					</div>
 				</>
 			) : (
 				<div className="flex flex-col gap-8">
 					<div className="flex w-full gap-6">
-						<FormField label="Connector:">
-							<Select
-								value={connector}
-								onChange={handleConnectorChange}
-								className="h-8 w-full"
-								options={connectorOptions}
-							/>
-						</FormField>
+						<div className="w-1/2">
+							<FormField label="Connector:">
+								<Select
+									value={connector}
+									onChange={handleConnectorChange}
+									className="h-8 w-full"
+									options={connectorOptions}
+								/>
+							</FormField>
+						</div>
 
-						<FormField label="Catalog:">
+						<div className="w-1/2">
+							<label className="mb-2 block text-sm font-medium text-gray-700">
+								Select existing destination:
+							</label>
 							<Select
-								value={catalog || CATALOG_TYPES.NONE}
-								onChange={handleCatalogChange}
-								className="h-8 w-full"
-								disabled={connector !== CONNECTOR_TYPES.APACHE_ICEBERG}
-								options={catalogOptions}
+								placeholder="Select a destination"
+								className="w-full"
+								onChange={handleExistingDestinationSelect}
+								value={undefined}
+								options={filteredDestinations.map(d => ({
+									value: d.id,
+									label: d.name,
+								}))}
 							/>
-						</FormField>
-					</div>
-
-					<div className="w-3/5">
-						<label className="mb-2 block text-sm font-medium text-gray-700">
-							Select existing destination:
-						</label>
-						<Select
-							placeholder="Select a destination"
-							className="w-full"
-							onChange={handleExistingDestinationSelect}
-							value={undefined}
-							options={filteredDestinations.map(d => ({
-								value: d.id,
-								label: d.name,
-							}))}
-						/>
+						</div>
 					</div>
 				</div>
 			)
@@ -624,14 +566,33 @@ const CreateDestination = forwardRef<
 						schema && (
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">
 								<EndpointTitle title="Endpoint config" />
-								<FixedSchemaForm
+
+								<Form
+									ref={formRef}
 									schema={schema}
-									{...(uiSchema ? { uiSchema } : {})}
+									transformErrors={transformErrors}
+									templates={{
+										ObjectFieldTemplate,
+										FieldTemplate: CustomFieldTemplate,
+										ArrayFieldTemplate,
+										ButtonTemplates: {
+											SubmitButton: () => null,
+										},
+									}}
+									widgets={widgets}
 									formData={formData}
-									onChange={handleFormChange}
-									hideSubmit={true}
-									errors={formErrors}
-									validate={validating}
+									onChange={e => {
+										setFormData(e.formData)
+										if (onFormDataChange) onFormDataChange(e.formData)
+										const catalogValue = e.formData?.writer?.catalog_type
+										if (catalogValue) setCatalog(catalogValue)
+									}}
+									onSubmit={handleCreate}
+									uiSchema={uiSchema}
+									validator={validator}
+									showErrorList={false}
+									omitExtraData
+									liveOmit
 								/>
 							</div>
 						)
@@ -695,7 +656,11 @@ const CreateDestination = forwardRef<
 									</button>
 									<button
 										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={handleCreate}
+										onClick={() => {
+											if (formRef.current) {
+												formRef.current.submit()
+											}
+										}}
 									>
 										Create
 										<ArrowRight className="size-4 text-white" />
@@ -705,7 +670,7 @@ const CreateDestination = forwardRef<
 						</div>
 
 						<DocumentationPanel
-							docUrl={`https://olake.io/docs/writers/${getConnectorName(connector, catalog)}`}
+							docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector, catalog)}`}
 							showResizer={true}
 							isMinimized={docsMinimized}
 							onToggle={handleToggleDocPanel}

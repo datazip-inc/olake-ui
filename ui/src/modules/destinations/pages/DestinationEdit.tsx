@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
+import validator from "@rjsf/validator-ajv8"
+import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
@@ -15,25 +17,22 @@ import {
 	EntityType,
 } from "../../../types"
 import {
-	getCatalogInLowerCase,
-	getCatalogName,
 	getConnectorImage,
-	getConnectorName,
-	getDestinationType,
+	getConnectorDocumentationPath,
 	getStatusClass,
 	getStatusLabel,
+	handleSpecResponse,
+	withAbortController,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import {
-	catalogOptions,
 	CONNECTOR_TYPES,
-	CATALOG_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	TAB_TYPES,
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
+	transformErrors,
 } from "../../../utils/constants"
-import FixedSchemaForm from "../../../utils/FormFix"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
@@ -42,6 +41,11 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import EntityEditModal from "../../common/Modals/EntityEditModal"
 import { connectorOptions } from "../components/connectorOptions"
+import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+
+import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -54,26 +58,24 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	onFormDataChange,
 	docsMinimized = false,
 	onDocsMinimizedChange,
+	sourceConnector,
+	sourceVersion,
 }) => {
+	const formRef = useRef<any>(null)
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [catalog, setCatalog] = useState<string | null>(null)
-	const catalogName = CATALOG_TYPES.AWS_GLUE
 	const [destinationName, setDestinationName] = useState("")
 	const [selectedVersion, setSelectedVersion] = useState("")
 	const [versions, setVersions] = useState<string[]>([])
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [showAllJobs, setShowAllJobs] = useState(false)
-	const [schema, setSchema] = useState<Record<string, any> | null>(null)
-	const [uiSchema, setUiSchema] = useState<Record<string, any> | null>(null)
+	const [schema, setSchema] = useState<any>(null)
+	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [isLoading, setIsLoading] = useState(false)
 	const [destination, setDestination] = useState<Entity | null>(null)
-	const [initialCatalog, setInitialCatalog] = useState<string | null>(null)
-	const [initialFormData, setInitialFormData] = useState<Record<string, any>>(
-		{},
-	)
 
 	const {
 		destinations,
@@ -115,7 +117,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}, [])
 
 	useEffect(() => {
-		if (destinationId && destinationId !== "new") {
+		if (destinationId) {
 			const destination = destinations.find(
 				d => d.id.toString() === destinationId,
 			)
@@ -133,23 +135,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					typeof destination.config === "string"
 						? JSON.parse(destination.config)
 						: destination.config
-
 				setFormData(config)
-				setInitialFormData(config)
-
-				if (destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG) {
-					try {
-						const catalogType =
-							config.writer.catalog_type || CATALOG_TYPES.AWS_GLUE
-						setCatalog(getCatalogName(catalogType) || null)
-						setInitialCatalog(getCatalogName(catalogType) || null)
-					} catch (error) {
-						console.error("Error parsing config for catalog:", error)
-						setCatalog(CATALOG_TYPES.AWS_GLUE)
-					}
-				} else {
-					setInitialCatalog(DESTINATION_INTERNAL_TYPES.S3)
-				}
 			}
 		}
 	}, [destinationId, destinations, fetchDestinations])
@@ -171,32 +157,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setConnector(connectorType)
 				setSelectedVersion(initialData.version || "")
 				if (initialData.config) {
-					let parsedConfig = initialData.config
-					if (typeof initialData.config === "string") {
-						try {
-							parsedConfig = JSON.parse(initialData.config)
-						} catch (error) {
-							console.error("Error parsing destination config:", error)
-							parsedConfig = {}
-						}
-					}
-					setFormData(parsedConfig)
-					setInitialFormData(parsedConfig)
-					if (connectorType === CONNECTOR_TYPES.APACHE_ICEBERG) {
-						let writerCatalogType = parsedConfig?.writer?.catalog_type
-						setCatalog(
-							getCatalogName(writerCatalogType) || CATALOG_TYPES.AWS_GLUE,
-						)
-						setInitialCatalog(
-							getCatalogName(writerCatalogType) || CATALOG_TYPES.AWS_GLUE,
-						)
-					} else {
-						setInitialCatalog(DESTINATION_INTERNAL_TYPES.S3)
-					}
+					setFormData(initialData.config)
 				}
 			}
 		}
-	}, [initialData])
+	}, [initialData, selectedVersion])
 
 	const resetVersionState = () => {
 		setVersions([])
@@ -246,13 +211,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		fetchVersions()
-		if (!initialData) {
-			if (connector === CONNECTOR_TYPES.APACHE_ICEBERG) {
-				setCatalog(CATALOG_TYPES.AWS_GLUE)
-			} else {
-				setCatalog(CATALOG_TYPES.NONE)
-			}
-		}
 	}, [connector])
 
 	useEffect(() => {
@@ -263,50 +221,26 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			return
 		}
 
-		const fetchDestinationSpec = async () => {
-			try {
-				setIsLoading(true)
-				const response = await destinationService.getDestinationSpec(
+		setIsLoading(true)
+		return withAbortController(
+			signal =>
+				destinationService.getDestinationSpec(
 					connector,
-					catalog,
 					selectedVersion,
-				)
-
-				if (response.success && response.data?.spec) {
-					setSchema(response.data.spec)
-					if (response.data?.uiSchema) {
-						setUiSchema(response.data.uiSchema)
-					}
-					if (initialCatalog) {
-						if (
-							initialFormData &&
-							getCatalogInLowerCase(catalog || "") !=
-								getCatalogInLowerCase(initialCatalog)
-						) {
-							setFormData({})
-						} else {
-							if (
-								initialFormData &&
-								getDestinationType(connector) === initialFormData?.type
-							) {
-								setFormData(initialFormData)
-							}
-						}
-					} else {
-						setFormData({})
-					}
-				} else {
-					console.error("Failed to get destination spec:", response.message)
-				}
-			} catch (error) {
+					fromJobFlow ? sourceConnector : undefined,
+					fromJobFlow ? sourceVersion : undefined,
+					signal,
+				),
+			response =>
+				handleSpecResponse(response, setSchema, setUiSchema, "destination"),
+			error => {
+				setSchema({})
+				setUiSchema({})
 				console.error("Error fetching destination spec:", error)
-			} finally {
-				setIsLoading(false)
-			}
-		}
-
-		fetchDestinationSpec()
-	}, [connector, selectedVersion, catalog])
+			},
+			() => setIsLoading(false),
+		)
+	}, [connector, selectedVersion, fromJobFlow, sourceConnector, sourceVersion])
 
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
@@ -437,12 +371,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setUiSchema(null)
 		setConnector(value)
 
-		if (value === "Apache Iceberg") {
-			setCatalog(CATALOG_TYPES.AWS_GLUE)
-		} else {
-			setCatalog(CATALOG_TYPES.NONE)
-		}
-
 		if (onFormDataChange) {
 			onFormDataChange({})
 		}
@@ -455,13 +383,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setDestinationName(value)
 		if (onNameChange) {
 			onNameChange(value)
-		}
-	}
-
-	const updateFormData = (data: Record<string, any>) => {
-		setFormData(data)
-		if (onFormDataChange) {
-			onFormDataChange(data)
 		}
 	}
 
@@ -549,7 +470,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 				<div className="flex flex-col gap-6">
 					<div className="flex gap-12">
-						<div className="w-1/3">
+						<div className="w-1/2">
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Connector:
 							</label>
@@ -563,45 +484,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								/>
 							</div>
 						</div>
-
-						<div className="w-1/3">
-							<label className="mb-2 block text-sm font-medium text-gray-700">
-								Catalog:
-							</label>
-							<Select
-								className="h-8 w-full"
-								placeholder="Select catalog"
-								disabled={
-									connector === CONNECTOR_TYPES.AMAZON_S3 || fromJobFlow
-								}
-								options={catalogOptions}
-								value={
-									catalog ||
-									(connector === CONNECTOR_TYPES.AMAZON_S3 ? "None" : undefined)
-								}
-								onChange={value => {
-									setCatalog(value)
-								}}
-							/>
-						</div>
-					</div>
-
-					<div className="flex w-full gap-12">
-						<div className="w-1/3">
-							<label className="mb-2 block text-sm font-medium text-gray-700">
-								Name of your destination:
-								<span className="text-red-500">*</span>
-							</label>
-							<Input
-								placeholder="Enter the name of your destination"
-								value={destinationName}
-								onChange={e => updateDestinationName(e.target.value)}
-								className="h-8"
-								disabled={fromJobFlow}
-							/>
-						</div>
-
-						<div className="w-1/3">
+						<div className="w-1/2">
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Version:
 							</label>
@@ -629,6 +512,22 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							)}
 						</div>
 					</div>
+
+					<div className="flex w-full gap-6">
+						<div className="w-1/2">
+							<label className="mb-2 block text-sm font-medium text-gray-700">
+								Name of your destination:
+								<span className="text-red-500">*</span>
+							</label>
+							<Input
+								placeholder="Enter the name of your destination"
+								value={destinationName}
+								onChange={e => updateDestinationName(e.target.value)}
+								className="h-8"
+								disabled={fromJobFlow}
+							/>
+						</div>
+					</div>
 				</div>
 			</div>
 
@@ -639,13 +538,32 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						<Spin tip="Loading schema..." />
 					</div>
 				) : schema ? (
-					<FixedSchemaForm
+					<Form
+						ref={formRef}
 						schema={schema}
+						templates={{
+							ObjectFieldTemplate,
+							FieldTemplate: CustomFieldTemplate,
+							ArrayFieldTemplate,
+							ButtonTemplates: {
+								SubmitButton: () => null,
+							},
+						}}
+						widgets={widgets}
 						formData={formData}
-						onChange={updateFormData}
-						hideSubmit={true}
+						onChange={e => {
+							setFormData(e.formData)
+							const catalogValue = e.formData?.writer?.catalog_type
+							if (catalogValue) setCatalog(catalogValue)
+						}}
+						transformErrors={transformErrors}
+						onSubmit={handleSaveChanges}
+						uiSchema={uiSchema}
+						validator={validator}
 						disabled={fromJobFlow}
-						{...(uiSchema ? { uiSchema } : {})}
+						showErrorList={false}
+						omitExtraData
+						liveOmit
 					/>
 				) : null}
 			</div>
@@ -777,7 +695,11 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								<div className="flex space-x-4">
 									<button
 										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={handleSaveChanges}
+										onClick={() => {
+											if (formRef.current) {
+												formRef.current.submit()
+											}
+										}}
 									>
 										Save Changes
 									</button>
@@ -787,7 +709,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/writers/${getConnectorName(connector || "", catalog ? catalog : catalogName)}`}
+						docUrl={`https://olake.io/docs/writers/${getConnectorDocumentationPath(connector || "", catalog ? catalog : "glue")}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

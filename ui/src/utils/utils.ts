@@ -36,23 +36,25 @@ export const getConnectorImage = (connector: string) => {
 	}
 }
 
-export const getConnectorName = (connector: string, catalog: string | null) => {
+export const getConnectorDocumentationPath = (
+	connector: string,
+	catalog: string | null,
+) => {
 	switch (connector) {
 		case "Amazon S3":
 			return "s3/config"
 		case "Apache Iceberg":
 			switch (catalog) {
-				case "AWS Glue":
+				case "glue":
 					return "iceberg/catalog/glue"
-				case "REST Catalog":
+				case "rest":
 					return "iceberg/catalog/rest"
-				case "JDBC Catalog":
+				case "jdbc":
 					return "iceberg/catalog/jdbc"
-				case "Hive Catalog":
-				case "HIVE Catalog":
+				case "hive":
 					return "iceberg/catalog/hive"
 				default:
-					return undefined
+					return "iceberg/catalog/glue"
 			}
 		default:
 			return undefined
@@ -96,25 +98,6 @@ export const getConnectorInLowerCase = (connector: string) => {
 			return "oracle"
 		default:
 			return lowerConnector
-	}
-}
-
-export const getCatalogInLowerCase = (catalog: string) => {
-	switch (catalog) {
-		case "AWS Glue":
-		case "glue":
-			return "glue"
-		case "REST Catalog":
-		case "rest":
-			return "rest"
-		case "JDBC Catalog":
-		case "jdbc":
-			return "jdbc"
-		case "Hive Catalog":
-		case "hive":
-			return "hive"
-		default:
-			return undefined
 	}
 }
 
@@ -269,33 +252,6 @@ export const getLogTextColor = (level: string) => {
 			return "text-[#F5222D]"
 		default:
 			return "text-[#000000"
-	}
-}
-
-export const getCatalogName = (catalogType: string) => {
-	switch (catalogType?.toLowerCase()) {
-		case "glue":
-		case "aws glue":
-			return "AWS Glue"
-		case "rest":
-		case "rest catalog":
-			return "REST Catalog"
-		case "jdbc":
-		case "jdbc catalog":
-			return "JDBC Catalog"
-		case "hive":
-		case "hive catalog":
-			return "Hive Catalog"
-		default:
-			return null
-	}
-}
-
-export const getDestinationType = (type: string) => {
-	if (type.toLowerCase() === "amazon s3") {
-		return "PARQUET"
-	} else if (type.toLowerCase() === "apache iceberg") {
-		return "ICEBERG"
 	}
 }
 
@@ -470,4 +426,66 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 		return false
 	}
 	return true
+}
+
+export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
+
+export const withAbortController = <T>(
+	fn: AbortableFunction<T>,
+	onSuccess: (data: T) => void,
+	onError?: (error: unknown) => void,
+	onFinally?: () => void,
+) => {
+	let isMounted = true
+	const abortController = new AbortController()
+
+	const execute = async () => {
+		try {
+			const response = await fn(abortController.signal)
+			if (isMounted) {
+				onSuccess(response)
+			}
+		} catch (error: unknown) {
+			if (isMounted && error instanceof Error && error.name !== "AbortError") {
+				if (onError) {
+					onError(error)
+				} else {
+					console.error("Error in abortable function:", error)
+				}
+			}
+		} finally {
+			if (isMounted && onFinally) {
+				onFinally()
+			}
+		}
+	}
+
+	execute()
+
+	return () => {
+		isMounted = false
+		abortController.abort()
+		if (onFinally) {
+			onFinally()
+		}
+	}
+}
+
+export const handleSpecResponse = (
+	response: any,
+	setSchema: (schema: any) => void,
+	setUiSchema: (uiSchema: any) => void,
+	errorType: "source" | "destination" = "source",
+) => {
+	try {
+		if (response.success && response.data?.spec?.jsonschema) {
+			setSchema(response.data.spec.jsonschema)
+			setUiSchema(JSON.parse(response.data.spec.uischema))
+		} else {
+			console.error(`Failed to get ${errorType} spec:`, response.message)
+		}
+	} catch {
+		setSchema({})
+		setUiSchema({})
+	}
 }
