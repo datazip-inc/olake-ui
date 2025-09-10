@@ -11,7 +11,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/lib/pq v1.10.9
 	github.com/oklog/ulid v1.3.1
-	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
 	golang.org/x/crypto v0.35.0

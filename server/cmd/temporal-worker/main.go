@@ -72,6 +72,5 @@ func main() {
 
 	// Stop the worker
 	worker.Stop()
-	telemetry.Close()
 	logs.Info("Worker stopped. Goodbye!")
 }
