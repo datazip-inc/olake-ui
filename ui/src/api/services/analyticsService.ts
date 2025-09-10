@@ -1,15 +1,28 @@
-import { AnalyticsBrowser } from "@segment/analytics-next"
 import api from "../axios"
+import axios from "axios"
 
-const analytics = AnalyticsBrowser.load({
-	writeKey: "e2lmlXGqXwqBBkSAnP7BxsjBpAGZNbWk",
-})
+const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"
+
+const sendAnalyticsEvent = async (
+	eventName: string,
+	properties: Record<string, any>,
+) => {
+	try {
+		const eventData = {
+			event: eventName,
+			properties,
+		}
+
+		await axios.post(ANALYTICS_ENDPOINT, eventData)
+	} catch (error) {
+		console.error("Failed to send analytics event:", error)
+	}
+}
 
 const getIPAddress = async (): Promise<string> => {
 	try {
-		const response = await fetch("https://api.ipify.org?format=json")
-		const data = await response.json()
-		return data.ip
+		const response = await axios.get("https://api.ipify.org?format=json")
+		return response.data.ip
 	} catch (error) {
 		console.error("Error fetching IP:", error)
 		return ""
@@ -18,12 +31,11 @@ const getIPAddress = async (): Promise<string> => {
 
 const getLocationInfo = async (ip: string) => {
 	try {
-		const response = await fetch(`https://ipinfo.io/${ip}/json`)
-		const data = await response.json()
+		const response = await axios.get(`https://ipinfo.io/${ip}/json`)
 		return {
-			country: data.country,
-			region: data.region,
-			city: data.city,
+			country: response.data.country,
+			region: response.data.region,
+			city: response.data.city,
 		}
 	} catch (error) {
 		console.error("Error fetching location:", error)
@@ -55,26 +67,6 @@ const getTelemetryID = async (): Promise<string> => {
 	}
 }
 
-export const identifyUser = async () => {
-	try {
-		const username = localStorage.getItem("username")
-		const systemInfo = await getSystemInfo()
-		const telemetryId = await getTelemetryID()
-
-		if (telemetryId && telemetryId !== "") {
-			await analytics.identify(telemetryId, {
-				username,
-				...systemInfo,
-			})
-			return true
-		}
-		return false
-	} catch (error) {
-		console.error("Error identifying user:", error)
-		return false
-	}
-}
-
 export const trackEvent = async (
 	eventName: string,
 	properties?: Record<string, any>,
@@ -89,11 +81,14 @@ export const trackEvent = async (
 		const systemInfo = await getSystemInfo()
 
 		const eventProperties = {
+			distinct_id: telemetryId,
+			event_original_name: eventName,
 			...properties,
 			...systemInfo,
 			...(username && { username }),
 		}
-		await analytics.track(eventName, eventProperties)
+
+		await sendAnalyticsEvent(eventName, eventProperties)
 	} catch (error) {
 		console.error("Error tracking event:", error)
 	}
@@ -101,5 +96,4 @@ export const trackEvent = async (
 
 export default {
 	trackEvent,
-	identifyUser,
 }
