@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
-import { message, Spin } from "antd"
+import { message } from "antd"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -138,15 +138,17 @@ const JobEdit: React.FC = () => {
 	const [isFromSources, setIsFromSources] = useState(true)
 	const [streamsModified, setStreamsModified] = useState(false)
 
-	useEffect(() => {
-		fetchJobs()
-	}, [])
-
 	// Load job data on component mount
 	useEffect(() => {
-		fetchJobs()
-		fetchSources()
-		fetchDestinations()
+		const loadData = async () => {
+			try {
+				await Promise.all([fetchJobs(), fetchSources(), fetchDestinations()])
+			} catch (error) {
+				console.error("Error loading data:", error)
+				message.error("Failed to load job data. Please try again.")
+			}
+		}
+		loadData()
 	}, [])
 
 	const initializeFromExistingJob = (job: Job) => {
@@ -235,14 +237,13 @@ const JobEdit: React.FC = () => {
 		let job = jobs.find(j => j.id.toString() === jobId)
 		if (job) {
 			setJob(job)
-		}
-
-		if (job) {
 			initializeFromExistingJob(job)
+		} else if (jobId) {
+			navigate("/jobs")
 		} else {
 			initializeForNewJob()
 		}
-	}, [])
+	}, [jobs, jobId])
 
 	// Process streams configuration into a consistent format
 	const processStreamsConfig = (
@@ -405,15 +406,6 @@ const JobEdit: React.FC = () => {
 	const handleStreamsChange = (newStreams: any) => {
 		setSelectedStreams(newStreams)
 		setStreamsModified(true)
-	}
-
-	// Show loading while job data is loading
-	if (!job && jobId) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				<Spin tip="Loading job data..." />
-			</div>
-		)
 	}
 
 	return (
