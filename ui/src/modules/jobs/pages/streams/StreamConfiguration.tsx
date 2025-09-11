@@ -937,10 +937,49 @@ const StreamConfiguration = ({
 		</div>
 	)
 
+	// Helper function to format destination DB display
+	const formatDestination = () => {
+		if (
+			!stream?.stream?.destination_database ||
+			!stream?.stream?.destination_table
+		) {
+			return null
+		}
+
+		// Split destination_database with : and join with _
+		// Example: "a:b" becomes "a_b"
+		const formattedDatabase = stream.stream.destination_database.includes(":")
+			? stream.stream.destination_database.split(":").join("_")
+			: stream.stream.destination_database
+
+		return `${formattedDatabase}/${stream.stream.destination_table}`
+	}
+
 	// Main render
 	return (
 		<div>
-			<div className="pb-4 font-medium">{stream.stream.name}</div>
+			<div className="flex items-center justify-between gap-4 pb-4 font-medium">
+				<span>{stream.stream.name}</span>
+				{formatDestination() && (
+					<div className="min-w-0 flex-shrink">
+						<Tooltip
+							title={`${formatDestination()}`}
+							placement="top"
+						>
+							<div className="max-w-full rounded-lg bg-background-primary px-3 py-1">
+								<div className="flex min-w-0 items-center gap-1 text-sm">
+									<span className="whitespace-nowrap font-medium">
+										Destination:
+									</span>
+									<span className="min-w-0 flex-1 truncate font-normal">
+										{formatDestination()}
+									</span>
+								</div>
+							</div>
+						</Tooltip>
+					</div>
+				)}
+			</div>
 			<div className="mb-4 w-full">
 				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton

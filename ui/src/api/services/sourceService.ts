@@ -137,6 +137,7 @@ export const sourceService = {
 		type: string,
 		version: string,
 		config: string,
+		job_name: string,
 		job_id?: number,
 	) => {
 		try {
@@ -145,6 +146,7 @@ export const sourceService = {
 				{
 					name,
 					type,
+					job_name,
 					job_id: job_id ? job_id : -1,
 					version: version,
 					config,

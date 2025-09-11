@@ -54,7 +54,7 @@ export interface TaskLog {
 	message: string
 	time: string
 }
-export type JobCreationSteps = "source" | "destination" | "schema" | "config"
+export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 
 export type JobType = "active" | "inactive" | "saved" | "failed"
 
@@ -75,6 +75,7 @@ export interface JobConfigurationProps {
 	setCronExpression: React.Dispatch<React.SetStateAction<string>>
 	stepNumber?: number | string
 	stepTitle?: string
+	jobNameFilled?: boolean
 }
 
 export interface JobConnectionProps {

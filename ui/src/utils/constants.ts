@@ -60,7 +60,7 @@ export const STATUS_LABELS = {
 export const JOB_CREATION_STEPS = {
 	SOURCE: "source",
 	DESTINATION: "destination",
-	SCHEMA: "schema",
+	STREAMS: "streams",
 	CONFIG: "config",
 }
 
@@ -147,10 +147,10 @@ export const COLORS = {
 } as const
 
 export const steps: string[] = [
+	JOB_CREATION_STEPS.CONFIG,
 	JOB_CREATION_STEPS.SOURCE,
 	JOB_CREATION_STEPS.DESTINATION,
-	JOB_CREATION_STEPS.SCHEMA,
-	JOB_CREATION_STEPS.CONFIG,
+	JOB_CREATION_STEPS.STREAMS,
 ]
 
 export const TAB_STYLES = {
@@ -218,3 +218,21 @@ export const SYNC_MODE_MAP = {
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
+
+export const FORMAT_OPTIONS = {
+	DYNAMIC: "dynamic",
+	CUSTOM: "custom",
+} as const
+
+export const NAMESPACE_PLACEHOLDER = "_${source_namespace}"
+
+export const LABELS = {
+	S3: {
+		title: "S3 Folder Name",
+		folderType: "S3",
+	},
+	ICEBERG: {
+		title: "Iceberg Database Name",
+		folderType: "Iceberg DB",
+	},
+} as const

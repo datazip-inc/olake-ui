@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from "react"
-import { Input, Empty, Spin } from "antd"
+import { Input, Empty, Spin, Tooltip } from "antd"
 
 import { sourceService } from "../../../api"
+import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
@@ -12,6 +13,9 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
+import { PencilSimple } from "@phosphor-icons/react"
+import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -28,8 +32,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	fromJobEditFlow = false,
 	jobId = -1,
 	destinationType,
+	jobName,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
+	const { setShowDestinationDatabaseModal } = useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -52,6 +58,35 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	// Use ref to track if we've initialized to prevent double updates
 	const initialized = useRef(false)
+
+	// Check if first stream has destination_database and compute values
+	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
+		if (!apiResponse?.streams || apiResponse.streams.length === 0) {
+			return { destinationDatabase: null, destinationDatabaseForModal: null }
+		}
+
+		const firstStream = apiResponse.streams[0]
+		const destDb = firstStream.stream?.destination_database
+
+		if (!destDb) {
+			return { destinationDatabase: null, destinationDatabaseForModal: null }
+		}
+
+		// If it's in "a:b" format
+		if (destDb.includes(":")) {
+			const parts = destDb.split(":")
+			return {
+				destinationDatabase: `${parts[0]}_${"${source_namespace}"}`, // For display
+				destinationDatabaseForModal: parts[0], // For modal (just the prefix)
+			}
+		}
+
+		// Otherwise use full value for both
+		return {
+			destinationDatabase: destDb,
+			destinationDatabaseForModal: destDb,
+		}
+	}, [apiResponse?.streams])
 
 	useEffect(() => {
 		// Reset initialized ref when source config changes
@@ -87,6 +122,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConnector,
 					sourceVersion,
 					sourceConfig,
+					jobName,
 					fromJobEditFlow ? jobId : -1,
 				)
 
@@ -406,6 +442,82 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 	}, [selectedFilters])
 
+	// Handler for destination database modal save
+	const handleDestinationDatabaseSave = (
+		format: string,
+		databaseName: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev || prev.streams.length === 0) return prev
+
+			// Check first stream to determine format for all streams
+			const firstStreamDestDb = prev.streams[0].stream.destination_database
+			const hasColonFormat =
+				firstStreamDestDb && firstStreamDestDb.includes(":")
+
+			const updatedStreams = prev.streams.map(stream => {
+				const currentDestDb = stream.stream.destination_database
+
+				if (format === "dynamic") {
+					// Dynamic format: preserve the suffix part
+					if (hasColonFormat && currentDestDb) {
+						// If format is "a:b", change to "c:b" (databaseName:suffix)
+						const parts = currentDestDb.split(":")
+						return {
+							...stream,
+							stream: {
+								...stream.stream,
+								destination_database: `${databaseName}:${parts[1]}`,
+							},
+						}
+					} else {
+						// If no ":", set to databaseName only
+						return {
+							...stream,
+							stream: {
+								...stream.stream,
+								destination_database: databaseName,
+							},
+						}
+					}
+				} else {
+					// Custom format: set all to databaseName
+					return {
+						...stream,
+						stream: {
+							...stream.stream,
+							destination_database: databaseName,
+						},
+					}
+				}
+			})
+
+			const updated = {
+				...prev,
+				streams: updatedStreams,
+			}
+
+			// Update parent component
+			setSelectedStreams(updated)
+
+			// Update activeStreamData with the updated stream data
+			setActiveStreamData(currentActiveStream => {
+				if (!currentActiveStream) return currentActiveStream
+
+				// Find the updated version of the current active stream from updatedStreams
+				const updatedActiveStream = updatedStreams.find(
+					stream =>
+						stream.stream.name === currentActiveStream.stream.name &&
+						stream.stream.namespace === currentActiveStream.stream.namespace,
+				)
+
+				return updatedActiveStream || currentActiveStream
+			})
+
+			return updated
+		})
+	}
+
 	const { Search } = Input
 
 	return (
@@ -417,8 +529,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 mr-4 flex flex-wrap justify-start gap-4">
-				<div className="w-full lg:w-[55%] xl:w-[40%]">
+			<div className="mb-4 mr-4 flex justify-between gap-4">
+				<div className="flex w-2/6 items-center">
 					<Search
 						placeholder="Search Streams"
 						allowClear
@@ -427,15 +539,55 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						onChange={e => setSearchText(e.target.value)}
 					/>
 				</div>
-				<div className="flex flex-wrap gap-2">
-					{STREAM_FILTERS.map(filter => (
-						<FilterButton
-							key={filter}
-							filter={filter}
-							selectedFilters={selectedFilters}
-							setSelectedFilters={setSelectedFilters}
-						/>
-					))}
+				<div className="flex w-4/5 justify-between gap-2">
+					{destinationDatabase && (
+						<div className="flex w-1/2 items-center justify-start gap-2">
+							<div
+								className={`rounded-md border border-neutral-disabled p-1.5 ${
+									fromJobEditFlow
+										? "cursor-not-allowed bg-gray-50"
+										: "cursor-pointer hover:bg-gray-50"
+								}`}
+								onClick={
+									fromJobEditFlow
+										? undefined
+										: () => setShowDestinationDatabaseModal(true)
+								}
+							>
+								<div className="flex items-center rounded px-1 py-0.5 text-sm">
+									<div className="mr-1 whitespace-nowrap font-medium">
+										{destinationType === DESTINATION_INTERNAL_TYPES.S3
+											? "S3 Folder: "
+											: "IcebergDB: "}
+									</div>
+									{destinationDatabase}
+									{!fromJobEditFlow && (
+										<Tooltip
+											title="Edit"
+											placement="top"
+										>
+											<PencilSimple
+												className="ml-1 size-4 cursor-pointer hover:text-blue-600"
+												onClick={() => setShowDestinationDatabaseModal(true)}
+											/>
+										</Tooltip>
+									)}
+								</div>
+							</div>
+						</div>
+					)}
+					<div
+						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+					>
+						{STREAM_FILTERS.map(filter => (
+							<FilterButton
+								key={filter}
+								filter={filter}
+								selectedFilters={selectedFilters}
+								setSelectedFilters={setSelectedFilters}
+							/>
+						))}
+					</div>
 				</div>
 			</div>
 
@@ -523,6 +675,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					) : null}
 				</div>
 			</div>
+
+			{/* Destination Database Modal */}
+			<DestinationDatabaseModal
+				destinationType={destinationType || ""}
+				destinationDatabase={destinationDatabaseForModal}
+				allStreams={apiResponse}
+				onSave={handleDestinationDatabaseSave}
+				originalDatabase={destinationDatabase || ""}
+			/>
 		</div>
 	)
 }

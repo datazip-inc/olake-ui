@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Input, Select, Radio, Tooltip } from "antd"
 import { Info } from "@phosphor-icons/react"
 import parser from "cron-parser"
+import { useLocation } from "react-router-dom"
 
 import { JobConfigurationProps } from "../../../types"
 import {
@@ -19,7 +20,10 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	setCronExpression,
 	stepNumber = 4,
 	stepTitle = "Job Configuration",
+	jobNameFilled = false,
 }) => {
+	const location = useLocation()
+	const isEditMode = location.pathname.includes("/edit")
 	const [selectedTime, setSelectedTime] = useState("1")
 	const [selectedAmPm, setSelectedAmPm] = useState<"AM" | "PM">("AM")
 	const [selectedDay, setSelectedDay] = useState("Sunday")
@@ -177,6 +181,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 						<Input
 							placeholder="Enter your job name"
 							value={jobName}
+							disabled={isEditMode || jobNameFilled}
 							onChange={e => setJobName(e.target.value)}
 						/>
 					</div>
