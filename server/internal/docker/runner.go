@@ -17,6 +17,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
+	"golang.org/x/mod/semver"
 )
 
 // Constants
@@ -262,7 +263,7 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if streamsConfig != "" {
 		catalogsArgs = append(catalogsArgs, "--catalog", "/mnt/config/streams.json")
 	}
-	if jobName != "" {
+	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
 		catalogsArgs = append(catalogsArgs, "--destination-database-prefix", jobName)
 	}
 	_, err = r.ExecuteDockerCommand(ctx, "config", Discover, sourceType, version, configPath, catalogsArgs...)
