@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { CatalogOption, CatalogType, NavItem } from "../types"
+import { NavItem } from "../types"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -28,14 +28,6 @@ export const CONNECTOR_TYPES = {
 	ORACLE: "Oracle",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
-}
-
-export const CATALOG_TYPES = {
-	AWS_GLUE: "AWS Glue",
-	REST_CATALOG: "REST Catalog",
-	JDBC_CATALOG: "JDBC Catalog",
-	HIVE_CATALOG: "Hive Catalog",
-	NONE: "None",
 }
 
 export const SETUP_TYPES = {
@@ -138,24 +130,6 @@ export const sourceTabs = [
 	{ key: STATUS.INACTIVE, label: "Inactive sources" },
 ]
 
-export const mapCatalogValueToType = (
-	catalogValue: string,
-): CatalogType | null => {
-	if (catalogValue === "none") return CATALOG_TYPES.NONE
-	if (catalogValue === "glue") return CATALOG_TYPES.AWS_GLUE
-	if (catalogValue === "rest") return CATALOG_TYPES.REST_CATALOG
-	if (catalogValue === "jdbc") return CATALOG_TYPES.JDBC_CATALOG
-	if (catalogValue === "hive") return CATALOG_TYPES.HIVE_CATALOG
-	return null
-}
-
-export const IcebergCatalogTypes = [
-	{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
-	{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
-	{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC Catalog" },
-	{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive Catalog" },
-]
-
 export const destinationTabs = [
 	{ key: STATUS.ACTIVE, label: "Active destinations" },
 	{ key: STATUS.INACTIVE, label: "Inactive destinations" },
@@ -186,13 +160,6 @@ export const TAB_STYLES = {
 }
 
 export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
-
-export const catalogOptions: CatalogOption[] = [
-	{ value: "AWS Glue", label: "AWS Glue" },
-	{ value: "REST Catalog", label: "REST Catalog" },
-	{ value: "JDBC Catalog", label: "JDBC Catalog" },
-	{ value: "HIVE Catalog", label: "Hive Catalog" },
-]
 
 export const JobTutorialYTLink =
 	"https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP"
@@ -246,4 +213,8 @@ export const SYNC_MODE_MAP = {
 	INCREMENTAL: "incremental",
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
+}
+
+export const transformErrors = (errors: any[]) => {
+	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
