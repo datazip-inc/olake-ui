@@ -18,7 +18,6 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 	const isActiveStream = activeStreamData?.stream.name === name
 
 	const handleChange = (e: CheckboxChangeEvent) => {
-		e.stopPropagation()
 		toggle(e)
 		setActiveStreamData(stream)
 	}

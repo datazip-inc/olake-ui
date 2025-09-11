@@ -81,9 +81,8 @@ const StreamConfiguration = ({
 		CombinedStreamsData | undefined
 	>(undefined)
 
-	// Helper function to get unique stream key
-	const getStreamKey = () =>
-		`${stream.stream.namespace || ""}_${stream.stream.name}`
+	// Unique stream key
+	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	useEffect(() => {
 		// Set initial streams only once when component mounts
@@ -122,7 +121,6 @@ const StreamConfiguration = ({
 		setPartitionRegex("")
 
 		// Get the current stream key
-		const currentStreamKey = getStreamKey()
 
 		// Parse initial filter if exists
 		if (initialFullLoadFilter) {
@@ -164,7 +162,7 @@ const StreamConfiguration = ({
 				// Store the filter state for this stream
 				setStreamFilterStates(prev => ({
 					...prev,
-					[currentStreamKey]: true,
+					[streamKey]: true,
 				}))
 			}
 		} else {
@@ -179,7 +177,7 @@ const StreamConfiguration = ({
 				logicalOperator: "and",
 			})
 			// Restore filter state for this stream or default to false
-			const savedFilterState = streamFilterStates[currentStreamKey] || false
+			const savedFilterState = streamFilterStates[streamKey] || false
 			setFullLoadFilter(savedFilterState)
 		}
 
@@ -275,13 +273,11 @@ const StreamConfiguration = ({
 	}
 
 	const handleFullLoadFilterChange = (checked: boolean) => {
-		const currentStreamKey = getStreamKey()
-
 		setFullLoadFilter(checked)
 		// Persist the filter state for this stream
 		setStreamFilterStates(prev => ({
 			...prev,
-			[currentStreamKey]: checked,
+			[streamKey]: checked,
 		}))
 
 		if (!checked) {
