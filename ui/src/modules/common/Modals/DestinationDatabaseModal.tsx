@@ -33,7 +33,6 @@ const determineDefaultFormat = (originalDatabase: string): FormatType => {
 const generateDatabaseNames = (
 	databaseName: string,
 	allStreams: StreamsDataStructure | null,
-	originalDatabase: string,
 ): string[] => {
 	if (!databaseName || !allStreams?.selected_streams) return []
 
@@ -43,14 +42,6 @@ const generateDatabaseNames = (
 	)
 
 	if (namespaces.length === 0) return []
-
-	// Check if we should append namespace
-	const shouldAppendNamespace = originalDatabase.includes(NAMESPACE_PLACEHOLDER)
-
-	if (!shouldAppendNamespace) {
-		return [databaseName]
-	}
-
 	return namespaces.map(namespace => `${databaseName}_${namespace}`)
 }
 
@@ -82,11 +73,7 @@ const DestinationDatabaseModal = ({
 	}, [showDestinationDatabaseModal, destinationDatabase, originalDatabase])
 
 	// Get preview database names
-	const previewDatabases = generateDatabaseNames(
-		databaseName,
-		allStreams,
-		originalDatabase,
-	)
+	const previewDatabases = generateDatabaseNames(databaseName, allStreams)
 
 	const handleSaveChanges = () => {
 		onSave(selectedFormat, databaseName)

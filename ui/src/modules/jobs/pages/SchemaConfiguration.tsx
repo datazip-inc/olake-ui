@@ -457,6 +457,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			const updatedStreams = prev.streams.map(stream => {
 				const currentDestDb = stream.stream.destination_database
+				const currentNamespace = stream.stream.namespace
 
 				if (format === "dynamic") {
 					// Dynamic format: preserve the suffix part
@@ -476,7 +477,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							...stream,
 							stream: {
 								...stream.stream,
-								destination_database: databaseName,
+								destination_database: `${databaseName}:${currentNamespace}`,
 							},
 						}
 					}
