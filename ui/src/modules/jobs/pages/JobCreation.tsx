@@ -121,14 +121,13 @@ const JobCreation: React.FC = () => {
 		return validateCronExpression(cronExpression)
 	}
 
-	const checkJobNameUnique = async (): Promise<boolean> => {
+	const checkJobNameUnique = async (): Promise<boolean | null> => {
 		try {
 			const response = await jobService.checkJobNameUnique(jobName)
 			return response.unique
-		} catch (error) {
-			console.error("Error checking job name uniqueness:", error)
+		} catch {
 			message.error("Failed to check job name uniqueness. Please try again.")
-			return false
+			return null
 		}
 	}
 
@@ -249,8 +248,10 @@ const JobCreation: React.FC = () => {
 			case "config":
 				if (!validateConfig()) return
 
-				// Check job name uniqueness before proceeding
 				const isUnique = await checkJobNameUnique()
+				if (isUnique === null) {
+					return
+				}
 				if (!isUnique) {
 					message.error(
 						"Job name already exists. Please choose a different name.",
