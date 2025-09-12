@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { formatDestinationPath } from "../../../../utils/destination-database"
 import clsx from "clsx"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import {
@@ -937,22 +938,11 @@ const StreamConfiguration = ({
 		</div>
 	)
 
-	// Helper function to format destination DB display
 	const formatDestination = () => {
-		if (
-			!stream?.stream?.destination_database ||
-			!stream?.stream?.destination_table
-		) {
-			return null
-		}
-
-		// Split destination_database with : and join with _
-		// Example: "a:b" becomes "a_b"
-		const formattedDatabase = stream.stream.destination_database.includes(":")
-			? stream.stream.destination_database.split(":").join("_")
-			: stream.stream.destination_database
-
-		return `${formattedDatabase}/${stream.stream.destination_table}`
+		return formatDestinationPath(
+			stream?.stream?.destination_database,
+			stream?.stream?.destination_table,
+		)
 	}
 
 	// Main render

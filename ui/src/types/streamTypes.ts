@@ -121,7 +121,7 @@ export interface SchemaConfigurationProps {
 			| CombinedStreamsData
 		>
 	>
-	stepNumber?: number | string
+	stepNumber?: number
 	stepTitle?: string
 	useDirectForms?: boolean
 	sourceName: string

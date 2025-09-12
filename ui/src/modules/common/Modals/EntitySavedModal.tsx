@@ -3,6 +3,7 @@ import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { EntitySavedModalProps } from "../../../types"
+import { JOB_CREATION_STEPS } from "../../../utils/constants"
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	type,
@@ -23,16 +24,16 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 				<div className="rounded-xl bg-neutral-light p-2">
 					{type === "source" ? (
 						<LinktreeLogo className="z-10 size-5 text-text-link" />
-					) : type === "streams" ? (
+					) : type === JOB_CREATION_STEPS.STREAMS ? (
 						<GitCommit className="z-10 size-5 text-text-link" />
 					) : (
 						<Path className="z-10 size-5 text-text-link" />
 					)}
 				</div>
 				<div className="mb-4 text-center text-xl font-medium">
-					{type === "source"
+					{type === JOB_CREATION_STEPS.SOURCE
 						? "Source is connected and saved successfully"
-						: type === "destination"
+						: type === JOB_CREATION_STEPS.DESTINATION
 							? "Destination is connected and saved successfully"
 							: "Your job is created successfully"}
 				</div>
@@ -40,16 +41,16 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					<div className="flex items-center gap-1">
 						{type === "source" ? (
 							<LinktreeLogo className="size-5" />
-						) : type === "streams" ? (
+						) : type === JOB_CREATION_STEPS.STREAMS ? (
 							<GitCommit className="size-5" />
 						) : (
 							<Path className="size-5" />
 						)}
 						<span>
 							{entityName ||
-								(type === "source"
+								(type === JOB_CREATION_STEPS.SOURCE
 									? "Source-Name"
-									: type === "streams"
+									: type === JOB_CREATION_STEPS.STREAMS
 										? "Job-Name"
 										: "Destination-Name")}
 						</span>
@@ -60,20 +61,20 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 					</div>
 				</div>
 				<div className="flex space-x-4">
-					{type !== "streams" && !fromJobFlow && (
+					{type !== JOB_CREATION_STEPS.STREAMS && !fromJobFlow && (
 						<Button
 							type={fromJobFlow ? "primary" : "default"}
 							className="border border-[#D9D9D9]"
 							onClick={() => {
 								setShowEntitySavedModal(false)
-								if (type === "source") {
+								if (type === JOB_CREATION_STEPS.SOURCE) {
 									navigate("/sources")
 								} else {
 									navigate("/destinations")
 								}
 							}}
 						>
-							{type === "source" ? "Sources" : "Destinations"}
+							{type === JOB_CREATION_STEPS.SOURCE ? "Sources" : "Destinations"}
 						</Button>
 					)}
 					{!fromJobFlow && (
@@ -81,13 +82,17 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							type="primary"
 							onClick={() => {
 								setShowEntitySavedModal(false)
-								navigate(type === "streams" ? "/jobs" : "/jobs/new")
+								navigate(
+									type === JOB_CREATION_STEPS.STREAMS ? "/jobs" : "/jobs/new",
+								)
 							}}
 						>
-							{type === "streams" ? "Jobs →" : "Create a job →"}
+							{type === JOB_CREATION_STEPS.STREAMS
+								? "Jobs →"
+								: "Create a job →"}
 						</Button>
 					)}
-					{type === "streams" && fromJobFlow && (
+					{type === JOB_CREATION_STEPS.STREAMS && fromJobFlow && (
 						<Button
 							type="primary"
 							onClick={() => {

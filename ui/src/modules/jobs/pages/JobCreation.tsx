@@ -12,7 +12,11 @@ import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
-import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	JOB_CREATION_STEPS,
+	JOB_STEP_NUMBERS,
+} from "../../../utils/constants"
 
 // Internal imports from components
 import JobConfiguration from "../components/JobConfiguration"
@@ -32,7 +36,9 @@ const JobCreation: React.FC = () => {
 	const initialData = location.state?.initialData || {}
 	const savedJobId = location.state?.savedJobId
 
-	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("config")
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
+		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
+	)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
@@ -214,7 +220,7 @@ const JobCreation: React.FC = () => {
 	// Main handler
 	const handleNext = async () => {
 		switch (currentStep) {
-			case "source": {
+			case JOB_CREATION_STEPS.SOURCE: {
 				if (!(await validateSource())) return
 				const sourceData = {
 					name: sourceName,
@@ -225,10 +231,14 @@ const JobCreation: React.FC = () => {
 							? sourceFormData
 							: JSON.stringify(sourceFormData),
 				}
-				await handleConnectionTest(true, sourceData, "destination")
+				await handleConnectionTest(
+					true,
+					sourceData,
+					JOB_CREATION_STEPS.DESTINATION,
+				)
 				break
 			}
-			case "destination": {
+			case JOB_CREATION_STEPS.DESTINATION: {
 				if (!(await validateDestination())) return
 				const destinationData = {
 					name: destinationName,
@@ -239,13 +249,17 @@ const JobCreation: React.FC = () => {
 							: JSON.stringify(destinationFormData),
 					version: destinationVersion,
 				}
-				await handleConnectionTest(false, destinationData, "streams")
+				await handleConnectionTest(
+					false,
+					destinationData,
+					JOB_CREATION_STEPS.STREAMS,
+				)
 				break
 			}
-			case "streams":
+			case JOB_CREATION_STEPS.STREAMS:
 				await handleJobCreation()
 				break
-			case "config":
+			case JOB_CREATION_STEPS.CONFIG:
 				if (!validateConfig()) return
 
 				const isUnique = await checkJobNameUnique()
@@ -258,37 +272,39 @@ const JobCreation: React.FC = () => {
 					)
 					return
 				}
-
+				//TODO : Job name is disabled once filled and moved to next step , need to be handled later
 				setJobNameFilled(true)
-				setCurrentStep("source")
+				setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 				break
 			default:
 				console.warn("Unknown step:", currentStep)
 		}
 	}
 
+	//TODO: Handle steps properly
+
 	const nextStep = () => {
-		if (currentStep === "source") {
-			setCurrentStep("destination")
-		} else if (currentStep === "destination") {
-			setCurrentStep("streams")
-		} else if (currentStep === "config") {
-			setCurrentStep("source")
+		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
+			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+		} else if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
+			setCurrentStep(JOB_CREATION_STEPS.STREAMS)
+		} else if (currentStep === JOB_CREATION_STEPS.CONFIG) {
+			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		}
 	}
 
 	const handleBack = () => {
-		if (currentStep === "destination") {
-			setCurrentStep("source")
-		} else if (currentStep === "streams") {
-			setCurrentStep("destination")
-		} else if (currentStep === "source") {
-			setCurrentStep("config")
+		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
+			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
+		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
+			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
 	}
 
 	const handleCancel = () => {
-		if (currentStep === "source") {
+		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setShowSourceCancelModal(true)
 		} else {
 			message.info("Job creation cancelled")
@@ -357,13 +373,13 @@ const JobCreation: React.FC = () => {
 
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
-					className={`w-full ${currentStep === "streams" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={`w-full ${currentStep === JOB_CREATION_STEPS.STREAMS ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
-					{currentStep === "source" && (
+					{currentStep === JOB_CREATION_STEPS.SOURCE && (
 						<div className="h-full w-full overflow-auto">
 							<CreateSource
 								fromJobFlow={true}
-								stepNumber={2}
+								stepNumber={JOB_STEP_NUMBERS.SOURCE}
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
@@ -376,7 +392,7 @@ const JobCreation: React.FC = () => {
 								initialVersion={sourceVersion}
 								onVersionChange={setSourceVersion}
 								onComplete={() => {
-									setCurrentStep("destination")
+									setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
 								}}
 								ref={sourceRef}
 								docsMinimized={docsMinimized}
@@ -385,11 +401,11 @@ const JobCreation: React.FC = () => {
 						</div>
 					)}
 
-					{currentStep === "destination" && (
+					{currentStep === JOB_CREATION_STEPS.DESTINATION && (
 						<div className="h-full w-full overflow-auto">
 							<CreateDestination
 								fromJobFlow={true}
-								stepNumber={3}
+								stepNumber={JOB_STEP_NUMBERS.DESTINATION}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
@@ -404,7 +420,7 @@ const JobCreation: React.FC = () => {
 								onCatalogTypeChange={setDestinationCatalogType}
 								onVersionChange={setDestinationVersion}
 								onComplete={() => {
-									setCurrentStep("streams")
+									setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 								}}
 								ref={destinationRef}
 								docsMinimized={docsMinimized}
@@ -415,12 +431,12 @@ const JobCreation: React.FC = () => {
 						</div>
 					)}
 
-					{currentStep === "streams" && (
+					{currentStep === JOB_CREATION_STEPS.STREAMS && (
 						<div className="h-full overflow-scroll">
 							<SchemaConfiguration
 								selectedStreams={selectedStreams}
 								setSelectedStreams={setSelectedStreams}
-								stepNumber={4}
+								stepNumber={JOB_STEP_NUMBERS.STREAMS}
 								stepTitle="Streams Selection"
 								useDirectForms={true}
 								sourceName={sourceName}
@@ -444,13 +460,13 @@ const JobCreation: React.FC = () => {
 						</div>
 					)}
 
-					{currentStep === "config" && (
+					{currentStep === JOB_CREATION_STEPS.CONFIG && (
 						<JobConfiguration
 							jobName={jobName}
 							setJobName={setJobName}
 							cronExpression={cronExpression}
 							setCronExpression={setCronExpression}
-							stepNumber={1}
+							stepNumber={JOB_STEP_NUMBERS.CONFIG}
 							stepTitle="Job Configuration"
 							jobNameFilled={jobNameFilled}
 						/>
@@ -476,9 +492,9 @@ const JobCreation: React.FC = () => {
 					</button>
 				</div>
 				<div
-					className={`flex items-center transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === "source" || currentStep === "destination") ? "mr-[40%]" : "mr-[4%]"}`}
+					className={`flex items-center transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === JOB_CREATION_STEPS.SOURCE || currentStep === JOB_CREATION_STEPS.DESTINATION) ? "mr-[40%]" : "mr-[4%]"}`}
 				>
-					{currentStep !== "config" && (
+					{currentStep !== JOB_CREATION_STEPS.CONFIG && (
 						<button
 							onClick={handleBack}
 							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
@@ -490,7 +506,7 @@ const JobCreation: React.FC = () => {
 						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>
-						{currentStep === "streams" ? "Create Job" : "Next"}
+						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
 						<ArrowRight className="size-4 text-white" />
 					</button>
 					<TestConnectionModal />
@@ -500,11 +516,11 @@ const JobCreation: React.FC = () => {
 						onComplete={nextStep}
 						fromJobFlow={true}
 						entityName={
-							currentStep === "source"
+							currentStep === JOB_CREATION_STEPS.SOURCE
 								? sourceName
-								: currentStep === "destination"
+								: currentStep === JOB_CREATION_STEPS.DESTINATION
 									? destinationName
-									: currentStep === "streams"
+									: currentStep === JOB_CREATION_STEPS.STREAMS
 										? jobName
 										: ""
 						}

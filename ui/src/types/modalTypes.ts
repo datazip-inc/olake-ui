@@ -10,4 +10,5 @@ export interface DestinationDatabaseModalProps {
 	allStreams: StreamsDataStructure | null
 	onSave: (format: string, databaseName: string) => void
 	originalDatabase: string
+	initialStreams: StreamsDataStructure | null
 }

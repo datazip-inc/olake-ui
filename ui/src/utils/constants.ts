@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { NavItem } from "../types"
+import { JobCreationSteps, NavItem } from "../types"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -57,12 +57,12 @@ export const STATUS_LABELS = {
 	CANCELLED: "Cancelled",
 }
 
-export const JOB_CREATION_STEPS = {
+export const JOB_CREATION_STEPS: Record<string, JobCreationSteps> = {
 	SOURCE: "source",
 	DESTINATION: "destination",
 	STREAMS: "streams",
 	CONFIG: "config",
-}
+} as const
 
 export const TAB_TYPES = {
 	CONFIG: "config",
@@ -214,6 +214,13 @@ export const SYNC_MODE_MAP = {
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
 }
+
+export const JOB_STEP_NUMBERS = {
+	CONFIG: 1,
+	SOURCE: 2,
+	DESTINATION: 3,
+	STREAMS: 4,
+} as const
 
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")

@@ -15,6 +15,7 @@ import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import { PencilSimple } from "@phosphor-icons/react"
 import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
@@ -55,6 +56,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
 	const [loading, setLoading] = useState(!initialStreamsData)
+	// Store initial streams data for reference
+	const [initialStreamsState, setInitialStreamsState] =
+		useState(initialStreamsData)
 
 	// Use ref to track if we've initialized to prevent double updates
 	const initialized = useRef(false)
@@ -165,6 +169,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 				setApiResponse(processedResponseData)
 				setSelectedStreams(processedResponseData)
+				setInitialStreamsState(processedResponseData)
 
 				// Always select first stream if no stream is currently active
 				if (processedResponseData.streams.length > 0 && !activeStreamData) {
@@ -473,11 +478,24 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						}
 					} else {
 						// If no ":", set to databaseName only
+						// Find the stream in initial streams data to get its original namespace
+						const initialStream = initialStreamsState?.streams.find(
+							s =>
+								s.stream.name === stream.stream.name &&
+								s.stream.namespace === stream.stream.namespace,
+						)
+
+						// Get namespace from initial destination_database if it exists
+						const namespace = extractNamespaceFromDestination(
+							initialStream?.stream.destination_database,
+							currentNamespace || "",
+						)
+
 						return {
 							...stream,
 							stream: {
 								...stream.stream,
-								destination_database: `${databaseName}:${currentNamespace}`,
+								destination_database: `${databaseName}:${namespace}`,
 							},
 						}
 					}
@@ -684,6 +702,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				allStreams={apiResponse}
 				onSave={handleDestinationDatabaseSave}
 				originalDatabase={destinationDatabase || ""}
+				initialStreams={initialStreamsState || null}
 			/>
 		</div>
 	)

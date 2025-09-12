@@ -9,41 +9,15 @@ import {
 	NAMESPACE_PLACEHOLDER,
 } from "../../../utils/constants"
 import { DotOutline } from "@phosphor-icons/react"
-import {
-	DestinationDatabaseModalProps,
-	StreamsDataStructure,
-} from "../../../types"
+import { DestinationDatabaseModalProps } from "../../../types"
 
 type FormatType = (typeof FORMAT_OPTIONS)[keyof typeof FORMAT_OPTIONS]
 
-// Helper functions
-const extractDatabasePrefix = (destinationDatabase: string | null): string => {
-	if (!destinationDatabase) return ""
-	return destinationDatabase.includes(":")
-		? destinationDatabase.split(":")[0]
-		: destinationDatabase
-}
-
-const determineDefaultFormat = (originalDatabase: string): FormatType => {
-	return originalDatabase.includes(NAMESPACE_PLACEHOLDER)
-		? FORMAT_OPTIONS.DYNAMIC
-		: FORMAT_OPTIONS.CUSTOM
-}
-
-const generateDatabaseNames = (
-	databaseName: string,
-	allStreams: StreamsDataStructure | null,
-): string[] => {
-	if (!databaseName || !allStreams?.selected_streams) return []
-
-	// Get unique namespaces from selected streams
-	const namespaces = Object.keys(allStreams.selected_streams).filter(
-		namespace => allStreams.selected_streams![namespace]?.length > 0,
-	)
-
-	if (namespaces.length === 0) return []
-	return namespaces.map(namespace => `${databaseName}_${namespace}`)
-}
+import {
+	extractDatabasePrefix,
+	determineDefaultFormat,
+	generateDatabaseNames,
+} from "../../../utils/destination-database"
 
 const DestinationDatabaseModal = ({
 	destinationType,
@@ -51,6 +25,7 @@ const DestinationDatabaseModal = ({
 	allStreams,
 	onSave,
 	originalDatabase,
+	initialStreams,
 }: DestinationDatabaseModalProps) => {
 	const { showDestinationDatabaseModal, setShowDestinationDatabaseModal } =
 		useAppStore()
@@ -73,7 +48,11 @@ const DestinationDatabaseModal = ({
 	}, [showDestinationDatabaseModal, destinationDatabase, originalDatabase])
 
 	// Get preview database names
-	const previewDatabases = generateDatabaseNames(databaseName, allStreams)
+	const previewDatabases = generateDatabaseNames(
+		databaseName,
+		allStreams,
+		initialStreams,
+	)
 
 	const handleSaveChanges = () => {
 		onSave(selectedFormat, databaseName)

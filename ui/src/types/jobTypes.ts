@@ -73,7 +73,7 @@ export interface JobConfigurationProps {
 	setJobName: React.Dispatch<React.SetStateAction<string>>
 	cronExpression?: string
 	setCronExpression: React.Dispatch<React.SetStateAction<string>>
-	stepNumber?: number | string
+	stepNumber?: number
 	stepTitle?: string
 	jobNameFilled?: boolean
 }
