@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { Modal, Radio, Input, Button } from "antd"
 import { useAppStore } from "../../../store"
+import { validateAlphanumericUnderscore } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	FORMAT_OPTIONS,
@@ -66,6 +67,7 @@ const DestinationDatabaseModal = ({
 		FORMAT_OPTIONS.DYNAMIC,
 	)
 	const [databaseName, setDatabaseName] = useState("")
+	const [databaseNameError, setDatabaseNameError] = useState("")
 
 	// Initialize modal state when opened
 	useEffect(() => {
@@ -123,7 +125,7 @@ const DestinationDatabaseModal = ({
 							>
 								<div className="ml-2">
 									<div className="font-medium">Dynamic (Default)</div>
-									<div className="text-text-sub text-sm">
+									<div className="text-sm text-text-sub">
 										Your tables will be saved in respective folders
 									</div>
 								</div>
@@ -134,7 +136,7 @@ const DestinationDatabaseModal = ({
 							>
 								<div className="ml-2">
 									<div className="font-medium">Custom</div>
-									<div className="text-text-sub text-sm">
+									<div className="text-sm text-text-sub">
 										All tables will be stored in a single DB folder
 									</div>
 								</div>
@@ -151,12 +153,25 @@ const DestinationDatabaseModal = ({
 							: `${labels.title}*`}
 					</label>
 					<div className="flex gap-2">
-						<Input
-							placeholder={`Enter your ${labels.title}`}
-							value={databaseName}
-							onChange={e => setDatabaseName(e.target.value)}
-							className="mb-4 w-3/5"
-						/>
+						<div className="w-3/5">
+							<Input
+								placeholder={`Enter your ${labels.title} (a-z, 0-9, _)`}
+								value={databaseName}
+								onChange={e => {
+									const { validValue, errorMessage } =
+										validateAlphanumericUnderscore(e.target.value)
+									setDatabaseName(validValue)
+									setDatabaseNameError(errorMessage)
+								}}
+								status={databaseNameError ? "error" : undefined}
+								className="mb-1"
+							/>
+							{databaseNameError && (
+								<div className="mb-3 text-sm text-red-500">
+									{databaseNameError}
+								</div>
+							)}
+						</div>
 
 						{selectedFormat === FORMAT_OPTIONS.DYNAMIC && (
 							<span className="w-2/5">+{NAMESPACE_PLACEHOLDER}</span>

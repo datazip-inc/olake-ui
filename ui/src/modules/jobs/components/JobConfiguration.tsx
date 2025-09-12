@@ -9,6 +9,7 @@ import {
 	generateCronExpression,
 	parseCronExpression,
 	isValidCronExpression,
+	validateAlphanumericUnderscore,
 } from "../../../utils/utils"
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import StepTitle from "../../common/components/StepTitle"
@@ -31,6 +32,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	const [customCronExpression, setCustomCronExpression] = useState("")
 	const [cronValue, setCronValue] = useState(cronExpression || "* * * * *")
 	const [nextRuns, setNextRuns] = useState<string[]>([])
+	const [jobNameError, setJobNameError] = useState("")
 
 	// Configuration object for all select options
 	const selectConfig = {
@@ -179,11 +181,19 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 							Job name:<span className="text-red-500">*</span>
 						</label>
 						<Input
-							placeholder="Enter your job name"
 							value={jobName}
 							disabled={isEditMode || jobNameFilled}
-							onChange={e => setJobName(e.target.value)}
+							onChange={e => {
+								const { validValue, errorMessage } =
+									validateAlphanumericUnderscore(e.target.value)
+								setJobName(validValue)
+								setJobNameError(errorMessage)
+							}}
+							status={jobNameError ? "error" : undefined}
 						/>
+						{jobNameError && (
+							<div className="mt-1 text-sm text-red-500">{jobNameError}</div>
+						)}
 					</div>
 
 					<div className="mb-4 w-3/5">
