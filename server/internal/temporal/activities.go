@@ -31,6 +31,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 		params.Config,
 		params.WorkflowID,
 		params.StreamsConfig,
+		params.JobName,
 	)
 	if err != nil {
 		logger.Error("Sync command failed", "error", err)
