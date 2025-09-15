@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/beego/beego/v2/client/orm"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
 	_ "github.com/lib/pq"                                     // required for registering driver
@@ -72,6 +73,12 @@ func Init() error {
 // BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf
 // and constructs the Postgres connection URI.
 func BuildPostgresURIFromConfig() (string, error) {
+	logs.Info("Building Postgres URI from config")
+
+	// First, check if postgresdb is set directly
+	if dsn, err := web.AppConfig.String("postgresdb"); err == nil && dsn != "" {
+		return dsn, nil
+	}
 	user, err := web.AppConfig.String("POSTGRES_DB_USER")
 	if err != nil {
 		return "", fmt.Errorf("missing POSTGRES_DB_USER: %w", err)
