@@ -126,7 +126,15 @@ func (c *JobHandler) CreateJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
 		return
 	}
-
+	unique, err := c.jobORM.IsJobNameUnique(projectIDStr, req.Name)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness")
+		return
+	}
+	if !unique {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Job name already exists")
+		return
+	}
 	// Find or create source
 	source, err := c.getOrCreateSource(&req.Source, projectIDStr)
 	if err != nil {
@@ -307,6 +315,29 @@ func (c *JobHandler) DeleteJob() {
 
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
+	})
+}
+
+// @router /project/:projectid/jobs/check-unique [post]
+func (c *JobHandler) CheckUniqueJobName() {
+	projectIDStr := c.Ctx.Input.Param(":projectid")
+	var req models.CheckUniqueJobNameRequest
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+	if req.JobName == "" {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Job name is required")
+		return
+	}
+	unique, err := c.jobORM.IsJobNameUnique(projectIDStr, req.JobName)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness")
+		return
+	}
+	utils.SuccessResponse(&c.Controller, models.CheckUniqueJobNameResponse{
+		Unique: unique,
 	})
 }
 

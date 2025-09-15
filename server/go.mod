@@ -10,10 +10,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/kms v1.41.1
 	github.com/lib/pq v1.10.9
 	github.com/oklog/ulid v1.3.1
-	github.com/segmentio/analytics-go/v3 v3.3.0
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
 	golang.org/x/crypto v0.35.0
+	golang.org/x/mod v0.27.0
 )
 
 require (
@@ -29,11 +29,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.33.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.37.0 // indirect
 	github.com/aws/smithy-go v1.22.5 // indirect
-)
-
-require (
-	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
-	github.com/segmentio/backo-go v1.0.0 // indirect
 )
 
 require (

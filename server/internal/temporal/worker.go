@@ -29,11 +29,13 @@ func NewWorker() (*Worker, error) {
 	w.RegisterWorkflow(DiscoverCatalogWorkflow)
 	w.RegisterWorkflow(TestConnectionWorkflow)
 	w.RegisterWorkflow(RunSyncWorkflow)
+	w.RegisterWorkflow(FetchSpecWorkflow)
 
 	// Register activities
 	w.RegisterActivity(DiscoverCatalogActivity)
 	w.RegisterActivity(TestConnectionActivity)
 	w.RegisterActivity(SyncActivity)
+	w.RegisterActivity(FetchSpecActivity)
 
 	return &Worker{
 		temporalClient: c,

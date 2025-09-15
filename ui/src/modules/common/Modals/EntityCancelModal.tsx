@@ -4,6 +4,7 @@ import { Button, Modal } from "antd"
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
+import { JOB_CREATION_STEPS } from "../../../utils/constants"
 
 interface EntityCancelModalProps {
 	type: string
@@ -26,9 +27,9 @@ const EntityCancelModal: React.FC<EntityCancelModalProps> = ({
 		>
 			<div className="flex flex-col items-center justify-center gap-6 py-4">
 				<div className="rounded-xl bg-neutral-light p-2">
-					{type === "source" ? (
+					{type === JOB_CREATION_STEPS.SOURCE ? (
 						<LinktreeLogo className="z-10 size-6 text-text-link" />
-					) : type === "destination" ? (
+					) : type === JOB_CREATION_STEPS.DESTINATION ? (
 						<Path className="z-10 size-6 text-text-link" />
 					) : (
 						<GitCommit className="z-10 size-6 text-text-link" />
