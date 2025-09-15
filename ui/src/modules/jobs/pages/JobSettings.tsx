@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
-import { ArrowRight, Info, ArrowLeft } from "@phosphor-icons/react"
+import { Info, ArrowLeft } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
 import { useAppStore } from "../../../store"
@@ -317,6 +317,7 @@ const JobSettings: React.FC = () => {
 											placeholder="Enter your job name"
 											value={jobName}
 											onChange={e => setJobName(e.target.value)}
+											disabled
 											className="max-w-md"
 										/>
 									</div>
@@ -464,11 +465,7 @@ const JobSettings: React.FC = () => {
 						onClick={handleSaveSettings}
 						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
 					>
-						Save{" "}
-						<ArrowRight
-							size={16}
-							className="text-white"
-						/>
+						Save
 					</Button>
 				</div>
 			</div>

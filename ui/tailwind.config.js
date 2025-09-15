@@ -65,6 +65,7 @@ export default {
 					disabled: "#c1c1c1",
 					placeholder: "#9F9F9F",
 					link: "#6E6E6E",
+					sub: "#464646",
 				},
 				background: {
 					primary: "#F5F5F5",

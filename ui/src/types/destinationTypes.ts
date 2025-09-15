@@ -74,7 +74,7 @@ export interface DestinationData {
 
 export interface DestinationEditProps {
 	fromJobFlow?: boolean
-	stepNumber?: string | number
+	stepNumber?: number
 	stepTitle?: string
 	initialData?: any
 	onNameChange?: (name: string) => void
