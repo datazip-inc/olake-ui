@@ -58,3 +58,19 @@
 	display: flex;
 	align-items: center;
 }
+
+/* Error input border: show only red, override default gray */
+.rjsf-error .ant-input,
+.rjsf-error .ant-input-affix-wrapper,
+.rjsf-error .ant-input-number,
+.rjsf-error .ant-input-number input,
+.rjsf-error .ant-select-selector,
+.rjsf-error .border-gray-300 {
+	border-color: theme("colors.red.500") !important;
+	box-shadow: none !important;
+}
+
+/* Hide labels inside array item fields */
+.array-item-field label {
+	display: none !important;
+}

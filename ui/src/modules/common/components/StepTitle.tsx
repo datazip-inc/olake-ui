@@ -2,7 +2,7 @@ const StepTitle = ({
 	stepNumber,
 	stepTitle,
 }: {
-	stepNumber: number | string
+	stepNumber: number
 	stepTitle: string
 }) => {
 	return (

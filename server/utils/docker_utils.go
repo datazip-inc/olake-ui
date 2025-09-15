@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+	"golang.org/x/mod/semver"
 )
 
 // docker hub tags api url template
@@ -77,6 +78,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 		return nil, "", fmt.Errorf("no tags found for image: %s", imageName)
 	}
 	driverImage = strings.TrimPrefix(driverImage, "olakego/source-")
+	sort.Slice(tags, func(i, j int) bool { return semver.Compare(tags[i], tags[j]) > 0 }) // highest first
 	return tags, driverImage, err
 }
 
@@ -110,8 +112,6 @@ func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error
 			}
 		}
 	}
-
-	sort.Slice(tags, func(i, j int) bool { return tags[i] > tags[j] })
 	return tags, nil
 }
 
@@ -145,7 +145,6 @@ func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, err
 			tags = append(tags, tagData.Name)
 		}
 	}
-	sort.Slice(tags, func(i, j int) bool { return tags[i] > tags[j] })
 	return tags, nil
 }
 
@@ -176,7 +175,6 @@ func fetchCachedImageTags(ctx context.Context, imageName, repositoryBase string)
 	for tag := range tagsMap {
 		tags = append(tags, tag)
 	}
-	sort.Slice(tags, func(i, j int) bool { return tags[i] > tags[j] })
 	return tags, nil
 }
 

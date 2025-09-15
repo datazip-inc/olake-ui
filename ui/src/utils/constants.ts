@@ -1,5 +1,6 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { CatalogOption, CatalogType, NavItem } from "../types"
+import { JobCreationSteps, NavItem } from "../types"
+import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -30,14 +31,6 @@ export const CONNECTOR_TYPES = {
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
 
-export const CATALOG_TYPES = {
-	AWS_GLUE: "AWS Glue",
-	REST_CATALOG: "REST Catalog",
-	JDBC_CATALOG: "JDBC Catalog",
-	HIVE_CATALOG: "Hive Catalog",
-	NONE: "None",
-}
-
 export const SETUP_TYPES = {
 	NEW: "new",
 	EXISTING: "existing",
@@ -65,12 +58,12 @@ export const STATUS_LABELS = {
 	CANCELLED: "Cancelled",
 }
 
-export const JOB_CREATION_STEPS = {
+export const JOB_CREATION_STEPS: Record<string, JobCreationSteps> = {
 	SOURCE: "source",
 	DESTINATION: "destination",
-	SCHEMA: "schema",
+	STREAMS: "streams",
 	CONFIG: "config",
-}
+} as const
 
 export const TAB_TYPES = {
 	CONFIG: "config",
@@ -101,7 +94,7 @@ export const JOB_TYPES = {
 	FAILED: "failed",
 }
 
-export const PAGE_SIZE = 8
+export const PAGE_SIZE = getResponsivePageSize()
 
 export const THEME_CONFIG = {
 	token: {
@@ -138,24 +131,6 @@ export const sourceTabs = [
 	{ key: STATUS.INACTIVE, label: "Inactive sources" },
 ]
 
-export const mapCatalogValueToType = (
-	catalogValue: string,
-): CatalogType | null => {
-	if (catalogValue === "none") return CATALOG_TYPES.NONE
-	if (catalogValue === "glue") return CATALOG_TYPES.AWS_GLUE
-	if (catalogValue === "rest") return CATALOG_TYPES.REST_CATALOG
-	if (catalogValue === "jdbc") return CATALOG_TYPES.JDBC_CATALOG
-	if (catalogValue === "hive") return CATALOG_TYPES.HIVE_CATALOG
-	return null
-}
-
-export const IcebergCatalogTypes = [
-	{ value: CATALOG_TYPES.AWS_GLUE, label: "AWS Glue" },
-	{ value: CATALOG_TYPES.REST_CATALOG, label: "REST catalog" },
-	{ value: CATALOG_TYPES.JDBC_CATALOG, label: "JDBC Catalog" },
-	{ value: CATALOG_TYPES.HIVE_CATALOG, label: "Hive Catalog" },
-]
-
 export const destinationTabs = [
 	{ key: STATUS.ACTIVE, label: "Active destinations" },
 	{ key: STATUS.INACTIVE, label: "Inactive destinations" },
@@ -173,10 +148,10 @@ export const COLORS = {
 } as const
 
 export const steps: string[] = [
+	JOB_CREATION_STEPS.CONFIG,
 	JOB_CREATION_STEPS.SOURCE,
 	JOB_CREATION_STEPS.DESTINATION,
-	JOB_CREATION_STEPS.SCHEMA,
-	JOB_CREATION_STEPS.CONFIG,
+	JOB_CREATION_STEPS.STREAMS,
 ]
 
 export const TAB_STYLES = {
@@ -186,13 +161,6 @@ export const TAB_STYLES = {
 }
 
 export const CARD_STYLE = "rounded-xl border border-[#E3E3E3] p-3"
-
-export const catalogOptions: CatalogOption[] = [
-	{ value: "AWS Glue", label: "AWS Glue" },
-	{ value: "REST Catalog", label: "REST Catalog" },
-	{ value: "JDBC Catalog", label: "JDBC Catalog" },
-	{ value: "HIVE Catalog", label: "Hive Catalog" },
-]
 
 export const JobTutorialYTLink =
 	"https://youtu.be/_qRulFv-BVM?si=NPTw9V0hWQ3-9wOP"
@@ -247,3 +215,32 @@ export const SYNC_MODE_MAP = {
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
 }
+
+export const JOB_STEP_NUMBERS = {
+	CONFIG: 1,
+	SOURCE: 2,
+	DESTINATION: 3,
+	STREAMS: 4,
+} as const
+
+export const transformErrors = (errors: any[]) => {
+	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
+}
+
+export const FORMAT_OPTIONS = {
+	DYNAMIC: "dynamic",
+	CUSTOM: "custom",
+} as const
+
+export const NAMESPACE_PLACEHOLDER = "_${source_namespace}"
+
+export const LABELS = {
+	S3: {
+		title: "S3 Folder Name",
+		folderType: "S3",
+	},
+	ICEBERG: {
+		title: "Iceberg Database Name",
+		folderType: "Iceberg DB",
+	},
+} as const

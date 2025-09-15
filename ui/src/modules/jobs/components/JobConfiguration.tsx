@@ -2,12 +2,14 @@ import { useEffect, useState } from "react"
 import { Input, Select, Radio, Tooltip } from "antd"
 import { Info } from "@phosphor-icons/react"
 import parser from "cron-parser"
+import { useLocation } from "react-router-dom"
 
 import { JobConfigurationProps } from "../../../types"
 import {
 	generateCronExpression,
 	parseCronExpression,
 	isValidCronExpression,
+	validateAlphanumericUnderscore,
 } from "../../../utils/utils"
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import StepTitle from "../../common/components/StepTitle"
@@ -19,7 +21,10 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	setCronExpression,
 	stepNumber = 4,
 	stepTitle = "Job Configuration",
+	jobNameFilled = false,
 }) => {
+	const location = useLocation()
+	const isEditMode = location.pathname.includes("/edit")
 	const [selectedTime, setSelectedTime] = useState("1")
 	const [selectedAmPm, setSelectedAmPm] = useState<"AM" | "PM">("AM")
 	const [selectedDay, setSelectedDay] = useState("Sunday")
@@ -27,6 +32,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	const [customCronExpression, setCustomCronExpression] = useState("")
 	const [cronValue, setCronValue] = useState(cronExpression || "* * * * *")
 	const [nextRuns, setNextRuns] = useState<string[]>([])
+	const [jobNameError, setJobNameError] = useState("")
 
 	// Configuration object for all select options
 	const selectConfig = {
@@ -175,10 +181,19 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 							Job name:<span className="text-red-500">*</span>
 						</label>
 						<Input
-							placeholder="Enter your job name"
 							value={jobName}
-							onChange={e => setJobName(e.target.value)}
+							disabled={isEditMode || jobNameFilled}
+							onChange={e => {
+								const { validValue, errorMessage } =
+									validateAlphanumericUnderscore(e.target.value)
+								setJobName(validValue)
+								setJobNameError(errorMessage)
+							}}
+							status={jobNameError ? "error" : undefined}
 						/>
+						{jobNameError && (
+							<div className="mt-1 text-sm text-red-500">{jobNameError}</div>
+						)}
 					</div>
 
 					<div className="mb-4 w-3/5">

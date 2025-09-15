@@ -100,7 +100,10 @@ http://localhost:8000
     "data": {
       "type": "string",
       "version": "string",
-      "spec": "json"
+      "spec": {
+        "jsonschema": "object",
+        "uischema": "string"
+      }
     }
   }
   ```
@@ -263,8 +266,7 @@ http://localhost:8000
   ```json
   {
     "type": "string",
-    "version": "string",
-    "catalog": "string"
+    "version": "string"
   }
   ```
 - **Response**:
@@ -275,8 +277,10 @@ http://localhost:8000
     "data": {
       "type": "string",
       "version": "string",
-      "catalog": "string",
-      "spec": "json"
+      "spec": {
+        "jsonschema": "object",
+        "uischema": "string"
+      }
     }
   }
   ```
@@ -592,9 +596,12 @@ http://localhost:8000
 
   ```json
   {
+    "name": "string",
     "type": "string",
     "version": "string",
-    "config": "json"
+    "config": "json",
+    "job_id": "integer",
+    "job_name": "string"
   }
   ```
 
@@ -730,6 +737,33 @@ http://localhost:8000
     "message": "string",
     "data": {
       "task_logs": "json"
+    }
+  }
+  ```
+
+### job name unique check
+---
+
+- **Endpoint**: `api/v1/project/:projectid/jobs/check-unique`
+- **Method**: POST
+- **Description**: check if job name is unique
+- **Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+
+  ```json
+  {
+    "job_name": "string"
+  }
+  ```
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+     "unique": "boolean"
     }
   }
   ```

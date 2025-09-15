@@ -2,7 +2,6 @@ import { StateCreator } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 
 import { authService } from "../api/services/authService"
-import { identifyUser } from "../api/services/analyticsService"
 
 export interface AuthSlice {
 	isAuthenticated: boolean
@@ -34,7 +33,6 @@ export const createAuthSlice: StateCreator<
 				}
 				set({ isAuthenticated: true, isAuthLoading: false })
 				// Identify user for analytics when returning with an existing session
-				await identifyUser()
 			} catch (error) {
 				set({
 					isAuthLoading: false,
@@ -52,7 +50,6 @@ export const createAuthSlice: StateCreator<
 				set({ isAuthenticated: true, isAuthLoading: false })
 				// Identify user for analytics after new login
 				// Run in background without blocking to provide faster login experience
-				identifyUser().catch(console.error)
 			} catch (error) {
 				set({ isAuthLoading: false })
 				throw error
