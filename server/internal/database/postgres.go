@@ -13,9 +13,13 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/models"
 )
 
-func Init(uri string) error {
+func Init() error {
 	// register driver
-	err := orm.RegisterDriver("postgres", orm.DRPostgres)
+	uri, err := BuildPostgresURIFromConfig()
+	if err != nil {
+		return fmt.Errorf("failed to build postgres uri: %s", err)
+	}
+	err = orm.RegisterDriver("postgres", orm.DRPostgres)
 	if err != nil {
 		return fmt.Errorf("failed to register postgres driver: %s", err)
 	}
@@ -63,4 +67,43 @@ func Init(uri string) error {
 		}
 	}
 	return nil
+}
+
+// BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf
+// and constructs the Postgres connection URI.
+func BuildPostgresURIFromConfig() (string, error) {
+	user, err := web.AppConfig.String("POSTGRES_DB_USER")
+	if err != nil {
+		return "", fmt.Errorf("missing POSTGRES_DB_USER: %w", err)
+	}
+
+	password, err := web.AppConfig.String("POSTGRES_DB_PASSWORD")
+	if err != nil {
+		return "", fmt.Errorf("missing POSTGRES_DB_PASSWORD: %w", err)
+	}
+
+	host, err := web.AppConfig.String("POSTGRES_DB_HOST")
+	if err != nil {
+		return "", fmt.Errorf("missing POSTGRES_DB_HOST: %w", err)
+	}
+
+	port, err := web.AppConfig.String("POSTGRES_DB_PORT")
+	if err != nil {
+		return "", fmt.Errorf("missing POSTGRES_DB_PORT: %w", err)
+	}
+
+	dbName, err := web.AppConfig.String("POSTGRES_DB_NAME")
+	if err != nil {
+		return "", fmt.Errorf("missing POSTGRES_DB_NAME: %w", err)
+	}
+
+	sslMode, err := web.AppConfig.String("POSTGRES_DB_SSLMODE")
+	if err != nil {
+		return "", fmt.Errorf("missing POSTGRES_DB_SSLMODE: %w", err)
+	}
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		user, password, host, port, dbName, sslMode,
+	), nil
 }
