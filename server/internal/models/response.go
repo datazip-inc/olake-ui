@@ -39,6 +39,11 @@ type JobStatus struct {
 	Activate bool `json:"activate"`
 }
 
+// JobNameCheckResponse
+type CheckUniqueJobNameResponse struct {
+	Unique bool `json:"unique"`
+}
+
 // Job response
 type JobResponse struct {
 	ID            int                  `json:"id"`

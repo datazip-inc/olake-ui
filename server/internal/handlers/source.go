@@ -245,6 +245,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 			req.Version,
 			encryptedConfig,
 			oldStreams,
+			req.JobName,
 		)
 	}
 	if err != nil {

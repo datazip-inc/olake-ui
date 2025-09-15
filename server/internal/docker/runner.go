@@ -17,6 +17,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
+	"golang.org/x/mod/semver"
 )
 
 // Constants
@@ -241,7 +242,7 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 }
 
 // GetCatalog runs the discover command and returns catalog data
-func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, workflowID, streamsConfig string) (map[string]interface{}, error) {
+func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, workflowID, streamsConfig, jobName string) (map[string]interface{}, error) {
 	workDir, err := r.setupWorkDirectory(workflowID)
 	if err != nil {
 		return nil, err
@@ -260,9 +261,10 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	catalogPath := filepath.Join(workDir, "streams.json")
 	var catalogsArgs []string
 	if streamsConfig != "" {
-		catalogsArgs = []string{
-			"--catalog", "/mnt/config/streams.json",
-		}
+		catalogsArgs = append(catalogsArgs, "--catalog", "/mnt/config/streams.json")
+	}
+	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
+		catalogsArgs = append(catalogsArgs, "--destination-database-prefix", jobName)
 	}
 	_, err = r.ExecuteDockerCommand(ctx, "config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {
