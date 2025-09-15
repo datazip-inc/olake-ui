@@ -12,10 +12,12 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 	setActiveStreamData,
 }) => {
 	const {
-		stream: { name },
+		stream: { name, namespace },
 	} = stream
 
-	const isActiveStream = activeStreamData?.stream.name === name
+	const isActiveStream =
+		activeStreamData?.stream.name === name &&
+		activeStreamData?.stream.namespace === namespace
 
 	const handleChange = (e: CheckboxChangeEvent) => {
 		toggle(e)

@@ -18,7 +18,7 @@ export interface Source {
 export interface CreateSourceProps {
 	fromJobFlow?: boolean
 	onComplete?: () => void
-	stepNumber?: string
+	stepNumber?: number
 	stepTitle?: string
 	initialConfig?: EntityBase
 	initialFormData?: any
@@ -53,7 +53,7 @@ export interface SourceData {
 
 export interface SourceEditProps {
 	fromJobFlow?: boolean
-	stepNumber?: string | number
+	stepNumber?: number
 	stepTitle?: string
 	initialData?: any
 	onNameChange?: (name: string) => void

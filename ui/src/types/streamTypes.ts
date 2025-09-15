@@ -37,6 +37,9 @@ export type StreamData = {
 			properties: Record<
 				string,
 				{
+					config?: {
+						destination_column_name?: string
+					}
 					type: string | string[]
 					format?: string
 					properties?: Record<string, any>
@@ -48,6 +51,8 @@ export type StreamData = {
 		default_cursor_field?: string[]
 		available_cursor_fields?: string[]
 		cursor_field?: string
+		destination_database?: string
+		destination_table?: string
 		source_defined_primary_key?: string[]
 		[key: string]: unknown
 	}
@@ -116,7 +121,7 @@ export interface SchemaConfigurationProps {
 			| CombinedStreamsData
 		>
 	>
-	stepNumber?: number | string
+	stepNumber?: number
 	stepTitle?: string
 	useDirectForms?: boolean
 	sourceName: string
@@ -127,6 +132,7 @@ export interface SchemaConfigurationProps {
 	fromJobEditFlow?: boolean
 	jobId?: number
 	destinationType?: string
+	jobName: string
 }
 
 export interface ExtendedStreamConfigurationProps

@@ -27,7 +27,11 @@ import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
-import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	JOB_CREATION_STEPS,
+	JOB_STEP_NUMBERS,
+} from "../../../utils/constants"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -45,7 +49,7 @@ const JobSourceEdit = ({
 		<div className="flex-1 overflow-auto">
 			<SourceEdit
 				fromJobFlow={true}
-				stepNumber="1"
+				stepNumber={JOB_STEP_NUMBERS.SOURCE}
 				stepTitle="Source Config"
 				initialData={sourceData}
 				onNameChange={name => updateSourceData({ ...sourceData, name })}
@@ -88,7 +92,7 @@ const JobDestinationEdit = ({
 		>
 			<DestinationEdit
 				fromJobFlow={true}
-				stepNumber="2"
+				stepNumber={JOB_STEP_NUMBERS.DESTINATION}
 				stepTitle="Destination Config"
 				initialData={destinationData}
 				onNameChange={name =>
@@ -121,7 +125,9 @@ const JobEdit: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
 
-	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("schema")
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
+		JOB_CREATION_STEPS.STREAMS,
+	)
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -129,7 +135,7 @@ const JobEdit: React.FC = () => {
 	const [destinationData, setDestinationData] =
 		useState<DestinationData | null>(null)
 
-	// Schema step states
+	// Streams step states
 	const [selectedStreams, setSelectedStreams] = useState<StreamsDataStructure>({
 		selected_streams: {},
 		streams: [],
@@ -348,41 +354,20 @@ const JobEdit: React.FC = () => {
 		}
 	}
 
-	const handleSaveStreams = async () => {
-		if (!sourceData || !destinationData || !jobId) {
-			message.error("Source and destination data are required")
-			return
-		}
-
-		setIsSubmitting(true)
-		try {
-			const jobUpdatePayload = getjobUpdatePayLoad()
-			await jobService.updateJob(jobId, jobUpdatePayload)
-			message.success("Streams saved successfully!")
-			await fetchJobs()
-			navigate("/jobs")
-		} catch (error) {
-			console.error("Error saving Streams:", error)
-			message.error("Failed to save Streams. Please try again.")
-		} finally {
-			setIsSubmitting(false)
-		}
-	}
-
 	const handleNext = async () => {
-		if (currentStep === "source") {
+		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			if (sourceData) {
 				setIsFromSources(true)
-				setCurrentStep("destination")
+				setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
 			}
-		} else if (currentStep === "destination") {
+		} else if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			if (destinationData) {
 				setIsFromSources(false)
-				setCurrentStep("schema")
+				setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 			}
-		} else if (currentStep === "schema") {
-			setCurrentStep("config")
-		} else if (currentStep === "config") {
+		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			handleJobSubmit()
+		} else if (currentStep === JOB_CREATION_STEPS.CONFIG) {
 			if (!jobName.trim()) {
 				message.error("Job name is required")
 				return
@@ -390,17 +375,17 @@ const JobEdit: React.FC = () => {
 			if (!validateCronExpression(cronExpression)) {
 				return
 			}
-			handleJobSubmit()
+			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		}
 	}
 
 	const handleBack = async () => {
-		if (currentStep === "destination") {
-			setCurrentStep("source")
-		} else if (currentStep === "schema") {
-			setCurrentStep("destination")
-		} else if (currentStep === "config") {
-			setCurrentStep("schema")
+		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
+			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
+		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
+			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
 	}
 
@@ -444,11 +429,11 @@ const JobEdit: React.FC = () => {
 				<div
 					className={clsx(
 						"w-full pt-0 transition-all duration-300",
-						currentStep !== "schema" && "overflow-hidden",
+						currentStep !== JOB_CREATION_STEPS.STREAMS && "overflow-hidden",
 					)}
 				>
 					<div className="h-full">
-						{currentStep === "source" && sourceData && (
+						{currentStep === JOB_CREATION_STEPS.SOURCE && sourceData && (
 							<JobSourceEdit
 								sourceData={sourceData}
 								updateSourceData={setSourceData}
@@ -457,22 +442,23 @@ const JobEdit: React.FC = () => {
 							/>
 						)}
 
-						{currentStep === "destination" && destinationData && (
-							<JobDestinationEdit
-								destinationData={destinationData}
-								sourceData={sourceData}
-								updateDestinationData={setDestinationData}
-								docsMinimized={docsMinimized}
-								onDocsMinimizedChange={setDocsMinimized}
-							/>
-						)}
+						{currentStep === JOB_CREATION_STEPS.DESTINATION &&
+							destinationData && (
+								<JobDestinationEdit
+									destinationData={destinationData}
+									sourceData={sourceData}
+									updateDestinationData={setDestinationData}
+									docsMinimized={docsMinimized}
+									onDocsMinimizedChange={setDocsMinimized}
+								/>
+							)}
 
-						{currentStep === "schema" && (
+						{currentStep === JOB_CREATION_STEPS.STREAMS && (
 							<div className="h-full overflow-auto">
 								<SchemaConfiguration
 									selectedStreams={selectedStreams as any}
 									setSelectedStreams={handleStreamsChange}
-									stepNumber={3}
+									stepNumber={JOB_STEP_NUMBERS.STREAMS}
 									stepTitle="Streams Selection"
 									sourceName={sourceData?.name || ""}
 									sourceConnector={sourceData?.type.toLowerCase() || ""}
@@ -484,17 +470,18 @@ const JobEdit: React.FC = () => {
 									initialStreamsData={
 										streamsModified ? selectedStreams : undefined
 									}
+									jobName={jobName}
 								/>
 							</div>
 						)}
 
-						{currentStep === "config" && (
+						{currentStep === JOB_CREATION_STEPS.CONFIG && (
 							<JobConfiguration
 								jobName={jobName}
 								setJobName={setJobName}
 								cronExpression={cronExpression}
 								setCronExpression={setCronExpression}
-								stepNumber={4}
+								stepNumber={JOB_STEP_NUMBERS.CONFIG}
 								stepTitle="Job Configuration"
 							/>
 						)}
@@ -508,10 +495,13 @@ const JobEdit: React.FC = () => {
 					<button
 						className="rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 						onClick={handleBack}
-						disabled={currentStep === "source"}
+						disabled={currentStep === JOB_CREATION_STEPS.CONFIG}
 						style={{
-							opacity: currentStep === "source" ? 0.5 : 1,
-							cursor: currentStep === "source" ? "not-allowed" : "pointer",
+							opacity: currentStep === JOB_CREATION_STEPS.CONFIG ? 0.5 : 1,
+							cursor:
+								currentStep === JOB_CREATION_STEPS.CONFIG
+									? "not-allowed"
+									: "pointer",
 						}}
 					>
 						Back
@@ -521,15 +511,16 @@ const JobEdit: React.FC = () => {
 					className={clsx(
 						"flex gap-2 transition-[margin] duration-500 ease-in-out",
 						!docsMinimized &&
-							(currentStep === "source" || currentStep === "destination")
+							(currentStep === JOB_CREATION_STEPS.SOURCE ||
+								currentStep === JOB_CREATION_STEPS.DESTINATION)
 							? "mr-[40%]"
 							: "mr-[4%]",
 					)}
 				>
-					{currentStep === "schema" && jobId && (
+					{currentStep === JOB_CREATION_STEPS.CONFIG && jobId && (
 						<button
 							className="flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-1 font-light text-primary hover:bg-primary-50"
-							onClick={handleSaveStreams}
+							onClick={handleJobSubmit}
 							disabled={isSubmitting}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
@@ -540,12 +531,12 @@ const JobEdit: React.FC = () => {
 						onClick={handleNext}
 						disabled={isSubmitting}
 					>
-						{currentStep === "config"
+						{currentStep === JOB_CREATION_STEPS.STREAMS
 							? isSubmitting
 								? "Saving..."
 								: "Finish"
 							: "Next"}
-						{currentStep !== "config" && (
+						{currentStep !== JOB_CREATION_STEPS.STREAMS && (
 							<ArrowRight className="size-4 text-white" />
 						)}
 					</button>

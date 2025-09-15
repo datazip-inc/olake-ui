@@ -1,5 +1,6 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { NavItem } from "../types"
+import { JobCreationSteps, NavItem } from "../types"
+import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -57,12 +58,12 @@ export const STATUS_LABELS = {
 	CANCELLED: "Cancelled",
 }
 
-export const JOB_CREATION_STEPS = {
+export const JOB_CREATION_STEPS: Record<string, JobCreationSteps> = {
 	SOURCE: "source",
 	DESTINATION: "destination",
-	SCHEMA: "schema",
+	STREAMS: "streams",
 	CONFIG: "config",
-}
+} as const
 
 export const TAB_TYPES = {
 	CONFIG: "config",
@@ -93,7 +94,7 @@ export const JOB_TYPES = {
 	FAILED: "failed",
 }
 
-export const PAGE_SIZE = 8
+export const PAGE_SIZE = getResponsivePageSize()
 
 export const THEME_CONFIG = {
 	token: {
@@ -147,10 +148,10 @@ export const COLORS = {
 } as const
 
 export const steps: string[] = [
+	JOB_CREATION_STEPS.CONFIG,
 	JOB_CREATION_STEPS.SOURCE,
 	JOB_CREATION_STEPS.DESTINATION,
-	JOB_CREATION_STEPS.SCHEMA,
-	JOB_CREATION_STEPS.CONFIG,
+	JOB_CREATION_STEPS.STREAMS,
 ]
 
 export const TAB_STYLES = {
@@ -215,6 +216,31 @@ export const SYNC_MODE_MAP = {
 	STRICT_CDC: "strict_cdc",
 }
 
+export const JOB_STEP_NUMBERS = {
+	CONFIG: 1,
+	SOURCE: 2,
+	DESTINATION: 3,
+	STREAMS: 4,
+} as const
+
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
+
+export const FORMAT_OPTIONS = {
+	DYNAMIC: "dynamic",
+	CUSTOM: "custom",
+} as const
+
+export const NAMESPACE_PLACEHOLDER = "_${source_namespace}"
+
+export const LABELS = {
+	S3: {
+		title: "S3 Folder Name",
+		folderType: "S3",
+	},
+	ICEBERG: {
+		title: "Iceberg Database Name",
+		folderType: "Iceberg DB",
+	},
+} as const

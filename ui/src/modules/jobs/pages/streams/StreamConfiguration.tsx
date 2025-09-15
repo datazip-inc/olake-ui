@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { formatDestinationPath } from "../../../../utils/destination-database"
 import clsx from "clsx"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import {
@@ -419,7 +420,7 @@ const StreamConfiguration = ({
 			[]) as string[]
 
 		return cursorFields
-			.filter(key => properties[key.toLowerCase()])
+			.filter(key => properties[key])
 			.sort((a, b) => {
 				const aIsPK = primaryKeys.includes(a)
 				const bIsPK = primaryKeys.includes(b)
@@ -428,7 +429,7 @@ const StreamConfiguration = ({
 				return a.localeCompare(b)
 			})
 			.map(key => {
-				const types = properties[key.toLowerCase()].type
+				const types = properties[key].type
 				// Get the first non-null type as primary type
 				const primaryType = Array.isArray(types)
 					? types.find(t => t !== "null") || types[0]
@@ -937,10 +938,38 @@ const StreamConfiguration = ({
 		</div>
 	)
 
+	const formatDestination = () => {
+		return formatDestinationPath(
+			stream?.stream?.destination_database,
+			stream?.stream?.destination_table,
+		)
+	}
+
 	// Main render
 	return (
 		<div>
-			<div className="pb-4 font-medium">{stream.stream.name}</div>
+			<div className="flex items-center justify-between gap-4 pb-4 font-medium">
+				<span>{stream.stream.name}</span>
+				{formatDestination() && (
+					<div className="min-w-0 flex-shrink">
+						<Tooltip
+							title={`${formatDestination()}`}
+							placement="top"
+						>
+							<div className="max-w-full rounded-lg bg-background-primary px-3 py-1">
+								<div className="flex min-w-0 items-center gap-1 text-sm">
+									<span className="whitespace-nowrap font-medium">
+										Destination:
+									</span>
+									<span className="min-w-0 flex-1 truncate font-normal">
+										{formatDestination()}
+									</span>
+								</div>
+							</div>
+						</Tooltip>
+					</div>
+				)}
+			</div>
 			<div className="mb-4 w-full">
 				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton
