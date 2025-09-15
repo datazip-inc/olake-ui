@@ -25,7 +25,15 @@ var (
 	DefaultSpecVersion        = "v0.2.0"
 )
 
-var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
+var RequiredConfigVariable = []string{
+	"POSTGRES_DB_USER",
+	"POSTGRES_DB_PASSWORD",
+	"POSTGRES_DB_HOST",
+	"POSTGRES_DB_PORT",
+	"POSTGRES_DB_NAME",
+	"POSTGRES_DB_SSLMODE",
+	"copyrequestbody",
+	"logsdir"}
 
 func Init() {
 	viper.AutomaticEnv()
