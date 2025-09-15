@@ -13,6 +13,7 @@ type DockerCommandParams struct {
 
 // ActivityParams contains parameters for Docker command activities
 type ActivityParams struct {
+	DestinationType string
 	SourceType      string
 	Version         string
 	Config          string
@@ -23,7 +24,7 @@ type ActivityParams struct {
 	WorkflowID      string
 	StreamsConfig   string
 	Flag            string
-	DestinationType string
+	JobName         string
 }
 
 // SyncParams contains parameters for sync activities
