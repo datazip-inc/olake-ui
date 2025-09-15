@@ -1,5 +1,6 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
 import { JobCreationSteps, NavItem } from "../types"
+import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
 	{
@@ -93,7 +94,7 @@ export const JOB_TYPES = {
 	FAILED: "failed",
 }
 
-export const PAGE_SIZE = 8
+export const PAGE_SIZE = getResponsivePageSize()
 
 export const THEME_CONFIG = {
 	token: {

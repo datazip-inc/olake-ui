@@ -471,6 +471,11 @@ export const withAbortController = <T>(
 	}
 }
 
+export const getResponsivePageSize = () => {
+	const screenHeight = window.innerHeight
+	return screenHeight >= 900 ? 8 : 6
+}
+
 export const validateAlphanumericUnderscore = (
 	value: string,
 ): { validValue: string; errorMessage: string } => {
