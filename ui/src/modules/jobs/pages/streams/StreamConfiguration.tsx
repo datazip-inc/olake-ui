@@ -966,7 +966,7 @@ const StreamConfiguration = ({
 									title={`${formatDestination()}`}
 									placement="top"
 								>
-									<span className="min-w-0 flex-1 truncate font-normal">
+									<span className="min-w-0 flex-1 truncate pl-1 font-normal">
 										{formatDestination()}
 									</span>
 								</Tooltip>
