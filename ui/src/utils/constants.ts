@@ -207,6 +207,12 @@ export const FREQUENCY_OPTIONS = [
 export const PartitioningRegexTooltip =
 	"Choose a column to partition your data for faster reads and better performance"
 
+export const DESTINATION_TABLE_TOOLTIP_TEXT =
+	"Defines the table’s appearance and its destination database where it will be stored"
+
+export const DESTINATATION_DATABASE_TOOLTIP_TEXT =
+	"The name of the destination database where synced tables will be accessible for querying"
+
 export const DISPLAYED_JOBS_COUNT = 5
 
 export const SYNC_MODE_MAP = {
