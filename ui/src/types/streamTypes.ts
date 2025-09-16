@@ -84,6 +84,7 @@ export interface SelectedStream {
 	partition_regex: string
 	normalization: boolean
 	filter?: string
+	disabled?: boolean
 }
 
 export interface StreamsDataStructure {

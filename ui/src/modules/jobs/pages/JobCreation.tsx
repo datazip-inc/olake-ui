@@ -10,6 +10,7 @@ import { destinationService, sourceService } from "../../../api"
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
 	getConnectorInLowerCase,
+	getSelectedStreams,
 	validateCronExpression,
 } from "../../../utils/utils"
 import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
@@ -180,7 +181,10 @@ const JobCreation: React.FC = () => {
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
-			streams_config: JSON.stringify(selectedStreams),
+			streams_config: JSON.stringify({
+				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
+				streams: selectedStreams.streams,
+			}),
 			frequency: cronExpression,
 		}
 

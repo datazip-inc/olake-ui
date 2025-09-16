@@ -65,18 +65,20 @@ const StreamsCollapsibleList = ({
 
 				if ("selected_streams" in selectedStreams) {
 					// CombinedStreamsData format
-					isStreamSelected = !!(selectedStreams as any).selected_streams[
+					const selectedStream = (selectedStreams as any).selected_streams[
 						ns
-					]?.some(
-						(selected: { stream_name: string }) =>
+					]?.find(
+						(selected: { stream_name: string; disabled?: boolean }) =>
 							selected.stream_name === streamName,
 					)
+					isStreamSelected = !!(selectedStream && !selectedStream.disabled)
 				} else {
 					// Regular mapping format
-					isStreamSelected = !!(selectedStreams as any)[ns]?.some(
-						(selected: { stream_name: string }) =>
+					const selectedStream = (selectedStreams as any)[ns]?.find(
+						(selected: { stream_name: string; disabled?: boolean }) =>
 							selected.stream_name === streamName,
 					)
+					isStreamSelected = !!(selectedStream && !selectedStream.disabled)
 				}
 
 				newCheckedStatus.streams[ns][streamName] = isStreamSelected

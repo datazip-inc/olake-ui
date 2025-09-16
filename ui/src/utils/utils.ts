@@ -1,7 +1,7 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult } from "../types"
+import { CronParseResult, SelectedStream } from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -488,4 +488,15 @@ export const handleSpecResponse = (
 		setSchema({})
 		setUiSchema({})
 	}
+}
+
+export const getSelectedStreams = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): { [key: string]: SelectedStream[] } => {
+	return Object.fromEntries(
+		Object.entries(selectedStreams).map(([key, streams]) => [
+			key,
+			streams.filter(stream => !stream.disabled),
+		]),
+	)
 }

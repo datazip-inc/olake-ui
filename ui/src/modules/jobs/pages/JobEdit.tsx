@@ -25,6 +25,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
+	getSelectedStreams,
 	validateCronExpression,
 } from "../../../utils/utils"
 import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
@@ -312,7 +313,12 @@ const JobEdit: React.FC = () => {
 			streams_config:
 				typeof selectedStreams === "string"
 					? selectedStreams
-					: JSON.stringify(selectedStreams),
+					: JSON.stringify({
+							selectedStreams: getSelectedStreams(
+								selectedStreams.selected_streams,
+							),
+							streams: selectedStreams.streams,
+						}),
 			frequency: cronExpression,
 			activate: job?.activate,
 		}
