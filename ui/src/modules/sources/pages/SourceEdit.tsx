@@ -676,7 +676,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}/config`}
+						docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}
