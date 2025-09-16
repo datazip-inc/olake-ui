@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/gob"
 	"fmt"
+	"net/url"
 
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/core/logs"
@@ -75,10 +76,10 @@ func Init() error {
 func BuildPostgresURIFromConfig() (string, error) {
 	logs.Info("Building Postgres URI from config")
 
-	// First, check if postgresdb is set directly
 	if dsn, err := web.AppConfig.String("postgresdb"); err == nil && dsn != "" {
 		return dsn, nil
 	}
+
 	user, err := web.AppConfig.String("POSTGRES_DB_USER")
 	if err != nil {
 		return "", fmt.Errorf("missing POSTGRES_DB_USER: %w", err)
@@ -109,8 +110,16 @@ func BuildPostgresURIFromConfig() (string, error) {
 		return "", fmt.Errorf("missing POSTGRES_DB_SSLMODE: %w", err)
 	}
 
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		user, password, host, port, dbName, sslMode,
-	), nil
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+		Path:   "/" + url.PathEscape(dbName),
+	}
+
+	query := u.Query()
+	query.Set("sslmode", sslMode)
+	u.RawQuery = query.Encode()
+
+	return u.String(), nil
 }
