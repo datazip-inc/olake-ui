@@ -26,6 +26,7 @@ import {
 import {
 	CARD_STYLE,
 	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_TABLE_TOOLTIP_TEXT,
 	PartitioningRegexTooltip,
 	SYNC_MODE_MAP,
 	TAB_STYLES,
@@ -952,21 +953,25 @@ const StreamConfiguration = ({
 				<span>{stream.stream.name}</span>
 				{formatDestination() && (
 					<div className="min-w-0 flex-shrink">
-						<Tooltip
-							title={`${formatDestination()}`}
-							placement="top"
-						>
-							<div className="max-w-full rounded-lg bg-background-primary px-3 py-1">
-								<div className="flex min-w-0 items-center gap-1 text-sm">
-									<span className="whitespace-nowrap font-medium">
-										Destination:
-									</span>
-									<span className="min-w-0 flex-1 truncate font-normal">
+						<div className="max-w-full rounded-lg bg-background-primary px-3 py-1">
+							<div className="flex min-w-0 items-center text-sm">
+								<div className="flex items-center whitespace-nowrap font-medium">
+									Destination Table{" "}
+									<Tooltip title={DESTINATION_TABLE_TOOLTIP_TEXT}>
+										<Info className="size-5 cursor-help items-center px-0.5 text-gray-500" />
+									</Tooltip>{" "}
+									:
+								</div>
+								<Tooltip
+									title={`${formatDestination()}`}
+									placement="top"
+								>
+									<span className="min-w-0 flex-1 truncate pl-1 font-normal">
 										{formatDestination()}
 									</span>
-								</div>
+								</Tooltip>
 							</div>
-						</Tooltip>
+						</div>
 					</div>
 				)}
 			</div>
