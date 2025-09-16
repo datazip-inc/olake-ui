@@ -16,7 +16,7 @@ import StreamConfiguration from "./streams/StreamConfiguration"
 import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
 import {
 	DESTINATION_INTERNAL_TYPES,
-	DestinationDatabaseTooltipText,
+	DESTINATATION_DATABASE_TOOLTIP_TEXT,
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
@@ -572,7 +572,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								}`}
 							>
 								<div className="absolute -right-2 -top-2">
-									<Tooltip title={DestinationDatabaseTooltipText}>
+									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
 											<Info className="size-4 cursor-help text-primary" />
 										</div>

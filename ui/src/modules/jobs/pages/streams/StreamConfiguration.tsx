@@ -26,7 +26,7 @@ import {
 import {
 	CARD_STYLE,
 	DESTINATION_INTERNAL_TYPES,
-	DestinationTableToolTipText,
+	DESTINATION_TABLE_TOOLTIP_TEXT,
 	PartitioningRegexTooltip,
 	SYNC_MODE_MAP,
 	TAB_STYLES,
@@ -957,7 +957,7 @@ const StreamConfiguration = ({
 							<div className="flex min-w-0 items-center text-sm">
 								<div className="flex items-center whitespace-nowrap font-medium">
 									Destination Table{" "}
-									<Tooltip title={DestinationTableToolTipText}>
+									<Tooltip title={DESTINATION_TABLE_TOOLTIP_TEXT}>
 										<Info className="size-5 cursor-help items-center px-0.5 text-gray-500" />
 									</Tooltip>{" "}
 									:
