@@ -13,8 +13,11 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
-import { PencilSimple } from "@phosphor-icons/react"
-import { DESTINATION_INTERNAL_TYPES } from "../../../utils/constants"
+import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	DestinationDatabaseTooltipText,
+} from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
 
@@ -560,37 +563,56 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 				<div className="flex w-4/5 justify-between gap-2">
 					{destinationDatabase && (
-						<div className="flex w-1/2 items-center justify-start gap-2">
+						<div className="flex w-1/2 items-center justify-start gap-1">
 							<div
-								className={`rounded-md border border-neutral-disabled p-1.5 ${
+								className={`group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 ${
 									fromJobEditFlow
 										? "cursor-not-allowed bg-gray-50"
-										: "cursor-pointer hover:bg-gray-50"
+										: "hover:border-blue-200 hover:shadow-md"
 								}`}
-								onClick={
-									fromJobEditFlow
-										? undefined
-										: () => setShowDestinationDatabaseModal(true)
-								}
 							>
-								<div className="flex items-center rounded px-1 py-0.5 text-sm">
-									<div className="mr-1 whitespace-nowrap font-medium">
+								<div className="absolute -right-2 -top-2">
+									<Tooltip title={DestinationDatabaseTooltipText}>
+										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
+											<Info className="size-4 cursor-help text-primary" />
+										</div>
+									</Tooltip>
+								</div>
+
+								<div className="flex items-center">
+									<div className="font-medium text-gray-700">
 										{destinationType === DESTINATION_INTERNAL_TYPES.S3
-											? "S3 Folder: "
-											: "IcebergDB: "}
+											? "S3 Folder"
+											: "Iceberg DB"}
 									</div>
-									{destinationDatabase}
-									{!fromJobEditFlow && (
-										<Tooltip
-											title="Edit"
-											placement="top"
-										>
-											<PencilSimple
-												className="ml-1 size-4 cursor-pointer hover:text-blue-600"
-												onClick={() => setShowDestinationDatabaseModal(true)}
-											/>
+
+									<span className="px-1">:</span>
+
+									<div className="text-gray-600">{destinationDatabase}</div>
+
+									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
+										{!fromJobEditFlow && (
+											<Tooltip
+												title="Edit"
+												placement="top"
+											>
+												<PencilSimple
+													className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
+													onClick={() => setShowDestinationDatabaseModal(true)}
+												/>
+											</Tooltip>
+										)}
+										<Tooltip title="View Documentation">
+											<a
+												href="https://olake.io/docs/understanding/terminologies/olake#7-tablecolumn-normalization--destination-database-creation"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex items-center text-gray-600 transition-colors hover:text-primary"
+											>
+												<ArrowSquareOut className="size-4" />
+											</a>
 										</Tooltip>
-									)}
+									</div>
 								</div>
 							</div>
 						</div>
