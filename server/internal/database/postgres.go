@@ -76,10 +76,10 @@ func Init() error {
 func BuildPostgresURIFromConfig() (string, error) {
 	logs.Info("Building Postgres URI from config")
 
+	// First, check if postgresdb is set directly
 	if dsn, err := web.AppConfig.String("postgresdb"); err == nil && dsn != "" {
 		return dsn, nil
 	}
-
 	user, err := web.AppConfig.String("POSTGRES_DB_USER")
 	if err != nil {
 		return "", fmt.Errorf("missing POSTGRES_DB_USER: %w", err)
