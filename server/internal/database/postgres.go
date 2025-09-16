@@ -81,35 +81,12 @@ func BuildPostgresURIFromConfig() (string, error) {
 		return dsn, nil
 	}
 
-	user, err := web.AppConfig.String("POSTGRES_DB_USER")
-	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_USER: %s", err)
-	}
-
-	password, err := web.AppConfig.String("POSTGRES_DB_PASSWORD")
-	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_PASSWORD: %s", err)
-	}
-
-	host, err := web.AppConfig.String("POSTGRES_DB_HOST")
-	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_HOST: %s", err)
-	}
-
-	port, err := web.AppConfig.String("POSTGRES_DB_PORT")
-	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_PORT: %s", err)
-	}
-
-	dbName, err := web.AppConfig.String("POSTGRES_DB_NAME")
-	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_NAME: %s", err)
-	}
-
-	sslMode, err := web.AppConfig.String("POSTGRES_DB_SSLMODE")
-	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_SSLMODE: %s", err)
-	}
+	user, _ := web.AppConfig.String("OLAKE_POSTGRES_USER")
+	password, _ := web.AppConfig.String("OLAKE_POSTGRES_PASSWORD")
+	host, _ := web.AppConfig.String("OLAKE_POSTGRES_HOST")
+	port, _ := web.AppConfig.String("OLAKE_POSTGRES_PORT")
+	dbName, _ := web.AppConfig.String("OLAKE_POSTGRES_DBNAME")
+	sslMode, _ := web.AppConfig.String("OLAKE_POSTGRES_SSLMODE")
 
 	u := &url.URL{
 		Scheme: "postgres",
