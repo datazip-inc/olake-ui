@@ -80,34 +80,35 @@ func BuildPostgresURIFromConfig() (string, error) {
 	if dsn, err := web.AppConfig.String("postgresdb"); err == nil && dsn != "" {
 		return dsn, nil
 	}
+
 	user, err := web.AppConfig.String("POSTGRES_DB_USER")
 	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_USER: %w", err)
+		return "", fmt.Errorf("missing POSTGRES_DB_USER: %s", err)
 	}
 
 	password, err := web.AppConfig.String("POSTGRES_DB_PASSWORD")
 	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_PASSWORD: %w", err)
+		return "", fmt.Errorf("missing POSTGRES_DB_PASSWORD: %s", err)
 	}
 
 	host, err := web.AppConfig.String("POSTGRES_DB_HOST")
 	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_HOST: %w", err)
+		return "", fmt.Errorf("missing POSTGRES_DB_HOST: %s", err)
 	}
 
 	port, err := web.AppConfig.String("POSTGRES_DB_PORT")
 	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_PORT: %w", err)
+		return "", fmt.Errorf("missing POSTGRES_DB_PORT: %s", err)
 	}
 
 	dbName, err := web.AppConfig.String("POSTGRES_DB_NAME")
 	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_NAME: %w", err)
+		return "", fmt.Errorf("missing POSTGRES_DB_NAME: %s", err)
 	}
 
 	sslMode, err := web.AppConfig.String("POSTGRES_DB_SSLMODE")
 	if err != nil {
-		return "", fmt.Errorf("missing POSTGRES_DB_SSLMODE: %w", err)
+		return "", fmt.Errorf("missing POSTGRES_DB_SSLMODE: %s", err)
 	}
 
 	u := &url.URL{
