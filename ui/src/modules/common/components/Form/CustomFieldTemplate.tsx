@@ -208,11 +208,11 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 
 	// --- Render ---
 	return (
-		<div className="mb-4">
+		<div className="mb-2">
 			{shouldShowLabel && (
 				<label
 					htmlFor={id}
-					className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700"
+					className="mb-2 mt-1 flex items-center gap-1 text-sm font-medium text-gray-700"
 				>
 					{labelText}
 					{required && <span className="text-red-500">*</span>}
