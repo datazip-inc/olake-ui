@@ -101,6 +101,9 @@ const CreateDestination = forwardRef<
 		const [schema, setSchema] = useState<any>(null)
 		const [loading, setLoading] = useState(false)
 		const [uiSchema, setUiSchema] = useState<any>(null)
+		const [existingDestination, setExistingDestination] = useState<
+			string | null
+		>(null)
 		const [filteredDestinations, setFilteredDestinations] = useState<
 			ExtendedDestination[]
 		>([])
@@ -397,6 +400,14 @@ const CreateDestination = forwardRef<
 		const handleConnectorChange = (value: string) => {
 			setFormData({})
 			setSchema(null)
+			setExistingDestination(null)
+
+			if (onDestinationNameChange) onDestinationNameChange("")
+			if (onVersionChange) onVersionChange("")
+
+			if (onFormDataChange) onFormDataChange({})
+			setDestinationName("")
+			setFormData({})
 			setConnector(value as ConnectorType)
 			if (onConnectorChange) {
 				onConnectorChange(value)
@@ -446,6 +457,7 @@ const CreateDestination = forwardRef<
 			if (onFormDataChange) onFormDataChange(configObj)
 			setDestinationName(selectedDestination.name)
 			setFormData(configObj)
+			setExistingDestination(value)
 		}
 
 		const handleVersionChange = (value: string) => {
@@ -543,7 +555,7 @@ const CreateDestination = forwardRef<
 								placeholder="Select a destination"
 								className="w-full"
 								onChange={handleExistingDestinationSelect}
-								value={undefined}
+								value={existingDestination}
 								options={filteredDestinations.map(d => ({
 									value: d.id,
 									label: d.name,

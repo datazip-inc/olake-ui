@@ -75,6 +75,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [loading, setLoading] = useState(false)
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
+		const [existingSource, setExistingSource] = useState<string | null>(null)
 
 		const navigate = useNavigate()
 
@@ -311,9 +312,21 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setFormData({})
 			setSchema(null)
 			setConnector(value)
+			setExistingSource(null)
 			if (onConnectorChange) {
 				onConnectorChange(value)
 			}
+			if (onSourceNameChange) {
+				onSourceNameChange("")
+			}
+			if (onVersionChange) {
+				onVersionChange("")
+			}
+			if (onFormDataChange) {
+				onFormDataChange("")
+			}
+			setSourceName("")
+			setSelectedVersion("")
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
@@ -357,6 +370,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				if (onFormDataChange) {
 					onFormDataChange(selectedSource.config)
 				}
+				setExistingSource(value)
 				setSourceName(selectedSource.name)
 				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
@@ -460,7 +474,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						placeholder="Select a source"
 						className="w-full"
 						onChange={handleExistingSourceSelect}
-						value={undefined}
+						value={existingSource}
 						options={filteredSources.map(s => ({
 							value: s.id,
 							label: s.name,
