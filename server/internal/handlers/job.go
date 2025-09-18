@@ -175,7 +175,7 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	// telemetry events
-	telemetry.TrackJobCreation(c.Ctx.Request.Context(), job)
+	telemetry.TrackJobCreation(context.Background(), job)
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
