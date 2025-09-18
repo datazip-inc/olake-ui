@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/datazip/olake-frontend/server/internal/docker"
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"go.temporal.io/sdk/activity"
 )
@@ -30,6 +31,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 		params.Config,
 		params.WorkflowID,
 		params.StreamsConfig,
+		params.JobName,
 	)
 	if err != nil {
 		logger.Error("Sync command failed", "error", err)
@@ -39,11 +41,11 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 	return result, nil
 }
 
-// // GetSpecActivity runs the spec command to get connector specifications
-// func GetSpecActivity(ctx context.Context, params ActivityParams) (map[string]interface{}, error) {
-// 	params.Command = docker.Spec
-// 	return ExecuteDockerCommandActivity(ctx, params)
-// }
+// FetchSpecActivity runs the spec command to get connector specifications
+func FetchSpecActivity(ctx context.Context, params *ActivityParams) (models.SpecOutput, error) {
+	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	return runner.FetchSpec(ctx, params.DestinationType, params.SourceType, params.Version, params.WorkflowID)
+}
 
 // TestConnectionActivity runs the check command to test connection
 func TestConnectionActivity(ctx context.Context, params *ActivityParams) (map[string]interface{}, error) {

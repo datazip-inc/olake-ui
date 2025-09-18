@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
@@ -10,6 +10,8 @@ import {
 	PencilSimple,
 	Info,
 } from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
+import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService, jobService } from "../../../api"
@@ -19,8 +21,9 @@ import {
 	getConnectorInLowerCase,
 	getStatusClass,
 	getStatusLabel,
+	handleSpecResponse,
+	withAbortController,
 } from "../../../utils/utils"
-import FixedSchemaForm from "../../../utils/FormFix"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
 import DeleteModal from "../../common/Modals/DeleteModal"
@@ -33,7 +36,12 @@ import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
+	transformErrors,
 } from "../../../utils/constants"
+import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -42,11 +50,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	initialData,
 	onNameChange,
 	onConnectorChange,
-	onFormDataChange,
 	onVersionChange,
 	docsMinimized = false,
 	onDocsMinimizedChange,
 }) => {
+	const formRef = useRef<any>(null)
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
 	const [activeTab, setActiveTab] = useState("config")
@@ -62,7 +70,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [source, setSource] = useState<Entity | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [loadingVersions, setLoadingVersions] = useState(false)
-	const [schema, setSchema] = useState<Record<string, any> | null>(null)
+	const [schema, setSchema] = useState<any>(null)
+	const [uiSchema, setUiSchema] = useState<any>(null)
 
 	const {
 		sources,
@@ -141,30 +150,23 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			return
 		}
 
-		const fetchSourceSpec = async () => {
-			try {
-				setLoading(true)
-				const response = await sourceService.getSourceSpec(
+		setLoading(true)
+		return withAbortController(
+			signal =>
+				sourceService.getSourceSpec(
 					connector as string,
 					selectedVersion,
-				)
-				if (response.success && response.data?.spec) {
-					setSchema(response.data.spec)
-				} else {
-					console.error("Failed to get source spec:", response.message)
-				}
-			} catch (error) {
+					signal,
+				),
+			response =>
+				handleSpecResponse(response, setSchema, setUiSchema, "source"),
+			error => {
+				setSchema({})
+				setUiSchema({})
 				console.error("Error fetching source spec:", error)
-			} finally {
-				setLoading(false)
-			}
-		}
-
-		fetchSourceSpec()
-
-		return () => {
-			setLoading(false)
-		}
+			},
+			() => setLoading(false),
+		)
 	}, [connector, selectedVersion])
 
 	const resetVersionState = () => {
@@ -591,17 +593,28 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											</div>
 										) : (
 											schema && (
-												<FixedSchemaForm
+												<Form
+													ref={formRef}
 													schema={schema}
-													formData={formData}
-													onChange={(updatedFormData: Record<string, any>) => {
-														setFormData(updatedFormData)
-														if (onFormDataChange) {
-															onFormDataChange(updatedFormData)
-														}
+													templates={{
+														ObjectFieldTemplate,
+														FieldTemplate: CustomFieldTemplate,
+														ArrayFieldTemplate,
+														ButtonTemplates: {
+															SubmitButton: () => null,
+														},
 													}}
-													hideSubmit={true}
+													widgets={widgets}
+													formData={formData}
+													onChange={e => setFormData(e.formData)}
+													transformErrors={transformErrors}
+													onSubmit={() => handleSave()}
+													uiSchema={uiSchema}
+													validator={validator}
 													disabled={fromJobFlow}
+													showErrorList={false}
+													omitExtraData
+													liveOmit
 												/>
 											)
 										)}
@@ -649,7 +662,11 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								<div className="flex space-x-4">
 									<button
 										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={handleSave}
+										onClick={() => {
+											if (formRef.current) {
+												formRef.current.submit()
+											}
+										}}
 									>
 										Save changes
 									</button>
@@ -659,7 +676,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}/config`}
+						docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

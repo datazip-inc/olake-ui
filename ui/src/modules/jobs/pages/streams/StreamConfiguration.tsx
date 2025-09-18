@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { formatDestinationPath } from "../../../../utils/destination-database"
 import clsx from "clsx"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import {
@@ -25,6 +26,7 @@ import {
 import {
 	CARD_STYLE,
 	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_TABLE_TOOLTIP_TEXT,
 	PartitioningRegexTooltip,
 	SYNC_MODE_MAP,
 	TAB_STYLES,
@@ -49,9 +51,12 @@ const StreamConfiguration = ({
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
-	const [normalisation, setNormalisation] =
+	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
+	const [streamFilterStates, setStreamFilterStates] = useState<
+		Record<string, boolean>
+	>({})
 	const [partitionRegex, setPartitionRegex] = useState("")
 	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
 	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
@@ -77,6 +82,9 @@ const StreamConfiguration = ({
 	const [initialJobStreams, setInitialJobStreams] = useState<
 		CombinedStreamsData | undefined
 	>(undefined)
+
+	// Unique stream key
+	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	useEffect(() => {
 		// Set initial streams only once when component mounts
@@ -110,9 +118,11 @@ const StreamConfiguration = ({
 		}
 
 		setSyncMode(initialApiSyncMode ?? "full_refresh")
-		setNormalisation(initialNormalization)
+		setNormalization(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
+
+		// Get the current stream key
 
 		// Parse initial filter if exists
 		if (initialFullLoadFilter) {
@@ -151,6 +161,11 @@ const StreamConfiguration = ({
 					logicalOperator,
 				})
 				setFullLoadFilter(true)
+				// Store the filter state for this stream
+				setStreamFilterStates(prev => ({
+					...prev,
+					[streamKey]: true,
+				}))
 			}
 		} else {
 			setMultiFilterCondition({
@@ -163,13 +178,16 @@ const StreamConfiguration = ({
 				],
 				logicalOperator: "and",
 			})
-			setFullLoadFilter(false)
+			// Restore filter state for this stream or default to false
+			const savedFilterState = streamFilterStates[streamKey] || false
+			setFullLoadFilter(savedFilterState)
 		}
 
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
 			sync_mode: initialApiSyncMode,
 			partition_regex: initialPartitionRegex || "",
+			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
 	}, [stream, initialNormalization, initialFullLoadFilter])
 
@@ -214,7 +232,7 @@ const StreamConfiguration = ({
 	}
 
 	const handleNormalizationChange = (checked: boolean) => {
-		setNormalisation(checked)
+		setNormalization(checked)
 		onNormalizationChange(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -258,6 +276,12 @@ const StreamConfiguration = ({
 
 	const handleFullLoadFilterChange = (checked: boolean) => {
 		setFullLoadFilter(checked)
+		// Persist the filter state for this stream
+		setStreamFilterStates(prev => ({
+			...prev,
+			[streamKey]: checked,
+		}))
+
 		if (!checked) {
 			setMultiFilterCondition({
 				conditions: [
@@ -397,7 +421,7 @@ const StreamConfiguration = ({
 			[]) as string[]
 
 		return cursorFields
-			.filter(key => properties[key.toLowerCase()])
+			.filter(key => properties[key])
 			.sort((a, b) => {
 				const aIsPK = primaryKeys.includes(a)
 				const bIsPK = primaryKeys.includes(b)
@@ -406,7 +430,7 @@ const StreamConfiguration = ({
 				return a.localeCompare(b)
 			})
 			.map(key => {
-				const types = properties[key.toLowerCase()].type
+				const types = properties[key].type
 				// Get the first non-null type as primary type
 				const primaryType = Array.isArray(types)
 					? types.find(t => t !== "null") || types[0]
@@ -622,10 +646,13 @@ const StreamConfiguration = ({
 														placeholder="Select default"
 														value={fallBackCursorField}
 														onChange={(value: string) => {
-															const newCursorField = value
-																? `${stream.stream.cursor_field}:${value}`
-																: stream.stream.cursor_field
-															stream.stream.cursor_field = newCursorField
+															const [field] = (
+																stream.stream.cursor_field ?? ""
+															).split(":")
+
+															stream.stream.cursor_field = value
+																? `${field}:${value}`
+																: field
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,
@@ -672,9 +699,9 @@ const StreamConfiguration = ({
 					)}
 				>
 					<div className="flex items-center justify-between">
-						<label>Normalisation</label>
+						<label>Normalization</label>
 						<Switch
-							checked={normalisation}
+							checked={normalization}
 							onChange={handleNormalizationChange}
 							disabled={!isSelected || isStreamInInitialSelection}
 						/>
@@ -683,7 +710,7 @@ const StreamConfiguration = ({
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 						<Info className="size-4" />
-						Select the stream to configure Normalisation
+						Select the stream to configure Normalization
 					</div>
 				)}
 
@@ -912,10 +939,42 @@ const StreamConfiguration = ({
 		</div>
 	)
 
+	const formatDestination = () => {
+		return formatDestinationPath(
+			stream?.stream?.destination_database,
+			stream?.stream?.destination_table,
+		)
+	}
+
 	// Main render
 	return (
 		<div>
-			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
+			<div className="flex items-center justify-between gap-4 pb-4 font-medium">
+				<span>{stream.stream.name}</span>
+				{formatDestination() && (
+					<div className="min-w-0 flex-shrink">
+						<div className="max-w-full rounded-lg bg-background-primary px-3 py-1">
+							<div className="flex min-w-0 items-center text-sm">
+								<div className="flex items-center whitespace-nowrap font-medium">
+									Destination Table{" "}
+									<Tooltip title={DESTINATION_TABLE_TOOLTIP_TEXT}>
+										<Info className="size-5 cursor-help items-center px-0.5 text-gray-500" />
+									</Tooltip>{" "}
+									:
+								</div>
+								<Tooltip
+									title={`${formatDestination()}`}
+									placement="top"
+								>
+									<span className="min-w-0 flex-1 truncate pl-1 font-normal">
+										{formatDestination()}
+									</span>
+								</Tooltip>
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
 			<div className="mb-4 w-full">
 				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton

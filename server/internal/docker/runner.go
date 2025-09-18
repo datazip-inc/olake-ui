@@ -14,8 +14,10 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
+	"golang.org/x/mod/semver"
 )
 
 // Constants
@@ -127,6 +129,7 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 		return nil
 	}
 	imageName := r.GetDockerImageName(sourceType, version)
+
 	// If using ECR, ensure login before run
 	if strings.Contains(repositoryBase, "ecr") {
 		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
@@ -141,14 +144,22 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 		}
 	}
 
+	// base docker args
 	dockerArgs := []string{"run", "--rm"}
 
-	dockerArgs = append(dockerArgs,
-		"-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir),
-		imageName,
-		string(command),
-		fmt.Sprintf("--%s", flag), fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
-	)
+	if hostOutputDir != "" {
+		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
+	}
+
+	dockerArgs = append(dockerArgs, imageName, string(command))
+
+	if flag != "" {
+		dockerArgs = append(dockerArgs, fmt.Sprintf("--%s", flag))
+	}
+
+	if configPath != "" {
+		dockerArgs = append(dockerArgs, fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)))
+	}
 
 	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
 		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
@@ -165,6 +176,23 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 		return hostOutputDir
 	}
 	return outputDir
+}
+
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, _ string) (models.SpecOutput, error) {
+	flag := utils.Ternary(destinationType != "", "destination-type", "").(string)
+	dockerArgs := r.buildDockerArgs(ctx, flag, Spec, sourceType, version, "", "", destinationType)
+
+	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
+	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return models.SpecOutput{}, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
+	}
+	spec, err := utils.ExtractJSON(string(output))
+	if err != nil {
+		return models.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
+	}
+	return models.SpecOutput{Spec: spec}, nil
 }
 
 // TestConnection runs the check command and returns connection status
@@ -191,29 +219,34 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 
 	logs.Info("check command output: %s\n", string(output))
 
-	logMsg, err := utils.ExtractAndParseLastLogMessage(output)
+	logMsg, err := utils.ExtractJSON(string(output))
 	if err != nil {
 		return nil, err
 	}
 
-	if logMsg.ConnectionStatus == nil {
+	connectionStatus, ok := logMsg["connectionStatus"].(map[string]interface{})
+	if !ok || connectionStatus == nil {
+		return nil, fmt.Errorf("connection status not found")
+	}
+
+	status, statusOk := connectionStatus["status"].(string)
+	message, _ := connectionStatus["message"].(string) // message is optional
+	if !statusOk {
 		return nil, fmt.Errorf("connection status not found")
 	}
 
 	return map[string]interface{}{
-		"message": logMsg.ConnectionStatus.Message,
-		"status":  logMsg.ConnectionStatus.Status,
+		"message": message,
+		"status":  status,
 	}, nil
 }
 
 // GetCatalog runs the discover command and returns catalog data
-func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, workflowID, streamsConfig string) (map[string]interface{}, error) {
+func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, workflowID, streamsConfig, jobName string) (map[string]interface{}, error) {
 	workDir, err := r.setupWorkDirectory(workflowID)
 	if err != nil {
 		return nil, err
 	}
-	logs.Info("working directory path %s\n", workDir)
-
 	configs := []FileConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
@@ -228,9 +261,10 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	catalogPath := filepath.Join(workDir, "streams.json")
 	var catalogsArgs []string
 	if streamsConfig != "" {
-		catalogsArgs = []string{
-			"--catalog", "/mnt/config/streams.json",
-		}
+		catalogsArgs = append(catalogsArgs, "--catalog", "/mnt/config/streams.json")
+	}
+	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
+		catalogsArgs = append(catalogsArgs, "--destination-database-prefix", jobName)
 	}
 	_, err = r.ExecuteDockerCommand(ctx, "config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {

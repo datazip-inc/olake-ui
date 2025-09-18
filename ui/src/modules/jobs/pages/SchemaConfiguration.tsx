@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from "react"
-import { Input, Empty, Spin } from "antd"
+import { Input, Empty, Spin, Tooltip } from "antd"
 
 import { sourceService } from "../../../api"
+import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
@@ -12,6 +13,15 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
+import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATATION_DATABASE_TOOLTIP_TEXT,
+} from "../../../utils/constants"
+import { extractNamespaceFromDestination } from "../../../utils/destination-database"
+import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+
+const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
@@ -26,8 +36,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	fromJobEditFlow = false,
 	jobId = -1,
 	destinationType,
+	jobName,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
+	const { setShowDestinationDatabaseModal } = useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -47,9 +59,41 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
 	const [loading, setLoading] = useState(!initialStreamsData)
+	// Store initial streams data for reference
+	const [initialStreamsState, setInitialStreamsState] =
+		useState(initialStreamsData)
 
 	// Use ref to track if we've initialized to prevent double updates
 	const initialized = useRef(false)
+
+	// Check if first stream has destination_database and compute values
+	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
+		if (!apiResponse?.streams || apiResponse.streams.length === 0) {
+			return { destinationDatabase: null, destinationDatabaseForModal: null }
+		}
+
+		const firstStream = apiResponse.streams[0]
+		const destDb = firstStream.stream?.destination_database
+
+		if (!destDb) {
+			return { destinationDatabase: null, destinationDatabaseForModal: null }
+		}
+
+		// If it's in "a:b" format
+		if (destDb.includes(":")) {
+			const parts = destDb.split(":")
+			return {
+				destinationDatabase: `${parts[0]}_${"${source_namespace}"}`, // For display
+				destinationDatabaseForModal: parts[0], // For modal (just the prefix)
+			}
+		}
+
+		// Otherwise use full value for both
+		return {
+			destinationDatabase: destDb,
+			destinationDatabaseForModal: destDb,
+		}
+	}, [apiResponse?.streams])
 
 	useEffect(() => {
 		// Reset initialized ref when source config changes
@@ -85,6 +129,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConnector,
 					sourceVersion,
 					sourceConfig,
+					jobName,
 					fromJobEditFlow ? jobId : -1,
 				)
 
@@ -127,6 +172,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 				setApiResponse(processedResponseData)
 				setSelectedStreams(processedResponseData)
+				setInitialStreamsState(processedResponseData)
 
 				// Always select first stream if no stream is currently active
 				if (processedResponseData.streams.length > 0 && !activeStreamData) {
@@ -373,30 +419,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			return tempFilteredStreams
 		}
 
+		const showSelected = selectedFilters.includes("Selected")
+		const showNotSelected = selectedFilters.includes("Not Selected")
+
 		return tempFilteredStreams.filter(stream => {
-			const fullRefreshIsActive = selectedFilters.includes("Full Refresh")
-			const incrementalIsActive = selectedFilters.includes(
-				"Full Refresh + Incremental",
+			const ns = stream.stream.namespace || ""
+			const isSelected = apiResponse.selected_streams[ns]?.some(
+				s => s.stream_name === stream.stream.name,
 			)
-			const cdcIsActive = selectedFilters.includes("Full Refresh + CDC")
-			const strictCdcIsActive = selectedFilters.includes("CDC Only")
-
-			// Sync mode filtering
-			let passesSyncModeFilter = true
-			const activeSyncModeFilters = [
-				fullRefreshIsActive ? SyncMode.FULL_REFRESH : false,
-				incrementalIsActive ? SyncMode.INCREMENTAL : false,
-				cdcIsActive ? SyncMode.CDC : false,
-				strictCdcIsActive ? SyncMode.STRICT_CDC : false,
-			].filter((mode): mode is SyncMode => mode !== false)
-
-			if (activeSyncModeFilters.length > 0) {
-				passesSyncModeFilter = activeSyncModeFilters.includes(
-					stream.stream.sync_mode as SyncMode,
-				)
-			}
-
-			return passesSyncModeFilter
+			if (showSelected && showNotSelected) return true
+			if (showSelected) return isSelected
+			if (showNotSelected) return !isSelected
+			return false
 		})
 	}, [apiResponse, searchText, selectedFilters])
 
@@ -410,19 +444,101 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		return grouped
 	}, [filteredStreams])
 
-	const filters = [
-		"All tables",
-		"Full Refresh",
-		"Full Refresh + Incremental",
-		"Full Refresh + CDC",
-		"CDC Only",
-	]
-
 	useEffect(() => {
 		if (selectedFilters.length === 0) {
 			setSelectedFilters(["All tables"])
 		}
 	}, [selectedFilters])
+
+	// Handler for destination database modal save
+	const handleDestinationDatabaseSave = (
+		format: string,
+		databaseName: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev || prev.streams.length === 0) return prev
+
+			// Check first stream to determine format for all streams
+			const firstStreamDestDb = prev.streams[0].stream.destination_database
+			const hasColonFormat =
+				firstStreamDestDb && firstStreamDestDb.includes(":")
+
+			const updatedStreams = prev.streams.map(stream => {
+				const currentDestDb = stream.stream.destination_database
+				const currentNamespace = stream.stream.namespace
+
+				if (format === "dynamic") {
+					// Dynamic format: preserve the suffix part
+					if (hasColonFormat && currentDestDb) {
+						// If format is "a:b", change to "c:b" (databaseName:suffix)
+						const parts = currentDestDb.split(":")
+						return {
+							...stream,
+							stream: {
+								...stream.stream,
+								destination_database: `${databaseName}:${parts[1]}`,
+							},
+						}
+					} else {
+						// If no ":", set to databaseName only
+						// Find the stream in initial streams data to get its original namespace
+						const initialStream = initialStreamsState?.streams.find(
+							s =>
+								s.stream.name === stream.stream.name &&
+								s.stream.namespace === stream.stream.namespace,
+						)
+
+						// Get namespace from initial destination_database if it exists
+						const namespace = extractNamespaceFromDestination(
+							initialStream?.stream.destination_database,
+							currentNamespace || "",
+						)
+
+						return {
+							...stream,
+							stream: {
+								...stream.stream,
+								destination_database: `${databaseName}:${namespace}`,
+							},
+						}
+					}
+				} else {
+					// Custom format: set all to databaseName
+					return {
+						...stream,
+						stream: {
+							...stream.stream,
+							destination_database: databaseName,
+						},
+					}
+				}
+			})
+
+			const updated = {
+				...prev,
+				streams: updatedStreams,
+			}
+
+			// Update parent component
+			setSelectedStreams(updated)
+
+			// Update activeStreamData with the updated stream data
+			setActiveStreamData(currentActiveStream => {
+				if (!currentActiveStream) return currentActiveStream
+
+				// Find the updated version of the current active stream from updatedStreams
+				const updatedActiveStream = updatedStreams.find(
+					stream =>
+						stream.stream.name === currentActiveStream.stream.name &&
+						stream.stream.namespace === currentActiveStream.stream.namespace,
+				)
+
+				return updatedActiveStream || currentActiveStream
+			})
+
+			return updated
+		})
+	}
 
 	const { Search } = Input
 
@@ -435,8 +551,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 mr-4 flex flex-wrap justify-start gap-4">
-				<div className="w-full lg:w-[55%] xl:w-[40%]">
+			<div className="mb-4 mr-4 flex justify-between gap-4">
+				<div className="flex w-2/6 items-center">
 					<Search
 						placeholder="Search Streams"
 						allowClear
@@ -445,15 +561,74 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						onChange={e => setSearchText(e.target.value)}
 					/>
 				</div>
-				<div className="flex flex-wrap gap-2">
-					{filters.map(filter => (
-						<FilterButton
-							key={filter}
-							filter={filter}
-							selectedFilters={selectedFilters}
-							setSelectedFilters={setSelectedFilters}
-						/>
-					))}
+				<div className="flex w-4/5 justify-between gap-2">
+					{destinationDatabase && (
+						<div className="flex w-1/2 items-center justify-start gap-1">
+							<div
+								className={`group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 ${
+									fromJobEditFlow
+										? "cursor-not-allowed bg-gray-50"
+										: "hover:border-blue-200 hover:shadow-md"
+								}`}
+							>
+								<div className="absolute -right-2 -top-2">
+									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
+										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
+											<Info className="size-4 cursor-help text-primary" />
+										</div>
+									</Tooltip>
+								</div>
+
+								<div className="flex items-center">
+									<div className="font-medium text-gray-700">
+										{destinationType === DESTINATION_INTERNAL_TYPES.S3
+											? "S3 Folder"
+											: "Iceberg DB"}
+									</div>
+
+									<span className="px-1">:</span>
+
+									<div className="text-gray-600">{destinationDatabase}</div>
+
+									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
+										{!fromJobEditFlow && (
+											<Tooltip
+												title="Edit"
+												placement="top"
+											>
+												<PencilSimple
+													className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
+													onClick={() => setShowDestinationDatabaseModal(true)}
+												/>
+											</Tooltip>
+										)}
+										<Tooltip title="View Documentation">
+											<a
+												href="https://olake.io/docs/understanding/terminologies/olake#7-tablecolumn-normalization--destination-database-creation"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex items-center text-gray-600 transition-colors hover:text-primary"
+											>
+												<ArrowSquareOut className="size-4" />
+											</a>
+										</Tooltip>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+					<div
+						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+					>
+						{STREAM_FILTERS.map(filter => (
+							<FilterButton
+								key={filter}
+								filter={filter}
+								selectedFilters={selectedFilters}
+								setSelectedFilters={setSelectedFilters}
+							/>
+						))}
+					</div>
 				</div>
 			</div>
 
@@ -541,6 +716,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					) : null}
 				</div>
 			</div>
+
+			{/* Destination Database Modal */}
+			<DestinationDatabaseModal
+				destinationType={destinationType || ""}
+				destinationDatabase={destinationDatabaseForModal}
+				allStreams={apiResponse}
+				onSave={handleDestinationDatabaseSave}
+				originalDatabase={destinationDatabase || ""}
+				initialStreams={initialStreamsState || null}
+			/>
 		</div>
 	)
 }
