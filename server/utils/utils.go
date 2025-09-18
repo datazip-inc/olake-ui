@@ -292,14 +292,13 @@ func RetryWithBackoff(
 	expBackoff := backoff.NewExponentialBackOff()
 	expBackoff.InitialInterval = initialInterval
 	expBackoff.MaxInterval = maxInterval
+	expBackoff.MaxElapsedTime = 0 // Let WithMaxRetries handle retries
 
-	// If maxRetries > 0, we cap the elapsed time
+	// Wrap with max retries if > 0
+	var b backoff.BackOff = expBackoff
 	if maxRetries > 0 {
-		expBackoff.MaxElapsedTime = time.Duration(maxRetries) * maxInterval
-	} else {
-		expBackoff.MaxElapsedTime = 0 // unlimited
+		b = backoff.WithMaxRetries(expBackoff, uint64(maxRetries))
 	}
-
 	// Default notify if not provided
 	if notify == nil {
 		notify = func(err error, next time.Duration) {
@@ -308,7 +307,7 @@ func RetryWithBackoff(
 	}
 
 	// Execute the operation with retry
-	return backoff.RetryNotify(operation, expBackoff, notify)
+	return backoff.RetryNotify(operation, b, notify)
 }
 
 // ExtractJSON extracts and returns the last valid JSON block from output

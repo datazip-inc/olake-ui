@@ -73,10 +73,10 @@ func NewClient() (*Client, error) {
 			}
 			return nil
 		},
-		constants.MaxRetries, // max retries
-		1*time.Second,        // initial delay
-		2*time.Minute,        // max delay
-		nil,                  // use default notify
+		constants.MaxRetries,   // max retries
+		constants.InitialDelay, // initial delay
+		constants.MaxInterval,  // max delay
+		nil,                    // use default notify
 	)
 
 	if err != nil {
