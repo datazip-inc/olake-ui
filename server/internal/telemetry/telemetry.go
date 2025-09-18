@@ -3,6 +3,7 @@ package telemetry
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -71,7 +72,7 @@ func InitTelemetry() {
 		}()
 
 		instance = &Telemetry{
-			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
+			httpClient: &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
@@ -144,7 +145,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 }
 
 // TrackEvent sends a custom event to Segment
-func TrackEvent(ctx context.Context, eventName string, properties map[string]interface{}) error {
+func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
 	if instance.httpClient == nil {
 		return fmt.Errorf("telemetry client is nil")
 	}
@@ -181,7 +182,10 @@ func TrackEvent(ctx context.Context, eventName string, properties map[string]int
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
+	reqCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
 	if err != nil {
 		return err
 	}
