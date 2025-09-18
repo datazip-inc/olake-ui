@@ -145,7 +145,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 }
 
 // TrackEvent sends a custom event to Segment
-func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
+func TrackEvent(ctx context.Context, eventName string, properties map[string]interface{}) error {
 	if instance.httpClient == nil {
 		return fmt.Errorf("telemetry client is nil")
 	}
@@ -182,10 +182,7 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		return err
 	}
 
-	reqCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(reqCtx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
+	req, err := http.NewRequestWithContext(ctx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
 	if err != nil {
 		return err
 	}
