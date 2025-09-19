@@ -37,14 +37,17 @@ var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", 
 
 // ignoredWorkerEnv is a map of environment variables that are ignored from the worker container.
 var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) lookup time for key existence.
-	"HOSTNAME":       nil,
-	"PATH":           nil,
-	"PWD":            nil,
-	"HOME":           nil,
-	"SHLVL":          nil,
-	"TERM":           nil,
-	"PERSISTENT_DIR": nil,
-	"_":              nil,
+	"HOSTNAME":                nil,
+	"PATH":                    nil,
+	"PWD":                     nil,
+	"HOME":                    nil,
+	"SHLVL":                   nil,
+	"TERM":                    nil,
+	"PERSISTENT_DIR":          nil,
+	"CONTAINER_REGISTRY_BASE": nil,
+	"TEMPORAL_ADDRESS":        nil,
+	"OLAKE_SECRET_KEY":        nil,
+	"_":                       nil,
 }
 
 // GetWorkerEnvVars returns the environment variables from the worker container.
