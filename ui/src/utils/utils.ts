@@ -471,6 +471,24 @@ export const withAbortController = <T>(
 	}
 }
 
+export const getResponsivePageSize = () => {
+	const screenHeight = window.innerHeight
+	return screenHeight >= 900 ? 8 : 6
+}
+
+export const validateAlphanumericUnderscore = (
+	value: string,
+): { validValue: string; errorMessage: string } => {
+	const validValue = value.replace(/[^a-z0-9_]/g, "")
+	return {
+		validValue,
+		errorMessage:
+			validValue !== value
+				? "Only lowercase letters, numbers and underscores allowed"
+				: "",
+	}
+}
+
 export const handleSpecResponse = (
 	response: any,
 	setSchema: (schema: any) => void,

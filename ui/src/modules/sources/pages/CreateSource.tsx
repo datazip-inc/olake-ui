@@ -603,7 +603,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						</div>
 
 						<DocumentationPanel
-							docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}/config`}
+							docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}`}
 							isMinimized={docsMinimized}
 							onToggle={handleToggleDocPanel}
 							showResizer={true}

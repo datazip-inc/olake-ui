@@ -45,11 +45,16 @@ BACKEND_ENV_VARS = \
       HTTP_PORT=8000 \
       RUN_MODE=localdev \
       COPY_REQUEST_BODY=true \
-      POSTGRES_DB=postgres://temporal:temporal@localhost:5432/postgres?sslmode=disable \
+      OLAKE_POSTGRES_USER=temporal \
+      OLAKE_POSTGRES_PASSWORD=temporal \
+      OLAKE_POSTGRES_HOST=localhost \
+      OLAKE_POSTGRES_PORT=5432 \
+      OLAKE_POSTGRES_DBNAME=postgres \
+      OLAKE_POSTGRES_SSLMODE=disable \
       LOGS_DIR=./logger/logs \
       SESSION_ON=true \
       TEMPORAL_ADDRESS=localhost:7233 \
-	  CONTAINER_REGISTRY_BASE=registry-1.docker.io
+      CONTAINER_REGISTRY_BASE=registry-1.docker.io
 
 # Frontend environment variables
 FRONTEND_ENV_VARS = \
