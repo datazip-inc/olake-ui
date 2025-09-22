@@ -175,7 +175,7 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	// telemetry events
-	telemetry.TrackJobCreation(c.Ctx.Request.Context(), job)
+	telemetry.TrackJobCreation(context.Background(), job)
 
 	if c.tempClient != nil {
 		fmt.Println("Using Temporal workflow for sync job")
@@ -252,7 +252,7 @@ func (c *JobHandler) UpdateJob() {
 	}
 
 	// Track sources and destinations status after job update
-	telemetry.TrackJobEntity(c.Ctx.Request.Context())
+	telemetry.TrackJobEntity(context.Background())
 
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for sync job")
@@ -311,7 +311,7 @@ func (c *JobHandler) DeleteJob() {
 	}
 
 	// Track sources and destinations status after job deletion
-	telemetry.TrackJobEntity(c.Ctx.Request.Context())
+	telemetry.TrackJobEntity(context.Background())
 
 	utils.SuccessResponse(&c.Controller, models.DeleteDestinationResponse{
 		Name: jobName,
