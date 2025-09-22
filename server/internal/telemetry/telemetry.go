@@ -3,7 +3,6 @@ package telemetry
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -72,7 +71,7 @@ func InitTelemetry() {
 		}()
 
 		instance = &Telemetry{
-			httpClient: &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, Timeout: TelemetryConfigTimeout},
+			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
