@@ -14,12 +14,13 @@ COPY server/ ./
 RUN go build -o temporal-worker ./cmd/temporal-worker
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.18
 WORKDIR /app
 COPY --from=builder /app/worker/temporal-worker .
 RUN mkdir -p ./conf
 COPY server/conf/app.conf ./conf/app.conf
-RUN apk update && apk add --no-cache docker-cli
+RUN apk update && apk add --no-cache docker-cli ca-certificates ca-certificates-bundle tzdata
+RUN update-ca-certificates
 RUN mkdir -p ./logger/logs
 RUN mkdir -p /mnt/config && chmod -R 777 /mnt/config
 ENV TEMPORAL_ADDRESS="temporal:7233"
