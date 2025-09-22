@@ -35,10 +35,11 @@ COPY ui/ ./
 RUN pnpm build
 
 # Stage 3: Final Runtime Image
-FROM alpine:latest
+FROM alpine:3.18
 
 # Install docker-cli
-RUN apk update && apk add --no-cache docker-cli
+RUN apk update && apk add --no-cache docker-cli ca-certificates ca-certificates-bundle tzdata
+RUN update-ca-certificates
 
 # Set working directory
 WORKDIR /app/olake-ui
