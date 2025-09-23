@@ -14,7 +14,7 @@ COPY server/ ./
 RUN go build -o temporal-worker ./cmd/temporal-worker
 
 # Runtime stage
-FROM alpine:latest
+FROM alpine:3.18
 WORKDIR /app
 COPY --from=builder /app/worker/temporal-worker .
 RUN mkdir -p ./conf
