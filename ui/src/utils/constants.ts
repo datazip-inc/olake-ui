@@ -250,3 +250,6 @@ export const LABELS = {
 		folderType: "Iceberg DB",
 	},
 } as const
+
+export const FILTER_REGEX =
+	/^(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+)\s*(?:(and|or)\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+))?\s*$/

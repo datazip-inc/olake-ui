@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react"
 import { formatDestinationPath } from "../../../../utils/destination-database"
 import clsx from "clsx"
-import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
+import {
+	Button,
+	Divider,
+	Input,
+	message,
+	Radio,
+	Select,
+	Switch,
+	Tooltip,
+} from "antd"
 import {
 	ColumnsPlusRight,
 	GridFour,
@@ -122,8 +131,15 @@ const StreamConfiguration = ({
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
 
-		// Get the current stream key
+		setFormData((prevFormData: any) => ({
+			...prevFormData,
+			sync_mode: initialApiSyncMode,
+			partition_regex: initialPartitionRegex || "",
+			fullLoadFilter: formData.fullLoadFilter || false,
+		}))
+	}, [stream, initialNormalization])
 
+	useEffect(() => {
 		// Parse initial filter if exists
 		if (initialFullLoadFilter) {
 			const conditions: FilterCondition[] = []
@@ -172,7 +188,7 @@ const StreamConfiguration = ({
 				conditions: [
 					{
 						columnName: "",
-						operator: "=",
+						operator: "=" as FilterOperator,
 						value: "",
 					},
 				],
@@ -182,14 +198,7 @@ const StreamConfiguration = ({
 			const savedFilterState = streamFilterStates[streamKey] || false
 			setFullLoadFilter(savedFilterState)
 		}
-
-		setFormData((prevFormData: any) => ({
-			...prevFormData,
-			sync_mode: initialApiSyncMode,
-			partition_regex: initialPartitionRegex || "",
-			fullLoadFilter: formData.fullLoadFilter || false,
-		}))
-	}, [stream, initialNormalization, initialFullLoadFilter])
+	}, [])
 
 	// Add helper function for checking supported sync modes
 	const isSyncModeSupported = (mode: string): boolean => {
@@ -298,6 +307,23 @@ const StreamConfiguration = ({
 				stream.stream.namespace || "",
 				"",
 			)
+		} else {
+			// if toggled on insert empty condition
+			setMultiFilterCondition({
+				conditions: [
+					{
+						columnName: "",
+						operator: "=",
+						value: "",
+					},
+				],
+				logicalOperator: "and",
+			})
+			onFullLoadFilterChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				"=",
+			)
 		}
 	}
 
@@ -318,25 +344,18 @@ const StreamConfiguration = ({
 		}
 		setMultiFilterCondition(newMultiCondition)
 
-		// Generate filter string if all fields in any condition are filled
-		const filledConditions = newConditions.filter(
-			cond => cond.columnName && cond.operator && cond.value,
-		)
-
-		if (filledConditions.length > 0) {
-			const filterString = filledConditions
-				.map(
-					cond =>
-						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-				)
-				.join(` ${multiFilterCondition.logicalOperator} `)
-
-			onFullLoadFilterChange?.(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterString,
+		const filterString = newConditions
+			.map(
+				cond =>
+					`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
 			)
-		}
+			.join(` ${multiFilterCondition.logicalOperator} `)
+
+		onFullLoadFilterChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			filterString,
+		)
 	}
 
 	const handleLogicalOperatorChange = (value: LogicalOperator) => {
@@ -368,19 +387,39 @@ const StreamConfiguration = ({
 	}
 
 	const handleAddFilter = () => {
-		if (multiFilterCondition.conditions.length < 2) {
-			setMultiFilterCondition({
-				...multiFilterCondition,
-				conditions: [
-					...multiFilterCondition.conditions,
-					{
-						columnName: "",
-						operator: "=",
-						value: "",
-					},
-				],
-			})
+		const { conditions } = multiFilterCondition
+
+		if (conditions.length >= 2) return
+
+		if (
+			conditions.length === 1 &&
+			(!conditions[0].columnName ||
+				!conditions[0].operator ||
+				!conditions[0].value)
+		) {
+			message.error("Please complete the first filter before applying another.")
+			return
 		}
+
+		setMultiFilterCondition({
+			...multiFilterCondition,
+			conditions: [...conditions, { columnName: "", operator: "=", value: "" }],
+		})
+
+		// insert empty condition in the filter string
+		const filterString =
+			conditions
+				.map(
+					cond =>
+						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
+				)
+				.join(` ${multiFilterCondition.logicalOperator} `) + " = "
+
+		onFullLoadFilterChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			filterString,
+		)
 	}
 
 	const handleRemoveFilter = (index: number) => {

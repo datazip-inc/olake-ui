@@ -406,9 +406,19 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			const updatedSelectedStreams = {
 				...prev.selected_streams,
-				[namespace]: prev.selected_streams[namespace].map(s =>
-					s.stream_name === streamName ? { ...s, filter: filterValue } : s,
-				),
+				[namespace]: prev.selected_streams[namespace].map(s => {
+					if (s.stream_name === streamName) {
+						if (filterValue === "") {
+							// Remove the 'filter' if filterValue is empty
+							const updatedStream = { ...s }
+							delete updatedStream.filter
+							return updatedStream
+						} else {
+							return { ...s, filter: filterValue }
+						}
+					}
+					return s
+				}),
 			}
 
 			const updated = {
