@@ -480,7 +480,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									onChange={updateConnector}
 									className="h-8 w-full"
 									options={connectorOptions}
-									disabled={fromJobFlow}
+									disabled
 								/>
 							</div>
 						</div>
@@ -524,7 +524,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								value={destinationName}
 								onChange={e => updateDestinationName(e.target.value)}
 								className="h-8"
-								disabled={fromJobFlow}
+								disabled
 							/>
 						</div>
 					</div>

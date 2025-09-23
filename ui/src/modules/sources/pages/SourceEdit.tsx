@@ -526,7 +526,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														}}
 														className="h-8 w-full"
 														options={connectorOptions}
-														disabled={fromJobFlow}
+														disabled
 													/>
 												</div>
 											</div>
@@ -546,7 +546,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														}
 													}}
 													className="h-8"
-													disabled={fromJobFlow}
+													disabled
 												/>
 											</div>
 
