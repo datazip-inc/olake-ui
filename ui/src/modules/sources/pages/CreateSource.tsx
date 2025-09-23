@@ -6,8 +6,14 @@ import {
 	useRef,
 } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { message, Select, Spin } from "antd"
-import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import { message, Select, Spin, Tooltip } from "antd"
+import {
+	ArrowLeft,
+	ArrowRight,
+	ArrowSquareOut,
+	Info,
+	Notebook,
+} from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
 
@@ -19,7 +25,11 @@ import {
 	handleSpecResponse,
 	withAbortController,
 } from "../../../utils/utils"
-import { CONNECTOR_TYPES, transformErrors } from "../../../utils/constants"
+import {
+	CONNECTOR_TYPES,
+	OLAKE_LATEST_VERSION_URL,
+	transformErrors,
+} from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -415,8 +425,22 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					{renderConnectorSelection()}
 
 					<div className="w-1/2">
-						<label className="mb-2 block text-sm font-medium text-gray-700">
+						<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 							OLake Version:
+							<Tooltip title="Choose the OLake version for the source">
+								<Info
+									size={16}
+									className="cursor-help text-slate-900"
+								/>
+							</Tooltip>
+							<a
+								href={OLAKE_LATEST_VERSION_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center text-primary hover:text-primary/80"
+							>
+								<ArrowSquareOut className="size-4" />
+							</a>
 						</label>
 						{loadingVersions ? (
 							<div className="flex h-8 items-center justify-center">

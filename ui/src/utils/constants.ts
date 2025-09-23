@@ -253,3 +253,7 @@ export const LABELS = {
 
 export const FILTER_REGEX =
 	/^(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+)\s*(?:(and|or)\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+))?\s*$/
+
+export const OLAKE_LATEST_VERSION = "v0.2.0-v0.2.1"
+
+export const OLAKE_LATEST_VERSION_URL = `https://olake.io/docs/release/${OLAKE_LATEST_VERSION}`
