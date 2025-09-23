@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -104,7 +105,7 @@ func (c *DestHandler) CreateDestination() {
 	}
 
 	// Track destination creation event
-	telemetry.TrackDestinationCreation(c.Ctx.Request.Context(), destination)
+	telemetry.TrackDestinationCreation(context.Background(), destination)
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -145,7 +146,7 @@ func (c *DestHandler) UpdateDestination() {
 	}
 
 	// Track destinations status after update
-	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
+	telemetry.TrackDestinationsStatus(context.Background())
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -178,7 +179,7 @@ func (c *DestHandler) DeleteDestination() {
 	}
 
 	// Track destinations status after deletion
-	telemetry.TrackDestinationsStatus(c.Ctx.Request.Context())
+	telemetry.TrackDestinationsStatus(context.Background())
 
 	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
 		Name: dest.Name,

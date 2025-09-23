@@ -112,7 +112,7 @@ func (c *SourceHandler) CreateSource() {
 	}
 
 	// Track source creation event
-	telemetry.TrackSourceCreation(c.Ctx.Request.Context(), source)
+	telemetry.TrackSourceCreation(context.Background(), source)
 
 	utils.SuccessResponse(&c.Controller, req)
 }
@@ -151,7 +151,7 @@ func (c *SourceHandler) UpdateSource() {
 	}
 
 	// Track sources status after update
-	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
+	telemetry.TrackSourcesStatus(context.Background())
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -186,7 +186,7 @@ func (c *SourceHandler) DeleteSource() {
 		return
 	}
 
-	telemetry.TrackSourcesStatus(c.Ctx.Request.Context())
+	telemetry.TrackSourcesStatus(context.Background())
 	utils.SuccessResponse(&c.Controller, &models.DeleteSourceResponse{
 		Name: source.Name,
 	})
