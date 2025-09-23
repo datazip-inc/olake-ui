@@ -38,8 +38,7 @@ RUN pnpm build
 FROM alpine:3.18
 
 # Install docker-cli
-RUN apk update && apk add --no-cache docker-cli ca-certificates ca-certificates-bundle tzdata
-RUN update-ca-certificates
+RUN apk update && apk add --no-cache docker-cli
 
 # Set working directory
 WORKDIR /app/olake-ui
