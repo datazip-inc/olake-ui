@@ -15,14 +15,16 @@ func NewWorker(c *Client) *Worker {
 	w := worker.New(c.GetClient(), TaskQueue, worker.Options{})
 
 	// Register workflows
-	w.RegisterWorkflow(DiscoverCatalogWorkflow)
-	w.RegisterWorkflow(TestConnectionWorkflow)
-	w.RegisterWorkflow(RunSyncWorkflow)
+	// w.RegisterWorkflow(DiscoverCatalogWorkflow)
+	// w.RegisterWorkflow(TestConnectionWorkflow)
+	// w.RegisterWorkflow(RunSyncWorkflow)
+	w.RegisterWorkflow("ExecuteWorkflow")
 
 	// Register activities
-	w.RegisterActivity(DiscoverCatalogActivity)
-	w.RegisterActivity(TestConnectionActivity)
-	w.RegisterActivity(SyncActivity)
+	// w.RegisterActivity(DiscoverCatalogActivity)
+	// w.RegisterActivity(TestConnectionActivity)
+	// w.RegisterActivity(SyncActivity)
+	w.RegisterActivity("ExecuteActivity")
 
 	return &Worker{
 		worker: w,

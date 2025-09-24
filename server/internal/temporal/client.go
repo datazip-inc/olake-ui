@@ -3,10 +3,13 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -31,6 +34,25 @@ const (
 	ActionPause   SyncAction = "pause"
 	ActionUnpause SyncAction = "unpause"
 )
+
+// New worker types for the common worker
+type ExecutionRequest struct {
+	Type          string        `json:"type"`
+	Command       string        `json:"command"`
+	ConnectorType string        `json:"connector_type"`
+	Version       string        `json:"version"`
+	Args          []string      `json:"args"`
+	Configs       []JobConfig   `json:"configs"`
+	WorkflowID    string        `json:"workflow_id"`
+	JobID         int           `json:"job_id"`
+	Timeout       time.Duration `json:"timeout"`
+	OutputFile    string        `json:"output_file"`
+}
+
+type JobConfig struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
+}
 
 func init() {
 	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
@@ -66,22 +88,72 @@ func (c *Client) GetClient() client.Client {
 }
 
 // GetCatalog runs a workflow to discover catalog data
+// func (c *Client) GetCatalogOld(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
+// 	params := &ActivityParams{
+// 		SourceType:    sourceType,
+// 		Version:       version,
+// 		Config:        config,
+// 		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
+// 		Command:       docker.Discover,
+// 		StreamsConfig: streamsConfig,
+// 	}
+
+// 	workflowOptions := client.StartWorkflowOptions{
+// 		ID:        params.WorkflowID,
+// 		TaskQueue: TaskQueue,
+// 	}
+
+// 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, DiscoverCatalogWorkflow, params)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to execute discover workflow: %v", err)
+// 	}
+
+// 	var result map[string]interface{}
+// 	if err := run.Get(ctx, &result); err != nil {
+// 		return nil, fmt.Errorf("workflow execution failed: %v", err)
+// 	}
+
+// 	return result, nil
+// }
+
 func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
-	params := &ActivityParams{
-		SourceType:    sourceType,
+	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
+
+	configs := []JobConfig{
+		{Name: "config.json", Data: config},
+		{Name: "streams.json", Data: streamsConfig},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	cmdArgs := []string{
+		"discover",
+		"--config",
+		"/mnt/config/config.json",
+	}
+
+	if streamsConfig != "" {
+		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+	}
+
+	req := &ExecutionRequest{
+		Type:          "docker",
+		Command:       "discover",
+		ConnectorType: sourceType,
 		Version:       version,
-		Config:        config,
-		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
-		Command:       docker.Discover,
-		StreamsConfig: streamsConfig,
+		Args:          cmdArgs,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		JobID:         0,
+		Timeout:       time.Minute * 10,
+		OutputFile:    "streams.json",
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        params.WorkflowID,
+		ID:        workflowID,
 		TaskQueue: TaskQueue,
 	}
 
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, DiscoverCatalogWorkflow, params)
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute discover workflow: %v", err)
 	}
@@ -90,27 +162,87 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 	if err := run.Get(ctx, &result); err != nil {
 		return nil, fmt.Errorf("workflow execution failed: %v", err)
 	}
+	logs.Info("🟢 TestConnection result: %v", result)
 
-	return result, nil
+	response, ok := result["response"].(string)
+	logs.Info("🟢 TestConnection response: %s", response)
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from worker")
+	}
+
+	logResult, err := utils.ExtractJSON(response)
+	if err != nil {
+		return nil, err
+	}
+
+	return logResult, nil
 }
 
 // TestConnection runs a workflow to test connection
+// func (c *Client) TestConnectionOld(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
+// 	params := &ActivityParams{
+// 		SourceType: sourceType,
+// 		Version:    version,
+// 		Config:     config,
+// 		WorkflowID: fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix()),
+// 		Command:    docker.Check,
+// 		Flag:       flag,
+// 	}
+
+// 	workflowOptions := client.StartWorkflowOptions{
+// 		ID:        params.WorkflowID,
+// 		TaskQueue: TaskQueue,
+// 	}
+
+// 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to execute test connection workflow: %v", err)
+// 	}
+
+// 	var result map[string]interface{}
+// 	if err := run.Get(ctx, &result); err != nil {
+// 		return nil, fmt.Errorf("workflow execution failed: %v", err)
+// 	}
+
+// 	return result, nil
+// }
+
 func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
-	params := &ActivityParams{
-		SourceType: sourceType,
-		Version:    version,
-		Config:     config,
-		WorkflowID: fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix()),
-		Command:    docker.Check,
-		Flag:       flag,
+	workflowID := fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix())
+
+	configs := []JobConfig{
+		{Name: "config.json", Data: config},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	cmdArgs := []string{
+		"check",
+		fmt.Sprintf("--%s", flag),
+		"/mnt/config/config.json",
+	}
+
+	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
+		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
+	}
+
+	req := &ExecutionRequest{
+		Type:          "docker",
+		Command:       "check",
+		ConnectorType: sourceType,
+		Version:       version,
+		Args:          cmdArgs,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		JobID:         0,
+		Timeout:       time.Minute * 10,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        params.WorkflowID,
+		ID:        workflowID,
 		TaskQueue: TaskQueue,
 	}
 
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute test connection workflow: %v", err)
 	}
@@ -120,7 +252,34 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 		return nil, fmt.Errorf("workflow execution failed: %v", err)
 	}
 
-	return result, nil
+	response, ok := result["response"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from worker")
+	}
+
+	logs.Info("🟢 TestConnection response: %s", response)
+
+	// Parse the last log message to extract connection status
+	logMsg, err := utils.ExtractJSON(response)
+	if err != nil {
+		return nil, err
+	}
+
+	connectionStatus, ok := logMsg["connectionStatus"].(map[string]interface{})
+	if !ok || connectionStatus == nil {
+		return nil, fmt.Errorf("connection status not found")
+	}
+
+	status, statusOk := connectionStatus["status"].(string)
+	message, _ := connectionStatus["message"].(string) // message is optional
+	if !statusOk {
+		return nil, fmt.Errorf("connection status not found")
+	}
+
+	return map[string]interface{}{
+		"message": message,
+		"status":  status,
+	}, nil
 }
 
 // ManageSync handles all sync operations (create, update, delete, trigger)
@@ -194,7 +353,7 @@ func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, sc
 		},
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
-			Workflow:  RunSyncWorkflow,
+			Workflow:  "ExecuteWorkflow",
 			Args:      []any{jobID},
 			TaskQueue: TaskQueue,
 		},

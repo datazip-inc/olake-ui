@@ -28,11 +28,11 @@ func (c *AuthHandler) Prepare() {
 // @router /login [post]
 func (c *AuthHandler) Login() {
 	var req dto.LoginRequest
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -94,11 +94,11 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}

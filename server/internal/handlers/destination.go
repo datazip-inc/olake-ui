@@ -45,13 +45,14 @@ func (c *DestHandler) CreateDestination() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "project ID is required", nil)
 		return
 	}
-
 	var req dto.CreateDestinationRequest
-	if err := dto.Validate(&req); err != nil {
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -71,11 +72,11 @@ func (c *DestHandler) UpdateDestination() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req dto.UpdateDestinationRequest
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -106,11 +107,11 @@ func (c *DestHandler) DeleteDestination() {
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -160,6 +161,11 @@ func (c *DestHandler) GetDestinationSpec() {
 	// Will be used for multi-tenant filtering in the future
 
 	var req dto.SpecRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return

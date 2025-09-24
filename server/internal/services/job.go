@@ -101,7 +101,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 			logs.Info("Successfully created sync job via Temporal")
 		}
 	}
-	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
+	telemetry.TrackJobCreation(ctx, job)
 	return nil
 }
 

@@ -321,3 +321,35 @@ func GetLogRetentionPeriod() int {
 	}
 	return constants.DefaultLogRetentionPeriod
 }
+
+// ExtractJSON extracts and returns the last valid JSON block from output
+func ExtractJSON(output string) (map[string]interface{}, error) {
+	outputStr := strings.TrimSpace(output)
+	if outputStr == "" {
+		return nil, fmt.Errorf("empty output")
+	}
+
+	lines := strings.Split(outputStr, "\n")
+	iter := 0
+	// Find the last non-empty line with valid JSON
+	for i := len(lines) - 1; i >= 0; i-- {
+		iter++
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+
+		start := strings.Index(line, "{")
+		end := strings.LastIndex(line, "}")
+		if start != -1 && end != -1 && end > start {
+			jsonPart := line[start : end+1]
+			var result map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonPart), &result); err != nil {
+				continue // Skip invalid JSON
+			}
+			return result, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no valid JSON block found in output")
+}

@@ -41,11 +41,11 @@ func (c *JobHandler) GetAllJobs() {
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	var req dto.CreateJobRequest
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -62,14 +62,15 @@ func (c *JobHandler) UpdateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	jobID := GetIDFromPath(&c.Controller)
 	var req dto.UpdateJobRequest
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(context.Background(), &req, projectID, jobID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
@@ -148,14 +149,15 @@ func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	// Parse request body
 	var req dto.JobTaskRequest
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	logs, err := c.jobService.GetTaskLogs(context.Background(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
