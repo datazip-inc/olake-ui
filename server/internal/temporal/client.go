@@ -9,6 +9,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/enums/v1"
@@ -301,13 +302,13 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 		if scheduleExists {
 			return nil, fmt.Errorf("schedule already exists")
 		}
-		return c.createSchedule(ctx, handle, scheduleID, workflowID, frequency, jobID)
+		return c.createScheduleOld(ctx, handle, scheduleID, workflowID, frequency, jobID)
 
 	case ActionUpdate:
 		if frequency == "" {
 			return nil, fmt.Errorf("frequency is required for updating schedule")
 		}
-		return c.updateSchedule(ctx, handle, currentSchedule, scheduleID, frequency)
+		return c.updateScheduleOld(ctx, handle, currentSchedule, scheduleID, frequency)
 
 	case ActionDelete:
 		if err := handle.Delete(ctx); err != nil {
@@ -343,8 +344,68 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 	}
 }
 
-// createSchedule creates a new schedule
-func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, scheduleID, workflowID, cronSpec string, jobID int) (map[string]interface{}, error) {
+func (c *Client) ManageSyncNew(ctx context.Context, job *models.Job, action SyncAction) (map[string]interface{}, error) {
+	workflowID := fmt.Sprintf("sync-%s-%d", job.ProjectID, job.ID)
+	scheduleID := fmt.Sprintf("schedule-%s", workflowID)
+
+	handle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
+	_, err := handle.Describe(ctx)
+	scheduleExists := err == nil
+	if action != ActionCreate && !scheduleExists {
+		return nil, fmt.Errorf("schedule does not exist")
+	}
+	switch action {
+	case ActionCreate:
+		if job.Frequency == "" {
+			return nil, fmt.Errorf("frequency is required for creating schedule")
+		}
+		if scheduleExists {
+			return nil, fmt.Errorf("schedule already exists")
+		}
+		return c.createSchedule(ctx, job, scheduleID, workflowID)
+
+	case ActionUpdate:
+		if job.Frequency == "" {
+			return nil, fmt.Errorf("frequency is required for updating schedule")
+		}
+		return c.updateSchedule(ctx, handle, job)
+
+	case ActionDelete:
+		if err := handle.Delete(ctx); err != nil {
+			return nil, fmt.Errorf("failed to delete schedule: %s", err)
+		}
+		return map[string]interface{}{"message": "Schedule deleted successfully"}, nil
+
+	case ActionTrigger:
+		if err := handle.Trigger(ctx, client.ScheduleTriggerOptions{
+			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
+		}); err != nil {
+			return nil, fmt.Errorf("failed to trigger schedule: %s", err)
+		}
+		return map[string]interface{}{"message": "Schedule triggered successfully"}, nil
+	case ActionPause:
+		if err := handle.Pause(ctx, client.SchedulePauseOptions{
+			Note: "Paused via API",
+		}); err != nil {
+			return nil, fmt.Errorf("failed to pause schedule: %s", err)
+		}
+		return map[string]interface{}{"message": "Schedule paused successfully"}, nil
+
+	case ActionUnpause:
+		if err := handle.Unpause(ctx, client.ScheduleUnpauseOptions{
+			Note: "Unpaused via API",
+		}); err != nil {
+			return nil, fmt.Errorf("failed to unpause schedule: %s", err)
+		}
+		return map[string]interface{}{"message": "Schedule unpaused successfully"}, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported action: %s", action)
+	}
+}
+
+// // createSchedule creates a new schedule
+func (c *Client) createScheduleOld(ctx context.Context, _ client.ScheduleHandle, scheduleID, workflowID, cronSpec string, jobID int) (map[string]interface{}, error) {
 	cronSpec = utils.ToCron(cronSpec)
 	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
 		ID: scheduleID,
@@ -370,10 +431,39 @@ func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, sc
 	}, nil
 }
 
-// updateSchedule updates an existing schedule
-func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, cronSpec string) (map[string]interface{}, error) {
+func (c *Client) createSchedule(ctx context.Context, job *models.Job, scheduleID, workflowID string) (map[string]interface{}, error) {
+	cronSpec := utils.ToCron(job.Frequency)
+
+	req := buildExecutionReqForSync(job, workflowID)
+
+	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
+		ID: scheduleID,
+		Spec: client.ScheduleSpec{
+			CronExpressions: []string{cronSpec},
+		},
+		Action: &client.ScheduleWorkflowAction{
+			ID:        workflowID,
+			Workflow:  "ExecuteWorkflow",
+			Args:      []any{req},
+			TaskQueue: TaskQueue,
+		},
+		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create schedule: %s", err)
+	}
+
+	return map[string]interface{}{
+		"message": "Schedule created successfully",
+		"cron":    cronSpec,
+	}, nil
+}
+
+// // updateSchedule updates an existing schedule
+func (c *Client) updateScheduleOld(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, cronSpec string) (map[string]interface{}, error) {
 	cronSpec = utils.ToCron(cronSpec)
-	// Check if update is needed
+	// // Check if update is needed
 	if len(currentSchedule.Schedule.Spec.CronExpressions) > 0 &&
 		currentSchedule.Schedule.Spec.CronExpressions[0] == cronSpec {
 		return map[string]interface{}{"message": "Schedule already up to date"}, nil
@@ -399,6 +489,42 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 	}, nil
 }
 
+// updateSchedule updates an existing schedule
+func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, job *models.Job) (map[string]interface{}, error) {
+	cronSpec := utils.ToCron(job.Frequency)
+
+	err := handle.Update(ctx, client.ScheduleUpdateOptions{
+		DoUpdate: func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
+			input.Description.Schedule.Spec = &client.ScheduleSpec{
+				CronExpressions: []string{cronSpec},
+			}
+
+			// Build new ExecutionRequest (fresh configs, args, etc.)
+			workflowID := input.Description.Schedule.Action.(*client.ScheduleWorkflowAction).ID
+			req := buildExecutionReqForSync(job, workflowID)
+
+			// Replace action with new one
+			input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
+				ID:        workflowID,
+				Workflow:  "ExecuteWorkflow",
+				Args:      []any{req},
+				TaskQueue: TaskQueue,
+			}
+			return &client.ScheduleUpdate{
+				Schedule: &input.Description.Schedule,
+			}, nil
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to update schedule: %s", err)
+	}
+	return map[string]interface{}{
+		"message": "Schedule updated successfully",
+		"cron":    cronSpec,
+	}, nil
+}
+
 // ListWorkflow lists workflow executions based on the provided query
 func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
 	// Query workflows using the SDK's ListWorkflow method
@@ -408,4 +534,38 @@ func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.List
 	}
 
 	return resp, nil
+}
+
+// ---
+
+// buildExecutionReqForSync builds the ExecutionRequest for a sync job
+func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionRequest {
+	configs := []JobConfig{
+		{Name: "source.json", Data: job.SourceID.Config},
+		{Name: "destination.json", Data: job.DestID.Config},
+		{Name: "streams.json", Data: job.StreamsConfig},
+		{Name: "state.json", Data: job.State},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	args := []string{
+		"sync",
+		"--config", "/mnt/config/source.json",
+		"--destination", "/mnt/config/destination.json",
+		"--catalog", "/mnt/config/streams.json",
+		"--state", "/mnt/config/state.json",
+	}
+
+	return ExecutionRequest{
+		Type:          "docker",
+		Command:       "sync",
+		ConnectorType: job.SourceID.Type,
+		Version:       job.SourceID.Version,
+		Args:          args,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		JobID:         job.ID,
+		Timeout:       time.Minute * 10,
+		OutputFile:    "state.json",
+	}
 }

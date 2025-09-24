@@ -169,3 +169,31 @@ func (c *JobHandler) GetTaskLogs() {
 	}
 	utils.SuccessResponse(&c.Controller, logs)
 }
+
+// @router /internal/sync/callback [post]
+func (c *JobHandler) SyncCallback() {
+	var req struct {
+		JobID int    `json:"job_id"`
+		State string `json:"state"`
+	}
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobID == 0 || req.State == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id and state are required", nil)
+		return
+	}
+
+	if err := c.jobService.SyncCallback(context.Background(), req.JobID, req.State); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job state", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+		"message": "Job state updated successfully",
+		"job_id":  req.JobID,
+	})
+}

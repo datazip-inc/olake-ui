@@ -94,7 +94,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 
 	if s.tempClient != nil {
 		logs.Info("Creating Temporal workflow for sync job")
-		_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
+		_, err = s.tempClient.ManageSyncNew(ctx, job, temporal.ActionCreate)
 		if err != nil {
 			logs.Error("%s: %v", constants.ErrWorkflowExecutionFailed, err)
 		} else {
@@ -142,7 +142,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 
 	if s.tempClient != nil {
 		logs.Info("Updating Temporal workflow for sync job")
-		_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
+		_, err = s.tempClient.ManageSyncNew(ctx, existingJob, temporal.ActionUpdate)
 		if err != nil {
 			return fmt.Errorf("temporal workflow execution failed: %s", err)
 		}
@@ -162,7 +162,7 @@ func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 
 	if s.tempClient != nil {
 		logs.Info("Deleting Temporal workflow")
-		_, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
+		_, err := s.tempClient.ManageSyncNew(ctx, job, temporal.ActionDelete)
 		if err != nil {
 			logs.Error("Temporal deletion failed: %v", err)
 		}
@@ -187,7 +187,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	}
 
 	if s.tempClient != nil {
-		resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
+		resp, err := s.tempClient.ManageSyncNew(ctx, job, temporal.ActionTrigger)
 		if err != nil {
 			return nil, fmt.Errorf("temporal execution failed: %s", err)
 		}
@@ -423,4 +423,16 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 		return nil, err
 	}
 	return dest, nil
+}
+
+func (s *JobService) SyncCallback(ctx context.Context, jobID int, state string) error {
+	job, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return fmt.Errorf("job not found: %s", err)
+	}
+
+	job.State = state
+	job.UpdatedAt = time.Now()
+
+	return s.jobORM.Update(job)
 }
