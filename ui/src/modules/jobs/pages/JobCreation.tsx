@@ -31,6 +31,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -87,6 +88,7 @@ const JobCreation: React.FC = () => {
 		setShowFailureModal,
 		setSourceTestConnectionError,
 		setDestinationTestConnectionError,
+		setShowResetStreamsModal,
 	} = useAppStore()
 
 	const sourceRef = useRef<any>(null)
@@ -309,6 +311,11 @@ const JobCreation: React.FC = () => {
 
 	//TODO: Handle steps properly
 
+	const handleConfirmResetStreams = () => {
+		setSelectedStreams([])
+		setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+	}
+
 	const nextStep = () => {
 		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
@@ -323,7 +330,7 @@ const JobCreation: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
-			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
@@ -558,6 +565,7 @@ const JobCreation: React.FC = () => {
 					/>
 				</div>
 			</div>
+			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
 		</div>
 	)
 }
