@@ -13,7 +13,6 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
@@ -264,7 +263,7 @@ func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-	mainSyncDir := filepath.Join(docker.DefaultConfigDir, syncFolderName)
+	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("no sync directory found: %s", mainSyncDir)
 	}
