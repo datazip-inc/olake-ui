@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/models"
@@ -36,10 +35,19 @@ const (
 	ActionUnpause SyncAction = "unpause"
 )
 
+type Command string
+
+var (
+	Discover Command = "discover"
+	Check    Command = "check"
+	Sync     Command = "sync"
+	Spec     Command = "spec"
+)
+
 // New worker types for the common worker
 type ExecutionRequest struct {
 	Type          string        `json:"type"`
-	Command       string        `json:"command"`
+	Command       Command       `json:"command"`
 	ConnectorType string        `json:"connector_type"`
 	Version       string        `json:"version"`
 	Args          []string      `json:"args"`
@@ -47,7 +55,7 @@ type ExecutionRequest struct {
 	WorkflowID    string        `json:"workflow_id"`
 	JobID         int           `json:"job_id"`
 	Timeout       time.Duration `json:"timeout"`
-	OutputFile    string        `json:"output_file"`
+	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 }
 
 type JobConfig struct {
@@ -78,44 +86,32 @@ func NewClient() (*Client, error) {
 	}, nil
 }
 
-// Close closes the Temporal client
 func (c *Client) Close() {
 	if c.temporalClient != nil {
 		c.temporalClient.Close()
 	}
 }
+
+func GetTimeout(op Command) time.Duration {
+	switch op {
+	case Discover:
+		return time.Minute * 10
+	case Check:
+		return time.Minute * 10
+	case Spec:
+		return time.Minute * 5
+	case Sync:
+		return time.Hour * 24 * 30
+	// check what can the fallback time be
+	default:
+		return time.Minute * 5
+	}
+
+}
+
 func (c *Client) GetClient() client.Client {
 	return c.temporalClient
 }
-
-// GetCatalog runs a workflow to discover catalog data
-// func (c *Client) GetCatalogOld(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
-// 	params := &ActivityParams{
-// 		SourceType:    sourceType,
-// 		Version:       version,
-// 		Config:        config,
-// 		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
-// 		Command:       docker.Discover,
-// 		StreamsConfig: streamsConfig,
-// 	}
-
-// 	workflowOptions := client.StartWorkflowOptions{
-// 		ID:        params.WorkflowID,
-// 		TaskQueue: TaskQueue,
-// 	}
-
-// 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, DiscoverCatalogWorkflow, params)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to execute discover workflow: %v", err)
-// 	}
-
-// 	var result map[string]interface{}
-// 	if err := run.Get(ctx, &result); err != nil {
-// 		return nil, fmt.Errorf("workflow execution failed: %v", err)
-// 	}
-
-// 	return result, nil
-// }
 
 func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
@@ -131,21 +127,23 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 		"--config",
 		"/mnt/config/config.json",
 	}
-
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
+	}
+	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
+		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
 	req := &ExecutionRequest{
 		Type:          "docker",
-		Command:       "discover",
+		Command:       Discover,
 		ConnectorType: sourceType,
 		Version:       version,
 		Args:          cmdArgs,
 		Configs:       configs,
 		WorkflowID:    workflowID,
 		JobID:         0,
-		Timeout:       time.Minute * 10,
+		Timeout:       GetTimeout(Discover),
 		OutputFile:    "streams.json",
 	}
 
@@ -163,10 +161,8 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 	if err := run.Get(ctx, &result); err != nil {
 		return nil, fmt.Errorf("workflow execution failed: %v", err)
 	}
-	logs.Info("🟢 TestConnection result: %v", result)
 
 	response, ok := result["response"].(string)
-	logs.Info("🟢 TestConnection response: %s", response)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
@@ -178,35 +174,6 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 
 	return logResult, nil
 }
-
-// TestConnection runs a workflow to test connection
-// func (c *Client) TestConnectionOld(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
-// 	params := &ActivityParams{
-// 		SourceType: sourceType,
-// 		Version:    version,
-// 		Config:     config,
-// 		WorkflowID: fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix()),
-// 		Command:    docker.Check,
-// 		Flag:       flag,
-// 	}
-
-// 	workflowOptions := client.StartWorkflowOptions{
-// 		ID:        params.WorkflowID,
-// 		TaskQueue: TaskQueue,
-// 	}
-
-// 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to execute test connection workflow: %v", err)
-// 	}
-
-// 	var result map[string]interface{}
-// 	if err := run.Get(ctx, &result); err != nil {
-// 		return nil, fmt.Errorf("workflow execution failed: %v", err)
-// 	}
-
-// 	return result, nil
-// }
 
 func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix())
@@ -221,21 +188,19 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 		fmt.Sprintf("--%s", flag),
 		"/mnt/config/config.json",
 	}
-
 	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
 	req := &ExecutionRequest{
 		Type:          "docker",
-		Command:       "check",
+		Command:       Check,
 		ConnectorType: sourceType,
 		Version:       version,
 		Args:          cmdArgs,
 		Configs:       configs,
 		WorkflowID:    workflowID,
-		JobID:         0,
-		Timeout:       time.Minute * 10,
+		Timeout:       GetTimeout(Check),
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
@@ -258,9 +223,6 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	logs.Info("🟢 TestConnection response: %s", response)
-
-	// Parse the last log message to extract connection status
 	logMsg, err := utils.ExtractJSON(response)
 	if err != nil {
 		return nil, err
@@ -283,68 +245,7 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 	}, nil
 }
 
-// ManageSync handles all sync operations (create, update, delete, trigger)
-func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, frequency string, action SyncAction) (map[string]interface{}, error) {
-	workflowID := fmt.Sprintf("sync-%s-%d", projectID, jobID)
-	scheduleID := fmt.Sprintf("schedule-%s", workflowID)
-
-	handle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
-	currentSchedule, err := handle.Describe(ctx)
-	scheduleExists := err == nil
-	if action != ActionCreate && !scheduleExists {
-		return nil, fmt.Errorf("schedule does not exist")
-	}
-	switch action {
-	case ActionCreate:
-		if frequency == "" {
-			return nil, fmt.Errorf("frequency is required for creating schedule")
-		}
-		if scheduleExists {
-			return nil, fmt.Errorf("schedule already exists")
-		}
-		return c.createScheduleOld(ctx, handle, scheduleID, workflowID, frequency, jobID)
-
-	case ActionUpdate:
-		if frequency == "" {
-			return nil, fmt.Errorf("frequency is required for updating schedule")
-		}
-		return c.updateScheduleOld(ctx, handle, currentSchedule, scheduleID, frequency)
-
-	case ActionDelete:
-		if err := handle.Delete(ctx); err != nil {
-			return nil, fmt.Errorf("failed to delete schedule: %s", err)
-		}
-		return map[string]interface{}{"message": "Schedule deleted successfully"}, nil
-
-	case ActionTrigger:
-		if err := handle.Trigger(ctx, client.ScheduleTriggerOptions{
-			Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
-		}); err != nil {
-			return nil, fmt.Errorf("failed to trigger schedule: %s", err)
-		}
-		return map[string]interface{}{"message": "Schedule triggered successfully"}, nil
-	case ActionPause:
-		if err := handle.Pause(ctx, client.SchedulePauseOptions{
-			Note: "Paused via API",
-		}); err != nil {
-			return nil, fmt.Errorf("failed to pause schedule: %s", err)
-		}
-		return map[string]interface{}{"message": "Schedule paused successfully"}, nil
-
-	case ActionUnpause:
-		if err := handle.Unpause(ctx, client.ScheduleUnpauseOptions{
-			Note: "Unpaused via API",
-		}); err != nil {
-			return nil, fmt.Errorf("failed to unpause schedule: %s", err)
-		}
-		return map[string]interface{}{"message": "Schedule unpaused successfully"}, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported action: %s", action)
-	}
-}
-
-func (c *Client) ManageSyncNew(ctx context.Context, job *models.Job, action SyncAction) (map[string]interface{}, error) {
+func (c *Client) ManageSync(ctx context.Context, job *models.Job, action SyncAction) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("sync-%s-%d", job.ProjectID, job.ID)
 	scheduleID := fmt.Sprintf("schedule-%s", workflowID)
 
@@ -404,33 +305,6 @@ func (c *Client) ManageSyncNew(ctx context.Context, job *models.Job, action Sync
 	}
 }
 
-// // createSchedule creates a new schedule
-func (c *Client) createScheduleOld(ctx context.Context, _ client.ScheduleHandle, scheduleID, workflowID, cronSpec string, jobID int) (map[string]interface{}, error) {
-	cronSpec = utils.ToCron(cronSpec)
-	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
-		ID: scheduleID,
-		Spec: client.ScheduleSpec{
-			CronExpressions: []string{cronSpec},
-		},
-		Action: &client.ScheduleWorkflowAction{
-			ID:        workflowID,
-			Workflow:  "ExecuteWorkflow",
-			Args:      []any{jobID},
-			TaskQueue: TaskQueue,
-		},
-		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create schedule: %s", err)
-	}
-
-	return map[string]interface{}{
-		"message": "Schedule created successfully",
-		"cron":    cronSpec,
-	}, nil
-}
-
 func (c *Client) createSchedule(ctx context.Context, job *models.Job, scheduleID, workflowID string) (map[string]interface{}, error) {
 	cronSpec := utils.ToCron(job.Frequency)
 
@@ -460,36 +334,6 @@ func (c *Client) createSchedule(ctx context.Context, job *models.Job, scheduleID
 	}, nil
 }
 
-// // updateSchedule updates an existing schedule
-func (c *Client) updateScheduleOld(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, cronSpec string) (map[string]interface{}, error) {
-	cronSpec = utils.ToCron(cronSpec)
-	// // Check if update is needed
-	if len(currentSchedule.Schedule.Spec.CronExpressions) > 0 &&
-		currentSchedule.Schedule.Spec.CronExpressions[0] == cronSpec {
-		return map[string]interface{}{"message": "Schedule already up to date"}, nil
-	}
-
-	err := handle.Update(ctx, client.ScheduleUpdateOptions{
-		DoUpdate: func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
-			input.Description.Schedule.Spec = &client.ScheduleSpec{
-				CronExpressions: []string{cronSpec},
-			}
-			return &client.ScheduleUpdate{
-				Schedule: &input.Description.Schedule,
-			}, nil
-		},
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to update schedule: %s", err)
-	}
-	return map[string]interface{}{
-		"message": "Schedule updated successfully",
-		"cron":    cronSpec,
-	}, nil
-}
-
-// updateSchedule updates an existing schedule
 func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, job *models.Job) (map[string]interface{}, error) {
 	cronSpec := utils.ToCron(job.Frequency)
 
@@ -499,11 +343,9 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 				CronExpressions: []string{cronSpec},
 			}
 
-			// Build new ExecutionRequest (fresh configs, args, etc.)
 			workflowID := input.Description.Schedule.Action.(*client.ScheduleWorkflowAction).ID
 			req := buildExecutionReqForSync(job, workflowID)
 
-			// Replace action with new one
 			input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
 				ID:        workflowID,
 				Workflow:  "ExecuteWorkflow",
@@ -536,8 +378,6 @@ func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.List
 	return resp, nil
 }
 
-// ---
-
 // buildExecutionReqForSync builds the ExecutionRequest for a sync job
 func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionRequest {
 	configs := []JobConfig{
@@ -558,14 +398,13 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 
 	return ExecutionRequest{
 		Type:          "docker",
-		Command:       "sync",
+		Command:       Sync,
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
 		Args:          args,
 		Configs:       configs,
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
-		Timeout:       time.Minute * 10,
-		OutputFile:    "state.json",
+		Timeout:       GetTimeout(Sync),
 	}
 }
