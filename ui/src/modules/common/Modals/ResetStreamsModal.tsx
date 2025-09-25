@@ -27,26 +27,29 @@ const ResetStreamsModal: FC<ResetStreamsModalProps> = ({ onConfirm }) => {
 						className="size-6"
 						weight="fill"
 					/>
-					<span>Go back?</span>
+					<span>Your changes will not be saved</span>
 				</div>
 			}
 		>
 			<div className="flex flex-col items-center gap-6">
-				<p className="font-medium text-slate-700">
-					Going back will{" "}
-					<span className="font-semibold">reset all stream configurations</span>{" "}
-					and any changes will be lost.
-				</p>
+				<div className="flex w-full flex-col">
+					<p className="font-medium text-slate-700">
+						Leaving this page will loose all your progress & changes
+					</p>
+					<p className="font-medium text-slate-700">
+						Are you sure want to leave?
+					</p>
+				</div>
 
 				<div className="flex w-full justify-end gap-3">
-					<Button onClick={handleCancel}>Cancel</Button>
 					<Button
 						type="primary"
 						danger
 						onClick={handleConfirm}
 					>
-						Go Back
+						Yes, Leave
 					</Button>
+					<Button onClick={handleCancel}>No</Button>
 				</div>
 			</div>
 		</Modal>
