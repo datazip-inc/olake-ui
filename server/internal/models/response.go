@@ -44,6 +44,12 @@ type CheckUniqueJobNameResponse struct {
 	Unique bool `json:"unique"`
 }
 
+// TestConnectionResponse
+type TestConnectionResponse struct {
+	ConnectionResult map[string]interface{}   `json:"connection_result"`
+	TaskLogs         []map[string]interface{} `json:"task_logs"`
+}
+
 // Job response
 type JobResponse struct {
 	ID            int                  `json:"id"`
