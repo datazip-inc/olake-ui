@@ -108,14 +108,16 @@ func (c *JobHandler) ActivateJob() {
 	var req struct {
 		Activate bool `json:"activate"`
 	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
+
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.ActivateJob(id, req.Activate, userID); err != nil {
 		statusCode := http.StatusInternalServerError
@@ -170,8 +172,26 @@ func (c *JobHandler) GetTaskLogs() {
 	utils.SuccessResponse(&c.Controller, logs)
 }
 
-// @router /internal/sync/callback [post]
-func (c *JobHandler) SyncCallback() {
+// @router /internal/worker/callback/presync/:id [get]
+func (c *JobHandler) GetJobDetails() {
+	jobId := GetIDFromPath(&c.Controller)
+
+	if jobId == 0 {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id is required", nil)
+		return
+	}
+
+	job, err := c.jobService.GetJobDetails(context.Background(), jobId)
+	if err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get job details", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, job)
+}
+
+// @router /internal/worker/callback/postsync [post]
+func (c *JobHandler) UpdateJobPostSync() {
 	var req struct {
 		JobID int    `json:"job_id"`
 		State string `json:"state"`
@@ -182,18 +202,19 @@ func (c *JobHandler) SyncCallback() {
 		return
 	}
 
-	if req.JobID == 0 || req.State == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "job_id and state are required", nil)
+	if req.JobID == 0 {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id is required", nil)
+		return
+	}
+	if req.State == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "state is required", nil)
 		return
 	}
 
-	if err := c.jobService.SyncCallback(context.Background(), req.JobID, req.State); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job state", err)
+	if err := c.jobService.UpdateJobPostSync(context.Background(), req.JobID, req.State); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job post sync", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"message": "Job state updated successfully",
-		"job_id":  req.JobID,
-	})
+	utils.SuccessResponse(&c.Controller, nil)
 }

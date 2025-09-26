@@ -348,7 +348,7 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 
 			input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
 				ID:        workflowID,
-				Workflow:  "ExecuteWorkflow",
+				Workflow:  "ExecuteSyncWorkflow",
 				Args:      []any{req},
 				TaskQueue: TaskQueue,
 			}
@@ -406,5 +406,6 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		Timeout:       GetTimeout(Sync),
+		OutputFile:    "state.json",
 	}
 }
