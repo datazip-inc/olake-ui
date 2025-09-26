@@ -28,7 +28,6 @@ const ResetStreamsModal: FC<ResetStreamsModalProps> = ({ onConfirm }) => {
 						className="size-9"
 						weight="fill"
 					/>
-					{/* <span>Your changes will not be saved</span> */}
 				</div>
 			}
 		>

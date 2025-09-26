@@ -409,7 +409,7 @@ const StreamConfiguration = ({
 			!firstCondition.operator ||
 			!firstCondition.value
 		) {
-			message.error("Please complete the first filter before adding another.")
+			message.error("Please complete the first filter before applying another.")
 			return
 		}
 
