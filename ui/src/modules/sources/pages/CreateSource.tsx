@@ -326,11 +326,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setSelectedVersion("")
 			setFormData({})
 			setSchema(null)
+			setSourceName("")
 
 			// Parent callbacks
 			onConnectorChange?.(value)
 			onVersionChange?.("")
 			onFormDataChange?.({})
+			onSourceNameChange?.("")
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {

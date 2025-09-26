@@ -412,11 +412,13 @@ const CreateDestination = forwardRef<
 			setVersion("")
 			setFormData({})
 			setSchema(null)
+			setDestinationName("")
 
 			// Parent callbacks
 			onConnectorChange?.(value)
 			onVersionChange?.("")
 			onFormDataChange?.({})
+			onDestinationNameChange?.("")
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
