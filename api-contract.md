@@ -120,22 +120,24 @@ http://localhost:8000
   {
     "type": "string",
     "version": "string",
-    "config": "json"
+    "config": "json",
   }
   ```
 
 - **Response**:
 
   ```json
-  {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "type": "string",
-      "version": "string",
-      "config": "json"
-    }
+{
+   "success": boolean,
+  "message": "string",
+  "data": {
+    "connection_result": {
+      "message": "",
+      "status": ""
+    },
+    "task_logs": "json"
   }
+}
   ```
 
 ### Create Source
@@ -305,15 +307,17 @@ http://localhost:8000
 
 - **Response**:
   ```json
-  {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "type": "string",
-      "version": "string",
-      "config": "json"
-    }
+ {
+  "success": boolean,
+  "message": "string",
+  "data": {
+    "connection_result": {
+      "message": "string",
+      "status": "string"
+    },
+    "task_logs": "json"
   }
+}
   ```
 
 ### Create Destination

@@ -300,3 +300,58 @@ func ExtractJSON(output string) (map[string]interface{}, error) {
 
 	return nil, fmt.Errorf("no valid JSON block found in output")
 }
+
+// LogEntry represents a parsed log line.
+type LogEntry struct {
+	Level   string    `json:"level"`
+	Time    time.Time `json:"time"`
+	Message string    `json:"message"`
+}
+
+// ReadLogs reads logs from the given mainSyncDir and returns structured log entries.
+func ReadLogs(mainSyncDir string) ([]map[string]interface{}, error) {
+	// Logs directory
+	logsDir := filepath.Join(mainSyncDir, "logs")
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
+	}
+
+	// Expect one subdirectory inside logs/
+	files, err := os.ReadDir(logsDir)
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("no sync log directory found in: %s", logsDir)
+	}
+	syncDir := filepath.Join(logsDir, files[0].Name())
+
+	// Log file path
+	logPath := filepath.Join(syncDir, "olake.log")
+	logContent, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log file: %s", logPath)
+	}
+
+	// Parse log lines
+	var logs []map[string]interface{}
+	lines := strings.Split(string(logContent), "\n")
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
+		var logEntry LogEntry
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			// skip unstructured lines
+			continue
+		}
+
+		if logEntry.Level != "debug" {
+			logs = append(logs, map[string]interface{}{
+				"level":   logEntry.Level,
+				"time":    logEntry.Time.UTC().Format(time.RFC3339),
+				"message": logEntry.Message,
+			})
+		}
+	}
+
+	return logs, nil
+}

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
@@ -220,15 +223,29 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-
-	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
+	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
+	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), workflowID, "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
-	utils.SuccessResponse(&c.Controller, result)
+	homeDir := docker.GetDefaultConfigDir()
+	mainSyncDir := filepath.Join(homeDir, workflowID)
+	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
+		return
+	}
+	task_logs, err := utils.ReadLogs(mainSyncDir)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read logs: %s", err))
+		return
+	}
+	utils.SuccessResponse(&c.Controller, models.TestConnectionResponse{
+		ConnectionResult: result,
+		TaskLogs:         task_logs,
+	})
 }
 
 // @router /destinations/:id/jobs [get]
