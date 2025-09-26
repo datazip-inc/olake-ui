@@ -337,12 +337,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			const existingStream = updated.selected_streams[namespace]?.find(
 				s => s.stream_name === streamName,
 			)
-
 			if (checked) {
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
 				}
-
 				if (!existingStream) {
 					updated.selected_streams[namespace] = [
 						...updated.selected_streams[namespace],
@@ -373,10 +371,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					changed = true
 				}
 			}
-
 			return changed ? updated : prev
 		})
-
 		setTimeout(() => {
 			setApiResponse(current => {
 				if (!current) return current

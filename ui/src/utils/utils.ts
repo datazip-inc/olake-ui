@@ -6,6 +6,7 @@ import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATION_LABELS,
+	FILTER_REGEX,
 } from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
@@ -508,6 +509,14 @@ export const handleSpecResponse = (
 	}
 }
 
+/**
+ * Returns a copy of the selected streams map with all disabled streams removed.
+ *
+ * @param selectedStreams - Map from namespace to an array of streams,
+ * each stream having a `disabled` flag.
+ * @returns A new map with the same keys where each array only includes streams
+ * that are not disabled.
+ */
 export const getSelectedStreams = (selectedStreams: {
 	[key: string]: SelectedStream[]
 }): { [key: string]: SelectedStream[] } => {
@@ -516,5 +525,18 @@ export const getSelectedStreams = (selectedStreams: {
 			key,
 			streams.filter(stream => !stream.disabled),
 		]),
+	)
+}
+
+export const validateFilter = (filter: string): boolean => {
+	if (!filter.trim()) return false
+	return FILTER_REGEX.test(filter.trim())
+}
+
+export const validateStreams = (selections: {
+	[key: string]: SelectedStream[]
+}): boolean => {
+	return !Object.values(selections).some(streams =>
+		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
 	)
 }

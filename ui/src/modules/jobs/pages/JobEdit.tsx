@@ -322,10 +322,10 @@ const JobEdit: React.FC = () => {
 				typeof selectedStreams === "string"
 					? selectedStreams
 					: JSON.stringify({
-							selectedStreams: getSelectedStreams(
+							...selectedStreams,
+							selected_streams: getSelectedStreams(
 								selectedStreams.selected_streams,
 							),
-							streams: selectedStreams.streams,
 						}),
 			frequency: cronExpression,
 			activate: job?.activate,

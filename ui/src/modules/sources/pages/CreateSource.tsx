@@ -8,11 +8,11 @@ import {
 import { Link, useNavigate } from "react-router-dom"
 import { message, Select, Spin, Tooltip } from "antd"
 import {
-	ArrowLeft,
-	ArrowRight,
-	ArrowSquareOut,
-	Info,
-	Notebook,
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
+	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
@@ -319,24 +319,18 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setConnector(value)
+			if (setupType === SETUP_TYPES.EXISTING) {
+				setExistingSource(null)
+			}
+			setSelectedVersion("")
 			setFormData({})
 			setSchema(null)
-			setConnector(value)
-			setExistingSource(null)
-			if (onConnectorChange) {
-				onConnectorChange(value)
-			}
-			if (onSourceNameChange) {
-				onSourceNameChange("")
-			}
-			if (onVersionChange) {
-				onVersionChange("")
-			}
-			if (onFormDataChange) {
-				onFormDataChange("")
-			}
-			setSourceName("")
-			setSelectedVersion("")
+
+			// Parent callbacks
+			onConnectorChange?.(value)
+			onVersionChange?.("")
+			onFormDataChange?.({})
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
@@ -354,6 +348,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
+				setExistingSource(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onSourceNameChange) onSourceNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
@@ -428,7 +423,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 							OLake Version:
 							<Tooltip title="Choose the OLake version for the source">
-								<Info
+								<InfoIcon
 									size={16}
 									className="cursor-help text-slate-900"
 								/>
@@ -439,7 +434,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								rel="noopener noreferrer"
 								className="flex items-center text-primary hover:text-primary/80"
 							>
-								<ArrowSquareOut className="size-4" />
+								<ArrowSquareOutIcon className="size-4" />
 							</a>
 						</label>
 						{loadingVersions ? (
@@ -461,7 +456,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							</>
 						) : (
 							<div className="flex items-center gap-1 text-sm text-red-500">
-								<Info />
+								<InfoIcon />
 								No versions available
 							</div>
 						)}
@@ -569,7 +564,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								to={"/sources"}
 								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 							>
-								<ArrowLeft className="mr-1 size-5" />
+								<ArrowLeftIcon className="mr-1 size-5" />
 							</Link>
 							<div className="text-lg font-bold">Create source</div>
 						</div>
@@ -587,7 +582,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 									<div className="mb-6">
 										<div className="mb-4 flex items-center gap-2 text-base font-medium">
-											<Notebook className="size-5" />
+											<NotebookIcon className="size-5" />
 											Capture information
 										</div>
 
@@ -620,7 +615,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 										}}
 									>
 										Create
-										<ArrowRight className="size-4 text-white" />
+										<ArrowRightIcon className="size-4 text-white" />
 									</button>
 								</div>
 							)}

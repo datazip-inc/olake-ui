@@ -8,11 +8,11 @@ import {
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
 import {
-	ArrowLeft,
-	ArrowRight,
-	ArrowSquareOut,
-	Info,
-	Notebook,
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
+	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 
@@ -405,20 +405,18 @@ const CreateDestination = forwardRef<
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setConnector(value as ConnectorType)
+			if (setupType === SETUP_TYPES.EXISTING) {
+				setExistingDestination(null)
+			}
+			setVersion("")
 			setFormData({})
 			setSchema(null)
-			setExistingDestination(null)
 
-			if (onDestinationNameChange) onDestinationNameChange("")
-			if (onVersionChange) onVersionChange("")
-
-			if (onFormDataChange) onFormDataChange({})
-			setDestinationName("")
-			setFormData({})
-			setConnector(value as ConnectorType)
-			if (onConnectorChange) {
-				onConnectorChange(value)
-			}
+			// Parent callbacks
+			onConnectorChange?.(value)
+			onVersionChange?.("")
+			onFormDataChange?.({})
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
@@ -436,6 +434,7 @@ const CreateDestination = forwardRef<
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
+				setExistingDestination(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onDestinationNameChange) onDestinationNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
@@ -501,7 +500,7 @@ const CreateDestination = forwardRef<
 						<div className="w-1/2">
 							<FormField
 								label="OLake Version:"
-								tooltip="Choose the Olake version for the source"
+								tooltip="Choose the OLake version for the source"
 								info={
 									<a
 										href={OLAKE_LATEST_VERSION_URL}
@@ -509,7 +508,7 @@ const CreateDestination = forwardRef<
 										rel="noopener noreferrer"
 										className="flex items-center text-primary hover:text-primary/80"
 									>
-										<ArrowSquareOut className="size-4" />
+										<ArrowSquareOutIcon className="size-4" />
 									</a>
 								}
 							>
@@ -530,7 +529,7 @@ const CreateDestination = forwardRef<
 									/>
 								) : (
 									<div className="flex items-center gap-1 text-sm text-red-500">
-										<Info />
+										<InfoIcon />
 										No versions available
 									</div>
 								)}
@@ -647,7 +646,7 @@ const CreateDestination = forwardRef<
 								to={"/destinations"}
 								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 							>
-								<ArrowLeft className="mr-1 size-5" />
+								<ArrowLeftIcon className="mr-1 size-5" />
 							</Link>
 							<div className="text-lg font-bold">Create destination</div>
 						</div>
@@ -665,7 +664,7 @@ const CreateDestination = forwardRef<
 								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 									<div>
 										<div className="mb-4 flex items-center gap-2 text-base font-medium">
-											<Notebook className="size-5" />
+											<NotebookIcon className="size-5" />
 											Capture information
 										</div>
 
@@ -695,7 +694,7 @@ const CreateDestination = forwardRef<
 										}}
 									>
 										Create
-										<ArrowRight className="size-4 text-white" />
+										<ArrowRightIcon className="size-4 text-white" />
 									</button>
 								</div>
 							)}

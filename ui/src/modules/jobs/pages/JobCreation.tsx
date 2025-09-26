@@ -7,15 +7,15 @@ import { v4 as uuidv4 } from "uuid"
 import { useAppStore } from "../../../store"
 import { destinationService, sourceService, jobService } from "../../../api"
 
-import { JobBase, JobCreationSteps, SelectedStream } from "../../../types"
+import { JobBase, JobCreationSteps } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	getSelectedStreams,
 	validateCronExpression,
+	validateStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
-	FILTER_REGEX,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
 } from "../../../utils/constants"
@@ -131,21 +131,6 @@ const JobCreation: React.FC = () => {
 		return validateCronExpression(cronExpression)
 	}
 
-	const validateFilter = (filter: string): boolean => {
-		if (!filter || !filter.trim()) return false
-		return FILTER_REGEX.test(filter.trim())
-	}
-
-	const validateStreams = (selections: {
-		[key: string]: SelectedStream[]
-	}): boolean => {
-		return !Object.values(selections).some(streams =>
-			streams.some(
-				sel => sel.filter !== undefined && !validateFilter(sel.filter),
-			),
-		)
-	}
-
 	const checkJobNameUnique = async (): Promise<boolean | null> => {
 		try {
 			const response = await jobService.checkJobNameUnique(jobName)
@@ -217,8 +202,8 @@ const JobCreation: React.FC = () => {
 				config: JSON.stringify(destinationFormData),
 			},
 			streams_config: JSON.stringify({
+				...selectedStreams,
 				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
-				streams: selectedStreams.streams,
 			}),
 			frequency: cronExpression,
 		}

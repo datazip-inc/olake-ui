@@ -23,7 +23,11 @@ export type MultiFilterCondition = {
 }
 
 export type StreamData = {
-	sync_mode: SyncMode.FULL_REFRESH | SyncMode.CDC | SyncMode.INCREMENTAL
+	sync_mode:
+		| SyncMode.FULL_REFRESH
+		| SyncMode.CDC
+		| SyncMode.INCREMENTAL
+		| SyncMode.STRICT_CDC
 	skip_nested_flattening?: boolean
 	cursor_field?: string[]
 	destination_sync_mode: string
