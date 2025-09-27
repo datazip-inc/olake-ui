@@ -25,7 +25,9 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
+	getSelectedStreams,
 	validateCronExpression,
+	validateStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -320,7 +322,12 @@ const JobEdit: React.FC = () => {
 			streams_config:
 				typeof selectedStreams === "string"
 					? selectedStreams
-					: JSON.stringify(selectedStreams),
+					: JSON.stringify({
+							...selectedStreams,
+							selected_streams: getSelectedStreams(
+								selectedStreams.selected_streams,
+							),
+						}),
 			frequency: cronExpression,
 			activate: job?.activate,
 		}
@@ -331,6 +338,13 @@ const JobEdit: React.FC = () => {
 	const handleJobSubmit = async () => {
 		if (!sourceData || !destinationData || !jobId) {
 			message.error("Source and destination data are required")
+			return
+		}
+
+		if (
+			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+		) {
+			message.error("Filter Value cannot be empty")
 			return
 		}
 

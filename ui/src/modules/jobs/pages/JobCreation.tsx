@@ -10,7 +10,9 @@ import { destinationService, sourceService, jobService } from "../../../api"
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
 	getConnectorInLowerCase,
+	getSelectedStreams,
 	validateCronExpression,
+	validateStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -29,6 +31,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -85,6 +88,7 @@ const JobCreation: React.FC = () => {
 		setShowFailureModal,
 		setSourceTestConnectionError,
 		setDestinationTestConnectionError,
+		setShowResetStreamsModal,
 	} = useAppStore()
 
 	const sourceRef = useRef<any>(null)
@@ -197,7 +201,10 @@ const JobCreation: React.FC = () => {
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
-			streams_config: JSON.stringify(selectedStreams),
+			streams_config: JSON.stringify({
+				...selectedStreams,
+				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
+			}),
 			frequency: cronExpression,
 		}
 
@@ -257,6 +264,12 @@ const JobCreation: React.FC = () => {
 				break
 			}
 			case JOB_CREATION_STEPS.STREAMS:
+				if (
+					!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+				) {
+					message.error("Filter Value cannot be empty")
+					return
+				}
 				await handleJobCreation()
 				break
 			case JOB_CREATION_STEPS.CONFIG:
@@ -283,6 +296,11 @@ const JobCreation: React.FC = () => {
 
 	//TODO: Handle steps properly
 
+	const handleConfirmResetStreams = () => {
+		setSelectedStreams([])
+		setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+	}
+
 	const nextStep = () => {
 		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
@@ -297,7 +315,7 @@ const JobCreation: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
-			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
@@ -532,6 +550,7 @@ const JobCreation: React.FC = () => {
 					/>
 				</div>
 			</div>
+			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
 		</div>
 	)
 }
