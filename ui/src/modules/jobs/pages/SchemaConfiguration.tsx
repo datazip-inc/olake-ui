@@ -446,9 +446,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 		return tempFilteredStreams.filter(stream => {
 			const ns = stream.stream.namespace || ""
-			const isSelected = apiResponse.selected_streams[ns]?.some(
+			const matchingSelectedStream = apiResponse.selected_streams[ns]?.find(
 				s => s.stream_name === stream.stream.name,
 			)
+			const isSelected =
+				matchingSelectedStream && !matchingSelectedStream.disabled
 			if (showSelected && showNotSelected) return true
 			if (showSelected) return isSelected
 			if (showNotSelected) return !isSelected

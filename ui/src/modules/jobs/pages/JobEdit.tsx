@@ -27,6 +27,7 @@ import {
 	getConnectorInLowerCase,
 	getSelectedStreams,
 	validateCronExpression,
+	validateStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -337,6 +338,13 @@ const JobEdit: React.FC = () => {
 	const handleJobSubmit = async () => {
 		if (!sourceData || !destinationData || !jobId) {
 			message.error("Source and destination data are required")
+			return
+		}
+
+		if (
+			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+		) {
+			message.error("Filter Value cannot be empty")
 			return
 		}
 

@@ -423,6 +423,9 @@ const CreateDestination = forwardRef<
 
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
+			setDestinationName("")
+			onDestinationNameChange?.("")
+
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true)
@@ -432,13 +435,11 @@ const CreateDestination = forwardRef<
 			}
 			// Clear form data when switching to new destination
 			if (type === SETUP_TYPES.NEW) {
-				setDestinationName("")
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingDestination(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
-				if (onDestinationNameChange) onDestinationNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
 				if (onFormDataChange) onFormDataChange({})
 				if (onVersionChange) onVersionChange("")

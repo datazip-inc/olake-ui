@@ -337,6 +337,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
+			setSourceName("")
+			onSourceNameChange?.("")
+
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true) // Close doc panel
@@ -346,13 +349,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 			// Clear form data when switching to new source
 			if (type === "new") {
-				setSourceName("")
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingSource(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
-				if (onSourceNameChange) onSourceNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
 				if (onFormDataChange) onFormDataChange({})
 				if (onVersionChange) onVersionChange("")
