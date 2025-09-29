@@ -408,17 +408,17 @@ const CreateDestination = forwardRef<
 			setConnector(value as ConnectorType)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingDestination(null)
+				setDestinationName("")
+				onDestinationNameChange?.("")
 			}
 			setVersion("")
 			setFormData({})
 			setSchema(null)
-			setDestinationName("")
 
 			// Parent callbacks
 			onConnectorChange?.(value)
 			onVersionChange?.("")
 			onFormDataChange?.({})
-			onDestinationNameChange?.("")
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {

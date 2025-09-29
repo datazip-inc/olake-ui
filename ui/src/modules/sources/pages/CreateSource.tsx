@@ -322,17 +322,17 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setConnector(value)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingSource(null)
+				setSourceName("")
+				onSourceNameChange?.("")
 			}
 			setSelectedVersion("")
 			setFormData({})
 			setSchema(null)
-			setSourceName("")
 
 			// Parent callbacks
 			onConnectorChange?.(value)
 			onVersionChange?.("")
 			onFormDataChange?.({})
-			onSourceNameChange?.("")
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
