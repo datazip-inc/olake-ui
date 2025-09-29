@@ -330,28 +330,36 @@ func ReadLogs(mainSyncDir string) ([]map[string]interface{}, error) {
 		return nil, fmt.Errorf("failed to read log file: %s", logPath)
 	}
 
-	// Parse log lines
-	var logs []map[string]interface{}
+	var parsedLogs []map[string]interface{}
 	lines := strings.Split(string(logContent), "\n")
 	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
+		line = strings.TrimSpace(line)
+		if line == "" {
 			continue
 		}
 
-		var logEntry LogEntry
-		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			// skip unstructured lines
-			continue
+		// Try JSON first
+		var logEntry struct {
+			Level   string    `json:"level"`
+			Time    time.Time `json:"time"`
+			Message string    `json:"message"`
 		}
-
-		if logEntry.Level != "debug" {
-			logs = append(logs, map[string]interface{}{
+		if err := json.Unmarshal([]byte(line), &logEntry); err == nil {
+			// JSON log line → keep fields
+			parsedLogs = append(parsedLogs, map[string]interface{}{
 				"level":   logEntry.Level,
 				"time":    logEntry.Time.UTC().Format(time.RFC3339),
-				"message": logEntry.Message,
+				"message": logEntry.Message, // treat JSON "message" as string
+			})
+		} else {
+			// Non-JSON → store raw text
+			parsedLogs = append(parsedLogs, map[string]interface{}{
+				"level":   "info",
+				"time":    time.Now().UTC().Format(time.RFC3339),
+				"message": line,
 			})
 		}
 	}
 
-	return logs, nil
+	return parsedLogs, nil
 }
