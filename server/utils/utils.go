@@ -305,7 +305,7 @@ func ExtractJSON(output string) (map[string]interface{}, error) {
 type LogEntry struct {
 	Level   string          `json:"level"`
 	Time    time.Time       `json:"time"`
-	Message json.RawMessage `json:"message"` // <-- changed to RawMessage
+	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
@@ -314,6 +314,7 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
 	}
+
 	// Logs directory
 	logsDir := filepath.Join(mainLogDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
@@ -324,8 +325,8 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 	if err != nil || len(files) == 0 {
 		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
 	}
+
 	logDir := filepath.Join(logsDir, files[0].Name())
-	// Expect one subdirectory inside logs/
 	logPath := filepath.Join(logDir, "olake.log")
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
@@ -344,22 +345,25 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
 			continue
 		}
+
 		if logEntry.Level == "debug" {
 			continue
 		}
 
 		// Convert Message to string safely
 		var messageStr string
-		if len(logEntry.Message) > 0 {
-			var tmp interface{}
-			if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
-				// Nested JSON: marshal back to string
-				msgBytes, _ := json.Marshal(tmp)
+		var tmp interface{}
+		if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
+			switch v := tmp.(type) {
+			case string:
+				messageStr = v // plain string
+			default:
+				msgBytes, _ := json.Marshal(v) // object/array
 				messageStr = string(msgBytes)
-			} else {
-				// Plain string
-				messageStr = string(logEntry.Message)
 			}
+		} else {
+			// fallback: raw bytes as string
+			messageStr = string(logEntry.Message)
 		}
 
 		parsedLogs = append(parsedLogs, map[string]interface{}{
