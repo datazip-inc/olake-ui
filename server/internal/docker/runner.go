@@ -151,6 +151,10 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
 	}
 
+	for key, value := range utils.GetWorkerEnvVars() {
+		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", key, value))
+	}
+
 	dockerArgs = append(dockerArgs, imageName, string(command))
 
 	if flag != "" {
