@@ -335,27 +335,25 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 			continue
 		}
 
-		// Try JSON first
+		entry := map[string]interface{}{
+			"level":   "info",
+			"time":    time.Now().UTC().Format(time.RFC3339),
+			"message": line, // default raw line
+		}
+
+		// Try parsing top-level JSON
 		var logEntry struct {
-			Level   string    `json:"level"`
-			Time    time.Time `json:"time"`
-			Message string    `json:"message"`
+			Level   string          `json:"level"`
+			Time    string          `json:"time"`
+			Message json.RawMessage `json:"message"`
 		}
 		if err := json.Unmarshal([]byte(line), &logEntry); err == nil {
-			// JSON log line → keep fields
-			parsedLogs = append(parsedLogs, map[string]interface{}{
-				"level":   logEntry.Level,
-				"time":    logEntry.Time.UTC().Format(time.RFC3339),
-				"message": logEntry.Message, // treat JSON "message" as string
-			})
-		} else {
-			// Non-JSON → store raw text
-			parsedLogs = append(parsedLogs, map[string]interface{}{
-				"level":   "info",
-				"time":    time.Now().UTC().Format(time.RFC3339),
-				"message": line,
-			})
+			entry["level"] = logEntry.Level
+			entry["time"] = logEntry.Time
+			entry["message"] = string(logEntry.Message) // keep only nested JSON as string
 		}
+
+		parsedLogs = append(parsedLogs, entry)
 	}
 
 	return parsedLogs, nil
