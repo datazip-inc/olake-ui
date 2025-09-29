@@ -503,7 +503,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						<div className="w-1/2">
 							<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 								OLake Version:
-								<Tooltip title="Choose the OLake version for the source">
+								<Tooltip title="Choose the OLake version for the destination">
 									<Info
 										size={16}
 										className="cursor-help text-slate-900"
