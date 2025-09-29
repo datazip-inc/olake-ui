@@ -301,13 +301,6 @@ func ExtractJSON(output string) (map[string]interface{}, error) {
 	return nil, fmt.Errorf("no valid JSON block found in output")
 }
 
-// LogEntry represents a parsed log line.
-type LogEntry struct {
-	Level   string    `json:"level"`
-	Time    time.Time `json:"time"`
-	Message string    `json:"message"`
-}
-
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
 func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 	// Check if mainLogDir exists
