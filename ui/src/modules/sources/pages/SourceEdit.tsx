@@ -13,9 +13,9 @@ import {
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
 
-import { useAppStore } from "../../../store"
-import { sourceService, jobService } from "../../../api"
-import { Entity, SourceEditProps, SourceJob } from "../../../types"
+import { useAppStore } from "@store/index"
+import { sourceService, jobService } from "@api/index"
+import { Entity, SourceEditProps, SourceJob } from "@types/index"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
@@ -23,25 +23,25 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
-} from "../../../utils/utils"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import StepTitle from "../../common/components/StepTitle"
-import DeleteModal from "../../common/Modals/DeleteModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import EntityEditModal from "../../common/Modals/EntityEditModal"
+} from "@utils/utils"
+import DocumentationPanel from "@modules/common/components/DocumentationPanel"
+import StepTitle from "@modules/common/components/StepTitle"
+import DeleteModal from "@modules/common/Modals/DeleteModal"
+import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "@modules/common/Modals/TestConnectionModal"
+import EntityEditModal from "@modules/common/Modals/EntityEditModal"
 import connectorOptions from "../components/connectorOptions"
-import { getStatusIcon } from "../../../utils/statusIcons"
+import { getStatusIcon } from "@utils/statusIcons"
 import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
 	transformErrors,
-} from "../../../utils/constants"
-import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
-import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
-import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
-import { widgets } from "../../common/components/Form/widgets"
+} from "@utils/constants"
+import ObjectFieldTemplate from "@modules/common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "@modules/common/components/Form/CustomFieldTemplate"
+import ArrayFieldTemplate from "@modules/common/components/Form/ArrayFieldTemplate"
+import { widgets } from "@modules/common/components/Form/widgets"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,

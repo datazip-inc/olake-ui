@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react"
 import { Modal, Radio, Input, Button } from "antd"
-import { useAppStore } from "../../../store"
-import { validateAlphanumericUnderscore } from "../../../utils/utils"
+import { useAppStore } from "@store/index"
+import { validateAlphanumericUnderscore } from "@utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	FORMAT_OPTIONS,
 	LABELS,
 	NAMESPACE_PLACEHOLDER,
-} from "../../../utils/constants"
+} from "@utils/constants"
 import { DotOutline } from "@phosphor-icons/react"
-import { DestinationDatabaseModalProps } from "../../../types"
+import { DestinationDatabaseModalProps } from "@types/index"
 
 type FormatType = (typeof FORMAT_OPTIONS)[keyof typeof FORMAT_OPTIONS]
 
@@ -17,7 +17,7 @@ import {
 	extractDatabasePrefix,
 	determineDefaultFormat,
 	generateDatabaseNames,
-} from "../../../utils/destination-database"
+} from "@utils/destination-database"
 
 const DestinationDatabaseModal = ({
 	destinationType,

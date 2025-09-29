@@ -4,8 +4,8 @@ import { useNavigate, Link, useParams } from "react-router-dom"
 import { message } from "antd"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { jobService } from "../../../api"
+import { useAppStore } from "@store/index"
+import { jobService } from "@api/index"
 import {
 	StreamData,
 	Job,
@@ -14,24 +14,24 @@ import {
 	SourceData,
 	DestinationData,
 	StreamsDataStructure,
-} from "../../../types"
+} from "@types/index"
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
-import SourceEdit from "../../sources/pages/SourceEdit"
-import DestinationEdit from "../../destinations/pages/DestinationEdit"
+import SourceEdit from "@modules/sources/pages/SourceEdit"
+import DestinationEdit from "@modules/destinations/pages/DestinationEdit"
 import SchemaConfiguration from "./SchemaConfiguration"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "@modules/common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
-} from "../../../utils/utils"
+} from "@utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
-} from "../../../utils/constants"
+} from "@utils/constants"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({

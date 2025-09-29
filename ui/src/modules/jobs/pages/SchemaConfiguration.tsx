@@ -1,25 +1,25 @@
 import React, { useEffect, useState, useMemo, useRef } from "react"
 import { Input, Empty, Spin, Tooltip } from "antd"
 
-import { sourceService } from "../../../api"
-import { useAppStore } from "../../../store"
+import { sourceService } from "@api/index"
+import { useAppStore } from "@store/index"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
 	StreamData,
 	SyncMode,
-} from "../../../types"
+} from "@types/index"
 import FilterButton from "../components/FilterButton"
-import StepTitle from "../../common/components/StepTitle"
+import StepTitle from "@modules/common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
-} from "../../../utils/constants"
-import { extractNamespaceFromDestination } from "../../../utils/destination-database"
-import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+} from "@utils/constants"
+import { extractNamespaceFromDestination } from "@utils/destination-database"
+import DestinationDatabaseModal from "@modules/common/Modals/DestinationDatabaseModal"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 

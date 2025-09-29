@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { formatDestinationPath } from "../../../../utils/destination-database"
+import { formatDestinationPath } from "@utils/destination-database"
 import clsx from "clsx"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
 import {
@@ -21,7 +21,7 @@ import {
 	MultiFilterCondition,
 	CombinedStreamsData,
 	SyncMode,
-} from "../../../../types"
+} from "@types/index"
 
 import {
 	CARD_STYLE,
@@ -30,8 +30,8 @@ import {
 	PartitioningRegexTooltip,
 	SYNC_MODE_MAP,
 	TAB_STYLES,
-} from "../../../../utils/constants"
-import { operatorOptions } from "../../../../utils/utils"
+} from "@utils/constants"
+import { operatorOptions } from "@utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
 

@@ -2,7 +2,7 @@ import { CaretRight } from "@phosphor-icons/react"
 import { Checkbox, CheckboxChangeEvent } from "antd"
 import clsx from "clsx"
 
-import { StreamHeaderProps } from "../../../../types"
+import { StreamHeaderProps } from "@types/index"
 
 const StreamHeader: React.FC<StreamHeaderProps> = ({
 	stream,

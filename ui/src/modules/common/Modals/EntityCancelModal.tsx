@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { Button, Modal } from "antd"
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { JOB_CREATION_STEPS } from "../../../utils/constants"
+import { useAppStore } from "@store/index"
+import { JOB_CREATION_STEPS } from "@utils/constants"
 
 interface EntityCancelModalProps {
 	type: string

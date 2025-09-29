@@ -2,11 +2,11 @@ import { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 
-import { DestinationTableProps, Entity } from "../../../types"
-import { getConnectorImage } from "../../../utils/utils"
-import JobConnection from "../../common/components/JobConnection"
-import DeleteModal from "../../common/Modals/DeleteModal"
-import { CONNECTOR_TYPES } from "../../../utils/constants"
+import { DestinationTableProps, Entity } from "@types/index"
+import { getConnectorImage } from "@utils/utils"
+import JobConnection from "@modules/common/components/JobConnection"
+import DeleteModal from "@modules/common/Modals/DeleteModal"
+import { CONNECTOR_TYPES } from "@utils/constants"
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
 	destinations,

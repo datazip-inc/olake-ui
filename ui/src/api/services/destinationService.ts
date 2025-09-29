@@ -6,8 +6,8 @@ import {
 	EntityBase,
 	EntityTestRequest,
 	EntityTestResponse,
-} from "../../types"
-import { getConnectorInLowerCase } from "../../utils/utils"
+} from "@types/index"
+import { getConnectorInLowerCase } from "@utils/utils"
 
 // TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {

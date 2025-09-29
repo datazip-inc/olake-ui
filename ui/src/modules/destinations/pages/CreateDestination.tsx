@@ -10,42 +10,42 @@ import { Input, message, Select, Spin } from "antd"
 import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 
-import { useAppStore } from "../../../store"
-import { destinationService } from "../../../api/services/destinationService"
+import { useAppStore } from "@store/index"
+import { destinationService } from "@api/services/destinationService"
 import {
 	CreateDestinationProps,
 	DestinationConfig,
 	ExtendedDestination,
 	SetupType,
-} from "../../../types"
+} from "@types/index"
 import {
 	getConnectorInLowerCase,
 	getConnectorDocumentationPath,
 	handleSpecResponse,
 	withAbortController,
-} from "../../../utils/utils"
+} from "@utils/utils"
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	SETUP_TYPES,
 	transformErrors,
-} from "../../../utils/constants"
-import EndpointTitle from "../../../utils/EndpointTitle"
-import FormField from "../../../utils/FormField"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import StepTitle from "../../common/components/StepTitle"
-import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import EntitySavedModal from "../../common/Modals/EntitySavedModal"
-import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+} from "@utils/constants"
+import EndpointTitle from "@utils/EndpointTitle"
+import FormField from "@utils/FormField"
+import DocumentationPanel from "@modules/common/components/DocumentationPanel"
+import StepTitle from "@modules/common/components/StepTitle"
+import { SetupTypeSelector } from "@modules/common/components/SetupTypeSelector"
+import TestConnectionModal from "@modules/common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
+import EntitySavedModal from "@modules/common/Modals/EntitySavedModal"
+import EntityCancelModal from "@modules/common/Modals/EntityCancelModal"
 import { connectorOptions } from "../components/connectorOptions"
-import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
-import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import ObjectFieldTemplate from "@modules/common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "@modules/common/components/Form/CustomFieldTemplate"
 import validator from "@rjsf/validator-ajv8"
-import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
-import { widgets } from "../../common/components/Form/widgets"
+import ArrayFieldTemplate from "@modules/common/components/Form/ArrayFieldTemplate"
+import { widgets } from "@modules/common/components/Form/widgets"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 

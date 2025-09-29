@@ -1,7 +1,7 @@
-import { ConnectorOption } from "../../../types"
-import AWSS3 from "../../../assets/AWSS3.svg"
-import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
-import { CONNECTOR_TYPES } from "../../../utils/constants"
+import { ConnectorOption } from "@types/index"
+import AWSS3 from "@assets/AWSS3.svg"
+import ApacheIceBerg from "@assets/ApacheIceBerg.svg"
+import { CONNECTOR_TYPES } from "@utils/constants"
 
 export const connectorOptions: ConnectorOption[] = [
 	{

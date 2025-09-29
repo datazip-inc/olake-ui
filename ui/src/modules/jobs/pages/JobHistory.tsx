@@ -9,13 +9,13 @@ import {
 	Eye,
 } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
+import { useAppStore } from "@store/index"
 import {
 	getConnectorImage,
 	getStatusClass,
 	getStatusLabel,
-} from "../../../utils/utils"
-import { getStatusIcon } from "../../../utils/statusIcons"
+} from "@utils/utils"
+import { getStatusIcon } from "@utils/statusIcons"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()

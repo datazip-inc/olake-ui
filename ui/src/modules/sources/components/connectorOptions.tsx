@@ -1,5 +1,5 @@
-import { ConnectorOption } from "../../../types"
-import { getConnectorImage } from "../../../utils/utils"
+import { ConnectorOption } from "@types/index"
+import { getConnectorImage } from "@utils/utils"
 
 const connectorOptions: ConnectorOption[] = [
 	{
