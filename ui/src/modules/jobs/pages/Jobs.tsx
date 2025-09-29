@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom"
 import { Button, Tabs, Empty, message, Spin } from "antd"
 import { GitCommit, Plus } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { jobService } from "../../../api"
-import analyticsService from "../../../api/services/analyticsService"
-import { JobType } from "../../../types/jobTypes"
-import { JOB_TYPES } from "../../../utils/constants"
+import { useAppStore } from "@store"
+import { jobService } from "@api"
+import analyticsService from "@api/services/analyticsService"
+import { JobType } from "@types/jobTypes"
+import { JOB_TYPES } from "@utils/constants"
 import JobTable from "../components/JobTable"
 import JobEmptyState from "../components/JobEmptyState"
-import DeleteJobModal from "../../common/Modals/DeleteJobModal"
+import DeleteJobModal from "@modules/common/Modals/DeleteJobModal"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobType>(
