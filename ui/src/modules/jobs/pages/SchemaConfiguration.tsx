@@ -454,7 +454,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				s => s.stream_name === stream.stream.name,
 			)
 			const isSelected =
-				matchingSelectedStream && !matchingSelectedStream.disabled
+				matchingSelectedStream && !matchingSelectedStream?.disabled
 			if (showSelected && showNotSelected) return true
 			if (showSelected) return isSelected
 			if (showNotSelected) return !isSelected

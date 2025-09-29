@@ -348,7 +348,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				}
 			}
 			// Clear form data when switching to new source
-			if (type === "new") {
+			if (type === SETUP_TYPES.NEW) {
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector

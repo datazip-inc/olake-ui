@@ -299,42 +299,23 @@ const StreamConfiguration = ({
 			[streamKey]: checked,
 		}))
 
-		if (!checked) {
-			setMultiFilterCondition({
-				conditions: [
-					{
-						columnName: "",
-						operator: "=",
-						value: "",
-					},
-				],
-				logicalOperator: "and",
-			})
-			isLocalFilterUpdateRef.current = true
-			onFullLoadFilterChange?.(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				"",
-			)
-		} else {
-			// if toggled on insert empty condition
-			setMultiFilterCondition({
-				conditions: [
-					{
-						columnName: "",
-						operator: "=",
-						value: "",
-					},
-				],
-				logicalOperator: "and",
-			})
-			isLocalFilterUpdateRef.current = true
-			onFullLoadFilterChange?.(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				"=",
-			)
-		}
+		setMultiFilterCondition({
+			conditions: [
+				{
+					columnName: "",
+					operator: "=",
+					value: "",
+				},
+			],
+			logicalOperator: "and",
+		})
+		isLocalFilterUpdateRef.current = true
+		// If toggled on insert empty condition
+		onFullLoadFilterChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			checked ? "=" : "",
+		)
 	}
 
 	const handleFilterConditionChange = (
@@ -359,7 +340,7 @@ const StreamConfiguration = ({
 				cond =>
 					`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
 			)
-			.join(` ${multiFilterCondition.logicalOperator} `)
+			.join(` ${newMultiCondition.logicalOperator} `)
 
 		isLocalFilterUpdateRef.current = true
 		onFullLoadFilterChange?.(

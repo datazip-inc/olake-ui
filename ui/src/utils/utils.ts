@@ -509,14 +509,7 @@ export const handleSpecResponse = (
 	}
 }
 
-/**
- * Returns a copy of the selected streams map with all disabled streams removed.
- *
- * @param selectedStreams - Map from namespace to an array of streams,
- * each stream having a `disabled` flag.
- * @returns A new map with the same keys where each array only includes streams
- * that are not disabled.
- */
+// Returns a copy of the selected streams map with all disabled streams removed
 export const getSelectedStreams = (selectedStreams: {
 	[key: string]: SelectedStream[]
 }): { [key: string]: SelectedStream[] } => {
