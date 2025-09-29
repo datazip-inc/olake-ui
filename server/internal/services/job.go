@@ -449,3 +449,16 @@ func (s *JobService) UpdateJobPostSync(ctx context.Context, jobID int, state str
 
 	return s.jobORM.Update(job)
 }
+
+func (s *JobService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID string, event string) error {
+	switch strings.ToLower(event) {
+	case "started":
+		telemetry.TrackSyncStart(ctx, jobID, workflowID)
+	case "completed":
+		telemetry.TrackSyncCompleted(ctx, jobID, workflowID)
+	case "failed":
+		telemetry.TrackSyncFailed(ctx, jobID, workflowID)
+	}
+
+	return nil
+}

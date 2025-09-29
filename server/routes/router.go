@@ -89,4 +89,5 @@ func Init() {
 	// worker callback routes
 	web.Router("/internal/worker/callback/presync/:id", &handlers.JobHandler{}, "get:GetJobDetails")
 	web.Router("/internal/worker/callback/postsync", &handlers.JobHandler{}, "post:UpdateJobPostSync")
+	web.Router("/internal/worker/callback/sync-telemetry", &handlers.JobHandler{}, "post:UpdateSyncTelemetry")
 }

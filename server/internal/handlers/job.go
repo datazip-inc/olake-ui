@@ -218,3 +218,30 @@ func (c *JobHandler) UpdateJobPostSync() {
 
 	utils.SuccessResponse(&c.Controller, nil)
 }
+
+// @router /internal/worker/callback/sync-telemetry [post]
+func (c *JobHandler) UpdateSyncTelemetry() {
+	var req struct {
+		JobID      int    `json:"job_id"`
+		WorkflowID string `json:"workflow_id"`
+		Event      string `json:"event"`
+	}
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobID == 0 || req.WorkflowID == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id and workflow_id are required", nil)
+		return
+	}
+
+	if err := c.jobService.UpdateSyncTelemetry(context.Background(), req.JobID, req.WorkflowID, req.Event); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update sync telemetry", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, nil)
+
+}
