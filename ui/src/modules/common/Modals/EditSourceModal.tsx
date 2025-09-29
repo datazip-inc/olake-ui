@@ -3,9 +3,9 @@ import { CheckCircle, Warning } from "@phosphor-icons/react"
 import { formatDistanceToNow } from "date-fns"
 import { useNavigate } from "react-router-dom"
 
-import { sourceService } from "../../../api"
-import { useAppStore } from "../../../store"
-import { getConnectorImage } from "../../../utils/utils"
+import { sourceService } from "@api/index"
+import { useAppStore } from "@store/index"
+import { getConnectorImage } from "@utils/utils"
 
 const EditSourceModal = () => {
 	const navigate = useNavigate()

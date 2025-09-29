@@ -1,7 +1,7 @@
 import clsx from "clsx"
 
-import { COLORS } from "../../../utils/constants"
-import { FilterButtonProps } from "../../../types"
+import { COLORS } from "@utils/constants"
+import { FilterButtonProps } from "@types/index"
 
 const FilterButton: React.FC<FilterButtonProps> = ({
 	filter,

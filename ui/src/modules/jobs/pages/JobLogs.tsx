@@ -4,12 +4,12 @@ import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button, Tooltip } from "antd"
 import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
+import { useAppStore } from "@store/index"
 import {
 	getConnectorImage,
 	getLogLevelClass,
 	getLogTextColor,
-} from "../../../utils/utils"
+} from "@utils/utils"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{

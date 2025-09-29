@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { Form, Input, Button, Card, message } from "antd"
 import { User, LockKey } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { LoginArgs } from "../../../types"
+import { useAppStore } from "@store/index"
+import { LoginArgs } from "@types/index"
 
 const Login: React.FC = () => {
 	const { login } = useAppStore()

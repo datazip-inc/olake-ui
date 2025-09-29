@@ -4,31 +4,31 @@ import { message } from "antd"
 import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
-import { useAppStore } from "../../../store"
-import { destinationService, sourceService, jobService } from "../../../api"
+import { useAppStore } from "@store/index"
+import { destinationService, sourceService, jobService } from "@api/index"
 
-import { JobBase, JobCreationSteps } from "../../../types"
+import { JobBase, JobCreationSteps } from "@types/index"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
-} from "../../../utils/utils"
+} from "@utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
-} from "../../../utils/constants"
+} from "@utils/constants"
 
 // Internal imports from components
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
-import CreateSource from "../../sources/pages/CreateSource"
-import CreateDestination from "../../destinations/pages/CreateDestination"
+import CreateSource from "@modules/sources/pages/CreateSource"
+import CreateDestination from "@modules/destinations/pages/CreateDestination"
 import SchemaConfiguration from "./SchemaConfiguration"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import EntitySavedModal from "../../common/Modals/EntitySavedModal"
-import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import TestConnectionModal from "@modules/common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
+import EntitySavedModal from "@modules/common/Modals/EntitySavedModal"
+import EntityCancelModal from "@modules/common/Modals/EntityCancelModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()

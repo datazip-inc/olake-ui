@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom"
 import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
-import { useAppStore } from "../../../store"
-import { EntitySavedModalProps } from "../../../types"
-import { JOB_CREATION_STEPS } from "../../../utils/constants"
+import { useAppStore } from "@store/index"
+import { EntitySavedModalProps } from "@types/index"
+import { JOB_CREATION_STEPS } from "@utils/constants"
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	type,

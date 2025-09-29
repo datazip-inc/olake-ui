@@ -4,15 +4,15 @@ import { Info } from "@phosphor-icons/react"
 import parser from "cron-parser"
 import { useLocation } from "react-router-dom"
 
-import { JobConfigurationProps } from "../../../types"
+import { JobConfigurationProps } from "@types/index"
 import {
 	generateCronExpression,
 	parseCronExpression,
 	isValidCronExpression,
 	validateAlphanumericUnderscore,
-} from "../../../utils/utils"
-import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
-import StepTitle from "../../common/components/StepTitle"
+} from "@utils/utils"
+import { DAYS, FREQUENCY_OPTIONS } from "@utils/constants"
+import StepTitle from "@modules/common/components/StepTitle"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobName,

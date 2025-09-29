@@ -1,5 +1,5 @@
-import { StepIndicatorProps, StepProgressProps } from "../../../types"
-import { steps } from "../../../utils/constants"
+import { StepIndicatorProps, StepProgressProps } from "@types/index"
+import { steps } from "@utils/constants"
 
 const StepIndicator: React.FC<StepIndicatorProps> = ({
 	step,

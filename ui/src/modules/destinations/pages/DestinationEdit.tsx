@@ -7,15 +7,15 @@ import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
 import validator from "@rjsf/validator-ajv8"
 import Form from "@rjsf/antd"
 
-import { useAppStore } from "../../../store"
-import { destinationService } from "../../../api/services/destinationService"
-import { jobService } from "../../../api"
+import { useAppStore } from "@store/index"
+import { destinationService } from "@api/services/destinationService"
+import { jobService } from "@api/index"
 import {
 	DestinationEditProps,
 	DestinationJob,
 	Entity,
 	EntityType,
-} from "../../../types"
+} from "@types/index"
 import {
 	getConnectorImage,
 	getConnectorDocumentationPath,
@@ -23,8 +23,8 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
-} from "../../../utils/utils"
-import { getStatusIcon } from "../../../utils/statusIcons"
+} from "@utils/utils"
+import { getStatusIcon } from "@utils/statusIcons"
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
@@ -32,20 +32,20 @@ import {
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
 	transformErrors,
-} from "../../../utils/constants"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import StepTitle from "../../common/components/StepTitle"
-import DeleteModal from "../../common/Modals/DeleteModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import EntityEditModal from "../../common/Modals/EntityEditModal"
+} from "@utils/constants"
+import DocumentationPanel from "@modules/common/components/DocumentationPanel"
+import StepTitle from "@modules/common/components/StepTitle"
+import DeleteModal from "@modules/common/Modals/DeleteModal"
+import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "@modules/common/Modals/TestConnectionModal"
+import EntityEditModal from "@modules/common/Modals/EntityEditModal"
 import { connectorOptions } from "../components/connectorOptions"
-import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
-import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import ObjectFieldTemplate from "@modules/common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "@modules/common/components/Form/CustomFieldTemplate"
 
-import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
-import { widgets } from "../../common/components/Form/widgets"
+import ArrayFieldTemplate from "@modules/common/components/Form/ArrayFieldTemplate"
+import { widgets } from "@modules/common/components/Form/widgets"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,

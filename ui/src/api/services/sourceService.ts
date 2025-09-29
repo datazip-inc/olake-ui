@@ -6,7 +6,7 @@ import {
 	EntityBase,
 	EntityTestRequest,
 	EntityTestResponse,
-} from "../../types"
+} from "@types/index"
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {

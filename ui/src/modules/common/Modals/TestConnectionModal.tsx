@@ -1,6 +1,6 @@
 import { Modal } from "antd"
-import { useAppStore } from "../../../store"
-import TestConnectionGif from "../../../assets/TestConnectionGif.gif"
+import { useAppStore } from "@store/index"
+import TestConnectionGif from "@assets/TestConnectionGif.gif"
 
 const TestConnectionModal = () => {
 	const { showTestingModal } = useAppStore()
