@@ -308,10 +308,14 @@ type LogEntry struct {
 	Message string    `json:"message"`
 }
 
-// ReadLogs reads logs from the given mainSyncDir and returns structured log entries.
-func ReadLogs(mainSyncDir string) ([]map[string]interface{}, error) {
+// ReadLogs reads logs from the given mainLogDir and returns structured log entries.
+func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
+	// Check if mainLogDir exists
+	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
+	}
 	// Logs directory
-	logsDir := filepath.Join(mainSyncDir, "logs")
+	logsDir := filepath.Join(mainLogDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
 	}
@@ -319,12 +323,12 @@ func ReadLogs(mainSyncDir string) ([]map[string]interface{}, error) {
 	// Expect one subdirectory inside logs/
 	files, err := os.ReadDir(logsDir)
 	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("no sync log directory found in: %s", logsDir)
+		return nil, fmt.Errorf("logs directory not found in: %s", logsDir)
 	}
-	syncDir := filepath.Join(logsDir, files[0].Name())
+	logDir := filepath.Join(logsDir, files[0].Name())
 
 	// Log file path
-	logPath := filepath.Join(syncDir, "olake.log")
+	logPath := filepath.Join(logDir, "olake.log")
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log file: %s", logPath)

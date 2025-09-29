@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -509,18 +508,6 @@ func (c *JobHandler) GetTaskLogs() {
 	// Get home directory
 	homeDir := docker.GetDefaultConfigDir()
 	mainSyncDir := filepath.Join(homeDir, syncFolderName)
-	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
-		return
-	}
-
-	// Look for log files in the logs directory
-	logsDir := filepath.Join(mainSyncDir, "logs")
-	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Logs directory not found")
-		return
-	}
-
 	logs, err := utils.ReadLogs(mainSyncDir)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, err.Error())

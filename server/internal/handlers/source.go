@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -216,12 +215,8 @@ func (c *SourceHandler) TestConnection() {
 		}
 	}
 	homeDir := docker.GetDefaultConfigDir()
-	mainSyncDir := filepath.Join(homeDir, workflowID)
-	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
-		return
-	}
-	logs, err := utils.ReadLogs(mainSyncDir)
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read logs: %s", err))
 		return
