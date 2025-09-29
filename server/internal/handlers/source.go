@@ -503,6 +503,6 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	utils.SuccessResponse(&c.Controller, dto.SpecResponse{
 		Version: req.Version,
 		Type:    req.Type,
-		Spec:    spec,
+		Spec:    specOutput.Spec,
 	})
 }

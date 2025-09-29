@@ -1,16 +1,21 @@
 import { useState, useEffect } from "react"
-import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useNavigate } from "react-router-dom"
-import { useAppStore } from "../../../store"
-import JobTable from "../components/JobTable"
+import { Button, Tabs, Empty, message, Spin } from "antd"
 import { GitCommit, Plus } from "@phosphor-icons/react"
-import DeleteJobModal from "../../common/Modals/DeleteJobModal"
+
+import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
-import JobEmptyState from "../components/JobEmptyState"
 import analyticsService from "../../../api/services/analyticsService"
+import { JobType } from "../../../types/jobTypes"
+import { JOB_TYPES } from "../../../utils/constants"
+import JobTable from "../components/JobTable"
+import JobEmptyState from "../components/JobEmptyState"
+import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 
 const Jobs: React.FC = () => {
-	const [activeTab, setActiveTab] = useState("active")
+	const [activeTab, setActiveTab] = useState<JobType>(
+		JOB_TYPES.ACTIVE as JobType,
+	)
 	const navigate = useNavigate()
 	const {
 		jobs,
@@ -46,6 +51,31 @@ const Jobs: React.FC = () => {
 	}
 
 	const handleEditJob = (id: string) => {
+		if (activeTab === JOB_TYPES.SAVED) {
+			const savedJob = savedJobs.find(job => job.id.toString() === id)
+			if (savedJob) {
+				const initialData = {
+					sourceName: savedJob.source.name,
+					sourceConnector: savedJob.source.type,
+					sourceVersion: savedJob.source.version,
+					sourceFormData: JSON.parse(savedJob.source.config),
+					destinationName: savedJob.destination.name,
+					destinationConnector: savedJob.destination.type,
+					destinationVersion: savedJob.destination.version,
+					destinationFormData: JSON.parse(savedJob.destination.config),
+					selectedStreams: JSON.parse(savedJob.streams_config),
+					jobName: savedJob.name,
+					cronExpression: savedJob.frequency,
+				}
+				navigate("/jobs/new", {
+					state: {
+						initialData,
+						savedJobId: savedJob.id,
+					},
+				})
+				return
+			}
+		}
 		navigate(`/jobs/${id}/edit`)
 	}
 
@@ -59,7 +89,7 @@ const Jobs: React.FC = () => {
 	}
 
 	const handleDeleteJob = (id: string) => {
-		if (activeTab === "saved") {
+		if (activeTab === JOB_TYPES.SAVED) {
 			const savedJobsFromStorage = JSON.parse(
 				localStorage.getItem("savedJobs") || "[]",
 			)
@@ -89,26 +119,34 @@ const Jobs: React.FC = () => {
 	}, [activeTab, jobs, savedJobs])
 
 	const updateJobsList = () => {
-		if (activeTab === "active") {
-			setFilteredJobs(jobs.filter(job => job.activate === true))
-		} else if (activeTab === "inactive") {
-			setFilteredJobs(jobs.filter(job => job.activate === false))
-		} else if (activeTab === "saved") {
-			setFilteredJobs(savedJobs)
-		} else if (activeTab === "failed") {
-			setFilteredJobs(
-				jobs.filter(job => job.last_run_state?.toLowerCase() == "failed"),
-			)
+		switch (activeTab) {
+			case JOB_TYPES.ACTIVE:
+				setFilteredJobs(jobs.filter(job => job.activate === true))
+				break
+			case JOB_TYPES.INACTIVE:
+				setFilteredJobs(jobs.filter(job => job.activate === false))
+				break
+			case JOB_TYPES.SAVED:
+				setFilteredJobs(savedJobs)
+				break
+			case JOB_TYPES.FAILED:
+				setFilteredJobs(
+					jobs.filter(job => job.last_run_state?.toLowerCase() === "failed"),
+				)
+				break
+			default:
+				// Handle unexpected activeTab values gracefully
+				setFilteredJobs([])
 		}
 	}
 
 	const showEmpty = !isLoadingJobs && jobs.length === 0
 
 	const tabItems = [
-		{ key: "active", label: "Active jobs" },
-		{ key: "inactive", label: "Inactive jobs" },
-		{ key: "saved", label: "Saved jobs" },
-		{ key: "failed", label: "Failed jobs" },
+		{ key: JOB_TYPES.ACTIVE, label: "Active jobs" },
+		{ key: JOB_TYPES.INACTIVE, label: "Inactive jobs" },
+		{ key: JOB_TYPES.SAVED, label: "Saved jobs" },
+		{ key: JOB_TYPES.FAILED, label: "Failed jobs" },
 	]
 
 	if (jobsError) {
@@ -133,7 +171,7 @@ const Jobs: React.FC = () => {
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
 				<button
-					className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white hover:bg-[#132685]"
+					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 					onClick={handleCreateJob}
 				>
 					<Plus className="size-4 text-white" />
@@ -147,7 +185,7 @@ const Jobs: React.FC = () => {
 
 			<Tabs
 				activeKey={activeTab}
-				onChange={setActiveTab}
+				onChange={key => setActiveTab(key as JobType)}
 				items={tabItems.map(tab => ({
 					key: tab.key,
 					label: tab.label,
@@ -158,7 +196,7 @@ const Jobs: React.FC = () => {
 								tip="Loading sources..."
 							/>
 						</div>
-					) : tab.key === "active" && showEmpty ? (
+					) : tab.key === JOB_TYPES.ACTIVE && showEmpty ? (
 						<JobEmptyState handleCreateJob={handleCreateJob} />
 					) : filteredJobs.length === 0 ? (
 						<Empty
@@ -170,7 +208,7 @@ const Jobs: React.FC = () => {
 						<JobTable
 							jobs={filteredJobs}
 							loading={isLoadingJobs}
-							jobType={activeTab as "active" | "inactive" | "saved" | "failed"}
+							jobType={activeTab}
 							onSync={handleSyncJob}
 							onEdit={handleEditJob}
 							onPause={handlePauseJob}

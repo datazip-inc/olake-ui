@@ -22,7 +22,6 @@ func main() {
 
 	// start telemetry service
 	telemetry.InitTelemetry()
-	defer telemetry.Close()
 
 	// check constants
 	constants.Init()
@@ -32,8 +31,7 @@ func main() {
 	logger.InitLogger(logsdir)
 
 	// init database
-	postgresDB, _ := config.String("postgresdb")
-	err := database.Init(postgresDB)
+	err := database.Init()
 	if err != nil {
 		logs.Critical("Failed to initialize database: %s", err)
 		return

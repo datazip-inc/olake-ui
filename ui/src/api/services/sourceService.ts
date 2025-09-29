@@ -100,6 +100,9 @@ export const sourceService = {
 		try {
 			const response = await api.get<APIResponse<{ version: string[] }>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+				{
+					timeout: 0,
+				},
 			)
 			return response.data
 		} catch (error) {
@@ -108,14 +111,19 @@ export const sourceService = {
 		}
 	},
 
-	getSourceSpec: async (type: string, version: string) => {
+	getSourceSpec: async (
+		type: string,
+		version: string,
+		signal?: AbortSignal,
+	) => {
 		try {
-			const response = await api.post<APIResponse<Record<string, unknown>>>(
+			const response = await api.post<APIResponse<any>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: type.toLowerCase(),
 					version,
 				},
+				{ timeout: 300000, signal },
 			)
 			return response.data
 		} catch (error) {
@@ -129,6 +137,7 @@ export const sourceService = {
 		type: string,
 		version: string,
 		config: string,
+		job_name: string,
 		job_id?: number,
 	) => {
 		try {
@@ -137,8 +146,9 @@ export const sourceService = {
 				{
 					name,
 					type,
+					job_name,
 					job_id: job_id ? job_id : -1,
-					version: version === "" ? "latest" : version,
+					version,
 					config,
 				},
 				{ timeout: 0 },

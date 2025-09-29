@@ -3,8 +3,10 @@ package database
 import (
 	"encoding/gob"
 	"fmt"
+	"net/url"
 
 	"github.com/beego/beego/v2/client/orm"
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
 	_ "github.com/lib/pq"                                     // required for registering driver
@@ -13,9 +15,13 @@ import (
 	"github.com/datazip/olake-ui/server/internal/models"
 )
 
-func Init(uri string) error {
+func Init() error {
 	// register driver
-	err := orm.RegisterDriver("postgres", orm.DRPostgres)
+	uri, err := BuildPostgresURIFromConfig()
+	if err != nil {
+		return fmt.Errorf("failed to build postgres uri: %s", err)
+	}
+	err = orm.RegisterDriver("postgres", orm.DRPostgres)
 	if err != nil {
 		return fmt.Errorf("failed to register postgres driver: %s", err)
 	}
@@ -63,4 +69,35 @@ func Init(uri string) error {
 		}
 	}
 	return nil
+}
+
+// BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf
+// and constructs the Postgres connection URI.
+func BuildPostgresURIFromConfig() (string, error) {
+	logs.Info("Building Postgres URI from config")
+
+	// First, check if postgresdb is set directly
+	if dsn, err := web.AppConfig.String("postgresdb"); err == nil && dsn != "" {
+		return dsn, nil
+	}
+
+	user, _ := web.AppConfig.String("OLAKE_POSTGRES_USER")
+	password, _ := web.AppConfig.String("OLAKE_POSTGRES_PASSWORD")
+	host, _ := web.AppConfig.String("OLAKE_POSTGRES_HOST")
+	port, _ := web.AppConfig.String("OLAKE_POSTGRES_PORT")
+	dbName, _ := web.AppConfig.String("OLAKE_POSTGRES_DBNAME")
+	sslMode, _ := web.AppConfig.String("OLAKE_POSTGRES_SSLMODE")
+
+	u := &url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(user, password),
+		Host:   fmt.Sprintf("%s:%s", host, port),
+		Path:   "/" + url.PathEscape(dbName),
+	}
+
+	query := u.Query()
+	query.Set("sslmode", sslMode)
+	u.RawQuery = query.Encode()
+
+	return u.String(), nil
 }

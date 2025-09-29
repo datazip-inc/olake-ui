@@ -1,9 +1,9 @@
-import { Input, Tooltip } from "antd"
-import RenderTypeItems from "../../../common/components/RenderTypeItems"
-import { Checkbox } from "antd/es"
 import { useState, useEffect, useMemo } from "react"
+import { Checkbox, Input, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
+
 import { StreamSchemaProps } from "../../../../types"
+import RenderTypeItems from "../../../common/components/RenderTypeItems"
 
 const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 	const [columnsToDisplay, setColumnsToDisplay] = useState<Record<string, any>>(
@@ -81,49 +81,92 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 		[initialData, columnsToDisplay, selectedColumns],
 	)
 
+	const hasDestinationColumns = useMemo(
+		() =>
+			Object.values(columnsToDisplay || {}).some(
+				columnSchema => columnSchema?.destination_column_name,
+			),
+		[columnsToDisplay],
+	)
+
 	return (
 		<div className="rounded-xl border border-[#E3E3E3] bg-white p-4">
 			<div className="mb-3">
 				<Input.Search
 					className="custom-search-input w-full"
-					placeholder="Search streams"
+					placeholder="Search Columns"
 					allowClear
 					onSearch={handleSearch}
 					onChange={handleSearchValueClear}
 				/>
 			</div>
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
-				<div className="flex items-center border-b border-[#d9d9d9] p-3 last:border-b-0 hover:bg-[#f5f5f5]">
-					<Checkbox
-						checked={isAllSelected}
-						onChange={handleSelectAll}
-						className="font-medium"
-						disabled={isDisabled}
-					>
-						Select all
-					</Checkbox>
-				</div>
-				{Object.keys(columnsToDisplay || {}).map(item => (
-					<div
-						key={item}
-						className="flex items-center justify-between border-b border-[#d9d9d9] p-3 last:border-b-0 hover:bg-[#f5f5f5]"
-					>
-						<div className="flex items-center gap-2">
-							<Checkbox
-								checked={selectedColumns.includes(item)}
-								onChange={e => handleColumnSelect(item, e.target.checked)}
-								disabled={isDisabled}
-							/>
-							<Tooltip title={item}>
-								<span className="truncate font-medium">{item}</span>
-							</Tooltip>
-						</div>
-						<RenderTypeItems
-							initialList={initialData.stream.type_schema?.properties}
-							item={item}
+				{/* Table Header */}
+				<div className="flex items-center border-b border-gray-400 bg-gray-50 px-4 py-3">
+					<div className="flex w-16 items-center justify-center">
+						<Checkbox
+							checked={isAllSelected}
+							onChange={handleSelectAll}
+							disabled={isDisabled}
 						/>
 					</div>
-				))}
+					<div className="flex-1 px-2 text-left font-medium text-gray-700">
+						Column name
+					</div>
+					{hasDestinationColumns && (
+						<div className="flex-1 px-2 text-left font-medium text-gray-700">
+							Destination Column
+						</div>
+					)}
+					<div className="flex-1 px-2 text-left font-medium text-gray-700">
+						Source Data type
+					</div>
+				</div>
+				{/* Data Rows */}
+				{Object.keys(columnsToDisplay || {}).map(item => {
+					const columnSchema = columnsToDisplay[item]
+					const destinationColumnName =
+						columnSchema?.destination_column_name || item
+
+					return (
+						<div
+							key={item}
+							className="flex items-center border-b border-gray-400 px-4 py-3 last:border-b-0 hover:bg-background-primary"
+						>
+							<div className="flex w-16 items-center justify-center">
+								<Checkbox
+									checked={selectedColumns.includes(item)}
+									onChange={e => handleColumnSelect(item, e.target.checked)}
+									disabled={isDisabled}
+								/>
+							</div>
+							<div className="flex-1 px-2 text-left">
+								<Tooltip title={item}>
+									<span className="block">
+										{item.length > 13 ? `${item.substring(0, 13)}...` : item}
+									</span>
+								</Tooltip>
+							</div>
+							{hasDestinationColumns && (
+								<div className="flex-1 px-2 text-left">
+									<Tooltip title={destinationColumnName}>
+										<span className="block">
+											{destinationColumnName.length > 13
+												? `${destinationColumnName.substring(0, 13)}...`
+												: destinationColumnName}
+										</span>
+									</Tooltip>
+								</div>
+							)}
+							<div className="flex-1 px-2 text-left">
+								<RenderTypeItems
+									initialList={initialData.stream.type_schema?.properties}
+									item={item}
+								/>
+							</div>
+						</div>
+					)
+				})}
 			</div>
 		</div>
 	)
