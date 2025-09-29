@@ -221,14 +221,14 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
 		return
 	}
-	task_logs, err := utils.ReadLogs(mainSyncDir)
+	logs, err := utils.ReadLogs(mainSyncDir)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read logs: %s", err))
 		return
 	}
 	utils.SuccessResponse(&c.Controller, models.TestConnectionResponse{
 		ConnectionResult: result,
-		TaskLogs:         task_logs,
+		Logs:             logs,
 	})
 }
 

@@ -135,7 +135,7 @@ http://localhost:8000
       "message": "",
       "status": ""
     },
-    "task_logs": "json"
+    "logs": "json"
   }
 }
   ```
@@ -315,7 +315,7 @@ http://localhost:8000
       "message": "string",
       "status": "string"
     },
-    "task_logs": "json"
+    "logs": "json"
   }
 }
   ```

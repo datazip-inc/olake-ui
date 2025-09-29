@@ -521,13 +521,13 @@ func (c *JobHandler) GetTaskLogs() {
 		return
 	}
 
-	task_logs, err := utils.ReadLogs(mainSyncDir)
+	logs, err := utils.ReadLogs(mainSyncDir)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, err.Error())
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, task_logs)
+	utils.SuccessResponse(&c.Controller, logs)
 }
 
 // Helper methods

@@ -47,7 +47,7 @@ type CheckUniqueJobNameResponse struct {
 // TestConnectionResponse
 type TestConnectionResponse struct {
 	ConnectionResult map[string]interface{}   `json:"connection_result"`
-	TaskLogs         []map[string]interface{} `json:"task_logs"`
+	Logs             []map[string]interface{} `json:"logs"`
 }
 
 // Job response
