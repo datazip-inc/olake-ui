@@ -503,7 +503,7 @@ const CreateDestination = forwardRef<
 						<div className="w-1/2">
 							<FormField
 								label="OLake Version:"
-								tooltip="Choose the OLake version for the source"
+								tooltip="Choose the OLake version for the destination"
 								info={
 									<a
 										href={OLAKE_LATEST_VERSION_URL}

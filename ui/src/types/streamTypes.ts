@@ -138,6 +138,7 @@ export interface SchemaConfigurationProps {
 	jobId?: number
 	destinationType?: string
 	jobName: string
+	onLoadingChange?: (isLoading: boolean) => void
 }
 
 export interface ExtendedStreamConfigurationProps

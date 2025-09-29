@@ -77,6 +77,7 @@ const JobCreation: React.FC = () => {
 		initialData.cronExpression || "* * * * *",
 	)
 	const [jobNameFilled, setJobNameFilled] = useState(false)
+	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	const {
@@ -474,6 +475,7 @@ const JobCreation: React.FC = () => {
 								}
 								destinationType={getConnectorInLowerCase(destinationConnector)}
 								jobName={jobName}
+								onLoadingChange={setIsStreamsLoading}
 							/>
 						</div>
 					)}
@@ -515,7 +517,10 @@ const JobCreation: React.FC = () => {
 					{currentStep !== JOB_CREATION_STEPS.CONFIG && (
 						<button
 							onClick={handleBack}
-							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
+							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
+							disabled={
+								currentStep === JOB_CREATION_STEPS.STREAMS && isStreamsLoading
+							}
 						>
 							Back
 						</button>

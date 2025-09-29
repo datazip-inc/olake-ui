@@ -38,6 +38,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	jobId = -1,
 	destinationType,
 	jobName,
+	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
 	const { setShowDestinationDatabaseModal } = useAppStore()
@@ -119,6 +120,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
 			setLoading(false)
+			onLoadingChange?.(false)
 			initialized.current = true
 
 			// Select first stream if no stream is currently active
@@ -131,6 +133,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		const fetchSourceStreams = async () => {
 			if (initialized.current) return
 
+			onLoadingChange?.(true)
 			setLoading(true)
 			try {
 				const response = await sourceService.getSourceStreams(
@@ -193,6 +196,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				console.error("Error fetching source streams:", error)
 			} finally {
 				setLoading(false)
+				onLoadingChange?.(false)
 			}
 		}
 
