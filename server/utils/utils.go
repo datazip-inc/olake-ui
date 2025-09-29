@@ -301,6 +301,13 @@ func ExtractJSON(output string) (map[string]interface{}, error) {
 	return nil, fmt.Errorf("no valid JSON block found in output")
 }
 
+// LogEntry represents a log entry
+type LogEntry struct {
+	Level   string          `json:"level"`
+	Time    time.Time       `json:"time"`
+	Message json.RawMessage `json:"message"` // <-- changed to RawMessage
+}
+
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
 func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 	// Check if mainLogDir exists
@@ -313,14 +320,12 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
 	}
 
-	// Expect one subdirectory inside logs/
 	files, err := os.ReadDir(logsDir)
 	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("logs directory not found in: %s", logsDir)
+		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
 	}
 	logDir := filepath.Join(logsDir, files[0].Name())
-
-	// Log file path
+	// Expect one subdirectory inside logs/
 	logPath := filepath.Join(logDir, "olake.log")
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
@@ -329,31 +334,39 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 
 	var parsedLogs []map[string]interface{}
 	lines := strings.Split(string(logContent), "\n")
+
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 
-		entry := map[string]interface{}{
-			"level":   "info",
-			"time":    time.Now().UTC().Format(time.RFC3339),
-			"message": line, // default raw line
+		var logEntry LogEntry
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			continue
+		}
+		if logEntry.Level == "debug" {
+			continue
 		}
 
-		// Try parsing top-level JSON
-		var logEntry struct {
-			Level   string          `json:"level"`
-			Time    string          `json:"time"`
-			Message json.RawMessage `json:"message"`
-		}
-		if err := json.Unmarshal([]byte(line), &logEntry); err == nil {
-			entry["level"] = logEntry.Level
-			entry["time"] = logEntry.Time
-			entry["message"] = string(logEntry.Message) // keep only nested JSON as string
+		// Convert Message to string safely
+		var messageStr string
+		if len(logEntry.Message) > 0 {
+			var tmp interface{}
+			if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
+				// Nested JSON: marshal back to string
+				msgBytes, _ := json.Marshal(tmp)
+				messageStr = string(msgBytes)
+			} else {
+				// Plain string
+				messageStr = string(logEntry.Message)
+			}
 		}
 
-		parsedLogs = append(parsedLogs, entry)
+		parsedLogs = append(parsedLogs, map[string]interface{}{
+			"level":   logEntry.Level,
+			"time":    logEntry.Time.UTC().Format(time.RFC3339),
+			"message": messageStr,
+		})
 	}
 
 	return parsedLogs, nil
