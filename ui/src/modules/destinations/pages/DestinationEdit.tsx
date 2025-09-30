@@ -152,6 +152,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						? JSON.parse(destination.config)
 						: destination.config
 				setFormData(config)
+			} else {
+				navigate("/destinations")
 			}
 		}
 	}, [destinationId, destinations, fetchDestinations])
