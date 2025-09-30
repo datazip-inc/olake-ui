@@ -113,7 +113,7 @@ func (c *DestHandler) CreateDestination() {
 func (c *DestHandler) UpdateDestination() {
 	// Get destination ID from path
 	id := GetIDFromPath(&c.Controller)
-
+	projectID := c.Ctx.Input.Param(":projectid")
 	var req models.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -149,7 +149,7 @@ func (c *DestHandler) UpdateDestination() {
 
 	// Cancel workflows for those jobs
 	for _, job := range jobs {
-		err := cancelJobWorkflow(c.tempClient, job, c.GetString(":projectid"))
+		err := cancelJobWorkflow(c.tempClient, job, projectID)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
 		}

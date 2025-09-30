@@ -245,7 +245,7 @@ func (c *JobHandler) UpdateJob() {
 		existingJob.UpdatedBy = user
 	}
 
-	//cancel existing workflow
+	// cancel existing workflow
 	err = cancelJobWorkflow(c.tempClient, existingJob, projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))

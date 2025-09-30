@@ -287,7 +287,7 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 }
 
 // cancelWorkflow cancels a workflow execution
-func (c *Client) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+func (c *Client) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
 	return c.temporalClient.CancelWorkflow(ctx, workflowID, runID)
 }
 

@@ -91,7 +91,7 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
-func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName string, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName string,
 }
 
 // buildDockerArgs constructs Docker command arguments
-func (r *Runner) buildDockerArgs(ctx context.Context, containerName string, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
+func (r *Runner) buildDockerArgs(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
@@ -348,12 +348,12 @@ func StopContainer(ctx context.Context, workflowID string) error {
 	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
 	if _, err := stopCmd.CombinedOutput(); err == nil {
 		return nil
-	} else {
-		// If stop failed, attempt immediate kill
-		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
-		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
-			return fmt.Errorf("docker stop+kill failed for %s: %v; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
-		}
-		return nil
 	}
+
+	// If stop failed, attempt immediate kill
+	killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
+	if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
+		return fmt.Errorf("docker stop+kill failed for %s: %v; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
+	}
+	return nil
 }

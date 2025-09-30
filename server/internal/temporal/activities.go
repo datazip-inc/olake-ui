@@ -60,8 +60,6 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 	logger := activity.GetLogger(ctx)
 	logger.Info("Starting sync activity", "jobId", params.JobID, "workflowID", params.WorkflowID)
 
-	// Ensure docker run uses a deterministic name derived from workflowID
-	ctx = context.WithValue(ctx, "workflow-id", params.WorkflowID) // used by buildDockerArgs to set --name
 	activity.RecordHeartbeat(ctx, "Running sync command")
 
 	// Run the sync in a goroutine so we can react to cancel concurrently
