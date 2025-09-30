@@ -101,8 +101,7 @@ func cancelJobWorkflow(tempClient *temporal.Client, job *models.Job, projectID s
 	)
 
 	resp, err := tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
-		Query:    query,
-		PageSize: 1,
+		Query: query,
 	})
 	if err != nil {
 		return fmt.Errorf("list workflows failed: %w", err)
