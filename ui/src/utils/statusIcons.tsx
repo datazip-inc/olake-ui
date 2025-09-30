@@ -8,7 +8,7 @@ import {
 export const getStatusIcon = (status: string | undefined) => {
 	if (status === "success" || status === "completed") {
 		return <CheckIcon className="text-green-500" />
-	} else if (status === "failed" || status === "cancelled") {
+	} else if (status === "failed") {
 		return <XCircleIcon className="text-red-500" />
 	} else if (status === "running") {
 		return <ArrowsCounterClockwiseIcon className="text-blue-500" />
