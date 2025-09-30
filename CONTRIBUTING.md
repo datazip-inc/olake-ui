@@ -14,7 +14,7 @@ We welcome everything — bug fixes, documentation updates, tests, or feature en
 
 👉 Check our open issues [here](https://github.com/datazip-inc/olake-ui/issues)
 
-Let's hack, learn, and grow together this Hacktoberfest. Happy contributing & happy engineering!
+Let's hack, learn, and grow together with this Hacktoberfest. Happy contributing & happy engineering!
 
 ---
 
