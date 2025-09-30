@@ -3,10 +3,10 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"go.temporal.io/sdk/activity"
 )
 
@@ -57,29 +57,42 @@ func TestConnectionActivity(ctx context.Context, params *ActivityParams) (map[st
 
 // SyncActivity runs the sync command to transfer data between source and destination
 func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface{}, error) {
-	// Get activity logger
 	logger := activity.GetLogger(ctx)
-	logger.Info("Starting sync activity",
-		"jobId", params.JobID,
-		"workflowID", params.WorkflowID)
+	logger.Info("Starting sync activity", "jobId", params.JobID, "workflowID", params.WorkflowID)
 
-	// Track sync start event
-	telemetry.TrackSyncStart(context.Background(), params.JobID, params.WorkflowID)
-
-	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
-	// Record heartbeat
+	// Ensure docker run uses a deterministic name derived from workflowID
+	ctx = context.WithValue(ctx, "workflow-id", params.WorkflowID) // used by buildDockerArgs to set --name
 	activity.RecordHeartbeat(ctx, "Running sync command")
-	// Execute the sync operation
-	result, err := runner.RunSync(
-		ctx,
-		params.JobID,
-		params.WorkflowID,
-	)
-	if err != nil {
-		logger.Error("Sync command failed", "error", err)
-		return result, fmt.Errorf("sync command failed: %v", err)
-	}
 
-	return result, nil
+	// Run the sync in a goroutine so we can react to cancel concurrently
+	type resErr struct {
+		res map[string]interface{}
+		err error
+	}
+	done := make(chan resErr, 1)
+
+	go func() {
+		runner := docker.NewRunner(docker.GetDefaultConfigDir())
+		res, err := runner.RunSync(ctx, params.JobID, params.WorkflowID)
+		done <- resErr{res: res, err: err}
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			// Cancellation observed: stop container by hashed workflowID, then return canceled
+			_ = docker.StopContainer(context.Background(), params.WorkflowID) // best-effort; non-blocking on ctx cancel
+			return nil, ctx.Err()
+		case r := <-done:
+			if r.err != nil {
+				logger.Error("Sync command failed", "error", r.err)
+				return r.res, fmt.Errorf("sync command failed: %v", r.err)
+			}
+			return r.res, nil
+		default:
+			// Keep heartbeating so cancel is delivered promptly
+			activity.RecordHeartbeat(ctx, "sync in progress")
+			time.Sleep(1 * time.Second)
+		}
+	}
 }

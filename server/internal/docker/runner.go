@@ -91,13 +91,13 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
-func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName string, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
 		return nil, err
 	}
 
-	dockerArgs := r.buildDockerArgs(ctx, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
+	dockerArgs := r.buildDockerArgs(ctx, containerName, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
 	if len(dockerArgs) == 0 {
 		return nil, fmt.Errorf("failed to build docker args")
 	}
@@ -120,7 +120,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 }
 
 // buildDockerArgs constructs Docker command arguments
-func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
+func (r *Runner) buildDockerArgs(ctx context.Context, containerName string, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
@@ -145,7 +145,7 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 	}
 
 	// base docker args
-	dockerArgs := []string{"run", "--rm"}
+	dockerArgs := []string{"run", "--rm", "--name", containerName}
 
 	if hostOutputDir != "" {
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
@@ -182,9 +182,9 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	return outputDir
 }
 
-func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, _ string) (models.SpecOutput, error) {
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (models.SpecOutput, error) {
 	flag := utils.Ternary(destinationType != "", "destination-type", "").(string)
-	dockerArgs := r.buildDockerArgs(ctx, flag, Spec, sourceType, version, "", "", destinationType)
+	dockerArgs := r.buildDockerArgs(ctx, workflowID, flag, Spec, sourceType, version, "", "", destinationType)
 
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
@@ -216,7 +216,7 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 	}
 
 	configPath := filepath.Join(workDir, "config.json")
-	output, err := r.ExecuteDockerCommand(ctx, flag, Check, sourceType, version, configPath)
+	output, err := r.ExecuteDockerCommand(ctx, workflowID, flag, Check, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
 		catalogsArgs = append(catalogsArgs, "--destination-database-prefix", jobName)
 	}
-	_, err = r.ExecuteDockerCommand(ctx, "config", Discover, sourceType, version, configPath, catalogsArgs...)
+	_, err = r.ExecuteDockerCommand(ctx, workflowID, "config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,8 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
-	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
+	hashWorkflowID := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+	workDir, err := r.setupWorkDirectory(hashWorkflowID)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +312,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	statePath := filepath.Join(workDir, "state.json")
 
 	// Execute sync command
-	_, err = r.ExecuteDockerCommand(ctx, "config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
+	_, err = r.ExecuteDockerCommand(ctx, hashWorkflowID, "config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
 		"--catalog", "/mnt/config/streams.json",
 		"--destination", "/mnt/config/writer.json",
 		"--state", "/mnt/config/state.json")
@@ -333,4 +334,26 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		}
 	}
 	return result, nil
+}
+
+// StopContainer stops a container by name, falling back to kill if needed.
+func StopContainer(ctx context.Context, workflowID string) error {
+	containerName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+	logs.Info("workflow cancel request received for %s, stopping container %s\n", workflowID, containerName)
+	if strings.TrimSpace(containerName) == "" {
+		return fmt.Errorf("empty container name")
+	}
+
+	// Graceful stop: SIGTERM then SIGKILL after timeout
+	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
+	if _, err := stopCmd.CombinedOutput(); err == nil {
+		return nil
+	} else {
+		// If stop failed, attempt immediate kill
+		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
+		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
+			return fmt.Errorf("docker stop+kill failed for %s: %v; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
+		}
+		return nil
+	}
 }

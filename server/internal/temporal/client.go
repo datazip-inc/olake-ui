@@ -286,6 +286,11 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 	}, nil
 }
 
+// cancelWorkflow cancels a workflow execution
+func (c *Client) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+	return c.temporalClient.CancelWorkflow(ctx, workflowID, runID)
+}
+
 // ListWorkflow lists workflow executions based on the provided query
 func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
 	// Query workflows using the SDK's ListWorkflow method

@@ -145,8 +145,24 @@ func (c *SourceHandler) UpdateSource() {
 		existingSource.UpdatedBy = user
 	}
 
+	// Find jobs linked to this source
+	jobs, err := c.jobORM.GetBySourceID(existingSource.ID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch jobs for source %s", err))
+		return
+	}
+
+	// Cancel workflows for those jobs
+	for _, job := range jobs {
+		err := cancelJobWorkflow(c.tempClient, job, c.GetString(":projectid"))
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		}
+	}
+
+	// Persist update
 	if err := c.sourceORM.Update(existingSource); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update source")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update source %s", err))
 		return
 	}
 

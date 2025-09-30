@@ -140,8 +140,24 @@ func (c *DestHandler) UpdateDestination() {
 		existingDest.UpdatedBy = user
 	}
 
+	// Find jobs linked to this source
+	jobs, err := c.jobORM.GetByDestinationID(existingDest.ID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch jobs for destination %s", err))
+		return
+	}
+
+	// Cancel workflows for those jobs
+	for _, job := range jobs {
+		err := cancelJobWorkflow(c.tempClient, job, c.GetString(":projectid"))
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		}
+	}
+
+	// persist update
 	if err := c.destORM.Update(existingDest); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update destination %s", err))
 		return
 	}
 
