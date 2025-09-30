@@ -13,8 +13,15 @@ require (
 	github.com/oklog/ulid v1.3.1
 	github.com/spf13/viper v1.20.1
 	go.temporal.io/sdk v1.34.0
-	golang.org/x/crypto v0.35.0
+	golang.org/x/crypto v0.39.0
 	golang.org/x/mod v0.27.0
+)
+
+require (
+	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
+	github.com/go-playground/locales v0.14.1 // indirect
+	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/leodido/go-urn v1.4.0 // indirect
 )
 
 require (

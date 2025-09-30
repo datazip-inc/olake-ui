@@ -236,6 +236,7 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsReq
 	if s.tempClient != nil {
 		newStreams, err = s.tempClient.GetCatalog(
 			ctx,
+			req.JobName,
 			req.Type,
 			req.Version,
 			encryptedConfig,
@@ -273,12 +274,28 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 	// Get versions from Docker Hub
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 
-	versions, err := utils.GetDriverImageTags(ctx, imageName, true)
+	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Docker versions for source type %s: %s", sourceType, err)
 	}
 
 	return versions, nil
+}
+
+func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecOutput, error) {
+	logs.Info("Getting source spec for type: %s and version: %s", req.Type, req.Version)
+	if req.Type == "" {
+		return dto.SpecOutput{}, fmt.Errorf("source type is required")
+	}
+	if req.Version == "" {
+		return dto.SpecOutput{}, fmt.Errorf("source version is required")
+	}
+
+	specOutput, err := s.tempClient.FetchSpec(ctx, "", req.Type, req.Version)
+	if err != nil {
+		return dto.SpecOutput{}, fmt.Errorf("failed to fetch source spec: %s", err)
+	}
+	return specOutput, nil
 }
 
 // Helper methods

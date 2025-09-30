@@ -25,6 +25,10 @@ func Validate(s interface{}) error {
 	return nil
 }
 
+type CheckUniqueJobNameRequest struct {
+	JobName string `json:"job_name"`
+}
+
 // Common fields for source/destination config
 type ConnectorConfig struct {
 	Name    string `json:"name" validate:"required"`
@@ -52,13 +56,16 @@ type SourceTestConnectionRequest struct {
 
 type StreamsRequest struct {
 	ConnectorConfig
-	JobID int `json:"job_id" validate:"required"`
+	JobID   int    `json:"job_id" validate:"required"`
+	JobName string `json:"job_name"`
 }
 
 type DestinationTestConnectionRequest struct {
-	Type    string `json:"type" validate:"required"`
-	Version string `json:"version" validate:"required"`
-	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
+	Type          string `json:"type" validate:"required"`
+	Version       string `json:"version" validate:"required"`
+	Config        string `json:"config" orm:"type(jsonb)" validate:"required"`
+	SourceType    string `json:"source_type"`
+	SourceVersion string `json:"source_version"`
 }
 
 type CreateSourceRequest struct {

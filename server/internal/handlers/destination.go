@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -21,7 +20,7 @@ func (c *DestHandler) Prepare() {
 	var err error
 	c.destService, err = services.NewDestinationService()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service", err)
 		return
 	}
 }
@@ -164,36 +163,18 @@ func (c *DestHandler) GetDestinationSpec() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-
 	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	if req.Type == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Destination type is required", nil)
-		return
-	}
-
-	if req.Version == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Destination version is required", nil)
-		return
-	}
-
-	if c.tempClient != nil {
-		specOutput, err = c.tempClient.FetchSpec(
-			c.Ctx.Request.Context(),
-			destinationType,
-			driver,
-			version,
-		)
-	}
+	specOutput, err := c.destService.GetDestinationSpec(c.Ctx.Request.Context(), req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get spec: %v", err))
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination spec", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.SpecResponse{
+	utils.SuccessResponse(&c.Controller, dto.SpecResponse{
 		Version: req.Version,
 		Type:    req.Type,
 		Spec:    specOutput.Spec,

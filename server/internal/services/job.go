@@ -17,6 +17,7 @@ import (
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
+	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/workflowservice/v1"
 )
 
@@ -59,6 +60,15 @@ func (s *JobService) GetAllJobsByProject(projectID string) ([]dto.JobResponse, e
 }
 
 func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+	isUnique, err := s.jobORM.IsJobNameUnique(projectID, req.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check job uniqness")
+	}
+
+	if !isUnique {
+		return fmt.Errorf("job name already exists")
+	}
+
 	logs.Info("Creating job: %s", req.Name)
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
@@ -196,7 +206,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	return nil, fmt.Errorf("temporal client is not available")
 }
 
-func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
+func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, userID *int) error {
 	logs.Info("Activating job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
@@ -212,6 +222,10 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 	}
 
 	if err := s.jobORM.Update(job); err != nil {
+		return fmt.Errorf("failed to update job activation status: %s", err)
+	}
+
+	if _, err := s.tempClient.ManageSync(ctx, job, utils.Ternary(activate, temporal.ActionUnpause, temporal.ActionPause).(temporal.SyncAction)); err != nil {
 		return fmt.Errorf("failed to update job activation status: %s", err)
 	}
 
@@ -239,14 +253,16 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	}
 
 	for _, execution := range resp.Executions {
-		var runTime time.Duration
-		startTime := execution.StartTime.AsTime()
+		startTime := execution.StartTime.AsTime().UTC()
+		var runTime string
 		if execution.CloseTime != nil {
-			runTime = execution.CloseTime.AsTime().Sub(startTime)
+			runTime = execution.CloseTime.AsTime().UTC().Sub(startTime).Round(time.Second).String()
+		} else {
+			runTime = time.Since(startTime).Round(time.Second).String()
 		}
 		tasks = append(tasks, dto.JobTask{
-			Runtime:   runTime.String(),
-			StartTime: startTime.UTC().Format(time.RFC3339),
+			Runtime:   runTime,
+			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
 		})
@@ -423,6 +439,12 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 	}
 	return dest, nil
 }
+
+func (s *JobService) CheckUniqueJobName(projectID string, jobName string) (bool, error) {
+	return s.jobORM.IsJobNameUnique(projectID, jobName)
+}
+
+// worker services
 
 func (s *JobService) GetJobDetails(ctx context.Context, jobID int) (map[string]interface{}, error) {
 	job, err := s.jobORM.GetByID(jobID, true)

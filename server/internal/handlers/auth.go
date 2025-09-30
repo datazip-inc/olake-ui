@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -65,14 +64,14 @@ func (c *AuthHandler) Login() {
 func (c *AuthHandler) CheckAuth() {
 	userID := c.GetSession(constants.SessionUserID)
 	if userID == nil {
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated")
+		respondWithError(&c.Controller, http.StatusUnauthorized, "Not authenticated", nil)
 		return
 	}
 
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
 		if err := c.authService.ValidateUser(userIDInt); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session")
+			respondWithError(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
 	}

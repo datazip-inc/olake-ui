@@ -119,7 +119,7 @@ func (c *JobHandler) ActivateJob() {
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.ActivateJob(id, req.Activate, userID); err != nil {
+	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req.Activate, userID); err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
@@ -171,6 +171,38 @@ func (c *JobHandler) GetTaskLogs() {
 	}
 	utils.SuccessResponse(&c.Controller, logs)
 }
+
+// @router /project/:projectid/jobs/check-unique [post]
+func (c *JobHandler) CheckUniqueJobName() {
+	projectId := c.Ctx.Input.Param(":projectid")
+
+	var req dto.CheckUniqueJobNameRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobName == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Job name is required", nil)
+		return
+	}
+
+	isUnique, err := c.jobService.CheckUniqueJobName(projectId, req.JobName)
+	if err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job uniqness", err)
+		return
+	}
+	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{
+		Unique: isUnique,
+	})
+
+}
+
+// worker api
 
 // @router /internal/worker/callback/presync/:id [get]
 func (c *JobHandler) GetJobDetails() {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/utils"
@@ -20,7 +21,6 @@ import (
 // TaskQueue is the default task queue for Olake Docker workflows
 const (
 	DockerTaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
-	K8sTaskQueue    = "OLAKE_K8S_TASK_QUEUE"
 )
 
 var TaskQueue string
@@ -73,12 +73,7 @@ func init() {
 	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
 
 	// Choose task queue based on deployment mode
-	deploymentMode := web.AppConfig.DefaultString("DEPLOYMENT_MODE", "docker")
-	if deploymentMode == "kubernetes" {
-		TaskQueue = K8sTaskQueue
-	} else {
-		TaskQueue = DockerTaskQueue
-	}
+	TaskQueue = DockerTaskQueue
 }
 
 // Client provides methods to interact with Temporal
@@ -127,7 +122,7 @@ func (c *Client) GetClient() client.Client {
 	return c.temporalClient
 }
 
-func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
+func (c *Client) GetCatalog(ctx context.Context, jobName, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -141,6 +136,11 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 		"--config",
 		"/mnt/config/config.json",
 	}
+
+	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
+		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
+	}
+
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
 	}
@@ -259,6 +259,65 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 	}, nil
 }
 
+// FetchSpec runs a workflow to fetch connector specifications
+func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
+	// spec version >= DefaultSpecVersion is required
+	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
+		version = constants.DefaultSpecVersion
+	}
+
+	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
+
+	cmdArgs := []string{
+		"spec",
+	}
+	if destinationType != "" {
+		cmdArgs = append(cmdArgs, "--destination-type", destinationType)
+	}
+
+	req := &ExecutionRequest{
+		Type:          "docker",
+		Command:       Spec,
+		ConnectorType: sourceType,
+		Version:       version,
+		Args:          cmdArgs,
+		Configs:       nil,
+		WorkflowID:    workflowID,
+		JobID:         0,
+		Timeout:       GetTimeout(Spec),
+		OutputFile:    "",
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        workflowID,
+		TaskQueue: TaskQueue,
+	}
+
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
+	if err != nil {
+		return dto.SpecOutput{}, fmt.Errorf("failed to execute discover workflow: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err = run.Get(ctx, &result); err != nil {
+		return dto.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
+	}
+
+	response, ok := result["response"].(string)
+	if !ok {
+		return dto.SpecOutput{}, fmt.Errorf("invalid response format from worker")
+	}
+
+	spec, err := utils.ExtractJSON(response)
+	if err != nil {
+		return dto.SpecOutput{}, err
+	}
+
+	return dto.SpecOutput{
+		Spec: spec,
+	}, nil
+}
+
 func (c *Client) ManageSync(ctx context.Context, job *models.Job, action SyncAction) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("sync-%s-%d", job.ProjectID, job.ID)
 	scheduleID := fmt.Sprintf("schedule-%s", workflowID)
@@ -331,7 +390,7 @@ func (c *Client) createSchedule(ctx context.Context, job *models.Job, scheduleID
 		},
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
-			Workflow:  "ExecuteWorkflow",
+			Workflow:  "ExecuteSyncWorkflow",
 			Args:      []any{req},
 			TaskQueue: TaskQueue,
 		},
