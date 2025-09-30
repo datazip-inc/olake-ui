@@ -279,6 +279,7 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	return utils.ParseJSONFile(catalogPath)
 }
 
+// TODO: persist state in case of container stop
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
