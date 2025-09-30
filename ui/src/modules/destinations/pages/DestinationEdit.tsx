@@ -708,31 +708,30 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								? renderConfigTab()
 								: renderJobsTab()}
 						</div>
-
 						{/* Footer */}
 						{!fromJobFlow && (
 							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 								<div>
-									{
-										<button
-											className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
-											onClick={handleDelete}
-										>
-											Delete
-										</button>
-									}
+									<button
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+										onClick={handleDelete}
+									>
+										Delete
+									</button>
 								</div>
 								<div className="flex space-x-4">
-									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={() => {
-											if (formRef.current) {
-												formRef.current.submit()
-											}
-										}}
-									>
-										Save Changes
-									</button>
+									{activeTab === TAB_TYPES.CONFIG && (
+										<button
+											className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+											onClick={() => {
+												if (formRef.current) {
+													formRef.current.submit()
+												}
+											}}
+										>
+											Save changes
+										</button>
+									)}
 								</div>
 							</div>
 						)}

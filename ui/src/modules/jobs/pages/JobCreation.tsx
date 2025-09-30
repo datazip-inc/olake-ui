@@ -76,7 +76,9 @@ const JobCreation: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState(
 		initialData.cronExpression || "* * * * *",
 	)
-	const [jobNameFilled, setJobNameFilled] = useState(false)
+	const [jobNameFilled, setJobNameFilled] = useState(
+		initialData.isJobNameFilled || false,
+	)
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 

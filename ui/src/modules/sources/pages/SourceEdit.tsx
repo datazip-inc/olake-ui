@@ -685,16 +685,18 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									</button>
 								</div>
 								<div className="flex space-x-4">
-									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={() => {
-											if (formRef.current) {
-												formRef.current.submit()
-											}
-										}}
-									>
-										Save changes
-									</button>
+									{activeTab === "config" && (
+										<button
+											className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+											onClick={() => {
+												if (formRef.current) {
+													formRef.current.submit()
+												}
+											}}
+										>
+											Save changes
+										</button>
+									)}
 								</div>
 							</div>
 						)}
