@@ -45,3 +45,11 @@ npm-debug*
 # ----------------------------
 *.env
 *.env.*
+
+# ----------------------------
+# Test Files
+# ----------------------------
+ui/tests/setup/test-env.ts
+ui/test-results/
+ui/playwright-report/
+ui/blob-report/
