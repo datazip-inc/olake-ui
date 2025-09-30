@@ -88,6 +88,16 @@ const Jobs: React.FC = () => {
 		await fetchJobs()
 	}
 
+	const handleCancelJob = async (id: string) => {
+		try {
+			await jobService.cancelJob(id)
+			message.success("Run canceled successfully")
+		} catch (error) {
+			console.error("Error canceling job:", error)
+			message.error("Failed to cancel run")
+		}
+	}
+
 	const handleDeleteJob = (id: string) => {
 		if (activeTab === JOB_TYPES.SAVED) {
 			const savedJobsFromStorage = JSON.parse(
@@ -213,6 +223,7 @@ const Jobs: React.FC = () => {
 							onEdit={handleEditJob}
 							onPause={handlePauseJob}
 							onDelete={handleDeleteJob}
+							onCancelJob={handleCancelJob}
 						/>
 					),
 				}))}
