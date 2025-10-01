@@ -18,7 +18,7 @@ export interface Source {
 export interface CreateSourceProps {
 	fromJobFlow?: boolean
 	onComplete?: () => void
-	stepNumber?: string
+	stepNumber?: number
 	stepTitle?: string
 	initialConfig?: EntityBase
 	initialFormData?: any
@@ -29,6 +29,8 @@ export interface CreateSourceProps {
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void
 	onVersionChange?: (version: string) => void
+	docsMinimized?: boolean
+	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export interface SourceJob {
@@ -51,11 +53,13 @@ export interface SourceData {
 
 export interface SourceEditProps {
 	fromJobFlow?: boolean
-	stepNumber?: string | number
+	stepNumber?: number
 	stepTitle?: string
 	initialData?: any
 	onNameChange?: (name: string) => void
 	onConnectorChange?: (type: string) => void
 	onVersionChange?: (version: string) => void
 	onFormDataChange?: (config: Record<string, any>) => void
+	docsMinimized?: boolean
+	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }

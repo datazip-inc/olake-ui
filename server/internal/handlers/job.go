@@ -41,11 +41,11 @@ func (c *JobHandler) GetAllJobs() {
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	var req dto.CreateJobRequest
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -62,14 +62,15 @@ func (c *JobHandler) UpdateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	jobID := GetIDFromPath(&c.Controller)
 	var req dto.UpdateJobRequest
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(context.Background(), &req, projectID, jobID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
@@ -107,16 +108,18 @@ func (c *JobHandler) ActivateJob() {
 	var req struct {
 		Activate bool `json:"activate"`
 	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
+
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.ActivateJob(id, req.Activate, userID); err != nil {
+	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req.Activate, userID); err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
@@ -148,14 +151,15 @@ func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	// Parse request body
 	var req dto.JobTaskRequest
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
 	logs, err := c.jobService.GetTaskLogs(context.Background(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
@@ -166,4 +170,110 @@ func (c *JobHandler) GetTaskLogs() {
 		return
 	}
 	utils.SuccessResponse(&c.Controller, logs)
+}
+
+// @router /project/:projectid/jobs/check-unique [post]
+func (c *JobHandler) CheckUniqueJobName() {
+	projectId := c.Ctx.Input.Param(":projectid")
+
+	var req dto.CheckUniqueJobNameRequest
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+	if err := dto.Validate(&req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobName == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Job name is required", nil)
+		return
+	}
+
+	isUnique, err := c.jobService.CheckUniqueJobName(projectId, req.JobName)
+	if err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job uniqness", err)
+		return
+	}
+	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{
+		Unique: isUnique,
+	})
+
+}
+
+// worker api
+
+// @router /internal/worker/callback/presync/:id [get]
+func (c *JobHandler) GetJobDetails() {
+	jobId := GetIDFromPath(&c.Controller)
+
+	if jobId == 0 {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id is required", nil)
+		return
+	}
+
+	job, err := c.jobService.GetJobDetails(context.Background(), jobId)
+	if err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get job details", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, job)
+}
+
+// @router /internal/worker/callback/postsync [post]
+func (c *JobHandler) UpdateJobPostSync() {
+	var req struct {
+		JobID int    `json:"job_id"`
+		State string `json:"state"`
+	}
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobID == 0 {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id is required", nil)
+		return
+	}
+	if req.State == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "state is required", nil)
+		return
+	}
+
+	if err := c.jobService.UpdateJobPostSync(context.Background(), req.JobID, req.State); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job post sync", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, nil)
+}
+
+// @router /internal/worker/callback/sync-telemetry [post]
+func (c *JobHandler) UpdateSyncTelemetry() {
+	var req struct {
+		JobID      int    `json:"job_id"`
+		WorkflowID string `json:"workflow_id"`
+		Event      string `json:"event"`
+	}
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobID == 0 || req.WorkflowID == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id and workflow_id are required", nil)
+		return
+	}
+
+	if err := c.jobService.UpdateSyncTelemetry(context.Background(), req.JobID, req.WorkflowID, req.Event); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update sync telemetry", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, nil)
+
 }

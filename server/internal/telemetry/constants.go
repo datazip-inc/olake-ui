@@ -7,8 +7,8 @@ const (
 	TelemetryUserIDFile      = "user_id"
 	OlakeVersion             = "0.0.4"
 	IPNotFound               = "NA"
-	TelemetryConfigTimeout   = 30 * time.Second
-	TelemetrySegmentAPIKey   = "AiWKKeaOKQvsOotHj5iGANpNhYG6OaM3"
+	TelemetryConfigTimeout   = 5 * time.Second
+	ProxyTrackURL            = "https://analytics.olake.io/mp/track"
 	IPUrl                    = "https://api.ipify.org?format=text"
 	EventUserLogin           = "user_login"
 	EventJobCreated          = "job_created"

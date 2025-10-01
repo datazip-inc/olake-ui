@@ -1,8 +1,9 @@
-import { PlayCircle, Plus } from "@phosphor-icons/react"
-import FirstSource from "../../../assets/FirstSource.svg"
 import { Button } from "antd"
-import SourcesTutorial from "../../../assets/SourcesTutorial.svg"
+import { PlayCircle, Plus } from "@phosphor-icons/react"
+
 import { SourceTutorialYTLink } from "../../../utils/constants"
+import FirstSource from "../../../assets/FirstSource.svg"
+import SourcesTutorial from "../../../assets/SourcesTutorial.svg"
 
 const SourceEmptyState = ({
 	handleCreateSource,
@@ -48,7 +49,7 @@ const SourceEmptyState = ({
 					<div className="flex-1">
 						<div className="mb-1 flex items-center gap-1 text-xs">
 							<PlayCircle color="#9f9f9f" />
-							<span className="text-[#9F9F9F]">OLake/ Tutorial</span>
+							<span className="text-text-placeholder">OLake/ Tutorial</span>
 						</div>
 						<div className="text-xs">
 							Checkout this tutorial, to know more about running jobs

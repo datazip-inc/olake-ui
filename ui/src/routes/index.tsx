@@ -1,8 +1,9 @@
 import { lazy } from "react"
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
+
+import { useAppStore } from "../store"
 import Layout from "../modules/common/components/Layout"
 import { ErrorBoundary } from "../modules/common/components/ErrorBoundary"
-import { useAppStore } from "../store"
 
 // eslint-disable-next-line react-refresh/only-export-components
 const RootHandler = () => {

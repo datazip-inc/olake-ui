@@ -13,11 +13,11 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
+	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/workflowservice/v1"
 )
 
@@ -60,6 +60,15 @@ func (s *JobService) GetAllJobsByProject(projectID string) ([]dto.JobResponse, e
 }
 
 func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+	isUnique, err := s.jobORM.IsJobNameUnique(projectID, req.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check job uniqness")
+	}
+
+	if !isUnique {
+		return fmt.Errorf("job name already exists")
+	}
+
 	logs.Info("Creating job: %s", req.Name)
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
@@ -94,14 +103,14 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 
 	if s.tempClient != nil {
 		logs.Info("Creating Temporal workflow for sync job")
-		_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
+		_, err = s.tempClient.ManageSync(ctx, job, temporal.ActionCreate)
 		if err != nil {
 			logs.Error("%s: %v", constants.ErrWorkflowExecutionFailed, err)
 		} else {
 			logs.Info("Successfully created sync job via Temporal")
 		}
 	}
-	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
+	telemetry.TrackJobCreation(ctx, job)
 	return nil
 }
 
@@ -142,7 +151,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 
 	if s.tempClient != nil {
 		logs.Info("Updating Temporal workflow for sync job")
-		_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
+		_, err = s.tempClient.ManageSync(ctx, existingJob, temporal.ActionUpdate)
 		if err != nil {
 			return fmt.Errorf("temporal workflow execution failed: %s", err)
 		}
@@ -162,7 +171,7 @@ func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 
 	if s.tempClient != nil {
 		logs.Info("Deleting Temporal workflow")
-		_, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
+		_, err := s.tempClient.ManageSync(ctx, job, temporal.ActionDelete)
 		if err != nil {
 			logs.Error("Temporal deletion failed: %v", err)
 		}
@@ -187,7 +196,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	}
 
 	if s.tempClient != nil {
-		resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
+		resp, err := s.tempClient.ManageSync(ctx, job, temporal.ActionTrigger)
 		if err != nil {
 			return nil, fmt.Errorf("temporal execution failed: %s", err)
 		}
@@ -197,7 +206,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	return nil, fmt.Errorf("temporal client is not available")
 }
 
-func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
+func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, userID *int) error {
 	logs.Info("Activating job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
@@ -213,6 +222,10 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 	}
 
 	if err := s.jobORM.Update(job); err != nil {
+		return fmt.Errorf("failed to update job activation status: %s", err)
+	}
+
+	if _, err := s.tempClient.ManageSync(ctx, job, utils.Ternary(activate, temporal.ActionUnpause, temporal.ActionPause).(temporal.SyncAction)); err != nil {
 		return fmt.Errorf("failed to update job activation status: %s", err)
 	}
 
@@ -240,14 +253,16 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	}
 
 	for _, execution := range resp.Executions {
-		var runTime time.Duration
-		startTime := execution.StartTime.AsTime()
+		startTime := execution.StartTime.AsTime().UTC()
+		var runTime string
 		if execution.CloseTime != nil {
-			runTime = execution.CloseTime.AsTime().Sub(startTime)
+			runTime = execution.CloseTime.AsTime().UTC().Sub(startTime).Round(time.Second).String()
+		} else {
+			runTime = time.Since(startTime).Round(time.Second).String()
 		}
 		tasks = append(tasks, dto.JobTask{
-			Runtime:   runTime.String(),
-			StartTime: startTime.UTC().Format(time.RFC3339),
+			Runtime:   runTime,
+			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
 		})
@@ -264,7 +279,7 @@ func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-	mainSyncDir := filepath.Join(docker.DefaultConfigDir, syncFolderName)
+	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("no sync directory found: %s", mainSyncDir)
 	}
@@ -423,4 +438,49 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 		return nil, err
 	}
 	return dest, nil
+}
+
+func (s *JobService) CheckUniqueJobName(projectID string, jobName string) (bool, error) {
+	return s.jobORM.IsJobNameUnique(projectID, jobName)
+}
+
+// worker services
+
+func (s *JobService) GetJobDetails(ctx context.Context, jobID int) (map[string]interface{}, error) {
+	job, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found: %s", err)
+	}
+	return map[string]interface{}{
+		"state":       job.State,
+		"source":      job.SourceID.Config,
+		"destination": job.DestID.Config,
+		"streams":     job.StreamsConfig,
+	}, nil
+}
+
+func (s *JobService) UpdateJobPostSync(ctx context.Context, jobID int, state string) error {
+	job, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return fmt.Errorf("job not found: %s", err)
+	}
+
+	job.State = state
+	job.Active = true
+	job.UpdatedAt = time.Now()
+
+	return s.jobORM.Update(job)
+}
+
+func (s *JobService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID string, event string) error {
+	switch strings.ToLower(event) {
+	case "started":
+		telemetry.TrackSyncStart(ctx, jobID, workflowID)
+	case "completed":
+		telemetry.TrackSyncCompleted(ctx, jobID, workflowID)
+	case "failed":
+		telemetry.TrackSyncFailed(ctx, jobID, workflowID)
+	}
+
+	return nil
 }

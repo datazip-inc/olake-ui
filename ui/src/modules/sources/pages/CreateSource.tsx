@@ -1,23 +1,41 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react"
+import {
+	useState,
+	useEffect,
+	forwardRef,
+	useImperativeHandle,
+	useRef,
+} from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { message, Select, Spin } from "antd"
+import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
+import validator from "@rjsf/validator-ajv8"
+
 import { useAppStore } from "../../../store"
-import { ArrowLeft, ArrowRight, Notebook } from "@phosphor-icons/react"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import EntitySavedModal from "../../common/Modals/EntitySavedModal"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import EntityCancelModal from "../../common/Modals/EntityCancelModal"
-import StepTitle from "../../common/components/StepTitle"
-import FixedSchemaForm, { validateFormData } from "../../../utils/FormFix"
 import { sourceService } from "../../../api/services/sourceService"
-import { getConnectorLabel } from "../../../utils/utils"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
+import {
+	getConnectorLabel,
+	handleSpecResponse,
+	withAbortController,
+} from "../../../utils/utils"
+import { CONNECTOR_TYPES, transformErrors } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
-import connectorOptions from "../components/connectorOptions"
+import DocumentationPanel from "../../common/components/DocumentationPanel"
+import StepTitle from "../../common/components/StepTitle"
 import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import TestConnectionModal from "../../common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import EntitySavedModal from "../../common/Modals/EntitySavedModal"
+import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import connectorOptions from "../components/connectorOptions"
+import { SETUP_TYPES } from "../../../utils/constants"
+import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
+import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
+import { widgets } from "../../common/components/Form/widgets"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -39,25 +57,24 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			onConnectorChange,
 			onFormDataChange,
 			onVersionChange,
+			docsMinimized = false,
+			onDocsMinimizedChange,
 		},
 		ref,
 	) => {
+		const formRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
-		const [selectedVersion, setSelectedVersion] = useState(
-			initialVersion || "latest",
-		)
+		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
 		const [versions, setVersions] = useState<string[]>([])
 		const [loadingVersions, setLoadingVersions] = useState(false)
 		const [formData, setFormData] = useState<any>({})
 		const [schema, setSchema] = useState<any>(null)
+		const [uiSchema, setUiSchema] = useState<any>(null)
 		const [loading, setLoading] = useState(false)
-		const [isDocPanelCollapsed, setIsDocPanelCollapsed] = useState(false)
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
-		const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
-		const [validating, setValidating] = useState(false)
 
 		const navigate = useNavigate()
 
@@ -92,7 +109,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}, [initialFormData])
 
 		useEffect(() => {
-			if (setupType === "existing") {
+			if (setupType === SETUP_TYPES.EXISTING) {
 				fetchSources()
 				setFilteredSources(
 					sources.filter(source => source.type === connector.toLowerCase()),
@@ -100,10 +117,19 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}, [connector, setupType, fetchSources])
 
+		const resetVersionState = () => {
+			setVersions([])
+			setSelectedVersion("")
+			setSchema(null)
+			if (onVersionChange) {
+				onVersionChange("")
+			}
+		}
+
 		useEffect(() => {
 			if (
 				initialVersion &&
-				initialVersion !== "latest" &&
+				initialVersion !== "" &&
 				initialConnector === connector
 			) {
 				setSelectedVersion(initialVersion)
@@ -117,22 +143,31 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data && response.data.version) {
+					if (response.data?.version) {
 						setVersions(response.data.version)
 						if (
 							response.data.version.length > 0 &&
 							(!initialVersion ||
 								connector !== initialConnector ||
-								initialVersion === "latest")
+								initialVersion === "")
 						) {
-							const defaultVersion = response.data.version[0]
+							let defaultVersion = response.data.version[0]
+							if (
+								connector.toLowerCase() === initialConnector &&
+								initialVersion
+							) {
+								defaultVersion = initialVersion
+							}
 							setSelectedVersion(defaultVersion)
 							if (onVersionChange) {
 								onVersionChange(defaultVersion)
 							}
 						}
+					} else {
+						resetVersionState()
 					}
 				} catch (error) {
+					resetVersionState()
 					console.error("Error fetching versions:", error)
 				} finally {
 					setLoadingVersions(false)
@@ -140,30 +175,30 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 
 			fetchVersions()
-		}, [connector, onVersionChange, initialVersion, initialConnector])
+		}, [connector, initialConnector])
 
 		useEffect(() => {
-			const fetchSourceSpec = async () => {
-				try {
-					setLoading(true)
-					const response = await sourceService.getSourceSpec(
-						connector,
-						selectedVersion,
-					)
-					if (response.success && response.data?.spec) {
-						setSchema(response.data.spec)
-					} else {
-						console.error("Failed to get source spec:", response.message)
-					}
-				} catch (error) {
-					console.error("Error fetching source spec:", error)
-				} finally {
-					setLoading(false)
-				}
+			if (!selectedVersion) {
+				setSchema(null)
+				return
 			}
 
-			fetchSourceSpec()
-		}, [connector, selectedVersion])
+			if (setupType === SETUP_TYPES.EXISTING) return
+
+			setLoading(true)
+			return withAbortController(
+				signal =>
+					sourceService.getSourceSpec(connector, selectedVersion, signal),
+				response =>
+					handleSpecResponse(response, setSchema, setUiSchema, "source"),
+				error => {
+					setSchema({})
+					setUiSchema({})
+					console.error("Error fetching source spec:", error)
+				},
+				() => setLoading(false),
+			)
+		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {
 			if (initialConnector) {
@@ -176,23 +211,42 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const validateSource = async (): Promise<boolean> => {
-			setValidating(true)
-			let isValid = true
-			if (setupType === "new") {
-				if (!sourceName.trim()) {
-					setSourceNameError("Source name is required")
-					message.error("Source name is required")
-					isValid = false
-				} else {
-					setSourceNameError(null)
+			try {
+				if (setupType === SETUP_TYPES.NEW) {
+					if (!sourceName.trim() && selectedVersion.trim() !== "") {
+						setSourceNameError("Source name is required")
+						message.error("Source name is required")
+						return false
+					} else {
+						setSourceNameError(null)
+					}
+
+					if (selectedVersion.trim() === "") {
+						message.error("No versions available")
+						return false
+					}
+
+					// Use RJSF's built-in validation - validate returns validation state
+					if (schema && formRef.current) {
+						const validationResult = formRef.current.validateForm()
+						return validationResult
+					}
 				}
+
+				if (setupType === SETUP_TYPES.EXISTING) {
+					if (sourceName.trim() === "") {
+						message.error("Source name is required")
+						return false
+					} else {
+						setSourceNameError(null)
+					}
+				}
+
+				return true
+			} catch (error) {
+				console.error("Error validating source:", error)
+				return false
 			}
-			if (setupType === "new" && schema) {
-				const schemaErrors = validateFormData(formData, schema)
-				setFormErrors(schemaErrors)
-				isValid = isValid && Object.keys(schemaErrors).length === 0
-			}
-			return isValid
 		}
 
 		useImperativeHandle(ref, () => ({
@@ -200,6 +254,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}))
 
 		const handleCreate = async () => {
+			if (fromJobFlow) {
+				return
+			}
 			const isValid = await validateSource()
 			if (!isValid) return
 
@@ -259,6 +316,29 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
+		const handleSetupTypeChange = (type: SetupType) => {
+			setSetupType(type)
+			if (onDocsMinimizedChange) {
+				if (type === SETUP_TYPES.EXISTING) {
+					onDocsMinimizedChange(true) // Close doc panel
+				} else if (type === SETUP_TYPES.NEW) {
+					onDocsMinimizedChange(false)
+				}
+			}
+			// Clear form data when switching to new source
+			if (type === "new") {
+				setSourceName("")
+				setFormData({})
+				setSchema(null)
+				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
+				// Schema will be automatically fetched due to useEffect when connector changes
+				if (onSourceNameChange) onSourceNameChange("")
+				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
+				if (onFormDataChange) onFormDataChange({})
+				if (onVersionChange) onVersionChange("")
+			}
+		}
+
 		const handleExistingSourceSelect = (value: string) => {
 			const selectedSource = sources.find(
 				s => s.id.toString() === value.toString(),
@@ -283,14 +363,6 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
-		const handleFormChange = (newFormData: any) => {
-			setFormData(newFormData)
-
-			if (onFormDataChange) {
-				onFormDataChange(newFormData)
-			}
-		}
-
 		const handleVersionChange = (value: string) => {
 			setSelectedVersion(value)
 			if (onVersionChange) {
@@ -298,13 +370,14 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}
 
-		const toggleDocPanel = () => {
-			setIsDocPanelCollapsed(!isDocPanelCollapsed)
+		const handleToggleDocPanel = () => {
+			if (onDocsMinimizedChange) {
+				onDocsMinimizedChange(prev => !prev)
+			}
 		}
 
-		// UI component renderers
 		const renderConnectorSelection = () => (
-			<div className="w-1/3">
+			<div className="w-1/2">
 				<label className="mb-2 block text-sm font-medium text-gray-700">
 					Connector:
 				</label>
@@ -312,9 +385,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						value={connector}
 						onChange={handleConnectorChange}
-						className={setupType === "new" ? "h-8 w-full" : "w-full"}
+						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
 						options={connectorOptions}
-						{...(setupType !== "new"
+						{...(setupType !== SETUP_TYPES.NEW
 							? { style: { boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" } }
 							: {})}
 					/>
@@ -327,25 +400,37 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				<div className="flex w-full gap-6">
 					{renderConnectorSelection()}
 
-					<div className="w-1/3">
+					<div className="w-1/2">
 						<label className="mb-2 block text-sm font-medium text-gray-700">
 							OLake Version:
 						</label>
-						<Select
-							value={selectedVersion}
-							onChange={handleVersionChange}
-							className="w-full"
-							loading={loadingVersions}
-							placeholder="Select version"
-							options={versions.map(version => ({
-								value: version,
-								label: version,
-							}))}
-						/>
+						{loadingVersions ? (
+							<div className="flex h-8 items-center justify-center">
+								<Spin size="small" />
+							</div>
+						) : versions && versions.length > 0 ? (
+							<>
+								<Select
+									value={selectedVersion}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									options={versions.map(version => ({
+										value: version,
+										label: version,
+									}))}
+								/>
+							</>
+						) : (
+							<div className="flex items-center gap-1 text-sm text-red-500">
+								<Info />
+								No versions available
+							</div>
+						)}
 					</div>
 				</div>
 
-				<div className="w-2/3">
+				<div className="w-1/2">
 					<FormField
 						label="Name of your source"
 						required
@@ -353,7 +438,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					>
 						<input
 							type="text"
-							className={`h-8 w-full rounded-[6px] border ${sourceNameError ? "border-red-500" : "border-gray-300"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+							className={`h-8 w-full rounded-md border ${sourceNameError ? "border-red-500" : "border-gray-400"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
 							placeholder="Enter the name of your source"
 							value={sourceName}
 							onChange={handleSourceNameChange}
@@ -367,7 +452,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			<div className="flex-start flex w-full gap-6">
 				{renderConnectorSelection()}
 
-				<div className="w-1/3">
+				<div className="w-1/2">
 					<label className="mb-2 block text-sm font-medium text-gray-700">
 						Select existing source:
 					</label>
@@ -388,7 +473,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const renderSetupTypeSelector = () => (
 			<SetupTypeSelector
 				value={setupType as SetupType}
-				onChange={setSetupType}
+				onChange={handleSetupTypeChange}
 				newLabel="Set up a new source"
 				existingLabel="Use an existing source"
 				fromJobFlow={fromJobFlow}
@@ -396,7 +481,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		)
 
 		const renderSchemaForm = () =>
-			setupType === "new" && (
+			setupType === SETUP_TYPES.NEW && (
 				<>
 					{loading ? (
 						<div className="flex h-32 items-center justify-center">
@@ -406,13 +491,30 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						schema && (
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 								<EndpointTitle title="Endpoint config" />
-								<FixedSchemaForm
+								<Form
+									ref={formRef}
 									schema={schema}
+									templates={{
+										ObjectFieldTemplate,
+										FieldTemplate: CustomFieldTemplate,
+										ArrayFieldTemplate,
+										ButtonTemplates: {
+											SubmitButton: () => null,
+										},
+									}}
+									widgets={widgets}
 									formData={formData}
-									onChange={handleFormChange}
-									hideSubmit={true}
-									errors={formErrors}
-									validate={validating}
+									onChange={e => {
+										setFormData(e.formData)
+										if (onFormDataChange) onFormDataChange(e.formData)
+									}}
+									transformErrors={transformErrors}
+									uiSchema={uiSchema}
+									validator={validator}
+									omitExtraData
+									liveOmit
+									showErrorList={false}
+									onSubmit={handleCreate}
 								/>
 							</div>
 						)
@@ -421,71 +523,79 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			)
 
 		return (
-			<div className={`flex h-screen flex-col ${fromJobFlow ? "pb-32" : ""}`}>
-				{!fromJobFlow && (
-					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
-						<Link
-							to={"/sources"}
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
-						>
-							<ArrowLeft className="mr-1 size-5" />
-						</Link>
-						<div className="text-lg font-bold">Create source</div>
-					</div>
-				)}
+			<div className={`flex h-screen`}>
+				<div className="flex flex-1 flex-col">
+					{!fromJobFlow && (
+						<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+							<Link
+								to={"/sources"}
+								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
+							>
+								<ArrowLeft className="mr-1 size-5" />
+							</Link>
+							<div className="text-lg font-bold">Create source</div>
+						</div>
+					)}
 
-				<div className="flex flex-1 overflow-hidden">
-					<div className="w-full overflow-auto p-6 pt-0">
-						{stepNumber && stepTitle && (
-							<StepTitle
-								stepNumber={stepNumber}
-								stepTitle={stepTitle}
-							/>
-						)}
-						<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-							<div className="mb-6">
-								<div className="mb-4 flex items-center gap-2 text-base font-medium">
-									<Notebook className="size-5" />
-									Capture information
+					<div className="flex flex-1 overflow-hidden">
+						<div className="flex flex-1 flex-col">
+							<div className="flex-1 overflow-auto p-6 pt-0">
+								{stepNumber && stepTitle && (
+									<StepTitle
+										stepNumber={stepNumber}
+										stepTitle={stepTitle}
+									/>
+								)}
+								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+									<div className="mb-6">
+										<div className="mb-4 flex items-center gap-2 text-base font-medium">
+											<Notebook className="size-5" />
+											Capture information
+										</div>
+
+										{renderSetupTypeSelector()}
+
+										{setupType === SETUP_TYPES.NEW
+											? renderNewSourceForm()
+											: renderExistingSourceForm()}
+									</div>
 								</div>
 
-								{renderSetupTypeSelector()}
-
-								{setupType === "new"
-									? renderNewSourceForm()
-									: renderExistingSourceForm()}
+								{renderSchemaForm()}
 							</div>
+
+							{/* Footer  */}
+							{!fromJobFlow && (
+								<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+									<button
+										onClick={handleCancel}
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+									>
+										Cancel
+									</button>
+									<button
+										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+										onClick={() => {
+											if (formRef.current) {
+												formRef.current.submit()
+											}
+										}}
+									>
+										Create
+										<ArrowRight className="size-4 text-white" />
+									</button>
+								</div>
+							)}
 						</div>
 
-						{renderSchemaForm()}
+						<DocumentationPanel
+							docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}`}
+							isMinimized={docsMinimized}
+							onToggle={handleToggleDocPanel}
+							showResizer={true}
+						/>
 					</div>
-
-					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}/config`}
-						isMinimized={isDocPanelCollapsed}
-						onToggle={toggleDocPanel}
-						showResizer={true}
-					/>
 				</div>
-
-				{/* Footer */}
-				{!fromJobFlow && (
-					<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
-						<button
-							onClick={handleCancel}
-							className="rounded-[6px] border border-[#F5222D] px-4 py-2 text-[#F5222D] transition-colors duration-200 hover:bg-[#F5222D] hover:text-white"
-						>
-							Cancel
-						</button>
-						<button
-							className="flex items-center justify-center gap-1 rounded-[6px] bg-[#203FDD] px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-[#132685]"
-							onClick={handleCreate}
-						>
-							Create
-							<ArrowRight className="size-4 text-white" />
-						</button>
-					</div>
-				)}
 
 				<TestConnectionModal />
 				<TestConnectionSuccessModal />

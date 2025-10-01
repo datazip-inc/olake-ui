@@ -178,11 +178,23 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
+
+	// Determine driver and available tags
+	version := req.Version
+	driver := req.SourceType
+	if driver == "" {
+		var err error
+		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get valid driver image tags: %s", err)
+		}
+	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		return nil, fmt.Errorf("%s encrypt config: %s", constants.ErrFailedToProcess, err)
 	}
-	result, err := s.tempClient.TestConnection(context.Background(), "destination", "postgres", "latest", encryptedConfig)
+	result, err := s.tempClient.TestConnection(context.Background(), "destination", driver, version, encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
@@ -219,7 +231,12 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")
 	}
-	return []string{"latest"}, nil
+	// get available driver versions
+	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch driver versions: %s", err)
+	}
+	return versions, nil
 }
 
 // Helper function
@@ -233,4 +250,34 @@ func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) 
 		jobItems = append(jobItems, item)
 	}
 	return jobItems, nil
+}
+
+func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecOutput, error) {
+	logs.Info("Getting destination spec for type: %s and version: %s", req.Type, req.Version)
+	if req.Type == "" {
+		return dto.SpecOutput{}, fmt.Errorf("destination type is required")
+	}
+	if req.Version == "" {
+		return dto.SpecOutput{}, fmt.Errorf("destination version is required")
+	}
+
+	destinationType := "iceberg"
+	if req.Type == "s3" {
+		destinationType = "parquet"
+	}
+
+	// Determine driver and available tags
+	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
+	if err != nil {
+		// utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
+		return dto.SpecOutput{}, fmt.Errorf("failed to get valid driver image tags: %s", err)
+	}
+
+	specOutput, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
+	if err != nil {
+		logs.Error("Failed to get destination spec: %v", err)
+		return dto.SpecOutput{}, fmt.Errorf("failed to get destination spec: %s", err)
+	}
+
+	return specOutput, nil
 }

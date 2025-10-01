@@ -28,11 +28,11 @@ func (c *AuthHandler) Prepare() {
 // @router /login [post]
 func (c *AuthHandler) Login() {
 	var req dto.LoginRequest
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
@@ -64,14 +64,14 @@ func (c *AuthHandler) Login() {
 func (c *AuthHandler) CheckAuth() {
 	userID := c.GetSession(constants.SessionUserID)
 	if userID == nil {
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated")
+		respondWithError(&c.Controller, http.StatusUnauthorized, "Not authenticated", nil)
 		return
 	}
 
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
 		if err := c.authService.ValidateUser(userIDInt); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session")
+			respondWithError(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
 	}
@@ -94,11 +94,11 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := dto.Validate(&req); err != nil {
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.Validate(&req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}

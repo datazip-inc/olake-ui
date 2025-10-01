@@ -1,6 +1,13 @@
 import type { CheckboxChangeEvent } from "antd/es/checkbox"
 import type { UnknownObject } from "./index"
 
+export enum SyncMode {
+	FULL_REFRESH = "full_refresh",
+	CDC = "cdc",
+	INCREMENTAL = "incremental",
+	STRICT_CDC = "strict_cdc",
+}
+
 export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
 export type LogicalOperator = "and" | "or"
 
@@ -16,7 +23,7 @@ export type MultiFilterCondition = {
 }
 
 export type StreamData = {
-	sync_mode: "full_refresh" | "cdc" | "incremental"
+	sync_mode: SyncMode.FULL_REFRESH | SyncMode.CDC | SyncMode.INCREMENTAL
 	skip_nested_flattening?: boolean
 	cursor_field?: string[]
 	destination_sync_mode: string
@@ -30,6 +37,9 @@ export type StreamData = {
 			properties: Record<
 				string,
 				{
+					config?: {
+						destination_column_name?: string
+					}
 					type: string | string[]
 					format?: string
 					properties?: Record<string, any>
@@ -41,6 +51,8 @@ export type StreamData = {
 		default_cursor_field?: string[]
 		available_cursor_fields?: string[]
 		cursor_field?: string
+		destination_database?: string
+		destination_table?: string
 		source_defined_primary_key?: string[]
 		[key: string]: unknown
 	}
@@ -67,7 +79,7 @@ export type StreamConfigurationProps = {
 	onSyncModeChange?: (
 		streamName: string,
 		namespace: string,
-		mode: "full_refresh" | "cdc" | "incremental",
+		mode: SyncMode,
 	) => void
 	useDirectForms?: boolean
 }
@@ -109,7 +121,7 @@ export interface SchemaConfigurationProps {
 			| CombinedStreamsData
 		>
 	>
-	stepNumber?: number | string
+	stepNumber?: number
 	stepTitle?: string
 	useDirectForms?: boolean
 	sourceName: string
@@ -119,6 +131,8 @@ export interface SchemaConfigurationProps {
 	initialStreamsData?: CombinedStreamsData
 	fromJobEditFlow?: boolean
 	jobId?: number
+	destinationType?: string
+	jobName: string
 }
 
 export interface ExtendedStreamConfigurationProps
@@ -130,6 +144,7 @@ export interface ExtendedStreamConfigurationProps
 	initialFullLoadFilter?: string
 	fromJobEditFlow?: boolean
 	initialSelectedStreams?: CombinedStreamsData
+	destinationType?: string
 	onNormalizationChange: (
 		streamName: string,
 		namespace: string,
@@ -178,5 +193,5 @@ export interface GroupedStreamsCollapsibleListProps {
 export interface StreamSchemaProps {
 	initialData: StreamData
 	onColumnsChange?: (columns: string[]) => void
-	onSyncModeChange?: (mode: "full_refresh" | "cdc") => void
+	onSyncModeChange?: (mode: SyncMode.FULL_REFRESH | SyncMode.CDC) => void
 }

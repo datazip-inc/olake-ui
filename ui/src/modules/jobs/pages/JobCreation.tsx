@@ -1,24 +1,29 @@
 import { useState, useRef } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
+import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import { v4 as uuidv4 } from "uuid"
+
 import { useAppStore } from "../../../store"
+import { destinationService, sourceService, jobService } from "../../../api"
+
+import { JobBase, JobCreationSteps } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	validateCronExpression,
 } from "../../../utils/utils"
-import { JobBase, JobCreationSteps, CatalogType } from "../../../types"
-import { destinationService, sourceService } from "../../../api"
-import analyticsService from "../../../api/services/analyticsService"
-import { v4 as uuidv4 } from "uuid"
-import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	JOB_CREATION_STEPS,
+	JOB_STEP_NUMBERS,
+} from "../../../utils/constants"
 
-// Components
+// Internal imports from components
 import JobConfiguration from "../components/JobConfiguration"
+import StepProgress from "../components/StepIndicator"
 import CreateSource from "../../sources/pages/CreateSource"
 import CreateDestination from "../../destinations/pages/CreateDestination"
 import SchemaConfiguration from "./SchemaConfiguration"
-import DocumentationPanel from "../../common/components/DocumentationPanel"
-import StepProgress from "../components/StepIndicator"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
@@ -27,21 +32,48 @@ import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
-	const [currentStep, setCurrentStep] = useState<JobCreationSteps>("source")
-	const [docsMinimized, setDocsMinimized] = useState(true)
-	const [sourceName, setSourceName] = useState("")
-	const [sourceConnector, setSourceConnector] = useState("MongoDB")
-	const [sourceFormData, setSourceFormData] = useState<any>({})
-	const [sourceVersion, setSourceVersion] = useState("latest")
-	const [destinationName, setDestinationName] = useState("")
-	const [destinationCatalogType, setDestinationCatalogType] =
-		useState<CatalogType | null>(null)
-	const [destinationConnector, setDestinationConnector] = useState("s3")
-	const [destinationFormData, setDestinationFormData] = useState<any>({})
-	const [destinationVersion, setDestinationVersion] = useState("latest")
-	const [selectedStreams, setSelectedStreams] = useState<any>([])
-	const [jobName, setJobName] = useState("")
-	const [cronExpression, setCronExpression] = useState("* * * * *")
+	const location = useLocation()
+	const initialData = location.state?.initialData || {}
+	const savedJobId = location.state?.savedJobId
+
+	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
+		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
+	)
+	const [docsMinimized, setDocsMinimized] = useState(false)
+	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
+	const [sourceConnector, setSourceConnector] = useState(
+		initialData.sourceConnector || "MongoDB",
+	)
+	const [sourceFormData, setSourceFormData] = useState<any>(
+		initialData.sourceFormData || {},
+	)
+	const [sourceVersion, setSourceVersion] = useState(
+		initialData.sourceVersion || "",
+	)
+	const [destinationName, setDestinationName] = useState(
+		initialData.destinationName || "",
+	)
+	const [destinationCatalogType, setDestinationCatalogType] = useState<
+		string | null
+	>(null)
+
+	const [destinationConnector, setDestinationConnector] = useState(
+		initialData.destinationConnector || DESTINATION_INTERNAL_TYPES.S3,
+	)
+	const [destinationFormData, setDestinationFormData] = useState<any>(
+		initialData.destinationFormData || {},
+	)
+	const [destinationVersion, setDestinationVersion] = useState(
+		initialData.destinationVersion || "",
+	)
+	const [selectedStreams, setSelectedStreams] = useState<any>(
+		initialData.selectedStreams || [],
+	)
+	const [jobName, setJobName] = useState(initialData.jobName || "")
+	const [cronExpression, setCronExpression] = useState(
+		initialData.cronExpression || "* * * * *",
+	)
+	const [jobNameFilled, setJobNameFilled] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	const {
@@ -58,154 +90,221 @@ const JobCreation: React.FC = () => {
 	const sourceRef = useRef<any>(null)
 	const destinationRef = useRef<any>(null)
 
-	const handleNext = async () => {
-		if (currentStep === "source") {
-			if (sourceRef.current) {
-				const isValid = await sourceRef.current.validateSource()
-				if (!isValid) {
-					message.error("Please fill in all required fields for the source")
-					return
-				}
-			} else {
-				if (!sourceName.trim()) {
-					message.error("Source name is required")
-					return
-				}
+	// Validation functions
+	const validateSource = async (): Promise<boolean> => {
+		if (sourceRef.current) {
+			const isValid = await sourceRef.current.validateSource()
+			if (!isValid) {
+				message.error("Please fill in all required fields for the source")
+				return false
 			}
+		} else if (!sourceName.trim() && sourceVersion.trim() != "") {
+			message.error("Source name is required")
+			return false
+		}
+		return true
+	}
 
-			const newSourceData = {
-				name: sourceName,
-				type: sourceConnector.toLowerCase(),
-				version: sourceVersion,
-				config:
-					typeof sourceFormData === "string"
-						? sourceFormData
-						: JSON.stringify(sourceFormData),
+	const validateDestination = async (): Promise<boolean> => {
+		if (destinationRef.current) {
+			const isValid = await destinationRef.current.validateDestination()
+			if (!isValid) {
+				message.error("Please fill in all required fields for the destination")
+				return false
 			}
-			setShowTestingModal(true)
-			const testResult = await sourceService.testSourceConnection(newSourceData)
+		} else if (!destinationName.trim() && destinationVersion.trim() != "") {
+			message.error("Destination name is required")
+			return false
+		}
+		return true
+	}
 
-			setTimeout(() => {
-				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
-					setShowSuccessModal(true)
-					setTimeout(() => {
-						setShowSuccessModal(false)
-						setCurrentStep("destination")
-					}, 1000)
-				} else {
-					setIsFromSources(true)
-					setSourceTestConnectionError(testResult.data?.message || "")
-					setShowFailureModal(true)
-				}
-			}, 1500)
-		} else if (currentStep === "destination") {
-			if (destinationRef.current) {
-				const isValid = await destinationRef.current.validateDestination()
-				if (!isValid) {
-					message.error(
-						"Please fill in all required fields for the destination",
-					)
-					return
-				}
-			} else {
-				// Fallback validation if ref isn't available
-				if (!destinationName.trim()) {
-					message.error("Destination name is required")
-					return
-				}
-			}
+	const validateConfig = (): boolean => {
+		if (!jobName.trim()) {
+			message.error("Job name is required")
+			return false
+		}
+		return validateCronExpression(cronExpression)
+	}
 
-			const newDestinationData = {
-				name: destinationName,
-				type: `${getConnectorInLowerCase(destinationConnector.toLowerCase())}`,
-				config:
-					typeof destinationFormData === "string"
-						? destinationFormData
-						: JSON.stringify(destinationFormData),
-				version: `${destinationVersion}`,
-			}
-
-			setShowTestingModal(true)
-			const testResult = await destinationService.testDestinationConnection(
-				newDestinationData,
-				sourceConnector.toLowerCase(),
-			)
-
-			setTimeout(() => {
-				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
-					setShowSuccessModal(true)
-					setTimeout(() => {
-						setShowSuccessModal(false)
-						setCurrentStep("schema")
-					}, 1000)
-				} else {
-					setIsFromSources(false)
-					setDestinationTestConnectionError(testResult.data?.message || "")
-					setShowFailureModal(true)
-				}
-			}, 1500)
-		} else if (currentStep === "schema") {
-			setCurrentStep("config")
-		} else if (currentStep === "config") {
-			if (!jobName.trim()) {
-				message.error("Job name is required")
-				return
-			}
-			if (!validateCronExpression(cronExpression)) {
-				return
-			}
-			const newJobData: JobBase = {
-				name: jobName,
-				source: {
-					name: sourceName,
-					type: getConnectorInLowerCase(sourceConnector),
-					version: sourceVersion,
-					config: JSON.stringify(sourceFormData),
-				},
-				destination: {
-					name: destinationName,
-					type: getConnectorInLowerCase(destinationConnector),
-					version: destinationVersion,
-					config: JSON.stringify(destinationFormData),
-				},
-				streams_config: JSON.stringify(selectedStreams),
-				frequency: cronExpression, // Use cron expression instead of frequency-value format
-			}
-			addJob(newJobData)
-				.then(() => {
-					setShowEntitySavedModal(true)
-				})
-				.catch(error => {
-					console.error("Error adding job:", error)
-					message.error("Failed to create job")
-				})
+	const checkJobNameUnique = async (): Promise<boolean | null> => {
+		try {
+			const response = await jobService.checkJobNameUnique(jobName)
+			return response.unique
+		} catch {
+			message.error("Failed to check job name uniqueness. Please try again.")
+			return null
 		}
 	}
 
+	// Connection test handler
+	const handleConnectionTest = async (
+		isSource: boolean,
+		data: any,
+		nextStep: JobCreationSteps,
+	): Promise<void> => {
+		setShowTestingModal(true)
+		try {
+			const testResult = isSource
+				? await sourceService.testSourceConnection(data)
+				: await destinationService.testDestinationConnection(
+						data,
+						getConnectorInLowerCase(sourceConnector),
+						sourceVersion,
+					)
+
+			setTimeout(() => {
+				setShowTestingModal(false)
+				if (testResult.data?.status === "SUCCEEDED") {
+					setShowSuccessModal(true)
+					setTimeout(() => {
+						setShowSuccessModal(false)
+						setCurrentStep(nextStep)
+					}, 1000)
+				} else {
+					setIsFromSources(isSource)
+					if (isSource) {
+						setSourceTestConnectionError(testResult.data?.message || "")
+					} else {
+						setDestinationTestConnectionError(testResult.data?.message || "")
+					}
+					setShowFailureModal(true)
+				}
+			}, 1500)
+		} catch {
+			setShowTestingModal(false)
+			message.error(
+				isSource
+					? "Source connection test failed"
+					: "Destination connection test failed",
+			)
+		}
+	}
+
+	// Job creation handler
+	const handleJobCreation = async () => {
+		const newJobData: JobBase = {
+			name: jobName,
+			source: {
+				name: sourceName,
+				type: getConnectorInLowerCase(sourceConnector),
+				version: sourceVersion,
+				config: JSON.stringify(sourceFormData),
+			},
+			destination: {
+				name: destinationName,
+				type: getConnectorInLowerCase(destinationConnector),
+				version: destinationVersion,
+				config: JSON.stringify(destinationFormData),
+			},
+			streams_config: JSON.stringify(selectedStreams),
+			frequency: cronExpression,
+		}
+
+		try {
+			await addJob(newJobData)
+			if (savedJobId) {
+				const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+				const updatedSavedJobs = savedJobs.filter(
+					(job: any) => job.id !== savedJobId,
+				)
+				localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+			}
+			setShowEntitySavedModal(true)
+		} catch (error) {
+			console.error("Error adding job:", error)
+			message.error("Failed to create job")
+		}
+	}
+
+	// Main handler
+	const handleNext = async () => {
+		switch (currentStep) {
+			case JOB_CREATION_STEPS.SOURCE: {
+				if (!(await validateSource())) return
+				const sourceData = {
+					name: sourceName,
+					type: getConnectorInLowerCase(sourceConnector),
+					version: sourceVersion,
+					config:
+						typeof sourceFormData === "string"
+							? sourceFormData
+							: JSON.stringify(sourceFormData),
+				}
+				await handleConnectionTest(
+					true,
+					sourceData,
+					JOB_CREATION_STEPS.DESTINATION,
+				)
+				break
+			}
+			case JOB_CREATION_STEPS.DESTINATION: {
+				if (!(await validateDestination())) return
+				const destinationData = {
+					name: destinationName,
+					type: getConnectorInLowerCase(destinationConnector),
+					config:
+						typeof destinationFormData === "string"
+							? destinationFormData
+							: JSON.stringify(destinationFormData),
+					version: destinationVersion,
+				}
+				await handleConnectionTest(
+					false,
+					destinationData,
+					JOB_CREATION_STEPS.STREAMS,
+				)
+				break
+			}
+			case JOB_CREATION_STEPS.STREAMS:
+				await handleJobCreation()
+				break
+			case JOB_CREATION_STEPS.CONFIG:
+				if (!validateConfig()) return
+
+				const isUnique = await checkJobNameUnique()
+				if (isUnique === null) {
+					return
+				}
+				if (!isUnique) {
+					message.error(
+						"Job name already exists. Please choose a different name.",
+					)
+					return
+				}
+				//TODO : Job name is disabled once filled and moved to next step , need to be handled later
+				setJobNameFilled(true)
+				setCurrentStep(JOB_CREATION_STEPS.SOURCE)
+				break
+			default:
+				console.warn("Unknown step:", currentStep)
+		}
+	}
+
+	//TODO: Handle steps properly
+
 	const nextStep = () => {
-		if (currentStep === "source") {
-			setCurrentStep("destination")
-		} else if (currentStep === "destination") {
-			setCurrentStep("schema")
-		} else if (currentStep === "schema") {
-			setCurrentStep("config")
+		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
+			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+		} else if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
+			setCurrentStep(JOB_CREATION_STEPS.STREAMS)
+		} else if (currentStep === JOB_CREATION_STEPS.CONFIG) {
+			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		}
 	}
 
 	const handleBack = () => {
-		if (currentStep === "destination") {
-			setCurrentStep("source")
-		} else if (currentStep === "schema") {
-			setCurrentStep("destination")
-		} else if (currentStep === "config") {
-			setCurrentStep("schema")
+		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
+			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
+		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
+			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
 	}
 
 	const handleCancel = () => {
-		if (currentStep === "source") {
+		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setShowSourceCancelModal(true)
 		} else {
 			message.info("Job creation cancelled")
@@ -214,43 +313,42 @@ const JobCreation: React.FC = () => {
 	}
 
 	const handleSaveJob = () => {
-		const savedJob = {
-			id: uuidv4(),
-			name: jobName || "-",
+		const jobData = {
+			id: savedJobId || uuidv4(),
+			name: jobName,
 			source: {
-				name: sourceName || "-",
+				name: sourceName,
 				type: getConnectorInLowerCase(sourceConnector),
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
 			destination: {
-				name: destinationName || "-",
+				name: destinationName,
 				type: getConnectorInLowerCase(destinationConnector),
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
-			activate: false,
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString(),
-			created_by: "user",
-			updated_by: "user",
-			last_run_state: "",
-			last_run_time: "",
 		}
-		const existingSavedJobs = JSON.parse(
-			localStorage.getItem("savedJobs") || "[]",
-		)
-		existingSavedJobs.push(savedJob)
-		localStorage.setItem("savedJobs", JSON.stringify(existingSavedJobs))
-		analyticsService.trackEvent("save_job_clicked")
-		message.success("Job saved successfully!")
-		navigate("/jobs")
-	}
 
-	const toggleDocsPanel = () => {
-		setDocsMinimized(!docsMinimized)
+		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
+
+		if (savedJobId) {
+			// Update existing saved job
+			const updatedSavedJobs = savedJobs.map((job: any) =>
+				job.id === savedJobId ? jobData : job,
+			)
+			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+			message.success("Job saved successfully!")
+		} else {
+			// Create new saved job
+			savedJobs.push(jobData)
+			localStorage.setItem("savedJobs", JSON.stringify(savedJobs))
+			message.success("Job saved successfully!")
+		}
+
+		navigate("/jobs")
 	}
 
 	return (
@@ -261,7 +359,7 @@ const JobCreation: React.FC = () => {
 					<div className="flex items-center gap-2">
 						<Link
 							to="/jobs"
-							className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
 							<ArrowLeft className="mr-1 size-5" />
 						</Link>
@@ -275,18 +373,13 @@ const JobCreation: React.FC = () => {
 
 			<div className="flex flex-1 overflow-hidden border-t border-gray-200">
 				<div
-					className={`${
-						(currentStep === "schema" || currentStep === "config") &&
-						!docsMinimized
-							? "w-2/3"
-							: "w-full"
-					} ${currentStep === "schema" ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
+					className={`w-full ${currentStep === JOB_CREATION_STEPS.STREAMS ? "" : "overflow-hidden"} pt-0 transition-all duration-300`}
 				>
-					{currentStep === "source" && (
-						<div className="w-full">
+					{currentStep === JOB_CREATION_STEPS.SOURCE && (
+						<div className="h-full w-full overflow-auto">
 							<CreateSource
 								fromJobFlow={true}
-								stepNumber={"I"}
+								stepNumber={JOB_STEP_NUMBERS.SOURCE}
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
@@ -299,30 +392,25 @@ const JobCreation: React.FC = () => {
 								initialVersion={sourceVersion}
 								onVersionChange={setSourceVersion}
 								onComplete={() => {
-									setCurrentStep("destination")
+									setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
 								}}
 								ref={sourceRef}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
 							/>
 						</div>
 					)}
 
-					{currentStep === "destination" && (
-						<div className="w-full">
+					{currentStep === JOB_CREATION_STEPS.DESTINATION && (
+						<div className="h-full w-full overflow-auto">
 							<CreateDestination
 								fromJobFlow={true}
-								stepNumber={2}
+								stepNumber={JOB_STEP_NUMBERS.DESTINATION}
 								stepTitle="Set up your destination"
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
-								initialConnector={
-									destinationConnector.toLowerCase() === "s3" ||
-									destinationConnector.toLowerCase() === "amazon s3" // TODO: dont manage different types use single at every place
-										? "s3"
-										: destinationConnector.toLowerCase() === "apache iceberg" ||
-											  destinationConnector.toLowerCase() === "iceberg"
-											? "iceberg"
-											: destinationConnector.toLowerCase()
-								}
+								initialConnector={getConnectorInLowerCase(destinationConnector)}
+								initialVersion={destinationVersion}
 								onFormDataChange={data => {
 									setDestinationFormData(data)
 								}}
@@ -332,23 +420,27 @@ const JobCreation: React.FC = () => {
 								onCatalogTypeChange={setDestinationCatalogType}
 								onVersionChange={setDestinationVersion}
 								onComplete={() => {
-									setCurrentStep("schema")
+									setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 								}}
 								ref={destinationRef}
+								docsMinimized={docsMinimized}
+								onDocsMinimizedChange={setDocsMinimized}
+								sourceConnector={sourceConnector}
+								sourceVersion={sourceVersion}
 							/>
 						</div>
 					)}
 
-					{currentStep === "schema" && (
+					{currentStep === JOB_CREATION_STEPS.STREAMS && (
 						<div className="h-full overflow-scroll">
 							<SchemaConfiguration
 								selectedStreams={selectedStreams}
 								setSelectedStreams={setSelectedStreams}
-								stepNumber={3}
+								stepNumber={JOB_STEP_NUMBERS.STREAMS}
 								stepTitle="Streams Selection"
 								useDirectForms={true}
 								sourceName={sourceName}
-								sourceConnector={sourceConnector.toLowerCase()}
+								sourceConnector={getConnectorInLowerCase(sourceConnector)}
 								sourceVersion={sourceVersion}
 								sourceConfig={
 									typeof sourceFormData === "string"
@@ -362,64 +454,59 @@ const JobCreation: React.FC = () => {
 										? selectedStreams
 										: undefined
 								}
+								destinationType={getConnectorInLowerCase(destinationConnector)}
+								jobName={jobName}
 							/>
 						</div>
 					)}
 
-					{currentStep === "config" && (
+					{currentStep === JOB_CREATION_STEPS.CONFIG && (
 						<JobConfiguration
 							jobName={jobName}
 							setJobName={setJobName}
 							cronExpression={cronExpression}
 							setCronExpression={setCronExpression}
-							stepNumber={4}
+							stepNumber={JOB_STEP_NUMBERS.CONFIG}
 							stepTitle="Job Configuration"
+							jobNameFilled={jobNameFilled}
 						/>
 					)}
 				</div>
-
-				{/* Documentation panel */}
-				{currentStep === "schema" && (
-					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${sourceConnector.toLowerCase()}/config`}
-						isMinimized={docsMinimized}
-						onToggle={toggleDocsPanel}
-						showResizer={true}
-					/>
-				)}
 			</div>
 
 			{/* Footer */}
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div className="flex space-x-4">
 					<button
-						className="rounded-[6px] border border-[#F5222D] px-4 py-1 text-[#F5222D] hover:bg-[#F5222D] hover:text-white"
+						className="rounded-md border border-danger px-4 py-1 text-danger hover:bg-danger hover:text-white"
 						onClick={handleCancel}
 					>
 						Cancel
 					</button>
 					<button
 						onClick={handleSaveJob}
-						className="flex items-center justify-center gap-2 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 					>
 						<DownloadSimple className="size-4" />
 						Save Job
 					</button>
 				</div>
-				<div className="flex items-center">
-					{currentStep !== "source" && (
+				<div
+					className={`flex items-center transition-[margin] duration-500 ease-in-out ${!docsMinimized && (currentStep === JOB_CREATION_STEPS.SOURCE || currentStep === JOB_CREATION_STEPS.DESTINATION) ? "mr-[40%]" : "mr-[4%]"}`}
+				>
+					{currentStep !== JOB_CREATION_STEPS.CONFIG && (
 						<button
 							onClick={handleBack}
-							className="mr-4 rounded-[6px] border border-[#D9D9D9] px-4 py-1 font-light hover:bg-[#EBEBEB]"
+							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 						>
 							Back
 						</button>
 					)}
 					<button
-						className="flex items-center justify-center gap-2 rounded-[6px] bg-[#203FDD] px-4 py-1 font-light text-white hover:bg-[#132685]"
+						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>
-						{currentStep === "config" ? "Create Job" : "Next"}
+						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
 						<ArrowRight className="size-4 text-white" />
 					</button>
 					<TestConnectionModal />
@@ -429,11 +516,11 @@ const JobCreation: React.FC = () => {
 						onComplete={nextStep}
 						fromJobFlow={true}
 						entityName={
-							currentStep === "source"
+							currentStep === JOB_CREATION_STEPS.SOURCE
 								? sourceName
-								: currentStep === "destination"
+								: currentStep === JOB_CREATION_STEPS.DESTINATION
 									? destinationName
-									: currentStep === "config"
+									: currentStep === JOB_CREATION_STEPS.STREAMS
 										? jobName
 										: ""
 						}

@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Switch, message, Select, Radio } from "antd"
-import { ArrowRight } from "@phosphor-icons/react"
+import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
+import { Info, ArrowLeft } from "@phosphor-icons/react"
+import parser from "cron-parser"
+
 import { useAppStore } from "../../../store"
-import { ArrowLeft } from "@phosphor-icons/react"
+import { jobService } from "../../../api"
 import {
 	getConnectorImage,
 	generateCronExpression,
@@ -11,12 +13,10 @@ import {
 	validateCronExpression,
 	isValidCronExpression,
 } from "../../../utils/utils"
+import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
-import { jobService } from "../../../api"
-import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
-import parser from "cron-parser"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -53,6 +53,14 @@ const JobSettings: React.FC = () => {
 
 	const job = jobs.find(j => j.id.toString() === jobId)
 	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
+	const [isPauseLoading, setIsPauseLoading] = useState(false)
+
+	// Sync local pauseJob state with job data when job changes
+	useEffect(() => {
+		if (job) {
+			setPauseJob(!job.activate)
+		}
+	}, [job])
 
 	const getParsedDate = (value: Date) => value.toUTCString()
 
@@ -110,6 +118,10 @@ const JobSettings: React.FC = () => {
 	}, [job])
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
+		// Optimistic update - immediately update UI
+		setPauseJob(checked)
+		setIsPauseLoading(true)
+
 		try {
 			await jobService.activateJob(jobId, !checked)
 			message.success(
@@ -119,6 +131,10 @@ const JobSettings: React.FC = () => {
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
+			// Revert optimistic update on error
+			setPauseJob(!checked)
+		} finally {
+			setIsPauseLoading(false)
 		}
 	}
 
@@ -255,16 +271,14 @@ const JobSettings: React.FC = () => {
 								<div className="flex items-center gap-2">
 									<Link
 										to="/jobs"
-										className="flex items-center gap-2 p-1.5 hover:rounded-[6px] hover:bg-[#f6f6f6] hover:text-black"
+										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 									>
 										<ArrowLeft className="size-5" />
 									</Link>
 
-									<div className="text-2xl font-bold">
-										{job?.name || "<Job_name>"}
-									</div>
+									<div className="text-2xl font-bold">{job?.name}</div>
 								</div>
-								<div className="ml-10 mt-1.5 w-fit rounded bg-blue-100 px-2 py-1 text-xs text-[#0958D9]">
+								<div className="ml-10 mt-1.5 w-fit rounded bg-primary-200 px-2 py-1 text-xs text-primary-700">
 									{job?.activate ? "Active" : "Inactive"}
 								</div>
 							</div>
@@ -303,6 +317,7 @@ const JobSettings: React.FC = () => {
 											placeholder="Enter your job name"
 											value={jobName}
 											onChange={e => setJobName(e.target.value)}
+											disabled
 											className="max-w-md"
 										/>
 									</div>
@@ -321,9 +336,17 @@ const JobSettings: React.FC = () => {
 
 											{frequency === "custom" && (
 												<div>
-													<label className="mb-2 block text-sm">
-														Cron Expression
-													</label>
+													<div className="mb-2 flex items-center gap-1">
+														<label className="block text-sm">
+															Cron Expression
+														</label>
+														<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
+															<Info
+																size={16}
+																className="cursor-help text-slate-900"
+															/>
+														</Tooltip>
+													</div>
 													<Input
 														className="w-64"
 														placeholder="Enter cron expression (Eg : * * * * *)"
@@ -354,7 +377,7 @@ const JobSettings: React.FC = () => {
 												<div className={frequency === "weeks" ? "" : "ml-4"}>
 													<label className="mb-2 block text-sm">
 														Job Start Time{" "}
-														<span className="text-[#A7A7A7]">
+														<span className="text-gray-500">
 															(12H Format UTC)
 														</span>
 													</label>
@@ -406,6 +429,7 @@ const JobSettings: React.FC = () => {
 											}
 										}}
 										className={pauseJob ? "bg-blue-600" : ""}
+										loading={isPauseLoading}
 									/>
 								</div>
 							</div>
@@ -415,13 +439,13 @@ const JobSettings: React.FC = () => {
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
 											<div className="font-medium">Delete the job:</div>
-											<div className="text-sm text-[#8A8A8A]">
+											<div className="text-sm text-text-tertiary">
 												No data will be deleted in your source and destination.
 											</div>
 										</div>
 										<button
 											onClick={handleDeleteJob}
-											className="rounded-[6px] border bg-[#F5222D] px-4 py-1 font-light text-white hover:bg-[#b81922]"
+											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark"
 										>
 											Delete this job
 										</button>
@@ -439,13 +463,9 @@ const JobSettings: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleSaveSettings}
-						className="flex items-center gap-1 bg-[#203FDD] hover:bg-[#132685]"
+						className="flex items-center gap-1 bg-primary hover:bg-primary-600"
 					>
-						Save{" "}
-						<ArrowRight
-							size={16}
-							className="text-white"
-						/>
+						Save
 					</Button>
 				</div>
 			</div>

@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react"
-import {
-	ExtendedStreamConfigurationProps,
-	FilterCondition,
-	FilterOperator,
-	LogicalOperator,
-	MultiFilterCondition,
-	CombinedStreamsData,
-} from "../../../../types"
+import { formatDestinationPath } from "../../../../utils/destination-database"
+import clsx from "clsx"
 import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
-import StreamsSchema from "./StreamsSchema"
 import {
 	ColumnsPlusRight,
 	GridFour,
@@ -17,9 +10,30 @@ import {
 	Plus,
 	SlidersHorizontal,
 	X,
+	ArrowSquareOut,
 } from "@phosphor-icons/react"
-import { CARD_STYLE, TAB_STYLES } from "../../../../utils/constants"
+
+import {
+	ExtendedStreamConfigurationProps,
+	FilterCondition,
+	FilterOperator,
+	LogicalOperator,
+	MultiFilterCondition,
+	CombinedStreamsData,
+	SyncMode,
+} from "../../../../types"
+
+import {
+	CARD_STYLE,
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_TABLE_TOOLTIP_TEXT,
+	PartitioningRegexTooltip,
+	SYNC_MODE_MAP,
+	TAB_STYLES,
+} from "../../../../utils/constants"
 import { operatorOptions } from "../../../../utils/utils"
+
+import StreamsSchema from "./StreamsSchema"
 
 const StreamConfiguration = ({
 	stream,
@@ -33,19 +47,16 @@ const StreamConfiguration = ({
 	onFullLoadFilterChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
+	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
-	const [syncMode, setSyncMode] = useState(
-		stream.stream.sync_mode === "full_refresh"
-			? "full"
-			: stream.stream.sync_mode === "incremental"
-				? "incremental"
-				: "cdc",
-	)
-	const [enableBackfill, setEnableBackfill] = useState(false)
-	const [normalisation, setNormalisation] =
+	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
+	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
+	const [streamFilterStates, setStreamFilterStates] = useState<
+		Record<string, boolean>
+	>({})
 	const [partitionRegex, setPartitionRegex] = useState("")
 	const [showFallbackSelector, setShowFallbackSelector] = useState(false)
 	const [fallBackCursorField, setFallBackCursorField] = useState<string>("")
@@ -65,13 +76,15 @@ const StreamConfiguration = ({
 		})
 	const [formData, setFormData] = useState<any>({
 		sync_mode: stream.stream.sync_mode,
-		backfill: false,
 		partition_regex: initialPartitionRegex || "",
 	})
 
 	const [initialJobStreams, setInitialJobStreams] = useState<
 		CombinedStreamsData | undefined
 	>(undefined)
+
+	// Unique stream key
+	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	useEffect(() => {
 		// Set initial streams only once when component mounts
@@ -90,7 +103,6 @@ const StreamConfiguration = ({
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
-		let initialEnableBackfillForSwitch = true
 
 		// Parse cursor field for default value
 		if (
@@ -105,20 +117,12 @@ const StreamConfiguration = ({
 			setShowFallbackSelector(false)
 		}
 
-		if (initialApiSyncMode === "full_refresh") {
-			setSyncMode("full")
-		} else if (initialApiSyncMode === "cdc") {
-			setSyncMode("cdc")
-		} else if (initialApiSyncMode === "strict_cdc") {
-			setSyncMode("cdc")
-			initialEnableBackfillForSwitch = false
-		} else if (initialApiSyncMode === "incremental") {
-			setSyncMode("incremental")
-		}
-		setEnableBackfill(initialEnableBackfillForSwitch)
-		setNormalisation(initialNormalization)
+		setSyncMode(initialApiSyncMode ?? "full_refresh")
+		setNormalization(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
+
+		// Get the current stream key
 
 		// Parse initial filter if exists
 		if (initialFullLoadFilter) {
@@ -157,6 +161,11 @@ const StreamConfiguration = ({
 					logicalOperator,
 				})
 				setFullLoadFilter(true)
+				// Store the filter state for this stream
+				setStreamFilterStates(prev => ({
+					...prev,
+					[streamKey]: true,
+				}))
 			}
 		} else {
 			setMultiFilterCondition({
@@ -169,21 +178,18 @@ const StreamConfiguration = ({
 				],
 				logicalOperator: "and",
 			})
-			setFullLoadFilter(false)
+			// Restore filter state for this stream or default to false
+			const savedFilterState = streamFilterStates[streamKey] || false
+			setFullLoadFilter(savedFilterState)
 		}
 
 		setFormData((prevFormData: any) => ({
 			...prevFormData,
 			sync_mode: initialApiSyncMode,
-			backfill: initialEnableBackfillForSwitch,
 			partition_regex: initialPartitionRegex || "",
+			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
-	}, [
-		stream,
-		initialNormalization,
-		initialPartitionRegex,
-		initialFullLoadFilter,
-	])
+	}, [stream, initialNormalization, initialFullLoadFilter])
 
 	// Add helper function for checking supported sync modes
 	const isSyncModeSupported = (mode: string): boolean => {
@@ -197,18 +203,22 @@ const StreamConfiguration = ({
 	// Handlers
 	const handleSyncModeChange = (selectedRadioValue: string) => {
 		setSyncMode(selectedRadioValue)
-		let newApiSyncMode: "full_refresh" | "cdc" | "incremental" | "strict_cdc"
-		let newEnableBackfillState = true
-		if (selectedRadioValue === "full") {
-			newApiSyncMode = "full_refresh"
-		} else if (selectedRadioValue === "incremental") {
-			newApiSyncMode = "incremental"
-		} else {
-			newApiSyncMode = "cdc"
+
+		const newApiSyncMode = (
+			Object.entries(SYNC_MODE_MAP).find(
+				([, value]) => value === selectedRadioValue,
+			)?.[0] || ""
+		).toLowerCase() as SyncMode
+
+		// Auto-select first available cursor field for incremental mode
+		if (selectedRadioValue === "incremental") {
+			const availableCursorFields = stream.stream.available_cursor_fields || []
+			if (!stream.stream.cursor_field && availableCursorFields.length > 0) {
+				stream.stream.cursor_field = availableCursorFields[0]
+			}
 		}
 
 		stream.stream.sync_mode = newApiSyncMode
-		setEnableBackfill(newEnableBackfillState)
 		onSyncModeChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -218,38 +228,11 @@ const StreamConfiguration = ({
 		setFormData({
 			...formData,
 			sync_mode: newApiSyncMode,
-			backfill: newEnableBackfillState,
-		})
-	}
-
-	const handleEnableBackfillChange = (checked: boolean) => {
-		setEnableBackfill(checked)
-		let finalApiSyncMode = stream.stream.sync_mode
-
-		if (syncMode === "cdc") {
-			if (checked) {
-				finalApiSyncMode = "cdc"
-				stream.stream.sync_mode = "cdc"
-				onSyncModeChange?.(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					"cdc",
-				)
-			} else {
-				finalApiSyncMode = "strict_cdc"
-				stream.stream.sync_mode = "strict_cdc"
-			}
-		}
-
-		setFormData({
-			...formData,
-			backfill: checked,
-			sync_mode: finalApiSyncMode,
 		})
 	}
 
 	const handleNormalizationChange = (checked: boolean) => {
-		setNormalisation(checked)
+		setNormalization(checked)
 		onNormalizationChange(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -293,6 +276,12 @@ const StreamConfiguration = ({
 
 	const handleFullLoadFilterChange = (checked: boolean) => {
 		setFullLoadFilter(checked)
+		// Persist the filter state for this stream
+		setStreamFilterStates(prev => ({
+			...prev,
+			[streamKey]: checked,
+		}))
+
 		if (!checked) {
 			setMultiFilterCondition({
 				conditions: [
@@ -432,7 +421,7 @@ const StreamConfiguration = ({
 			[]) as string[]
 
 		return cursorFields
-			.filter(key => properties[key.toLowerCase()])
+			.filter(key => properties[key])
 			.sort((a, b) => {
 				const aIsPK = primaryKeys.includes(a)
 				const bIsPK = primaryKeys.includes(b)
@@ -441,7 +430,7 @@ const StreamConfiguration = ({
 				return a.localeCompare(b)
 			})
 			.map(key => {
-				const types = properties[key.toLowerCase()].type
+				const types = properties[key].type
 				// Get the first non-null type as primary type
 				const primaryType = Array.isArray(types)
 					? types.find(t => t !== "null") || types[0]
@@ -510,7 +499,7 @@ const StreamConfiguration = ({
 					<div className="flex items-center justify-between">
 						<span>{field}</span>
 						{stream.stream.source_defined_primary_key?.includes(field) && (
-							<span className="text-[#203FDD]">PK</span>
+							<span className="text-primary">PK</span>
 						)}
 					</div>
 				),
@@ -535,7 +524,10 @@ const StreamConfiguration = ({
 
 		return (
 			<button
-				className={`${tabStyle} flex items-center justify-center gap-1 text-xs`}
+				className={clsx(
+					tabStyle,
+					"flex items-center justify-center gap-1 text-xs",
+				)}
 				style={{ fontWeight: 500, height: "28px", width: "100%" }}
 				onClick={() => setActiveTab(id)}
 				type="button"
@@ -552,37 +544,37 @@ const StreamConfiguration = ({
 			<div className="flex flex-col gap-4">
 				<div className={CARD_STYLE}>
 					<div className="mb-4">
-						<label className="mb-3 block w-full font-medium text-[#575757]">
+						<label className="mb-3 block w-full font-medium text-neutral-text">
 							Sync mode:
 						</label>
 						<Radio.Group
-							className="mb-4 flex w-full items-center"
+							className="mb-4 grid grid-cols-2 gap-4"
 							value={syncMode}
 							onChange={e => handleSyncModeChange(e.target.value)}
 						>
 							<Radio
-								value="full"
-								className="w-1/3"
-								disabled={!isSyncModeSupported("full_refresh")}
+								value="full_refresh"
+								disabled={!isSyncModeSupported(SyncMode.FULL_REFRESH)}
 							>
-								Full refresh
-							</Radio>
-							<Radio
-								value="cdc"
-								className="w-1/3"
-								disabled={
-									!isSyncModeSupported("cdc") &&
-									!isSyncModeSupported("strict_cdc")
-								}
-							>
-								CDC
+								Full Refresh
 							</Radio>
 							<Radio
 								value="incremental"
-								className="w-1/3"
-								disabled={!isSyncModeSupported("incremental")}
+								disabled={!isSyncModeSupported(SyncMode.INCREMENTAL)}
 							>
-								Incremental
+								Full Refresh + Incremental
+							</Radio>
+							<Radio
+								value="cdc"
+								disabled={!isSyncModeSupported(SyncMode.CDC)}
+							>
+								Full Refresh + CDC
+							</Radio>
+							<Radio
+								value="strict_cdc"
+								disabled={!isSyncModeSupported(SyncMode.STRICT_CDC)}
+							>
+								CDC Only
 							</Radio>
 						</Radio.Group>
 						{syncMode === "incremental" &&
@@ -590,7 +582,7 @@ const StreamConfiguration = ({
 								<div className="mb-4 mr-2">
 									<div className="flex w-full gap-4">
 										<div className="flex w-1/2 flex-col">
-											<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
+											<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 												Cursor field:
 												<Tooltip title="Column for identifying new/updated records ">
 													<Info className="size-3.5 cursor-pointer" />
@@ -608,7 +600,7 @@ const StreamConfiguration = ({
 													onSyncModeChange?.(
 														stream.stream.name,
 														stream.stream.namespace || "",
-														"incremental",
+														SyncMode.INCREMENTAL,
 													)
 												}}
 												optionLabelProp="label"
@@ -644,25 +636,28 @@ const StreamConfiguration = ({
 										{stream.stream.cursor_field &&
 											(showFallbackSelector || fallBackCursorField) && (
 												<div className="flex w-1/2 flex-col">
-													<label className="mb-1 flex items-center gap-1 font-medium text-[#575757]">
+													<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 														Fallback Cursor:
 														<Tooltip title="Alternative cursor column in case cursor column encounters null values">
-															<Info className="size-3.5 cursor-pointer text-[#575757]" />
+															<Info className="size-3.5 cursor-pointer text-neutral-text" />
 														</Tooltip>
 													</label>
 													<Select
 														placeholder="Select default"
 														value={fallBackCursorField}
 														onChange={(value: string) => {
-															const newCursorField = value
-																? `${stream.stream.cursor_field}:${value}`
-																: stream.stream.cursor_field
-															stream.stream.cursor_field = newCursorField
+															const [field] = (
+																stream.stream.cursor_field ?? ""
+															).split(":")
+
+															stream.stream.cursor_field = value
+																? `${field}:${value}`
+																: field
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
-																"incremental",
+																SyncMode.INCREMENTAL,
 															)
 														}}
 														allowClear
@@ -674,7 +669,7 @@ const StreamConfiguration = ({
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
-																"incremental",
+																SyncMode.INCREMENTAL,
 															)
 														}}
 														optionLabelProp="label"
@@ -696,29 +691,17 @@ const StreamConfiguration = ({
 							)}
 					</div>
 				</div>
-				<div className={CARD_STYLE}>
-					<div className="flex items-center justify-between">
-						<label className="font-medium">Enable backfill</label>
-						<Switch
-							className="text-[#c1c1c1]"
-							checked={enableBackfill}
-							onChange={handleEnableBackfillChange}
-							disabled={
-								syncMode === "full" ||
-								syncMode === "incremental" ||
-								isStreamInInitialSelection
-							}
-						/>
-					</div>
-				</div>
 
 				<div
-					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE}`}
+					className={clsx(
+						!isSelected ? "font-normal text-text-disabled" : "font-medium",
+						CARD_STYLE,
+					)}
 				>
 					<div className="flex items-center justify-between">
-						<label>Normalisation</label>
+						<label>Normalization</label>
 						<Switch
-							checked={normalisation}
+							checked={normalization}
 							onChange={handleNormalizationChange}
 							disabled={!isSelected || isStreamInInitialSelection}
 						/>
@@ -727,15 +710,19 @@ const StreamConfiguration = ({
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 						<Info className="size-4" />
-						Select the stream to configure Normalisation
+						Select the stream to configure Normalization
 					</div>
 				)}
 
 				<div
-					className={`${!isSelected ? "font-normal text-[#c1c1c1]" : "font-medium"} ${CARD_STYLE} !p-0`}
+					className={clsx(
+						!isSelected ? "font-normal text-text-disabled" : "font-medium",
+						CARD_STYLE,
+						"!p-0",
+					)}
 				>
 					<div className="flex items-center justify-between !p-3">
-						<label className="">Full Load Filter</label>
+						<label className="">Data Filter</label>
 						<Switch
 							checked={fullLoadFilter}
 							onChange={handleFullLoadFilterChange}
@@ -752,7 +739,7 @@ const StreamConfiguration = ({
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 						<Info className="size-4" />
-						Select the stream to configure Full Load Filter
+						Select the stream to configure Data Filter
 					</div>
 				)}
 			</div>
@@ -767,7 +754,25 @@ const StreamConfiguration = ({
 
 	const renderPartitioningRegexContent = () => (
 		<>
-			<div className="text-[#575757]">Partitioning regex:</div>
+			<div className="flex items-center gap-0.5">
+				<div className="text-neutral-text">Partitioning regex:</div>
+
+				<Tooltip title={PartitioningRegexTooltip}>
+					<Info className="size-5 cursor-help items-center pt-1 text-gray-500" />
+				</Tooltip>
+				<a
+					href={
+						destinationType === DESTINATION_INTERNAL_TYPES.S3
+							? "https://olake.io/docs/writers/parquet/partitioning"
+							: "https://olake.io/docs/writers/iceberg/partitioning"
+					}
+					target="_blank"
+					rel="noopener noreferrer"
+					className="flex items-center text-primary hover:text-primary/80"
+				>
+					<ArrowSquareOut className="size-5" />
+				</a>
+			</div>
 			{isSelected ? (
 				<>
 					<Input
@@ -779,7 +784,7 @@ const StreamConfiguration = ({
 					/>
 					{!activePartitionRegex ? (
 						<Button
-							className="mt-2 w-fit bg-[#203FDD] px-1 py-3 font-light text-white"
+							className="mt-2 w-fit bg-primary px-2 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
 							disabled={!partitionRegex || isStreamInInitialSelection}
 						>
@@ -787,7 +792,7 @@ const StreamConfiguration = ({
 						</Button>
 					) : (
 						<div className="mt-4">
-							<div className="text-sm text-[#575757]">
+							<div className="text-sm text-neutral-text">
 								Active partition regex:
 							</div>
 							<div className="mt-2 flex items-center justify-between text-sm">
@@ -796,7 +801,7 @@ const StreamConfiguration = ({
 									type="text"
 									danger
 									size="small"
-									className="rounded-[6px] py-1 text-sm"
+									className="rounded-md py-1 text-sm"
 									onClick={handleClearPartitionRegex}
 									disabled={isStreamInInitialSelection}
 								>
@@ -821,15 +826,16 @@ const StreamConfiguration = ({
 				<div key={index}>
 					{index > 0 && (
 						<div className="mb-4 flex items-center justify-between">
-							<div className="flex rounded-md bg-[#e9ebfc] p-1">
+							<div className="flex rounded-md bg-primary-100 p-1">
 								<button
 									type="button"
 									onClick={() => handleLogicalOperatorChange("and")}
-									className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+									className={clsx(
+										"rounded px-3 py-1 text-sm font-medium transition-colors",
 										multiFilterCondition.logicalOperator === "and"
 											? "bg-white text-gray-800 shadow-sm"
-											: "bg-transparent text-gray-600"
-									}`}
+											: "bg-transparent text-gray-600",
+									)}
 									disabled={isStreamInInitialSelection}
 								>
 									AND
@@ -837,11 +843,12 @@ const StreamConfiguration = ({
 								<button
 									type="button"
 									onClick={() => handleLogicalOperatorChange("or")}
-									className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
+									className={clsx(
+										"rounded px-3 py-1 text-sm font-medium transition-colors",
 										multiFilterCondition.logicalOperator === "or"
 											? "bg-white text-gray-800 shadow-sm"
-											: "bg-transparent text-gray-600"
-									}`}
+											: "bg-transparent text-gray-600",
+									)}
 									disabled={isStreamInInitialSelection}
 								>
 									OR
@@ -859,13 +866,13 @@ const StreamConfiguration = ({
 						</div>
 					)}
 					<div className="mb-4">
-						<div className="mb-2 text-sm font-medium text-[#575757]">
+						<div className="mb-2 text-sm font-medium text-neutral-text">
 							Column {index === 0 ? "I" : "II"}
 						</div>
 						{index === 0 && (
-							<div className="mb-4 flex items-center gap-1 rounded-lg bg-[#FFF7E6] p-2 text-[#FFF6D5]">
-								<Lightning className="size-4 font-bold text-[#DAAC06]" />
-								<div className="text-[#6E5807]">
+							<div className="mb-4 flex items-center gap-1 rounded-lg bg-warning-light p-2 text-warning-light">
+								<Lightning className="size-4 font-bold text-warning" />
+								<div className="text-warning-dark">
 									Selecting indexed columns will enhance performance
 								</div>
 							</div>
@@ -873,7 +880,7 @@ const StreamConfiguration = ({
 					</div>
 					<div className="grid grid-cols-[50%_15%_30%] gap-4">
 						<div>
-							<label className="mb-2 block text-sm text-[#575757]">
+							<label className="mb-2 block text-sm text-neutral-text">
 								Column Name
 							</label>
 							<Select
@@ -890,7 +897,7 @@ const StreamConfiguration = ({
 							/>
 						</div>
 						<div>
-							<label className="mb-2 block text-sm text-[#575757]">
+							<label className="mb-2 block text-sm text-neutral-text">
 								Operator
 							</label>
 							<Select
@@ -932,12 +939,44 @@ const StreamConfiguration = ({
 		</div>
 	)
 
+	const formatDestination = () => {
+		return formatDestinationPath(
+			stream?.stream?.destination_database,
+			stream?.stream?.destination_table,
+		)
+	}
+
 	// Main render
 	return (
 		<div>
-			<div className="pb-4 font-medium capitalize">{stream.stream.name}</div>
+			<div className="flex items-center justify-between gap-4 pb-4 font-medium">
+				<span>{stream.stream.name}</span>
+				{formatDestination() && (
+					<div className="min-w-0 flex-shrink">
+						<div className="max-w-full rounded-lg bg-background-primary px-3 py-1">
+							<div className="flex min-w-0 items-center text-sm">
+								<div className="flex items-center whitespace-nowrap font-medium">
+									Destination Table{" "}
+									<Tooltip title={DESTINATION_TABLE_TOOLTIP_TEXT}>
+										<Info className="size-5 cursor-help items-center px-0.5 text-gray-500" />
+									</Tooltip>{" "}
+									:
+								</div>
+								<Tooltip
+									title={`${formatDestination()}`}
+									placement="top"
+								>
+									<span className="min-w-0 flex-1 truncate pl-1 font-normal">
+										{formatDestination()}
+									</span>
+								</Tooltip>
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
 			<div className="mb-4 w-full">
-				<div className="grid grid-cols-3 gap-1 rounded-[6px] bg-[#F5F5F5] p-1">
+				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton
 						id="config"
 						label="Config"

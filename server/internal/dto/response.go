@@ -16,6 +16,9 @@ type SpecResponse struct {
 	Type    string      `json:"type"`
 	Spec    interface{} `json:"spec" orm:"type(jsonb)"`
 }
+type SpecOutput struct {
+	Spec map[string]interface{} `json:"spec"`
+}
 
 // Reuse generic API response with generics
 type APIResponse[T any] struct {
@@ -34,6 +37,11 @@ type DeleteDestinationResponse struct {
 
 type JobStatus struct {
 	Activate bool `json:"activate"`
+}
+
+// JobNameCheckResponse
+type CheckUniqueJobNameResponse struct {
+	Unique bool `json:"unique"`
 }
 
 // Job response

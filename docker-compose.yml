@@ -15,10 +15,11 @@ x-encryption:
 
 services:
   olake-ui:
-    image: olakego/ui:latest
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest    
     pull_policy: always
     container_name: olake-ui
     environment:
+      CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
       PERSISTENT_DIR: *hostPersistencePath
       OLAKE_SECRET_KEY: *encryptionKey
     ports:
@@ -28,7 +29,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     networks:
-      - temporal-network
+      - olake-network
     depends_on:
       postgresql:
         condition: service_healthy # Wait for postgres to be healthy
@@ -43,10 +44,10 @@ services:
       start_period: 30s # Give it time to start up before first health check
 
   signup-init:
-    image: curlimages/curl:latest
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
     container_name: olake-signup-init
     networks:
-      - temporal-network
+      - olake-network
     depends_on:
       olake-ui:
         condition: service_healthy # Wait for olake-ui to be healthy
@@ -85,15 +86,16 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: olakego/ui-worker:latest
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
     pull_policy: always
     container_name: olake-temporal-worker
     networks:
-      - temporal-network
+      - olake-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     environment:
+      CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
       TEMPORAL_ADDRESS: "temporal:7233"
       OLAKE_SECRET_KEY: *encryptionKey
       PERSISTENT_DIR: *hostPersistencePath
@@ -106,16 +108,12 @@ services:
 
   postgresql:
     container_name: temporal-postgresql
-    image: postgres:13
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: temporal
     networks:
-      - temporal-network
-    expose:
-      - 5432
-    ports:
-      - "5433:5432"
+      - olake-network
     volumes:
       - temporal-postgresql-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -127,7 +125,7 @@ services:
 
   temporal:
     container_name: temporal
-    image: temporalio/auto-setup:1.22.3
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/auto-setup:1.22.3
     depends_on:
       postgresql:
         condition: service_healthy
@@ -145,28 +143,28 @@ services:
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
     networks:
-      - temporal-network
-    ports:
-      - "7233:7233"
+      - olake-network
     restart: unless-stopped
 
   temporal-ui:
     container_name: temporal-ui
-    image: temporalio/ui:2.16.2
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.16.2
+    profiles:
+      - debug
     depends_on:
       temporal:
         condition: service_started
     environment:
       - TEMPORAL_ADDRESS=temporal:7233
     networks:
-      - temporal-network
+      - olake-network
     ports:
       - "8081:8080"
     restart: unless-stopped
 
   elasticsearch:
     container_name: temporal-elasticsearch
-    image: elasticsearch:7.17.10
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/elasticsearch:7.17.10
     environment:
       - cluster.routing.allocation.disk.threshold_enabled=true
       - cluster.routing.allocation.disk.watermark.low=512mb
@@ -176,9 +174,7 @@ services:
       - ES_JAVA_OPTS=-Xms256m -Xmx256m
       - xpack.security.enabled=false
     networks:
-      - temporal-network
-    expose:
-      - 9200
+      - olake-network
     volumes:
       - temporal-elasticsearch-data:/usr/share/elasticsearch/data
     restart: unless-stopped
@@ -195,9 +191,9 @@ services:
       retries: 5
 
 networks:
-  temporal-network:
+  olake-network:
     driver: bridge
-    name: temporal-network
+    name: olake-network
 
 volumes:
   temporal-postgresql-data:
