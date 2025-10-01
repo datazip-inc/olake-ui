@@ -97,7 +97,10 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 		if errors.Is(ctx.Err(), workflow.ErrCanceled) {
 			logger.Info("Workflow canceled, executing cleanup...")
 			newCtx, _ := workflow.NewDisconnectedContext(ctx)
-			workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
+			err := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
+			if err != nil {
+				logger.Error("Failed to execute cleanup activity", "error", err)
+			}
 		}
 	}()
 
