@@ -96,15 +96,15 @@ const TestConnectionFailureModal = ({
 						</div>
 						<div
 							className={`flex flex-col px-3 py-2 text-neutral-500 ${
-								isExpanded ? "h-[300px] overflow-auto" : "max-h-[150px]"
+								isExpanded ? "h-[300px] overflow-auto" : "h-auto"
 							}`}
 						>
 							{!isExpanded ? (
-								<span className="text-red-500">
+								<div className="max-h-[150px] overflow-auto text-red-500">
 									{fromSources
 										? sourceTestConnectionError?.message || ""
 										: destinationTestConnectionError?.message || ""}
-								</span>
+								</div>
 							) : (
 								<table className="min-w-full">
 									<tbody>
