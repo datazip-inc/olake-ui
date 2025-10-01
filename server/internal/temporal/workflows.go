@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -77,10 +78,11 @@ func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[s
 
 // RunSyncWorkflow is a workflow for running data synchronization
 func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
+	logger := workflow.GetLogger(ctx)
 	options := workflow.ActivityOptions{
-		// Using large duration (e.g., 10 years)
 		StartToCloseTimeout: time.Hour * 24 * 30, // 30 days
 		RetryPolicy:         DefaultRetryPolicy,
+		WaitForCancellation: true,
 	}
 	params := SyncParams{
 		JobID:      jobID,
@@ -89,6 +91,16 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var result map[string]interface{}
+
+	// Defer cleanup for cancellation
+	defer func() {
+		if errors.Is(ctx.Err(), workflow.ErrCanceled) {
+			logger.Info("Workflow canceled, executing cleanup...")
+			newCtx, _ := workflow.NewDisconnectedContext(ctx)
+			workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
+		}
+	}()
+
 	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event

@@ -279,7 +279,6 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	return utils.ParseJSONFile(catalogPath)
 }
 
-// TODO: persist state in case of container stop
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
 	// Generate unique directory name
@@ -311,6 +310,12 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 
 	configPath := filepath.Join(workDir, "config.json")
 	statePath := filepath.Join(workDir, "state.json")
+	// Ensure state is persisted on exit, regardless of success or failure
+	defer func() {
+		if err := PersistJobStateFromFile(jobID, statePath); err != nil {
+			logs.Error("Failed to persist state in defer: %v", err)
+		}
+	}()
 
 	// Execute sync command
 	_, err = r.ExecuteDockerCommand(ctx, hashWorkflowID, "config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
@@ -320,21 +325,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	if err != nil {
 		return nil, err
 	}
-	// Parse state file
-	result, err := utils.ParseJSONFile(statePath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update job state if we have valid result
-	if stateJSON, err := json.Marshal(result); err == nil {
-		job.State = string(stateJSON)
-		job.Active = true
-		if err := jobORM.Update(job); err != nil {
-			return nil, err
-		}
-	}
-	return result, nil
+	return nil, nil
 }
 
 // StopContainer stops a container by name, falling back to kill if needed.
@@ -356,5 +347,34 @@ func StopContainer(ctx context.Context, workflowID string) error {
 	if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
 		return fmt.Errorf("docker stop+kill failed for %s: %v; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
 	}
+	return nil
+}
+
+// PersistJobStateFromFile reads the state JSON file and updates the job state
+func PersistJobStateFromFile(jobID int, stateFilePath string) error {
+	state, err := utils.ParseJSONFile(stateFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read state file %s: %v", stateFilePath, err)
+	}
+
+	jobORM := database.NewJobORM()
+	job, err := jobORM.GetByID(jobID, false)
+	if err != nil {
+		return fmt.Errorf("failed to fetch job %d: %v", jobID, err)
+	}
+
+	stateJSON, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("failed to marshal state: %v", err)
+	}
+
+	job.State = string(stateJSON)
+	job.Active = true
+
+	if err := jobORM.Update(job); err != nil {
+		return fmt.Errorf("failed to update job: %v", err)
+	}
+
+	logs.Info("Job state persisted successfully for jobID %d", jobID)
 	return nil
 }

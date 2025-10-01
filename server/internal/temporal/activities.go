@@ -62,7 +62,6 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 
 	activity.RecordHeartbeat(ctx, "Running sync command")
 
-	// Run the sync in a goroutine so we can react to cancel concurrently
 	type resErr struct {
 		res map[string]interface{}
 		err error
@@ -78,19 +77,34 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 	for {
 		select {
 		case <-ctx.Done():
-			// Cancellation observed: stop container by hashed workflowID, then return canceled
-			_ = docker.StopContainer(context.Background(), params.WorkflowID) // best-effort; non-blocking on ctx cancel
+			logger.Info("SyncActivity canceled, deferring cleanup to SyncCleanupActivity")
 			return nil, ctx.Err()
 		case r := <-done:
 			if r.err != nil {
 				logger.Error("Sync command failed", "error", r.err)
-				return r.res, fmt.Errorf("sync command failed: %v", r.err)
+				return r.res, r.err
 			}
 			return r.res, nil
 		default:
-			// Keep heartbeating so cancel is delivered promptly
 			activity.RecordHeartbeat(ctx, "sync in progress")
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+// SyncCleanupActivity ensures container is fully stopped and state is persisted to database
+func SyncCleanupActivity(ctx context.Context, params SyncParams) error {
+	logger := activity.GetLogger(ctx)
+
+	// Stop container gracefully
+	if err := docker.StopContainer(ctx, params.WorkflowID); err != nil {
+		logger.Error("Failed to stop container", "error", err)
+	}
+
+	// Persist latest state
+	if err := docker.PersistJobStateFromFile(params.JobID, params.WorkflowID); err != nil {
+		logger.Error("Failed to persist job state", "error", err)
+	}
+	logger.Info("Cleanup completed successfully")
+	return nil
 }
