@@ -325,7 +325,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return map[string]interface{}{}, nil
 }
 
 // StopContainer stops a container by name, falling back to kill if needed.

@@ -93,7 +93,7 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 }
 
 // SyncCleanupActivity ensures container is fully stopped and state is persisted to database
-func SyncCleanupActivity(ctx context.Context, params SyncParams) error {
+func SyncCleanupActivity(ctx context.Context, params *SyncParams) error {
 	logger := activity.GetLogger(ctx)
 
 	// Stop container gracefully
