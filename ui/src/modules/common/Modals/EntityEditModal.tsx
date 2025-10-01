@@ -69,7 +69,7 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				? await sourceService.testSourceConnection(getEntityData())
 				: await destinationService.testDestinationConnection(getEntityData())
 
-			if (testResult.data?.status === "SUCCEEDED") {
+			if (testResult.data?.connection_result.status === "SUCCEEDED") {
 				setTimeout(() => {
 					setShowTestingModal(false)
 					setShowSuccessModal(true)
@@ -82,8 +82,12 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 					navigate(navigatePath)
 				}, 2000)
 			} else {
+				const testConnectionError = {
+					message: testResult.data?.connection_result.message || "",
+					logs: testResult.data?.logs || [],
+				}
 				setShowTestingModal(false)
-				setTestConnectionError(testResult.data?.message || "")
+				setTestConnectionError(testConnectionError)
 				setShowFailureModal(true)
 			}
 		} catch (error) {

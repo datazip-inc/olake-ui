@@ -272,7 +272,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				const testResult =
 					await sourceService.testSourceConnection(newSourceData)
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (testResult.data?.connection_result.status === "SUCCEEDED") {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -285,7 +285,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							})
 					}, 1000)
 				} else {
-					setSourceTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setSourceTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
