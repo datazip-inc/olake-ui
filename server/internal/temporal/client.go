@@ -72,7 +72,6 @@ type JobConfig struct {
 func init() {
 	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
 
-	// Choose task queue based on deployment mode
 	TaskQueue = DockerTaskQueue
 }
 
@@ -99,23 +98,6 @@ func (c *Client) Close() {
 	if c.temporalClient != nil {
 		c.temporalClient.Close()
 	}
-}
-
-func GetTimeout(op Command) time.Duration {
-	switch op {
-	case Discover:
-		return time.Minute * 10
-	case Check:
-		return time.Minute * 10
-	case Spec:
-		return time.Minute * 5
-	case Sync:
-		return time.Hour * 24 * 30
-	// check what can the fallback time be
-	default:
-		return time.Minute * 5
-	}
-
 }
 
 func (c *Client) GetClient() client.Client {
@@ -157,7 +139,7 @@ func (c *Client) GetCatalog(ctx context.Context, jobName, sourceType, version, c
 		Configs:       configs,
 		WorkflowID:    workflowID,
 		JobID:         0,
-		Timeout:       GetTimeout(Discover),
+		Timeout:       GetWorkflowTimeout(Discover),
 		OutputFile:    "streams.json",
 	}
 
@@ -171,22 +153,12 @@ func (c *Client) GetCatalog(ctx context.Context, jobName, sourceType, version, c
 		return nil, fmt.Errorf("failed to execute discover workflow: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
-	}
-
-	response, ok := result["response"].(string)
-	if !ok {
-		return nil, fmt.Errorf("invalid response format from worker")
-	}
-
-	logResult, err := utils.ExtractJSON(response)
+	result, err := ExtractWorkflowResponse(ctx, run)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 
-	return logResult, nil
+	return result, nil
 }
 
 func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
@@ -214,7 +186,7 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 		Args:          cmdArgs,
 		Configs:       configs,
 		WorkflowID:    workflowID,
-		Timeout:       GetTimeout(Check),
+		Timeout:       GetWorkflowTimeout(Check),
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
@@ -227,22 +199,12 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 		return nil, fmt.Errorf("failed to execute test connection workflow: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
-	}
-
-	response, ok := result["response"].(string)
-	if !ok {
-		return nil, fmt.Errorf("invalid response format from worker")
-	}
-
-	logMsg, err := utils.ExtractJSON(response)
+	result, err := ExtractWorkflowResponse(ctx, run)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 
-	connectionStatus, ok := logMsg["connectionStatus"].(map[string]interface{})
+	connectionStatus, ok := result["connectionStatus"].(map[string]interface{})
 	if !ok || connectionStatus == nil {
 		return nil, fmt.Errorf("connection status not found")
 	}
@@ -284,7 +246,7 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 		Configs:       nil,
 		WorkflowID:    workflowID,
 		JobID:         0,
-		Timeout:       GetTimeout(Spec),
+		Timeout:       GetWorkflowTimeout(Spec),
 		OutputFile:    "",
 	}
 
@@ -298,23 +260,13 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 		return dto.SpecOutput{}, fmt.Errorf("failed to execute discover workflow: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err = run.Get(ctx, &result); err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
-	}
-
-	response, ok := result["response"].(string)
-	if !ok {
-		return dto.SpecOutput{}, fmt.Errorf("invalid response format from worker")
-	}
-
-	spec, err := utils.ExtractJSON(response)
+	result, err := ExtractWorkflowResponse(ctx, run)
 	if err != nil {
-		return dto.SpecOutput{}, err
+		return dto.SpecOutput{}, fmt.Errorf("failed to extract workflow response: %v", err)
 	}
 
 	return dto.SpecOutput{
-		Spec: spec,
+		Spec: result,
 	}, nil
 }
 
@@ -478,7 +430,43 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 		Configs:       configs,
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
-		Timeout:       GetTimeout(Sync),
+		Timeout:       GetWorkflowTimeout(Sync),
 		OutputFile:    "state.json",
+	}
+}
+
+// extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
+func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
+	var result map[string]interface{}
+	if err := run.Get(ctx, &result); err != nil {
+		return nil, fmt.Errorf("workflow execution failed: %v", err)
+	}
+
+	response, ok := result["response"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid response format from worker")
+	}
+
+	logResult, err := utils.ExtractJSON(response)
+	if err != nil {
+		return nil, err
+	}
+
+	return logResult, nil
+}
+
+func GetWorkflowTimeout(op Command) time.Duration {
+	switch op {
+	case Discover:
+		return time.Minute * 10
+	case Check:
+		return time.Minute * 10
+	case Spec:
+		return time.Minute * 5
+	case Sync:
+		return time.Hour * 24 * 30
+	// check what can the fallback time be
+	default:
+		return time.Minute * 5
 	}
 }
