@@ -104,7 +104,7 @@ func cancelJobWorkflow(tempClient *temporal.Client, job *models.Job, projectID s
 		Query: query,
 	})
 	if err != nil {
-		return fmt.Errorf("list workflows failed: %w", err)
+		return fmt.Errorf("list workflows failed: %s", err)
 	}
 	if len(resp.Executions) == 0 {
 		return nil // no running workflows
@@ -113,7 +113,7 @@ func cancelJobWorkflow(tempClient *temporal.Client, job *models.Job, projectID s
 	for _, wfExec := range resp.Executions {
 		if err := tempClient.CancelWorkflow(context.Background(),
 			wfExec.Execution.WorkflowId, wfExec.Execution.RunId); err != nil {
-			return fmt.Errorf("cancel failed for workflow %s: %w", wfExec.Execution.WorkflowId, err)
+			return fmt.Errorf("failed to cancel workflow[%s]: %s", wfExec.Execution.WorkflowId, err)
 		}
 	}
 	return nil

@@ -345,7 +345,7 @@ func StopContainer(ctx context.Context, workflowID string) error {
 	// If stop failed, attempt immediate kill
 	killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
 	if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
-		return fmt.Errorf("docker stop+kill failed for %s: %v; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
+		return fmt.Errorf("docker stop+kill failed for %s: %s; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
 	}
 	return nil
 }
@@ -354,25 +354,25 @@ func StopContainer(ctx context.Context, workflowID string) error {
 func PersistJobStateFromFile(jobID int, stateFilePath string) error {
 	state, err := utils.ParseJSONFile(stateFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read state file %s: %v", stateFilePath, err)
+		return fmt.Errorf("failed to read state file %s: %s", stateFilePath, err)
 	}
 
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
-		return fmt.Errorf("failed to fetch job %d: %v", jobID, err)
+		return fmt.Errorf("failed to fetch job %d: %s", jobID, err)
 	}
 
 	stateJSON, err := json.Marshal(state)
 	if err != nil {
-		return fmt.Errorf("failed to marshal state: %v", err)
+		return fmt.Errorf("failed to marshal state: %s", err)
 	}
 
 	job.State = string(stateJSON)
 	job.Active = true
 
 	if err := jobORM.Update(job); err != nil {
-		return fmt.Errorf("failed to update job: %v", err)
+		return fmt.Errorf("failed to update job with id: %d: %s", jobID, err)
 	}
 
 	logs.Info("Job state persisted successfully for jobID %d", jobID)

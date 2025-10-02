@@ -249,6 +249,7 @@ func (c *JobHandler) UpdateJob() {
 	err = cancelJobWorkflow(c.tempClient, existingJob, projectIDStr)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		return
 	}
 	// Update job in database
 	if err := c.jobORM.Update(existingJob); err != nil {
@@ -440,7 +441,7 @@ func (c *JobHandler) ActivateJob() {
 }
 
 // @router /project/:projectid/jobs/:id/cancel [get]
-func (c *JobHandler) CancelWorkflow() {
+func (c *JobHandler) CancelJobRun() {
 	// Parse inputs
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
@@ -453,7 +454,7 @@ func (c *JobHandler) CancelWorkflow() {
 	// Ensure job exists
 	job, err := c.jobORM.GetByID(id, true)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("Job not found: %v", err))
 		return
 	}
 

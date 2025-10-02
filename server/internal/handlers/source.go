@@ -158,6 +158,7 @@ func (c *SourceHandler) UpdateSource() {
 		err := cancelJobWorkflow(c.tempClient, job, projectID)
 		if err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+			return
 		}
 	}
 
