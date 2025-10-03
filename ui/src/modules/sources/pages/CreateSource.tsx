@@ -459,6 +459,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						placeholder="Select a source"
 						className="w-full"
+						data-testid="existing-source"
 						onChange={handleExistingSourceSelect}
 						value={undefined}
 						options={filteredSources.map(s => ({

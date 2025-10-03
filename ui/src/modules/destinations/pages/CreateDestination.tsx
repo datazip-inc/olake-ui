@@ -542,6 +542,7 @@ const CreateDestination = forwardRef<
 							<Select
 								placeholder="Select a destination"
 								className="w-full"
+								data-testid="existing-destination"
 								onChange={handleExistingDestinationSelect}
 								value={undefined}
 								options={filteredDestinations.map(d => ({
