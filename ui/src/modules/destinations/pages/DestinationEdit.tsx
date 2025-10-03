@@ -298,7 +298,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowTestingModal(true)
 		const testResult =
 			await destinationService.testDestinationConnection(getDestinationData())
-		if (testResult.data?.status === "SUCCEEDED") {
+		if (testResult.data?.connection_result.status === "SUCCEEDED") {
 			setTimeout(() => {
 				setShowTestingModal(false)
 				setShowSuccessModal(true)
@@ -309,8 +309,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				saveDestination()
 			}, 2000)
 		} else {
+			const testConnectionError = {
+				message: testResult.data?.connection_result.message || "",
+				logs: testResult.data?.logs || [],
+			}
 			setShowTestingModal(false)
-			setDestinationTestConnectionError(testResult.data?.message || "")
+			setDestinationTestConnectionError(testConnectionError)
 			setShowFailureModal(true)
 		}
 	}

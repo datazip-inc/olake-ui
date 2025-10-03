@@ -36,8 +36,11 @@ export interface EntityTestRequest {
 	config: string
 }
 export interface EntityTestResponse {
-	message: string
-	status: "FAILED" | "SUCCEEDED"
+	connection_result: {
+		message: string
+		status: "FAILED" | "SUCCEEDED"
+	}
+	logs: LogEntry[]
 }
 
 export type EntityType = "source" | "destination"
@@ -51,4 +54,10 @@ export interface EntitySavedModalProps {
 	onComplete?: () => void
 	fromJobFlow: boolean
 	entityName?: string
+}
+
+export interface LogEntry {
+	level: string
+	time: string
+	message: string
 }

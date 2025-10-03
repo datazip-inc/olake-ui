@@ -273,7 +273,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 		setShowTestingModal(true)
 		const testResult = await sourceService.testSourceConnection(getSourceData())
-		if (testResult.data?.status === "SUCCEEDED") {
+		if (testResult.data?.connection_result.status === "SUCCEEDED") {
 			setTimeout(() => {
 				setShowTestingModal(false)
 			}, 1000)
@@ -287,8 +287,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				saveSource()
 			}, 2200)
 		} else {
+			const testConnectionError = {
+				message: testResult.data?.connection_result.message || "",
+				logs: testResult.data?.logs || [],
+			}
 			setShowTestingModal(false)
-			setSourceTestConnectionError(testResult.data?.message || "")
+			setSourceTestConnectionError(testConnectionError)
 			setShowFailureModal(true)
 		}
 	}

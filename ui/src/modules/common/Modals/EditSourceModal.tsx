@@ -48,7 +48,7 @@ const EditSourceModal = () => {
 			const testResult =
 				await sourceService.testSourceConnection(getSourceData())
 
-			if (testResult.data?.status === "SUCCEEDED") {
+			if (testResult.data?.connection_result.status === "SUCCEEDED") {
 				setTimeout(() => {
 					setShowTestingModal(false)
 					setShowSuccessModal(true)
@@ -60,8 +60,13 @@ const EditSourceModal = () => {
 					navigate("/sources")
 				}, 2000)
 			} else {
+				const testConnectionError = {
+					message: testResult.data?.connection_result.message || "",
+					logs: testResult.data?.logs || [],
+				}
+
 				setShowTestingModal(false)
-				setSourceTestConnectionError(testResult.data?.message || "")
+				setSourceTestConnectionError(testConnectionError)
 				setShowFailureModal(true)
 			}
 		} catch (error) {
