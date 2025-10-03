@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/docker"
@@ -59,12 +60,30 @@ type Client struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Client, error) {
-	c, err := client.Dial(client.Options{
-		HostPort: TemporalAddress,
-	})
+	var c client.Client
+
+	err := utils.RetryWithBackoff(
+		func() error {
+			var err error
+			c, err = client.Dial(client.Options{
+				HostPort: TemporalAddress,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to connect to Temporal: %w", err)
+			}
+			return nil
+		},
+		constants.MaxRetries,   // max retries
+		constants.InitialDelay, // initial delay
+		constants.MaxInterval,  // max delay
+		nil,                    // use default notify
+	)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
+		return nil, fmt.Errorf("❌ Temporal connection failed after %d retries: %s", constants.MaxRetries, err)
 	}
+
+	logs.Info("✅ Successfully connected to Temporal:", TemporalAddress)
 
 	return &Client{
 		temporalClient: c,
@@ -76,6 +95,11 @@ func (c *Client) Close() {
 	if c.temporalClient != nil {
 		c.temporalClient.Close()
 	}
+}
+
+// GetClient returns the Temporal client
+func (c *Client) GetClient() client.Client {
+	return c.temporalClient
 }
 
 // GetCatalog runs a workflow to discover catalog data

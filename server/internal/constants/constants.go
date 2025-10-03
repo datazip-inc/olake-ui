@@ -3,12 +3,14 @@ package constants
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/spf13/viper"
 )
 
+// TODO: make it a const block
 var (
 	defaultPort               = 8000
 	version                   = "Not Set"
@@ -22,6 +24,9 @@ var (
 	TableNameMap              = map[TableType]string{}
 	DefaultConfigDir          = "/tmp/olake-config"
 	DefaultLogRetentionPeriod = 30
+	MaxRetries                = 4
+	MaxInterval               = 2 * time.Minute
+	InitialDelay              = 1 * time.Second
 	DefaultSpecVersion        = "v0.2.0"
 )
 
