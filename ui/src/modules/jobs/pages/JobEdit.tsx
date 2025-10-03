@@ -460,6 +460,7 @@ const JobEdit: React.FC = () => {
 						currentStep={currentStep}
 						onStepClick={handleStepClick}
 						isEditMode={!!jobId}
+						disabled={isStreamsLoading}
 					/>
 				</div>
 			</div>
