@@ -1,0 +1,65 @@
+name: Integration Tests
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  integration-tests:
+    runs-on: 16gb-runner
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.2'
+
+      - name: Set up Java for Maven
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Start Test Infrastructure
+        run: |
+            curl -L -o docker-compose-postgres.yml \
+                https://raw.githubusercontent.com/datazip-inc/olake/master/drivers/postgres/docker-compose.yml
+            curl -fsSL -o docker-compose.destination.yml \
+                https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml
+            docker compose -f docker-compose-postgres.yml up -d
+            docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg
+
+      - name: Wait for PostgreSQL
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 30
+          retry_wait_seconds: 5
+          command: |
+            docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
+
+      - name: Install Go Dependencies
+        run: go mod download
+
+      - name: Build Project
+        run: go build -v ./...
+
+      - name: Run Docker In Docker Container
+        run: go test -v ./server/tests/verify_test.go -timeout 0 -run 'TestDinDIntegration'
+
+    #   - name: Run PlayWright Automation
+    #     run: 
+      - name: Integration Test Verification
+        run: go test -v ./server/tests/verify_test.go -timeout 0 -run 'TestVerification'
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker compose -f docker-compose-postgres.yml down
+          docker compose -f docker-compose.destination.yml down
