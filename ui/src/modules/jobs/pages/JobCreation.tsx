@@ -1,7 +1,11 @@
 import { useState, useRef } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
-import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	DownloadSimpleIcon,
+} from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
@@ -361,7 +365,7 @@ const JobCreation: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="mr-1 size-5" />
+							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 
 						<div className="text-2xl font-bold"> Create Job</div>
@@ -487,7 +491,7 @@ const JobCreation: React.FC = () => {
 						onClick={handleSaveJob}
 						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 					>
-						<DownloadSimple className="size-4" />
+						<DownloadSimpleIcon className="size-4" />
 						Save Job
 					</button>
 				</div>
@@ -507,7 +511,7 @@ const JobCreation: React.FC = () => {
 						onClick={handleNext}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRight className="size-4 text-white" />
+						<ArrowRightIcon className="size-4 text-white" />
 					</button>
 					<TestConnectionModal />
 					<TestConnectionSuccessModal />
