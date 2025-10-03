@@ -100,11 +100,6 @@ func SyncCleanupActivity(ctx context.Context, params *SyncParams) error {
 	if err := docker.StopContainer(ctx, params.WorkflowID); err != nil {
 		logger.Error("Failed to stop container", "error", err)
 	}
-
-	// Persist latest state
-	if err := docker.PersistJobStateFromFile(params.JobID, params.WorkflowID); err != nil {
-		logger.Error("Failed to persist job state", "error", err)
-	}
 	logger.Info("Cleanup completed successfully")
 	return nil
 }
