@@ -385,7 +385,7 @@ func getContainerState(ctx context.Context, name string) (ContainerState, error)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// treat not found as non-existent
-		return ContainerState{Exists: false}, nil
+		return ContainerState{Exists: false}, fmt.Errorf("docker inspect failed: %w", err)
 	}
 	parts := strings.Fields(strings.TrimSpace(string(out)))
 	if len(parts) < 3 {
