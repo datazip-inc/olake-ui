@@ -66,6 +66,7 @@ const Jobs: React.FC = () => {
 					selectedStreams: JSON.parse(savedJob.streams_config),
 					jobName: savedJob.name,
 					cronExpression: savedJob.frequency,
+					isJobNameFilled: true,
 				}
 				navigate("/jobs/new", {
 					state: {

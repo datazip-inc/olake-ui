@@ -23,7 +23,11 @@ export type MultiFilterCondition = {
 }
 
 export type StreamData = {
-	sync_mode: SyncMode.FULL_REFRESH | SyncMode.CDC | SyncMode.INCREMENTAL
+	sync_mode:
+		| SyncMode.FULL_REFRESH
+		| SyncMode.CDC
+		| SyncMode.INCREMENTAL
+		| SyncMode.STRICT_CDC
 	skip_nested_flattening?: boolean
 	cursor_field?: string[]
 	destination_sync_mode: string
@@ -89,6 +93,7 @@ export interface SelectedStream {
 	partition_regex: string
 	normalization: boolean
 	filter?: string
+	disabled?: boolean
 }
 
 export interface StreamsDataStructure {
@@ -133,6 +138,7 @@ export interface SchemaConfigurationProps {
 	jobId?: number
 	destinationType?: string
 	jobName: string
+	onLoadingChange?: (isLoading: boolean) => void
 }
 
 export interface ExtendedStreamConfigurationProps
