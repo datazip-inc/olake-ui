@@ -445,33 +445,6 @@ func (s *JobService) CheckUniqueJobName(projectID string, jobName string) (bool,
 }
 
 // worker services
-
-func (s *JobService) GetJobDetails(ctx context.Context, jobID int) (map[string]interface{}, error) {
-	job, err := s.jobORM.GetByID(jobID, true)
-	if err != nil {
-		return nil, fmt.Errorf("job not found: %s", err)
-	}
-	return map[string]interface{}{
-		"state":       job.State,
-		"source":      job.SourceID.Config,
-		"destination": job.DestID.Config,
-		"streams":     job.StreamsConfig,
-	}, nil
-}
-
-func (s *JobService) UpdateJobPostSync(ctx context.Context, jobID int, state string) error {
-	job, err := s.jobORM.GetByID(jobID, true)
-	if err != nil {
-		return fmt.Errorf("job not found: %s", err)
-	}
-
-	job.State = state
-	job.Active = true
-	job.UpdatedAt = time.Now()
-
-	return s.jobORM.Update(job)
-}
-
 func (s *JobService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID string, event string) error {
 	switch strings.ToLower(event) {
 	case "started":

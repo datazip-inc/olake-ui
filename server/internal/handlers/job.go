@@ -202,54 +202,7 @@ func (c *JobHandler) CheckUniqueJobName() {
 
 }
 
-// worker api
-
-// @router /internal/worker/callback/presync/:id [get]
-func (c *JobHandler) GetJobDetails() {
-	jobId := GetIDFromPath(&c.Controller)
-
-	if jobId == 0 {
-		respondWithError(&c.Controller, http.StatusBadRequest, "job_id is required", nil)
-		return
-	}
-
-	job, err := c.jobService.GetJobDetails(context.Background(), jobId)
-	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get job details", err)
-		return
-	}
-
-	utils.SuccessResponse(&c.Controller, job)
-}
-
-// @router /internal/worker/callback/postsync [post]
-func (c *JobHandler) UpdateJobPostSync() {
-	var req struct {
-		JobID int    `json:"job_id"`
-		State string `json:"state"`
-	}
-
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-
-	if req.JobID == 0 {
-		respondWithError(&c.Controller, http.StatusBadRequest, "job_id is required", nil)
-		return
-	}
-	if req.State == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "state is required", nil)
-		return
-	}
-
-	if err := c.jobService.UpdateJobPostSync(context.Background(), req.JobID, req.State); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job post sync", err)
-		return
-	}
-
-	utils.SuccessResponse(&c.Controller, nil)
-}
+// worker handler
 
 // @router /internal/worker/callback/sync-telemetry [post]
 func (c *JobHandler) UpdateSyncTelemetry() {
