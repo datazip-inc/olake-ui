@@ -1,5 +1,23 @@
 # Contributing to Olake-UI
 
+## 🎃 Hacktoberfest 2025 @ OLake
+
+OLake is officially open for Hacktoberfest contributions! 🚀
+
+If you're participating in Hacktoberfest, look out for any issues labeled:
+
+- `hacktoberfest`
+- `good first issue`
+
+These are designed to help new contributors get started quickly.
+We welcome everything — bug fixes, documentation updates, tests, or feature enhancements.
+
+👉 Check our open issues [here](https://github.com/datazip-inc/olake-ui/issues)
+
+Let's hack, learn, and grow together with this Hacktoberfest. Happy contributing & happy engineering!
+
+---
+
 Thank you for your interest in contributing to Olake-UI — we appreciate your support in making this project better!
 
 ## Olake-UI Contributor Agreement

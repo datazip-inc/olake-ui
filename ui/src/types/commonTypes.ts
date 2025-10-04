@@ -53,12 +53,14 @@ export interface StepIndicatorProps {
 	currentStep: string
 	onStepClick?: (step: string) => void
 	isEditMode?: boolean
+	disabled?: boolean
 }
 
 export interface StepProgressProps {
 	currentStep: string
 	onStepClick?: (step: string) => void
 	isEditMode?: boolean
+	disabled?: boolean
 }
 
 export interface CatalogOption {
