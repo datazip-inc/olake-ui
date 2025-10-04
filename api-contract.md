@@ -682,6 +682,25 @@ http://localhost:8000
   }
   ```
 
+### cancel Job workflow
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/cancel`
+- **Method**: GET
+- **Description**: Cancel the job workflow
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "message": "string"
+    }
+  }
+  ```
+
   ### Job Sync
 
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:id/sync`
