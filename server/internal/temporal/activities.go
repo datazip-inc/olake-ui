@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"go.temporal.io/sdk/activity"
@@ -99,6 +100,11 @@ func SyncCleanupActivity(ctx context.Context, params *SyncParams) error {
 	// Stop container gracefully
 	if err := docker.StopContainer(ctx, params.WorkflowID); err != nil {
 		logger.Error("Failed to stop container", "error", err)
+	}
+	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	logs.Info("Persisting job state for workflowID in cleanup function %s", params.WorkflowID)
+	if err := runner.PersistJobStateFromFile(params.JobID, params.WorkflowID); err != nil {
+		logger.Error("Failed to persist job state", "error", err)
 	}
 	logger.Info("Cleanup completed successfully")
 	return nil

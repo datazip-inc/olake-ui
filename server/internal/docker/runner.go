@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -17,6 +18,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
+	"go.temporal.io/sdk/temporal"
 	"golang.org/x/mod/semver"
 )
 
@@ -281,51 +283,136 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
-	// Generate unique directory name
-	hashWorkflowID := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	workDir, err := r.setupWorkDirectory(hashWorkflowID)
-	if err != nil {
-		return nil, err
-	}
-	logs.Info("working directory path %s\n", workDir)
-	// Get current job state
-	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID, false)
+	// Deterministic container name to enable adoption across retries
+	containerName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+
+	// Setup work dir and configs
+	workDir, err := r.setupWorkDirectory(containerName)
 	if err != nil {
 		return nil, err
 	}
 
-	// Prepare all configuration files
-	configs := []FileConfig{
-		{Name: "config.json", Data: job.SourceID.Config},
-		{Name: "streams.json", Data: job.StreamsConfig},
-		{Name: "writer.json", Data: job.DestID.Config},
-		{Name: "state.json", Data: job.State},
-		{Name: "user_id.txt", Data: r.anonymousID},
-	}
-
-	if err := r.writeConfigFiles(workDir, configs); err != nil {
-		return nil, err
-	}
-
-	configPath := filepath.Join(workDir, "config.json")
-	statePath := filepath.Join(workDir, "state.json")
-	// Ensure state is persisted on exit, regardless of success or failure
+	// Always persist state on exit (success/failure/cancel)
 	defer func() {
-		if err := PersistJobStateFromFile(jobID, statePath); err != nil {
+		if err := r.PersistJobStateFromFile(jobID, workflowID); err != nil {
 			logs.Error("Failed to persist state in defer: %v", err)
 		}
 	}()
 
-	// Execute sync command
-	_, err = r.ExecuteDockerCommand(ctx, hashWorkflowID, "config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
-		"--catalog", "/mnt/config/streams.json",
-		"--destination", "/mnt/config/writer.json",
-		"--state", "/mnt/config/state.json")
+	// Marker to indicate we have launched once; prevents relaunch after retries
+	launchedMarker := filepath.Join(workDir, "logs")
+
+	// Inspect container state
+	state, err := getContainerState(ctx, containerName)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{}, nil
+
+	// 1) If container is running, adopt and wait for completion
+	if state.Exists && state.Running {
+		logs.Info("Adopting running container %s", containerName)
+		if err := waitContainer(ctx, containerName); err != nil {
+			return nil, err
+		}
+		// exit code now available; fall through to finished handling below
+		state, _ = getContainerState(ctx, containerName)
+	}
+
+	// 2) If container exists and exited, treat as finished: cleanup and return status
+	if state.Exists && !state.Running && state.ExitCode != nil {
+		if *state.ExitCode == 0 {
+			return map[string]interface{}{"status": "success"}, nil
+		}
+		// Return typed error so policy can decide retry vs. fail-fast
+		return nil, temporal.NewNonRetryableApplicationError(
+			fmt.Sprintf("container %s exit %d", containerName, *state.ExitCode),
+			"ContainerExitNonZero",
+			nil,
+		)
+	}
+
+	// 3) First launch path: only if we never launched and nothing is running
+	if _, err := os.Stat(launchedMarker); os.IsNotExist(err) {
+		jobORM := database.NewJobORM()
+		job, err := jobORM.GetByID(jobID, false)
+		if err != nil {
+			return nil, err
+		}
+		configs := []FileConfig{
+			{Name: "config.json", Data: job.SourceID.Config},
+			{Name: "streams.json", Data: job.StreamsConfig},
+			{Name: "writer.json", Data: job.DestID.Config},
+			{Name: "state.json", Data: job.State},
+			{Name: "user_id.txt", Data: r.anonymousID},
+		}
+		if err := r.writeConfigFiles(workDir, configs); err != nil {
+			return nil, err
+		}
+
+		configPath := filepath.Join(workDir, "config.json")
+
+		// Important: ExecuteDockerCommand must run with --name containerName internally
+		if _, err = r.ExecuteDockerCommand(
+			ctx,
+			containerName,
+			"config",
+			Sync,
+			job.SourceID.Type,
+			job.SourceID.Version,
+			configPath,
+			"--catalog", "/mnt/config/streams.json",
+			"--destination", "/mnt/config/writer.json",
+			"--state", "/mnt/config/state.json",
+		); err != nil {
+			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "ContainerExitNonZero", err)
+		}
+		return map[string]interface{}{"status": "launched"}, nil
+	}
+
+	// Should not reach here, but in case: do not relaunch
+	return map[string]interface{}{"status": "noop"}, nil
+}
+
+type ContainerState struct {
+	Exists   bool
+	Running  bool
+	ExitCode *int
+}
+
+func getContainerState(ctx context.Context, name string) (ContainerState, error) {
+	// docker inspect returns fields if exists
+	cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}} {{.State.Running}} {{.State.ExitCode}}", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// treat not found as non-existent
+		return ContainerState{Exists: false}, nil
+	}
+	parts := strings.Fields(strings.TrimSpace(string(out)))
+	if len(parts) < 3 {
+		return ContainerState{Exists: false}, nil
+	}
+	status := parts[0]
+	running := parts[1] == "true"
+	var ec *int
+	if !running && (status == "exited" || status == "dead") {
+		if code, convErr := strconv.Atoi(parts[2]); convErr == nil {
+			ec = &code
+		}
+	}
+	return ContainerState{Exists: true, Running: running, ExitCode: ec}, nil
+}
+
+func waitContainer(ctx context.Context, name string) error {
+	// docker wait prints exit code; validate non-zero as error
+	cmd := exec.CommandContext(ctx, "docker", "wait", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("docker wait failed: %w", err)
+	}
+	if code, convErr := strconv.Atoi(strings.TrimSpace(string(out))); convErr == nil && code != 0 {
+		return fmt.Errorf("container %s exited with code %d", name, code)
+	}
+	return nil
 }
 
 // StopContainer stops a container by name, falling back to kill if needed.
@@ -351,10 +438,18 @@ func StopContainer(ctx context.Context, workflowID string) error {
 }
 
 // PersistJobStateFromFile reads the state JSON file and updates the job state
-func PersistJobStateFromFile(jobID int, stateFilePath string) error {
-	state, err := utils.ParseJSONFile(stateFilePath)
+func (r *Runner) PersistJobStateFromFile(jobID int, workflowID string) error {
+	hashWorkflowID := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+	workDir, err := r.setupWorkDirectory(hashWorkflowID)
+
+	statePath := filepath.Join(workDir, "state.json")
 	if err != nil {
-		return fmt.Errorf("failed to read state file %s: %s", stateFilePath, err)
+		return fmt.Errorf("failed to read state file %s: %s", statePath, err)
+	}
+
+	state, err := utils.ParseJSONFile(statePath)
+	if err != nil {
+		return fmt.Errorf("failed to read state file %s: %s", statePath, err)
 	}
 
 	jobORM := database.NewJobORM()

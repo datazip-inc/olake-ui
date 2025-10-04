@@ -18,7 +18,7 @@ var (
 		InitialInterval:    time.Second * 15,
 		BackoffCoefficient: 2.0,
 		MaximumInterval:    time.Minute * 10,
-		MaximumAttempts:    1,
+		MaximumAttempts:    3,
 	}
 )
 
@@ -45,6 +45,7 @@ func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (models.Spe
 	// Execute the FetchSpecActivity directly
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 5,
+		HeartbeatTimeout:    time.Minute * 1,
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
