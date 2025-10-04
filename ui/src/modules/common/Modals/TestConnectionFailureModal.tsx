@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { Modal } from "antd"
-import { Info } from "@phosphor-icons/react"
+import { InfoIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
@@ -54,7 +54,7 @@ const TestConnectionFailureModal = ({
 						Your test connection has failed
 					</h2>
 					<div className="mt-2 flex w-[360px] items-center gap-1 overflow-scroll rounded-xl bg-gray-50 p-3 text-xs">
-						<Info
+						<InfoIcon
 							weight="bold"
 							className="size-4 flex-shrink-0 text-danger"
 						/>

@@ -2,7 +2,7 @@ import { useState } from "react"
 import clsx from "clsx"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import { LayoutProps } from "antd"
-import { CaretLeft, Info, X, SignOut } from "@phosphor-icons/react"
+import { CaretLeftIcon, InfoIcon, X, SignOutIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
@@ -22,7 +22,7 @@ const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 				/>
 			</button>
 			<div className="flex items-center gap-2">
-				<Info
+				<InfoIcon
 					weight="fill"
 					size={17}
 					color="#203FDD"
@@ -105,7 +105,7 @@ const Sidebar: React.FC<{
 					onClick={onLogout}
 					className="flex w-full items-center rounded-xl p-3 text-gray-700 hover:bg-gray-100 hover:text-black"
 				>
-					<SignOut
+					<SignOutIcon
 						className="mr-3 flex-shrink-0"
 						size={20}
 					/>
@@ -123,7 +123,7 @@ const Sidebar: React.FC<{
 						collapsed ? "rotate-180" : "rotate-0",
 					)}
 				>
-					<CaretLeft size={16} />
+					<CaretLeftIcon size={16} />
 				</div>
 			</button>
 		</div>

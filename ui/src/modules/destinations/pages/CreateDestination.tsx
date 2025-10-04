@@ -7,7 +7,12 @@ import {
 } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
-import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	InfoIcon,
+	NotebookIcon,
+} from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
@@ -498,7 +503,7 @@ const CreateDestination = forwardRef<
 									/>
 								) : (
 									<div className="flex items-center gap-1 text-sm text-red-500">
-										<Info />
+										<InfoIcon />
 										No versions available
 									</div>
 								)}
@@ -615,7 +620,7 @@ const CreateDestination = forwardRef<
 								to={"/destinations"}
 								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 							>
-								<ArrowLeft className="mr-1 size-5" />
+								<ArrowLeftIcon className="mr-1 size-5" />
 							</Link>
 							<div className="text-lg font-bold">Create destination</div>
 						</div>
@@ -633,7 +638,7 @@ const CreateDestination = forwardRef<
 								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 									<div>
 										<div className="mb-4 flex items-center gap-2 text-base font-medium">
-											<Notebook className="size-5" />
+											<NotebookIcon className="size-5" />
 											Capture information
 										</div>
 
@@ -663,7 +668,7 @@ const CreateDestination = forwardRef<
 										}}
 									>
 										Create
-										<ArrowRight className="size-4 text-white" />
+										<ArrowRightIcon className="size-4 text-white" />
 									</button>
 								</div>
 							)}

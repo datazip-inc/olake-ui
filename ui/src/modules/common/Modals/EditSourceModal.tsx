@@ -1,5 +1,5 @@
 import { Button, Modal, Table, message } from "antd"
-import { CheckCircle, Warning } from "@phosphor-icons/react"
+import { CheckCircleIcon, WarningIcon } from "@phosphor-icons/react"
 import { formatDistanceToNow } from "date-fns"
 import { useNavigate } from "react-router-dom"
 
@@ -75,7 +75,7 @@ const EditSourceModal = () => {
 			<Modal
 				title={
 					<div className="flex justify-center">
-						<Warning
+						<WarningIcon
 							weight="fill"
 							className="size-12 text-primary"
 						/>
@@ -183,7 +183,7 @@ const EditSourceModal = () => {
 				width={400}
 			>
 				<div className="flex flex-col items-center justify-center gap-7 py-6">
-					<CheckCircle
+					<CheckCircleIcon
 						weight="fill"
 						className="size-16 text-success"
 					/>

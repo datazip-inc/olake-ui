@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Input, Select, Radio, Tooltip } from "antd"
-import { Info } from "@phosphor-icons/react"
+import { InfoIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 import { useLocation } from "react-router-dom"
 
@@ -215,7 +215,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 									<div className="mb-2 flex items-center gap-1">
 										<label className="block text-sm">Cron Expression</label>
 										<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
-											<Info
+											<InfoIcon
 												size={16}
 												className="cursor-help text-slate-900"
 											/>
