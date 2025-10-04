@@ -147,7 +147,7 @@ func (r *Runner) buildDockerArgs(ctx context.Context, containerName, flag string
 	}
 
 	// base docker args
-	dockerArgs := []string{"run", "--rm", "--name", containerName}
+	dockerArgs := []string{"run", "--name", containerName}
 
 	if hostOutputDir != "" {
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
@@ -312,7 +312,9 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	if state.Exists && state.Running {
 		logs.Info("Adopting running container %s", containerName)
 		if err := waitContainer(ctx, containerName); err != nil {
-			return nil, err
+			return nil, temporal.NewNonRetryableApplicationError(
+				err.Error(), "ContainerExitNonZero", err,
+			)
 		}
 		// exit code now available; fall through to finished handling below
 		state, _ = getContainerState(ctx, containerName)
@@ -320,6 +322,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 
 	// 2) If container exists and exited, treat as finished: cleanup and return status
 	if state.Exists && !state.Running && state.ExitCode != nil {
+		logs.Info("Container %s exited with code %d", containerName, *state.ExitCode)
 		if *state.ExitCode == 0 {
 			return map[string]interface{}{"status": "success"}, nil
 		}
@@ -385,7 +388,7 @@ func getContainerState(ctx context.Context, name string) (ContainerState, error)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// treat not found as non-existent
-		return ContainerState{Exists: false}, fmt.Errorf("docker inspect failed: %w", err)
+		return ContainerState{Exists: false}, nil
 	}
 	parts := strings.Fields(strings.TrimSpace(string(out)))
 	if len(parts) < 3 {
@@ -419,21 +422,31 @@ func waitContainer(ctx context.Context, name string) error {
 func StopContainer(ctx context.Context, workflowID string) error {
 	containerName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 	logs.Info("workflow cancel request received for %s, stopping container %s\n", workflowID, containerName)
+
 	if strings.TrimSpace(containerName) == "" {
 		return fmt.Errorf("empty container name")
 	}
 
-	// Graceful stop: SIGTERM then SIGKILL after timeout
+	// Attempt graceful stop
 	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
-	if _, err := stopCmd.CombinedOutput(); err == nil {
-		return nil
+	if out, err := stopCmd.CombinedOutput(); err != nil {
+		logs.Warn("docker stop failed for %s: %v, output: %s", containerName, err, string(out))
+
+		// If stop fails, force kill
+		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
+		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
+			logs.Error("docker kill failed for %s: %v, output: %s", containerName, kerr, string(kout))
+		}
 	}
 
-	// If stop failed, attempt immediate kill
-	killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
-	if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
-		return fmt.Errorf("docker stop+kill failed for %s: %s; kill out: %s", containerName, kerr, strings.TrimSpace(string(kout)))
+	// Always attempt cleanup to remove container
+	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
+	if rmOut, rmErr := rmCmd.CombinedOutput(); rmErr != nil {
+		logs.Warn("docker rm failed for %s: %v, output: %s", containerName, rmErr, string(rmOut))
+	} else {
+		logs.Info("Container %s removed successfully", containerName)
 	}
+
 	return nil
 }
 
