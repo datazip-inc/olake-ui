@@ -41,12 +41,24 @@ jobs:
                 docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
 
       - name: Run Docker In Docker Container
-        run: go test -v ./server/tests/verify_test.go -timeout 0 -run 'TestDinDIntegration'
+        working-directory: ./server
+        run: go test -v ./tests/verify_test.go -timeout 0 -run 'TestDinDIntegration'
 
     #   - name: Run PlayWright Automation
     #     run: 
+
+      - name: Wait for Application on localhost:8000
+        uses: nick-fields/retry@v2
+        with:
+            timeout_minutes: 5
+            max_attempts: 30
+            retry_wait_seconds: 5
+            command: |
+                curl -f http://localhost:8000 || curl -f http://localhost:8000/health || curl -f http://localhost:8000/ping
+                
       - name: Integration Test Verification
-        run: go test -v ./server/tests/verify_test.go -timeout 0 -run 'TestVerification'
+        working-directory: ./server
+        run: go test -v ./tests/verify_test.go -timeout 0 -run 'TestVerification'
 
       - name: Cleanup
         if: always()
