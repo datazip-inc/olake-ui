@@ -42,7 +42,7 @@ jobs:
 
       - name: Run Docker In Docker Container
         working-directory: ./server
-        run: go test -v ./tests/verify_test.go -timeout 0 -run 'TestDinDIntegration'
+        run: go test -v ./tests -timeout 0 -run 'TestDinDIntegration'
 
     #   - name: Run PlayWright Automation
     #     run: 
@@ -55,11 +55,11 @@ jobs:
             retry_wait_seconds: 5
             command: |
                 curl -f http://localhost:8000 || curl -f http://localhost:8000/health || curl -f http://localhost:8000/ping
-                
+
       - name: Integration Test Verification
         working-directory: ./server
-        run: go test -v ./tests/verify_test.go -timeout 0 -run 'TestVerification'
-
+        run: go test -v ./tests -timeout 0 -run 'TestVerification'
+        
       - name: Cleanup
         if: always()
         run: |
