@@ -284,41 +284,40 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
 	// Deterministic container name to enable adoption across retries
-	containerName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+	containerName := WorkflowHash(workflowID)
 
 	// Setup work dir and configs
 	workDir, err := r.setupWorkDirectory(containerName)
 	if err != nil {
-		return nil, err
+		logs.Error("workflowID %s: failed to setup work directory: %s", workflowID, err)
+		return nil, temporal.NewNonRetryableApplicationError(err.Error(), "SetupWorkDirectoryFailed", err)
 	}
 
 	// Marker to indicate we have launched once; prevents relaunch after retries
 	launchedMarker := filepath.Join(workDir, "logs")
 
 	// Inspect container state
-	state := getContainerState(ctx, containerName)
+	state := getContainerState(ctx, containerName, workflowID)
 
 	// 1) If container is running, adopt and wait for completion
 	if state.Exists && state.Running {
-		logs.Info("Adopting running container with workflowID %s", workflowID)
-		if err := waitContainer(ctx, containerName); err != nil {
-			return nil, temporal.NewNonRetryableApplicationError(
-				err.Error(), "ContainerExitNonZero", err,
-			)
+		logs.Info("workflowID %s: adopting running container %s", workflowID, containerName)
+		if err := waitContainer(ctx, containerName, workflowID); err != nil {
+			logs.Error("workflowID %s: container wait failed: %s", workflowID, err)
+			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "ContainerExitNonZero", err)
 		}
-		// exit code now available; fall through to finished handling below
-		state = getContainerState(ctx, containerName)
+		state = getContainerState(ctx, containerName, workflowID)
 	}
 
 	// 2) If container exists and exited, treat as finished: cleanup and return status
 	if state.Exists && !state.Running && state.ExitCode != nil {
-		logs.Info("Container %s exited with code %d", containerName, *state.ExitCode)
+		logs.Info("workflowID %s: container %s exited with code %d", workflowID, containerName, *state.ExitCode)
 		if *state.ExitCode == 0 {
 			return map[string]interface{}{"status": "success"}, nil
 		}
 		// Return typed error so policy can decide retry vs. fail-fast
 		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("container %s exit %d", containerName, *state.ExitCode),
+			fmt.Sprintf("workflowID %s: container %s exit %d", workflowID, containerName, *state.ExitCode),
 			"ContainerExitNonZero",
 			nil,
 		)
@@ -326,10 +325,12 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 
 	// 3) First launch path: only if we never launched and nothing is running
 	if _, err := os.Stat(launchedMarker); os.IsNotExist(err) {
+		logs.Info("workflowID %s: first launch path, preparing configs", workflowID)
 		jobORM := database.NewJobORM()
 		job, err := jobORM.GetByID(jobID, false)
 		if err != nil {
-			return nil, err
+			logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
+			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "FetchJobFailed", err)
 		}
 		configs := []FileConfig{
 			{Name: "config.json", Data: job.SourceID.Config},
@@ -339,12 +340,13 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 			{Name: "user_id.txt", Data: r.anonymousID},
 		}
 		if err := r.writeConfigFiles(workDir, configs); err != nil {
-			return nil, err
+			logs.Error("workflowID %s: failed to write config files: %s", workflowID, err)
+			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "WriteConfigFilesFailed", err)
 		}
 
 		configPath := filepath.Join(workDir, "config.json")
+		logs.Info("workflowID %s: executing docker container %s", workflowID, containerName)
 
-		// Important: ExecuteDockerCommand must run with --name containerName internally
 		if _, err = r.ExecuteDockerCommand(
 			ctx,
 			containerName,
@@ -357,13 +359,16 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 			"--destination", "/mnt/config/writer.json",
 			"--state", "/mnt/config/state.json",
 		); err != nil {
+			logs.Error("workflowID %s: docker execution failed: %s", workflowID, err)
 			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "ContainerExitNonZero", err)
 		}
-		return map[string]interface{}{"status": "launched"}, nil
+
+		logs.Info("workflowID %s: container %s completed successfully", workflowID, containerName)
+		return map[string]interface{}{"status": "completed"}, nil
 	}
 
-	// Should not reach here, but in case: do not relaunch
-	return map[string]interface{}{"status": "noop"}, nil
+	logs.Info("workflowID %s: container %s already handled, skipping launch", workflowID, containerName)
+	return map[string]interface{}{"status": "skipped"}, nil
 }
 
 type ContainerState struct {
@@ -372,13 +377,13 @@ type ContainerState struct {
 	ExitCode *int
 }
 
-func getContainerState(ctx context.Context, name string) ContainerState {
+func getContainerState(ctx context.Context, name string, workflowID string) ContainerState {
 	// docker inspect returns fields if exists
 	cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}} {{.State.Running}} {{.State.ExitCode}}", name)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// treat not found as non-existent
-		logs.Warn("docker inspect failed for %s: %s, output: %s", name, err, string(out))
+		logs.Warn("workflowID %s: docker inspect failed for %s: %s, output: %s", workflowID, name, err, string(out))
 		return ContainerState{Exists: false}
 	}
 	// Split Docker inspect output into fields: status, running flag, and exit code
@@ -398,53 +403,51 @@ func getContainerState(ctx context.Context, name string) ContainerState {
 	return ContainerState{Exists: true, Running: running, ExitCode: ec}
 }
 
-func waitContainer(ctx context.Context, name string) error {
+func waitContainer(ctx context.Context, name string, workflowID string) error {
 	// docker wait prints exit code; validate non-zero as error
 	cmd := exec.CommandContext(ctx, "docker", "wait", name)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		logs.Error("workflowID %s: docker wait failed for %s: %s, output: %s", workflowID, name, err, string(out))
 		return fmt.Errorf("docker wait failed: %s", err)
 	}
 	strOut := strings.TrimSpace(string(out))
 	code, convErr := strconv.Atoi(strOut)
 	if convErr != nil {
-		logs.Error("Failed to parse exit code from docker wait output %q: %s", strOut, convErr)
+		logs.Error("workflowID %s: failed to parse exit code from docker wait output %q: %s", workflowID, strOut, convErr)
 		return fmt.Errorf("failed to parse exit code: %s", convErr)
 	}
 
 	if code != 0 {
-		return fmt.Errorf("container %s exited with code %d", name, code)
+		return fmt.Errorf("workflowID %s: container %s exited with code %d", workflowID, name, code)
 	}
 	return nil
 }
 
 // StopContainer stops a container by name, falling back to kill if needed.
 func StopContainer(ctx context.Context, workflowID string) error {
-	containerName := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
-	logs.Info("workflow cancel request received for %s, stopping container %s\n", workflowID, containerName)
+	containerName := WorkflowHash(workflowID)
+	logs.Info("workflowID %s: stop request received for container %s", workflowID, containerName)
 
 	if strings.TrimSpace(containerName) == "" {
+		logs.Warn("workflowID %s: empty container name", workflowID)
 		return fmt.Errorf("empty container name")
 	}
 
-	// Attempt graceful stop
 	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
 	if out, err := stopCmd.CombinedOutput(); err != nil {
-		logs.Warn("docker stop failed for %s: %s, output: %s", containerName, err, string(out))
-
-		// If stop fails, force kill
+		logs.Warn("workflowID %s: docker stop failed for %s: %s, output: %s", workflowID, containerName, err, string(out))
 		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
 		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
-			logs.Error("docker kill failed for %s: %s, output: %s", containerName, kerr, string(kout))
+			logs.Error("workflowID %s: docker kill failed for %s: %s, output: %s", workflowID, containerName, kerr, string(kout))
 		}
 	}
 
-	// Always attempt cleanup to remove container
 	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
 	if rmOut, rmErr := rmCmd.CombinedOutput(); rmErr != nil {
-		logs.Warn("docker rm failed for %s: %s, output: %s", containerName, rmErr, string(rmOut))
+		logs.Warn("workflowID %s: docker rm failed for %s: %s, output: %s", workflowID, containerName, rmErr, string(rmOut))
 	} else {
-		logs.Info("Container %s removed successfully", containerName)
+		logs.Info("workflowID %s: container %s removed successfully", workflowID, containerName)
 	}
 
 	return nil
@@ -452,37 +455,46 @@ func StopContainer(ctx context.Context, workflowID string) error {
 
 // PersistJobStateFromFile reads the state JSON file and updates the job state
 func (r *Runner) PersistJobStateFromFile(jobID int, workflowID string) error {
-	hashWorkflowID := fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
+	hashWorkflowID := WorkflowHash(workflowID)
 	workDir, err := r.setupWorkDirectory(hashWorkflowID)
-
-	statePath := filepath.Join(workDir, "state.json")
 	if err != nil {
-		return fmt.Errorf("failed to read state file %s: %s", statePath, err)
+		logs.Error("workflowID %s: failed to setup work directory: %s", workflowID, err)
+		return err
 	}
 
+	statePath := filepath.Join(workDir, "state.json")
 	state, err := utils.ParseJSONFile(statePath)
 	if err != nil {
-		return fmt.Errorf("failed to read state file %s: %s", statePath, err)
+		logs.Error("workflowID %s: failed to parse state file %s: %s", workflowID, statePath, err)
+		return err
 	}
 
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
-		return fmt.Errorf("failed to fetch job %d: %s", jobID, err)
+		logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
+		return err
 	}
 
 	stateJSON, err := json.Marshal(state)
 	if err != nil {
-		return fmt.Errorf("failed to marshal state: %s", err)
+		logs.Error("workflowID %s: failed to marshal state: %s", workflowID, err)
+		return err
 	}
 
 	job.State = string(stateJSON)
 	job.Active = true
 
 	if err := jobORM.Update(job); err != nil {
-		return fmt.Errorf("failed to update job with id: %d: %s", jobID, err)
+		logs.Error("workflowID %s: failed to update job %d: %s", workflowID, jobID, err)
+		return err
 	}
 
-	logs.Info("Job state persisted successfully for jobID %d", jobID)
+	logs.Info("workflowID %s: job state persisted successfully for jobID %d", workflowID, jobID)
 	return nil
+}
+
+// WorkflowHash returns a deterministic hash string for a given workflowID
+func WorkflowHash(workflowID string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 }

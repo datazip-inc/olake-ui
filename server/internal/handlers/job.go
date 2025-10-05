@@ -309,6 +309,12 @@ func (c *JobHandler) DeleteJob() {
 			return
 		}
 	}
+	// cancel existing workflow
+	err = cancelJobWorkflow(c.tempClient, job, job.ProjectID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		return
+	}
 
 	// Delete job
 	if err := c.jobORM.Delete(id); err != nil {

@@ -78,7 +78,7 @@ func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[s
 }
 
 // RunSyncWorkflow is a workflow for running data synchronization
-func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
+func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interface{}, err error) {
 	logger := workflow.GetLogger(ctx)
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Hour * 24 * 30, // 30 days
@@ -92,8 +92,6 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	}
 
 	ctx = workflow.WithActivityOptions(ctx, options)
-	var result map[string]interface{}
-	var err error
 	// Defer cleanup for cancellation
 	defer func() {
 		logger.Info("executing workflow cleanup...")
