@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -19,8 +20,9 @@ var dindContainer testcontainers.Container
 
 const (
 	StartupComposeCmd = `
-		apk add --no-cache docker-compose curl && 
-		echo "Docker-compose installed." && 
+		apk add --no-cache docker-compose curl postgresql-client bind-tools iputils ncurses nodejs npm && 
+		npm install -g chalk-cli &&
+		echo "Tools installed." && 
 		cd /mnt && 
 		echo "Starting docker-compose..." && 
 		docker-compose up -d && 
@@ -41,11 +43,6 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("could not determine project root: %w", err)
 	}
 	t.Logf("Project root identified at: %s", projectRoot)
-
-	// query the postgres source
-	ExecuteQuery(context.Background(), t, "create")
-	ExecuteQuery(context.Background(), t, "clean")
-	ExecuteQuery(context.Background(), t, "add")
 
 	req := testcontainers.ContainerRequest{
 		Image:        "docker:25.0-dind",
@@ -87,11 +84,17 @@ func DinDTestContainer(t *testing.T) error {
 	}
 	t.Log("Docker daemon is ready")
 
-	// Start docker-compose
+	// Start docker-compose and install pre-requisites
 	t.Log("Starting docker-compose services...")
 	if code, out, err := ExecCommand(ctx, ctr, StartupComposeCmd); err != nil || code != 0 {
 		return fmt.Errorf("docker compose up failed (%d): %s\n%s", code, err, out)
 	}
+
+	// query the postgres source
+	ExecuteQuery(ctx, t, "create")
+	ExecuteQuery(ctx, t, "clean")
+	ExecuteQuery(ctx, t, "add")
+
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 	return nil
 }
