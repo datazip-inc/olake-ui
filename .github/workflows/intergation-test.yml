@@ -44,7 +44,7 @@ jobs:
           command: |
             docker compose -f docker-compose-postgres.yml ps
             docker compose -f docker-compose-postgres.yml exec -T postgres \
-              psql -U postgres -d postgres -c "SELECT 1"
+              psql -U postgres -h localhost -d postgres -c "SELECT 1"
 
       - name: Install Go Dependencies
         run: go mod download
