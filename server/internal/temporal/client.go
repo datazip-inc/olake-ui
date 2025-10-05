@@ -18,13 +18,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// TaskQueue is the default task queue for Olake Docker workflows
-const (
-	DockerTaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
-)
-
-var TaskQueue string
-
 var (
 	TemporalAddress string
 )
@@ -32,25 +25,10 @@ var (
 // SyncAction represents the type of action to perform
 type SyncAction string
 
-const (
-	ActionCreate  SyncAction = "create"
-	ActionUpdate  SyncAction = "update"
-	ActionDelete  SyncAction = "delete"
-	ActionTrigger SyncAction = "trigger"
-	ActionPause   SyncAction = "pause"
-	ActionUnpause SyncAction = "unpause"
-)
-
+// Command represents the command to execute
 type Command string
 
-var (
-	Discover Command = "discover"
-	Check    Command = "check"
-	Sync     Command = "sync"
-	Spec     Command = "spec"
-)
-
-// New worker types for the common worker
+// ExecutionRequest is the request body for the workflow
 type ExecutionRequest struct {
 	Type          string        `json:"type"`
 	Command       Command       `json:"command"`
@@ -69,10 +47,25 @@ type JobConfig struct {
 	Data string `json:"data"`
 }
 
+const (
+	// TaskQueue is the default task queue for Olake Docker workflows
+	TaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
+
+	ActionCreate  SyncAction = "create"
+	ActionUpdate  SyncAction = "update"
+	ActionDelete  SyncAction = "delete"
+	ActionTrigger SyncAction = "trigger"
+	ActionPause   SyncAction = "pause"
+	ActionUnpause SyncAction = "unpause"
+
+	Discover Command = "discover"
+	Check    Command = "check"
+	Sync     Command = "sync"
+	Spec     Command = "spec"
+)
+
 func init() {
 	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
-
-	TaskQueue = DockerTaskQueue
 }
 
 // Client provides methods to interact with Temporal
@@ -223,12 +216,12 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 
 // FetchSpec runs a workflow to fetch connector specifications
 func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
+	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
+
 	// spec version >= DefaultSpecVersion is required
 	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
 		version = constants.DefaultSpecVersion
 	}
-
-	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
 	cmdArgs := []string{
 		"spec",
@@ -401,72 +394,4 @@ func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.List
 	}
 
 	return resp, nil
-}
-
-// buildExecutionReqForSync builds the ExecutionRequest for a sync job
-func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionRequest {
-	configs := []JobConfig{
-		{Name: "source.json", Data: job.SourceID.Config},
-		{Name: "destination.json", Data: job.DestID.Config},
-		{Name: "streams.json", Data: job.StreamsConfig},
-		{Name: "state.json", Data: job.State},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
-	}
-
-	args := []string{
-		"sync",
-		"--config", "/mnt/config/source.json",
-		"--destination", "/mnt/config/destination.json",
-		"--catalog", "/mnt/config/streams.json",
-		"--state", "/mnt/config/state.json",
-	}
-
-	return ExecutionRequest{
-		Type:          "docker",
-		Command:       Sync,
-		ConnectorType: job.SourceID.Type,
-		Version:       job.SourceID.Version,
-		Args:          args,
-		Configs:       configs,
-		WorkflowID:    workflowID,
-		JobID:         job.ID,
-		Timeout:       GetWorkflowTimeout(Sync),
-		OutputFile:    "state.json",
-	}
-}
-
-// extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
-func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
-	var result map[string]interface{}
-	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
-	}
-
-	response, ok := result["response"].(string)
-	if !ok {
-		return nil, fmt.Errorf("invalid response format from worker")
-	}
-
-	logResult, err := utils.ExtractJSON(response)
-	if err != nil {
-		return nil, err
-	}
-
-	return logResult, nil
-}
-
-func GetWorkflowTimeout(op Command) time.Duration {
-	switch op {
-	case Discover:
-		return time.Minute * 10
-	case Check:
-		return time.Minute * 10
-	case Spec:
-		return time.Minute * 5
-	case Sync:
-		return time.Hour * 24 * 30
-	// check what can the fallback time be
-	default:
-		return time.Minute * 5
-	}
 }

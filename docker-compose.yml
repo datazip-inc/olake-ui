@@ -3,7 +3,7 @@ x-app-defaults:
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
-    target: /tmp/olake-config
+    target: &containerPersistentDir /tmp/olake-config
 
 x-signup-defaults:
   username: &defaultUsername "admin"
@@ -20,7 +20,8 @@ services:
     container_name: olake-ui
     environment:
       CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
-      PERSISTENT_DIR: *hostPersistencePath
+      HOST_PERSISTENT_DIR: *hostPersistencePath
+      CONTAINER_PERSISTENT_DIR: *containerPersistentDir
       OLAKE_SECRET_KEY: *encryptionKey
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
@@ -98,7 +99,10 @@ services:
       CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
       TEMPORAL_ADDRESS: "temporal:7233"
       OLAKE_SECRET_KEY: *encryptionKey
-      PERSISTENT_DIR: *hostPersistencePath
+      HOST_PERSISTENT_DIR: *hostPersistencePath
+      CONTAINER_PERSISTENT_DIR: *containerPersistentDir
+      EXECUTOR_ENVIRONMENT: "docker"
+      OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
     depends_on:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
