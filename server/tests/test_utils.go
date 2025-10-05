@@ -24,6 +24,7 @@ const (
 		npm install -g chalk-cli &&
 		echo "Tools installed." && 
 		cd /mnt && 
+		mkdir -p /mnt/olake-data && 
 		echo "Starting docker-compose..." && 
 		docker-compose up -d && 
 		echo "Services started. Waiting for containers..." && 
