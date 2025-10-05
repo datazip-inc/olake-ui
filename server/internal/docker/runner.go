@@ -292,21 +292,11 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		return nil, err
 	}
 
-	// Always persist state on exit (success/failure/cancel)
-	defer func() {
-		if err := r.PersistJobStateFromFile(jobID, workflowID); err != nil {
-			logs.Error("Failed to persist state in defer: %v", err)
-		}
-	}()
-
 	// Marker to indicate we have launched once; prevents relaunch after retries
 	launchedMarker := filepath.Join(workDir, "logs")
 
 	// Inspect container state
-	state, err := getContainerState(ctx, containerName)
-	if err != nil {
-		return nil, err
-	}
+	state := getContainerState(ctx, containerName)
 
 	// 1) If container is running, adopt and wait for completion
 	if state.Exists && state.Running {
@@ -317,7 +307,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 			)
 		}
 		// exit code now available; fall through to finished handling below
-		state, _ = getContainerState(ctx, containerName)
+		state = getContainerState(ctx, containerName)
 	}
 
 	// 2) If container exists and exited, treat as finished: cleanup and return status
@@ -382,17 +372,17 @@ type ContainerState struct {
 	ExitCode *int
 }
 
-func getContainerState(ctx context.Context, name string) (ContainerState, error) {
+func getContainerState(ctx context.Context, name string) ContainerState {
 	// docker inspect returns fields if exists
 	cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}} {{.State.Running}} {{.State.ExitCode}}", name)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// treat not found as non-existent
-		return ContainerState{Exists: false}, nil
+		return ContainerState{Exists: false}
 	}
 	parts := strings.Fields(strings.TrimSpace(string(out)))
 	if len(parts) < 3 {
-		return ContainerState{Exists: false}, nil
+		return ContainerState{Exists: false}
 	}
 	status := parts[0]
 	running := parts[1] == "true"
@@ -402,7 +392,7 @@ func getContainerState(ctx context.Context, name string) (ContainerState, error)
 			ec = &code
 		}
 	}
-	return ContainerState{Exists: true, Running: running, ExitCode: ec}, nil
+	return ContainerState{Exists: true, Running: running, ExitCode: ec}
 }
 
 func waitContainer(ctx context.Context, name string) error {
@@ -410,7 +400,7 @@ func waitContainer(ctx context.Context, name string) error {
 	cmd := exec.CommandContext(ctx, "docker", "wait", name)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("docker wait failed: %w", err)
+		return fmt.Errorf("docker wait failed: %s", err)
 	}
 	if code, convErr := strconv.Atoi(strings.TrimSpace(string(out))); convErr == nil && code != 0 {
 		return fmt.Errorf("container %s exited with code %d", name, code)
@@ -430,19 +420,19 @@ func StopContainer(ctx context.Context, workflowID string) error {
 	// Attempt graceful stop
 	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
 	if out, err := stopCmd.CombinedOutput(); err != nil {
-		logs.Warn("docker stop failed for %s: %v, output: %s", containerName, err, string(out))
+		logs.Warn("docker stop failed for %s: %s, output: %s", containerName, err, string(out))
 
 		// If stop fails, force kill
 		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
 		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
-			logs.Error("docker kill failed for %s: %v, output: %s", containerName, kerr, string(kout))
+			logs.Error("docker kill failed for %s: %s, output: %s", containerName, kerr, string(kout))
 		}
 	}
 
 	// Always attempt cleanup to remove container
 	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
 	if rmOut, rmErr := rmCmd.CombinedOutput(); rmErr != nil {
-		logs.Warn("docker rm failed for %s: %v, output: %s", containerName, rmErr, string(rmOut))
+		logs.Warn("docker rm failed for %s: %s, output: %s", containerName, rmErr, string(rmOut))
 	} else {
 		logs.Info("Container %s removed successfully", containerName)
 	}

@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -17,7 +18,7 @@ var (
 		InitialInterval:    time.Second * 15,
 		BackoffCoefficient: 2.0,
 		MaximumInterval:    time.Minute * 10,
-		MaximumAttempts:    3,
+		MaximumAttempts:    10,
 	}
 )
 
@@ -92,18 +93,18 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var result map[string]interface{}
-
+	var err error
 	// Defer cleanup for cancellation
 	defer func() {
 		logger.Info("executing workflow cleanup...")
 		newCtx, _ := workflow.NewDisconnectedContext(ctx)
-		err := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
-		if err != nil {
-			logger.Error("Failed to execute cleanup activity", "error", err)
+		perr := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
+		if perr != nil {
+			err = fmt.Errorf("%s: failed to execute cleanup activity: %s", err, perr)
 		}
 	}()
 
-	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
+	err = workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event
 		telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID)
