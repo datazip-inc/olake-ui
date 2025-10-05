@@ -28,7 +28,7 @@ jobs:
 
       - name: Start Test Infrastructure
         run: |
-            curl -L -o docker-compose-postgres.yml \
+            curl -fsSL -o docker-compose-postgres.yml \
                 https://raw.githubusercontent.com/datazip-inc/olake/master/drivers/postgres/docker-compose.yml
             curl -fsSL -o docker-compose.destination.yml \
                 https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml
@@ -43,8 +43,8 @@ jobs:
           retry_wait_seconds: 5
           command: |
             docker compose -f docker-compose-postgres.yml ps
-            docker compose -f docker-compose-postgres.yml exec -T postgres \
-              psql -U postgres -h localhost -d postgres -c "SELECT 1"
+            docker exec olake_postgres-test \
+              pg_isready -U postgres -h localhost
 
       - name: Install Go Dependencies
         run: go mod download
