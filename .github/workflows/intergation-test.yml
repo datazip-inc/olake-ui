@@ -15,16 +15,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-    #   - name: Set up Go
-    #     uses: actions/setup-go@v4
-    #     with:
-    #       go-version: '1.23.2'
-
-    #   - name: Set up Java for Maven
-    #     uses: actions/setup-java@v3
-    #     with:
-    #       distribution: 'temurin'
-    #       java-version: '17'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.2'
+      
+      - name: Download Go dependencies
+        working-directory: ./server
+        run: go mod download
 
       - name: Start Test Infrastructure
         run: |
@@ -42,12 +40,6 @@ jobs:
             command: |
                 docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
 
-    #   - name: Install Go Dependencies
-    #     run: go mod download
-
-    #   - name: Build Project
-    #     run: go build -v ./...
-
       - name: Run Docker In Docker Container
         run: go test -v ./server/tests/verify_test.go -timeout 0 -run 'TestDinDIntegration'
 
@@ -59,5 +51,5 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker compose -p olake -f docker-compose-postgres.yml down
+          docker compose -f ./server/tests/docker-compose.yml down
           docker compose -p olake -f docker-compose.destination.yml down
