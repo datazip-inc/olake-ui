@@ -30,7 +30,7 @@ const JobEmptyState = ({
 				<GitCommit />
 				Create your first Job
 			</Button>
-			<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-6 shadow-sm">
+			<div className="rounded-xl border-[1px] border-[#D9D9D9] bg-white p-6 shadow-sm">
 				<div className="flex items-center gap-4">
 					<a
 						href={JobTutorialYTLink}
