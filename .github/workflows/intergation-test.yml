@@ -32,8 +32,9 @@ jobs:
                 https://raw.githubusercontent.com/datazip-inc/olake/master/drivers/postgres/docker-compose.yml
             curl -fsSL -o docker-compose.destination.yml \
                 https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml
-            docker compose -f docker-compose-postgres.yml up -d
-            docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg
+            docker compose -p olake -f docker-compose-postgres.yml up -d
+            docker compose -p olake -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg
+            docker ps
 
       - name: Wait for PostgreSQL
         uses: nick-fields/retry@v2
@@ -42,8 +43,8 @@ jobs:
           max_attempts: 30
           retry_wait_seconds: 5
           command: |
-            docker compose -f docker-compose-postgres.yml ps
-            docker exec olake_postgres-test \
+            docker compose -p olake -f docker-compose-postgres.yml ps
+            docker exec olake-postgres-test \
               pg_isready -U postgres -h localhost
 
       - name: Install Go Dependencies
@@ -63,5 +64,5 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          docker compose -f docker-compose-postgres.yml down
-          docker compose -f docker-compose.destination.yml down
+          docker compose -p olake -f docker-compose-postgres.yml down
+          docker compose -p olake -f docker-compose.destination.yml down
