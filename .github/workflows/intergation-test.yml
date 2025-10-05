@@ -42,8 +42,9 @@ jobs:
           max_attempts: 30
           retry_wait_seconds: 5
           command: |
-            CONTAINER_ID="$(docker compose -f docker-compose-postgres.yml ps -q postgres)"
-            docker exec "$CONTAINER_ID" psql -U postgres -d postgres -c "SELECT 1"
+            docker compose -f docker-compose-postgres.yml ps
+            docker compose -f docker-compose-postgres.yml exec -T postgres \
+              psql -U postgres -d postgres -c "SELECT 1"
 
       - name: Install Go Dependencies
         run: go mod download
