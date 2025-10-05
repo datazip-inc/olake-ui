@@ -377,7 +377,7 @@ type ContainerState struct {
 	ExitCode *int
 }
 
-func getContainerState(ctx context.Context, name string, workflowID string) ContainerState {
+func getContainerState(ctx context.Context, name, workflowID string) ContainerState {
 	// docker inspect returns fields if exists
 	cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}} {{.State.Running}} {{.State.ExitCode}}", name)
 	out, err := cmd.CombinedOutput()
@@ -403,7 +403,7 @@ func getContainerState(ctx context.Context, name string, workflowID string) Cont
 	return ContainerState{Exists: true, Running: running, ExitCode: ec}
 }
 
-func waitContainer(ctx context.Context, name string, workflowID string) error {
+func waitContainer(ctx context.Context, name, workflowID string) error {
 	// docker wait prints exit code; validate non-zero as error
 	cmd := exec.CommandContext(ctx, "docker", "wait", name)
 	out, err := cmd.CombinedOutput()
