@@ -300,7 +300,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 
 	// 1) If container is running, adopt and wait for completion
 	if state.Exists && state.Running {
-		logs.Info("Adopting running container %s", containerName)
+		logs.Info("Adopting running container with workflowID %s", workflowID)
 		if err := waitContainer(ctx, containerName); err != nil {
 			return nil, temporal.NewNonRetryableApplicationError(
 				err.Error(), "ContainerExitNonZero", err,
@@ -378,8 +378,11 @@ func getContainerState(ctx context.Context, name string) ContainerState {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// treat not found as non-existent
+		logs.Warn("docker inspect failed for %s: %s, output: %s", name, err, string(out))
 		return ContainerState{Exists: false}
 	}
+	// Split Docker inspect output into fields: status, running flag, and exit code
+	// Example: "exited false 137" → parts[0]="exited", parts[1]="false", parts[2]="137"
 	parts := strings.Fields(strings.TrimSpace(string(out)))
 	if len(parts) < 3 {
 		return ContainerState{Exists: false}
@@ -402,7 +405,14 @@ func waitContainer(ctx context.Context, name string) error {
 	if err != nil {
 		return fmt.Errorf("docker wait failed: %s", err)
 	}
-	if code, convErr := strconv.Atoi(strings.TrimSpace(string(out))); convErr == nil && code != 0 {
+	strOut := strings.TrimSpace(string(out))
+	code, convErr := strconv.Atoi(strOut)
+	if convErr != nil {
+		logs.Error("Failed to parse exit code from docker wait output %q: %s", strOut, convErr)
+		return fmt.Errorf("failed to parse exit code: %s", convErr)
+	}
+
+	if code != 0 {
 		return fmt.Errorf("container %s exited with code %d", name, code)
 	}
 	return nil
