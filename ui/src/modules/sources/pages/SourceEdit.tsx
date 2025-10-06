@@ -1,7 +1,16 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import { Input, Button, Select, Switch, message, Table, Spin } from "antd"
+import {
+	Input,
+	Button,
+	Select,
+	Switch,
+	message,
+	Table,
+	Spin,
+	Tooltip,
+} from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
 	GenderNeuter,
@@ -9,6 +18,7 @@ import {
 	ArrowLeft,
 	PencilSimple,
 	Info,
+	ArrowSquareOut,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
@@ -37,6 +47,7 @@ import { getStatusIcon } from "../../../utils/statusIcons"
 import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
+	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
@@ -527,7 +538,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														}}
 														className="h-8 w-full"
 														options={connectorOptions}
-														disabled={fromJobFlow}
+														disabled
 													/>
 												</div>
 											</div>
@@ -547,14 +558,28 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														}
 													}}
 													className="h-8"
-													disabled={fromJobFlow}
+													disabled
 												/>
 											</div>
 
 											<div>
-												<label className="mb-2 block text-sm font-medium text-gray-700">
+												<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 													OLake Version:
 													<span className="text-red-500">*</span>
+													<Tooltip title="Choose the OLake version for the source">
+														<Info
+															size={16}
+															className="cursor-help text-slate-900"
+														/>
+													</Tooltip>
+													<a
+														href={OLAKE_LATEST_VERSION_URL}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="flex items-center text-primary hover:text-primary/80"
+													>
+														<ArrowSquareOut className="size-4" />
+													</a>
 												</label>
 												{loadingVersions ? (
 													<div className="flex h-8 items-center justify-center">
@@ -659,16 +684,18 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									</button>
 								</div>
 								<div className="flex space-x-4">
-									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={() => {
-											if (formRef.current) {
-												formRef.current.submit()
-											}
-										}}
-									>
-										Save changes
-									</button>
+									{activeTab === "config" && (
+										<button
+											className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+											onClick={() => {
+												if (formRef.current) {
+													formRef.current.submit()
+												}
+											}}
+										>
+											Save changes
+										</button>
+									)}
 								</div>
 							</div>
 						)}
