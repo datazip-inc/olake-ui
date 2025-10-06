@@ -15,6 +15,8 @@ export class CreateJobPage {
 	readonly frequencyDropdown: Locator
 	readonly pageTitle: Locator
 	readonly jobsArrowButton: Locator
+	readonly sourceConnectorSelect: Locator
+	readonly destinationConnectorSelect: Locator
 
 	constructor(page: Page) {
 		this.page = page
@@ -37,6 +39,8 @@ export class CreateJobPage {
 		this.frequencyDropdown = page.getByText("Every Minute")
 		this.pageTitle = page.locator("text=Create Job")
 		this.jobsArrowButton = page.getByRole("button", { name: "Jobs →" })
+		this.sourceConnectorSelect = page.locator(".ant-select").first()
+		this.destinationConnectorSelect = page.locator(".ant-select").first()
 	}
 
 	async goto() {
@@ -50,7 +54,12 @@ export class CreateJobPage {
 
 	async selectExistingSource(sourceName: string) {
 		await this.useExistingSourceRadio.check()
-		console.log(this.sourceSelect, "source select elem")
+		await this.sourceConnectorSelect.click()
+		await this.page
+			.locator("div")
+			.filter({ hasText: /^Postgres$/ })
+			.nth(1)
+			.click()
 		await this.sourceSelect.click()
 
 		await this.page.getByText(sourceName).click()
@@ -59,6 +68,13 @@ export class CreateJobPage {
 
 	async selectExistingDestination(destinationName: string) {
 		await this.useExistingDestinationRadio.click()
+		await this.destinationConnectorSelect.click()
+		await this.page
+			.locator("div")
+			.filter({ hasText: /^Apache Iceberg$/ })
+			.nth(1)
+			.click()
+
 		await this.destinationSelect.click()
 		await this.page.getByText(destinationName, { exact: true }).click()
 		await this.nextButton.click()

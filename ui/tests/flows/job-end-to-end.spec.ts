@@ -28,7 +28,7 @@ test.describe("Job End-to-End User Journey", () => {
 			jdbcUrl: "jdbc:postgresql://host.docker.internal:5432/iceberg",
 			jdbcUsername: "iceberg",
 			jdbcPassword: "password",
-			jdbcDatabase: "iceberg",
+			jdbcDatabase: "olake_iceberg",
 			jdbcS3Endpoint: "http://host.docker.internal:9000",
 			jdbcS3AccessKey: "admin",
 			jdbcS3SecretKey: "password",
