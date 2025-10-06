@@ -14,7 +14,6 @@ import (
 	"github.com/apache/spark-connect-go/v35/spark/sql"
 	"github.com/docker/docker/api/types/container"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -222,7 +221,7 @@ func ExecuteQuery(ctx context.Context, t *testing.T, operation string) {
 		query = fmt.Sprintf("DELETE FROM %s", integrationTestTable)
 
 	case "add":
-		insertTestData(t, ctx, db, integrationTestTable)
+		insertTestData(ctx, t, db, integrationTestTable)
 		return // Early return since we handle all inserts in the helper function
 
 	case "insert":
@@ -285,7 +284,7 @@ func ExecuteQuery(ctx context.Context, t *testing.T, operation string) {
 }
 
 // insertTestData inserts test data into the specified table
-func insertTestData(t *testing.T, ctx context.Context, db *sqlx.DB, tableName string) {
+func insertTestData(ctx context.Context, t *testing.T, db *sqlx.DB, tableName string) {
 	t.Helper()
 
 	for i := 1; i <= 5; i++ {

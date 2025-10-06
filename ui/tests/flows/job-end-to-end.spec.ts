@@ -1,9 +1,5 @@
 import { test, expect } from "../fixtures/auth.fixture"
-import {
-	MONGODB_TEST_CONFIG,
-	S3_TEST_CONFIG,
-	JOB_TEST_CONFIG,
-} from "../setup/test-env"
+import { S3_TEST_CONFIG, JOB_TEST_CONFIG } from "../setup/test-env"
 
 test.describe("Job End-to-End User Journey", () => {
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({

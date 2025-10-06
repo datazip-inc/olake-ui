@@ -101,7 +101,7 @@ test.describe("Job Sync Flow", () => {
 		await expect(jobsPage.page).toHaveURL(/\/jobs\/.*/)
 	})
 
-	test("should navigate back to jobs list", async ({ jobsPage, page }) => {
+	test("should navigate back to jobs list", async ({ jobsPage }) => {
 		await jobsPage.syncJob(testJobName)
 		await jobsPage.viewJobLogs()
 
