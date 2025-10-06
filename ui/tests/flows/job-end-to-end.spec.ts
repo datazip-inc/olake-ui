@@ -19,11 +19,12 @@ test.describe("Job End-to-End User Journey", () => {
 		const timestamp = Date.now()
 		const sourceData = {
 			name: `e2e-source-${timestamp}`,
-			host: MONGODB_TEST_CONFIG.host,
-			database: MONGODB_TEST_CONFIG.database,
-			username: MONGODB_TEST_CONFIG.username,
-			password: MONGODB_TEST_CONFIG.password,
-			useSSL: MONGODB_TEST_CONFIG.useSSL,
+			host: "host.docker.internal",
+			database: "postgres",
+			username: "postgres",
+			password: "secret1234",
+			useSSL: false,
+			port: "5433",
 		}
 
 		const destinationData = {
@@ -52,7 +53,8 @@ test.describe("Job End-to-End User Journey", () => {
 		await sourcesPage.expectSourcesPageVisible()
 		await sourcesPage.clickCreateSource()
 		await createSourcePage.expectCreateSourcePageVisible()
-		await createSourcePage.fillMongoDBForm(sourceData)
+		// await createSourcePage.fillMongoDBForm(sourceData)
+		await createSourcePage.selectPostgresFillPostgresCreds(sourceData)
 		await createSourcePage.clickCreate()
 		await createSourcePage.expectTestConnectionModal()
 		await createSourcePage.expectSuccessModal()

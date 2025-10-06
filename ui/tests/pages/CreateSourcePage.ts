@@ -6,6 +6,7 @@ export class CreateSourcePage {
 	readonly connectorSelect: Locator
 	readonly versionSelect: Locator
 	readonly hostsInput: Locator
+	readonly postgresHostsInput: Locator
 	readonly addHostButton: Locator
 	readonly databaseInput: Locator
 	readonly usernameInput: Locator
@@ -18,6 +19,7 @@ export class CreateSourcePage {
 	readonly testConnectionButton: Locator
 	readonly setupTypeNew: Locator
 	readonly setupTypeExisting: Locator
+	readonly port: Locator
 
 	constructor(page: Page) {
 		this.page = page
@@ -27,8 +29,12 @@ export class CreateSourcePage {
 		this.connectorSelect = page.locator(".ant-select").first()
 		this.versionSelect = page.locator(".ant-select").nth(1)
 		this.hostsInput = page.getByRole("textbox", { name: "Hosts-1*" })
+		this.postgresHostsInput = page.getByRole("textbox", {
+			name: "Postgres Host *",
+		})
 		this.databaseInput = page.getByRole("textbox", { name: "Database Name *" })
 		this.usernameInput = page.getByRole("textbox", { name: "Username *" })
+		this.port = page.getByRole("spinbutton", { name: "Postgres Port *" })
 		this.passwordInput = page.getByRole("textbox", { name: "Password *" })
 		this.createButton = page.getByRole("button", { name: "Create" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
@@ -61,15 +67,32 @@ export class CreateSourcePage {
 		await this.page.getByText(connector).click()
 	}
 
-	async addHost(host: string) {
-		await this.hostsInput.click()
-		await this.hostsInput.fill(host)
-		// await this.addHostButton.click()
+	async addHost(host: string, type: "mongodb" | "postgres") {
+		switch (type) {
+			case "mongodb":
+				await this.hostsInput.click()
+				await this.hostsInput.fill(host)
+				break
+			case "postgres":
+				await this.postgresHostsInput.click()
+				await this.postgresHostsInput.fill(host)
+				break
+		}
 	}
 
 	async fillDatabaseName(database: string) {
 		await this.databaseInput.click()
 		await this.databaseInput.fill(database)
+	}
+
+	async fillUsername(username: string) {
+		await this.usernameInput.click()
+		await this.usernameInput.fill(username)
+	}
+
+	async fillPort(port: string) {
+		await this.port.click()
+		await this.port.fill(port)
 	}
 
 	async fillCredentials(username: string, password: string) {
@@ -137,6 +160,27 @@ export class CreateSourcePage {
 		await this.page.getByRole("button", { name: "Sources" }).click()
 	}
 
+	async selectPostgresFillPostgresCreds(data: {
+		name: string
+		host: string
+		database: string
+		username: string
+		password: string
+		port: string
+	}) {
+		await this.page.getByText("MongoDB").click()
+		await this.page
+			.locator("div")
+			.filter({ hasText: /^Postgres$/ })
+			.nth(3)
+			.click()
+		await this.fillSourceName(data.name)
+		await this.addHost(data.host, "postgres")
+		await this.fillDatabaseName(data.database)
+		await this.fillPort(data.port)
+		await this.fillCredentials(data.username, data.password)
+	}
+
 	async fillMongoDBForm(data: {
 		name: string
 		host: string
@@ -146,7 +190,7 @@ export class CreateSourcePage {
 		useSSL?: boolean
 	}) {
 		await this.fillSourceName(data.name)
-		await this.addHost(data.host)
+		await this.addHost(data.host, "mongodb")
 		await this.fillDatabaseName(data.database)
 		await this.fillCredentials(data.username, data.password)
 
