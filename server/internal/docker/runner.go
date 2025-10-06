@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -91,13 +92,13 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters
-func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := filepath.Dir(configPath)
 	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
 		return nil, err
 	}
 
-	dockerArgs := r.buildDockerArgs(ctx, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
+	dockerArgs := r.buildDockerArgs(ctx, containerName, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
 	if len(dockerArgs) == 0 {
 		return nil, fmt.Errorf("failed to build docker args")
 	}
@@ -120,7 +121,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 }
 
 // buildDockerArgs constructs Docker command arguments
-func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
+func (r *Runner) buildDockerArgs(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
 	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
@@ -145,7 +146,7 @@ func (r *Runner) buildDockerArgs(ctx context.Context, flag string, command Comma
 	}
 
 	// base docker args
-	dockerArgs := []string{"run", "--rm"}
+	dockerArgs := []string{"run", "--name", containerName}
 
 	if hostOutputDir != "" {
 		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
@@ -182,9 +183,9 @@ func (r *Runner) getHostOutputDir(outputDir string) string {
 	return outputDir
 }
 
-func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, _ string) (models.SpecOutput, error) {
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (models.SpecOutput, error) {
 	flag := utils.Ternary(destinationType != "", "destination-type", "").(string)
-	dockerArgs := r.buildDockerArgs(ctx, flag, Spec, sourceType, version, "", "", destinationType)
+	dockerArgs := r.buildDockerArgs(ctx, workflowID, flag, Spec, sourceType, version, "", "", destinationType)
 
 	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
 	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
@@ -216,7 +217,7 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 	}
 
 	configPath := filepath.Join(workDir, "config.json")
-	output, err := r.ExecuteDockerCommand(ctx, flag, Check, sourceType, version, configPath)
+	output, err := r.ExecuteDockerCommand(ctx, workflowID, flag, Check, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +271,7 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
 		catalogsArgs = append(catalogsArgs, "--destination-database-prefix", jobName)
 	}
-	_, err = r.ExecuteDockerCommand(ctx, "config", Discover, sourceType, version, configPath, catalogsArgs...)
+	_, err = r.ExecuteDockerCommand(ctx, workflowID, "config", Discover, sourceType, version, configPath, catalogsArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -281,56 +282,216 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 
 // RunSync runs the sync command to transfer data from source to destination
 func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map[string]interface{}, error) {
-	// Generate unique directory name
-	workDir, err := r.setupWorkDirectory(fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID))))
+	// Deterministic container name to enable adoption across retries
+	containerName := WorkflowHash(workflowID)
+
+	// Setup work dir and configs
+	workDir, err := r.setupWorkDirectory(containerName)
 	if err != nil {
+		logs.Error("workflowID %s: failed to setup work directory: %s", workflowID, err)
 		return nil, err
 	}
-	logs.Info("working directory path %s\n", workDir)
-	// Get current job state
+
+	// Marker to indicate we have launched once; prevents relaunch after retries
+	launchedMarker := filepath.Join(workDir, "logs")
+
+	// Inspect container state
+	state := getContainerState(ctx, containerName, workflowID)
+
+	// 1) If container is running, adopt and wait for completion
+	if state.Exists && state.Running {
+		logs.Info("workflowID %s: adopting running container %s", workflowID, containerName)
+		if err := waitContainer(ctx, containerName, workflowID); err != nil {
+			logs.Error("workflowID %s: container wait failed: %s", workflowID, err)
+			return nil, err
+		}
+		state = getContainerState(ctx, containerName, workflowID)
+	}
+
+	// 2) If container exists and exited, treat as finished: cleanup and return status
+	if state.Exists && !state.Running && state.ExitCode != nil {
+		logs.Info("workflowID %s: container %s exited with code %d", workflowID, containerName, *state.ExitCode)
+		if *state.ExitCode == 0 {
+			return map[string]interface{}{"status": "completed"}, nil
+		}
+		// Return typed error so policy can decide retry vs. fail-fast
+		return nil, fmt.Errorf("workflowID %s: container %s exit %d", workflowID, containerName, *state.ExitCode)
+	}
+
+	// 3) First launch path: only if we never launched and nothing is running
+	if _, err := os.Stat(launchedMarker); os.IsNotExist(err) {
+		logs.Info("workflowID %s: first launch path, preparing configs", workflowID)
+		jobORM := database.NewJobORM()
+		job, err := jobORM.GetByID(jobID, false)
+		if err != nil {
+			logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
+			return nil, err
+		}
+		configs := []FileConfig{
+			{Name: "config.json", Data: job.SourceID.Config},
+			{Name: "streams.json", Data: job.StreamsConfig},
+			{Name: "writer.json", Data: job.DestID.Config},
+			{Name: "state.json", Data: job.State},
+			{Name: "user_id.txt", Data: r.anonymousID},
+		}
+		if err := r.writeConfigFiles(workDir, configs); err != nil {
+			logs.Error("workflowID %s: failed to write config files: %s", workflowID, err)
+			return nil, err
+		}
+
+		configPath := filepath.Join(workDir, "config.json")
+		logs.Info("workflowID %s: executing docker container %s", workflowID, containerName)
+
+		if _, err = r.ExecuteDockerCommand(
+			ctx,
+			containerName,
+			"config",
+			Sync,
+			job.SourceID.Type,
+			job.SourceID.Version,
+			configPath,
+			"--catalog", "/mnt/config/streams.json",
+			"--destination", "/mnt/config/writer.json",
+			"--state", "/mnt/config/state.json",
+		); err != nil {
+			logs.Error("workflowID %s: docker execution failed: %s", workflowID, err)
+			return nil, err
+		}
+
+		logs.Info("workflowID %s: container %s completed successfully", workflowID, containerName)
+		return map[string]interface{}{"status": "completed"}, nil
+	}
+	// Skip if container is not running, was already launched (logs exist), and no new run is needed.
+	logs.Info("workflowID %s: container %s already handled, skipping launch", workflowID, containerName)
+	return map[string]interface{}{"status": "skipped"}, nil
+}
+
+type ContainerState struct {
+	Exists   bool
+	Running  bool
+	ExitCode *int
+}
+
+func getContainerState(ctx context.Context, name, workflowID string) ContainerState {
+	// docker inspect returns fields if exists
+	cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}} {{.State.Running}} {{.State.ExitCode}}", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// treat not found as non-existent
+		logs.Warn("workflowID %s: docker inspect failed for %s: %s, output: %s", workflowID, name, err, string(out))
+		return ContainerState{Exists: false}
+	}
+	// Split Docker inspect output into fields: status, running flag, and exit code
+	// Example: "exited false 137" → parts[0]="exited", parts[1]="false", parts[2]="137"
+	parts := strings.Fields(strings.TrimSpace(string(out)))
+	if len(parts) < 3 {
+		return ContainerState{Exists: false}
+	}
+	// Docker .State.Status can be "created", "running", "paused", "restarting", "removing", "exited", or "dead"; we only handle running vs exited/dead.
+	status := parts[0]
+	running := parts[1] == "true"
+	var ec *int
+	if !running && (status == "exited" || status == "dead") {
+		if code, convErr := strconv.Atoi(parts[2]); convErr == nil {
+			ec = &code
+		}
+	}
+	return ContainerState{Exists: true, Running: running, ExitCode: ec}
+}
+
+func waitContainer(ctx context.Context, name, workflowID string) error {
+	// docker wait prints exit code; validate non-zero as error
+	cmd := exec.CommandContext(ctx, "docker", "wait", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		logs.Error("workflowID %s: docker wait failed for %s: %s, output: %s", workflowID, name, err, string(out))
+		return fmt.Errorf("docker wait failed: %s", err)
+	}
+	strOut := strings.TrimSpace(string(out))
+	code, convErr := strconv.Atoi(strOut)
+	if convErr != nil {
+		logs.Error("workflowID %s: failed to parse exit code from docker wait output %q: %s", workflowID, strOut, convErr)
+		return fmt.Errorf("failed to parse exit code: %s", convErr)
+	}
+
+	if code != 0 {
+		return fmt.Errorf("workflowID %s: container %s exited with code %d", workflowID, name, code)
+	}
+	return nil
+}
+
+// StopContainer stops a container by name, falling back to kill if needed.
+func StopContainer(ctx context.Context, workflowID string) error {
+	containerName := WorkflowHash(workflowID)
+	logs.Info("workflowID %s: stop request received for container %s", workflowID, containerName)
+
+	if strings.TrimSpace(containerName) == "" {
+		logs.Warn("workflowID %s: empty container name", workflowID)
+		return fmt.Errorf("empty container name")
+	}
+
+	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
+	if out, err := stopCmd.CombinedOutput(); err != nil {
+		logs.Warn("workflowID %s: docker stop failed for %s: %s, output: %s", workflowID, containerName, err, string(out))
+		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
+		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
+			logs.Error("workflowID %s: docker kill failed for %s: %s, output: %s", workflowID, containerName, kerr, string(kout))
+			return fmt.Errorf("docker kill failed: %s", kerr)
+		}
+	}
+
+	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
+	if rmOut, rmErr := rmCmd.CombinedOutput(); rmErr != nil {
+		logs.Warn("workflowID %s: docker rm failed for %s: %s, output: %s", workflowID, containerName, rmErr, string(rmOut))
+	} else {
+		logs.Info("workflowID %s: container %s removed successfully", workflowID, containerName)
+	}
+
+	return nil
+}
+
+// PersistJobStateFromFile reads the state JSON file and updates the job state
+func (r *Runner) PersistJobStateFromFile(jobID int, workflowID string) error {
+	hashWorkflowID := WorkflowHash(workflowID)
+	workDir, err := r.setupWorkDirectory(hashWorkflowID)
+	if err != nil {
+		logs.Error("workflowID %s: failed to setup work directory: %s", workflowID, err)
+		return err
+	}
+
+	statePath := filepath.Join(workDir, "state.json")
+	state, err := utils.ParseJSONFile(statePath)
+	if err != nil {
+		logs.Error("workflowID %s: failed to parse state file %s: %s", workflowID, statePath, err)
+		return err
+	}
+
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID, false)
 	if err != nil {
-		return nil, err
+		logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
+		return err
 	}
 
-	// Prepare all configuration files
-	configs := []FileConfig{
-		{Name: "config.json", Data: job.SourceID.Config},
-		{Name: "streams.json", Data: job.StreamsConfig},
-		{Name: "writer.json", Data: job.DestID.Config},
-		{Name: "state.json", Data: job.State},
-		{Name: "user_id.txt", Data: r.anonymousID},
-	}
-
-	if err := r.writeConfigFiles(workDir, configs); err != nil {
-		return nil, err
-	}
-
-	configPath := filepath.Join(workDir, "config.json")
-	statePath := filepath.Join(workDir, "state.json")
-
-	// Execute sync command
-	_, err = r.ExecuteDockerCommand(ctx, "config", Sync, job.SourceID.Type, job.SourceID.Version, configPath,
-		"--catalog", "/mnt/config/streams.json",
-		"--destination", "/mnt/config/writer.json",
-		"--state", "/mnt/config/state.json")
+	stateJSON, err := json.Marshal(state)
 	if err != nil {
-		return nil, err
-	}
-	// Parse state file
-	result, err := utils.ParseJSONFile(statePath)
-	if err != nil {
-		return nil, err
+		logs.Error("workflowID %s: failed to marshal state: %s", workflowID, err)
+		return err
 	}
 
-	// Update job state if we have valid result
-	if stateJSON, err := json.Marshal(result); err == nil {
-		job.State = string(stateJSON)
-		job.Active = true
-		if err := jobORM.Update(job); err != nil {
-			return nil, err
-		}
+	job.State = string(stateJSON)
+	job.Active = true
+
+	if err := jobORM.Update(job); err != nil {
+		logs.Error("workflowID %s: failed to update job %d: %s", workflowID, jobID, err)
+		return err
 	}
-	return result, nil
+
+	logs.Info("workflowID %s: job state persisted successfully for jobID %d", workflowID, jobID)
+	return nil
+}
+
+// WorkflowHash returns a deterministic hash string for a given workflowID
+func WorkflowHash(workflowID string) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(workflowID)))
 }
