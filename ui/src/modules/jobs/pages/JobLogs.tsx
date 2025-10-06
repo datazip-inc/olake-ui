@@ -175,9 +175,11 @@ const JobLogs: React.FC = () => {
 								if (isTaskLog && filePath) {
 									fetchTaskLogs(jobId!, historyId || "1", filePath)
 										.then(() => {
+											message.destroy()
 											message.success("Logs refetched successfully")
 										})
 										.catch(error => {
+											message.destroy()
 											message.error("Failed to refetch task logs")
 											console.error(error)
 										})

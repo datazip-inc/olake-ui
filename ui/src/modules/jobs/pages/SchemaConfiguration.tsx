@@ -6,6 +6,7 @@ import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
+	SelectedStream,
 	StreamData,
 	SyncMode,
 } from "../../../types"
@@ -41,6 +42,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	jobId = -1,
 	destinationType,
 	jobName,
+	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
 	const { setShowDestinationDatabaseModal } = useAppStore()
@@ -51,14 +53,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [activeStreamData, setActiveStreamData] = useState<StreamData | null>(
 		null,
 	)
+
 	const [apiResponse, setApiResponse] = useState<{
 		selected_streams: {
-			[namespace: string]: {
-				stream_name: string
-				partition_regex: string
-				normalization: boolean
-				filter?: string
-			}[]
+			[namespace: string]: SelectedStream[]
 		}
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
@@ -69,6 +67,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	// Use ref to track if we've initialized to prevent double updates
 	const initialized = useRef(false)
+
+	const isStreamEnabled = (streamData: StreamData | null) => {
+		if (streamData === null) return false
+
+		const stream = apiResponse?.selected_streams[
+			streamData.stream.namespace || ""
+		]?.find(s => s.stream_name === streamData.stream.name)
+
+		if (!stream) return false
+
+		return !stream?.disabled
+	}
 
 	// Check if first stream has destination_database and compute values
 	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
@@ -114,6 +124,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
 			setLoading(false)
+			onLoadingChange?.(false)
 			initialized.current = true
 
 			// Select first stream if no stream is currently active
@@ -126,6 +137,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		const fetchSourceStreams = async () => {
 			if (initialized.current) return
 
+			onLoadingChange?.(true)
 			setLoading(true)
 			try {
 				const response = await sourceService.getSourceStreams(
@@ -188,6 +200,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				console.error("Error fetching source streams:", error)
 			} finally {
 				setLoading(false)
+				onLoadingChange?.(false)
 			}
 		}
 
@@ -328,16 +341,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				selected_streams: { ...prev.selected_streams },
 			}
 			let changed = false
+
+			const existingStream = updated.selected_streams[namespace]?.find(
+				s => s.stream_name === streamName,
+			)
 			if (checked) {
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
-					changed = true
 				}
-				if (
-					!updated.selected_streams[namespace].some(
-						s => s.stream_name === streamName,
-					)
-				) {
+				if (!existingStream) {
 					updated.selected_streams[namespace] = [
 						...updated.selected_streams[namespace],
 						{
@@ -345,26 +357,30 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							partition_regex: "",
 							normalization: false,
 							filter: "",
+							disabled: false,
 						},
 					]
 					changed = true
+				} else if (existingStream.disabled) {
+					updated.selected_streams[namespace] = updated.selected_streams[
+						namespace
+					].map(s =>
+						s.stream_name === streamName ? { ...s, disabled: false } : s,
+					)
+					changed = true
 				}
 			} else {
-				if (updated.selected_streams[namespace]) {
-					const filtered = updated.selected_streams[namespace].filter(
-						s => s.stream_name !== streamName,
+				if (existingStream && !existingStream.disabled) {
+					updated.selected_streams[namespace] = updated.selected_streams[
+						namespace
+					].map(s =>
+						s.stream_name === streamName ? { ...s, disabled: true } : s,
 					)
-
-					if (filtered.length !== updated.selected_streams[namespace].length) {
-						updated.selected_streams[namespace] = filtered
-						changed = true
-					}
+					changed = true
 				}
 			}
-
 			return changed ? updated : prev
 		})
-
 		setTimeout(() => {
 			setApiResponse(current => {
 				if (!current) return current
@@ -394,9 +410,19 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			const updatedSelectedStreams = {
 				...prev.selected_streams,
-				[namespace]: prev.selected_streams[namespace].map(s =>
-					s.stream_name === streamName ? { ...s, filter: filterValue } : s,
-				),
+				[namespace]: prev.selected_streams[namespace].map(s => {
+					if (s.stream_name === streamName) {
+						if (filterValue === "") {
+							// Remove the 'filter' if filterValue is empty
+							const updatedStream = { ...s }
+							delete updatedStream.filter
+							return updatedStream
+						} else {
+							return { ...s, filter: filterValue }
+						}
+					}
+					return s
+				}),
 			}
 
 			const updated = {
@@ -428,9 +454,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 		return tempFilteredStreams.filter(stream => {
 			const ns = stream.stream.namespace || ""
-			const isSelected = apiResponse.selected_streams[ns]?.some(
+			const matchingSelectedStream = apiResponse.selected_streams[ns]?.find(
 				s => s.stream_name === stream.stream.name,
 			)
+			const isSelected =
+				matchingSelectedStream && !matchingSelectedStream?.disabled
 			if (showSelected && showNotSelected) return true
 			if (showSelected) return isSelected
 			if (showNotSelected) return !isSelected
@@ -687,11 +715,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
 							useDirectForms={useDirectForms}
-							isSelected={
-								!!apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || ""
-								]?.some(s => s.stream_name === activeStreamData.stream.name)
-							}
+							isSelected={isStreamEnabled(activeStreamData)}
 							initialNormalization={
 								apiResponse?.selected_streams[
 									activeStreamData.stream.namespace || ""

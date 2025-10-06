@@ -1,7 +1,16 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { formatDestinationPath } from "../../../../utils/destination-database"
 import clsx from "clsx"
-import { Button, Divider, Input, Radio, Select, Switch, Tooltip } from "antd"
+import {
+	Button,
+	Divider,
+	Input,
+	message,
+	Radio,
+	Select,
+	Switch,
+	Tooltip,
+} from "antd"
 import {
 	ColumnsPlusRightIcon,
 	GridFourIcon,
@@ -86,6 +95,9 @@ const StreamConfiguration = ({
 	// Unique stream key
 	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
+	// Guard to prevent prop-driven effect from clobbering local edits
+	const isLocalFilterUpdateRef = useRef(false)
+
 	useEffect(() => {
 		// Set initial streams only once when component mounts
 		if (fromJobEditFlow && initialSelectedStreams && !initialJobStreams) {
@@ -122,8 +134,20 @@ const StreamConfiguration = ({
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
 
-		// Get the current stream key
+		setFormData((prevFormData: any) => ({
+			...prevFormData,
+			sync_mode: initialApiSyncMode,
+			partition_regex: initialPartitionRegex || "",
+			fullLoadFilter: formData.fullLoadFilter || false,
+		}))
+	}, [stream, initialNormalization])
 
+	useEffect(() => {
+		// Skip when change originated from local user action
+		if (isLocalFilterUpdateRef.current) {
+			isLocalFilterUpdateRef.current = false
+			return
+		}
 		// Parse initial filter if exists
 		if (initialFullLoadFilter) {
 			const conditions: FilterCondition[] = []
@@ -182,14 +206,7 @@ const StreamConfiguration = ({
 			const savedFilterState = streamFilterStates[streamKey] || false
 			setFullLoadFilter(savedFilterState)
 		}
-
-		setFormData((prevFormData: any) => ({
-			...prevFormData,
-			sync_mode: initialApiSyncMode,
-			partition_regex: initialPartitionRegex || "",
-			fullLoadFilter: formData.fullLoadFilter || false,
-		}))
-	}, [stream, initialNormalization, initialFullLoadFilter])
+	}, [initialFullLoadFilter])
 
 	// Add helper function for checking supported sync modes
 	const isSyncModeSupported = (mode: string): boolean => {
@@ -282,23 +299,23 @@ const StreamConfiguration = ({
 			[streamKey]: checked,
 		}))
 
-		if (!checked) {
-			setMultiFilterCondition({
-				conditions: [
-					{
-						columnName: "",
-						operator: "=",
-						value: "",
-					},
-				],
-				logicalOperator: "and",
-			})
-			onFullLoadFilterChange?.(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				"",
-			)
-		}
+		setMultiFilterCondition({
+			conditions: [
+				{
+					columnName: "",
+					operator: "=",
+					value: "",
+				},
+			],
+			logicalOperator: "and",
+		})
+		isLocalFilterUpdateRef.current = true
+		// If toggled on insert empty condition
+		onFullLoadFilterChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			checked ? "=" : "",
+		)
 	}
 
 	const handleFilterConditionChange = (
@@ -318,25 +335,19 @@ const StreamConfiguration = ({
 		}
 		setMultiFilterCondition(newMultiCondition)
 
-		// Generate filter string if all fields in any condition are filled
-		const filledConditions = newConditions.filter(
-			cond => cond.columnName && cond.operator && cond.value,
-		)
-
-		if (filledConditions.length > 0) {
-			const filterString = filledConditions
-				.map(
-					cond =>
-						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-				)
-				.join(` ${multiFilterCondition.logicalOperator} `)
-
-			onFullLoadFilterChange?.(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterString,
+		const filterString = newConditions
+			.map(
+				cond =>
+					`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
 			)
-		}
+			.join(` ${newMultiCondition.logicalOperator} `)
+
+		isLocalFilterUpdateRef.current = true
+		onFullLoadFilterChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			filterString,
+		)
 	}
 
 	const handleLogicalOperatorChange = (value: LogicalOperator) => {
@@ -359,6 +370,7 @@ const StreamConfiguration = ({
 				)
 				.join(` ${value} `)
 
+			isLocalFilterUpdateRef.current = true
 			onFullLoadFilterChange?.(
 				stream.stream.name,
 				stream.stream.namespace || "",
@@ -368,19 +380,40 @@ const StreamConfiguration = ({
 	}
 
 	const handleAddFilter = () => {
-		if (multiFilterCondition.conditions.length < 2) {
-			setMultiFilterCondition({
-				...multiFilterCondition,
-				conditions: [
-					...multiFilterCondition.conditions,
-					{
-						columnName: "",
-						operator: "=",
-						value: "",
-					},
-				],
-			})
+		const { conditions } = multiFilterCondition
+
+		if (conditions.length >= 2) return
+
+		const firstCondition = conditions[0]
+		if (
+			!firstCondition.columnName ||
+			!firstCondition.operator ||
+			!firstCondition.value
+		) {
+			message.error("Please complete the first filter before applying another.")
+			return
 		}
+
+		setMultiFilterCondition({
+			...multiFilterCondition,
+			conditions: [...conditions, { columnName: "", operator: "=", value: "" }],
+		})
+
+		// insert empty condition in the filter string
+		const filterString =
+			conditions
+				.map(
+					cond =>
+						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
+				)
+				.join(` ${multiFilterCondition.logicalOperator} `) + " = "
+
+		isLocalFilterUpdateRef.current = true
+		onFullLoadFilterChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			filterString,
+		)
 	}
 
 	const handleRemoveFilter = (index: number) => {
@@ -398,12 +431,14 @@ const StreamConfiguration = ({
 			const condition = newConditions[0]
 			if (condition.columnName && condition.operator && condition.value) {
 				const filterString = `${condition.columnName} ${condition.operator} ${formatFilterValue(condition.columnName, condition.value)}`
+				isLocalFilterUpdateRef.current = true
 				onFullLoadFilterChange?.(
 					stream.stream.name,
 					stream.stream.namespace || "",
 					filterString,
 				)
 			} else {
+				isLocalFilterUpdateRef.current = true
 				onFullLoadFilterChange?.(
 					stream.stream.name,
 					stream.stream.namespace || "",
@@ -729,7 +764,7 @@ const StreamConfiguration = ({
 							disabled={!isSelected || isStreamInInitialSelection}
 						/>
 					</div>
-					{fullLoadFilter && isSelected && (
+					{fullLoadFilter && (
 						<>
 							<Divider className="my-0 p-0" />
 							{renderFilterContent()}
@@ -836,7 +871,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600",
 									)}
-									disabled={isStreamInInitialSelection}
+									disabled={isStreamInInitialSelection || !isSelected}
 								>
 									AND
 								</button>
@@ -849,7 +884,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600",
 									)}
-									disabled={isStreamInInitialSelection}
+									disabled={isStreamInInitialSelection || !isSelected}
 								>
 									OR
 								</button>
@@ -859,7 +894,7 @@ const StreamConfiguration = ({
 								danger
 								icon={<XIcon className="size-4" />}
 								onClick={() => handleRemoveFilter(index)}
-								disabled={isStreamInInitialSelection}
+								disabled={isStreamInInitialSelection || !isSelected}
 							>
 								Remove
 							</Button>
@@ -893,7 +928,7 @@ const StreamConfiguration = ({
 								options={getColumnOptions()}
 								labelInValue={false}
 								optionLabelProp="value"
-								disabled={isStreamInInitialSelection}
+								disabled={isStreamInInitialSelection || !isSelected}
 							/>
 						</div>
 						<div>
@@ -908,7 +943,7 @@ const StreamConfiguration = ({
 									handleFilterConditionChange(index, "operator", value)
 								}
 								options={operatorOptions}
-								disabled={isStreamInInitialSelection}
+								disabled={isStreamInInitialSelection || !isSelected}
 							/>
 						</div>
 						<div>
@@ -919,7 +954,7 @@ const StreamConfiguration = ({
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
-								disabled={isStreamInInitialSelection}
+								disabled={isStreamInInitialSelection || !isSelected}
 							/>
 						</div>
 					</div>
@@ -931,7 +966,7 @@ const StreamConfiguration = ({
 					icon={<PlusIcon className="size-4" />}
 					onClick={handleAddFilter}
 					className="w-fit"
-					disabled={isStreamInInitialSelection}
+					disabled={isStreamInInitialSelection || !isSelected}
 				>
 					New Column filter
 				</Button>

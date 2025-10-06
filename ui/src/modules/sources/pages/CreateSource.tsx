@@ -6,10 +6,11 @@ import {
 	useRef,
 } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { message, Select, Spin } from "antd"
+import { message, Select, Spin, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
+	ArrowSquareOutIcon,
 	InfoIcon,
 	NotebookIcon,
 } from "@phosphor-icons/react"
@@ -24,7 +25,11 @@ import {
 	handleSpecResponse,
 	withAbortController,
 } from "../../../utils/utils"
-import { CONNECTOR_TYPES, transformErrors } from "../../../utils/constants"
+import {
+	CONNECTOR_TYPES,
+	OLAKE_LATEST_VERSION_URL,
+	transformErrors,
+} from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -80,6 +85,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [loading, setLoading] = useState(false)
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
+		const [existingSource, setExistingSource] = useState<string | null>(null)
 
 		const navigate = useNavigate()
 
@@ -313,16 +319,27 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setConnector(value)
+			if (setupType === SETUP_TYPES.EXISTING) {
+				setExistingSource(null)
+				setSourceName("")
+				onSourceNameChange?.("")
+			}
+			setSelectedVersion("")
 			setFormData({})
 			setSchema(null)
-			setConnector(value)
-			if (onConnectorChange) {
-				onConnectorChange(value)
-			}
+
+			// Parent callbacks
+			onConnectorChange?.(value)
+			onVersionChange?.("")
+			onFormDataChange?.({})
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
+			setSourceName("")
+			onSourceNameChange?.("")
+
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true) // Close doc panel
@@ -331,13 +348,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				}
 			}
 			// Clear form data when switching to new source
-			if (type === "new") {
-				setSourceName("")
+			if (type === SETUP_TYPES.NEW) {
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
+				setExistingSource(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
-				if (onSourceNameChange) onSourceNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
 				if (onFormDataChange) onFormDataChange({})
 				if (onVersionChange) onVersionChange("")
@@ -362,6 +378,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				if (onFormDataChange) {
 					onFormDataChange(selectedSource.config)
 				}
+				setExistingSource(value)
 				setSourceName(selectedSource.name)
 				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
@@ -406,8 +423,22 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					{renderConnectorSelection()}
 
 					<div className="w-1/2">
-						<label className="mb-2 block text-sm font-medium text-gray-700">
+						<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 							OLake Version:
+							<Tooltip title="Choose the OLake version for the source">
+								<InfoIcon
+									size={16}
+									className="cursor-help text-slate-900"
+								/>
+							</Tooltip>
+							<a
+								href={OLAKE_LATEST_VERSION_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center text-primary hover:text-primary/80"
+							>
+								<ArrowSquareOutIcon className="size-4" />
+							</a>
 						</label>
 						{loadingVersions ? (
 							<div className="flex h-8 items-center justify-center">
@@ -465,7 +496,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						placeholder="Select a source"
 						className="w-full"
 						onChange={handleExistingSourceSelect}
-						value={undefined}
+						value={existingSource}
 						options={filteredSources.map(s => ({
 							value: s.id,
 							label: s.name,
