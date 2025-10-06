@@ -86,7 +86,7 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 			InitialInterval:    time.Second * 15,
 			BackoffCoefficient: 2.0,
 			MaximumInterval:    time.Minute * 10,
-			MaximumAttempts:    10,
+			MaximumAttempts:    0,
 		},
 		WaitForCancellation: true,
 		HeartbeatTimeout:    time.Minute * 1,
