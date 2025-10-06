@@ -436,6 +436,7 @@ func StopContainer(ctx context.Context, workflowID string) error {
 		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
 		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
 			logs.Error("workflowID %s: docker kill failed for %s: %s, output: %s", workflowID, containerName, kerr, string(kout))
+			return fmt.Errorf("docker kill failed: %s", kerr)
 		}
 	}
 
