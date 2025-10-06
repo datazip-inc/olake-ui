@@ -57,6 +57,7 @@ export class DestinationsPage {
 	}
 
 	async expectDestinationExists(destinationName: string) {
+		await this.switchToInactiveTab()
 		const destinationRow = await this.getDestinationRow(destinationName)
 		await expect(destinationRow).toBeVisible()
 	}

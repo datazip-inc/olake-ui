@@ -1,5 +1,9 @@
 import { test, expect } from "../fixtures/auth.fixture"
-import { S3_TEST_CONFIG, VALIDATION_MESSAGES } from "../setup/test-env"
+import {
+	S3_TEST_CONFIG,
+	VALIDATION_MESSAGES,
+	ICEBERG_JDBC_TEST_CONFIG,
+} from "../setup/test-env"
 
 test.describe("Create Destination Flow", () => {
 	test.beforeEach(async ({ loginPage, destinationsPage }) => {
@@ -32,6 +36,41 @@ test.describe("Create Destination Flow", () => {
 
 		// Fill the S3 form
 		await createDestinationPage.fillAmazonS3Form(destinationData)
+
+		// Create the destination
+		await createDestinationPage.clickCreate()
+
+		// Wait for test connection and success modals
+		await createDestinationPage.expectTestConnectionModal()
+		await createDestinationPage.expectSuccessModal()
+		await createDestinationPage.expectEntitySavedModal()
+
+		// Should navigate back to destinations page
+		await destinationsPage.expectDestinationsPageVisible()
+		await destinationsPage.expectDestinationExists(destinationData.name)
+	})
+
+	test("should create Apache Iceberg JDBC Catalogue destination successfully", async ({
+		createDestinationPage,
+		destinationsPage,
+	}) => {
+		const destinationData = {
+			name: `test-iceberg-jdbc-${Date.now()}`,
+			jdbcUrl: ICEBERG_JDBC_TEST_CONFIG.jdbc_url,
+			jdbcUsername: ICEBERG_JDBC_TEST_CONFIG.jdbc_username,
+			jdbcPassword: ICEBERG_JDBC_TEST_CONFIG.jdbc_password,
+			jdbcDatabase: ICEBERG_JDBC_TEST_CONFIG.jdbc_database,
+			jdbcS3Endpoint: ICEBERG_JDBC_TEST_CONFIG.jdbc_s3_endpoint,
+			jdbcS3AccessKey: ICEBERG_JDBC_TEST_CONFIG.jdbc_s3_access_key,
+			jdbcS3SecretKey: ICEBERG_JDBC_TEST_CONFIG.jdbc_s3_secret_key,
+			jdbcS3Region: ICEBERG_JDBC_TEST_CONFIG.jdbc_s3_region,
+			jdbcS3Path: ICEBERG_JDBC_TEST_CONFIG.iceberg_s3_path,
+			jdbcUsePathStyleForS3: ICEBERG_JDBC_TEST_CONFIG.s3_use_path_style,
+			jdbcUseSSLForS3: ICEBERG_JDBC_TEST_CONFIG.s3_use_ssl,
+		}
+
+		// Fill the S3 form
+		await createDestinationPage.fillIcebergJdbcForm(destinationData)
 
 		// Create the destination
 		await createDestinationPage.clickCreate()
