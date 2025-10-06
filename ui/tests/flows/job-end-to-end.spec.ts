@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/auth.fixture"
-import { S3_TEST_CONFIG, JOB_TEST_CONFIG } from "../setup/test-env"
+import { JOB_TEST_CONFIG } from "../setup/test-env"
 
 test.describe("Job End-to-End User Journey", () => {
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({
@@ -25,9 +25,17 @@ test.describe("Job End-to-End User Journey", () => {
 
 		const destinationData = {
 			name: `e2e-destination-${timestamp}`,
-			bucketName: S3_TEST_CONFIG.bucketName,
-			region: S3_TEST_CONFIG.region,
-			path: S3_TEST_CONFIG.path,
+			jdbcUrl: "jdbc:postgresql://host.docker.internal:5432/iceberg",
+			jdbcUsername: "iceberg",
+			jdbcPassword: "password",
+			jdbcDatabase: "iceberg",
+			jdbcS3Endpoint: "http://host.docker.internal:9000",
+			jdbcS3AccessKey: "admin",
+			jdbcS3SecretKey: "password",
+			jdbcS3Region: "us-east-1",
+			jdbcS3Path: "s3a://warehouse",
+			jdbcUsePathStyleForS3: true,
+			jdbcUseSSLForS3: false,
 		}
 
 		const jobData = {
@@ -56,20 +64,21 @@ test.describe("Job End-to-End User Journey", () => {
 		await createSourcePage.expectSuccessModal()
 		await createSourcePage.expectEntitySavedModal()
 		await sourcesPage.expectSourcesPageVisible()
-		// await sourcesPage.expectSourceExists(sourceData.name)
+		await sourcesPage.expectSourceExists(sourceData.name)
 
 		// Step 3: Create Destination
 		await destinationsPage.navigateToDestinations()
 		await destinationsPage.expectDestinationsPageVisible()
 		await destinationsPage.clickCreateDestination()
 		await createDestinationPage.expectCreateDestinationPageVisible()
-		await createDestinationPage.fillAmazonS3Form(destinationData)
+		// await createDestinationPage.fillAmazonS3Form(destinationData)
+		await createDestinationPage.fillIcebergJdbcForm(destinationData)
 		await createDestinationPage.clickCreate()
 		await createDestinationPage.expectTestConnectionModal()
 		await createDestinationPage.expectSuccessModal()
 		await createDestinationPage.expectEntitySavedModal()
 		await destinationsPage.expectDestinationsPageVisible()
-		// await destinationsPage.expectDestinationExists(destinationData.name)
+		await destinationsPage.expectDestinationExists(destinationData.name)
 
 		// Step 4: Create Job
 		await jobsPage.navigateToJobs()

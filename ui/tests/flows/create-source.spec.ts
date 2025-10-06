@@ -24,7 +24,7 @@ test.describe("Create Source Flow", () => {
 		sourcesPage,
 	}) => {
 		const sourceData = {
-			name: "testmongo",
+			name: `testmongo-${Date.now()}`,
 			...MONGODB_TEST_CONFIG,
 		}
 

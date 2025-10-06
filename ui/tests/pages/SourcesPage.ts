@@ -55,6 +55,7 @@ export class SourcesPage {
 	}
 
 	async expectSourceExists(sourceName: string) {
+		await this.switchToInactiveTab()
 		const sourceRow = await this.getSourceRow(sourceName)
 		await expect(sourceRow).toBeVisible()
 	}
