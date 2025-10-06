@@ -102,7 +102,7 @@ func DinDTestContainer(t *testing.T) error {
 	// start playwright
 	t.Log("Executing Playwright tests...")
 	uiPath := filepath.Join(projectRoot, "ui")
-	cmd := exec.Command("npx", "playwright", "test", "tests/flows/login.spec.ts")
+	cmd := exec.Command("npx", "playwright", "test", "tests/flows/job-end-to-end.spec.ts")
 	cmd.Dir = uiPath
 	cmd.Env = append(os.Environ(), "PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000")
 
