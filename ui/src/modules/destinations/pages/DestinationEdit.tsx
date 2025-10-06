@@ -32,6 +32,7 @@ import {
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -298,7 +299,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowTestingModal(true)
 		const testResult =
 			await destinationService.testDestinationConnection(getDestinationData())
-		if (testResult.data?.connection_result.status === "SUCCEEDED") {
+		if (
+			testResult.data?.connection_result.status ===
+			TEST_CONNECTION_STATUS.SUCCEEDED
+		) {
 			setTimeout(() => {
 				setShowTestingModal(false)
 				setShowSuccessModal(true)

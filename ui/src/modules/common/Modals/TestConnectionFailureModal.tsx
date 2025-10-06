@@ -1,13 +1,12 @@
+import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { message, Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
+import clsx from "clsx"
 
 import { useAppStore } from "../../../store"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
-import { useState } from "react"
-import clsx from "clsx"
-import { getLogTextColor } from "../../../utils/utils"
-import { getLogLevelClass } from "../../../utils/utils"
+import { getLogTextColor, getLogLevelClass } from "../../../utils/utils"
 
 const TestConnectionFailureModal = ({
 	fromSources,

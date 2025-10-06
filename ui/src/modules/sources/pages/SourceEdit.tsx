@@ -37,6 +37,7 @@ import {
 	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
@@ -273,7 +274,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 		setShowTestingModal(true)
 		const testResult = await sourceService.testSourceConnection(getSourceData())
-		if (testResult.data?.connection_result.status === "SUCCEEDED") {
+		if (
+			testResult.data?.connection_result.status ===
+			TEST_CONNECTION_STATUS.SUCCEEDED
+		) {
 			setTimeout(() => {
 				setShowTestingModal(false)
 			}, 1000)

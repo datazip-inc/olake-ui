@@ -28,6 +28,7 @@ import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	SETUP_TYPES,
+	TEST_CONNECTION_STATUS,
 	transformErrors,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
@@ -362,7 +363,10 @@ const CreateDestination = forwardRef<
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)
 
-				if (testResult.data?.connection_result.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)

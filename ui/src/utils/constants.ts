@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem } from "../types"
+import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -249,4 +249,9 @@ export const LABELS = {
 		title: "Iceberg Database Name",
 		folderType: "Iceberg DB",
 	},
+} as const
+
+export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
+	SUCCEEDED: "SUCCEEDED",
+	FAILED: "FAILED",
 } as const

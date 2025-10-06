@@ -38,10 +38,12 @@ export interface EntityTestRequest {
 export interface EntityTestResponse {
 	connection_result: {
 		message: string
-		status: "FAILED" | "SUCCEEDED"
+		status: TestConnectionStatus
 	}
 	logs: LogEntry[]
 }
+
+export type TestConnectionStatus = "FAILED" | "SUCCEEDED"
 
 export type EntityType = "source" | "destination"
 

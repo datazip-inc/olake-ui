@@ -19,7 +19,11 @@ import {
 	handleSpecResponse,
 	withAbortController,
 } from "../../../utils/utils"
-import { CONNECTOR_TYPES, transformErrors } from "../../../utils/constants"
+import {
+	CONNECTOR_TYPES,
+	TEST_CONNECTION_STATUS,
+	transformErrors,
+} from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -272,7 +276,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				const testResult =
 					await sourceService.testSourceConnection(newSourceData)
 				setShowTestingModal(false)
-				if (testResult.data?.connection_result.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)

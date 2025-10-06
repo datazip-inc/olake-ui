@@ -16,6 +16,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 
 // Internal imports from components
@@ -155,7 +156,10 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.connection_result.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
