@@ -24,6 +24,14 @@ jobs:
         working-directory: ./server
         run: go mod download
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
       - name: Start Test Infrastructure
         run: |
             docker compose -f ./server/tests/docker-compose.yml up -d
@@ -40,26 +48,22 @@ jobs:
             command: |
                 docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
 
+      - name: Install Playwright dependencies
+        working-directory: ./ui
+        run: |
+            pnpm add -D @playwright/test
+            pnpm exec playwright install --with-deps chromium
+
       - name: Run Docker In Docker Container
         working-directory: ./server
         run: go test -v ./tests -timeout 0 -run 'TestDinDIntegration'
 
     #   - name: Run PlayWright Automation
     #     run: 
-
-      - name: Wait for Application on localhost:8000
-        uses: nick-fields/retry@v2
-        with:
-            timeout_minutes: 5
-            max_attempts: 30
-            retry_wait_seconds: 5
-            command: |
-                curl -f http://localhost:8000 || curl -f http://localhost:8000/health || curl -f http://localhost:8000/ping
-
       - name: Integration Test Verification
         working-directory: ./server
         run: go test -v ./tests -timeout 0 -run 'TestVerification'
-        
+
       - name: Cleanup
         if: always()
         run: |

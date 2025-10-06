@@ -1,9 +1,12 @@
 package tests
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -20,8 +23,9 @@ var dindContainer testcontainers.Container
 
 const (
 	StartupComposeCmd = `
-		apk add --no-cache docker-compose curl postgresql-client bind-tools iputils ncurses nodejs npm && 
+		apk add --no-cache docker-compose curl postgresql-client bind-tools iputils ncurses nodejs ca-certificates npm && 
 		npm install -g chalk-cli &&
+		update-ca-certificates &&
 		echo "Tools installed." && 
 		cd /mnt && 
 		mkdir -p /mnt/olake-data && 
@@ -97,6 +101,36 @@ func DinDTestContainer(t *testing.T) error {
 	ExecuteQuery(ctx, t, "add")
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
+	t.Log("Executing Playwright tests...")
+
+	uiPath := filepath.Join(projectRoot, "ui")
+	cmd := exec.Command("npx", "playwright", "test", "tests/flows/login.spec.ts")
+	cmd.Dir = uiPath
+	cmd.Env = append(os.Environ(), "PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000")
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("Failed to get stdout pipe: %v", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		t.Fatalf("Failed to get stderr pipe: %v", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Failed to start Playwright tests: %v", err)
+	}
+
+	scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
+	for scanner.Scan() {
+		t.Log(scanner.Text())
+	}
+
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("Playwright tests failed: %v", err)
+	}
+
+	t.Log("Playwright tests passed successfully.")
 	return nil
 }
 

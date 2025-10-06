@@ -17,7 +17,7 @@
 		"format:check": "prettier --check \"**/*.{js,jsx,ts,tsx}\"",
 		"test": "playwright test",
 		"test:headed": "playwright test --headed",
-		"test:codegen": "playwright codegen http://localhost:5173/login"
+		"test:codegen": "playwright codegen http://localhost:8000/login"
 	},
 	"dependencies": {
 		"@babel/runtime": "7.26.10",

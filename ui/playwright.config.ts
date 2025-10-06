@@ -16,7 +16,7 @@ export default defineConfig({
 		timeout: 5 * 60 * 1000, // 5 minutes for expect assertions
 	},
 	use: {
-		baseURL: "http://localhost:5173",
+		baseURL: "http://localhost:8000",
 		screenshot: "only-on-failure",
 		actionTimeout: 5 * 60 * 1000, // 5 minutes for actions
 		navigationTimeout: 30 * 1000, // 30 seconds for navigation

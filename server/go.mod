@@ -5,6 +5,7 @@ go 1.24.2
 require github.com/beego/beego/v2 v2.3.8
 
 require (
+	github.com/apache/spark-connect-go/v35 v35.0.0-20250317154112-ffd832059443
 	github.com/aws/aws-sdk-go-v2/config v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.49.0
 	github.com/aws/aws-sdk-go-v2/service/kms v1.41.1
@@ -24,7 +25,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/apache/arrow-go/v18 v18.2.0 // indirect
-	github.com/apache/spark-connect-go/v35 v35.0.0-20250317154112-ffd832059443 // direct
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
