@@ -41,7 +41,7 @@ test.describe("Job End-to-End User Journey", () => {
 		const jobData = {
 			sourceName: sourceData.name,
 			destinationName: destinationData.name,
-			streamName: JOB_TEST_CONFIG.streamName,
+			streamName: "postgres_test_table_olake",
 			jobName: `e2ejob${timestamp}`,
 			frequency: JOB_TEST_CONFIG.frequency,
 		}
