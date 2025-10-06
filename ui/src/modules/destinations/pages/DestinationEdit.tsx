@@ -35,6 +35,7 @@ import {
 } from "../../../utils/constants"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
+import EndpointConfigSkeleton from "../../common/components/EndpointConfigSkeleton"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
@@ -534,9 +535,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 				<h3 className="mb-4 text-lg font-medium">Endpoint config</h3>
 				{isLoading ? (
-					<div className="flex h-32 items-center justify-center">
-						<Spin tip="Loading schema..." />
-					</div>
+					<EndpointConfigSkeleton includeWrapper={false} />
 				) : schema ? (
 					<Form
 						ref={formRef}

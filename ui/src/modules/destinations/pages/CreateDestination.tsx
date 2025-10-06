@@ -35,6 +35,7 @@ import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
 import { SetupTypeSelector } from "../../common/components/SetupTypeSelector"
+import EndpointConfigSkeleton from "../../common/components/EndpointConfigSkeleton"
 import TestConnectionModal from "../../common/Modals/TestConnectionModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
@@ -559,9 +560,7 @@ const CreateDestination = forwardRef<
 			setupType === SETUP_TYPES.NEW && (
 				<>
 					{loading ? (
-						<div className="flex h-32 items-center justify-center">
-							<Spin tip="Loading schema..." />
-						</div>
+						<EndpointConfigSkeleton />
 					) : (
 						schema && (
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6">

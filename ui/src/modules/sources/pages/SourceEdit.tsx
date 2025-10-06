@@ -26,6 +26,7 @@ import {
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
+import EndpointConfigSkeleton from "../../common/components/EndpointConfigSkeleton"
 import DeleteModal from "../../common/Modals/DeleteModal"
 import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
@@ -588,9 +589,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											<div className="text-lg font-medium">Endpoint config</div>
 										</div>
 										{loading ? (
-											<div className="flex h-32 items-center justify-center">
-												<Spin tip="Loading schema..." />
-											</div>
+											<EndpointConfigSkeleton includeWrapper={false} />
 										) : (
 											schema && (
 												<Form
