@@ -18,7 +18,7 @@ var (
 		InitialInterval:    time.Second * 15,
 		BackoffCoefficient: 2.0,
 		MaximumInterval:    time.Minute * 10,
-		MaximumAttempts:    10,
+		MaximumAttempts:    1,
 	}
 )
 
@@ -82,7 +82,12 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 	logger := workflow.GetLogger(ctx)
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Hour * 24 * 30, // 30 days
-		RetryPolicy:         DefaultRetryPolicy,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    time.Second * 15,
+			BackoffCoefficient: 2.0,
+			MaximumInterval:    time.Minute * 10,
+			MaximumAttempts:    10,
+		},
 		WaitForCancellation: true,
 		HeartbeatTimeout:    time.Minute * 1,
 	}
@@ -98,7 +103,10 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 		newCtx, _ := workflow.NewDisconnectedContext(ctx)
 		perr := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
 		if perr != nil {
-			err = fmt.Errorf("%s: failed to execute cleanup activity: %s", err, perr)
+			perr = fmt.Errorf("failed to execute cleanup activity: %s", perr)
+		}
+		if err != nil {
+			err = fmt.Errorf("%s: %s", err, perr)
 		}
 	}()
 

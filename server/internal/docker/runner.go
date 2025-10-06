@@ -313,7 +313,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	if state.Exists && !state.Running && state.ExitCode != nil {
 		logs.Info("workflowID %s: container %s exited with code %d", workflowID, containerName, *state.ExitCode)
 		if *state.ExitCode == 0 {
-			return map[string]interface{}{"status": "success"}, nil
+			return map[string]interface{}{"status": "completed"}, nil
 		}
 		// Return typed error so policy can decide retry vs. fail-fast
 		return nil, temporal.NewNonRetryableApplicationError(
@@ -366,7 +366,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		logs.Info("workflowID %s: container %s completed successfully", workflowID, containerName)
 		return map[string]interface{}{"status": "completed"}, nil
 	}
-
+	// Skip if container is not running, was already launched (logs exist), and no new run is needed.
 	logs.Info("workflowID %s: container %s already handled, skipping launch", workflowID, containerName)
 	return map[string]interface{}{"status": "skipped"}, nil
 }
@@ -392,6 +392,7 @@ func getContainerState(ctx context.Context, name, workflowID string) ContainerSt
 	if len(parts) < 3 {
 		return ContainerState{Exists: false}
 	}
+	// Docker .State.Status can be "created", "running", "paused", "restarting", "removing", "exited", or "dead"; we only handle running vs exited/dead.
 	status := parts[0]
 	running := parts[1] == "true"
 	var ec *int
