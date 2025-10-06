@@ -129,6 +129,7 @@ func DinDTestContainer(t *testing.T) error {
 	t.Log("Playwright tests passed successfully.")
 
 	// verify in iceberg
+	t.Logf("starting iceberg data verfication")
 	VerifyIcebergTest(ctx, t, ctr)
 	return nil
 }
