@@ -18,7 +18,6 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/utils"
-	"go.temporal.io/sdk/temporal"
 	"golang.org/x/mod/semver"
 )
 
@@ -290,7 +289,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	workDir, err := r.setupWorkDirectory(containerName)
 	if err != nil {
 		logs.Error("workflowID %s: failed to setup work directory: %s", workflowID, err)
-		return nil, temporal.NewNonRetryableApplicationError(err.Error(), "SetupWorkDirectoryFailed", err)
+		return nil, err
 	}
 
 	// Marker to indicate we have launched once; prevents relaunch after retries
@@ -304,7 +303,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		logs.Info("workflowID %s: adopting running container %s", workflowID, containerName)
 		if err := waitContainer(ctx, containerName, workflowID); err != nil {
 			logs.Error("workflowID %s: container wait failed: %s", workflowID, err)
-			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "ContainerExitNonZero", err)
+			return nil, err
 		}
 		state = getContainerState(ctx, containerName, workflowID)
 	}
@@ -316,11 +315,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 			return map[string]interface{}{"status": "completed"}, nil
 		}
 		// Return typed error so policy can decide retry vs. fail-fast
-		return nil, temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("workflowID %s: container %s exit %d", workflowID, containerName, *state.ExitCode),
-			"ContainerExitNonZero",
-			nil,
-		)
+		return nil, fmt.Errorf("workflowID %s: container %s exit %d", workflowID, containerName, *state.ExitCode)
 	}
 
 	// 3) First launch path: only if we never launched and nothing is running
@@ -330,7 +325,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		job, err := jobORM.GetByID(jobID, false)
 		if err != nil {
 			logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
-			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "FetchJobFailed", err)
+			return nil, err
 		}
 		configs := []FileConfig{
 			{Name: "config.json", Data: job.SourceID.Config},
@@ -341,7 +336,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		}
 		if err := r.writeConfigFiles(workDir, configs); err != nil {
 			logs.Error("workflowID %s: failed to write config files: %s", workflowID, err)
-			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "WriteConfigFilesFailed", err)
+			return nil, err
 		}
 
 		configPath := filepath.Join(workDir, "config.json")
@@ -360,7 +355,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 			"--state", "/mnt/config/state.json",
 		); err != nil {
 			logs.Error("workflowID %s: docker execution failed: %s", workflowID, err)
-			return nil, temporal.NewNonRetryableApplicationError(err.Error(), "ContainerExitNonZero", err)
+			return nil, err
 		}
 
 		logs.Info("workflowID %s: container %s completed successfully", workflowID, containerName)

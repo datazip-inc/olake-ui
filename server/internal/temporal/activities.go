@@ -8,6 +8,7 @@ import (
 	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/temporal"
 )
 
 // DiscoverCatalogActivity runs the discover command to get catalog data
@@ -67,7 +68,7 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 		err error
 	}
 	done := make(chan resErr, 1)
-
+	// excueting sync in a goroutine to prevent blocking and monitoring the sync progress
 	go func() {
 		runner := docker.NewRunner(docker.GetDefaultConfigDir())
 		res, err := runner.RunSync(ctx, params.JobID, params.WorkflowID)
@@ -81,8 +82,14 @@ func SyncActivity(ctx context.Context, params *SyncParams) (map[string]interface
 			return nil, ctx.Err()
 		case r := <-done:
 			if r.err != nil {
+				// CRITICAL: Check if error is because context was cancelled
+				if ctx.Err() != nil {
+					logger.Info("Goroutine failed due to context cancellation", "dockerError", r.err)
+					return nil, ctx.Err() // Return cancellation error, not docker error
+				}
+
 				logger.Error("Sync command failed", "error", r.err)
-				return r.res, r.err
+				return r.res, temporal.NewNonRetryableApplicationError(r.err.Error(), "SyncFailed", r.err)
 			}
 			return r.res, nil
 		default:
@@ -99,12 +106,12 @@ func SyncCleanupActivity(ctx context.Context, params *SyncParams) error {
 	// Stop container gracefully
 	logger.Info("Stopping container for cleanup %s", params.WorkflowID)
 	if err := docker.StopContainer(ctx, params.WorkflowID); err != nil {
-		return fmt.Errorf("failed to stop container: %s", err)
+		return temporal.NewNonRetryableApplicationError(err.Error(), "CleanupFailed", err)
 	}
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	logger.Info("Persisting job state for workflowID %s", params.WorkflowID)
 	if err := runner.PersistJobStateFromFile(params.JobID, params.WorkflowID); err != nil {
-		return fmt.Errorf("failed to persist job state: %s", err)
+		return temporal.NewNonRetryableApplicationError(err.Error(), "CleanupFailed", err)
 	}
 	logger.Info("Cleanup completed successfully")
 	return nil

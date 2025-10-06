@@ -108,10 +108,11 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 		newCtx = workflow.WithActivityOptions(newCtx, cleanupOptions)
 		perr := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
 		if perr != nil {
-			perr = temporal.NewNonRetryableApplicationError(perr.Error(), "CleanupFailed", perr)
-		}
-		if err != nil {
-			err = fmt.Errorf("%s: %s", err, perr)
+			perr = fmt.Errorf("cleanup error: %s", perr)
+			if err != nil {
+				// preserve original err, just append cleanup info
+				err = fmt.Errorf("%s; cleanup error: %s", err, perr)
+			}
 		}
 	}()
 
