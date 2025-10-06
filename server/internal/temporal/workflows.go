@@ -101,9 +101,14 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 	defer func() {
 		logger.Info("executing workflow cleanup...")
 		newCtx, _ := workflow.NewDisconnectedContext(ctx)
+		cleanupOptions := workflow.ActivityOptions{
+			StartToCloseTimeout: time.Minute * 15,
+			RetryPolicy:         DefaultRetryPolicy,
+		}
+		newCtx = workflow.WithActivityOptions(newCtx, cleanupOptions)
 		perr := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
 		if perr != nil {
-			perr = fmt.Errorf("failed to execute cleanup activity: %s", perr)
+			perr = temporal.NewNonRetryableApplicationError(perr.Error(), "CleanupFailed", perr)
 		}
 		if err != nil {
 			err = fmt.Errorf("%s: %s", err, perr)

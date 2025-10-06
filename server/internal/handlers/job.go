@@ -293,7 +293,12 @@ func (c *JobHandler) DeleteJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
+	// cancel existing workflow
+	err = cancelJobWorkflow(c.tempClient, job, job.ProjectID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		return
+	}
 	jobName := job.Name
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for delete job schedule")
@@ -308,12 +313,6 @@ func (c *JobHandler) DeleteJob() {
 			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Temporal workflow execution failed for delete job schedule: %s", err))
 			return
 		}
-	}
-	// cancel existing workflow
-	err = cancelJobWorkflow(c.tempClient, job, job.ProjectID)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
-		return
 	}
 
 	// Delete job
