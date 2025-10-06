@@ -12,3 +12,7 @@ export interface DestinationDatabaseModalProps {
 	originalDatabase: string
 	initialStreams: StreamsDataStructure | null
 }
+
+export interface ResetStreamsModalProps {
+	onConfirm: () => void
+}
