@@ -68,8 +68,9 @@ export const getStatusClass = (status: string) => {
 		case "completed":
 			return "text-[#52C41A] bg-[#F6FFED]"
 		case "failed":
-		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
+		case "canceled":
+			return "text-amber-700 bg-amber-50"
 		case "running":
 			return "text-primary-700 bg-primary-200"
 		case "scheduled":
@@ -108,8 +109,8 @@ export const getStatusLabel = (status: string) => {
 			return "Success"
 		case "failed":
 			return "Failed"
-		case "cancelled":
-			return "Cancelled"
+		case "canceled":
+			return "Canceled"
 		case "running":
 			return "Running"
 		case "scheduled":

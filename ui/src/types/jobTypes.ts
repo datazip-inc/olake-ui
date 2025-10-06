@@ -66,6 +66,7 @@ export interface JobTableProps {
 	onEdit: (id: string) => void
 	onPause: (id: string, checked: boolean) => void
 	onDelete: (id: string) => void
+	onCancelJob: (id: string) => void
 }
 
 export interface JobConfigurationProps {
