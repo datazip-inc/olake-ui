@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/spark-connect-go/v35/spark/sql"
 	"github.com/docker/docker/api/types/container"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -18,8 +19,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-var dindContainer testcontainers.Container
 
 const (
 	StartupComposeCmd = `
@@ -77,8 +76,6 @@ func DinDTestContainer(t *testing.T) error {
 	if err != nil {
 		return fmt.Errorf("failed to start DinD container: %w", err)
 	}
-	// persist container for later cleanup
-	dindContainer = ctr
 
 	t.Log("Waiting for Docker daemon to be ready...")
 	time.Sleep(3 * time.Second)
@@ -101,8 +98,9 @@ func DinDTestContainer(t *testing.T) error {
 	ExecuteQuery(ctx, t, "add")
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
-	t.Log("Executing Playwright tests...")
 
+	// start playwright
+	t.Log("Executing Playwright tests...")
 	uiPath := filepath.Join(projectRoot, "ui")
 	cmd := exec.Command("npx", "playwright", "test", "tests/flows/login.spec.ts")
 	cmd.Dir = uiPath
@@ -125,13 +123,50 @@ func DinDTestContainer(t *testing.T) error {
 	for scanner.Scan() {
 		t.Log(scanner.Text())
 	}
-
 	if err := cmd.Wait(); err != nil {
 		t.Fatalf("Playwright tests failed: %v", err)
 	}
-
 	t.Log("Playwright tests passed successfully.")
+
+	// verify in iceberg
+	VerifyIcebergTest(ctx, t, ctr)
 	return nil
+}
+
+func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Container) {
+	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
+	require.NoError(t, err, "Failed to connect to Spark Connect server")
+	defer func() {
+		if stopErr := spark.Stop(); stopErr != nil {
+			t.Errorf("Failed to stop Spark session: %v", stopErr)
+		}
+		if ctr != nil {
+			t.Log("Running cleanup...")
+			// Stop docker-compose services
+			_, _, _ = ExecCommand(ctx, ctr, "cd /mnt && docker-compose down -v --remove-orphans")
+			// Terminate the DinD container
+			if err := ctr.Terminate(ctx); err != nil {
+				t.Logf("Warning: failed to terminate container: %v", err)
+			}
+			t.Log("Cleanup complete")
+		}
+	}()
+	countQuery := fmt.Sprintf(
+		"SELECT COUNT(DISTINCT _olake_id) as unique_count FROM %s.%s.%s",
+		icebergCatalog, icebergDB, currentTestTable,
+	)
+	t.Logf("Executing query: %s", countQuery)
+
+	countQueryDf, err := spark.Sql(ctx, countQuery)
+	require.NoError(t, err, "Failed to execute query on the table")
+
+	rows, err := countQueryDf.Collect(ctx)
+	require.NoError(t, err, "Failed to collect data rows from Iceberg")
+	require.NotEmpty(t, rows, "No rows returned for _op_type = 'r'")
+
+	// check count and verify
+	countValue := rows[0].Value("unique_count").(int64)
+	require.Equal(t, int64(5), countValue, "Expected count to be 5")
 }
 
 func ExecuteQuery(ctx context.Context, t *testing.T, operation string) {

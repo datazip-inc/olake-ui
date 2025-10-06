@@ -54,15 +54,9 @@ jobs:
             pnpm add -D @playwright/test
             pnpm exec playwright install --with-deps chromium
 
-      - name: Run Docker In Docker Container
+      - name: Run Docker In Docker Container Test
         working-directory: ./server
         run: go test -v ./tests -timeout 0 -run 'TestDinDIntegration'
-
-    #   - name: Run PlayWright Automation
-    #     run: 
-      - name: Integration Test Verification
-        working-directory: ./server
-        run: go test -v ./tests -timeout 0 -run 'TestVerification'
 
       - name: Cleanup
         if: always()
