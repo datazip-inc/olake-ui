@@ -469,7 +469,7 @@ func (c *JobHandler) CancelJobRun() {
 	}
 
 	utils.SuccessResponse(&c.Controller, map[string]any{
-		"message": "job workflow cancel requested successfully",
+		"message": "Job Cancellation initiated. Completion may take up to a minute",
 	})
 }
 
