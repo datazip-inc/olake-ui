@@ -11,6 +11,7 @@ import {
 	PencilSimpleIcon,
 	PlayIcon,
 	TrashIcon,
+	XIcon,
 } from "@phosphor-icons/react"
 
 import { EntityBase, Job, JobTableProps } from "../../../types"
@@ -41,6 +42,7 @@ const JobTable: React.FC<JobTableProps> = ({
 	onEdit,
 	onPause,
 	onDelete,
+	onCancelJob,
 }) => {
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
@@ -99,6 +101,12 @@ const JobTable: React.FC<JobTableProps> = ({
 									),
 									label: record.activate ? "Pause job" : "Resume job",
 									onClick: () => onPause(record.id.toString(), record.activate),
+								},
+								{
+									key: "cancel",
+									icon: <XIcon className="size-4" />,
+									label: "Cancel Run",
+									onClick: () => onCancelJob(record.id.toString()),
 								},
 								{
 									key: "history",

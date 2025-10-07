@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Button, Modal, Table, message } from "antd"
-import { WarningIcon } from "@phosphor-icons/react"
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api"
@@ -185,14 +185,15 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				width="38%"
 			>
 				<div className="mt-4 text-center">
-					<h3 className="text-lg font-medium">
-						Due to the editing, the jobs are going to get affected
-					</h3>
+					<h3 className="text-lg font-medium">Jobs May Be Affected</h3>
 					<p className="mt-2 text-xs text-black text-opacity-45">
-						Editing this {entityType} will affect the following jobs that are
-						associated with this {entityType} and as a result will fail
-						immediately. Do you still want to edit the {entityType}?
+						Modifying this {entityType} could affect associated jobs. Are you
+						sure you want to continue ?
 					</p>
+					<div className="mt-2 flex w-full items-center justify-center gap-1 text-xs text-red-600">
+						<InfoIcon className="size-4" />
+						Ongoing jobs may fail if {entityType} is updated
+					</div>
 				</div>
 				<div className="mt-6">
 					<Table
