@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
@@ -112,7 +112,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 }
 
 // FetchSpec runs a workflow to fetch connector specifications
-func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (models.SpecOutput, error) {
+func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
 	// spec version >= DefaultSpecVersion is required
 	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
 		version = constants.DefaultSpecVersion
@@ -132,12 +132,12 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 
 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
 	if err != nil {
-		return models.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
+		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
 	}
 
-	var result models.SpecOutput
+	var result dto.SpecOutput
 	if err := run.Get(ctx, &result); err != nil {
-		return models.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
+		return dto.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
 	}
 
 	return result, nil

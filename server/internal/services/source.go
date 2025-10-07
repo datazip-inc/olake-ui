@@ -39,20 +39,17 @@ func NewSourceService() (*SourceService, error) {
 }
 
 func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
-	logs.Info("Getting all sources")
-	// Get all sources
+	logs.Info("Getting all sources for project: %s", projectID)
 	sources, err := s.sourceORM.GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("%s sources: %s", constants.ErrFailedToRetrieve, err)
 	}
 
-	// Collect all source IDs
 	sourceIDs := make([]int, 0, len(sources))
-	for _, source := range sources {
-		sourceIDs = append(sourceIDs, source.ID)
+	for _, src := range sources {
+		sourceIDs = append(sourceIDs, src.ID)
 	}
 
-	// Get all jobs for all sources in a single query
 	var allJobs []*models.Job
 	if len(sourceIDs) > 0 {
 		allJobs, err = s.jobORM.GetBySourceIDs(sourceIDs)
@@ -61,44 +58,46 @@ func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]
 		}
 	}
 
-	// Create a map of source ID to jobs
 	jobsBySourceID := make(map[int][]*models.Job)
 	for _, job := range allJobs {
-		jobsBySourceID[job.SourceID.ID] = append(jobsBySourceID[job.SourceID.ID], job)
+		if job.SourceID != nil {
+			jobsBySourceID[job.SourceID.ID] = append(jobsBySourceID[job.SourceID.ID], job)
+		}
 	}
 
-	// Build the response
-	sourceItems := make([]dto.SourceDataItem, 0, len(sources))
-	for _, source := range sources {
+	items := make([]dto.SourceDataItem, 0, len(sources))
+	for _, src := range sources {
 		item := dto.SourceDataItem{
-			ID:        source.ID,
-			Name:      source.Name,
-			Type:      source.Type,
-			Version:   source.Version,
-			Config:    source.Config,
-			CreatedAt: source.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
+			ID:        src.ID,
+			Name:      src.Name,
+			Type:      src.Type,
+			Version:   src.Version,
+			Config:    src.Config,
+			CreatedAt: src.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: src.UpdatedAt.Format(time.RFC3339),
 		}
+		setUsernames(&item.CreatedBy, &item.UpdatedBy, src.CreatedBy, src.UpdatedBy)
 
-		setUsernames(&item.CreatedBy, &item.UpdatedBy, source.CreatedBy, source.UpdatedBy)
-
-		// Get jobs for this source from the pre-fetched map
-		jobs := jobsBySourceID[int(source.ID)]
+		jobs := jobsBySourceID[src.ID]
 		jobItems, err := s.buildJobDataItems(jobs, projectID, "source")
 		if err != nil {
 			return nil, fmt.Errorf("%s job data items: %s", constants.ErrFailedToProcess, err)
 		}
 		item.Jobs = jobItems
 
-		sourceItems = append(sourceItems, item)
+		items = append(items, item)
 	}
 
-	return sourceItems, nil
+	return items, nil
 }
 
 func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRequest, projectID string, userID *int) error {
+	if err := dto.Validate(&req); err != nil {
+		return fmt.Errorf("invalid request: %w", err)
+	}
+
 	logs.Info("Creating source with projectID: %s", projectID)
-	source := &models.Source{
+	src := &models.Source{
 		Name:      req.Name,
 		Type:      req.Type,
 		Version:   req.Version,
@@ -107,84 +106,98 @@ func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRe
 	}
 
 	if userID != nil {
-		user, err := s.userORM.GetByID(*userID)
-		if err != nil {
-			return fmt.Errorf("%s user: %s", constants.ErrFailedToRetrieve, err)
-		}
-		source.CreatedBy = user
-		source.UpdatedBy = user
+		// Align with other services by avoiding extra DB lookup
+		user := &models.User{ID: *userID}
+		src.CreatedBy = user
+		src.UpdatedBy = user
 	}
 
-	if err := s.sourceORM.Create(source); err != nil {
+	if err := s.sourceORM.Create(src); err != nil {
 		return fmt.Errorf("%s source: %s", constants.ErrFailedToCreate, err)
 	}
-	telemetry.TrackSourceCreation(context.Background(), source)
+
+	telemetry.TrackSourceCreation(ctx, src)
 	return nil
 }
 
-func (s *SourceService) UpdateSource(ctx context.Context, id int, req dto.UpdateSourceRequest, userID *int) error {
-	logs.Info("Updating source with id: %d", id)
-	existingSource, err := s.sourceORM.GetByID(id)
-	if err != nil {
-		return fmt.Errorf("%s source: %s", constants.ErrFailedToRetrieve, err)
+func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id int, req dto.UpdateSourceRequest, userID *int) error {
+	if err := dto.Validate(&req); err != nil {
+		return fmt.Errorf("invalid request: %w", err)
 	}
 
-	existingSource.Name = req.Name
-	existingSource.Config = req.Config
-	existingSource.Type = req.Type
-	existingSource.Version = req.Version
-	existingSource.UpdatedAt = time.Now()
+	logs.Info("Updating source with id: %d", id)
+	existing, err := s.sourceORM.GetByID(id)
+	if err != nil {
+		return constants.ErrSourceNotFound
+	}
+
+	existing.Name = req.Name
+	existing.Config = req.Config
+	existing.Type = req.Type
+	existing.Version = req.Version
+	existing.UpdatedAt = time.Now()
 
 	if userID != nil {
 		user := &models.User{ID: *userID}
-		existingSource.UpdatedBy = user
+		existing.UpdatedBy = user
 	}
 
-	if err := s.sourceORM.Update(existingSource); err != nil {
+	// Cancel workflows for jobs linked to this source before persisting change
+	jobs, err := s.jobORM.GetBySourceID(existing.ID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch jobs for source %d: %s", existing.ID, err)
+	}
+	for _, job := range jobs {
+		if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
+			return fmt.Errorf("failed to cancel workflow for job %d: %s", job.ID, err)
+		}
+	}
+
+	if err := s.sourceORM.Update(existing); err != nil {
 		return fmt.Errorf("%s source: %s", constants.ErrFailedToUpdate, err)
 	}
+
 	telemetry.TrackSourcesStatus(ctx)
 	return nil
 }
 
 func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
 	logs.Info("Deleting source with id: %d", id)
-	source, err := s.sourceORM.GetByID(id)
+	src, err := s.sourceORM.GetByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("%s source: %s", constants.ErrFailedToRetrieve, err)
+		return nil, constants.ErrSourceNotFound
 	}
 
-	// Get all jobs using this source
 	jobs, err := s.jobORM.GetBySourceID(id)
 	if err != nil {
 		return nil, fmt.Errorf("%s jobs for source: %s", constants.ErrFailedToRetrieve, err)
 	}
 
-	// Get job IDs to deactivate
 	jobIDs := make([]int, 0, len(jobs))
 	for _, job := range jobs {
 		jobIDs = append(jobIDs, job.ID)
 	}
 
-	// Deactivate all jobs using this source in a single query
 	if len(jobIDs) > 0 {
 		if err := s.jobORM.UpdateAllJobs(jobIDs); err != nil {
 			return nil, fmt.Errorf("%s jobs: %s", constants.ErrFailedToUpdate, err)
 		}
 	}
 
-	// Delete the source
 	if err := s.sourceORM.Delete(id); err != nil {
 		return nil, fmt.Errorf("%s source: %s", constants.ErrFailedToDelete, err)
 	}
+
 	telemetry.TrackSourcesStatus(ctx)
-	return &dto.DeleteSourceResponse{
-		Name: source.Name,
-	}, nil
+	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
 func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestConnectionRequest) (map[string]interface{}, error) {
-	logs.Info("Testing connection for source: %v", req)
+	if err := dto.Validate(&req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	logs.Info("Testing connection for source: %v", req.Type)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
@@ -198,7 +211,8 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 		return nil, fmt.Errorf("failed to encrypt source config: %s", err)
 	}
 
-	result, err := s.tempClient.TestConnection(ctx, "config", req.Type, req.Version, encryptedConfig)
+	// Use "source" category for source connectivity tests
+	result, err := s.tempClient.TestConnection(ctx, "source", req.Type, req.Version, encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
@@ -214,12 +228,16 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 }
 
 func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsRequest) (map[string]interface{}, error) {
-	logs.Info("Getting source catalog with config: %v", req.Config)
+	if err := dto.Validate(&req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
+	logs.Info("Getting source catalog for type=%s version=%s", req.Type, req.Version)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
+
 	oldStreams := ""
-	// Load job details if JobID is provided
 	if req.JobID >= 0 {
 		job, err := s.jobORM.GetByID(req.JobID, true)
 		if err != nil {
@@ -227,21 +245,20 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsReq
 		}
 		oldStreams = job.StreamsConfig
 	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt config: %s", err)
 	}
-	// Use Temporal client to get the catalog
-	var newStreams map[string]interface{}
-	if s.tempClient != nil {
-		newStreams, err = s.tempClient.GetCatalog(
-			ctx,
-			req.Type,
-			req.Version,
-			encryptedConfig,
-			oldStreams,
-		)
-	}
+
+	newStreams, err := s.tempClient.GetCatalog(
+		ctx,
+		req.Type,
+		req.Version,
+		encryptedConfig,
+		oldStreams,
+		req.JobName,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)
 	}
@@ -250,10 +267,8 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsReq
 }
 
 func (s *SourceService) GetSourceJobs(ctx context.Context, id int) ([]*models.Job, error) {
-	// Check if source exists
-	_, err := s.sourceORM.GetByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("source not found: %s", err)
+	if _, err := s.sourceORM.GetByID(id); err != nil {
+		return nil, constants.ErrSourceNotFound
 	}
 
 	jobs, err := s.jobORM.GetBySourceID(id)
@@ -270,10 +285,8 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 		return nil, fmt.Errorf("source type is required")
 	}
 
-	// Get versions from Docker Hub
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
-
-	versions, err := utils.GetDriverImageTags(ctx, imageName, true)
+	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Docker versions for source type %s: %s", sourceType, err)
 	}
@@ -281,10 +294,36 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 	return versions, nil
 }
 
+func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
+	if err := dto.Validate(&req); err != nil {
+		return dto.SpecResponse{}, fmt.Errorf("invalid request: %w", err)
+	}
+	if req.Type == "" {
+		return dto.SpecResponse{}, fmt.Errorf("Source type is required")
+	}
+	if req.Version == "" {
+		return dto.SpecResponse{}, fmt.Errorf("Source version is required")
+	}
+	if s.tempClient == nil {
+		return dto.SpecResponse{}, fmt.Errorf("temporal client not available")
+	}
+
+	// Follow existing FetchSpec convention seen in handler: empty scope, driver=req.Type, version=req.Version
+	specOut, err := s.tempClient.FetchSpec(ctx, "", req.Type, req.Version)
+	if err != nil {
+		return dto.SpecResponse{}, fmt.Errorf("Failed to get spec: %v", err)
+	}
+
+	return dto.SpecResponse{
+		Version: req.Version,
+		Type:    req.Type,
+		Spec:    specOut.Spec,
+	}, nil
+}
+
 // Helper methods
 func (s *SourceService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
 	jobItems := make([]dto.JobDataItem, 0, len(jobs))
-
 	for _, job := range jobs {
 		item := dto.JobDataItem{
 			ID:   job.ID,
@@ -292,7 +331,6 @@ func (s *SourceService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dt
 		}
 		jobItems = append(jobItems, item)
 	}
-
 	return jobItems, nil
 }
 

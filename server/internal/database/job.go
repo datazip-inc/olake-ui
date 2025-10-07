@@ -261,6 +261,7 @@ func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
 		return nil, err
 	}
 	return jobs, nil
+}
 
 // IsJobNameUnique checks if a job name is unique within a project in the jobs table.
 func (r *JobORM) IsJobNameUnique(projectID, jobName string) (bool, error) {

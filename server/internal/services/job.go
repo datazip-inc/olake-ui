@@ -196,8 +196,18 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 
 	return nil, fmt.Errorf("temporal client is not available")
 }
+func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID int) error {
+	job, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return fmt.Errorf("job not found: %s", err)
+	}
+	if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
+		return fmt.Errorf("job workflow cancel failed: %s", err)
+	}
+	return nil
+}
 
-func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
+func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, userID *int) error {
 	logs.Info("Activating job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
@@ -219,6 +229,10 @@ func (s *JobService) ActivateJob(jobID int, activate bool, userID *int) error {
 	return nil
 }
 
+func (s *JobService) IsJobNameUnique(ctx context.Context, projectID string, jobName string) (bool, error) {
+	logs.Info("Checking if job name is unique: %s", jobName)
+	return s.jobORM.IsJobNameUnique(projectID, jobName)
+}
 func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {

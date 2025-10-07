@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -14,14 +15,14 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 // pullImage pulls the Docker image if needed
 func (r *Runner) pullImage(ctx context.Context, imageName string, version string) error {
-	// Only pull if version is "latest" or image doesn't exist locally
+	// Only pull if version is "latest"; otherwise assume preloaded or let failure surface
 	if version == "latest" {
 		logs.Info("Pulling Docker image: %s", imageName)
-
 		reader, err := r.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to pull image %s: %v", imageName, err)
@@ -29,8 +30,7 @@ func (r *Runner) pullImage(ctx context.Context, imageName string, version string
 		defer reader.Close()
 
 		// Read the pull output (optional, for logging)
-		_, err = io.Copy(io.Discard, reader)
-		if err != nil {
+		if _, err = io.Copy(io.Discard, reader); err != nil {
 			logs.Warning("Failed to read image pull output: %v", err)
 		}
 	}
@@ -38,10 +38,14 @@ func (r *Runner) pullImage(ctx context.Context, imageName string, version string
 }
 
 // ExecuteDockerCommand executes a Docker command with the given parameters using Docker SDK
-func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
-	outputDir := filepath.Dir(configPath)
-	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
-		return nil, err
+// containerName is used for deterministic adoption/stop flows.
+func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName string, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+	outputDir := "."
+	if configPath != "" {
+		outputDir = filepath.Dir(configPath)
+		if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
+			return nil, err
+		}
 	}
 
 	imageName := r.GetDockerImageName(sourceType, version)
@@ -57,39 +61,56 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 	// Get host output directory for volume mounting
 	hostOutputDir := r.getHostOutputDir(outputDir)
 
+	// Environment variables propagation
+	var envs []string
+	for k, v := range utils.GetWorkerEnvVars() {
+		envs = append(envs, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	// Create container configuration
 	containerConfig := &container.Config{
 		Image: imageName,
 		Cmd:   cmdArgs,
+		Env:   envs,
 	}
 
 	// Create host configuration with volume mounts
+	var mounts []mount.Mount
+	if hostOutputDir != "" {
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeBind,
+			Source: hostOutputDir,
+			Target: ContainerMountDir,
+		})
+	}
 	hostConfig := &container.HostConfig{
-		Mounts: []mount.Mount{
-			{
-				Type:   mount.TypeBind,
-				Source: hostOutputDir,
-				Target: ContainerMountDir,
-			},
-		},
+		Mounts:     mounts,
 		AutoRemove: true, // Automatically remove container when it exits
 	}
 
-	logs.Info("Running Docker container with image: %s, command: %v", imageName, cmdArgs)
+	logs.Info("Running Docker container with image: %s, name: %s, command: %v", imageName, containerName, cmdArgs)
 
-	// Create container
-	resp, err := r.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
-	if err != nil {
+	// Create container with deterministic name (may already exist if adopted)
+	resp, err := r.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "already in use") {
 		return nil, fmt.Errorf("failed to create container: %v", err)
+	}
+	id := resp.ID
+	if id == "" {
+		// Container might already exist; use the name for subsequent ops
+		id = containerName
 	}
 
 	// Start container
-	if err := r.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		return nil, fmt.Errorf("failed to start container: %v", err)
+	if err := r.dockerClient.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
+		// If it's already running, continue
+		if !strings.Contains(strings.ToLower(err.Error()), "already started") {
+			return nil, fmt.Errorf("failed to start container: %v", err)
+		}
 	}
 
 	// Wait for container to finish
-	statusCh, errCh := r.dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	statusCh, errCh := r.dockerClient.ContainerWait(ctx, id, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
 		if err != nil {
@@ -98,13 +119,13 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, flag string, command 
 	case status := <-statusCh:
 		if status.StatusCode != 0 {
 			// Get container logs for error details
-			logs, _ := r.getContainerLogs(ctx, resp.ID)
-			return nil, fmt.Errorf("container exited with status %d: %s", status.StatusCode, logs)
+			logOutput, _ := r.getContainerLogs(ctx, id)
+			return nil, fmt.Errorf("container exited with status %d: %s", status.StatusCode, logOutput)
 		}
 	}
 
 	// Get container logs
-	output, err := r.getContainerLogs(ctx, resp.ID)
+	output, err := r.getContainerLogs(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container logs: %v", err)
 	}
@@ -127,18 +148,32 @@ func (r *Runner) getContainerLogs(ctx context.Context, containerID string) ([]by
 	}
 	defer reader.Close()
 
-	return io.ReadAll(reader)
+	var stdoutBuf, stderrBuf bytes.Buffer
+	if _, err := stdcopy.StdCopy(&stdoutBuf, &stderrBuf, reader); err != nil {
+		return nil, err
+	}
+	// Prefer stdout, but include stderr if present
+	if stderrBuf.Len() > 0 && stdoutBuf.Len() == 0 {
+		return stderrBuf.Bytes(), nil
+	}
+	if stderrBuf.Len() > 0 {
+		return append(stdoutBuf.Bytes(), []byte("\n"+stderrBuf.String())...), nil
+	}
+	return stdoutBuf.Bytes(), nil
 }
 
 // buildCommandArgs constructs the command arguments for the container
 func (r *Runner) buildCommandArgs(flag string, command Command, configPath string, additionalArgs ...string) []string {
-	cmdArgs := []string{
-		string(command),
-		fmt.Sprintf("--%s", flag),
-		fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)),
+	cmdArgs := []string{string(command)}
+
+	if strings.TrimSpace(flag) != "" {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", flag))
+	}
+	if strings.TrimSpace(configPath) != "" {
+		cmdArgs = append(cmdArgs, fmt.Sprintf("%s/%s", ContainerMountDir, filepath.Base(configPath)))
 	}
 
-	// Add encryption key as a flag if it exists
+	// Add encryption key as a flag if it exists (preserve original behavior)
 	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
 )
@@ -43,7 +43,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 }
 
 // FetchSpecActivity runs the spec command to get connector specifications
-func FetchSpecActivity(ctx context.Context, params *ActivityParams) (models.SpecOutput, error) {
+func FetchSpecActivity(ctx context.Context, params *ActivityParams) (dto.SpecOutput, error) {
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	return runner.FetchSpec(ctx, params.DestinationType, params.SourceType, params.Version, params.WorkflowID)
 }
@@ -110,7 +110,7 @@ func SyncCleanupActivity(ctx context.Context, params *SyncParams) error {
 	}
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	logger.Info("Persisting job state for workflowID %s", params.WorkflowID)
-	if err := runner.PersistJobStateFromFile(params.JobID, params.WorkflowID); err != nil {
+	if err := runner.PersistJobStateFromFile(ctx, params.JobID, params.WorkflowID); err != nil {
 		return temporal.NewNonRetryableApplicationError(err.Error(), "CleanupFailed", err)
 	}
 	logger.Info("Cleanup completed successfully")
