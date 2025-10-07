@@ -1,5 +1,10 @@
 import { test, expect } from "../fixtures/auth.fixture"
-// import { JOB_TEST_CONFIG } from "../setup/test-env"
+import {
+	TEST_CREDENTIALS,
+	POSTGRES_SOURCE_CONFIG,
+	ICEBERG_DESTINATION_CONFIG,
+	JOB_CONFIG,
+} from "../utils/test-data"
 
 test.describe("Job End-to-End User Journey", () => {
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({
@@ -13,42 +18,28 @@ test.describe("Job End-to-End User Journey", () => {
 		page,
 	}) => {
 		const timestamp = Date.now()
+
 		const sourceData = {
 			name: `e2e-source-${timestamp}`,
-			host: "host.docker.internal",
-			database: "postgres",
-			username: "postgres",
-			password: "secret1234",
-			useSSL: false,
-			port: "5433",
+			...POSTGRES_SOURCE_CONFIG,
 		}
 
 		const destinationData = {
 			name: `e2e-destination-${timestamp}`,
-			jdbcUrl: "jdbc:postgresql://host.docker.internal:5432/iceberg",
-			jdbcUsername: "iceberg",
-			jdbcPassword: "password",
-			jdbcDatabase: "olake_iceberg",
-			jdbcS3Endpoint: "http://host.docker.internal:9000",
-			jdbcS3AccessKey: "admin",
-			jdbcS3SecretKey: "password",
-			jdbcS3Region: "us-east-1",
-			jdbcS3Path: "s3a://warehouse",
-			jdbcUsePathStyleForS3: true,
-			jdbcUseSSLForS3: false,
+			...ICEBERG_DESTINATION_CONFIG,
 		}
 
 		const jobData = {
 			sourceName: sourceData.name,
 			destinationName: destinationData.name,
-			streamName: "postgres_test_table_olake",
-			jobName: `e2ejob${timestamp}`,
-			frequency: "Every Week",
+			streamName: JOB_CONFIG.streamName,
+			jobName: `postgres_iceberg_job`,
+			frequency: JOB_CONFIG.frequency,
 		}
 
 		// Step 1: Login
 		await loginPage.goto()
-		await loginPage.login("admin", "password")
+		await loginPage.login(TEST_CREDENTIALS.username, TEST_CREDENTIALS.password)
 		await loginPage.waitForLogin()
 		await expect(page).toHaveURL("/jobs")
 
@@ -57,7 +48,6 @@ test.describe("Job End-to-End User Journey", () => {
 		await sourcesPage.expectSourcesPageVisible()
 		await sourcesPage.clickCreateSource()
 		await createSourcePage.expectCreateSourcePageVisible()
-		// await createSourcePage.fillMongoDBForm(sourceData)
 		await createSourcePage.selectPostgresFillPostgresCreds(sourceData)
 		await createSourcePage.clickCreate()
 		await createSourcePage.expectTestConnectionModal()
@@ -71,7 +61,6 @@ test.describe("Job End-to-End User Journey", () => {
 		await destinationsPage.expectDestinationsPageVisible()
 		await destinationsPage.clickCreateDestination()
 		await createDestinationPage.expectCreateDestinationPageVisible()
-		// await createDestinationPage.fillAmazonS3Form(destinationData)
 		await createDestinationPage.fillIcebergJdbcForm(destinationData)
 		await createDestinationPage.clickCreate()
 		await createDestinationPage.expectTestConnectionModal()
@@ -88,7 +77,6 @@ test.describe("Job End-to-End User Journey", () => {
 		await createJobPage.fillJobCreationForm(jobData)
 		await createJobPage.goToJobsPage()
 		await jobsPage.expectJobsPageVisible()
-		// await jobsPage.expectJobExists(jobData.jobName)
 
 		// Step 5: Sync Job
 		await jobsPage.syncJob(jobData.jobName)
@@ -96,7 +84,6 @@ test.describe("Job End-to-End User Journey", () => {
 
 		// Step 6: View Logs and Configurations
 		await jobsPage.viewJobLogs()
-		// await jobsPage.expectLogsCellVisible()
 		await jobsPage.viewJobConfigurations()
 
 		// Step 7: Navigate back and verify

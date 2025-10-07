@@ -1,7 +1,7 @@
 import { Page } from "@playwright/test"
 import { LoginPage } from "../pages/LoginPage"
 import { TIMEOUTS } from "../../playwright.config"
-import { MONGODB_TEST_CONFIG, S3_TEST_CONFIG } from "../setup/test-env"
+import { MONGODB_TEST_CONFIG, S3_TEST_CONFIG } from "./test-data"
 
 export class TestHelpers {
 	static async loginAsAdmin(page: Page): Promise<void> {

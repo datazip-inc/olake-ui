@@ -33,7 +33,8 @@ const (
 		sleep 5 && 
 		docker-compose ps
 	`
-	icebergDB           = "postgres_postgres_public"
+
+	icebergDB           = "postgres_iceberg_job_postgres_public"
 	icebergCatalog      = "olake_iceberg"
 	currentTestTable    = "postgres_test_table_olake"
 	sparkConnectAddress = "sc://localhost:15002"
@@ -86,6 +87,11 @@ func DinDTestContainer(t *testing.T) error {
 	t.Log("Docker daemon is ready")
 
 	// Start docker-compose and install pre-requisites
+	t.Log("Patching docker-compose to build local images...")
+	if err := PatchDockerCompose(ctx, t, ctr); err != nil {
+		return err
+	}
+
 	t.Log("Starting docker-compose services...")
 	if code, out, err := ExecCommand(ctx, ctr, StartupComposeCmd); err != nil || code != 0 {
 		return fmt.Errorf("docker compose up failed (%d): %s\n%s", code, err, out)
@@ -130,6 +136,47 @@ func DinDTestContainer(t *testing.T) error {
 	// verify in iceberg
 	t.Logf("starting iceberg data verfication")
 	VerifyIcebergTest(ctx, t, ctr)
+	return nil
+}
+
+// PatchDockerCompose updates olake-ui and temporal-worker to build from local code
+// PatchDockerCompose updates olake-ui and temporal-worker to build from local code
+// and prints the patched docker-compose.yml
+func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
+	patchCmd := `
+    set -e
+    tmpfile=$(mktemp)
+    awk '
+    BEGIN{svc="";}
+    /^  olake-ui:/{svc="olake-ui"; print; next}
+    /^  temporal-worker:/{svc="temporal-worker"; print; next}
+    /^  [A-Za-z0-9_-]+:/{ if (svc!="") svc=""; print; next}
+    {
+      if (svc=="olake-ui" && $0 ~ /^    image:/) {
+        print "    build:";
+        print "      context: .";
+        print "      dockerfile: Dockerfile";
+        next
+      }
+      if (svc=="temporal-worker" && $0 ~ /^    image:/) {
+        print "    build:";
+        print "      context: .";
+        print "      dockerfile: worker.Dockerfile";
+        next
+      }
+      print
+    }
+    ' /mnt/docker-compose.yml > "$tmpfile" && mv "$tmpfile" /mnt/docker-compose.yml
+`
+
+	code, out, err := ExecCommand(ctx, ctr, patchCmd)
+	if err != nil || code != 0 {
+		t.Logf("docker-compose patch output: %s", string(out))
+		return fmt.Errorf("failed to patch docker-compose.yml (%d): %s\n%s", code, err, out)
+	}
+	t.Log("docker-compose.yml patched to build local images")
+	t.Logf("Patched docker-compose.yml:\n%s", string(out))
+
 	return nil
 }
 
