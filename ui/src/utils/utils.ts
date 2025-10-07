@@ -1,11 +1,12 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult } from "../types"
+import { CronParseResult, SelectedStream } from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATION_LABELS,
+	FILTER_REGEX,
 } from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
@@ -67,8 +68,9 @@ export const getStatusClass = (status: string) => {
 		case "completed":
 			return "text-[#52C41A] bg-[#F6FFED]"
 		case "failed":
-		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
+		case "canceled":
+			return "text-amber-700 bg-amber-50"
 		case "running":
 			return "text-primary-700 bg-primary-200"
 		case "scheduled":
@@ -107,8 +109,8 @@ export const getStatusLabel = (status: string) => {
 			return "Success"
 		case "failed":
 			return "Failed"
-		case "cancelled":
-			return "Cancelled"
+		case "canceled":
+			return "Canceled"
 		case "running":
 			return "Running"
 		case "scheduled":
@@ -506,4 +508,29 @@ export const handleSpecResponse = (
 		setSchema({})
 		setUiSchema({})
 	}
+}
+
+// Returns a copy of the selected streams map with all disabled streams removed
+export const getSelectedStreams = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): { [key: string]: SelectedStream[] } => {
+	return Object.fromEntries(
+		Object.entries(selectedStreams).map(([key, streams]) => [
+			key,
+			streams.filter(stream => !stream.disabled),
+		]),
+	)
+}
+
+export const validateFilter = (filter: string): boolean => {
+	if (!filter.trim()) return false
+	return FILTER_REGEX.test(filter.trim())
+}
+
+export const validateStreams = (selections: {
+	[key: string]: SelectedStream[]
+}): boolean => {
+	return !Object.values(selections).some(streams =>
+		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
+	)
 }

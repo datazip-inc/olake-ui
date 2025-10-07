@@ -7,6 +7,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	currentStep,
 	onStepClick,
 	isEditMode,
+	disabled,
 }) => {
 	const currentStepIndex = steps.indexOf(currentStep)
 	const isActive = currentStepIndex >= index
@@ -14,7 +15,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 	const isLastStep = index === steps.length - 1
 
 	const handleClick = () => {
-		if (isEditMode && onStepClick) {
+		if (isEditMode && !disabled && onStepClick) {
 			onStepClick(step)
 		}
 	}
@@ -27,9 +28,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 						isActive
 							? "border-primary outline outline-2 outline-primary"
 							: "border-gray-300 bg-white"
-					} ${isEditMode ? "cursor-pointer hover:bg-[#e8ebff]" : "cursor-not-allowed"}`}
+					} ${isEditMode && !disabled ? "cursor-pointer hover:bg-[#e8ebff]" : "cursor-not-allowed"}`}
 					onClick={handleClick}
-					disabled={!isEditMode}
+					disabled={!isEditMode || disabled}
 					type="button"
 				/>
 				{!isLastStep && (
@@ -44,9 +45,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({
 			<button
 				className={`mt-2 inline translate-x-[-40%] text-xs ${
 					isActive ? "text-primary" : "text-[#6b7280]"
-				} ${isEditMode ? "cursor-pointer hover:text-primary" : "cursor-not-allowed"}`}
+				} ${isEditMode && !disabled ? "cursor-pointer hover:text-primary" : "cursor-not-allowed"}`}
 				onClick={handleClick}
-				disabled={!isEditMode}
+				disabled={!isEditMode || disabled}
 				type="button"
 			>
 				{step === "config"
@@ -61,6 +62,7 @@ const StepProgress: React.FC<StepProgressProps> = ({
 	currentStep,
 	onStepClick,
 	isEditMode,
+	disabled,
 }) => {
 	return (
 		<div className="flex items-center">
@@ -72,6 +74,7 @@ const StepProgress: React.FC<StepProgressProps> = ({
 					currentStep={currentStep}
 					onStepClick={onStepClick}
 					isEditMode={isEditMode}
+					disabled={disabled}
 				/>
 			))}
 		</div>

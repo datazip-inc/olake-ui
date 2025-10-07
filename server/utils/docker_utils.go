@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"sort"
@@ -33,6 +34,35 @@ type DockerHubTagsResponse struct {
 }
 
 var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb"}
+
+// ignoredWorkerEnv is a map of environment variables that are ignored from the worker container.
+var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) lookup time for key existence.
+	"HOSTNAME":                nil,
+	"PATH":                    nil,
+	"PWD":                     nil,
+	"HOME":                    nil,
+	"SHLVL":                   nil,
+	"TERM":                    nil,
+	"PERSISTENT_DIR":          nil,
+	"CONTAINER_REGISTRY_BASE": nil,
+	"TEMPORAL_ADDRESS":        nil,
+	"OLAKE_SECRET_KEY":        nil,
+	"_":                       nil,
+}
+
+// GetWorkerEnvVars returns the environment variables from the worker container.
+func GetWorkerEnvVars() map[string]string {
+	vars := make(map[string]string)
+	for _, entry := range os.Environ() {
+		parts := strings.SplitN(entry, "=", 2)
+		key := parts[0]
+		if _, ignore := ignoredWorkerEnv[key]; ignore {
+			continue
+		}
+		vars[key] = parts[1]
+	}
+	return vars
+}
 
 // GetDriverImageTags returns image tags from ECR or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {

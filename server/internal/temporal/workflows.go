@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/datazip/olake-frontend/server/internal/models"
@@ -44,6 +45,7 @@ func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (models.Spe
 	// Execute the FetchSpecActivity directly
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute * 5,
+		HeartbeatTimeout:    time.Minute * 1,
 		RetryPolicy:         DefaultRetryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
@@ -76,11 +78,18 @@ func TestConnectionWorkflow(ctx workflow.Context, params *ActivityParams) (map[s
 }
 
 // RunSyncWorkflow is a workflow for running data synchronization
-func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, error) {
+func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interface{}, err error) {
+	logger := workflow.GetLogger(ctx)
 	options := workflow.ActivityOptions{
-		// Using large duration (e.g., 10 years)
 		StartToCloseTimeout: time.Hour * 24 * 30, // 30 days
-		RetryPolicy:         DefaultRetryPolicy,
+		RetryPolicy: &temporal.RetryPolicy{
+			InitialInterval:    time.Second * 15,
+			BackoffCoefficient: 2.0,
+			MaximumInterval:    time.Minute * 10,
+			MaximumAttempts:    0,
+		},
+		WaitForCancellation: true,
+		HeartbeatTimeout:    time.Minute * 1,
 	}
 	params := SyncParams{
 		JobID:      jobID,
@@ -88,8 +97,26 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (map[string]interface{}, e
 	}
 
 	ctx = workflow.WithActivityOptions(ctx, options)
-	var result map[string]interface{}
-	err := workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
+	// Defer cleanup for cancellation
+	defer func() {
+		logger.Info("executing workflow cleanup...")
+		newCtx, _ := workflow.NewDisconnectedContext(ctx)
+		cleanupOptions := workflow.ActivityOptions{
+			StartToCloseTimeout: time.Minute * 15,
+			RetryPolicy:         DefaultRetryPolicy,
+		}
+		newCtx = workflow.WithActivityOptions(newCtx, cleanupOptions)
+		perr := workflow.ExecuteActivity(newCtx, SyncCleanupActivity, params).Get(newCtx, nil)
+		if perr != nil {
+			perr = fmt.Errorf("cleanup error: %s", perr)
+			if err != nil {
+				// preserve original err, just append cleanup info
+				err = fmt.Errorf("%s; cleanup error: %s", err, perr)
+			}
+		}
+	}()
+
+	err = workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event
 		telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID)
