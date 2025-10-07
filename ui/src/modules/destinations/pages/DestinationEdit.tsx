@@ -240,6 +240,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		setIsLoading(true)
+		//cancel old requests when new one is made
 		return withAbortController(
 			signal =>
 				destinationService.getDestinationSpec(
@@ -588,7 +589,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							const catalogValue = e.formData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
 						}}
-						transformErrors={transformErrors}
+						transformErrors={transformErrors} 
 						onSubmit={handleSaveChanges}
 						uiSchema={uiSchema}
 						validator={validator}

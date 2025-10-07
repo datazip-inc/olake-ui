@@ -15,6 +15,7 @@ import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 
+// These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
@@ -37,6 +38,7 @@ export const getConnectorImage = (connector: string) => {
 	}
 }
 
+// These are used to show documentation path for the connector
 export const getConnectorDocumentationPath = (
 	connector: string,
 	catalog: string | null,
@@ -189,6 +191,7 @@ export const getFrequencyValue = (frequency: string) => {
 	}
 }
 
+// removes the saved job from local storage when user deletes the job or completes entire flow and create
 export const removeSavedJobFromLocalStorage = (jobId: string) => {
 	const savedJobs = localStorage.getItem("savedJobs")
 	if (savedJobs) {
@@ -432,6 +435,7 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 
 export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
 
+// used to cancel old requests when new one is made which helps in removing the old data
 export const withAbortController = <T>(
 	fn: AbortableFunction<T>,
 	onSuccess: (data: T) => void,
@@ -473,11 +477,13 @@ export const withAbortController = <T>(
 	}
 }
 
+// for small screen items shown will be 6 else 8
 export const getResponsivePageSize = () => {
 	const screenHeight = window.innerHeight
 	return screenHeight >= 900 ? 8 : 6
 }
 
+// validate alphanumeric underscore
 export const validateAlphanumericUnderscore = (
 	value: string,
 ): { validValue: string; errorMessage: string } => {
@@ -522,6 +528,7 @@ export const getSelectedStreams = (selectedStreams: {
 	)
 }
 
+// validates filter expression
 export const validateFilter = (filter: string): boolean => {
 	if (!filter.trim()) return false
 	return FILTER_REGEX.test(filter.trim())

@@ -40,7 +40,7 @@ const Jobs: React.FC = () => {
 
 	const handleSyncJob = async (id: string) => {
 		try {
-			navigate(`/jobs/${id}/history`)
+			navigate(`/jobs/${id}/history`) // navigate to job history so that user can see the tasks running
 			await jobService.syncJob(id)
 			message.success("Job sync started successfully")
 			await fetchJobs()
@@ -89,6 +89,7 @@ const Jobs: React.FC = () => {
 		await fetchJobs()
 	}
 
+	// cancels the running job
 	const handleCancelJob = async (id: string) => {
 		try {
 			await jobService.cancelJob(id)

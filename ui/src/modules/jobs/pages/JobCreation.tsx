@@ -42,6 +42,7 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
+	// state to toggle documentation panel
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
@@ -56,6 +57,8 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
+
+	//state to hold catalog value to open documentation panel
 	const [destinationCatalogType, setDestinationCatalogType] = useState<
 		string | null
 	>(null)
@@ -76,9 +79,12 @@ const JobCreation: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState(
 		initialData.cronExpression || "* * * * *",
 	)
+
+	//once the job name is filled we will set this to true so the job name will be disabled
 	const [jobNameFilled, setJobNameFilled] = useState(
 		initialData.isJobNameFilled || false,
 	)
+	//when streams are loading we will disable back button
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 
@@ -318,6 +324,7 @@ const JobCreation: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			// when we go back from streams we need to show configured streams will be lost modal
 			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
