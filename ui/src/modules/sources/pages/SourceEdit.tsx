@@ -18,7 +18,7 @@ import {
 	ArrowLeftIcon,
 	PencilSimpleIcon,
 	InfoIcon,
-  ArrowSquareOutIcon,
+	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
@@ -566,7 +566,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													OLake Version:
 													<span className="text-red-500">*</span>
 													<Tooltip title="Choose the OLake version for the source">
-														<Info
+														<InfoIcon
 															size={16}
 															className="cursor-help text-slate-900"
 														/>
@@ -577,7 +577,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														rel="noopener noreferrer"
 														className="flex items-center text-primary hover:text-primary/80"
 													>
-														<ArrowSquareOut className="size-4" />
+														<ArrowSquareOutIcon className="size-4" />
 													</a>
 												</label>
 												{loadingVersions ? (

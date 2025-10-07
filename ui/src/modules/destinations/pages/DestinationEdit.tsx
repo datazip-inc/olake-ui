@@ -14,7 +14,7 @@ import {
 import type { ColumnsType } from "antd/es/table"
 import {
 	ArrowLeftIcon,
-  ArrowSquareOutIcon,
+	ArrowSquareOutIcon,
 	InfoIcon,
 	NotebookIcon,
 	PencilSimpleIcon,
@@ -506,7 +506,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 								OLake Version:
 								<Tooltip title="Choose the OLake version for the destination">
-									<Info
+									<InfoIcon
 										size={16}
 										className="cursor-help text-slate-900"
 									/>
@@ -517,7 +517,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									rel="noopener noreferrer"
 									className="flex items-center text-primary hover:text-primary/80"
 								>
-									<ArrowSquareOut className="size-4" />
+									<ArrowSquareOutIcon className="size-4" />
 								</a>
 							</label>
 							{loadingVersions ? (
