@@ -515,6 +515,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												</label>
 												<div className="flex items-center">
 													<Select
+														data-testid="source-connector-select"
 														value={connector}
 														onChange={value => {
 															setConnector(value)

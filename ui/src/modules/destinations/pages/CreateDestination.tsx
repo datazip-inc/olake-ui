@@ -472,6 +472,7 @@ const CreateDestination = forwardRef<
 						<div className="flex-start flex w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="w-full"
@@ -527,6 +528,7 @@ const CreateDestination = forwardRef<
 						<div className="w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="h-8 w-full"

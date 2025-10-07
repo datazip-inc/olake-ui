@@ -476,6 +476,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							</label>
 							<div className="flex items-center">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={updateConnector}
 									className="h-8 w-full"

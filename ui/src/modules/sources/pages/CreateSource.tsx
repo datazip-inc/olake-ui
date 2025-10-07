@@ -385,6 +385,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						value={connector}
 						onChange={handleConnectorChange}
+						data-testid="source-connector-select"
 						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
 						options={connectorOptions}
 						{...(setupType !== SETUP_TYPES.NEW

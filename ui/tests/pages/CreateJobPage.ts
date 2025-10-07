@@ -39,8 +39,10 @@ export class CreateJobPage {
 		this.frequencyDropdown = page.getByText("Every Minute")
 		this.pageTitle = page.locator("text=Create Job")
 		this.jobsArrowButton = page.getByRole("button", { name: "Jobs →" })
-		this.sourceConnectorSelect = page.locator(".ant-select").first()
-		this.destinationConnectorSelect = page.locator(".ant-select").first()
+		this.sourceConnectorSelect = page.getByTestId("source-connector-select")
+		this.destinationConnectorSelect = page.getByTestId(
+			"destination-connector-select",
+		)
 	}
 
 	async goto() {
