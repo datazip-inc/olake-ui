@@ -549,7 +549,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									validator={validator}
 									omitExtraData
 									liveOmit
-									showErrorList={false} // adding this will not show error list 
+									showErrorList={false} // adding this will not show error list
 									onSubmit={handleCreate}
 								/>
 							</div>
