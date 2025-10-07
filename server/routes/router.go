@@ -84,5 +84,7 @@ func Init() {
 	web.Router("/api/v1/project/:projectid/jobs/:id/sync", &handlers.JobHandler{}, "post:SyncJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/activate", &handlers.JobHandler{}, "post:ActivateJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", &handlers.JobHandler{}, "get:GetJobTasks")
+	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", &handlers.JobHandler{}, "get:CancelJobRun")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", &handlers.JobHandler{}, "post:GetTaskLogs")
+	web.Router("/api/v1/project/:projectid/jobs/check-unique", &handlers.JobHandler{}, "post:CheckUniqueJobName")
 }

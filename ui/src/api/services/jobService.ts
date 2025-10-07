@@ -53,6 +53,17 @@ export const jobService = {
 		}
 	},
 
+	cancelJob: async (id: string): Promise<void> => {
+		try {
+			await api.get<APIResponse<any>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/cancel`,
+			)
+		} catch (error) {
+			console.error("Error canceling job:", error)
+			throw error
+		}
+	},
+
 	syncJob: async (id: string): Promise<any> => {
 		try {
 			const response = await api.post<APIResponse<any>>(
@@ -110,6 +121,19 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error toggling job activation:", error)
+			throw error
+		}
+	},
+
+	checkJobNameUnique: async (jobName: string): Promise<{ unique: boolean }> => {
+		try {
+			const response = await api.post<APIResponse<{ unique: boolean }>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ job_name: jobName },
+			)
+			return response.data.data
+		} catch (error) {
+			console.error("Error checking job name uniqueness:", error)
 			throw error
 		}
 	},

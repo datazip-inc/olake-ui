@@ -6,15 +6,23 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/docker"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/datazip/olake-frontend/server/internal/docker"
+	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-frontend/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
+	"golang.org/x/mod/semver"
 )
 
 // TaskQueue is the default task queue for Olake Docker workflows
-const TaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
+const (
+	DockerTaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
+	K8sTaskQueue    = "OLAKE_K8S_TASK_QUEUE"
+)
+
+var TaskQueue string
 
 var (
 	TemporalAddress string
@@ -34,6 +42,14 @@ const (
 
 func init() {
 	TemporalAddress = web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+
+	// Choose task queue based on deployment mode
+	deploymentMode := web.AppConfig.DefaultString("DEPLOYMENT_MODE", "docker")
+	if deploymentMode == "kubernetes" {
+		TaskQueue = K8sTaskQueue
+	} else {
+		TaskQueue = DockerTaskQueue
+	}
 }
 
 // Client provides methods to interact with Temporal
@@ -66,7 +82,7 @@ func (c *Client) GetClient() client.Client {
 }
 
 // GetCatalog runs a workflow to discover catalog data
-func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig string) (map[string]interface{}, error) {
+func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -74,6 +90,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 		WorkflowID:    fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix()),
 		Command:       docker.Discover,
 		StreamsConfig: streamsConfig,
+		JobName:       jobName,
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
@@ -89,6 +106,38 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 	var result map[string]interface{}
 	if err := run.Get(ctx, &result); err != nil {
 		return nil, fmt.Errorf("workflow execution failed: %v", err)
+	}
+
+	return result, nil
+}
+
+// FetchSpec runs a workflow to fetch connector specifications
+func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (models.SpecOutput, error) {
+	// spec version >= DefaultSpecVersion is required
+	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
+		version = constants.DefaultSpecVersion
+	}
+
+	params := &ActivityParams{
+		SourceType:      sourceType,
+		Version:         version,
+		WorkflowID:      fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix()),
+		DestinationType: destinationType,
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        params.WorkflowID,
+		TaskQueue: TaskQueue,
+	}
+
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
+	if err != nil {
+		return models.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
+	}
+
+	var result models.SpecOutput
+	if err := run.Get(ctx, &result); err != nil {
+		return models.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
 	}
 
 	return result, nil
@@ -238,6 +287,11 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 		"message": "Schedule updated successfully",
 		"cron":    cronSpec,
 	}, nil
+}
+
+// cancelWorkflow cancels a workflow execution
+func (c *Client) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
+	return c.temporalClient.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // ListWorkflow lists workflow executions based on the provided query

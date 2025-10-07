@@ -1,17 +1,28 @@
-import { useEffect, useState, useMemo } from "react"
-import { Input, Empty, Spin } from "antd"
-import FilterButton from "../components/FilterButton"
-import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+import React, { useEffect, useState, useMemo, useRef } from "react"
+import { Input, Empty, Spin, Tooltip } from "antd"
+
+import { sourceService } from "../../../api"
+import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
 	SchemaConfigurationProps,
+	SelectedStream,
 	StreamData,
+	SyncMode,
 } from "../../../types"
-import StreamConfiguration from "./streams/StreamConfiguration"
+import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
-import { sourceService } from "../../../api"
-import StreamsDefault from "../../../assets/StreamsDefault.svg"
-import React from "react"
+import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+import StreamConfiguration from "./streams/StreamConfiguration"
+import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
+import {
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATATION_DATABASE_TOOLTIP_TEXT,
+} from "../../../utils/constants"
+import { extractNamespaceFromDestination } from "../../../utils/destination-database"
+import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+
+const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
@@ -25,7 +36,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	initialStreamsData,
 	fromJobEditFlow = false,
 	jobId = -1,
+	destinationType,
+	jobName,
+	onLoadingChange,
 }) => {
+	const prevSourceConfig = useRef(sourceConfig)
+	const { setShowDestinationDatabaseModal } = useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -33,23 +49,69 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [activeStreamData, setActiveStreamData] = useState<StreamData | null>(
 		null,
 	)
+
 	const [apiResponse, setApiResponse] = useState<{
 		selected_streams: {
-			[namespace: string]: {
-				stream_name: string
-				partition_regex: string
-				normalization: boolean
-				filter?: string
-			}[]
+			[namespace: string]: SelectedStream[]
 		}
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
 	const [loading, setLoading] = useState(!initialStreamsData)
+	// Store initial streams data for reference
+	const [initialStreamsState, setInitialStreamsState] =
+		useState(initialStreamsData)
 
 	// Use ref to track if we've initialized to prevent double updates
-	const initialized = React.useRef(!!initialStreamsData)
+	const initialized = useRef(false)
+
+	const isStreamEnabled = (streamData: StreamData | null) => {
+		if (streamData === null) return false
+
+		const stream = apiResponse?.selected_streams[
+			streamData.stream.namespace || ""
+		]?.find(s => s.stream_name === streamData.stream.name)
+
+		if (!stream) return false
+
+		return !stream?.disabled
+	}
+
+	// Check if first stream has destination_database and compute values
+	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
+		if (!apiResponse?.streams || apiResponse.streams.length === 0) {
+			return { destinationDatabase: null, destinationDatabaseForModal: null }
+		}
+
+		const firstStream = apiResponse.streams[0]
+		const destDb = firstStream.stream?.destination_database
+
+		if (!destDb) {
+			return { destinationDatabase: null, destinationDatabaseForModal: null }
+		}
+
+		// If it's in "a:b" format
+		if (destDb.includes(":")) {
+			const parts = destDb.split(":")
+			return {
+				destinationDatabase: `${parts[0]}_${"${source_namespace}"}`, // For display
+				destinationDatabaseForModal: parts[0], // For modal (just the prefix)
+			}
+		}
+
+		// Otherwise use full value for both
+		return {
+			destinationDatabase: destDb,
+			destinationDatabaseForModal: destDb,
+		}
+	}, [apiResponse?.streams])
 
 	useEffect(() => {
+		// Reset initialized ref when source config changes
+		if (sourceConfig !== prevSourceConfig.current) {
+			initialized.current = false
+			prevSourceConfig.current = sourceConfig
+		}
+
 		if (
 			initialStreamsData &&
 			initialStreamsData.selected_streams &&
@@ -58,13 +120,20 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
 			setLoading(false)
+			onLoadingChange?.(false)
 			initialized.current = true
+
+			// Select first stream if no stream is currently active
+			if (!activeStreamData && initialStreamsData.streams.length > 0) {
+				setActiveStreamData(initialStreamsData.streams[0])
+			}
 			return
 		}
 
 		const fetchSourceStreams = async () => {
 			if (initialized.current) return
 
+			onLoadingChange?.(true)
 			setLoading(true)
 			try {
 				const response = await sourceService.getSourceStreams(
@@ -72,6 +141,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConnector,
 					sourceVersion,
 					sourceConfig,
+					jobName,
 					fromJobEditFlow ? jobId : -1,
 				)
 
@@ -114,28 +184,37 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 				setApiResponse(processedResponseData)
 				setSelectedStreams(processedResponseData)
+				setInitialStreamsState(processedResponseData)
+
+				// Always select first stream if no stream is currently active
+				if (processedResponseData.streams.length > 0 && !activeStreamData) {
+					setActiveStreamData(processedResponseData.streams[0])
+				}
+
 				initialized.current = true
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
 			} finally {
 				setLoading(false)
+				onLoadingChange?.(false)
 			}
 		}
 
-		fetchSourceStreams()
+		if (!initialized.current && sourceConfig && sourceConnector) {
+			fetchSourceStreams()
+		}
 	}, [
 		sourceName,
 		sourceConnector,
 		sourceVersion,
 		sourceConfig,
 		initialStreamsData,
-		setSelectedStreams,
 	])
 
 	const handleStreamSyncModeChange = (
 		streamName: string,
 		namespace: string,
-		newSyncMode: "full_refresh" | "cdc" | "incremental",
+		newSyncMode: SyncMode,
 	) => {
 		setApiResponse(prev => {
 			if (!prev) return prev
@@ -258,16 +337,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				selected_streams: { ...prev.selected_streams },
 			}
 			let changed = false
+
+			const existingStream = updated.selected_streams[namespace]?.find(
+				s => s.stream_name === streamName,
+			)
 			if (checked) {
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
-					changed = true
 				}
-				if (
-					!updated.selected_streams[namespace].some(
-						s => s.stream_name === streamName,
-					)
-				) {
+				if (!existingStream) {
 					updated.selected_streams[namespace] = [
 						...updated.selected_streams[namespace],
 						{
@@ -275,26 +353,30 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							partition_regex: "",
 							normalization: false,
 							filter: "",
+							disabled: false,
 						},
 					]
 					changed = true
+				} else if (existingStream.disabled) {
+					updated.selected_streams[namespace] = updated.selected_streams[
+						namespace
+					].map(s =>
+						s.stream_name === streamName ? { ...s, disabled: false } : s,
+					)
+					changed = true
 				}
 			} else {
-				if (updated.selected_streams[namespace]) {
-					const filtered = updated.selected_streams[namespace].filter(
-						s => s.stream_name !== streamName,
+				if (existingStream && !existingStream.disabled) {
+					updated.selected_streams[namespace] = updated.selected_streams[
+						namespace
+					].map(s =>
+						s.stream_name === streamName ? { ...s, disabled: true } : s,
 					)
-
-					if (filtered.length !== updated.selected_streams[namespace].length) {
-						updated.selected_streams[namespace] = filtered
-						changed = true
-					}
+					changed = true
 				}
 			}
-
 			return changed ? updated : prev
 		})
-
 		setTimeout(() => {
 			setApiResponse(current => {
 				if (!current) return current
@@ -324,9 +406,19 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			const updatedSelectedStreams = {
 				...prev.selected_streams,
-				[namespace]: prev.selected_streams[namespace].map(s =>
-					s.stream_name === streamName ? { ...s, filter: filterValue } : s,
-				),
+				[namespace]: prev.selected_streams[namespace].map(s => {
+					if (s.stream_name === streamName) {
+						if (filterValue === "") {
+							// Remove the 'filter' if filterValue is empty
+							const updatedStream = { ...s }
+							delete updatedStream.filter
+							return updatedStream
+						} else {
+							return { ...s, filter: filterValue }
+						}
+					}
+					return s
+				}),
 			}
 
 			const updated = {
@@ -353,42 +445,20 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			return tempFilteredStreams
 		}
 
+		const showSelected = selectedFilters.includes("Selected")
+		const showNotSelected = selectedFilters.includes("Not Selected")
+
 		return tempFilteredStreams.filter(stream => {
-			const cdcIsActive = selectedFilters.includes("CDC")
-			const frIsActive = selectedFilters.includes("Full refresh")
-			const hasSelectedFilter = selectedFilters.includes("Selected")
-			const hasNotSelectedFilter = selectedFilters.includes("Not selected")
-
-			// Sync mode filtering
-			let passesSyncModeFilter = true
-			if (cdcIsActive && frIsActive) {
-				passesSyncModeFilter =
-					stream.stream.sync_mode === "cdc" ||
-					stream.stream.sync_mode === "full_refresh"
-			} else if (cdcIsActive) {
-				passesSyncModeFilter = stream.stream.sync_mode === "cdc"
-			} else if (frIsActive) {
-				passesSyncModeFilter = stream.stream.sync_mode === "full_refresh"
-			}
-
-			if (!passesSyncModeFilter) {
-				return false
-			}
-
-			// Selection status filtering
-			const isSelected = apiResponse.selected_streams[
-				stream.stream.namespace || ""
-			]?.some(s => s.stream_name === stream.stream.name)
-
-			if (hasSelectedFilter && hasNotSelectedFilter) {
-				// No filtering based on selection status if both are selected
-			} else if (hasSelectedFilter) {
-				if (!isSelected) return false
-			} else if (hasNotSelectedFilter) {
-				if (isSelected) return false
-			}
-
-			return true
+			const ns = stream.stream.namespace || ""
+			const matchingSelectedStream = apiResponse.selected_streams[ns]?.find(
+				s => s.stream_name === stream.stream.name,
+			)
+			const isSelected =
+				matchingSelectedStream && !matchingSelectedStream?.disabled
+			if (showSelected && showNotSelected) return true
+			if (showSelected) return isSelected
+			if (showNotSelected) return !isSelected
+			return false
 		})
 	}, [apiResponse, searchText, selectedFilters])
 
@@ -402,19 +472,101 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		return grouped
 	}, [filteredStreams])
 
-	const filters = [
-		"All tables",
-		"CDC",
-		"Full refresh",
-		"Selected",
-		"Not selected",
-	]
-
 	useEffect(() => {
 		if (selectedFilters.length === 0) {
 			setSelectedFilters(["All tables"])
 		}
 	}, [selectedFilters])
+
+	// Handler for destination database modal save
+	const handleDestinationDatabaseSave = (
+		format: string,
+		databaseName: string,
+	) => {
+		setApiResponse(prev => {
+			if (!prev || prev.streams.length === 0) return prev
+
+			// Check first stream to determine format for all streams
+			const firstStreamDestDb = prev.streams[0].stream.destination_database
+			const hasColonFormat =
+				firstStreamDestDb && firstStreamDestDb.includes(":")
+
+			const updatedStreams = prev.streams.map(stream => {
+				const currentDestDb = stream.stream.destination_database
+				const currentNamespace = stream.stream.namespace
+
+				if (format === "dynamic") {
+					// Dynamic format: preserve the suffix part
+					if (hasColonFormat && currentDestDb) {
+						// If format is "a:b", change to "c:b" (databaseName:suffix)
+						const parts = currentDestDb.split(":")
+						return {
+							...stream,
+							stream: {
+								...stream.stream,
+								destination_database: `${databaseName}:${parts[1]}`,
+							},
+						}
+					} else {
+						// If no ":", set to databaseName only
+						// Find the stream in initial streams data to get its original namespace
+						const initialStream = initialStreamsState?.streams.find(
+							s =>
+								s.stream.name === stream.stream.name &&
+								s.stream.namespace === stream.stream.namespace,
+						)
+
+						// Get namespace from initial destination_database if it exists
+						const namespace = extractNamespaceFromDestination(
+							initialStream?.stream.destination_database,
+							currentNamespace || "",
+						)
+
+						return {
+							...stream,
+							stream: {
+								...stream.stream,
+								destination_database: `${databaseName}:${namespace}`,
+							},
+						}
+					}
+				} else {
+					// Custom format: set all to databaseName
+					return {
+						...stream,
+						stream: {
+							...stream.stream,
+							destination_database: databaseName,
+						},
+					}
+				}
+			})
+
+			const updated = {
+				...prev,
+				streams: updatedStreams,
+			}
+
+			// Update parent component
+			setSelectedStreams(updated)
+
+			// Update activeStreamData with the updated stream data
+			setActiveStreamData(currentActiveStream => {
+				if (!currentActiveStream) return currentActiveStream
+
+				// Find the updated version of the current active stream from updatedStreams
+				const updatedActiveStream = updatedStreams.find(
+					stream =>
+						stream.stream.name === currentActiveStream.stream.name &&
+						stream.stream.namespace === currentActiveStream.stream.namespace,
+				)
+
+				return updatedActiveStream || currentActiveStream
+			})
+
+			return updated
+		})
+	}
 
 	const { Search } = Input
 
@@ -427,25 +579,84 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 mr-4 flex flex-wrap justify-start gap-4">
-				<div className="w-full lg:w-[55%] xl:w-[40%]">
+			<div className="mb-4 mr-4 flex justify-between gap-4">
+				<div className="flex w-2/6 items-center">
 					<Search
-						placeholder="Search streams"
+						placeholder="Search Streams"
 						allowClear
 						className="custom-search-input w-full"
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
 				</div>
-				<div className="flex flex-wrap gap-2">
-					{filters.map(filter => (
-						<FilterButton
-							key={filter}
-							filter={filter}
-							selectedFilters={selectedFilters}
-							setSelectedFilters={setSelectedFilters}
-						/>
-					))}
+				<div className="flex w-4/5 justify-between gap-2">
+					{destinationDatabase && (
+						<div className="flex w-1/2 items-center justify-start gap-1">
+							<div
+								className={`group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 ${
+									fromJobEditFlow
+										? "cursor-not-allowed bg-gray-50"
+										: "hover:border-blue-200 hover:shadow-md"
+								}`}
+							>
+								<div className="absolute -right-2 -top-2">
+									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
+										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
+											<Info className="size-4 cursor-help text-primary" />
+										</div>
+									</Tooltip>
+								</div>
+
+								<div className="flex items-center">
+									<div className="font-medium text-gray-700">
+										{destinationType === DESTINATION_INTERNAL_TYPES.S3
+											? "S3 Folder"
+											: "Iceberg DB"}
+									</div>
+
+									<span className="px-1">:</span>
+
+									<div className="text-gray-600">{destinationDatabase}</div>
+
+									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
+										{!fromJobEditFlow && (
+											<Tooltip
+												title="Edit"
+												placement="top"
+											>
+												<PencilSimple
+													className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
+													onClick={() => setShowDestinationDatabaseModal(true)}
+												/>
+											</Tooltip>
+										)}
+										<Tooltip title="View Documentation">
+											<a
+												href="https://olake.io/docs/understanding/terminologies/olake#7-tablecolumn-normalization--destination-database-creation"
+												target="_blank"
+												rel="noopener noreferrer"
+												className="flex items-center text-gray-600 transition-colors hover:text-primary"
+											>
+												<ArrowSquareOut className="size-4" />
+											</a>
+										</Tooltip>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+					<div
+						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+					>
+						{STREAM_FILTERS.map(filter => (
+							<FilterButton
+								key={filter}
+								filter={filter}
+								selectedFilters={selectedFilters}
+								setSelectedFilters={setSelectedFilters}
+							/>
+						))}
+					</div>
 				</div>
 			</div>
 
@@ -483,7 +694,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-[#ffffff] p-4 transition-all duration-150 ease-linear`}
+					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
@@ -495,16 +706,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onSyncModeChange={(
 								streamName: string,
 								namespace: string,
-								syncMode: "full_refresh" | "cdc" | "incremental",
+								syncMode: SyncMode,
 							) => {
 								handleStreamSyncModeChange(streamName, namespace, syncMode)
 							}}
 							useDirectForms={useDirectForms}
-							isSelected={
-								!!apiResponse?.selected_streams[
-									activeStreamData.stream.namespace || ""
-								]?.some(s => s.stream_name === activeStreamData.stream.name)
-							}
+							isSelected={isStreamEnabled(activeStreamData)}
 							initialNormalization={
 								apiResponse?.selected_streams[
 									activeStreamData.stream.namespace || ""
@@ -528,25 +735,21 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							onFullLoadFilterChange={handleFullLoadFilterChange}
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
+							destinationType={destinationType}
 						/>
-					) : (
-						!loading && (
-							<div className="flex flex-col">
-								<img
-									src={StreamsDefault}
-									alt="StreamsDefault"
-									className="size-10"
-								/>
-
-								<div className="mt-2 font-semibold">No stream selected</div>
-								<div className="text-sm text-[#787878]">
-									Please select a stream to configure
-								</div>
-							</div>
-						)
-					)}
+					) : null}
 				</div>
 			</div>
+
+			{/* Destination Database Modal */}
+			<DestinationDatabaseModal
+				destinationType={destinationType || ""}
+				destinationDatabase={destinationDatabaseForModal}
+				allStreams={apiResponse}
+				onSave={handleDestinationDatabaseSave}
+				originalDatabase={destinationDatabase || ""}
+				initialStreams={initialStreamsState || null}
+			/>
 		</div>
 	)
 }

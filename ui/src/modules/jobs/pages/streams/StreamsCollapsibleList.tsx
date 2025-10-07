@@ -1,8 +1,9 @@
-import { Checkbox, Empty } from "antd"
 import { useEffect, useState } from "react"
-import StreamPanel from "./StreamPanel"
-import { GroupedStreamsCollapsibleListProps } from "../../../../types"
 import { CaretDown, CaretRight } from "@phosphor-icons/react"
+import { Checkbox, Empty } from "antd"
+
+import { GroupedStreamsCollapsibleListProps } from "../../../../types"
+import StreamPanel from "./StreamPanel"
 
 const StreamsCollapsibleList = ({
 	groupedStreams,
@@ -10,7 +11,6 @@ const StreamsCollapsibleList = ({
 	setActiveStreamData,
 	activeStreamData,
 	onStreamSelect,
-	setSelectedStreams,
 }: GroupedStreamsCollapsibleListProps) => {
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
@@ -64,18 +64,20 @@ const StreamsCollapsibleList = ({
 
 				if ("selected_streams" in selectedStreams) {
 					// CombinedStreamsData format
-					isStreamSelected = !!(selectedStreams as any).selected_streams[
+					const selectedStream = (selectedStreams as any).selected_streams[
 						ns
-					]?.some(
-						(selected: { stream_name: string }) =>
+					]?.find(
+						(selected: { stream_name: string; disabled?: boolean }) =>
 							selected.stream_name === streamName,
 					)
+					isStreamSelected = !!(selectedStream && !selectedStream.disabled)
 				} else {
 					// Regular mapping format
-					isStreamSelected = !!(selectedStreams as any)[ns]?.some(
-						(selected: { stream_name: string }) =>
+					const selectedStream = (selectedStreams as any)[ns]?.find(
+						(selected: { stream_name: string; disabled?: boolean }) =>
 							selected.stream_name === streamName,
 					)
+					isStreamSelected = !!(selectedStream && !selectedStream.disabled)
 				}
 
 				newCheckedStatus.streams[ns][streamName] = isStreamSelected
@@ -134,72 +136,12 @@ const StreamsCollapsibleList = ({
 			streamsInNamespace.forEach(streamData => {
 				onStreamSelect(streamData.stream.name, false, ns)
 			})
-
-			// Then manually call setSelectedStreams as a fallback approach
-			setTimeout(() => {
-				if (
-					typeof selectedStreams === "object" &&
-					selectedStreams !== null &&
-					"selected_streams" in selectedStreams &&
-					selectedStreams.selected_streams // Ensure selected_streams itself is not null/undefined
-				) {
-					// selectedStreams is of type { selected_streams: { [key: string]: StreamDetail[] }, streams: StreamData[] }
-					const updatedState = {
-						...selectedStreams,
-						selected_streams: {
-							...selectedStreams.selected_streams,
-							[ns]: [],
-						},
-					}
-					setSelectedStreams(updatedState)
-				}
-			}, 100)
 		} else {
 			const streamsInNamespace = groupedStreams[ns] || []
 
 			streamsInNamespace.forEach(streamData => {
 				onStreamSelect(streamData.stream.name, true, ns)
 			})
-
-			setTimeout(() => {
-				const streamNames = streamsInNamespace.map(s => s.stream.name)
-				const newStreamEntries = streamNames.map(stream_name => ({
-					stream_name,
-					partition_regex: "",
-					normalization: false,
-				}))
-
-				if (selectedStreams) {
-					if (
-						typeof selectedStreams === "object" &&
-						selectedStreams !== null &&
-						"selected_streams" in selectedStreams &&
-						selectedStreams.selected_streams
-					) {
-						// selectedStreams is of type { selected_streams: { [key: string]: StreamDetail[] }, streams: StreamData[] }
-						const updatedState = {
-							...selectedStreams,
-							selected_streams: {
-								...selectedStreams.selected_streams,
-								[ns]: newStreamEntries,
-							},
-						}
-						setSelectedStreams(updatedState)
-					} else if (
-						typeof selectedStreams === "object" &&
-						selectedStreams !== null &&
-						!Array.isArray(selectedStreams) &&
-						!("selected_streams" in selectedStreams)
-					) {
-						// selectedStreams is of type { [key: string]: StreamDetail[] }
-						const updatedState = {
-							...(selectedStreams as { [key: string]: any }), // Cast to allow spread for generic object map
-							[ns]: newStreamEntries,
-						}
-						setSelectedStreams(updatedState)
-					}
-				}
-			}, 100)
 		}
 	}
 
@@ -301,7 +243,7 @@ const StreamsCollapsibleList = ({
 								className="mb-2 border border-solid border-[#e5e7eb]"
 							>
 								<div
-									className="flex cursor-pointer items-center border-b border-solid border-[#e5e7eb] bg-[#f5f5f5] p-3"
+									className="flex cursor-pointer items-center border-b border-solid border-gray-200 bg-background-primary p-3"
 									onClick={() => handleToggleNamespace(ns)}
 								>
 									<Checkbox

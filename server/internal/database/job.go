@@ -261,4 +261,15 @@ func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
 		return nil, err
 	}
 	return jobs, nil
+
+// IsJobNameUnique checks if a job name is unique within a project in the jobs table.
+func (r *JobORM) IsJobNameUnique(projectID, jobName string) (bool, error) {
+	count, err := r.ormer.QueryTable(r.TableName).
+		Filter("name", jobName).
+		Filter("project_id", projectID).
+		Count()
+	if err != nil {
+		return false, fmt.Errorf("failed to check job name uniqueness: %w", err)
+	}
+	return count == 0, nil
 }

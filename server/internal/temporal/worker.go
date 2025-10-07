@@ -18,11 +18,14 @@ func NewWorker(c *Client) *Worker {
 	w.RegisterWorkflow(DiscoverCatalogWorkflow)
 	w.RegisterWorkflow(TestConnectionWorkflow)
 	w.RegisterWorkflow(RunSyncWorkflow)
+	w.RegisterWorkflow(FetchSpecWorkflow)
 
 	// Register activities
 	w.RegisterActivity(DiscoverCatalogActivity)
 	w.RegisterActivity(TestConnectionActivity)
 	w.RegisterActivity(SyncActivity)
+	w.RegisterActivity(FetchSpecActivity)
+	w.RegisterActivity(SyncCleanupActivity)
 
 	return &Worker{
 		worker: w,

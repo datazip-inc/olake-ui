@@ -55,6 +55,8 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
+	telemetry.TrackUserLogin(context.Background(), user)
+
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,
 	})

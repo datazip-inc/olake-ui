@@ -1,51 +1,64 @@
+import { message } from "antd"
+import parser from "cron-parser"
+
+import { CronParseResult, SelectedStream } from "../types"
+import {
+	DAYS_MAP,
+	DESTINATION_INTERNAL_TYPES,
+	DESTINATION_LABELS,
+	FILTER_REGEX,
+} from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
 import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import { DAYS_MAP } from "./constants"
-import { CronParseResult } from "../types"
-import parser from "cron-parser"
-import { message } from "antd"
 
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
-	if (lowerConnector === "mongodb") {
-		return MongoDB
-	} else if (lowerConnector === "postgres") {
-		return Postgres
-	} else if (lowerConnector === "mysql") {
-		return MySQL
-	} else if (lowerConnector === "oracle") {
-		return Oracle
-	} else if (lowerConnector === "s3" || lowerConnector === "amazon") {
-		return AWSS3
-	} else if (
-		lowerConnector === "iceberg" ||
-		lowerConnector === "apache iceberg"
-	) {
-		return ApacheIceBerg
+	switch (lowerConnector) {
+		case "mongodb":
+			return MongoDB
+		case "postgres":
+			return Postgres
+		case "mysql":
+			return MySQL
+		case "oracle":
+			return Oracle
+		case DESTINATION_INTERNAL_TYPES.S3:
+			return AWSS3
+		case DESTINATION_INTERNAL_TYPES.ICEBERG:
+			return ApacheIceBerg
+		default:
+			// Default placeholder
+			return MongoDB
 	}
-
-	// Default placeholder
-	return MongoDB
 }
 
-export const getConnectorName = (connector: string, catalog: string | null) => {
-	if (connector === "Amazon S3") {
-		return "s3/config"
-	} else if (connector === "Apache Iceberg") {
-		if (catalog === "AWS Glue") {
-			return "iceberg/catalog/glue"
-		} else if (catalog === "REST Catalog") {
-			return "iceberg/catalog/rest"
-		} else if (catalog === "JDBC Catalog") {
-			return "iceberg/catalog/jdbc"
-		} else if (catalog === "Hive Catalog" || catalog === "HIVE Catalog") {
-			return "iceberg/catalog/hive"
-		}
+export const getConnectorDocumentationPath = (
+	connector: string,
+	catalog: string | null,
+) => {
+	switch (connector) {
+		case "Amazon S3":
+			return "s3/config"
+		case "Apache Iceberg":
+			switch (catalog) {
+				case "glue":
+					return "iceberg/catalog/glue"
+				case "rest":
+					return "iceberg/catalog/rest"
+				case "jdbc":
+					return "iceberg/catalog/jdbc"
+				case "hive":
+					return "iceberg/catalog/hive"
+				default:
+					return "iceberg/catalog/glue"
+			}
+		default:
+			return undefined
 	}
 }
 
@@ -55,12 +68,13 @@ export const getStatusClass = (status: string) => {
 		case "completed":
 			return "text-[#52C41A] bg-[#F6FFED]"
 		case "failed":
-		case "cancelled":
 			return "text-[#F5222D] bg-[#FFF1F0]"
+		case "canceled":
+			return "text-amber-700 bg-amber-50"
 		case "running":
-			return "text-[#0958D9] bg-[#E6F4FF]"
+			return "text-primary-700 bg-primary-200"
 		case "scheduled":
-			return "text-[rgba(0,0,0,88)] bg-[#f0f0f0]"
+			return "text-[rgba(0,0,0,88)] bg-neutral-light"
 		default:
 			return "text-[rgba(0,0,0,88)] bg-transparent"
 	}
@@ -68,35 +82,24 @@ export const getStatusClass = (status: string) => {
 
 export const getConnectorInLowerCase = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
-	if (lowerConnector === "amazon s3" || lowerConnector === "s3") {
-		return "s3"
-	} else if (
-		lowerConnector === "apache iceberg" ||
-		lowerConnector === "iceberg"
-	) {
-		return "iceberg"
-	} else if (connector.toLowerCase() === "mongodb") {
-		return "mongodb"
-	} else if (connector.toLowerCase() === "postgres") {
-		return "postgres"
-	} else if (connector.toLowerCase() === "mysql") {
-		return "mysql"
-	} else if (connector.toLowerCase() === "oracle") {
-		return "oracle"
-	} else {
-		return connector.toLowerCase()
-	}
-}
 
-export const getCatalogInLowerCase = (catalog: string) => {
-	if (catalog === "AWS Glue" || catalog === "glue") {
-		return "glue"
-	} else if (catalog === "REST Catalog" || catalog === "rest") {
-		return "rest"
-	} else if (catalog === "JDBC Catalog" || catalog === "jdbc") {
-		return "jdbc"
-	} else if (catalog === "Hive Catalog" || catalog === "hive") {
-		return "hive"
+	switch (lowerConnector) {
+		case DESTINATION_INTERNAL_TYPES.S3:
+		case DESTINATION_LABELS.AMAZON_S3:
+			return DESTINATION_INTERNAL_TYPES.S3
+		case DESTINATION_INTERNAL_TYPES.ICEBERG:
+		case DESTINATION_LABELS.APACHE_ICEBERG:
+			return DESTINATION_INTERNAL_TYPES.ICEBERG
+		case "mongodb":
+			return "mongodb"
+		case "postgres":
+			return "postgres"
+		case "mysql":
+			return "mysql"
+		case "oracle":
+			return "oracle"
+		default:
+			return lowerConnector
 	}
 }
 
@@ -106,8 +109,8 @@ export const getStatusLabel = (status: string) => {
 			return "Success"
 		case "failed":
 			return "Failed"
-		case "cancelled":
-			return "Cancelled"
+		case "canceled":
+			return "Canceled"
 		case "running":
 			return "Running"
 		case "scheduled":
@@ -143,12 +146,22 @@ export const getFrequencyValue = (frequency: string) => {
 		const parts = frequency.split(" ")
 		const unit = parts[1].toLowerCase()
 
-		if (unit.includes("hour")) return "hours"
-		if (unit.includes("minute")) return "minutes"
-		if (unit.includes("day")) return "days"
-		if (unit.includes("week")) return "weeks"
-		if (unit.includes("month")) return "months"
-		if (unit.includes("year")) return "years"
+		switch (true) {
+			case unit.includes("hour"):
+				return "hours"
+			case unit.includes("minute"):
+				return "minutes"
+			case unit.includes("day"):
+				return "days"
+			case unit.includes("week"):
+				return "weeks"
+			case unit.includes("month"):
+				return "months"
+			case unit.includes("year"):
+				return "years"
+			default:
+				return "hours"
+		}
 	}
 
 	switch (frequency) {
@@ -241,36 +254,6 @@ export const getLogTextColor = (level: string) => {
 			return "text-[#F5222D]"
 		default:
 			return "text-[#000000"
-	}
-}
-
-export const getCatalogName = (catalogType: string) => {
-	switch (catalogType?.toLowerCase()) {
-		case "glue":
-		case "aws glue":
-			return "AWS Glue"
-		case "rest":
-		case "rest catalog":
-			return "REST Catalog"
-		case "jdbc":
-		case "jdbc catalog":
-			return "JDBC Catalog"
-		case "hive":
-		case "hive catalog":
-			return "Hive Catalog"
-		default:
-			return null
-	}
-}
-
-export const getDestinationType = (type: string) => {
-	if (type.toLowerCase() === "amazon s3" || type.toLowerCase() === "s3") {
-		return "PARQUET"
-	} else if (
-		type.toLowerCase() === "apache iceberg" ||
-		type.toLowerCase() === "iceberg"
-	) {
-		return "ICEBERG"
 	}
 }
 
@@ -445,4 +428,109 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 		return false
 	}
 	return true
+}
+
+export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
+
+export const withAbortController = <T>(
+	fn: AbortableFunction<T>,
+	onSuccess: (data: T) => void,
+	onError?: (error: unknown) => void,
+	onFinally?: () => void,
+) => {
+	let isMounted = true
+	const abortController = new AbortController()
+
+	const execute = async () => {
+		try {
+			const response = await fn(abortController.signal)
+			if (isMounted) {
+				onSuccess(response)
+			}
+		} catch (error: unknown) {
+			if (isMounted && error instanceof Error && error.name !== "AbortError") {
+				if (onError) {
+					onError(error)
+				} else {
+					console.error("Error in abortable function:", error)
+				}
+			}
+		} finally {
+			if (isMounted && onFinally) {
+				onFinally()
+			}
+		}
+	}
+
+	execute()
+
+	return () => {
+		isMounted = false
+		abortController.abort()
+		if (onFinally) {
+			onFinally()
+		}
+	}
+}
+
+export const getResponsivePageSize = () => {
+	const screenHeight = window.innerHeight
+	return screenHeight >= 900 ? 8 : 6
+}
+
+export const validateAlphanumericUnderscore = (
+	value: string,
+): { validValue: string; errorMessage: string } => {
+	const validValue = value.replace(/[^a-z0-9_]/g, "")
+	return {
+		validValue,
+		errorMessage:
+			validValue !== value
+				? "Only lowercase letters, numbers and underscores allowed"
+				: "",
+	}
+}
+
+export const handleSpecResponse = (
+	response: any,
+	setSchema: (schema: any) => void,
+	setUiSchema: (uiSchema: any) => void,
+	errorType: "source" | "destination" = "source",
+) => {
+	try {
+		if (response.success && response.data?.spec?.jsonschema) {
+			setSchema(response.data.spec.jsonschema)
+			setUiSchema(JSON.parse(response.data.spec.uischema))
+		} else {
+			console.error(`Failed to get ${errorType} spec:`, response.message)
+		}
+	} catch {
+		setSchema({})
+		setUiSchema({})
+	}
+}
+
+// Returns a copy of the selected streams map with all disabled streams removed
+export const getSelectedStreams = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): { [key: string]: SelectedStream[] } => {
+	return Object.fromEntries(
+		Object.entries(selectedStreams).map(([key, streams]) => [
+			key,
+			streams.filter(stream => !stream.disabled),
+		]),
+	)
+}
+
+export const validateFilter = (filter: string): boolean => {
+	if (!filter.trim()) return false
+	return FILTER_REGEX.test(filter.trim())
+}
+
+export const validateStreams = (selections: {
+	[key: string]: SelectedStream[]
+}): boolean => {
+	return !Object.values(selections).some(streams =>
+		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
+	)
 }

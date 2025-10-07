@@ -30,8 +30,7 @@ func main() {
 	utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())
 
 	// init database
-	postgresDB, _ := config.String("postgresdb")
-	err := database.Init(postgresDB)
+	err := database.Init()
 	if err != nil {
 		logs.Critical("Failed to initialize database: %s", err)
 		os.Exit(1)
@@ -67,6 +66,5 @@ func main() {
 
 	// stop the worker
 	worker.Stop()
-	telemetry.Close()
 	logs.Info("Worker stopped. Goodbye!")
 }

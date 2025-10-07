@@ -54,7 +54,7 @@ export interface TaskLog {
 	message: string
 	time: string
 }
-export type JobCreationSteps = "source" | "destination" | "schema" | "config"
+export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 
 export type JobType = "active" | "inactive" | "saved" | "failed"
 
@@ -66,6 +66,7 @@ export interface JobTableProps {
 	onEdit: (id: string) => void
 	onPause: (id: string, checked: boolean) => void
 	onDelete: (id: string) => void
+	onCancelJob: (id: string) => void
 }
 
 export interface JobConfigurationProps {
@@ -73,8 +74,9 @@ export interface JobConfigurationProps {
 	setJobName: React.Dispatch<React.SetStateAction<string>>
 	cronExpression?: string
 	setCronExpression: React.Dispatch<React.SetStateAction<string>>
-	stepNumber?: number | string
+	stepNumber?: number
 	stepTitle?: string
+	jobNameFilled?: boolean
 }
 
 export interface JobConnectionProps {

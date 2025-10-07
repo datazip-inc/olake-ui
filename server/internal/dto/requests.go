@@ -45,16 +45,21 @@ type SpecRequest struct {
 	Catalog string `json:"catalog"`
 }
 
+// check unique job name request
+type CheckUniqueJobNameRequest struct {
+	JobName string `json:"job_name"`
+}
+
+// Test connection requests
 type SourceTestConnectionRequest struct {
 	ConnectorConfig
-	SourceID int `json:"source_id" validate:"required"`
+	SourceID int `json:"source_id"`
 }
-
 type StreamsRequest struct {
 	ConnectorConfig
-	JobID int `json:"job_id" validate:"required"`
+	JobID   int    `json:"job_id"`
+	JobName string `json:"job_name"`
 }
-
 type DestinationTestConnectionRequest struct {
 	ConnectorConfig
 }

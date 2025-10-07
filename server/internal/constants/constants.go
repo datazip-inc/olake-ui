@@ -22,9 +22,18 @@ var (
 	TableNameMap              = map[TableType]string{}
 	DefaultConfigDir          = "/tmp/olake-config"
 	DefaultLogRetentionPeriod = 30
+	DefaultSpecVersion        = "v0.2.0"
 )
 
-var RequiredConfigVariable = []string{"postgresdb", "copyrequestbody", "logsdir"}
+var RequiredConfigVariable = []string{
+	"OLAKE_POSTGRES_USER",
+	"OLAKE_POSTGRES_PASSWORD",
+	"OLAKE_POSTGRES_HOST",
+	"OLAKE_POSTGRES_PORT",
+	"OLAKE_POSTGRES_DBNAME",
+	"OLAKE_POSTGRES_SSLMODE",
+	"copyrequestbody",
+	"logsdir"}
 
 func Init() {
 	viper.AutomaticEnv()
