@@ -91,8 +91,8 @@ const Jobs: React.FC = () => {
 
 	const handleCancelJob = async (id: string) => {
 		try {
-			await jobService.cancelJob(id)
-			message.success("Run canceled successfully")
+			const response = await jobService.cancelJob(id)
+			message.success(response)
 		} catch (error) {
 			console.error("Error canceling job:", error)
 			message.error("Failed to cancel run")
