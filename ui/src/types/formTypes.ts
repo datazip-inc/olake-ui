@@ -4,6 +4,8 @@ export interface FormFieldProps {
 	required?: boolean
 	children: React.ReactNode
 	error?: string | null
+	tooltip?: React.ReactNode
+	info?: React.ReactNode
 }
 
 export interface DynamicSchemaFormProps {
