@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/auth.fixture"
-import { JOB_TEST_CONFIG } from "../setup/test-env"
+// import { JOB_TEST_CONFIG } from "../setup/test-env"
 
 test.describe("Job End-to-End User Journey", () => {
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({
@@ -43,7 +43,7 @@ test.describe("Job End-to-End User Journey", () => {
 			destinationName: destinationData.name,
 			streamName: "postgres_test_table_olake",
 			jobName: `e2ejob${timestamp}`,
-			frequency: JOB_TEST_CONFIG.frequency,
+			frequency: "Every Week",
 		}
 
 		// Step 1: Login
