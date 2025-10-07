@@ -106,6 +106,7 @@ const JobTable: React.FC<JobTableProps> = ({
 									key: "cancel",
 									icon: <XIcon className="size-4" />,
 									label: "Cancel Run",
+									disabled: record.last_run_state?.toLowerCase() !== "running",
 									onClick: () => onCancelJob(record.id.toString()),
 								},
 								{
