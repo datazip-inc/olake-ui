@@ -36,6 +36,7 @@ func NewWorker() (*Worker, error) {
 	w.RegisterActivity(TestConnectionActivity)
 	w.RegisterActivity(SyncActivity)
 	w.RegisterActivity(FetchSpecActivity)
+	w.RegisterActivity(SyncCleanupActivity)
 
 	return &Worker{
 		temporalClient: c,
