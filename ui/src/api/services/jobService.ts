@@ -53,11 +53,12 @@ export const jobService = {
 		}
 	},
 
-	cancelJob: async (id: string): Promise<void> => {
+	cancelJob: async (id: string): Promise<string> => {
 		try {
-			await api.get<APIResponse<any>>(
+			const response = await api.get<APIResponse<any>>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/cancel`,
 			)
+			return response.data.data.message
 		} catch (error) {
 			console.error("Error canceling job:", error)
 			throw error
