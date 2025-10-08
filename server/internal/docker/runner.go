@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -349,8 +350,8 @@ func StopContainer(ctx context.Context, workflowID string) error {
 	return nil
 }
 
-// PersistJobStateFromFile reads the state JSON file and updates the job state by running a sync
-func (r *Runner) PersistJobStateFromFile(ctx context.Context, jobID int, workflowID string) error {
+// PersistJobStateFromFile reads the state JSON file and updates the job state
+func (r *Runner) PersistJobStateFromFile(jobID int, workflowID string) error {
 	hashWorkflowID := WorkflowHash(workflowID)
 	workDir, err := r.setupWorkDirectory(hashWorkflowID)
 	if err != nil {
@@ -364,7 +365,6 @@ func (r *Runner) PersistJobStateFromFile(ctx context.Context, jobID int, workflo
 		logs.Error("workflowID %s: failed to parse state file %s: %s", workflowID, statePath, err)
 		return err
 	}
-	_ = state // state content is preserved for sync below
 
 	jobORM := database.NewJobORM()
 	job, err := jobORM.GetByID(jobID, false)
@@ -373,35 +373,17 @@ func (r *Runner) PersistJobStateFromFile(ctx context.Context, jobID int, workflo
 		return err
 	}
 
-	// Prepare all configuration files
-	configs := []FileConfig{
-		{Name: "config.json", Data: job.SourceID.Config},
-		{Name: "streams.json", Data: job.StreamsConfig},
-		{Name: "writer.json", Data: job.DestID.Config},
-		{Name: "state.json", Data: job.State},
-		{Name: "user_id.txt", Data: r.anonymousID},
-	}
-
-	if err := r.writeConfigFiles(workDir, configs); err != nil {
+	stateJSON, err := json.Marshal(state)
+	if err != nil {
+		logs.Error("workflowID %s: failed to marshal state: %s", workflowID, err)
 		return err
 	}
-	defer r.deleteConfigFiles(workDir, configs)
 
-	configPath := filepath.Join(workDir, "config.json")
+	job.State = string(stateJSON)
+	job.Active = true
 
-	// Execute sync command
-	if _, err = r.ExecuteDockerCommand(
-		ctx,
-		hashWorkflowID,
-		"config",
-		Sync,
-		job.SourceID.Type,
-		job.SourceID.Version,
-		configPath,
-		"--catalog", "/mnt/config/streams.json",
-		"--destination", "/mnt/config/writer.json",
-		"--state", "/mnt/config/state.json",
-	); err != nil {
+	if err := jobORM.Update(job); err != nil {
+		logs.Error("workflowID %s: failed to update job %d: %s", workflowID, jobID, err)
 		return err
 	}
 

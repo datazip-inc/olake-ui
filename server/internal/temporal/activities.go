@@ -110,7 +110,7 @@ func SyncCleanupActivity(ctx context.Context, params *SyncParams) error {
 	}
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	logger.Info("Persisting job state for workflowID %s", params.WorkflowID)
-	if err := runner.PersistJobStateFromFile(ctx, params.JobID, params.WorkflowID); err != nil {
+	if err := runner.PersistJobStateFromFile(params.JobID, params.WorkflowID); err != nil {
 		return temporal.NewNonRetryableApplicationError(err.Error(), "CleanupFailed", err)
 	}
 	logger.Info("Cleanup completed successfully")
