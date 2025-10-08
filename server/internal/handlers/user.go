@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
@@ -24,12 +24,8 @@ func (c *UserHandler) Prepare() {
 // @router /users [post]
 func (c *UserHandler) CreateUser() {
 	var req models.User
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -57,12 +53,8 @@ func (c *UserHandler) UpdateUser() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req models.User
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 

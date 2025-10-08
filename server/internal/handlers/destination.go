@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
@@ -17,25 +18,24 @@ type DestHandler struct {
 }
 
 func (c *DestHandler) Prepare() {
-	var err error
-	c.destService, err = services.NewDestinationService()
+	svc, err := services.NewDestinationService()
 	if err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service", err)
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service", err)
 		return
 	}
+	c.destService = svc
 }
 
 // @router /project/:projectid/destinations [get]
 func (c *DestHandler) GetAllDestinations() {
 	projectID := c.Ctx.Input.Param(":projectid")
-
-	destinations, err := c.destService.GetAllDestinations(context.Background(), projectID)
+	items, err := c.destService.GetAllDestinations(c.Ctx.Request.Context(), projectID)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destinations", err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, destinations)
+	utils.SuccessResponse(&c.Controller, items)
 }
 
 // @router /project/:projectid/destinations [post]
@@ -70,6 +70,7 @@ func (c *DestHandler) CreateDestination() {
 // @router /project/:projectid/destinations/:id [put]
 func (c *DestHandler) UpdateDestination() {
 	id := GetIDFromPath(&c.Controller)
+	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -83,7 +84,7 @@ func (c *DestHandler) UpdateDestination() {
 
 	userID := GetUserIDFromSession(&c.Controller)
 
-	if err := c.destService.UpdateDestination(context.Background(), id, req, userID); err != nil {
+	if err := c.destService.UpdateDestination(context.Background(), id, projectID, req, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
@@ -95,7 +96,7 @@ func (c *DestHandler) UpdateDestination() {
 func (c *DestHandler) DeleteDestination() {
 	id := GetIDFromPath(&c.Controller)
 
-	response, err := c.destService.DeleteDestination(context.Background(), id)
+	resp, err := c.destService.DeleteDestination(context.Background(), id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
 		return
@@ -133,10 +134,7 @@ func (c *DestHandler) GetDestinationJobs() {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"jobs": jobs,
-	})
+	utils.SuccessResponse(&c.Controller, map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/destinations/versions [get]
@@ -148,16 +146,11 @@ func (c *DestHandler) GetDestinationVersions() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"version": versions,
-	})
+	utils.SuccessResponse(&c.Controller, versions)
 }
 
 // @router /project/:projectid/destinations/spec [post]
 func (c *DestHandler) GetDestinationSpec() {
-	_ = c.Ctx.Input.Param(":projectid")
-
 	var req dto.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)

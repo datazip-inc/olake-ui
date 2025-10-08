@@ -43,7 +43,7 @@ var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) 
 	"HOME":                    nil,
 	"SHLVL":                   nil,
 	"TERM":                    nil,
-	"HOST_PERSISTENT_DIR":     nil,
+	"PERSISTENT_DIR":          nil,
 	"CONTAINER_REGISTRY_BASE": nil,
 	"TEMPORAL_ADDRESS":        nil,
 	"OLAKE_SECRET_KEY":        nil,

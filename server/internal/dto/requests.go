@@ -48,18 +48,22 @@ type SpecRequest struct {
 	Catalog string `json:"catalog"`
 }
 
+// check unique job name request
+type CheckUniqueJobNameRequest struct {
+	JobName string `json:"job_name"`
+}
+
+// Test connection requests
 type SourceTestConnectionRequest struct {
 	Type    string `json:"type" validate:"required"`
 	Version string `json:"version" validate:"required"`
 	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
 }
-
 type StreamsRequest struct {
 	ConnectorConfig
 	JobID   int    `json:"job_id" validate:"required"`
 	JobName string `json:"job_name"`
 }
-
 type DestinationTestConnectionRequest struct {
 	Type          string `json:"type" validate:"required"`
 	Version       string `json:"version" validate:"required"`
@@ -108,4 +112,7 @@ type UpdateJobRequest struct {
 
 type JobTaskRequest struct {
 	FilePath string `json:"file_path" validate:"required"`
+}
+type JobStatusRequest struct {
+	Activate bool `json:"activate" validate:"required"`
 }

@@ -82,7 +82,7 @@ func (r *JobORM) GetAll() ([]*models.Job, error) {
 }
 
 // GetAllByProjectID retrieves all jobs for a specific project
-func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
+func (r *JobORM) GetAllJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
 	// Query sources in the project using ORM
@@ -240,18 +240,6 @@ func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
 
 	return jobs, nil
 }
-
-// IsJobNameUnique checks if a job name is unique within a project in the jobs table.
-func (r *JobORM) IsJobNameUnique(projectID, jobName string) (bool, error) {
-	count, err := r.ormer.QueryTable(r.TableName).
-		Filter("name", jobName).
-		Filter("project_id", projectID).
-		Count()
-	if err != nil {
-		return false, fmt.Errorf("failed to check job name uniqueness: %w", err)
-	}
-	return count == 0, nil
-}
 func (r *JobORM) GetBySourceIDs(sourceIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
 	if len(sourceIDs) == 0 {
@@ -273,4 +261,16 @@ func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
 		return nil, err
 	}
 	return jobs, nil
+}
+
+// IsJobNameUnique checks if a job name is unique within a project in the jobs table.
+func (r *JobORM) IsJobNameUnique(projectID, jobName string) (bool, error) {
+	count, err := r.ormer.QueryTable(r.TableName).
+		Filter("name", jobName).
+		Filter("project_id", projectID).
+		Count()
+	if err != nil {
+		return false, fmt.Errorf("failed to check job name uniqueness: %w", err)
+	}
+	return count == 0, nil
 }

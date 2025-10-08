@@ -8,6 +8,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
+
 	"github.com/datazip/olake-ui/server/utils"
 )
 

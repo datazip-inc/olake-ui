@@ -41,7 +41,7 @@ func main() {
 	routes.Init()
 
 	// setup environment mode
-	if web.BConfig.RunMode == "dev" {
+	if web.BConfig.RunMode == "dev" || web.BConfig.RunMode == "staging" {
 		orm.Debug = true
 	}
 

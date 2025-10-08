@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
+
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
@@ -30,7 +30,7 @@ func (c *SourceHandler) Prepare() {
 // @router /project/:projectid/sources [get]
 func (c *SourceHandler) GetAllSources() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	sources, err := c.sourceService.GetAllSources(context.Background(), projectID)
+	sources, err := c.sourceService.GetAllSources(c.Ctx.Request.Context(), projectID)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
 		return
@@ -41,6 +41,7 @@ func (c *SourceHandler) GetAllSources() {
 // @router /project/:projectid/sources [post]
 func (c *SourceHandler) CreateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req dto.CreateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
@@ -51,8 +52,9 @@ func (c *SourceHandler) CreateSource() {
 		return
 	}
 
+
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.CreateSource(context.Background(), req, projectID, userID); err != nil {
+	if err := c.sourceService.CreateSource(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
@@ -62,6 +64,8 @@ func (c *SourceHandler) CreateSource() {
 // @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
 	id := GetIDFromPath(&c.Controller)
+	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req dto.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
@@ -71,6 +75,7 @@ func (c *SourceHandler) UpdateSource() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
+
 
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.sourceService.UpdateSource(context.Background(), id, req, userID); err != nil {
@@ -83,7 +88,8 @@ func (c *SourceHandler) UpdateSource() {
 // @router /project/:projectid/sources/:id [delete]
 func (c *SourceHandler) DeleteSource() {
 	id := GetIDFromPath(&c.Controller)
-	resp, err := c.sourceService.DeleteSource(context.Background(), id)
+
+	resp, err := c.sourceService.DeleteSource(c.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
@@ -116,7 +122,7 @@ func (c *SourceHandler) TestConnection() {
 	utils.SuccessResponse(&c.Controller, result)
 }
 
-// @router /sources/streams[post]
+// @router /sources/streams [post]
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
@@ -139,7 +145,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 // @router /sources/:id/jobs [get]
 func (c *SourceHandler) GetSourceJobs() {
 	id := GetIDFromPath(&c.Controller)
-	jobs, err := c.sourceService.GetSourceJobs(context.Background(), id)
+	jobs, err := c.sourceService.GetSourceJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
@@ -157,21 +163,18 @@ func (c *SourceHandler) GetSourceVersions() {
 	versions, err := c.sourceService.GetSourceVersions(context.Background(), sourceType)
 	if err != nil {
 		status := http.StatusInternalServerError
-		msg := "Failed to get Docker versions"
 		if err.Error() == "source type is required" {
 			status = http.StatusBadRequest
-			msg = "Source type is required"
 		}
-		respondWithError(&c.Controller, status, msg, err)
+		respondWithError(&c.Controller, status, "Failed to get source versions", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"version": versions})
+	utils.SuccessResponse(&c.Controller, versions)
 }
 
 // @router /project/:projectid/sources/spec [post]
+// @router /project/:projectid/sources/spec [post]
 func (c *SourceHandler) GetProjectSourceSpec() {
-	_ = c.Ctx.Input.Param(":projectid")
-
 	var req dto.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
@@ -188,9 +191,5 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOutput.Spec,
-	})
+	utils.SuccessResponse(&c.Controller, resp)
 }

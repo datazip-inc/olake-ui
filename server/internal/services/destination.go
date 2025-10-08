@@ -25,10 +25,8 @@ func NewDestinationService() (*DestinationService, error) {
 	logs.Info("Creating destination service")
 	tempClient, err := temporal.NewClient()
 	if err != nil {
-		logs.Error("Failed to create Temporal client: %v", err)
 		return nil, fmt.Errorf("%s temporal client: %s", constants.ErrFailedToCreate, err)
 	}
-
 	return &DestinationService{
 		destORM:    database.NewDestinationORM(),
 		jobORM:     database.NewJobORM(),
@@ -74,7 +72,6 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
-
 		setUsernames(&item.CreatedBy, &item.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
@@ -84,7 +81,6 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 			return nil, fmt.Errorf("%s job data items: %s", constants.ErrFailedToProcess, err)
 		}
 		item.Jobs = jobItems
-
 		destItems = append(destItems, item)
 	}
 
@@ -92,6 +88,10 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 }
 
 func (s *DestinationService) CreateDestination(ctx context.Context, req dto.CreateDestinationRequest, projectID string, userID *int) error {
+	if err := dto.Validate(&req); err != nil {
+		return fmt.Errorf("invalid request: %w", err)
+	}
+
 	logs.Info("Creating destination: %s", req.Name)
 	destination := &models.Destination{
 		Name:      req.Name,
@@ -107,7 +107,6 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 	}
 
 	if err := s.destORM.Create(destination); err != nil {
-		logs.Error("Failed to create destination: %v", err)
 		return fmt.Errorf("failed to create destination: %s", err)
 	}
 
@@ -115,11 +114,14 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 	return nil
 }
 
-func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req dto.UpdateDestinationRequest, userID *int) error {
+func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req dto.UpdateDestinationRequest, userID *int) error {
+	if err := dto.Validate(&req); err != nil {
+		return fmt.Errorf("invalid request: %w", err)
+	}
+
 	logs.Info("Updating destination with id: %d", id)
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
-		logs.Warn("Destination not found: %v", err)
 		return fmt.Errorf("destination not found: %s", err)
 	}
 
@@ -127,14 +129,23 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, req 
 	existingDest.DestType = req.Type
 	existingDest.Version = req.Version
 	existingDest.Config = req.Config
-	existingDest.UpdatedAt = time.Now()
 	if userID != nil {
 		user := &models.User{ID: *userID}
 		existingDest.UpdatedBy = user
 	}
 
+	jobs, err := s.jobORM.GetByDestinationID(existingDest.ID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch jobs for destination %d: %s", existingDest.ID, err)
+	}
+
+	for _, job := range jobs {
+		if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
+			return fmt.Errorf("failed to cancel workflow for job %d: %s", job.ID, err)
+		}
+	}
+
 	if err := s.destORM.Update(existingDest); err != nil {
-		logs.Error("Failed to update destination: %v", err)
 		return fmt.Errorf("failed to update destination: %s", err)
 	}
 
@@ -146,26 +157,22 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 	logs.Info("Deleting destination with id: %d", id)
 	dest, err := s.destORM.GetByID(id)
 	if err != nil {
-		logs.Warn("Destination not found: %v", err)
 		return nil, fmt.Errorf("destination not found: %s", err)
 	}
 
 	jobs, err := s.jobORM.GetByDestinationID(id)
 	if err != nil {
-		logs.Error("Failed to get jobs for destination: %v", err)
 		return nil, fmt.Errorf("failed to get jobs for destination: %s", err)
 	}
 
 	for _, job := range jobs {
 		job.Active = false
 		if err := s.jobORM.Update(job); err != nil {
-			logs.Error("Failed to deactivate job %d: %v", job.ID, err)
 			return nil, fmt.Errorf("failed to deactivate job %d: %s", job.ID, err)
 		}
 	}
 
 	if err := s.destORM.Delete(id); err != nil {
-		logs.Error("Failed to delete destination: %v", err)
 		return nil, fmt.Errorf("failed to delete destination: %s", err)
 	}
 
@@ -174,6 +181,9 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, error) {
+	if err := dto.Validate(&req); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
 	logs.Info("Testing connection with config: %v", req.Config)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -198,35 +208,28 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
-
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
-
 	return result, nil
 }
 
 func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]*models.Job, error) {
 	logs.Info("Retrieving jobs for destination with id: %d", id)
-	_, err := s.destORM.GetByID(id)
-	if err != nil {
-		logs.Warn("Destination not found: %v", err)
+	if _, err := s.destORM.GetByID(id); err != nil {
 		return nil, fmt.Errorf("destination not found: %s", err)
 	}
-
 	jobs, err := s.jobORM.GetByDestinationID(id)
 	if err != nil {
-		logs.Error("Failed to retrieve jobs: %v", err)
 		return nil, fmt.Errorf("failed to retrieve jobs: %s", err)
 	}
-
 	return jobs, nil
 }
 
-func (s *DestinationService) GetDestinationVersions(ctx context.Context, destType string) ([]string, error) {
+func (s *DestinationService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
 	logs.Info("Retrieving versions for destination type: %s", destType)
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")
@@ -243,11 +246,10 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
 	jobItems := make([]dto.JobDataItem, 0, len(jobs))
 	for _, job := range jobs {
-		item := dto.JobDataItem{
+		jobItems = append(jobItems, dto.JobDataItem{
 			ID:   job.ID,
 			Name: job.Name,
-		}
-		jobItems = append(jobItems, item)
+		})
 	}
 	return jobItems, nil
 }

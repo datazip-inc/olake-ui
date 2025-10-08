@@ -13,6 +13,12 @@ x-signup-defaults:
 x-encryption:
   key: &encryptionKey "" 
 
+x-envs:
+  shared: &sharedEnvs
+    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
+    OLAKE_SECRET_KEY: *encryptionKey
+    PERSISTENT_DIR: *hostPersistencePath
+
 services:
   olake-ui:
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest    
