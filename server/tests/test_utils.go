@@ -21,95 +21,102 @@ import (
 const (
 	// Install tools and curl destination docker-compose
 	setupToolsCmd = `
-		apk add --no-cache docker-compose curl postgresql-client bind-tools iputils ncurses nodejs ca-certificates npm netcat-openbsd && 
-		npm install -g chalk-cli pnpm &&
-		update-ca-certificates &&
-		echo "Tools installed."
-	`
+        apt-get update && 
+        apt-get install -y curl postgresql-client dnsutils iputils-ping ncurses-bin ca-certificates gnupg lsb-release netcat-openbsd && 
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&
+        apt-get install -y nodejs &&
+        npm install -g pnpm &&
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg &&
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null &&
+        apt-get update &&
+        apt-get install -y docker-compose-plugin &&
+        update-ca-certificates &&
+        echo "Tools installed."
+    `
 
 	// Download destination docker-compose
 	downloadDestinationComposeCmd = `
-		cd /mnt &&
-		curl -fsSL -o docker-compose.destination.yml \
-			https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml &&
-		echo "Destination docker-compose downloaded."
-	`
+        cd /mnt &&
+        curl -fsSL -o docker-compose.destination.yml \
+            https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml &&
+        echo "Destination docker-compose downloaded."
+    `
 
 	// Start postgres test infrastructure
 	startPostgresCmd = `
-		cd /mnt/server/tests &&
-		echo "Starting PostgreSQL test infrastructure..." &&
-		docker-compose up -d &&
-		echo "Waiting for PostgreSQL to be ready..." &&
-		for i in $(seq 1 30); do
-			if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
-				echo "PostgreSQL is ready!"
-				break
-			fi
-			echo "Attempt $i: PostgreSQL not ready yet..."
-			sleep 2
-		done &&
-		docker exec olake_postgres-test psql -U postgres -d postgres -c \
-			"SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';" &&
-		echo "PostgreSQL setup complete."
-	`
+        cd /mnt/server/tests &&
+        echo "Starting PostgreSQL test infrastructure..." &&
+        docker compose up -d &&
+        echo "Waiting for PostgreSQL to be ready..." &&
+        for i in $(seq 1 30); do
+            if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
+                echo "PostgreSQL is ready!"
+                break
+            fi
+            echo "Attempt $i: PostgreSQL not ready yet..."
+            sleep 2
+        done &&
+        docker exec olake_postgres-test psql -U postgres -d postgres -c \
+            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';" &&
+        echo "PostgreSQL setup complete."
+    `
 
 	// Start destination services (iceberg stack)
 	startDestinationCmd = `
-		cd /mnt &&
-		echo "Starting destination services (Iceberg stack)..." &&
-		docker-compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
-		echo "Waiting for destination services..." &&
-		sleep 10 &&
-		docker-compose -f docker-compose.destination.yml ps &&
-		echo "Destination services started."
-	`
+        cd /mnt &&
+        echo "Starting destination services (Iceberg stack)..." &&
+        docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
+        echo "Waiting for destination services..." &&
+        sleep 10 &&
+        docker compose -f docker-compose.destination.yml ps &&
+        echo "Destination services started."
+    `
 
 	// Start OLake application
 	startOLakeCmd = `
-		cd /mnt && 
-		mkdir -p /mnt/olake-data && 
-		echo "Starting OLake docker-compose..." && 
-		docker-compose up -d && 
-		echo "Services started. Waiting for containers..." && 
-		sleep 5 && 
-		docker-compose ps &&
-		echo "Waiting for OLake UI to be ready..." &&
-		for i in $(seq 1 60); do
-			if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
-				echo "OLake UI is ready!"
-				break
-			fi
-			echo "Attempt $i: OLake UI not ready yet..."
-			sleep 2
-		done &&
-		echo "Checking OLake UI logs..." &&
-		docker-compose logs --tail=50 olake-ui
-	`
+        cd /mnt && 
+        mkdir -p /mnt/olake-data && 
+        echo "Starting OLake docker-compose..." && 
+        docker compose up -d && 
+        echo "Services started. Waiting for containers..." && 
+        sleep 5 && 
+        docker compose ps &&
+        echo "Waiting for OLake UI to be ready..." &&
+        for i in $(seq 1 60); do
+            if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
+                echo "OLake UI is ready!"
+                break
+            fi
+            echo "Attempt $i: OLake UI not ready yet..."
+            sleep 2
+        done &&
+        echo "Checking OLake UI logs..." &&
+        docker compose logs --tail=50 olake-ui
+    `
 
 	// Network setup
 	networkSetupCmd = `
-		docker network create olake-network || true &&
-		docker network connect olake-network olake-ui || true &&
-		docker network connect olake-network postgres || true &&
-		docker network connect olake-network olake_postgres-test || true
-	`
+        docker network create olake-network || true &&
+        docker network connect olake-network olake-ui || true &&
+        docker network connect olake-network postgres || true &&
+        docker network connect olake-network olake_postgres-test || true
+    `
 
 	// Install Playwright and dependencies
 	installPlaywrightCmd = `
-		cd /mnt/ui &&
-		echo "Installing Playwright dependencies..." &&
-		pnpm add -D @playwright/test &&
-		pnpm exec playwright install --with-deps chromium &&
-		echo "Playwright installed."
-	`
+        cd /mnt/ui &&
+        echo "Installing Playwright dependencies..." &&
+        pnpm add -D @playwright/test &&
+        pnpm exec playwright install --with-deps chromium &&
+        echo "Playwright installed."
+    `
 
 	// Run Playwright tests
 	runPlaywrightCmd = `
-		cd /mnt/ui &&
-		echo "Running Playwright tests..." &&
-		PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
-	`
+        cd /mnt/ui &&
+        echo "Running Playwright tests..." &&
+        PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
+    `
 
 	icebergDB        = "postgres_iceberg_job_postgres_public"
 	icebergCatalog   = "olake_iceberg"
@@ -125,7 +132,7 @@ func DinDTestContainer(t *testing.T) error {
 	t.Logf("Project root identified at: %s", projectRoot)
 
 	req := testcontainers.ContainerRequest{
-		Image:        "docker:25.0-dind",
+		Image:        "cruizba/ubuntu-dind:jammy-latest",
 		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
