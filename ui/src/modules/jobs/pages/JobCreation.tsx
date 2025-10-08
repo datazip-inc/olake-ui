@@ -1,7 +1,7 @@
 import { useState, useRef } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
-import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import { ArrowLeft, ArrowRight, FloppyDisk } from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
@@ -509,7 +509,7 @@ const JobCreation: React.FC = () => {
 						onClick={handleSaveJob}
 						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 					>
-						<DownloadSimple className="size-4" />
+						<FloppyDisk className="size-4" />
 						Save Job
 					</button>
 				</div>
