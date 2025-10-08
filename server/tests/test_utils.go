@@ -101,7 +101,7 @@ const (
         docker network connect olake-network postgres || true &&
         docker network connect olake-network olake_postgres-test || true &&
         echo "Getting PostgreSQL container IP..." &&
-        POSTGRES_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' olake_postgres-test) &&
+        POSTGRES_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{break}}{{end}}' olake_postgres-test) &&
         echo "PostgreSQL IP: $POSTGRES_IP" &&
         echo "Setting up socat port forwarding for PostgreSQL..." &&
         apt-get update && apt-get install -y socat &&
@@ -112,7 +112,7 @@ const (
 	// Get PostgreSQL connection details for Playwright
 	getPostgresDetailsCmd = `
         echo "Getting PostgreSQL connection details..." &&
-        POSTGRES_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' olake_postgres-test) &&
+        POSTGRES_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{break}}{{end}}' olake_postgres-test) &&
         echo "PostgreSQL Container IP: $POSTGRES_CONTAINER_IP" &&
         echo "Testing connection to PostgreSQL..." &&
         nc -zv $POSTGRES_CONTAINER_IP 5432 || echo "Direct connection test completed" &&
