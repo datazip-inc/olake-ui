@@ -13,6 +13,7 @@ import (
 
 	"github.com/apache/spark-connect-go/v35/spark/sql"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -31,7 +32,18 @@ const (
 		docker-compose up -d && 
 		echo "Services started. Waiting for containers..." && 
 		sleep 5 && 
-		docker-compose ps
+		docker-compose ps &&
+		echo "Waiting for OLake UI to be ready..." &&
+		for i in $(seq 1 60); do
+			if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
+				echo "OLake UI is ready!"
+				break
+			fi
+			echo "Attempt $i: OLake UI not ready yet..."
+			sleep 2
+		done &&
+		echo "Checking OLake UI logs..." &&
+		docker-compose logs --tail=50 olake-ui
 	`
 
 	icebergDB           = "postgres_iceberg_job_postgres_public"
@@ -50,13 +62,18 @@ func DinDTestContainer(t *testing.T) error {
 
 	req := testcontainers.ContainerRequest{
 		Image:        "docker:25.0-dind",
-		ExposedPorts: []string{"8000:8000/tcp", "2375/tcp"},
+		ExposedPorts: []string{"8000/tcp", "2375/tcp"},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
 			hc.Binds = []string{
 				fmt.Sprintf("%s:/mnt:rw", projectRoot),
 			}
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
+			hc.PortBindings = map[nat.Port][]nat.PortBinding{
+				"8000/tcp": {
+					{HostIP: "0.0.0.0", HostPort: "8000"},
+				},
+			}
 		},
 		Cmd: []string{"dockerd", "--host=unix:///var/run/docker.sock", "--host=tcp://0.0.0.0:2375"},
 		ConfigModifier: func(config *container.Config) {
@@ -105,6 +122,7 @@ func DinDTestContainer(t *testing.T) error {
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
 	// start playwright
+	time.Sleep(5 * time.Second)
 	t.Log("Executing Playwright tests...")
 	uiPath := filepath.Join(projectRoot, "ui")
 	cmd := exec.Command("npx", "playwright", "test", "tests/flows/job-end-to-end.spec.ts")

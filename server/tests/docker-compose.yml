@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  postgresql:
+  postgres:
     image: postgres:15
-    container_name: olake_postgresql-test
+    container_name: olake_postgres-test
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -21,7 +21,7 @@ services:
         apt-get update && apt-get install -y postgresql-15-wal2json
         
         # Start PostgreSQL with basic config in background
-        docker-entrypoint.sh postgresql \
+        docker-entrypoint.sh postgres \
           -c hba_file=/etc/postgresql/pg_hba.conf \
           -c listen_addresses='*' \
           -c wal_level=logical \

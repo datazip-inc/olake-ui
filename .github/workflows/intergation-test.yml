@@ -46,16 +46,22 @@ jobs:
             max_attempts: 30
             retry_wait_seconds: 5
             command: |
-                docker exec olake_postgresql-test pg_isready -U postgres -h localhost -p 5432 && \
-                docker exec olake_postgresql-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
+                docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
 
       - name: Install Playwright dependencies
         working-directory: ./ui
         run: |
             pnpm add -D @playwright/test
             pnpm exec playwright install --with-deps chromium
+    
+      - name: Check Network Setup
+        run: |
+            echo "Checking port 8000 availability..."
+            ! nc -z localhost 8000 && echo "Port 8000 is free" || echo "WARNING: Port 8000 is already in use"
+            echo "Checking port 5433 (postgres)..."
+            nc -z localhost 5433 && echo "PostgreSQL is accessible" || echo "ERROR: Cannot reach PostgreSQL"
 
-      - name: Run Docker In Docker Container Test
+      - name: Run Docker In Docker Container Tests
         working-directory: ./server
         run: go test -v ./tests -timeout 0 -run 'TestDinDIntegration'
 
