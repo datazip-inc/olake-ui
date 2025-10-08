@@ -14,7 +14,7 @@ export const TEST_CREDENTIALS = {
 
 // Source Configurations
 export const POSTGRES_SOURCE_CONFIG = {
-	host: "host.docker.internal",
+	host: "127.0.0.1",
 	database: "postgres",
 	username: "postgres",
 	password: "secret1234",
@@ -23,7 +23,7 @@ export const POSTGRES_SOURCE_CONFIG = {
 } as const
 
 export const MONGODB_TEST_CONFIG = {
-	host: "host.docker.internal",
+	host: "127.0.0.1",
 	database: "test_db",
 	username: "admin",
 	password: "password",
@@ -33,11 +33,11 @@ export const MONGODB_TEST_CONFIG = {
 
 // Destination Configurations
 export const ICEBERG_DESTINATION_CONFIG = {
-	jdbcUrl: "jdbc:postgresql://host.docker.internal:5432/iceberg",
+	jdbcUrl: "jdbc:postgresql://127.0.0.1:5432/iceberg",
 	jdbcUsername: "iceberg",
 	jdbcPassword: "password",
 	jdbcDatabase: "olake_iceberg",
-	jdbcS3Endpoint: "http://host.docker.internal:9000",
+	jdbcS3Endpoint: "http://127.0.0.1:9000",
 	jdbcS3AccessKey: "admin",
 	jdbcS3SecretKey: "password",
 	jdbcS3Region: "us-east-1",
