@@ -99,7 +99,24 @@ const (
         docker network create olake-network || true &&
         docker network connect olake-network olake-ui || true &&
         docker network connect olake-network postgres || true &&
-        docker network connect olake-network olake_postgres-test || true
+        docker network connect olake-network olake_postgres-test || true &&
+        echo "Getting PostgreSQL container IP..." &&
+        POSTGRES_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' olake_postgres-test) &&
+        echo "PostgreSQL IP: $POSTGRES_IP" &&
+        echo "Setting up socat port forwarding for PostgreSQL..." &&
+        apt-get update && apt-get install -y socat &&
+        nohup socat TCP-LISTEN:5433,fork,reuseaddr TCP:$POSTGRES_IP:5432 > /var/log/socat-postgres.log 2>&1 &
+        echo "Port forwarding setup complete"
+    `
+
+	// Get PostgreSQL connection details for Playwright
+	getPostgresDetailsCmd = `
+        echo "Getting PostgreSQL connection details..." &&
+        POSTGRES_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' olake_postgres-test) &&
+        echo "PostgreSQL Container IP: $POSTGRES_CONTAINER_IP" &&
+        echo "Testing connection to PostgreSQL..." &&
+        nc -zv $POSTGRES_CONTAINER_IP 5432 || echo "Direct connection test completed" &&
+        nc -zv localhost 5433 || echo "Localhost port forward test completed"
     `
 
 	// Install Playwright and dependencies
@@ -239,9 +256,17 @@ func DinDTestContainer(t *testing.T) error {
 	}
 
 	// Step 7: Setup networks
-	t.Log("Setting up Docker networks...")
+	t.Log("Setting up Docker networks and port forwarding...")
 	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
 		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 7b: Verify PostgreSQL connectivity
+	t.Log("Verifying PostgreSQL connectivity...")
+	if code, out, err := ExecCommand(ctx, ctr, getPostgresDetailsCmd); err != nil || code != 0 {
+		t.Logf("PostgreSQL details: %s", out)
+	} else {
+		t.Logf("PostgreSQL connection details: %s", out)
 	}
 
 	// Step 8: Query the postgres source
