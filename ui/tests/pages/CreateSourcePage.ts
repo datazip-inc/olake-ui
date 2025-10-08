@@ -1,4 +1,5 @@
 import { Page, Locator, expect } from "@playwright/test"
+import { TIMEOUTS } from "../../playwright.config"
 
 export class CreateSourcePage {
 	readonly page: Page
@@ -145,6 +146,24 @@ export class CreateSourcePage {
 			state: "visible",
 		})
 		await expect(this.page.getByText("Connection successful")).toBeVisible()
+	}
+
+	async assertTestConnectionSucceeded() {
+		const failure = this.page
+			.waitForSelector("text=Your test connection has failed", {
+				state: "visible",
+				timeout: TIMEOUTS.LONG,
+			})
+			.then(() => "failure")
+		const success = this.page
+			.waitForSelector("text=Connection successful", {
+				state: "visible",
+				timeout: TIMEOUTS.LONG,
+			})
+			.then(() => "success")
+
+		const outcome = await Promise.race([failure, success])
+		expect(outcome, "Test connection failed").toBe("success")
 	}
 
 	async expectEntitySavedModal() {
