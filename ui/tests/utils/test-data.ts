@@ -19,7 +19,7 @@ export const POSTGRES_SOURCE_CONFIG = {
 	username: "postgres",
 	password: "secret1234",
 	useSSL: false,
-	port: "5432",
+	port: "5433",
 } as const
 
 export const MONGODB_TEST_CONFIG = {
