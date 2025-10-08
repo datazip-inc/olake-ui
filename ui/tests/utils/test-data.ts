@@ -14,7 +14,7 @@ export const TEST_CREDENTIALS = {
 
 // Source Configurations
 export const POSTGRES_SOURCE_CONFIG = {
-	host: "olake_postgres-test",
+	host: "localhost",
 	database: "postgres",
 	username: "postgres",
 	password: "secret1234",
