@@ -113,7 +113,8 @@ const (
 )
 
 func DinDTestContainer(t *testing.T) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
 	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		return fmt.Errorf("could not determine project root: %w", err)
