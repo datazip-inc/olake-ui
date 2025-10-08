@@ -141,7 +141,7 @@ func DinDTestContainer(t *testing.T) error {
 			}
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
 		},
-		Cmd: []string{"dockerd", "--host=unix:///var/run/docker.sock", "--host=tcp://0.0.0.0:2375"},
+		// Cmd: []string{"dockerd", "--host=unix:///var/run/docker.sock", "--host=tcp://0.0.0.0:2375"},
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = "/mnt"
 		},
