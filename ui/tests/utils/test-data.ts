@@ -14,12 +14,12 @@ export const TEST_CREDENTIALS = {
 
 // Source Configurations
 export const POSTGRES_SOURCE_CONFIG = {
-	host: "127.0.0.1",
+	host: "olake_postgres-test",
 	database: "postgres",
 	username: "postgres",
 	password: "secret1234",
 	useSSL: false,
-	port: "5433",
+	port: "5432",
 } as const
 
 export const MONGODB_TEST_CONFIG = {
