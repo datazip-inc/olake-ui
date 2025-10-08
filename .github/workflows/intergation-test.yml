@@ -46,7 +46,7 @@ jobs:
             max_attempts: 30
             retry_wait_seconds: 5
             command: |
-                docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
+                docker exec olake_postgresql-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
 
       - name: Install Playwright dependencies
         working-directory: ./ui
