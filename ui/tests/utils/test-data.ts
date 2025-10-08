@@ -14,16 +14,16 @@ export const TEST_CREDENTIALS = {
 
 // Source Configurations
 export const POSTGRES_SOURCE_CONFIG = {
-	host: "172.21.0.7",
+	host: "172.17.0.2",
 	database: "postgres",
 	username: "postgres",
 	password: "secret1234",
 	useSSL: false,
-	port: "5432",
+	port: "5433",
 } as const
 
 export const MONGODB_TEST_CONFIG = {
-	host: "127.0.0.1",
+	host: "172.17.0.2",
 	database: "test_db",
 	username: "admin",
 	password: "password",
@@ -33,11 +33,11 @@ export const MONGODB_TEST_CONFIG = {
 
 // Destination Configurations
 export const ICEBERG_DESTINATION_CONFIG = {
-	jdbcUrl: "jdbc:postgresql://127.0.0.1:5432/iceberg",
+	jdbcUrl: "jdbc:postgresql://172.17.0.2:5432/iceberg",
 	jdbcUsername: "iceberg",
 	jdbcPassword: "password",
 	jdbcDatabase: "olake_iceberg",
-	jdbcS3Endpoint: "http://127.0.0.1:9000",
+	jdbcS3Endpoint: "http://172.17.0.2:9000",
 	jdbcS3AccessKey: "admin",
 	jdbcS3SecretKey: "password",
 	jdbcS3Region: "us-east-1",

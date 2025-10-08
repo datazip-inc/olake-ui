@@ -45,9 +45,7 @@ const (
 	// Start postgres test infrastructure
 	startPostgresCmd = `
         cd /mnt/server/tests &&
-        echo "Starting PostgreSQL test infrastructure..." &&
         docker compose up -d &&
-        echo "Waiting for PostgreSQL to be ready..." &&
         for i in $(seq 1 30); do
             if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
                 echo "PostgreSQL is ready!"
@@ -64,10 +62,8 @@ const (
 	// Start destination services (iceberg stack)
 	startDestinationCmd = `
         cd /mnt &&
-        echo "Starting destination services (Iceberg stack)..." &&
         docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
-        echo "Waiting for destination services..." &&
-        sleep 10 &&
+        sleep 5 &&
         docker compose -f docker-compose.destination.yml ps &&
         echo "Destination services started."
     `
@@ -78,10 +74,8 @@ const (
         mkdir -p /mnt/olake-data && 
         echo "Starting OLake docker-compose..." && 
         docker compose up -d && 
-        echo "Services started. Waiting for containers..." && 
         sleep 5 && 
         docker compose ps &&
-        echo "Waiting for OLake UI to be ready..." &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
                 echo "OLake UI is ready!"
@@ -89,9 +83,7 @@ const (
             fi
             echo "Attempt $i: OLake UI not ready yet..."
             sleep 2
-        done &&
-        echo "Checking OLake UI logs..." &&
-        docker compose logs --tail=50 olake-ui
+        done
     `
 
 	// Network setup
@@ -99,39 +91,19 @@ const (
         docker network create olake-network || true &&
         docker network connect olake-network olake-ui || true &&
         docker network connect olake-network postgres || true &&
-        docker network connect olake-network olake_postgres-test || true &&
-        echo "Getting PostgreSQL container IP..." &&
-        POSTGRES_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{break}}{{end}}' olake_postgres-test) &&
-        echo "PostgreSQL IP: $POSTGRES_IP" &&
-        echo "Setting up socat port forwarding for PostgreSQL..." &&
-        apt-get update && apt-get install -y socat &&
-        nohup socat TCP-LISTEN:5433,fork,reuseaddr TCP:$POSTGRES_IP:5432 > /var/log/socat-postgres.log 2>&1 &
-        echo "Port forwarding setup complete"
-    `
-
-	// Get PostgreSQL connection details for Playwright
-	getPostgresDetailsCmd = `
-        echo "Getting PostgreSQL connection details..." &&
-        POSTGRES_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{break}}{{end}}' olake_postgres-test) &&
-        echo "PostgreSQL Container IP: $POSTGRES_CONTAINER_IP" &&
-        echo "Testing connection to PostgreSQL..." &&
-        nc -zv $POSTGRES_CONTAINER_IP 5432 || echo "Direct connection test completed" &&
-        nc -zv localhost 5433 || echo "Localhost port forward test completed"
+        docker network connect olake-network olake_postgres-test || true
     `
 
 	// Install Playwright and dependencies
 	installPlaywrightCmd = `
         cd /mnt/ui &&
-        echo "Installing Playwright dependencies..." &&
         pnpm add -D @playwright/test &&
-        pnpm exec playwright install --with-deps chromium &&
-        echo "Playwright installed."
+        pnpm exec playwright install --with-deps chromium 
     `
 
 	// Run Playwright tests
 	runPlaywrightCmd = `
         cd /mnt/ui &&
-        echo "Running Playwright tests..." &&
         PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
     `
 
@@ -256,17 +228,9 @@ func DinDTestContainer(t *testing.T) error {
 	}
 
 	// Step 7: Setup networks
-	t.Log("Setting up Docker networks and port forwarding...")
+	t.Log("Setting up Docker networks...")
 	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
 		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 7b: Verify PostgreSQL connectivity
-	t.Log("Verifying PostgreSQL connectivity...")
-	if code, out, err := ExecCommand(ctx, ctr, getPostgresDetailsCmd); err != nil || code != 0 {
-		t.Logf("PostgreSQL details: %s", out)
-	} else {
-		t.Logf("PostgreSQL connection details: %s", out)
 	}
 
 	// Step 8: Query the postgres source
@@ -393,6 +357,7 @@ func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Con
 	// check count and verify
 	countValue := rows[0].Value("unique_count").(int64)
 	require.Equal(t, int64(5), countValue, "Expected count to be 5")
+	t.Logf("✅ Test passed: count value %v matches expected value 5", countValue)
 }
 
 func ExecuteQuery(ctx context.Context, t *testing.T, operation, host, port string) {
