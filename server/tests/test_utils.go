@@ -45,7 +45,11 @@ const (
 		echo "Checking OLake UI logs..." &&
 		docker-compose logs --tail=50 olake-ui
 	`
-
+	networkSetupCmd = `
+		docker network create olake-network || true &&
+		docker network connect olake-network olake-ui || true &&
+		docker network connect olake-network postgres || true
+	`
 	icebergDB           = "postgres_iceberg_job_postgres_public"
 	icebergCatalog      = "olake_iceberg"
 	currentTestTable    = "postgres_test_table_olake"
@@ -62,7 +66,7 @@ func DinDTestContainer(t *testing.T) error {
 
 	req := testcontainers.ContainerRequest{
 		Image:        "docker:25.0-dind",
-		ExposedPorts: []string{"8000/tcp", "2375/tcp"},
+		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
 			hc.Binds = []string{
@@ -73,7 +77,14 @@ func DinDTestContainer(t *testing.T) error {
 				"8000/tcp": {
 					{HostIP: "0.0.0.0", HostPort: "8000"},
 				},
+				"5433/tcp": {
+					{HostIP: "0.0.0.0", HostPort: "5433"},
+				},
+				"15002/tcp": {
+					{HostIP: "0.0.0.0", HostPort: "15002"},
+				},
 			}
+			hc.NetworkMode = "bridge"
 		},
 		Cmd: []string{"dockerd", "--host=unix:///var/run/docker.sock", "--host=tcp://0.0.0.0:2375"},
 		ConfigModifier: func(config *container.Config) {
@@ -114,6 +125,11 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("docker compose up failed (%d): %s\n%s", code, err, out)
 	}
 
+	// setup the networks
+	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
+		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
+	}
+
 	// query the postgres source
 	ExecuteQuery(ctx, t, "create")
 	ExecuteQuery(ctx, t, "clean")
@@ -127,7 +143,7 @@ func DinDTestContainer(t *testing.T) error {
 	uiPath := filepath.Join(projectRoot, "ui")
 	cmd := exec.Command("npx", "playwright", "test", "tests/flows/job-end-to-end.spec.ts")
 	cmd.Dir = uiPath
-	cmd.Env = append(os.Environ(), "PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000")
+	cmd.Env = append(os.Environ(), "PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000", "DEBUG=pw:api")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

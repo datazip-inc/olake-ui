@@ -32,6 +32,12 @@ jobs:
       - name: Install pnpm
         run: npm install -g pnpm
 
+      - name: Install Playwright dependencies
+        working-directory: ./ui
+        run: |
+            pnpm add -D @playwright/test
+            pnpm exec playwright install --with-deps chromium
+        
       - name: Start Test Infrastructure
         run: |
             docker compose -f ./server/tests/docker-compose.yml up -d
@@ -48,12 +54,11 @@ jobs:
             command: |
                 docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1"
 
-      - name: Install Playwright dependencies
-        working-directory: ./ui
+      - name: Verify PostgreSQL Replication Slot
         run: |
-            pnpm add -D @playwright/test
-            pnpm exec playwright install --with-deps chromium
-    
+            docker exec olake_postgres-test psql -U postgres -d postgres -c \
+            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';"
+
       - name: Check Network Setup
         run: |
             echo "Checking port 8000 availability..."
