@@ -94,14 +94,6 @@ const (
         docker compose logs --tail=50 olake-ui
     `
 
-	// Network setup
-	networkSetupCmd = `
-        docker network create olake-network || true &&
-        docker network connect olake-network olake-ui || true &&
-        docker network connect olake-network postgres || true &&
-        docker network connect olake-network olake_postgres-test || true
-    `
-
 	// Install Playwright and dependencies
 	installPlaywrightCmd = `
         cd /mnt/ui &&
@@ -236,12 +228,6 @@ func DinDTestContainer(t *testing.T) error {
 	t.Log("Starting OLake docker-compose services...")
 	if code, out, err := ExecCommand(ctx, ctr, startOLakeCmd); err != nil || code != 0 {
 		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
-	}
-
-	// Step 7: Setup networks
-	t.Log("Setting up Docker networks...")
-	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
-		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
 	}
 
 	// Step 8: Query the postgres source
