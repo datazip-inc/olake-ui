@@ -111,10 +111,9 @@ const (
 		PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
 	`
 
-	icebergDB           = "postgres_iceberg_job_postgres_public"
-	icebergCatalog      = "olake_iceberg"
-	currentTestTable    = "postgres_test_table_olake"
-	sparkConnectAddress = "sc://localhost:15002"
+	icebergDB        = "postgres_iceberg_job_postgres_public"
+	icebergCatalog   = "olake_iceberg"
+	currentTestTable = "postgres_test_table_olake"
 )
 
 func DinDTestContainer(t *testing.T) error {
@@ -153,6 +152,24 @@ func DinDTestContainer(t *testing.T) error {
 	})
 	if err != nil {
 		return fmt.Errorf("failed to start DinD container: %w", err)
+	}
+
+	// container host
+	host, err := ctr.Host(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get host: %w", err)
+	}
+
+	// postgres port
+	postgresPort, err := ctr.MappedPort(ctx, "5433/tcp")
+	if err != nil {
+		return fmt.Errorf("failed to get postgres port: %w", err)
+	}
+
+	// iceberg-spark port
+	sparkPort, err := ctr.MappedPort(ctx, "15002/tcp")
+	if err != nil {
+		return fmt.Errorf("failed to get spark port: %w", err)
 	}
 
 	t.Log("Waiting for Docker daemon to be ready...")
@@ -207,9 +224,9 @@ func DinDTestContainer(t *testing.T) error {
 	}
 
 	// Step 8: Query the postgres source
-	ExecuteQuery(ctx, t, "create")
-	ExecuteQuery(ctx, t, "clean")
-	ExecuteQuery(ctx, t, "add")
+	ExecuteQuery(ctx, t, "create", host, postgresPort.Port())
+	ExecuteQuery(ctx, t, "clean", host, postgresPort.Port())
+	ExecuteQuery(ctx, t, "add", host, postgresPort.Port())
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
@@ -229,8 +246,7 @@ func DinDTestContainer(t *testing.T) error {
 
 	// Step 11: Verify in iceberg
 	t.Logf("Starting Iceberg data verification...")
-	VerifyIcebergTest(ctx, t, ctr)
-
+	VerifyIcebergTest(ctx, t, ctr, host, sparkPort.Port())
 	return nil
 }
 
@@ -296,7 +312,8 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
 	return nil
 }
 
-func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Container) {
+func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Container, host, port string) {
+	sparkConnectAddress := fmt.Sprintf("sc://%s:%s", host, port)
 	spark, err := sql.NewSessionBuilder().Remote(sparkConnectAddress).Build(ctx)
 	require.NoError(t, err, "Failed to connect to Spark Connect server")
 	defer func() {
@@ -332,9 +349,9 @@ func VerifyIcebergTest(ctx context.Context, t *testing.T, ctr testcontainers.Con
 	require.Equal(t, int64(5), countValue, "Expected count to be 5")
 }
 
-func ExecuteQuery(ctx context.Context, t *testing.T, operation string) {
+func ExecuteQuery(ctx context.Context, t *testing.T, operation, host, port string) {
 	t.Helper()
-	connStr := "postgres://postgres@localhost:5433/postgres?sslmode=disable"
+	connStr := fmt.Sprintf("postgres://postgres@%s:%s/postgres?sslmode=disable", host, port)
 	db, ok := sqlx.ConnectContext(ctx, "postgres", connStr)
 	require.NoError(t, ok, "failed to connect to postgres")
 	defer func() {
