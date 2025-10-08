@@ -226,6 +226,24 @@ export class CreateDestinationPage {
 		})
 	}
 
+	async assertTestConnectionSucceeded() {
+		const failure = this.page
+			.waitForSelector("text=Your test connection has failed", {
+				state: "visible",
+				timeout: TIMEOUTS.LONG,
+			})
+			.then(() => "failure")
+		const success = this.page
+			.waitForSelector("text=Connection successful", {
+				state: "visible",
+				timeout: TIMEOUTS.LONG,
+			})
+			.then(() => "success")
+
+		const outcome = await Promise.race([failure, success])
+		expect(outcome, "Test connection failed").toBe("success")
+	}
+
 	async expectEntitySavedModal() {
 		await expect(
 			this.page.getByText("Destination is connected and saved successfully"),
