@@ -94,6 +94,14 @@ const (
         docker compose logs --tail=50 olake-ui
     `
 
+	// Network setup
+	networkSetupCmd = `
+        docker network create olake-network || true &&
+        docker network connect olake-network olake-ui || true &&
+        docker network connect olake-network postgres || true &&
+        docker network connect olake-network olake_postgres-test || true
+    `
+
 	// Install Playwright and dependencies
 	installPlaywrightCmd = `
         cd /mnt/ui &&
@@ -124,28 +132,28 @@ func DinDTestContainer(t *testing.T) error {
 	t.Logf("Project root identified at: %s", projectRoot)
 
 	req := testcontainers.ContainerRequest{
-		Image:        "ubuntu:22.04",
-		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
-		HostConfigModifier: func(hc *container.HostConfig) {
-			hc.Privileged = true
-			hc.Binds = []string{
-				fmt.Sprintf("%s:/mnt:rw", projectRoot),
-			}
-			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
-			hc.Tmpfs = map[string]string{
-				"/var/lib/docker": "size=50G",
-				"/dev/shm":        "size=10G",
-			}
-		},
-		ConfigModifier: func(config *container.Config) {
-			config.WorkingDir = "/mnt"
-		},
+		Image: "ubuntu:22.04",
 		Env: map[string]string{
 			"DOCKER_TLS_CERTDIR":           "",
 			"TELEMETRY_DISABLED":           "true",
 			"TESTCONTAINERS_RYUK_DISABLED": "true",
 			"DEBIAN_FRONTEND":              "noninteractive",
 		},
+		HostConfigModifier: func(hc *container.HostConfig) {
+			hc.Privileged = true
+			hc.Binds = []string{
+				fmt.Sprintf("%s:/mnt:rw", projectRoot),
+			}
+			hc.Tmpfs = map[string]string{
+				"/var/lib/docker": "size=50G",
+				"/dev/shm":        "size=10G",
+			}
+			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
+		},
+		ConfigModifier: func(config *container.Config) {
+			config.WorkingDir = "/mnt"
+		},
+		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
 		Cmd: []string{
 			"/bin/sh", "-c",
 			`set -e
@@ -228,6 +236,12 @@ func DinDTestContainer(t *testing.T) error {
 	t.Log("Starting OLake docker-compose services...")
 	if code, out, err := ExecCommand(ctx, ctr, startOLakeCmd); err != nil || code != 0 {
 		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 7: Setup networks
+	t.Log("Setting up Docker networks...")
+	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
+		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
 	}
 
 	// Step 8: Query the postgres source
