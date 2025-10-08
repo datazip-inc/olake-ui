@@ -5,15 +5,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/apache/spark-connect-go/v35/spark/sql"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -21,14 +19,57 @@ import (
 )
 
 const (
-	StartupComposeCmd = `
-		apk add --no-cache docker-compose curl postgresql-client bind-tools iputils ncurses nodejs ca-certificates npm && 
-		npm install -g chalk-cli &&
+	// Install tools and curl destination docker-compose
+	setupToolsCmd = `
+		apk add --no-cache docker-compose curl postgresql-client bind-tools iputils ncurses nodejs ca-certificates npm netcat-openbsd && 
+		npm install -g chalk-cli pnpm &&
 		update-ca-certificates &&
-		echo "Tools installed." && 
+		echo "Tools installed."
+	`
+
+	// Download destination docker-compose
+	downloadDestinationComposeCmd = `
+		cd /mnt &&
+		curl -fsSL -o docker-compose.destination.yml \
+			https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml &&
+		echo "Destination docker-compose downloaded."
+	`
+
+	// Start postgres test infrastructure
+	startPostgresCmd = `
+		cd /mnt/server/tests &&
+		echo "Starting PostgreSQL test infrastructure..." &&
+		docker-compose up -d &&
+		echo "Waiting for PostgreSQL to be ready..." &&
+		for i in $(seq 1 30); do
+			if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
+				echo "PostgreSQL is ready!"
+				break
+			fi
+			echo "Attempt $i: PostgreSQL not ready yet..."
+			sleep 2
+		done &&
+		docker exec olake_postgres-test psql -U postgres -d postgres -c \
+			"SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';" &&
+		echo "PostgreSQL setup complete."
+	`
+
+	// Start destination services (iceberg stack)
+	startDestinationCmd = `
+		cd /mnt &&
+		echo "Starting destination services (Iceberg stack)..." &&
+		docker-compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
+		echo "Waiting for destination services..." &&
+		sleep 10 &&
+		docker-compose -f docker-compose.destination.yml ps &&
+		echo "Destination services started."
+	`
+
+	// Start OLake application
+	startOLakeCmd = `
 		cd /mnt && 
 		mkdir -p /mnt/olake-data && 
-		echo "Starting docker-compose..." && 
+		echo "Starting OLake docker-compose..." && 
 		docker-compose up -d && 
 		echo "Services started. Waiting for containers..." && 
 		sleep 5 && 
@@ -45,11 +86,31 @@ const (
 		echo "Checking OLake UI logs..." &&
 		docker-compose logs --tail=50 olake-ui
 	`
+
+	// Network setup
 	networkSetupCmd = `
 		docker network create olake-network || true &&
 		docker network connect olake-network olake-ui || true &&
-		docker network connect olake-network postgres || true
+		docker network connect olake-network postgres || true &&
+		docker network connect olake-network olake_postgres-test || true
 	`
+
+	// Install Playwright and dependencies
+	installPlaywrightCmd = `
+		cd /mnt/ui &&
+		echo "Installing Playwright dependencies..." &&
+		pnpm add -D @playwright/test &&
+		pnpm exec playwright install --with-deps chromium &&
+		echo "Playwright installed."
+	`
+
+	// Run Playwright tests
+	runPlaywrightCmd = `
+		cd /mnt/ui &&
+		echo "Running Playwright tests..." &&
+		PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
+	`
+
 	icebergDB           = "postgres_iceberg_job_postgres_public"
 	icebergCatalog      = "olake_iceberg"
 	currentTestTable    = "postgres_test_table_olake"
@@ -73,26 +134,15 @@ func DinDTestContainer(t *testing.T) error {
 				fmt.Sprintf("%s:/mnt:rw", projectRoot),
 			}
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
-			hc.PortBindings = map[nat.Port][]nat.PortBinding{
-				"8000/tcp": {
-					{HostIP: "0.0.0.0", HostPort: "8000"},
-				},
-				"5433/tcp": {
-					{HostIP: "0.0.0.0", HostPort: "5433"},
-				},
-				"15002/tcp": {
-					{HostIP: "0.0.0.0", HostPort: "15002"},
-				},
-			}
-			hc.NetworkMode = "bridge"
 		},
 		Cmd: []string{"dockerd", "--host=unix:///var/run/docker.sock", "--host=tcp://0.0.0.0:2375"},
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = "/mnt"
 		},
 		Env: map[string]string{
-			"TELEMETRY_DISABLED": "true",
-			"DOCKER_TLS_CERTDIR": "", // No need for TLS in tests
+			"DOCKER_TLS_CERTDIR":           "",
+			"TELEMETRY_DISABLED":           "true",
+			"TESTCONTAINERS_RYUK_DISABLED": "true",
 		},
 		WaitingFor: wait.ForLog("API listen on").WithStartupTimeout(60 * time.Second),
 	}
@@ -114,66 +164,98 @@ func DinDTestContainer(t *testing.T) error {
 	}
 	t.Log("Docker daemon is ready")
 
-	// Start docker-compose and install pre-requisites
+	// Step 1: Install tools
+	t.Log("Installing required tools...")
+	if code, out, err := ExecCommand(ctx, ctr, setupToolsCmd); err != nil || code != 0 {
+		return fmt.Errorf("tools installation failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 2: Download destination docker-compose
+	t.Log("Downloading destination docker-compose...")
+	if code, out, err := ExecCommand(ctx, ctr, downloadDestinationComposeCmd); err != nil || code != 0 {
+		return fmt.Errorf("destination docker-compose download failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 3: Start PostgreSQL test infrastructure
+	t.Log("Starting PostgreSQL test infrastructure...")
+	if code, out, err := ExecCommand(ctx, ctr, startPostgresCmd); err != nil || code != 0 {
+		return fmt.Errorf("postgres startup failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 4: Start destination services (Iceberg stack)
+	t.Log("Starting destination services...")
+	if code, out, err := ExecCommand(ctx, ctr, startDestinationCmd); err != nil || code != 0 {
+		return fmt.Errorf("destination services startup failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 5: Patch docker-compose for local images
 	t.Log("Patching docker-compose to build local images...")
 	if err := PatchDockerCompose(ctx, t, ctr); err != nil {
 		return err
 	}
 
-	t.Log("Starting docker-compose services...")
-	if code, out, err := ExecCommand(ctx, ctr, StartupComposeCmd); err != nil || code != 0 {
-		return fmt.Errorf("docker compose up failed (%d): %s\n%s", code, err, out)
+	// Step 6: Start OLake application
+	t.Log("Starting OLake docker-compose services...")
+	if code, out, err := ExecCommand(ctx, ctr, startOLakeCmd); err != nil || code != 0 {
+		return fmt.Errorf("OLake startup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// setup the networks
+	// Step 7: Setup networks
+	t.Log("Setting up Docker networks...")
 	if code, out, err := ExecCommand(ctx, ctr, networkSetupCmd); err != nil || code != 0 {
 		t.Logf("Warning: Network setup failed (%d): %s\n%s", code, err, out)
 	}
 
-	// query the postgres source
+	// Step 8: Query the postgres source
 	ExecuteQuery(ctx, t, "create")
 	ExecuteQuery(ctx, t, "clean")
 	ExecuteQuery(ctx, t, "add")
 
 	t.Logf("OLake UI is ready and accessible at: http://localhost:8000")
 
-	// start playwright
+	// Step 9: Install Playwright
+	t.Log("Installing Playwright and dependencies...")
+	if code, out, err := ExecCommand(ctx, ctr, installPlaywrightCmd); err != nil || code != 0 {
+		return fmt.Errorf("playwright installation failed (%d): %s\n%s", code, err, out)
+	}
+
+	// Step 10: Run Playwright tests
 	time.Sleep(5 * time.Second)
 	t.Log("Executing Playwright tests...")
-	uiPath := filepath.Join(projectRoot, "ui")
-	cmd := exec.Command("npx", "playwright", "test", "tests/flows/job-end-to-end.spec.ts")
-	cmd.Dir = uiPath
-	cmd.Env = append(os.Environ(), "PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000", "DEBUG=pw:api")
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stdout pipe: %v", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		t.Fatalf("Failed to get stderr pipe: %v", err)
-	}
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("Failed to start Playwright tests: %v", err)
-	}
-
-	scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
-	for scanner.Scan() {
-		t.Log(scanner.Text())
-	}
-	if err := cmd.Wait(); err != nil {
-		t.Fatalf("Playwright tests failed: %v", err)
+	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, runPlaywrightCmd); err != nil || code != 0 {
+		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Playwright tests passed successfully.")
 
-	// verify in iceberg
-	t.Logf("starting iceberg data verfication")
+	// Step 11: Verify in iceberg
+	t.Logf("Starting Iceberg data verification...")
 	VerifyIcebergTest(ctx, t, ctr)
+
 	return nil
 }
 
-// PatchDockerCompose updates olake-ui and temporal-worker to build from local code
+// ExecCommandWithStreaming executes a command and streams output in real-time
+func ExecCommandWithStreaming(ctx context.Context, t *testing.T, ctr testcontainers.Container, cmd string) (int, string, error) {
+	exitCode, reader, err := ctr.Exec(ctx, []string{"sh", "-c", cmd})
+	if err != nil {
+		return -1, "", err
+	}
+
+	var output strings.Builder
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		t.Log(line)
+		output.WriteString(line + "\n")
+	}
+
+	if err := scanner.Err(); err != nil {
+		return exitCode, output.String(), err
+	}
+
+	return exitCode, output.String(), nil
+}
+
 // PatchDockerCompose updates olake-ui and temporal-worker to build from local code
 // and prints the patched docker-compose.yml
 func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
