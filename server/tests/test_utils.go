@@ -132,7 +132,7 @@ func DinDTestContainer(t *testing.T) error {
 	t.Logf("Project root identified at: %s", projectRoot)
 
 	req := testcontainers.ContainerRequest{
-		Image:        "cruizba/ubuntu-dind:jammy-latest",
+		Image:        "ubuntu:22.04",
 		ExposedPorts: []string{"8000/tcp", "2375/tcp", "5433/tcp", "15002/tcp"},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
@@ -141,7 +141,6 @@ func DinDTestContainer(t *testing.T) error {
 			}
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
 		},
-		// Cmd: []string{"dockerd", "--host=unix:///var/run/docker.sock", "--host=tcp://0.0.0.0:2375"},
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = "/mnt"
 		},
@@ -149,8 +148,19 @@ func DinDTestContainer(t *testing.T) error {
 			"DOCKER_TLS_CERTDIR":           "",
 			"TELEMETRY_DISABLED":           "true",
 			"TESTCONTAINERS_RYUK_DISABLED": "true",
+			"DEBIAN_FRONTEND":              "noninteractive",
 		},
-		WaitingFor: wait.ForLog("API listen on").WithStartupTimeout(60 * time.Second),
+		Cmd: []string{
+			"/bin/sh", "-c",
+			`set -e
+			apt-get update -y &&
+			apt-get install -y --no-install-recommends ca-certificates curl gnupg lsb-release iproute2 procps &&
+			apt-get install -y --no-install-recommends docker.io &&
+			mkdir -p /var/lib/docker /var/run/docker &&
+			exec dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
+			`,
+		},
+		WaitingFor: wait.ForListeningPort("2375/tcp").WithStartupTimeout(60 * time.Second),
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -179,11 +189,11 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("failed to get spark port: %w", err)
 	}
 
-	t.Log("Waiting for Docker daemon to be ready...")
+	t.Log("Waiting a short moment for Docker daemon to settle...")
 	time.Sleep(3 * time.Second)
 
-	// Verify Docker is working
-	if code, out, err := ExecCommand(ctx, ctr, "docker info"); err != nil || code != 0 {
+	// Verify Docker is working (use tcp socket we exposed)
+	if code, out, err := ExecCommand(ctx, ctr, "docker -H tcp://127.0.0.1:2375 info"); err != nil || code != 0 {
 		return fmt.Errorf("docker daemon not ready (%d): %s\n%s", code, err, out)
 	}
 	t.Log("Docker daemon is ready")
