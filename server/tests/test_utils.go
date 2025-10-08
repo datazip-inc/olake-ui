@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// Install tools and curl destination docker-compose
+	// Install required tools during initial setup
 	setupToolsCmd = `
         apt-get update && 
         apt-get install -y curl postgresql-client dnsutils iputils-ping ncurses-bin ca-certificates gnupg lsb-release netcat-openbsd && 
@@ -30,16 +30,14 @@ const (
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null &&
         apt-get update &&
         apt-get install -y docker-compose-plugin &&
-        update-ca-certificates &&
-        echo "Tools installed."
+        update-ca-certificates
     `
 
 	// Download destination docker-compose
 	downloadDestinationComposeCmd = `
         cd /mnt &&
         curl -fsSL -o docker-compose.destination.yml \
-            https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml &&
-        echo "Destination docker-compose downloaded."
+            https://raw.githubusercontent.com/datazip-inc/olake/master/destination/iceberg/local-test/docker-compose.yml
     `
 
 	// Start postgres test infrastructure
@@ -48,15 +46,13 @@ const (
         docker compose up -d &&
         for i in $(seq 1 30); do
             if docker exec olake_postgres-test psql -h localhost -U postgres -d postgres -c "SELECT 1" 2>/dev/null; then
-                echo "PostgreSQL is ready!"
+                echo "PostgreSQL ready."
                 break
             fi
-            echo "Attempt $i: PostgreSQL not ready yet..."
             sleep 2
         done &&
         docker exec olake_postgres-test psql -U postgres -d postgres -c \
-            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';" &&
-        echo "PostgreSQL setup complete."
+            "SELECT slot_name, plugin, slot_type, active FROM pg_replication_slots WHERE slot_name = 'olake_slot';"
     `
 
 	// Start destination services (iceberg stack)
@@ -64,24 +60,19 @@ const (
         cd /mnt &&
         docker compose -f docker-compose.destination.yml up -d minio mc postgres spark-iceberg &&
         sleep 5 &&
-        docker compose -f docker-compose.destination.yml ps &&
-        echo "Destination services started."
+        docker compose -f docker-compose.destination.yml ps
     `
 
 	// Start OLake application
 	startOLakeCmd = `
         cd /mnt && 
         mkdir -p /mnt/olake-data && 
-        echo "Starting OLake docker-compose..." && 
         docker compose up -d && 
-        sleep 5 && 
-        docker compose ps &&
         for i in $(seq 1 60); do
             if curl -f http://localhost:8000/health 2>/dev/null || curl -f http://localhost:8000 2>/dev/null; then
-                echo "OLake UI is ready!"
+                echo "OLake UI ready."
                 break
             fi
-            echo "Attempt $i: OLake UI not ready yet..."
             sleep 2
         done
     `
@@ -98,7 +89,7 @@ const (
 	installPlaywrightCmd = `
         cd /mnt/ui &&
         pnpm add -D @playwright/test &&
-        pnpm exec playwright install --with-deps chromium 
+        pnpm exec playwright install --with-deps chromium
     `
 
 	// Run Playwright tests
