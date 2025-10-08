@@ -44,7 +44,7 @@ func (c *SourceHandler) CreateSource() {
 
 	var req dto.CreateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (c *SourceHandler) UpdateSource() {
 
 	var req dto.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -101,7 +101,7 @@ func (c *SourceHandler) DeleteSource() {
 func (c *SourceHandler) TestConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (c *SourceHandler) TestConnection() {
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -156,14 +156,14 @@ func (c *SourceHandler) GetSourceVersions() {
 		respondWithError(&c.Controller, status, "Failed to get source versions", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"version": versions})
+	utils.SuccessResponse(&c.Controller, versions)
 }
 
 // @router /project/:projectid/sources/spec [post]
 func (c *SourceHandler) GetProjectSourceSpec() {
 	var req dto.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 

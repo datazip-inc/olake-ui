@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 )
 
@@ -21,9 +21,11 @@ func NewUserService() *UserService {
 	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, user *models.User) error {
-	if err := s.userORM.Create(user); err != nil {
-		logs.Error("Failed to create user: %v", err)
+func (s *UserService) CreateUser(ctx context.Context, req *models.User) error {
+	if err := dto.Validate(&req); err != nil {
+		return fmt.Errorf("%s user: %s", constants.ErrFailedToCreate, err)
+	}
+	if err := s.userORM.Create(req); err != nil {
 		return fmt.Errorf("failed to create user: %s", err)
 	}
 	return nil
@@ -32,26 +34,26 @@ func (s *UserService) CreateUser(ctx context.Context, user *models.User) error {
 func (s *UserService) GetAllUsers(ctx context.Context) ([]*models.User, error) {
 	users, err := s.userORM.GetAll()
 	if err != nil {
-		logs.Error("Failed to retrieve users: %v", err)
 		return nil, fmt.Errorf("failed to retrieve users: %s", err)
 	}
 	return users, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, id int, updateReq *models.User) (*models.User, error) {
+func (s *UserService) UpdateUser(ctx context.Context, id int, req *models.User) (*models.User, error) {
+	if err := dto.Validate(&req); err != nil {
+		return nil, fmt.Errorf("%s user: %s", constants.ErrFailedToUpdate, err)
+	}
 	existingUser, err := s.userORM.GetByID(id)
 	if err != nil {
-		logs.Warn("User not found: %v", err)
 		return nil, fmt.Errorf("user not found")
 	}
 
-	existingUser.Username = updateReq.Username
-	existingUser.Email = updateReq.Email
+	existingUser.Username = req.Username
+	existingUser.Email = req.Email
 	existingUser.UpdatedAt = time.Now()
 
 	if err := s.userORM.Update(existingUser); err != nil {
-		logs.Error("Failed to update user: %v", err)
-		return nil, fmt.Errorf("%s user: %w", constants.ErrFailedToUpdate, err)
+		return nil, fmt.Errorf("%s user: %s", constants.ErrFailedToUpdate, err)
 	}
 
 	return existingUser, nil
@@ -59,7 +61,6 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, updateReq *models.
 
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 	if err := s.userORM.Delete(id); err != nil {
-		logs.Error("Failed to delete user: %v", err)
 		return fmt.Errorf("failed to delete user: %s", err)
 	}
 	return nil
@@ -68,7 +69,6 @@ func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 func (s *UserService) GetUserByID(ctx context.Context, id int) (*models.User, error) {
 	user, err := s.userORM.GetByID(id)
 	if err != nil {
-		logs.Warn("User not found: %v", err)
 		return nil, fmt.Errorf("user not found")
 	}
 	return user, nil

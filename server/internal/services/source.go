@@ -135,7 +135,6 @@ func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id i
 	existing.Config = req.Config
 	existing.Type = req.Type
 	existing.Version = req.Version
-	existing.UpdatedAt = time.Now()
 
 	if userID != nil {
 		user := &models.User{ID: *userID}
@@ -248,7 +247,7 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsReq
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config: %s", err)
+		return nil, fmt.Errorf("failed to encrypt config for source id: %d: %s", req.JobID, err)
 	}
 
 	newStreams, err := s.tempClient.GetCatalog(
@@ -260,7 +259,7 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsReq
 		req.JobName,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get catalog: %s", err)
+		return nil, fmt.Errorf("failed to get catalog for source id: %d: %s", req.JobID, err)
 	}
 
 	return newStreams, nil
@@ -273,13 +272,13 @@ func (s *SourceService) GetSourceJobs(ctx context.Context, id int) ([]*models.Jo
 
 	jobs, err := s.jobORM.GetBySourceID(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by source ID: %s", err)
+		return nil, fmt.Errorf("failed to get jobs by source id: %d: %s", id, err)
 	}
 
 	return jobs, nil
 }
 
-func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string) ([]string, error) {
+func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
 	logs.Info("Getting source versions with source type: %s", sourceType)
 	if sourceType == "" {
 		return nil, fmt.Errorf("source type is required")
@@ -291,18 +290,12 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 		return nil, fmt.Errorf("failed to get Docker versions for source type %s: %s", sourceType, err)
 	}
 
-	return versions, nil
+	return map[string]interface{}{"version": versions}, nil
 }
 
 func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
 	if err := dto.Validate(&req); err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("invalid request: %w", err)
-	}
-	if req.Type == "" {
-		return dto.SpecResponse{}, fmt.Errorf("Source type is required")
-	}
-	if req.Version == "" {
-		return dto.SpecResponse{}, fmt.Errorf("Source version is required")
 	}
 	if s.tempClient == nil {
 		return dto.SpecResponse{}, fmt.Errorf("temporal client not available")
@@ -311,7 +304,7 @@ func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) 
 	// Follow existing FetchSpec convention seen in handler: empty scope, driver=req.Type, version=req.Version
 	specOut, err := s.tempClient.FetchSpec(ctx, "", req.Type, req.Version)
 	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("Failed to get spec: %v", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get spec for source type: %s version: %s: %s", req.Type, req.Version, err)
 	}
 
 	return dto.SpecResponse{

@@ -6,6 +6,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 
+	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
@@ -28,7 +29,7 @@ func (c *JobHandler) Prepare() {
 // @router /project/:projectid/jobs [get]
 func (c *JobHandler) GetAllJobs() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	jobs, err := c.jobService.GetAllJobsByProject(projectID)
+	jobs, err := c.jobService.GetAllJobs(projectID)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID", err)
 		return
@@ -41,7 +42,7 @@ func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	var req dto.CreateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -60,7 +61,7 @@ func (c *JobHandler) UpdateJob() {
 
 	var req dto.UpdateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -88,12 +89,12 @@ func (c *JobHandler) CheckUniqueJobName() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	var req dto.CheckUniqueJobNameRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-	unique, err := c.jobService.IsJobNameUnique(c.Ctx.Request.Context(), projectID, req.JobName)
+	unique, err := c.jobService.IsJobNameUnique(c.Ctx.Request.Context(), projectID, req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
@@ -114,15 +115,13 @@ func (c *JobHandler) SyncJob() {
 // @router /project/:projectid/jobs/:id/activate [put]
 func (c *JobHandler) ActivateJob() {
 	id := GetIDFromPath(&c.Controller)
-	var req struct {
-		Activate bool `json:"activate"`
-	}
+	var req dto.JobStatusRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req.Activate, userID); err != nil {
+	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req, userID); err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
@@ -137,13 +136,12 @@ func (c *JobHandler) ActivateJob() {
 func (c *JobHandler) CancelJobRun() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	id := GetIDFromPath(&c.Controller)
-	if err := c.jobService.CancelJobRun(c.Ctx.Request.Context(), projectID, id); err != nil {
+	resp, err := c.jobService.CancelJobRun(c.Ctx.Request.Context(), projectID, id)
+	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to cancel job run", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]any{
-		"message": "job workflow cancel requested successfully",
-	})
+	utils.SuccessResponse(&c.Controller, resp)
 }
 
 // @router /project/:projectid/jobs/:id/tasks [get]
@@ -167,7 +165,7 @@ func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	var req dto.JobTaskRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	logs, err := c.jobService.GetTaskLogs(c.Ctx.Request.Context(), id, req.FilePath)

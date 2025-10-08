@@ -105,3 +105,6 @@ type UpdateJobRequest struct {
 type JobTaskRequest struct {
 	FilePath string `json:"file_path" validate:"required"`
 }
+type JobStatusRequest struct {
+	Activate bool `json:"activate" validate:"required"`
+}

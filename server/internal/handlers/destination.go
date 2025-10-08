@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
@@ -19,7 +20,7 @@ type DestHandler struct {
 func (c *DestHandler) Prepare() {
 	svc, err := services.NewDestinationService()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service")
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service", err)
 		return
 	}
 	c.destService = svc
@@ -39,14 +40,10 @@ func (c *DestHandler) GetAllDestinations() {
 // @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	if projectID == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "project ID is required", nil)
-		return
-	}
 
 	var req dto.CreateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -65,7 +62,7 @@ func (c *DestHandler) UpdateDestination() {
 
 	var req dto.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -94,7 +91,7 @@ func (c *DestHandler) DeleteDestination() {
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -127,14 +124,14 @@ func (c *DestHandler) GetDestinationVersions() {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"version": versions})
+	utils.SuccessResponse(&c.Controller, versions)
 }
 
 // @router /project/:projectid/destinations/spec [post]
 func (c *DestHandler) GetDestinationSpec() {
 	var req dto.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 

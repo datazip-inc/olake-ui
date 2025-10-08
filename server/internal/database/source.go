@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
@@ -79,8 +78,6 @@ func (r *SourceORM) GetByID(id int) (*models.Source, error) {
 }
 
 func (r *SourceORM) Update(source *models.Source) error {
-	// TODO: remove all code managed db timestamps
-	source.UpdatedAt = time.Now()
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(source.Config)
 	if err != nil {

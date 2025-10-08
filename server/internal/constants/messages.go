@@ -68,7 +68,8 @@ const (
 
 // Validation messages
 const (
-	ValidationEmailRequired    = "Email is required"
-	ValidationPasswordRequired = "Password is required"
-	ValidationNameRequired     = "Name is required"
+	ValidationEmailRequired        = "Email is required"
+	ValidationPasswordRequired     = "Password is required"
+	ValidationNameRequired         = "Name is required"
+	ValidationInvalidRequestFormat = "Invalid request format"
 )
