@@ -209,13 +209,16 @@ const JobHistory: React.FC = () => {
 							icon={<ArrowsClockwise size={16} />}
 							onClick={() => {
 								if (jobId) {
-									fetchJobTasks(jobId).catch(error => {
-										message.error("Failed to fetch job tasks after delay")
-										console.error(
-											"Error fetching job tasks after delay:",
-											error,
-										)
-									})
+									fetchJobTasks(jobId)
+										.then(() => {
+											message.destroy()
+											message.success("Job history refetched successfully")
+										})
+										.catch(error => {
+											message.destroy()
+											message.error("Failed to fetch job history")
+											console.error(error)
+										})
 								}
 							}}
 							className="flex items-center"
