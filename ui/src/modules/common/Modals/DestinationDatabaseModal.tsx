@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
-import { Modal, Radio, Input, Button } from "antd"
-import { useAppStore } from "@store/index"
-import { validateAlphanumericUnderscore } from "@utils/utils"
+import { Modal, Radio, Input, Button, message } from "antd"
+import { useAppStore } from "../../../store"
+import { validateAlphanumericUnderscore } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	FORMAT_OPTIONS,
@@ -55,6 +55,12 @@ const DestinationDatabaseModal = ({
 	)
 
 	const handleSaveChanges = () => {
+		if (databaseName.trim() === "") {
+			message.error(
+				`${selectedFormat === FORMAT_OPTIONS.DYNAMIC ? `${labels.title} Prefix` : `${labels.title}`} can not be empty`,
+			)
+			return
+		}
 		onSave(selectedFormat, databaseName)
 		setShowDestinationDatabaseModal(false)
 	}

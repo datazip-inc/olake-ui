@@ -25,13 +25,16 @@ import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuc
 import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
+	getSelectedStreams,
 	validateCronExpression,
-} from "@utils/utils"
+	validateStreams,
+} from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
-} from "@utils/constants"
+} from "../../../utils/constants"
+import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -123,7 +126,13 @@ const JobDestinationEdit = ({
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
-	const { jobs, fetchJobs, fetchSources, fetchDestinations } = useAppStore()
+	const {
+		jobs,
+		fetchJobs,
+		fetchSources,
+		fetchDestinations,
+		setShowResetStreamsModal,
+	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.STREAMS,
@@ -134,6 +143,7 @@ const JobEdit: React.FC = () => {
 	const [sourceData, setSourceData] = useState<SourceData | null>(null)
 	const [destinationData, setDestinationData] =
 		useState<DestinationData | null>(null)
+	const [nextStep, setNextStep] = useState<JobCreationSteps | null>(null)
 
 	// Streams step states
 	const [selectedStreams, setSelectedStreams] = useState<StreamsDataStructure>({
@@ -147,6 +157,7 @@ const JobEdit: React.FC = () => {
 	const [job, setJob] = useState<Job | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
 	const [streamsModified, setStreamsModified] = useState(false)
+	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 
 	// Load job data on component mount
 	useEffect(() => {
@@ -320,7 +331,12 @@ const JobEdit: React.FC = () => {
 			streams_config:
 				typeof selectedStreams === "string"
 					? selectedStreams
-					: JSON.stringify(selectedStreams),
+					: JSON.stringify({
+							...selectedStreams,
+							selected_streams: getSelectedStreams(
+								selectedStreams.selected_streams,
+							),
+						}),
 			frequency: cronExpression,
 			activate: job?.activate,
 		}
@@ -331,6 +347,13 @@ const JobEdit: React.FC = () => {
 	const handleJobSubmit = async () => {
 		if (!sourceData || !destinationData || !jobId) {
 			message.error("Source and destination data are required")
+			return
+		}
+
+		if (
+			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+		) {
+			message.error("Filter Value cannot be empty")
 			return
 		}
 
@@ -383,13 +406,18 @@ const JobEdit: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
-			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
 	}
 
 	const handleStepClick = async (step: string) => {
+		if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			setNextStep(step as JobCreationSteps)
+			setShowResetStreamsModal(true)
+			return
+		}
 		setCurrentStep(step as JobCreationSteps)
 	}
 
@@ -397,6 +425,19 @@ const JobEdit: React.FC = () => {
 		setSelectedStreams(newStreams)
 		setStreamsModified(true)
 	}
+
+	const handleConfirmResetStreams = () => {
+		setSelectedStreams({
+			selected_streams: {},
+			streams: [],
+		})
+		setNextStep(null)
+		setCurrentStep(nextStep || JOB_CREATION_STEPS.DESTINATION)
+	}
+
+	const isBackDisabled =
+		currentStep === JOB_CREATION_STEPS.CONFIG ||
+		(currentStep === JOB_CREATION_STEPS.STREAMS && isStreamsLoading)
 
 	return (
 		<div className="flex h-screen flex-col">
@@ -419,6 +460,7 @@ const JobEdit: React.FC = () => {
 						currentStep={currentStep}
 						onStepClick={handleStepClick}
 						isEditMode={!!jobId}
+						disabled={isStreamsLoading}
 					/>
 				</div>
 			</div>
@@ -471,6 +513,7 @@ const JobEdit: React.FC = () => {
 										streamsModified ? selectedStreams : undefined
 									}
 									jobName={jobName}
+									onLoadingChange={setIsStreamsLoading}
 								/>
 							</div>
 						)}
@@ -495,13 +538,10 @@ const JobEdit: React.FC = () => {
 					<button
 						className="rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 						onClick={handleBack}
-						disabled={currentStep === JOB_CREATION_STEPS.CONFIG}
+						disabled={isBackDisabled}
 						style={{
-							opacity: currentStep === JOB_CREATION_STEPS.CONFIG ? 0.5 : 1,
-							cursor:
-								currentStep === JOB_CREATION_STEPS.CONFIG
-									? "not-allowed"
-									: "pointer",
+							opacity: isBackDisabled ? 0.5 : 1,
+							cursor: isBackDisabled ? "not-allowed" : "pointer",
 						}}
 					>
 						Back
@@ -545,6 +585,7 @@ const JobEdit: React.FC = () => {
 			<TestConnectionModal />
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={isFromSources} />
+			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
 		</div>
 	)
 }

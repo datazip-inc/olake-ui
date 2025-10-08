@@ -1,9 +1,24 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import { Input, Button, Select, Switch, message, Spin, Table } from "antd"
+import {
+	Input,
+	Button,
+	Select,
+	Switch,
+	message,
+	Spin,
+	Table,
+	Tooltip,
+} from "antd"
 import type { ColumnsType } from "antd/es/table"
-import { ArrowLeft, Info, Notebook, PencilSimple } from "@phosphor-icons/react"
+import {
+	ArrowLeft,
+	ArrowSquareOut,
+	Info,
+	Notebook,
+	PencilSimple,
+} from "@phosphor-icons/react"
 import validator from "@rjsf/validator-ajv8"
 import Form from "@rjsf/antd"
 
@@ -31,6 +46,7 @@ import {
 	TAB_TYPES,
 	ENTITY_TYPES,
 	DISPLAYED_JOBS_COUNT,
+	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 } from "@utils/constants"
 import DocumentationPanel from "@modules/common/components/DocumentationPanel"
@@ -136,6 +152,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						? JSON.parse(destination.config)
 						: destination.config
 				setFormData(config)
+			} else {
+				navigate("/destinations")
 			}
 		}
 	}, [destinationId, destinations, fetchDestinations])
@@ -480,13 +498,27 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									onChange={updateConnector}
 									className="h-8 w-full"
 									options={connectorOptions}
-									disabled={fromJobFlow}
+									disabled
 								/>
 							</div>
 						</div>
 						<div className="w-1/2">
-							<label className="mb-2 block text-sm font-medium text-gray-700">
-								Version:
+							<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
+								OLake Version:
+								<Tooltip title="Choose the OLake version for the destination">
+									<Info
+										size={16}
+										className="cursor-help text-slate-900"
+									/>
+								</Tooltip>
+								<a
+									href={OLAKE_LATEST_VERSION_URL}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="flex items-center text-primary hover:text-primary/80"
+								>
+									<ArrowSquareOut className="size-4" />
+								</a>
 							</label>
 							{loadingVersions ? (
 								<div className="flex h-8 items-center justify-center">
@@ -524,7 +556,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								value={destinationName}
 								onChange={e => updateDestinationName(e.target.value)}
 								className="h-8"
-								disabled={fromJobFlow}
+								disabled
 							/>
 						</div>
 					</div>
@@ -678,31 +710,30 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								? renderConfigTab()
 								: renderJobsTab()}
 						</div>
-
 						{/* Footer */}
 						{!fromJobFlow && (
 							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
 								<div>
-									{
-										<button
-											className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
-											onClick={handleDelete}
-										>
-											Delete
-										</button>
-									}
+									<button
+										className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+										onClick={handleDelete}
+									>
+										Delete
+									</button>
 								</div>
 								<div className="flex space-x-4">
-									<button
-										className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
-										onClick={() => {
-											if (formRef.current) {
-												formRef.current.submit()
-											}
-										}}
-									>
-										Save Changes
-									</button>
+									{activeTab === TAB_TYPES.CONFIG && (
+										<button
+											className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200"
+											onClick={() => {
+												if (formRef.current) {
+													formRef.current.submit()
+												}
+											}}
+										>
+											Save changes
+										</button>
+									)}
 								</div>
 							</div>
 						)}
