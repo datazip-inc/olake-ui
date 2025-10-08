@@ -140,6 +140,10 @@ func DinDTestContainer(t *testing.T) error {
 				fmt.Sprintf("%s:/mnt:rw", projectRoot),
 			}
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
+			hc.Tmpfs = map[string]string{
+				"/var/lib/docker": "size=50G",
+				"/dev/shm":        "size=10G",
+			}
 		},
 		ConfigModifier: func(config *container.Config) {
 			config.WorkingDir = "/mnt"
