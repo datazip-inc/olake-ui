@@ -1,4 +1,4 @@
-package models
+package dto
 
 type LoginResponse struct {
 	Message string `json:"message"`

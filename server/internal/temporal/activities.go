@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datazip/olake-frontend/server/internal/docker"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/docker"
+	"github.com/datazip/olake-ui/server/internal/dto"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
 )
@@ -19,7 +19,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 		"workflowID", params.WorkflowID)
 
 	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	runner := docker.NewRunner(docker.DefaultConfigDir)
 
 	// Record heartbeat
 	activity.RecordHeartbeat(ctx, "Running sync command")
@@ -43,7 +43,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 }
 
 // FetchSpecActivity runs the spec command to get connector specifications
-func FetchSpecActivity(ctx context.Context, params *ActivityParams) (models.SpecOutput, error) {
+func FetchSpecActivity(ctx context.Context, params *ActivityParams) (dto.SpecOutput, error) {
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	return runner.FetchSpec(ctx, params.DestinationType, params.SourceType, params.Version, params.WorkflowID)
 }
@@ -51,7 +51,7 @@ func FetchSpecActivity(ctx context.Context, params *ActivityParams) (models.Spec
 // TestConnectionActivity runs the check command to test connection
 func TestConnectionActivity(ctx context.Context, params *ActivityParams) (map[string]interface{}, error) {
 	// Create a Docker runner with the default config directory
-	runner := docker.NewRunner(docker.GetDefaultConfigDir())
+	runner := docker.NewRunner(docker.DefaultConfigDir)
 	resp, err := runner.TestConnection(ctx, params.Flag, params.SourceType, params.Version, params.Config, params.WorkflowID)
 	return resp, err
 }

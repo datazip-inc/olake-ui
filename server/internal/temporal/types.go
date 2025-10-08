@@ -1,6 +1,6 @@
 package temporal
 
-import "github.com/datazip/olake-frontend/server/internal/docker"
+import "github.com/datazip/olake-ui/server/internal/docker"
 
 // DockerCommandParams contains parameters for Docker commands (legacy)
 type DockerCommandParams struct {
