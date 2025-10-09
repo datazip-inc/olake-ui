@@ -1,7 +1,7 @@
 import { Page, Locator, expect } from "@playwright/test"
+import { BasePage } from "./BasePage"
 
-export class SourcesPage {
-	readonly page: Page
+export class SourcesPage extends BasePage {
 	readonly createSourceButton: Locator
 	readonly sourcesTitle: Locator
 	readonly sourcesLink: Locator
@@ -10,7 +10,7 @@ export class SourcesPage {
 	readonly sourceTable: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.createSourceButton = page.getByRole("button", {
 			name: "Create Source",
 		})
@@ -22,7 +22,7 @@ export class SourcesPage {
 	}
 
 	async goto() {
-		await this.page.goto("/sources")
+		await super.goto("/sources")
 	}
 
 	async navigateToSources() {
@@ -34,8 +34,8 @@ export class SourcesPage {
 	}
 
 	async expectSourcesPageVisible() {
-		await expect(this.sourcesTitle).toBeVisible()
-		await expect(this.createSourceButton).toBeVisible()
+		await this.expectVisible(this.sourcesTitle)
+		await this.expectVisible(this.createSourceButton)
 	}
 
 	async getSourceRow(sourceName: string) {

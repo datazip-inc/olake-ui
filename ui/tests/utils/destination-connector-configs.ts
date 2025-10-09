@@ -5,7 +5,7 @@
  * All destination fields are under the 'writer' prefix in RJSF.
  */
 
-import { DestinationFormConfig } from "../pages/CreateDestinationPage"
+import { DestinationFormConfig } from "../types/PageConfig.types"
 
 /**
  * S3 Destination Configuration Template

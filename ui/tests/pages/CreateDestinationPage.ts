@@ -1,19 +1,9 @@
 import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
+import { BasePage } from "./BasePage"
+import { DestinationFormConfig } from "../types/PageConfig.types"
 
-/**
- * Generic configuration for destination connector forms
- */
-export interface DestinationFormConfig {
-	name: string
-	connector: string
-	version?: string
-	catalogType?: "glue" | "jdbc" | "hive" | "rest" // For Iceberg only
-	fields: Record<string, any>
-}
-
-export class CreateDestinationPage {
-	readonly page: Page
+export class CreateDestinationPage extends BasePage {
 	readonly destinationNameInput: Locator
 	readonly connectorSelect: Locator
 	readonly versionSelect: Locator
@@ -27,7 +17,7 @@ export class CreateDestinationPage {
 	readonly icebergCatalogInput: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.destinationNameInput = page.getByPlaceholder(
 			"Enter the name of your destination",
 		)
@@ -48,13 +38,13 @@ export class CreateDestinationPage {
 	}
 
 	async goto() {
-		await this.page.goto("/destinations/new")
+		await super.goto("/destinations/new")
 	}
 
 	async expectCreateDestinationPageVisible() {
-		await expect(this.pageTitle).toBeVisible()
-		await expect(this.destinationNameInput).toBeVisible()
-		await expect(this.createButton).toBeVisible()
+		await this.expectVisible(this.pageTitle)
+		await this.expectVisible(this.destinationNameInput)
+		await this.expectVisible(this.createButton)
 	}
 
 	/**
@@ -202,10 +192,6 @@ export class CreateDestinationPage {
 		} else {
 			await this.setupTypeExisting.click()
 		}
-	}
-
-	async expectValidationError(message: string) {
-		await expect(this.page.locator(`text=${message}`)).toBeVisible()
 	}
 
 	async expectTestConnectionModal() {

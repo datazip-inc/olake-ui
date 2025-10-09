@@ -1,8 +1,8 @@
 import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
+import { BasePage } from "./BasePage"
 
-export class JobsPage {
-	readonly page: Page
+export class JobsPage extends BasePage {
 	readonly createJobButton: Locator
 	readonly jobsTitle: Locator
 	readonly jobsLink: Locator
@@ -12,7 +12,7 @@ export class JobsPage {
 	readonly jobTable: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.createJobButton = page.getByRole("button", { name: "Create Job" })
 		this.jobsTitle = page.locator("h1", { hasText: "Jobs" })
 		this.jobsLink = page.getByRole("link", { name: "Jobs" })
@@ -23,7 +23,7 @@ export class JobsPage {
 	}
 
 	async goto() {
-		await this.page.goto("/jobs")
+		await super.goto("/jobs")
 	}
 
 	async navigateToJobs() {
@@ -35,8 +35,8 @@ export class JobsPage {
 	}
 
 	async expectJobsPageVisible() {
-		await expect(this.jobsTitle).toBeVisible()
-		await expect(this.createJobButton).toBeVisible()
+		await this.expectVisible(this.jobsTitle)
+		await this.expectVisible(this.createJobButton)
 	}
 
 	async getJobRow(jobName: string) {

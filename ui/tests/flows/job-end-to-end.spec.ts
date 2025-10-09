@@ -1,16 +1,15 @@
-import { test, expect } from "../fixtures/auth.fixture"
+import { testAuthenticated as test, expect } from "../fixtures"
 import {
 	createPostgresSourceConfig,
 	POSTGRES_SOURCE_CONFIG,
 	createIcebergJdbcConfig,
 	ICEBERG_JDBC_CONFIG,
-	TEST_CREDENTIALS,
 	JOB_CONFIG,
+	TestDataBuilder,
 } from "../utils"
 
 test.describe("Job End-to-End User Journey", () => {
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({
-		loginPage,
 		sourcesPage,
 		createSourcePage,
 		destinationsPage,
@@ -19,43 +18,33 @@ test.describe("Job End-to-End User Journey", () => {
 		createJobPage,
 		page,
 	}) => {
-		const timestamp = Date.now()
-
-		const sourceName = `e2e-source-${timestamp}`
-
-		const destinationData = {
-			name: `e2e-destination-${timestamp}`,
-			...ICEBERG_JDBC_CONFIG,
-		}
-
-		const jobData = {
-			sourceName: sourceName,
-			destinationName: destinationData.name,
-			streamName: JOB_CONFIG.streamName,
-			jobName: `postgres_iceberg_job`,
-			frequency: JOB_CONFIG.frequency,
-		}
-
-		// Step 1: Login
-		await loginPage.goto()
-		await loginPage.login(TEST_CREDENTIALS.username, TEST_CREDENTIALS.password)
-		await loginPage.waitForLogin()
 		await expect(page).toHaveURL("/jobs")
 
-		// Step 2: Create Source
+		const SOURCE_CONNECTOR = "postgres"
+		const DEST_CONNECTOR = "iceberg"
+		const CATALOG_TYPE = "jdbc"
+
+		const sourceName = TestDataBuilder.getUniqueSourceName(SOURCE_CONNECTOR)
+		const destinationName =
+			TestDataBuilder.getUniqueDestinationName(DEST_CONNECTOR)
+		const jobName = TestDataBuilder.getUniqueJobName(
+			SOURCE_CONNECTOR,
+			DEST_CONNECTOR,
+			CATALOG_TYPE,
+		)
+
+		// Step 1: Create PostgreSQL Source
 		await sourcesPage.navigateToSources()
 		await sourcesPage.expectSourcesPageVisible()
 		await sourcesPage.clickCreateSource()
 		await createSourcePage.expectCreateSourcePageVisible()
 
-		// Use helper function with test data
 		const sourceConfig = createPostgresSourceConfig({
-			...POSTGRES_SOURCE_CONFIG,
 			name: sourceName,
+			...POSTGRES_SOURCE_CONFIG,
 		})
 
 		await createSourcePage.fillSourceForm(sourceConfig)
-
 		await createSourcePage.clickCreate()
 		await createSourcePage.expectTestConnectionModal()
 		await createSourcePage.assertTestConnectionSucceeded()
@@ -63,15 +52,15 @@ test.describe("Job End-to-End User Journey", () => {
 		await sourcesPage.expectSourcesPageVisible()
 		await sourcesPage.expectSourceExists(sourceName)
 
-		// Step 3: Create Destination
+		// Step 2: Create Iceberg JDBC Destination
 		await destinationsPage.navigateToDestinations()
 		await destinationsPage.expectDestinationsPageVisible()
 		await destinationsPage.clickCreateDestination()
 		await createDestinationPage.expectCreateDestinationPageVisible()
 
 		const destinationConfig = createIcebergJdbcConfig({
+			name: destinationName,
 			...ICEBERG_JDBC_CONFIG,
-			name: destinationData.name,
 		})
 
 		await createDestinationPage.fillDestinationForm(destinationConfig)
@@ -80,29 +69,37 @@ test.describe("Job End-to-End User Journey", () => {
 		await createDestinationPage.assertTestConnectionSucceeded()
 		await createDestinationPage.expectEntitySavedModal()
 		await destinationsPage.expectDestinationsPageVisible()
-		await destinationsPage.expectDestinationExists(destinationData.name)
+		await destinationsPage.expectDestinationExists(destinationName)
 
-		// Step 4: Create Job
+		// Step 3: Create Job
 		await jobsPage.navigateToJobs()
 		await jobsPage.expectJobsPageVisible()
 		await jobsPage.clickCreateJob()
 		await createJobPage.expectCreateJobPageVisible()
-		await createJobPage.fillJobCreationForm(jobData)
+
+		await createJobPage.fillJobCreationForm({
+			sourceName,
+			destinationName,
+			jobName,
+			streamName: JOB_CONFIG.streamName,
+			frequency: JOB_CONFIG.frequency,
+		})
+
 		await createJobPage.goToJobsPage()
 		await jobsPage.expectJobsPageVisible()
 
-		// Step 5: Sync Job
-		await jobsPage.syncJob(jobData.jobName)
+		// Step 4: Sync Job and Verify
+		await jobsPage.syncJob(jobName)
 		await expect(page).toHaveURL(/\/jobs\/.*\/history/)
 
-		// Step 6: View Logs and Configurations
+		// Step 5: Verify Job Details
 		await jobsPage.viewJobLogs()
 		await jobsPage.viewJobConfigurations()
 
-		// Step 7: Navigate back and verify
+		// Step 6: Verify Job in List
 		await jobsPage.navigateToJobs()
 		await jobsPage.expectJobsPageVisible()
-		await jobsPage.expectJobExists(jobData.jobName)
+		await jobsPage.expectJobExists(jobName)
 	})
 
 	// test("should handle error scenarios in job workflow", async ({

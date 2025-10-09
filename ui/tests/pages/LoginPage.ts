@@ -1,8 +1,8 @@
-import { Page, Locator, expect } from "@playwright/test"
+import { Page, Locator } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
+import { BasePage } from "./BasePage"
 
-export class LoginPage {
-	readonly page: Page
+export class LoginPage extends BasePage {
 	readonly usernameInput: Locator
 	readonly passwordInput: Locator
 	readonly loginButton: Locator
@@ -10,7 +10,7 @@ export class LoginPage {
 	readonly pageTitle: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.usernameInput = page.getByPlaceholder("Username")
 		this.passwordInput = page.getByPlaceholder("Password")
 		this.loginButton = page.getByRole("button", { name: "Log in" })
@@ -19,7 +19,7 @@ export class LoginPage {
 	}
 
 	async goto() {
-		await this.page.goto("/login")
+		await super.goto("/login")
 	}
 
 	async login(username: string, password: string) {
@@ -29,21 +29,17 @@ export class LoginPage {
 	}
 
 	async expectLoginPageVisible() {
-		await expect(this.pageTitle).toBeVisible()
-		await expect(this.usernameInput).toBeVisible()
-		await expect(this.passwordInput).toBeVisible()
-		await expect(this.loginButton).toBeVisible()
+		await this.expectVisible(this.pageTitle)
+		await this.expectVisible(this.usernameInput)
+		await this.expectVisible(this.passwordInput)
+		await this.expectVisible(this.loginButton)
 	}
 
 	async expectErrorMessage() {
-		await expect(this.errorMessage).toBeVisible()
+		await this.expectVisible(this.errorMessage)
 	}
 
 	async waitForLogin() {
-		await this.page.waitForURL("/jobs", { timeout: TIMEOUTS.SHORT })
-	}
-
-	async expectValidationError(message: string) {
-		await expect(this.page.locator(`text=${message}`)).toBeVisible()
+		await this.waitForURL("/jobs", { timeout: TIMEOUTS.SHORT })
 	}
 }

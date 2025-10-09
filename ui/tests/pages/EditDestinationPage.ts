@@ -1,7 +1,7 @@
 import { Page, Locator, expect } from "@playwright/test"
+import { BasePage } from "./BasePage"
 
-export class EditDestinationPage {
-	readonly page: Page
+export class EditDestinationPage extends BasePage {
 	readonly destinationNameInput: Locator
 	readonly saveChangesButton: Locator
 	readonly confirmButton: Locator
@@ -14,7 +14,7 @@ export class EditDestinationPage {
 	readonly testConnectionButton: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.destinationNameInput = page.getByPlaceholder(
 			"Enter the name of your destination",
 		)
@@ -36,12 +36,12 @@ export class EditDestinationPage {
 	}
 
 	async goto(destinationId: string) {
-		await this.page.goto(`/destinations/${destinationId}`)
+		await super.goto(`/destinations/${destinationId}`)
 	}
 
 	async expectEditDestinationPageVisible() {
-		await expect(this.pageTitle).toBeVisible()
-		await expect(this.saveChangesButton).toBeVisible()
+		await this.expectVisible(this.pageTitle)
+		await this.expectVisible(this.saveChangesButton)
 	}
 
 	async updateDestinationName(newName: string) {

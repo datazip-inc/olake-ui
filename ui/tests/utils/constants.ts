@@ -6,12 +6,6 @@
  * that are used across multiple test files.
  */
 
-// Authentication
-export const TEST_CREDENTIALS = {
-	username: "admin",
-	password: "password",
-} as const
-
 // Job Configurations
 export const JOB_CONFIG = {
 	streamName: "postgres_test_table_olake",

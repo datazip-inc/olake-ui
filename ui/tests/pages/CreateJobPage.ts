@@ -1,7 +1,8 @@
-import { Page, Locator, expect } from "@playwright/test"
+import { Page, Locator } from "@playwright/test"
+import { BasePage } from "./BasePage"
+import { JobFormConfig } from "../types/PageConfig.types"
 
-export class CreateJobPage {
-	readonly page: Page
+export class CreateJobPage extends BasePage {
 	readonly jobNameInput: Locator
 	readonly useExistingSourceRadio: Locator
 	readonly useExistingDestinationRadio: Locator
@@ -19,7 +20,7 @@ export class CreateJobPage {
 	readonly destinationConnectorSelect: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.jobNameInput = page.getByRole("textbox")
 		this.useExistingSourceRadio = page.getByRole("radio", {
 			name: "Use an existing source",
@@ -46,12 +47,12 @@ export class CreateJobPage {
 	}
 
 	async goto() {
-		await this.page.goto("/jobs/new")
+		await super.goto("/jobs/new")
 	}
 
 	async expectCreateJobPageVisible() {
-		await expect(this.pageTitle).toBeVisible()
-		await expect(this.nextButton).toBeVisible()
+		await this.expectVisible(this.pageTitle)
+		await this.expectVisible(this.nextButton)
 	}
 
 	async selectExistingSource(sourceName: string) {
@@ -119,17 +120,7 @@ export class CreateJobPage {
 		await this.jobsArrowButton.click()
 	}
 
-	async expectValidationError(message: string) {
-		await expect(this.page.locator(`text=${message}`)).toBeVisible()
-	}
-
-	async fillJobCreationForm(data: {
-		sourceName: string
-		destinationName: string
-		streamName: string
-		jobName: string
-		frequency?: string
-	}) {
+	async fillJobCreationForm(data: JobFormConfig) {
 		// Step 1: Configure job settings
 		await this.configureJobSettings(data.jobName, data.frequency)
 

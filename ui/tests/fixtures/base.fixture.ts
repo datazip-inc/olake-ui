@@ -9,7 +9,10 @@ import { EditDestinationPage } from "../pages/EditDestinationPage"
 import { JobsPage } from "../pages/JobsPage"
 import { CreateJobPage } from "../pages/CreateJobPage"
 
-type TestFixtures = {
+/**
+ * Base fixture providing all page objects
+ */
+export type BaseFixtures = {
 	loginPage: LoginPage
 	sourcesPage: SourcesPage
 	createSourcePage: CreateSourcePage
@@ -21,50 +24,41 @@ type TestFixtures = {
 	createJobPage: CreateJobPage
 }
 
-export const test = base.extend<TestFixtures>({
+export const test = base.extend<BaseFixtures>({
 	loginPage: async ({ page }, use) => {
-		const loginPage = new LoginPage(page)
-		await use(loginPage)
+		await use(new LoginPage(page))
 	},
 
 	sourcesPage: async ({ page }, use) => {
-		const sourcesPage = new SourcesPage(page)
-		await use(sourcesPage)
+		await use(new SourcesPage(page))
 	},
 
 	createSourcePage: async ({ page }, use) => {
-		const createSourcePage = new CreateSourcePage(page)
-		await use(createSourcePage)
+		await use(new CreateSourcePage(page))
 	},
 
 	editSourcePage: async ({ page }, use) => {
-		const editSourcePage = new EditSourcePage(page)
-		await use(editSourcePage)
+		await use(new EditSourcePage(page))
 	},
 
 	destinationsPage: async ({ page }, use) => {
-		const destinationsPage = new DestinationsPage(page)
-		await use(destinationsPage)
+		await use(new DestinationsPage(page))
 	},
 
 	createDestinationPage: async ({ page }, use) => {
-		const createDestinationPage = new CreateDestinationPage(page)
-		await use(createDestinationPage)
+		await use(new CreateDestinationPage(page))
 	},
 
 	editDestinationPage: async ({ page }, use) => {
-		const editDestinationPage = new EditDestinationPage(page)
-		await use(editDestinationPage)
+		await use(new EditDestinationPage(page))
 	},
 
 	jobsPage: async ({ page }, use) => {
-		const jobsPage = new JobsPage(page)
-		await use(jobsPage)
+		await use(new JobsPage(page))
 	},
 
 	createJobPage: async ({ page }, use) => {
-		const createJobPage = new CreateJobPage(page)
-		await use(createJobPage)
+		await use(new CreateJobPage(page))
 	},
 })
 

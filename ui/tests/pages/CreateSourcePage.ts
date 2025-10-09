@@ -1,18 +1,9 @@
 import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
+import { BasePage } from "./BasePage"
+import { SourceFormConfig } from "../types/PageConfig.types"
 
-/**
- * Generic configuration for source connector forms
- */
-export interface SourceFormConfig {
-	name: string
-	connector: string
-	version?: string
-	fields: Record<string, any>
-}
-
-export class CreateSourcePage {
-	readonly page: Page
+export class CreateSourcePage extends BasePage {
 	readonly sourceNameInput: Locator
 	readonly connectorSelect: Locator
 	readonly versionSelect: Locator
@@ -25,7 +16,7 @@ export class CreateSourcePage {
 	readonly setupTypeExisting: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.sourceNameInput = page.getByPlaceholder(
 			"Enter the name of your source",
 		)
@@ -43,13 +34,13 @@ export class CreateSourcePage {
 	}
 
 	async goto() {
-		await this.page.goto("/sources/new")
+		await super.goto("/sources/new")
 	}
 
 	async expectCreateSourcePageVisible() {
-		await expect(this.pageTitle).toBeVisible()
-		await expect(this.sourceNameInput).toBeVisible()
-		await expect(this.createButton).toBeVisible()
+		await this.expectVisible(this.pageTitle)
+		await this.expectVisible(this.sourceNameInput)
+		await this.expectVisible(this.createButton)
 	}
 
 	/**
@@ -149,10 +140,6 @@ export class CreateSourcePage {
 		} else {
 			await this.setupTypeExisting.click()
 		}
-	}
-
-	async expectValidationError(message: string) {
-		await expect(this.page.locator(`text=${message}`)).toBeVisible()
 	}
 
 	async expectTestConnectionModal() {

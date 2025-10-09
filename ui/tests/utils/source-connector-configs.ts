@@ -8,7 +8,7 @@
  * @module SourceConnectorConfigs
  */
 
-import { SourceFormConfig } from "../pages/CreateSourcePage"
+import { SourceFormConfig } from "../types/PageConfig.types"
 
 /**
  * PostgreSQL Source Configuration Template

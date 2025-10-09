@@ -98,7 +98,7 @@ const (
         PLAYWRIGHT_TEST_BASE_URL=http://localhost:8000 DEBUG=pw:api npx playwright test tests/flows/job-end-to-end.spec.ts
     `
 
-	icebergDB        = "postgres_iceberg_job_postgres_public"
+	icebergDB        = "postgres_iceberg_jdbc_job_public"
 	icebergCatalog   = "olake_iceberg"
 	currentTestTable = "postgres_test_table_olake"
 )

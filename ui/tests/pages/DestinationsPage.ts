@@ -1,7 +1,7 @@
 import { Page, Locator, expect } from "@playwright/test"
+import { BasePage } from "./BasePage"
 
-export class DestinationsPage {
-	readonly page: Page
+export class DestinationsPage extends BasePage {
 	readonly createDestinationButton: Locator
 	readonly destinationsTitle: Locator
 	readonly destinationsLink: Locator
@@ -10,7 +10,7 @@ export class DestinationsPage {
 	readonly destinationTable: Locator
 
 	constructor(page: Page) {
-		this.page = page
+		super(page)
 		this.createDestinationButton = page.getByRole("button", {
 			name: "Create Destination",
 		})
@@ -22,7 +22,7 @@ export class DestinationsPage {
 	}
 
 	async goto() {
-		await this.page.goto("/destinations")
+		await super.goto("/destinations")
 	}
 
 	async navigateToDestinations() {
@@ -34,8 +34,8 @@ export class DestinationsPage {
 	}
 
 	async expectDestinationsPageVisible() {
-		await expect(this.destinationsTitle).toBeVisible()
-		await expect(this.createDestinationButton).toBeVisible()
+		await this.expectVisible(this.destinationsTitle)
+		await this.expectVisible(this.createDestinationButton)
 	}
 
 	async getDestinationRow(destinationName: string) {
