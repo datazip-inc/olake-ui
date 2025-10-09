@@ -1,5 +1,9 @@
 import { test, expect } from "../fixtures/auth.fixture"
-import { TEST_CREDENTIALS, VALIDATION_MESSAGES, URLS } from "../setup/test-env"
+import {
+	LOGIN_CREDENTIALS,
+	URLS,
+	VALIDATION_MESSAGES,
+} from "../utils/test-data"
 
 test.describe("Login Authentication", () => {
 	test.beforeEach(async ({ loginPage }) => {
@@ -15,8 +19,8 @@ test.describe("Login Authentication", () => {
 		page,
 	}) => {
 		await loginPage.login(
-			TEST_CREDENTIALS.admin.username,
-			TEST_CREDENTIALS.admin.password,
+			LOGIN_CREDENTIALS.admin.username,
+			LOGIN_CREDENTIALS.admin.password,
 		)
 		await loginPage.waitForLogin()
 		await expect(page).toHaveURL(URLS.jobs)
@@ -25,8 +29,8 @@ test.describe("Login Authentication", () => {
 
 	test("should show error for invalid credentials", async ({ loginPage }) => {
 		await loginPage.login(
-			TEST_CREDENTIALS.invalid.username,
-			TEST_CREDENTIALS.invalid.password,
+			LOGIN_CREDENTIALS.invalid.username,
+			LOGIN_CREDENTIALS.invalid.password,
 		)
 		await loginPage.expectErrorMessage()
 	})
@@ -37,7 +41,7 @@ test.describe("Login Authentication", () => {
 		await loginPage.loginButton.click()
 		await loginPage.expectValidationError(VALIDATION_MESSAGES.username.required)
 
-		await loginPage.usernameInput.fill(TEST_CREDENTIALS.admin.username)
+		await loginPage.usernameInput.fill(LOGIN_CREDENTIALS.admin.username)
 		await loginPage.loginButton.click()
 		await loginPage.expectValidationError(VALIDATION_MESSAGES.password.required)
 	})
@@ -61,8 +65,8 @@ test.describe("Login Authentication", () => {
 		loginPage,
 	}) => {
 		await loginPage.login(
-			TEST_CREDENTIALS.invalid.username,
-			TEST_CREDENTIALS.invalid.password,
+			LOGIN_CREDENTIALS.invalid.username,
+			LOGIN_CREDENTIALS.invalid.password,
 		)
 		await loginPage.expectErrorMessage()
 
@@ -82,8 +86,8 @@ test.describe("Login Authentication", () => {
 	})
 
 	test("should submit form with Enter key", async ({ loginPage, page }) => {
-		await loginPage.usernameInput.fill(TEST_CREDENTIALS.admin.username)
-		await loginPage.passwordInput.fill(TEST_CREDENTIALS.admin.password)
+		await loginPage.usernameInput.fill(LOGIN_CREDENTIALS.admin.username)
+		await loginPage.passwordInput.fill(LOGIN_CREDENTIALS.admin.password)
 		await loginPage.passwordInput.press("Enter")
 
 		await loginPage.waitForLogin()

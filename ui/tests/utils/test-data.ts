@@ -63,11 +63,11 @@ export const JOB_CONFIG = {
 // Validation Messages
 export const VALIDATION_MESSAGES = {
 	username: {
-		required: "Username is required",
+		required: "Please input your username!",
 		minLength: "Username must be at least 3 characters",
 	},
 	password: {
-		required: "Password is required",
+		required: "Please input your password!",
 		minLength: "Password must be at least 6 characters",
 	},
 	sourceName: {
@@ -87,4 +87,15 @@ export const URLS = {
 	jobs: "/jobs",
 	sources: "/sources",
 	destinations: "/destinations",
+} as const
+
+export const LOGIN_CREDENTIALS = {
+	admin: {
+		username: "admin",
+		password: "password",
+	},
+	invalid: {
+		username: "invalid",
+		password: "invalid",
+	},
 } as const
