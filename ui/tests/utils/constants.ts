@@ -12,48 +12,6 @@ export const TEST_CREDENTIALS = {
 	password: "password",
 } as const
 
-// Source Configurations
-export const POSTGRES_SOURCE_CONFIG = {
-	host: "172.17.0.2",
-	database: "postgres",
-	username: "postgres",
-	password: "secret1234",
-	useSSL: false,
-	port: "5433",
-} as const
-
-export const MONGODB_TEST_CONFIG = {
-	host: "172.17.0.2",
-	database: "test_db",
-	username: "admin",
-	password: "password",
-	useSSL: false,
-	port: "27017",
-} as const
-
-// Destination Configurations
-export const ICEBERG_DESTINATION_CONFIG = {
-	jdbcUrl: "jdbc:postgresql://172.17.0.2:5432/iceberg",
-	jdbcUsername: "iceberg",
-	jdbcPassword: "password",
-	jdbcDatabase: "olake_iceberg",
-	jdbcS3Endpoint: "http://172.17.0.2:9000",
-	jdbcS3AccessKey: "admin",
-	jdbcS3SecretKey: "password",
-	jdbcS3Region: "us-east-1",
-	jdbcS3Path: "s3a://warehouse",
-	jdbcUsePathStyleForS3: true,
-	jdbcUseSSLForS3: false,
-} as const
-
-export const S3_TEST_CONFIG = {
-	bucketName: "test-bucket",
-	region: "us-east-1",
-	path: "s3://test-bucket/data",
-	accessKey: "admin",
-	secretKey: "password",
-} as const
-
 // Job Configurations
 export const JOB_CONFIG = {
 	streamName: "postgres_test_table_olake",

@@ -1,18 +1,21 @@
 import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
 
+/**
+ * Generic configuration for source connector forms
+ */
+export interface SourceFormConfig {
+	name: string
+	connector: string
+	version?: string
+	fields: Record<string, any>
+}
+
 export class CreateSourcePage {
 	readonly page: Page
 	readonly sourceNameInput: Locator
 	readonly connectorSelect: Locator
 	readonly versionSelect: Locator
-	readonly hostsInput: Locator
-	readonly postgresHostsInput: Locator
-	readonly addHostButton: Locator
-	readonly databaseInput: Locator
-	readonly usernameInput: Locator
-	readonly passwordInput: Locator
-	readonly sslToggle: Locator
 	readonly createButton: Locator
 	readonly cancelButton: Locator
 	readonly backToSourcesLink: Locator
@@ -20,23 +23,14 @@ export class CreateSourcePage {
 	readonly testConnectionButton: Locator
 	readonly setupTypeNew: Locator
 	readonly setupTypeExisting: Locator
-	readonly port: Locator
 
 	constructor(page: Page) {
 		this.page = page
 		this.sourceNameInput = page.getByPlaceholder(
 			"Enter the name of your source",
 		)
-		this.connectorSelect = page.locator(".ant-select").first()
-		this.versionSelect = page.locator(".ant-select").nth(1)
-		this.hostsInput = page.getByRole("textbox", { name: "Hosts-1*" })
-		this.postgresHostsInput = page.getByRole("textbox", {
-			name: "Postgres Host *",
-		})
-		this.databaseInput = page.getByRole("textbox", { name: "Database Name *" })
-		this.usernameInput = page.getByRole("textbox", { name: "Username *" })
-		this.port = page.getByRole("spinbutton", { name: "Postgres Port *" })
-		this.passwordInput = page.getByRole("textbox", { name: "Password *" })
+		this.connectorSelect = page.getByTestId("source-connector-select")
+		this.versionSelect = page.getByTestId("source-version-select")
 		this.createButton = page.getByRole("button", { name: "Create" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
 		this.backToSourcesLink = page.getByRole("link").first()
@@ -58,6 +52,71 @@ export class CreateSourcePage {
 		await expect(this.createButton).toBeVisible()
 	}
 
+	/**
+	 * Generic method to get a form field by its ID
+	 * RJSF generates IDs in the format: #root_fieldname
+	 * For nested fields: #root_parent_child (e.g., #root_ssl_mode)
+	 *
+	 * @param fieldId - The field ID or path (e.g., 'host', 'ssl_mode', 'ssh_config_host')
+	 * @returns Locator for the field
+	 *
+	 */
+	getFieldById(fieldId: string): Locator {
+		return this.page.locator(`#root_${fieldId}`)
+	}
+
+	/**
+	 * Generic method to get an array field by its index
+	 * RJSF generates array IDs in the format: #root_fieldname_index
+	 *
+	 * @param fieldId - The field ID (e.g., 'hosts')
+	 * @param index - The array index
+	 * @returns Locator for the array field
+	 *
+	 */
+	getArrayFieldById(fieldId: string, index: number = 0): Locator {
+		return this.page.locator(`#root_${fieldId}_${index}`)
+	}
+
+	/**
+	 * Generic method to fill any text/number input field
+	 * Handles both simple and nested fields
+	 *
+	 * @param fieldId - The field ID or path (use underscore for nested: 'ssl_mode', 'ssh_config_host')
+	 * @param value - The value to fill
+	 *
+	 */
+	async fillField(fieldId: string, value: string) {
+		const field = this.getFieldById(fieldId)
+		await field.click()
+		await field.fill(value)
+	}
+
+	/**
+	 * Generic method to fill an array field
+	 *
+	 * @param fieldId - The field ID (e.g., 'hosts')
+	 * @param value - The value to fill
+	 * @param index - The array index (default: 0)
+	 *
+	 */
+	async fillArrayField(fieldId: string, value: string, index: number = 0) {
+		const field = this.getArrayFieldById(fieldId, index)
+		await field.click()
+		await field.fill(value)
+	}
+
+	/**
+	 * Generic method to toggle a switch/checkbox field
+	 *
+	 * @param fieldId - The field ID or path (use underscore for nested fields)
+	 *
+	 */
+	async toggleSwitch(fieldId: string) {
+		const field = this.getFieldById(fieldId)
+		await field.click()
+	}
+
 	async fillSourceName(name: string) {
 		await this.sourceNameInput.click()
 		await this.sourceNameInput.fill(name)
@@ -65,46 +124,11 @@ export class CreateSourcePage {
 
 	async selectConnector(connector: string) {
 		await this.connectorSelect.click()
-		await this.page.getByText(connector).click()
-	}
-
-	async addHost(host: string, type: "mongodb" | "postgres") {
-		switch (type) {
-			case "mongodb":
-				await this.hostsInput.click()
-				await this.hostsInput.fill(host)
-				break
-			case "postgres":
-				await this.postgresHostsInput.click()
-				await this.postgresHostsInput.fill(host)
-				break
-		}
-	}
-
-	async fillDatabaseName(database: string) {
-		await this.databaseInput.click()
-		await this.databaseInput.fill(database)
-	}
-
-	async fillUsername(username: string) {
-		await this.usernameInput.click()
-		await this.usernameInput.fill(username)
-	}
-
-	async fillPort(port: string) {
-		await this.port.click()
-		await this.port.fill(port)
-	}
-
-	async fillCredentials(username: string, password: string) {
-		await this.usernameInput.click()
-		await this.usernameInput.fill(username)
-		await this.passwordInput.click()
-		await this.passwordInput.fill(password)
-	}
-
-	async toggleSSL() {
-		await this.sslToggle.click()
+		await this.page
+			.locator("div")
+			.filter({ hasText: new RegExp(`^${connector}$`) })
+			.nth(1)
+			.click()
 	}
 
 	async clickCreate() {
@@ -179,42 +203,79 @@ export class CreateSourcePage {
 		await this.page.getByRole("button", { name: "Sources" }).click()
 	}
 
-	async selectPostgresFillPostgresCreds(data: {
-		name: string
-		host: string
-		database: string
-		username: string
-		password: string
-		port: string
-	}) {
-		await this.page.getByText("MongoDB").click()
-		await this.page
-			.locator("div")
-			.filter({ hasText: /^Postgres$/ })
-			.nth(3)
-			.click()
-		await this.fillSourceName(data.name)
-		await this.addHost(data.host, "postgres")
-		await this.fillDatabaseName(data.database)
-		await this.fillPort(data.port)
-		await this.fillCredentials(data.username, data.password)
+	async selectVersion(version: string) {
+		await this.versionSelect.click()
+		await this.page.getByTitle(version).click()
 	}
 
-	async fillMongoDBForm(data: {
-		name: string
-		host: string
-		database: string
-		username: string
-		password: string
-		useSSL?: boolean
-	}) {
-		await this.fillSourceName(data.name)
-		await this.addHost(data.host, "mongodb")
-		await this.fillDatabaseName(data.database)
-		await this.fillCredentials(data.username, data.password)
+	/**
+	 * Generic method to fill a complete source form
+	 * This is the main method to use for any connector type
+	 *
+	 * @param config - Source form configuration containing connector, name, version, and fields
+	 *
+	 */
+	async fillSourceForm(config: SourceFormConfig) {
+		// Select connector
+		await this.selectConnector(config.connector)
 
-		// if (data.useSSL) {
-		// 	await this.toggleSSL()
-		// }
+		// Select version if provided
+		if (config.version) {
+			await this.selectVersion(config.version)
+		}
+
+		// Fill source name
+		await this.fillSourceName(config.name)
+
+		// Fill dynamic fields
+		await this.fillDynamicFields(config.fields)
+	}
+
+	/**
+	 * Generic method to fill dynamic form fields based on configuration
+	 * Automatically handles arrays, nested objects, and primitive values
+	 *
+	 * @param fields - Object containing field IDs and their values
+	 * @param parentPath - Internal parameter for nested object handling
+	 *
+	 */
+	async fillDynamicFields(
+		fields: Record<string, any>,
+		parentPath: string = "",
+	) {
+		for (const [fieldId, value] of Object.entries(fields)) {
+			if (value === undefined || value === null) continue
+
+			// Construct the full field path
+			const fullPath = parentPath ? `${parentPath}_${fieldId}` : fieldId
+
+			// Handle nested objects
+			if (
+				typeof value === "object" &&
+				!Array.isArray(value) &&
+				value !== null &&
+				typeof value !== "boolean"
+			) {
+				// Recursively handle nested object
+				await this.fillDynamicFields(value, fullPath)
+			}
+			// Handle array fields
+			else if (Array.isArray(value)) {
+				for (let i = 0; i < value.length; i++) {
+					await this.fillArrayField(fullPath, value[i], i)
+				}
+			}
+			// Handle boolean fields (switches/toggles)
+			else if (typeof value === "boolean") {
+				// Only toggle if we need to change from default state
+				if (value === true) {
+					await this.toggleSwitch(fullPath)
+				}
+			}
+			// Handle string/number fields
+			else if (typeof value === "string" || typeof value === "number") {
+				await this.fillField(fullPath, value.toString())
+			}
+		}
 	}
 }

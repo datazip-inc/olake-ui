@@ -416,6 +416,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"
+									data-testid="source-version-select"
 									options={versions.map(version => ({
 										value: version,
 										label: version,

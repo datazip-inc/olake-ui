@@ -1,10 +1,12 @@
 import { test, expect } from "../fixtures/auth.fixture"
 import {
-	TEST_CREDENTIALS,
+	createPostgresSourceConfig,
 	POSTGRES_SOURCE_CONFIG,
-	ICEBERG_DESTINATION_CONFIG,
+	createIcebergJdbcConfig,
+	ICEBERG_JDBC_CONFIG,
+	TEST_CREDENTIALS,
 	JOB_CONFIG,
-} from "../utils/test-data"
+} from "../utils"
 
 test.describe("Job End-to-End User Journey", () => {
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({
@@ -19,18 +21,15 @@ test.describe("Job End-to-End User Journey", () => {
 	}) => {
 		const timestamp = Date.now()
 
-		const sourceData = {
-			name: `e2e-source-${timestamp}`,
-			...POSTGRES_SOURCE_CONFIG,
-		}
+		const sourceName = `e2e-source-${timestamp}`
 
 		const destinationData = {
 			name: `e2e-destination-${timestamp}`,
-			...ICEBERG_DESTINATION_CONFIG,
+			...ICEBERG_JDBC_CONFIG,
 		}
 
 		const jobData = {
-			sourceName: sourceData.name,
+			sourceName: sourceName,
 			destinationName: destinationData.name,
 			streamName: JOB_CONFIG.streamName,
 			jobName: `postgres_iceberg_job`,
@@ -48,20 +47,34 @@ test.describe("Job End-to-End User Journey", () => {
 		await sourcesPage.expectSourcesPageVisible()
 		await sourcesPage.clickCreateSource()
 		await createSourcePage.expectCreateSourcePageVisible()
-		await createSourcePage.selectPostgresFillPostgresCreds(sourceData)
+
+		// Use helper function with test data
+		const sourceConfig = createPostgresSourceConfig({
+			...POSTGRES_SOURCE_CONFIG,
+			name: sourceName,
+		})
+
+		await createSourcePage.fillSourceForm(sourceConfig)
+
 		await createSourcePage.clickCreate()
 		await createSourcePage.expectTestConnectionModal()
 		await createSourcePage.assertTestConnectionSucceeded()
 		await createSourcePage.expectEntitySavedModal()
 		await sourcesPage.expectSourcesPageVisible()
-		await sourcesPage.expectSourceExists(sourceData.name)
+		await sourcesPage.expectSourceExists(sourceName)
 
 		// Step 3: Create Destination
 		await destinationsPage.navigateToDestinations()
 		await destinationsPage.expectDestinationsPageVisible()
 		await destinationsPage.clickCreateDestination()
 		await createDestinationPage.expectCreateDestinationPageVisible()
-		await createDestinationPage.fillIcebergJdbcForm(destinationData)
+
+		const destinationConfig = createIcebergJdbcConfig({
+			...ICEBERG_JDBC_CONFIG,
+			name: destinationData.name,
+		})
+
+		await createDestinationPage.fillDestinationForm(destinationConfig)
 		await createDestinationPage.clickCreate()
 		await createDestinationPage.expectTestConnectionModal()
 		await createDestinationPage.assertTestConnectionSucceeded()

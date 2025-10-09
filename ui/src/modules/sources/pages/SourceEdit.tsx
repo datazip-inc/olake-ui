@@ -562,6 +562,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													</div>
 												) : availableVersions.length > 0 ? (
 													<Select
+														data-testid="source-version-select"
 														value={selectedVersion}
 														onChange={value => {
 															setSelectedVersion(value)

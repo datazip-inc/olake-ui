@@ -496,6 +496,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							) : versions.length > 0 ? (
 								<Select
 									value={selectedVersion}
+									data-testid="destination-version-select"
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"

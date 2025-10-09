@@ -489,6 +489,7 @@ const CreateDestination = forwardRef<
 								) : versions && versions.length > 0 ? (
 									<Select
 										value={version}
+										data-testid="destination-version-select"
 										onChange={handleVersionChange}
 										className="w-full"
 										placeholder="Select version"
