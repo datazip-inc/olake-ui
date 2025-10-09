@@ -129,6 +129,7 @@ func DinDTestContainer(t *testing.T) error {
 				"/var/lib/docker": "size=100G",
 				"/dev/shm":        "size=20G",
 			}
+
 			hc.Resources.NanoCPUs = 8e9                   //8CPUs
 			hc.Resources.Memory = 30 * 1024 * 1024 * 1024 //30GB
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
