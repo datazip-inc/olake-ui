@@ -10,11 +10,7 @@ import {
 } from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
-import {
-	getConnectorImage,
-	getStatusClass,
-	getStatusLabel,
-} from "@utils/utils"
+import { getConnectorImage, getStatusClass, getStatusLabel } from "@utils/utils"
 import { getStatusIcon } from "@utils/statusIcons"
 
 const JobHistory: React.FC = () => {

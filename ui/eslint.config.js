@@ -1,5 +1,4 @@
 import globals from "globals"
-import reactHooks from "eslint-plugin-react-hooks"
 import reactRefresh from "eslint-plugin-react-refresh"
 import tseslint from "@typescript-eslint/eslint-plugin"
 import tsParser from "@typescript-eslint/parser"
@@ -37,13 +36,14 @@ export default [
 			"no-restricted-imports": [
 				"warn",
 				{
-					"patterns": [
+					patterns: [
 						{
-							"group": ["^\\.\\./(?:\\.\\./)+"],
-							"message": "Avoid deep relative imports. Use path aliases (e.g., @api, @utils, @modules)."
-						}
-					]
-				}
+							group: ["^\\.\\./(?:\\.\\./)+"],
+							message:
+								"Avoid deep relative imports. Use path aliases (e.g., @api, @utils, @modules).",
+						},
+					],
+				},
 			],
 		},
 		settings: {
@@ -51,8 +51,8 @@ export default [
 				version: "detect",
 			},
 		},
+	},
 	{
 		ignores: ["node_modules/", "dist/", "build/"],
 	},
 ]
-
