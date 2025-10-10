@@ -1,12 +1,17 @@
 import { StateCreator } from "zustand"
-import type { APIResponse, Entity, EntityBase } from "../types"
+import type {
+	APIResponse,
+	Entity,
+	EntityBase,
+	TestConnectionError,
+} from "../types"
 import { sourceService } from "../api"
 export interface SourceSlice {
 	sources: Entity[]
 	sourcesError: string | null
 	isLoadingSources: boolean
-	sourceTestConnectionError: string | null
-	setSourceTestConnectionError: (error: string | null) => void
+	sourceTestConnectionError: TestConnectionError | null
+	setSourceTestConnectionError: (error: TestConnectionError | null) => void
 	fetchSources: () => Promise<Entity[]>
 	addSource: (source: EntityBase) => Promise<APIResponse<EntityBase>>
 	updateSource: (id: string, source: EntityBase) => Promise<APIResponse<Entity>>

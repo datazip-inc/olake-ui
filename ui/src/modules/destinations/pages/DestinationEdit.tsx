@@ -48,6 +48,7 @@ import {
 	DISPLAYED_JOBS_COUNT,
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -317,7 +318,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowTestingModal(true)
 		const testResult =
 			await destinationService.testDestinationConnection(getDestinationData())
-		if (testResult.data?.status === "SUCCEEDED") {
+		if (
+			testResult.data?.connection_result.status ===
+			TEST_CONNECTION_STATUS.SUCCEEDED
+		) {
 			setTimeout(() => {
 				setShowTestingModal(false)
 				setShowSuccessModal(true)
@@ -328,8 +332,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				saveDestination()
 			}, 2000)
 		} else {
+			const testConnectionError = {
+				message: testResult.data?.connection_result.message || "",
+				logs: testResult.data?.logs || [],
+			}
 			setShowTestingModal(false)
-			setDestinationTestConnectionError(testResult.data?.message || "")
+			setDestinationTestConnectionError(testConnectionError)
 			setShowFailureModal(true)
 		}
 	}
