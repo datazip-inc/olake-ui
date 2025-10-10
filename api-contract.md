@@ -120,7 +120,7 @@ http://localhost:8000
   {
     "type": "string",
     "version": "string",
-    "config": "json",
+    "config": "json"
   }
   ```
 
@@ -132,8 +132,8 @@ http://localhost:8000
   "message": "string",
   "data": {
     "connection_result": {
-      "message": "",
-      "status": ""
+      "message": "string",
+      "status": "string"
     },
     "logs": "json"
   }
