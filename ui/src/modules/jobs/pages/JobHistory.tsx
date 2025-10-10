@@ -53,6 +53,7 @@ const JobHistory: React.FC = () => {
 						return
 					}
 
+					// try fetching tasks 4 times with a delay of 1 second
 					if (retryCountRef.current < 4) {
 						retryCountRef.current++
 						setTimeout(fetchWithRetry, THROTTLE_DELAY)
