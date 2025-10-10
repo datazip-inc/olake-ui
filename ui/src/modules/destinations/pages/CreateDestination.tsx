@@ -268,6 +268,7 @@ const CreateDestination = forwardRef<
 			if (setupType === SETUP_TYPES.EXISTING) return
 
 			setLoading(true)
+			// cancels old requests when new one is made
 			return withAbortController(
 				signal =>
 					destinationService.getDestinationSpec(
@@ -307,6 +308,7 @@ const CreateDestination = forwardRef<
 			setShowSourceCancelModal(true)
 		}
 
+		//makes sure user enters destination name and version and fills all the required fields in the form
 		const validateDestination = async (): Promise<boolean> => {
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
@@ -369,6 +371,7 @@ const CreateDestination = forwardRef<
 
 			try {
 				setShowTestingModal(true)
+				//test the connection and show either success or failure modal based on the result
 				const testResult =
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)

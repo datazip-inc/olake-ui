@@ -347,7 +347,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setSetupType(type)
 			setSourceName("")
 			onSourceNameChange?.("")
-
+			// show documentation only in the case of new
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true) // Close doc panel
@@ -557,7 +557,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									validator={validator}
 									omitExtraData
 									liveOmit
-									showErrorList={false}
+									showErrorList={false} // adding this will not show error list
 									onSubmit={handleCreate}
 								/>
 							</div>

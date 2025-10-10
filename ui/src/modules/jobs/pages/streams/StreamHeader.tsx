@@ -15,10 +15,12 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 		stream: { name, namespace },
 	} = stream
 
+	//activestream is the stream selected in the stream panel
 	const isActiveStream =
 		activeStreamData?.stream.name === name &&
 		activeStreamData?.stream.namespace === namespace
 
+	//opens the stream configuration when user clicks on stream or on checkbox
 	const handleChange = (e: CheckboxChangeEvent) => {
 		toggle(e)
 		setActiveStreamData(stream)
