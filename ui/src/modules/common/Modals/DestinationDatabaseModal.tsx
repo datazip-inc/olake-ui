@@ -9,7 +9,7 @@ import {
 	NAMESPACE_PLACEHOLDER,
 } from "@utils/constants"
 import { DotOutline } from "@phosphor-icons/react"
-import { DestinationDatabaseModalProps } from "@types/index"
+import { DestinationDatabaseModalProps } from "@app-types/index"
 
 type FormatType = (typeof FORMAT_OPTIONS)[keyof typeof FORMAT_OPTIONS]
 

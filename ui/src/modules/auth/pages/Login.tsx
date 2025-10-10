@@ -4,7 +4,7 @@ import { Form, Input, Button, Card, message } from "antd"
 import { User, LockKey } from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
-import { LoginArgs } from "@types/index"
+import { LoginArgs } from "@app-types/index"
 
 const Login: React.FC = () => {
 	const { login } = useAppStore()

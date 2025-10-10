@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { CaretDown, CaretRight } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 
-import { GroupedStreamsCollapsibleListProps } from "@types/index"
+import { GroupedStreamsCollapsibleListProps } from "@app-types/index"
 import StreamPanel from "./StreamPanel"
 
 const StreamsCollapsibleList = ({

@@ -30,7 +30,7 @@ import {
 	MultiFilterCondition,
 	CombinedStreamsData,
 	SyncMode,
-} from "@types/index"
+} from "@app-types/index"
 
 import {
 	CARD_STYLE,

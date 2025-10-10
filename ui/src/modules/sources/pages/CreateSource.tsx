@@ -19,7 +19,7 @@ import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "@store/index"
 import { sourceService } from "@api/services/sourceService"
-import { SetupType, Source, CreateSourceProps } from "@types/index"
+import { SetupType, Source, CreateSourceProps } from "@app-types/index"
 import {
 	getConnectorLabel,
 	handleSpecResponse,

@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
 
-import { Entity, SourceTableProps } from "@types/index"
+import { Entity, SourceTableProps } from "@app-types/index"
 import { getConnectorImage, getConnectorLabel } from "@utils/utils"
 import { PAGE_SIZE } from "@utils/constants"
 import JobConnection from "@modules/common/components/JobConnection"

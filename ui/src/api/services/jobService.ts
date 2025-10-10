@@ -1,6 +1,6 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
-import { APIResponse, Job, JobBase, JobTask, TaskLog } from "@types/index"
+import { APIResponse, Job, JobBase, JobTask, TaskLog } from "@app-types/index"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {

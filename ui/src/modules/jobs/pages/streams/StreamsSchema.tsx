@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Checkbox, Input, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 
-import { StreamSchemaProps } from "@types/index"
+import { StreamSchemaProps } from "@app-types/index"
 import RenderTypeItems from "@modules/common/components/RenderTypeItems"
 
 const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {

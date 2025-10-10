@@ -9,7 +9,7 @@ import {
 	SelectedStream,
 	StreamData,
 	SyncMode,
-} from "@types/index"
+} from "@app-types/index"
 import FilterButton from "../components/FilterButton"
 import StepTitle from "@modules/common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"

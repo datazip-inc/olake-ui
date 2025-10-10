@@ -5,7 +5,7 @@ import { LinktreeLogo, Plus } from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
 import analyticsService from "@api/services/analyticsService"
-import { Entity } from "@types/index"
+import { Entity } from "@app-types/index"
 import { sourceTabs } from "@utils/constants"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"

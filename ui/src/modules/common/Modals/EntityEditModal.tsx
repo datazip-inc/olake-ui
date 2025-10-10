@@ -6,7 +6,7 @@ import { InfoIcon, Warning } from "@phosphor-icons/react"
 import { useAppStore } from "@store/index"
 import { sourceService } from "@api/index"
 import { destinationService } from "@api/services/destinationService"
-import { EntityEditModalProps } from "@types/index"
+import { EntityEditModalProps } from "@app-types/index"
 import { getConnectorImage } from "@utils/utils"
 
 const EntityEditModal = ({ entityType }: EntityEditModalProps) => {

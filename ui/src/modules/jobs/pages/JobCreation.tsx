@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid"
 import { useAppStore } from "@store/index"
 import { destinationService, sourceService, jobService } from "@api/index"
 
-import { JobBase, JobCreationSteps } from "@types/index"
+import { JobBase, JobCreationSteps } from "@app-types/index"
 import {
 	getConnectorInLowerCase,
 	getSelectedStreams,

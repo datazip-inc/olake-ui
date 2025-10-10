@@ -5,7 +5,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 
 import analyticsService from "@api/services/analyticsService"
 import { useAppStore } from "@store/index"
-import { Entity } from "@types/index"
+import { Entity } from "@app-types/index"
 import { destinationTabs } from "@utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"

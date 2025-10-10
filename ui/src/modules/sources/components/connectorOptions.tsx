@@ -1,4 +1,4 @@
-import { ConnectorOption } from "@types/index"
+import { ConnectorOption } from "@app-types/index"
 import { getConnectorImage } from "@utils/utils"
 
 const connectorOptions: ConnectorOption[] = [

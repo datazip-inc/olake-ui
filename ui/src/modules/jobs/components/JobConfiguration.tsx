@@ -4,7 +4,7 @@ import { Info } from "@phosphor-icons/react"
 import parser from "cron-parser"
 import { useLocation } from "react-router-dom"
 
-import { JobConfigurationProps } from "@types/index"
+import { JobConfigurationProps } from "@app-types/index"
 import {
 	generateCronExpression,
 	parseCronExpression,

@@ -14,7 +14,7 @@ import {
 	SourceData,
 	DestinationData,
 	StreamsDataStructure,
-} from "@types/index"
+} from "@app-types/index"
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
 import SourceEdit from "@modules/sources/pages/SourceEdit"

@@ -1,4 +1,4 @@
-import { ConnectorOption } from "@types/index"
+import { ConnectorOption } from "@app-types/index"
 import AWSS3 from "@assets/AWSS3.svg"
 import ApacheIceBerg from "@assets/ApacheIceBerg.svg"
 import { CONNECTOR_TYPES } from "@utils/constants"

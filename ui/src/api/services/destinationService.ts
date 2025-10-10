@@ -6,7 +6,7 @@ import {
 	EntityBase,
 	EntityTestRequest,
 	EntityTestResponse,
-} from "@types/index"
+} from "@app-types/index"
 import { getConnectorInLowerCase } from "@utils/utils"
 
 // TODO: Make it parquet on all places

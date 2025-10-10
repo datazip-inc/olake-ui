@@ -3,8 +3,8 @@ import { Button, message, Modal, Table } from "antd"
 import { Warning } from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
-import { Entity } from "@types/index"
-import { DeleteModalProps } from "@types/modalTypes"
+import { Entity } from "@app-types/index"
+import { DeleteModalProps } from "@app-types/modalTypes"
 import { getConnectorImage } from "@utils/utils"
 
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {

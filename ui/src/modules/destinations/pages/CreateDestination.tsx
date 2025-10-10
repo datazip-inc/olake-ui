@@ -23,7 +23,7 @@ import {
 	DestinationConfig,
 	ExtendedDestination,
 	SetupType,
-} from "@types/index"
+} from "@app-types/index"
 import {
 	getConnectorInLowerCase,
 	getConnectorDocumentationPath,

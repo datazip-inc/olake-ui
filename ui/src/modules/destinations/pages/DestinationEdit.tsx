@@ -30,7 +30,7 @@ import {
 	DestinationJob,
 	Entity,
 	EntityType,
-} from "@types/index"
+} from "@app-types/index"
 import {
 	getConnectorImage,
 	getConnectorDocumentationPath,

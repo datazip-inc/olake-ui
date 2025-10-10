@@ -14,8 +14,8 @@
       "@store/*": ["src/store/*"],
       "@modules/*": ["src/modules/*"],
       "@utils/*": ["src/utils/*"],
-      "@types": ["src/types/index.ts"],
-      "@types/*": ["src/types/*"],
+      "@app-types": ["src/types"],
+      "@app-types/*": ["src/types/*"],
       "@assets/*": ["src/assets/*"]
     }
   }

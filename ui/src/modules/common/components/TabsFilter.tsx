@@ -1,4 +1,4 @@
-import { TabsFilterProps } from "@types/index"
+import { TabsFilterProps } from "@app-types/index"
 
 const TabsFilter: React.FC<TabsFilterProps> = ({
 	tabs,

@@ -2,7 +2,7 @@
  * AuthService handles authentication-related API calls and localStorage management.
  */
 import api from "../axios"
-import { APIResponse, LoginArgs, LoginResponse } from "@types/index"
+import { APIResponse, LoginArgs, LoginResponse } from "@app-types/index"
 import {
 	LOCALSTORAGE_TOKEN_KEY,
 	LOCALSTORAGE_USERNAME_KEY,

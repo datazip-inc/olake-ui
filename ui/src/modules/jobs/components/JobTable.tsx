@@ -14,7 +14,7 @@ import {
 	XIcon,
 } from "@phosphor-icons/react"
 
-import { EntityBase, Job, JobTableProps } from "@types/index"
+import { EntityBase, Job, JobTableProps } from "@app-types/index"
 import { getConnectorImage, getStatusClass, getStatusLabel } from "@utils/utils"
 import { getStatusIcon } from "@utils/statusIcons"
 import { PAGE_SIZE } from "@utils/constants"

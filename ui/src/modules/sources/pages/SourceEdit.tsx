@@ -25,7 +25,7 @@ import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "@store/index"
 import { sourceService, jobService } from "@api/index"
-import { Entity, SourceEditProps, SourceJob } from "@types/index"
+import { Entity, SourceEditProps, SourceJob } from "@app-types/index"
 import {
 	getConnectorImage,
 	getConnectorInLowerCase,
