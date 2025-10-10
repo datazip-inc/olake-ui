@@ -8,8 +8,10 @@ This directory contains end-to-end tests for the OLake frontend application usin
 tests/
 ├── fixtures/           # Test fixtures and dependency injection
 │   ├── base.fixture.ts         # Base fixtures with all page objects
-│   ├── authenticated.fixture.ts # Auto-login fixture for authenticated tests
+│   ├── authenticated.fixture.ts # Authenticated fixture using saved state
 │   └── index.ts                 # Central export point for fixtures
+├── setup/              # Global setup scripts
+│   └── auth.setup.ts            # Creates authentication state before tests
 ├── pages/              # Page Object Models (POM)
 │   ├── BasePage.ts              # Abstract base class for all page objects
 │   ├── LoginPage.ts             # Login page interactions
@@ -39,6 +41,7 @@ tests/
 │   ├── source-connector-configs.ts     # Source connector configurations
 │   ├── destination-connector-configs.ts # Destination connector configs
 │   ├── test-data-builder.ts            # Unique test data generator
+│   ├── modal-utils.ts                  # Modal verification utilities
 │   └── index.ts                        # Central export point for utils
 └── README.md           # This file
 ```
@@ -69,20 +72,33 @@ tests/
 - Consistent patterns across all test files
 - Comprehensive error handling and validation
 
-### Fixtures
+### Fixtures & Authentication
 
-- **Base Fixtures (`base.fixture.ts`)**: Provide all page object instances automatically
-- **Authenticated Fixture (`authenticated.fixture.ts`)**: Auto-login before each test via `beforeEach`
-- **Central Export (`fixtures/index.ts`)**: Import fixtures from one place
-- Fixtures handle page setup, teardown, and dependency injection
-- Test isolation ensured through proper fixture design
+1. **Setup Project (`setup/auth.setup.ts`)**:
+   - Runs once before all tests
+   - Logs in with admin credentials
+   - Saves authentication state to `.auth/user.json`
+
+2. **Base Fixtures (`base.fixture.ts`)**:
+   - Provides all page object instances automatically
+   - No authentication state applied
+
+3. **Authenticated Fixture (`authenticated.fixture.ts`)**:
+   - Extends base fixtures
+   - Applies saved authentication state using `test.use({ storageState })`
+   - No login needed - tests start already authenticated
+
+4. **Central Export (`fixtures/index.ts`)**:
+   - Import fixtures from one place
+
+#### Usage
 
 ```typescript
-// For tests requiring authentication
-import { testAuthenticated as test, expect } from "../fixtures"
+// For tests requiring authentication (sources, destinations, jobs)
+import { test, expect } from "../fixtures/authenticated.fixture"
 
-// For tests NOT requiring authentication (e.g., login tests)
-import { test, expect } from "../fixtures"
+// For tests NOT requiring authentication (login flow)
+import { test, expect } from "../fixtures/base.fixture"
 ```
 
 ## Key Features
