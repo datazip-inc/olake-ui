@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -549,61 +547,10 @@ func (c *JobHandler) GetTaskLogs() {
 	// Get home directory
 	homeDir := docker.GetDefaultConfigDir()
 	mainSyncDir := filepath.Join(homeDir, syncFolderName)
-	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("No sync directory found: %s", mainSyncDir))
-		return
-	}
-
-	// Look for log files in the logs directory
-	logsDir := filepath.Join(mainSyncDir, "logs")
-	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Logs directory not found")
-		return
-	}
-
-	// Since there is only one sync folder in logs, we can get it directly
-	files, err := os.ReadDir(logsDir)
-	if err != nil || len(files) == 0 {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "No sync log directory found")
-		return
-	}
-
-	// Use the first directory we find (since there's only one)
-	syncDir := filepath.Join(logsDir, files[0].Name())
-
-	// Define the log file path
-	logPath := filepath.Join(syncDir, "olake.log")
-
-	logContent, err := os.ReadFile(logPath)
+	logs, err := utils.ReadLogs(mainSyncDir)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read log file : %s", logPath))
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, err.Error())
 		return
-	}
-
-	// Parse log entries
-	var logs []map[string]interface{}
-	lines := strings.Split(string(logContent), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		var logEntry struct {
-			Level   string    `json:"level"`
-			Time    time.Time `json:"time"`
-			Message string    `json:"message"`
-		}
-
-		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			continue
-		}
-		if logEntry.Level != "debug" {
-			logs = append(logs, map[string]interface{}{
-				"level":   logEntry.Level,
-				"time":    logEntry.Time.UTC().Format(time.RFC3339),
-				"message": logEntry.Message,
-			})
-		}
 	}
 
 	utils.SuccessResponse(&c.Controller, logs)
