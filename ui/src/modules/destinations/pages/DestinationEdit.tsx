@@ -240,6 +240,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 
 		setIsLoading(true)
+		//cancel old requests when new one is made
 		return withAbortController(
 			signal =>
 				destinationService.getDestinationSpec(
