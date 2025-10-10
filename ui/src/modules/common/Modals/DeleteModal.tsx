@@ -7,6 +7,7 @@ import { Entity } from "../../../types"
 import { DeleteModalProps } from "../../../types/modalTypes"
 import { getConnectorImage } from "../../../utils/utils"
 
+//Entity Delete Modal
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 	const {
 		showDeleteModal,
