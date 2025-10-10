@@ -125,12 +125,15 @@ func DinDTestContainer(t *testing.T) error {
 			hc.Binds = []string{
 				fmt.Sprintf("%s:/mnt:rw", projectRoot),
 			}
+			// Tmpfs mounts create temporary in-memory filesystems inside the container.
+			// These directories behave like RAM disks they exist only in memory (not on disk) and are automatically cleaned up when the container stops.
+			// This is useful for high-performance temporary storage.
+			// 70GB for docker and 15GB for shared memory space in Linux
 			hc.Tmpfs = map[string]string{
 				"/var/lib/docker": "size=70G",
-				"/dev/shm":        "size=15G",
+				"/dev/shm":        "size=10G",
 			}
-
-			hc.Resources.Memory = 24 * 1024 * 1024 * 1024 //30GB
+			hc.Resources.Memory = 22 * 1024 * 1024 * 1024 // 22GB
 			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
 		},
 		ConfigModifier: func(config *container.Config) {
