@@ -243,6 +243,12 @@ func (c *JobHandler) UpdateJob() {
 		existingJob.UpdatedBy = user
 	}
 
+	// cancel existing workflow
+	err = cancelJobWorkflow(c.tempClient, existingJob, projectIDStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		return
+	}
 	// Update job in database
 	if err := c.jobORM.Update(existingJob); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job")
@@ -285,7 +291,12 @@ func (c *JobHandler) DeleteJob() {
 		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Job not found")
 		return
 	}
-
+	// cancel existing workflow
+	err = cancelJobWorkflow(c.tempClient, job, job.ProjectID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+		return
+	}
 	jobName := job.Name
 	if c.tempClient != nil {
 		logs.Info("Using Temporal workflow for delete job schedule")
@@ -430,6 +441,34 @@ func (c *JobHandler) ActivateJob() {
 	}
 
 	utils.SuccessResponse(&c.Controller, req)
+}
+
+// @router /project/:projectid/jobs/:id/cancel [get]
+func (c *JobHandler) CancelJobRun() {
+	// Parse inputs
+	idStr := c.Ctx.Input.Param(":id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+	projectID := c.Ctx.Input.Param(":projectid")
+
+	// Ensure job exists
+	job, err := c.jobORM.GetByID(id, true)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusNotFound, fmt.Sprintf("Job not found: %v", err))
+		return
+	}
+
+	if err := cancelJobWorkflow(c.tempClient, job, projectID); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("job workflow cancel failed: %v", err))
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, map[string]any{
+		"message": "Job Cancellation initiated. Completion may take up to a minute",
+	})
 }
 
 // @router /project/:projectid/jobs/:id/tasks [get]

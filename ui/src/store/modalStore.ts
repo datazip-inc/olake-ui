@@ -13,6 +13,7 @@ export interface ModalSlice {
 	showEditSourceModal: boolean
 	showEditDestinationModal: boolean
 	showDestinationDatabaseModal: boolean
+	showResetStreamsModal: boolean
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
 	setShowFailureModal: (show: boolean) => void
@@ -25,6 +26,7 @@ export interface ModalSlice {
 	setShowEditSourceModal: (show: boolean) => void
 	setShowEditDestinationModal: (show: boolean) => void
 	setShowDestinationDatabaseModal: (show: boolean) => void
+	setShowResetStreamsModal: (show: boolean) => void
 }
 
 export const createModalSlice: StateCreator<ModalSlice> = set => ({
@@ -40,6 +42,7 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	showEditSourceModal: false,
 	showEditDestinationModal: false,
 	showDestinationDatabaseModal: false,
+	showResetStreamsModal: false,
 
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
@@ -55,4 +58,5 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	setShowEditDestinationModal: show => set({ showEditDestinationModal: show }),
 	setShowDestinationDatabaseModal: show =>
 		set({ showDestinationDatabaseModal: show }),
+	setShowResetStreamsModal: show => set({ showResetStreamsModal: show }),
 })
