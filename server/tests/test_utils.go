@@ -115,10 +115,9 @@ func DinDTestContainer(t *testing.T) error {
 	req := testcontainers.ContainerRequest{
 		Image: "ubuntu:22.04",
 		Env: map[string]string{
-			"DOCKER_TLS_CERTDIR":           "",
-			"TELEMETRY_DISABLED":           "true",
-			"TESTCONTAINERS_RYUK_DISABLED": "true",
-			"DEBIAN_FRONTEND":              "noninteractive",
+			"DOCKER_TLS_CERTDIR": "",
+			"TELEMETRY_DISABLED": "true",
+			"DEBIAN_FRONTEND":    "noninteractive",
 		},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
@@ -150,7 +149,7 @@ func DinDTestContainer(t *testing.T) error {
 			exec dockerd --host=tcp://0.0.0.0:2375 --host=unix:///var/run/docker.sock
 			`,
 		},
-		WaitingFor: wait.ForListeningPort("2375/tcp").WithStartupTimeout(60 * time.Second),
+		WaitingFor: wait.ForExec([]string{"docker", "-H", "tcp://127.0.0.1:2375", "info"}).WithStartupTimeout(60 * time.Second).WithPollInterval(1 * time.Second),
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -179,15 +178,7 @@ func DinDTestContainer(t *testing.T) error {
 		return fmt.Errorf("failed to get spark port: %w", err)
 	}
 
-	t.Log("Waiting a short moment for Docker daemon to settle...")
-	time.Sleep(3 * time.Second)
-
-	// Verify Docker is working (use tcp socket we exposed)
-	if code, out, err := ExecCommand(ctx, ctr, "docker -H tcp://127.0.0.1:2375 info"); err != nil || code != 0 {
-		return fmt.Errorf("docker daemon not ready (%d): %s\n%s", code, err, out)
-	}
 	t.Log("Docker daemon is ready")
-
 	// Step 1: Install tools
 	t.Log("Installing required tools...")
 	if code, out, err := ExecCommand(ctx, ctr, setupToolsCmd); err != nil || code != 0 {
@@ -244,7 +235,6 @@ func DinDTestContainer(t *testing.T) error {
 	}
 
 	// Step 10: Run Playwright tests
-	time.Sleep(5 * time.Second)
 	t.Log("Executing Playwright tests...")
 	if code, out, err := ExecCommandWithStreaming(ctx, t, ctr, runPlaywrightCmd); err != nil || code != 0 {
 		return fmt.Errorf("playwright tests failed (%d): %s\n%s", code, err, out)
@@ -406,7 +396,7 @@ func ExecuteQuery(ctx context.Context, t *testing.T, operation, host, port strin
 		query = fmt.Sprintf("DROP TABLE IF EXISTS %s", integrationTestTable)
 
 	case "clean":
-		query = fmt.Sprintf("DELETE FROM %s", integrationTestTable)
+		query = fmt.Sprintf("TRUNCATE TABLE %s", integrationTestTable)
 
 	case "add":
 		insertTestData(ctx, t, db, integrationTestTable)
