@@ -120,6 +120,85 @@ export class CreateDestinationPage extends BasePage {
 			.click()
 	}
 
+	/**
+	 * Waits for and captures the destination spec API response after connector selection
+	 * Returns the response data
+	 * Throws if API fails or times out
+	 */
+	async waitForDestinationSpecResponse() {
+		try {
+			const responsePromise = this.page.waitForResponse(
+				response =>
+					response.url().includes("/destinations/spec") &&
+					response.request().method() === "POST",
+				{ timeout: TIMEOUTS.LONG },
+			)
+
+			const response = await responsePromise
+
+			if (!response.ok()) {
+				console.error(`✗ Destination spec API failed: ${response.status()}`)
+				throw new Error(
+					`Destination spec API failed with status ${response.status()}`,
+				)
+			}
+
+			const data = await response.json()
+			console.log(
+				`✓ Spec loaded: ${JSON.stringify(data, null, 2) || "unknown"}`,
+			)
+
+			return data
+		} catch (error) {
+			if (error instanceof Error && error.message.includes("Timeout")) {
+				console.error("✗ Timeout: destination spec API")
+				throw new Error("Timeout waiting for destination spec API response")
+			}
+			throw error
+		}
+	}
+
+	/**
+	 * Selects connector and waits for the spec API to complete
+	 * Returns the spec response data
+	 * Throws if API fails or times out
+	 */
+	async selectConnectorAndWaitForSpec(connector: string) {
+		console.log(`→ Selecting connector: ${connector}`)
+		const specPromise = this.waitForDestinationSpecResponse()
+		await this.selectConnector(connector)
+		return await specPromise
+	}
+
+	/**
+	 * Intercepts the destination spec API request
+	 * Useful for validation or mocking
+	 */
+	async interceptDestinationSpecRequest(
+		callback: (request: any, response: any) => void,
+	) {
+		await this.page.route("**/destinations/spec", async route => {
+			const request = route.request()
+			const response = await route.fetch()
+			const responseData = await response.json()
+
+			console.log(
+				`Intercepted: ${request.postDataJSON()?.type} → ${response.status()}`,
+			)
+
+			callback(
+				{
+					method: request.method(),
+					url: request.url(),
+					postData: request.postDataJSON(),
+				},
+				responseData,
+			)
+
+			await route.fulfill({ response })
+		})
+	}
+
 	async selectVersion(version: string) {
 		await this.versionSelect.click()
 		await this.page.getByTitle(version).click()
@@ -133,7 +212,7 @@ export class CreateDestinationPage extends BasePage {
 	 */
 	async fillDestinationForm(config: DestinationFormConfig) {
 		// Select connector
-		await this.selectConnector(config.connector)
+		await this.selectConnectorAndWaitForSpec(config.connector)
 
 		// Select version if provided
 		if (config.version) {
