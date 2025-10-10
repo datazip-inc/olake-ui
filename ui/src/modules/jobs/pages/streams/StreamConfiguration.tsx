@@ -30,7 +30,7 @@ import {
 	MultiFilterCondition,
 	CombinedStreamsData,
 	SyncMode,
-} from "../../../../types"
+} from "@app-types/index"
 
 import {
 	CARD_STYLE,
@@ -39,8 +39,8 @@ import {
 	PartitioningRegexTooltip,
 	SYNC_MODE_MAP,
 	TAB_STYLES,
-} from "../../../../utils/constants"
-import { operatorOptions } from "../../../../utils/utils"
+} from "@utils/constants"
+import { operatorOptions } from "@utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
 

@@ -14,14 +14,10 @@ import {
 	XIcon,
 } from "@phosphor-icons/react"
 
-import { EntityBase, Job, JobTableProps } from "../../../types"
-import {
-	getConnectorImage,
-	getStatusClass,
-	getStatusLabel,
-} from "../../../utils/utils"
-import { getStatusIcon } from "../../../utils/statusIcons"
-import { PAGE_SIZE } from "../../../utils/constants"
+import { EntityBase, Job, JobTableProps } from "@app-types/index"
+import { getConnectorImage, getStatusClass, getStatusLabel } from "@utils/utils"
+import { getStatusIcon } from "@utils/statusIcons"
+import { PAGE_SIZE } from "@utils/constants"
 
 const formatLastSyncTime = (text?: string) => {
 	if (!text) return <div className="pl-4">-</div>

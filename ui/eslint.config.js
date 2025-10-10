@@ -1,5 +1,4 @@
 import globals from "globals"
-import reactHooks from "eslint-plugin-react-hooks"
 import reactRefresh from "eslint-plugin-react-refresh"
 import tseslint from "@typescript-eslint/eslint-plugin"
 import tsParser from "@typescript-eslint/parser"
@@ -15,7 +14,6 @@ export default [
 			globals: globals.browser,
 		},
 		plugins: {
-			"react-hooks": reactHooks,
 			"react-refresh": reactRefresh,
 			"@typescript-eslint": tseslint,
 			react,
@@ -27,13 +25,25 @@ export default [
 			...react.configs.recommended.rules,
 			"react/react-in-jsx-scope": "off", // Disable the need for React to be in scope with JSX
 			"react/prop-types": "off", // Disable prop-types rule for TypeScript
-			"react-refresh/only-export-components": "off", // Disable Fast Refresh rule
 			"@typescript-eslint/ban-ts-comment": "warn",
 			"@typescript-eslint/no-explicit-any": "off",
 			"prettier/prettier": "warn",
 			"react-refresh/only-export-components": [
 				"warn",
 				{ allowConstantExport: true },
+			],
+			// Discourage deep relative imports (../../ or deeper). Prefer aliases like @api, @utils, etc.
+			"no-restricted-imports": [
+				"warn",
+				{
+					patterns: [
+						{
+							group: ["^\\.\\./(?:\\.\\./)+"],
+							message:
+								"Avoid deep relative imports. Use path aliases (e.g., @api, @utils, @modules).",
+						},
+					],
+				},
 			],
 		},
 		settings: {
@@ -43,6 +53,6 @@ export default [
 		},
 	},
 	{
-		ignores: ["node_modules/", "dist/", "build/", "src/components"],
+		ignores: ["node_modules/", "dist/", "build/"],
 	},
 ]

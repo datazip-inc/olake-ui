@@ -4,8 +4,8 @@ import { useNavigate, Link, useParams } from "react-router-dom"
 import { message } from "antd"
 import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { jobService } from "../../../api"
+import { useAppStore } from "@store/index"
+import { jobService } from "@api/index"
 import {
 	StreamData,
 	Job,
@@ -14,15 +14,15 @@ import {
 	SourceData,
 	DestinationData,
 	StreamsDataStructure,
-} from "../../../types"
+} from "@app-types/index"
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
-import SourceEdit from "../../sources/pages/SourceEdit"
-import DestinationEdit from "../../destinations/pages/DestinationEdit"
+import SourceEdit from "@modules/sources/pages/SourceEdit"
+import DestinationEdit from "@modules/destinations/pages/DestinationEdit"
 import SchemaConfiguration from "./SchemaConfiguration"
-import TestConnectionModal from "../../common/Modals/TestConnectionModal"
-import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
+import TestConnectionModal from "@modules/common/Modals/TestConnectionModal"
+import TestConnectionSuccessModal from "@modules/common/Modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@modules/common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
 	getSelectedStreams,

@@ -1,5 +1,5 @@
 import { Radio } from "antd"
-import { SetupType, SetupTypeSelectorProps } from "../../../types"
+import { SetupType, SetupTypeSelectorProps } from "@app-types/index"
 
 export const SetupTypeSelector: React.FC<SetupTypeSelectorProps> = ({
 	value,

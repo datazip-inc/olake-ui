@@ -4,19 +4,19 @@ import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
 import { Info, ArrowLeft } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
-import { useAppStore } from "../../../store"
-import { jobService } from "../../../api"
+import { useAppStore } from "@store/index"
+import { jobService } from "@api/index"
 import {
 	getConnectorImage,
 	generateCronExpression,
 	parseCronExpression,
 	validateCronExpression,
 	isValidCronExpression,
-} from "../../../utils/utils"
-import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
-import DeleteJobModal from "../../common/Modals/DeleteJobModal"
-import ClearDataModal from "../../common/Modals/ClearDataModal"
-import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
+} from "@utils/utils"
+import { DAYS, FREQUENCY_OPTIONS } from "@utils/constants"
+import DeleteJobModal from "@modules/common/Modals/DeleteJobModal"
+import ClearDataModal from "@modules/common/Modals/ClearDataModal"
+import ClearDestinationAndSyncModal from "@modules/common/Modals/ClearDestinationAndSyncModal"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()

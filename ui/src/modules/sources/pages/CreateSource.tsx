@@ -17,9 +17,9 @@ import {
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
 
-import { useAppStore } from "../../../store"
-import { sourceService } from "../../../api/services/sourceService"
-import { SetupType, Source, CreateSourceProps } from "../../../types"
+import { useAppStore } from "@store/index"
+import { sourceService } from "@api/services/sourceService"
+import { SetupType, Source, CreateSourceProps } from "@app-types/index"
 import {
 	getConnectorLabel,
 	handleSpecResponse,
@@ -41,11 +41,11 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import connectorOptions from "../components/connectorOptions"
-import { SETUP_TYPES } from "../../../utils/constants"
-import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
-import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
-import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
-import { widgets } from "../../common/components/Form/widgets"
+import { SETUP_TYPES } from "@utils/constants"
+import ObjectFieldTemplate from "@modules/common/components/Form/ObjectFieldTemplate"
+import CustomFieldTemplate from "@modules/common/components/Form/CustomFieldTemplate"
+import ArrayFieldTemplate from "@modules/common/components/Form/ArrayFieldTemplate"
+import { widgets } from "@modules/common/components/Form/widgets"
 
 // Create ref handle interface
 export interface CreateSourceHandle {

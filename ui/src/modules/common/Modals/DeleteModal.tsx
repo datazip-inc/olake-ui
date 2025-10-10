@@ -2,10 +2,10 @@ import { formatDistanceToNow } from "date-fns"
 import { Button, message, Modal, Table } from "antd"
 import { Warning } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { Entity } from "../../../types"
-import { DeleteModalProps } from "../../../types/modalTypes"
-import { getConnectorImage } from "../../../utils/utils"
+import { useAppStore } from "@store/index"
+import { Entity } from "@app-types/index"
+import { DeleteModalProps } from "@app-types/modalTypes"
+import { getConnectorImage } from "@utils/utils"
 
 //Entity Delete Modal
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {

@@ -8,7 +8,7 @@ import {
 	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 
-import { DocumentationPanelProps } from "../../../types"
+import { DocumentationPanelProps } from "@app-types/index"
 
 const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 	docUrl,

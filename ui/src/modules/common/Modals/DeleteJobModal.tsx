@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { Button, message, Modal } from "antd"
 import { Warning } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
+import { useAppStore } from "@store/index"
 
 const DeleteJobModal = ({
 	fromJobSettings = false,
