@@ -9,8 +9,7 @@
 export class TestDataBuilder {
 	static uniqueName(prefix: string): string {
 		const timestamp = Date.now()
-		const random = Math.floor(Math.random() * 1000)
-		return `${prefix}_${timestamp}_${random}`
+		return `${prefix}_${timestamp}`
 	}
 
 	static getUniqueSourceName(connector: string = "postgres"): string {

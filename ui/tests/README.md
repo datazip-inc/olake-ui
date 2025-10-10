@@ -6,35 +6,40 @@ This directory contains end-to-end tests for the OLake frontend application usin
 
 ```
 tests/
-├── fixtures/           # Test fixtures and setup
-│   └── auth.fixture.ts  # Authentication and page object fixtures
-├── pages/              # Page Object Models
-│   ├── LoginPage.ts     # Login page interactions
-│   ├── SourcesPage.ts   # Sources listing page
-│   ├── CreateSourcePage.ts # Source creation flow
-│   ├── EditSourcePage.ts   # Source editing flow
-│   ├── DestinationsPage.ts # Destinations listing page
+├── fixtures/           # Test fixtures and dependency injection
+│   ├── base.fixture.ts         # Base fixtures with all page objects
+│   ├── authenticated.fixture.ts # Auto-login fixture for authenticated tests
+│   └── index.ts                 # Central export point for fixtures
+├── pages/              # Page Object Models (POM)
+│   ├── BasePage.ts              # Abstract base class for all page objects
+│   ├── LoginPage.ts             # Login page interactions
+│   ├── SourcesPage.ts           # Sources listing page
+│   ├── CreateSourcePage.ts      # Source creation flow
+│   ├── EditSourcePage.ts        # Source editing flow
+│   ├── DestinationsPage.ts      # Destinations listing page
 │   ├── CreateDestinationPage.ts # Destination creation flow
 │   ├── EditDestinationPage.ts   # Destination editing flow
-│   ├── JobsPage.ts      # Jobs listing and sync operations
-│   └── CreateJobPage.ts # Job creation workflow
+│   ├── JobsPage.ts              # Jobs listing and sync operations
+│   └── CreateJobPage.ts         # Job creation workflow
+├── types/              # TypeScript type definitions
+│   └── PageConfig.types.ts      # Form configs and test data interfaces
 ├── flows/              # Test scenarios organized by user flows
-│   ├── login.spec.ts    # Login flow tests
-│   ├── create-source.spec.ts # Source creation tests
-│   ├── edit-source.spec.ts   # Source editing tests
-│   ├── create-destination.spec.ts # Destination creation tests
-│   ├── edit-destination.spec.ts   # Destination editing tests
-│   ├── destination-end-to-end.spec.ts # Destination user journey tests
-│   ├── create-job.spec.ts    # Job creation tests
-│   ├── job-sync.spec.ts      # Job sync and execution tests
-│   ├── job-end-to-end.spec.ts # Complete job workflow tests
-│   └── end-to-end.spec.ts    # Complete user journey tests
-├── auth/               # Authentication-specific tests
-│   └── login.spec.ts    # Detailed login validation tests
-├── setup/              # Test configuration and data
-│   └── test-data.ts     # Shared test data and constants
+│   ├── login.spec.ts                # Login flow tests
+│   ├── create-source.spec.ts        # Source creation tests
+│   ├── edit-source.spec.ts          # Source editing tests
+│   ├── create-destination.spec.ts   # Destination creation tests
+│   ├── edit-destination.spec.ts     # Destination editing tests
+│   ├── destination-end-to-end.spec.ts # Destination user journey
+│   ├── create-job.spec.ts           # Job creation tests
+│   ├── job-sync.spec.ts             # Job sync and execution tests
+│   ├── job-end-to-end.spec.ts       # Complete job workflow tests
+│   └── end-to-end.spec.ts           # Complete user journey tests
 ├── utils/              # Test utilities and helpers
-│   └── test-helpers.ts  # Common test helper functions
+│   ├── constants.ts                    # Shared constants and test data
+│   ├── source-connector-configs.ts     # Source connector configurations
+│   ├── destination-connector-configs.ts # Destination connector configs
+│   ├── test-data-builder.ts            # Unique test data generator
+│   └── index.ts                        # Central export point for utils
 └── README.md           # This file
 ```
 
@@ -43,16 +48,18 @@ tests/
 ### Page Object Model (POM)
 
 - Each page has its own class with locators and actions
-- Methods are named descriptively (e.g., `fillSourceName()`, `expectValidationError()`)
+- **All page objects extend `BasePage`** to inherit common functionality
+- Methods are named descriptively (e.g., `fillSourceForm()`, `expectValidationError()`)
 - Locators are defined once and reused throughout tests
 - Actions are abstracted to focus on user intent, not implementation details
+- **BasePage provides:** `goto()`, `expectVisible()`, `expectValidationError()`, `clickButton()`, etc.
 
 ### Test Organization
 
-- **flows/**: Tests organized by complete user workflows
-- **auth/**: Detailed authentication and authorization tests
+- **flows/**: Tests organized by complete user workflows (including login, source, destination, and job tests)
 - Each test file focuses on a specific area of functionality
 - Tests are independent and can run in any order
+- All tests requiring authentication use the `authenticated.fixture.ts` for auto-login
 
 ### Clean Code Practices
 
@@ -64,9 +71,19 @@ tests/
 
 ### Fixtures
 
-- Custom Playwright fixtures provide page objects automatically
-- Fixtures handle page setup and teardown
-- Shared authentication state and test isolation
+- **Base Fixtures (`base.fixture.ts`)**: Provide all page object instances automatically
+- **Authenticated Fixture (`authenticated.fixture.ts`)**: Auto-login before each test via `beforeEach`
+- **Central Export (`fixtures/index.ts`)**: Import fixtures from one place
+- Fixtures handle page setup, teardown, and dependency injection
+- Test isolation ensured through proper fixture design
+
+```typescript
+// For tests requiring authentication
+import { testAuthenticated as test, expect } from "../fixtures"
+
+// For tests NOT requiring authentication (e.g., login tests)
+import { test, expect } from "../fixtures"
+```
 
 ## Key Features
 
@@ -160,70 +177,46 @@ npx playwright test --ui
 npx playwright show-report
 ```
 
-## Test Data
+## Test Data Management
 
-Shared test data is defined in `setup/test-data.ts`:
+### Constants (`utils/constants.ts`)
 
-- User credentials
-- MongoDB connection configuration
-- Amazon S3 connection configuration
-- Job configuration (streams, frequency, sync modes)
-- Validation messages
-- URL constants
-- CSS selectors
+Shared test data and configuration:
 
-## Helper Functions
+- **Login Credentials**: `LOGIN_CREDENTIALS` with admin/user roles
+- **Source Configurations**: `POSTGRES_SOURCE_CONFIG`, `MONGODB_SOURCE_CONFIG`, etc.
+- **Destination Configurations**: `ICEBERG_JDBC_CONFIG`, `S3_CONFIG`, etc.
+- **Job Configuration**: `JOB_CONFIG` (streams, frequency, sync modes)
+- **Validation Messages**: `VALIDATION_MESSAGES`
+- **URL Constants**: `URLS`
 
-Common operations are abstracted in `utils/test-helpers.ts`:
+### Test Data Builder (`utils/test-data-builder.ts`)
 
-- Admin login shortcut
-- Test data generation (sources, destinations, jobs)
-- Modal waiting utilities
-- Form interaction helpers
-- Dropdown selection utilities
-
-## Best Practices
-
-1. **Use Page Objects**: Always interact with pages through Page Object Models
-2. **Wait for Elements**: Use `expect()` and `waitFor()` for reliable element interaction
-3. **Unique Test Data**: Generate unique names/IDs to avoid test conflicts
-4. **Independent Tests**: Each test should set up its own data and clean up
-5. **Descriptive Names**: Test names should clearly describe the scenario
-6. **Error Scenarios**: Include both happy path and error scenarios
-7. **Accessibility**: Test keyboard navigation and screen reader compatibility
-
-## Example Test
+Generates unique test data to avoid conflicts:
 
 ```typescript
-test("should create MongoDB source successfully", async ({
-  loginPage,
-  sourcesPage,
-  createSourcePage
-}) => {
-  // Login
-  await loginPage.goto()
-  await loginPage.login("admin", "password")
-  await loginPage.waitForLogin()
+// Generate unique names with timestamps
+TestDataBuilder.getUniqueSourceName("postgres")
+// => "e2e_postgres_source_1234567890_123"
 
-  // Navigate to create source
-  await sourcesPage.navigateToSources()
-  await sourcesPage.clickCreateSource()
+TestDataBuilder.getUniqueDestinationName("iceberg")
+// => "e2e_iceberg_dest_1234567890_456"
 
-  // Fill form and create
-  await createSourcePage.fillMongoDBForm({
-    name: "test-source",
-    host: "localhost:27017",
-    database: "testdb",
-    username: "admin",
-    password: "password"
-  })
-
-  await createSourcePage.clickCreate()
-
-  // Verify success
-  await createSourcePage.expectSuccessModal()
-  await sourcesPage.expectSourceExists("test-source")
-})
+TestDataBuilder.getUniqueJobName("postgres", "iceberg", "jdbc")
+// => "postgres_iceberg_jdbc_job_1234567890_789"
 ```
 
-This structure provides maintainable, reliable tests that focus on user workflows while keeping the code clean and reusable.
+### Connector Configurations
+
+- **`source-connector-configs.ts`**: Helper functions to create source configs
+  - `createPostgresSourceConfig()`, `createMongoDBSourceConfig()`, etc.
+- **`destination-connector-configs.ts`**: Helper functions to create destination configs
+  - `createIcebergJdbcConfig()`, `createS3Config()`, etc.
+
+### Type Safety (`types/PageConfig.types.ts`)
+
+TypeScript interfaces for type-safe test data:
+
+- `SourceFormConfig`: Source creation form structure
+- `DestinationFormConfig`: Destination creation form structure
+- `JobFormConfig`: Job creation form structure

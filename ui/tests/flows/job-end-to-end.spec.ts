@@ -6,6 +6,7 @@ import {
 	ICEBERG_JDBC_CONFIG,
 	JOB_CONFIG,
 	TestDataBuilder,
+	verifyEntityCreationSuccessModal,
 } from "../utils"
 
 test.describe("Job End-to-End User Journey", () => {
@@ -18,6 +19,7 @@ test.describe("Job End-to-End User Journey", () => {
 		createJobPage,
 		page,
 	}) => {
+		await jobsPage.goto()
 		await expect(page).toHaveURL("/jobs")
 
 		const SOURCE_CONNECTOR = "postgres"
@@ -46,9 +48,7 @@ test.describe("Job End-to-End User Journey", () => {
 
 		await createSourcePage.fillSourceForm(sourceConfig)
 		await createSourcePage.clickCreate()
-		await createSourcePage.expectTestConnectionModal()
-		await createSourcePage.assertTestConnectionSucceeded()
-		await createSourcePage.expectEntitySavedModal()
+		await verifyEntityCreationSuccessModal(createSourcePage)
 		await sourcesPage.expectSourcesPageVisible()
 		await sourcesPage.expectSourceExists(sourceName)
 
@@ -65,9 +65,7 @@ test.describe("Job End-to-End User Journey", () => {
 
 		await createDestinationPage.fillDestinationForm(destinationConfig)
 		await createDestinationPage.clickCreate()
-		await createDestinationPage.expectTestConnectionModal()
-		await createDestinationPage.assertTestConnectionSucceeded()
-		await createDestinationPage.expectEntitySavedModal()
+		await verifyEntityCreationSuccessModal(createDestinationPage)
 		await destinationsPage.expectDestinationsPageVisible()
 		await destinationsPage.expectDestinationExists(destinationName)
 

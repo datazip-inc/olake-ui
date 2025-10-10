@@ -22,9 +22,16 @@ export default defineConfig({
 		navigationTimeout: 30 * 1000, // 30 seconds for navigation
 	},
 	projects: [
+		// Setup project - runs first to create authenticated state
+		{
+			name: "setup",
+			testMatch: /.*\.setup\.ts/,
+		},
+		// Main test project - depends on setup
 		{
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
+			dependencies: ["setup"],
 		},
 	],
 })
