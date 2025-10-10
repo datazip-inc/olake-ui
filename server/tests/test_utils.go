@@ -115,9 +115,10 @@ func DinDTestContainer(t *testing.T) error {
 	req := testcontainers.ContainerRequest{
 		Image: "ubuntu:22.04",
 		Env: map[string]string{
-			"DOCKER_TLS_CERTDIR": "",
-			"TELEMETRY_DISABLED": "true",
-			"DEBIAN_FRONTEND":    "noninteractive",
+			"DOCKER_TLS_CERTDIR":           "",
+			"TELEMETRY_DISABLED":           "true",
+			"TESTCONTAINERS_RYUK_DISABLED": "true",
+			"DEBIAN_FRONTEND":              "noninteractive",
 		},
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.Privileged = true
