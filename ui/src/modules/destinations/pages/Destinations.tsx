@@ -59,6 +59,7 @@ const Destinations: React.FC = () => {
 	}
 
 	const filteredDestinations = (): Entity[] => {
+		// a destination is active if it has jobs and at least one job is active
 		if (activeTab === "active") {
 			return destinations.filter(
 				destination =>

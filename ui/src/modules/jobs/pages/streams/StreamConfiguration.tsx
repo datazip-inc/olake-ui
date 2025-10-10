@@ -92,7 +92,7 @@ const StreamConfiguration = ({
 		CombinedStreamsData | undefined
 	>(undefined)
 
-	// Unique stream key
+	// Unique stream key to differentiate a stream with same name and different namespace
 	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	// Guard to prevent prop-driven effect from clobbering local edits
@@ -117,6 +117,7 @@ const StreamConfiguration = ({
 		const initialApiSyncMode = stream.stream.sync_mode
 
 		// Parse cursor field for default value
+		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
 		if (
 			stream.stream.cursor_field &&
 			stream.stream.cursor_field.includes(":")
@@ -277,6 +278,7 @@ const StreamConfiguration = ({
 		}
 	}
 
+	// deletes the partition regex for the corresponding stream
 	const handleClearPartitionRegex = () => {
 		setActivePartitionRegex("")
 		setPartitionRegex("")
@@ -448,6 +450,7 @@ const StreamConfiguration = ({
 		}
 	}
 
+	// get columns based on primary keys and cursor fields and their properties
 	const getColumnOptions = () => {
 		const properties = stream.stream.type_schema?.properties || {}
 		const primaryKeys = (stream.stream.source_defined_primary_key ||
@@ -496,6 +499,7 @@ const StreamConfiguration = ({
 			})
 	}
 
+	// when the type is either string or timestamp we wrap the value in quotes
 	const formatFilterValue = (columnName: string, value: string) => {
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type

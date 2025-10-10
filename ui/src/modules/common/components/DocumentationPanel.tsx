@@ -44,6 +44,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		if (!iframe) return
 
 		const handleLoad = () => {
+			// as the theme for ui is light themed we need to show only light theme in docs website as the default theme is dark
 			// Post message to iframe for theming
 			iframe.contentWindow?.postMessage({ theme: "light" }, "https://olake.io")
 

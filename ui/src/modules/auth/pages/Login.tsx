@@ -25,6 +25,7 @@ const Login: React.FC = () => {
 				duration: 3,
 				className: "font-medium",
 			})
+			// clear form in the case of error
 			form.resetFields()
 		}
 		setLoading(false)

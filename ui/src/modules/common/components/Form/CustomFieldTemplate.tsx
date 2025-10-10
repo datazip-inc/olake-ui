@@ -48,7 +48,7 @@ function KeyValueRow({
 	)
 }
 
-// --- NewKeyValueRow: Renders inputs for adding a new key-value pair ---
+// --- NewKeyValueRow: Renders inputs for adding a new key-value pair for type = object ---
 function NewKeyValueRow({
 	newKey,
 	newValue,
@@ -86,6 +86,10 @@ function NewKeyValueRow({
 		</div>
 	)
 }
+
+/**
+ * CustomFieldTemplate is a component that renders a custom field template this overrides the default field template of rjsf Field specific layout is defined here
+ */
 
 export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	// --- Props Destructure ---

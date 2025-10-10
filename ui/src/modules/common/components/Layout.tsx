@@ -9,6 +9,7 @@ import { NAV_ITEMS } from "../../../utils/constants"
 import OlakeLogo from "../../../assets/OlakeLogo.svg"
 import Olake from "../../../assets/OLake.svg"
 
+// will be shown in the later period when we have new updates
 const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 	<div className="p-4">
 		<div className="relative rounded-xl border border-gray-300 bg-gray-100 p-3">

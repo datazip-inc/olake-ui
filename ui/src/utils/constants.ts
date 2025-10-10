@@ -233,6 +233,7 @@ export const JOB_STEP_NUMBERS = {
 	STREAMS: 4,
 } as const
 
+// not showing oneof and const errors
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
