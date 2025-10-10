@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
-import { destinationService, sourceService, jobService } from "../../../api"
+import { destinationService, jobService, sourceService } from "../../../api"
 
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
@@ -18,6 +18,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 
 // Internal imports from components
@@ -168,18 +169,25 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep(nextStep)
 					}, 1000)
 				} else {
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
 					setIsFromSources(isSource)
 					if (isSource) {
-						setSourceTestConnectionError(testResult.data?.message || "")
+						setSourceTestConnectionError(testConnectionError)
 					} else {
-						setDestinationTestConnectionError(testResult.data?.message || "")
+						setDestinationTestConnectionError(testConnectionError)
 					}
 					setShowFailureModal(true)
 				}

@@ -48,6 +48,7 @@ import {
 	DISPLAYED_JOBS_COUNT,
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
@@ -284,7 +285,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 		setShowTestingModal(true)
 		const testResult = await sourceService.testSourceConnection(getSourceData())
-		if (testResult.data?.status === "SUCCEEDED") {
+		if (
+			testResult.data?.connection_result.status ===
+			TEST_CONNECTION_STATUS.SUCCEEDED
+		) {
 			setTimeout(() => {
 				setShowTestingModal(false)
 			}, 1000)
@@ -298,8 +302,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				saveSource()
 			}, 2200)
 		} else {
+			const testConnectionError = {
+				message: testResult.data?.connection_result.message || "",
+				logs: testResult.data?.logs || [],
+			}
 			setShowTestingModal(false)
-			setSourceTestConnectionError(testResult.data?.message || "")
+			setSourceTestConnectionError(testConnectionError)
 			setShowFailureModal(true)
 		}
 	}
