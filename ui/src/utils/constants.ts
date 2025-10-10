@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem } from "../types"
+import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -273,3 +273,8 @@ export const FILTER_REGEX =
 	/^(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+)\s*(?:(and|or)\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+))?\s*$/
 
 export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
+
+export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
+	SUCCEEDED: "SUCCEEDED",
+	FAILED: "FAILED",
+} as const

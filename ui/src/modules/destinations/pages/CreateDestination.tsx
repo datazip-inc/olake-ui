@@ -35,6 +35,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
+	TEST_CONNECTION_STATUS,
 	transformErrors,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
@@ -375,7 +376,10 @@ const CreateDestination = forwardRef<
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)
 
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -384,7 +388,11 @@ const CreateDestination = forwardRef<
 							.catch(error => console.error("Error adding destination:", error))
 					}, 1000)
 				} else {
-					setDestinationTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setDestinationTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
