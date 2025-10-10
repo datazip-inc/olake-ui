@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Button, Modal, Table, message } from "antd"
-import { InfoIcon, Warning } from "@phosphor-icons/react"
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api"
@@ -165,7 +165,7 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 			<Modal
 				title={
 					<div className="flex justify-center">
-						<Warning
+						<WarningIcon
 							weight="fill"
 							className="size-12 text-primary"
 						/>

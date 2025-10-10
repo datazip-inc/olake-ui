@@ -13,12 +13,12 @@ import {
 } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
-	GenderNeuter,
-	Notebook,
-	ArrowLeft,
-	PencilSimple,
-	Info,
-	ArrowSquareOut,
+	GenderNeuterIcon,
+	NotebookIcon,
+	ArrowLeftIcon,
+	PencilSimpleIcon,
+	InfoIcon,
+	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
@@ -460,7 +460,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 							to="/sources"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="size-5" />
+							<ArrowLeftIcon className="size-5" />
 						</Link>
 						<div className="text-lg font-bold">{sourceName}</div>
 					</div>
@@ -484,7 +484,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											}
 											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
-											<PencilSimple className="size-4" />
+											<PencilSimpleIcon className="size-4" />
 											Edit Source
 										</Link>
 									</div>
@@ -523,7 +523,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								<div className="bg-white">
 									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 										<div className="mb-4 flex items-center gap-1 text-lg font-medium">
-											<Notebook className="size-5" />
+											<NotebookIcon className="size-5" />
 											Capture information
 										</div>
 
@@ -574,7 +574,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													OLake Version:
 													<span className="text-red-500">*</span>
 													<Tooltip title="Choose the OLake version for the source">
-														<Info
+														<InfoIcon
 															size={16}
 															className="cursor-help text-slate-900"
 														/>
@@ -585,7 +585,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														rel="noopener noreferrer"
 														className="flex items-center text-primary hover:text-primary/80"
 													>
-														<ArrowSquareOut className="size-4" />
+														<ArrowSquareOutIcon className="size-4" />
 													</a>
 												</label>
 												{loadingVersions ? (
@@ -607,7 +607,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													/>
 												) : (
 													<div className="flex items-center gap-1 text-sm text-red-500">
-														<Info />
+														<InfoIcon />
 														No versions available
 													</div>
 												)}
@@ -617,7 +617,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 										<div className="mb-2 flex items-center gap-1">
-											<GenderNeuter className="size-6" />
+											<GenderNeuterIcon className="size-6" />
 											<div className="text-lg font-medium">Endpoint config</div>
 										</div>
 										{loading ? (
