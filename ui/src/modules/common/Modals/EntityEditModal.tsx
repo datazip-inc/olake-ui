@@ -8,6 +8,7 @@ import { sourceService } from "../../../api"
 import { destinationService } from "../../../api/services/destinationService"
 import { EntityEditModalProps } from "../../../types"
 import { getConnectorImage } from "../../../utils/utils"
+import { TEST_CONNECTION_STATUS } from "../../../utils/constants"
 
 const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 	const navigate = useNavigate()
@@ -69,7 +70,10 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				? await sourceService.testSourceConnection(getEntityData())
 				: await destinationService.testDestinationConnection(getEntityData())
 
-			if (testResult.data?.status === "SUCCEEDED") {
+			if (
+				testResult.data?.connection_result.status ===
+				TEST_CONNECTION_STATUS.SUCCEEDED
+			) {
 				setTimeout(() => {
 					setShowTestingModal(false)
 					setShowSuccessModal(true)
@@ -82,8 +86,12 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 					navigate(navigatePath)
 				}, 2000)
 			} else {
+				const testConnectionError = {
+					message: testResult.data?.connection_result.message || "",
+					logs: testResult.data?.logs || [],
+				}
 				setShowTestingModal(false)
-				setTestConnectionError(testResult.data?.message || "")
+				setTestConnectionError(testConnectionError)
 				setShowFailureModal(true)
 			}
 		} catch (error) {

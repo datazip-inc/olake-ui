@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
-import { destinationService, sourceService, jobService } from "../../../api"
+import { destinationService, jobService, sourceService } from "../../../api"
 
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
@@ -18,6 +18,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 
 // Internal imports from components
@@ -42,6 +43,7 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
+	// state to toggle documentation panel
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
@@ -56,6 +58,8 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
+
+	//state to hold catalog value to open documentation panel
 	const [destinationCatalogType, setDestinationCatalogType] = useState<
 		string | null
 	>(null)
@@ -76,9 +80,12 @@ const JobCreation: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState(
 		initialData.cronExpression || "* * * * *",
 	)
+
+	//once the job name is filled we will set this to true so the job name will be disabled
 	const [jobNameFilled, setJobNameFilled] = useState(
 		initialData.isJobNameFilled || false,
 	)
+	//when streams are loading we will disable back button
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 
@@ -162,18 +169,25 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep(nextStep)
 					}, 1000)
 				} else {
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
 					setIsFromSources(isSource)
 					if (isSource) {
-						setSourceTestConnectionError(testResult.data?.message || "")
+						setSourceTestConnectionError(testConnectionError)
 					} else {
-						setDestinationTestConnectionError(testResult.data?.message || "")
+						setDestinationTestConnectionError(testConnectionError)
 					}
 					setShowFailureModal(true)
 				}
@@ -318,6 +332,7 @@ const JobCreation: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			// when we go back from streams we need to show configured streams will be lost modal
 			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
