@@ -88,10 +88,6 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 }
 
 func (s *DestinationService) CreateDestination(ctx context.Context, req dto.CreateDestinationRequest, projectID string, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Creating destination: %s", req.Name)
 	destination := &models.Destination{
 		Name:      req.Name,
@@ -115,10 +111,6 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 }
 
 func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req dto.UpdateDestinationRequest, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Updating destination with id: %d", id)
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
@@ -134,6 +126,7 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, proj
 		existingDest.UpdatedBy = user
 	}
 
+	// Cancel workflows for jobs linked to this destination before persisting change
 	jobs, err := s.jobORM.GetByDestinationID(existingDest.ID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch jobs for destination %d: %s", existingDest.ID, err)
@@ -181,9 +174,6 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
-	}
 	logs.Info("Testing connection with config: %v", req.Config)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -204,7 +194,7 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 	if err != nil {
 		return nil, fmt.Errorf("%s encrypt config: %s", constants.ErrFailedToProcess, err)
 	}
-	result, err := s.tempClient.TestConnection(context.Background(), "destination", driver, version, encryptedConfig)
+	result, err := s.tempClient.TestConnection(ctx, "destination", driver, version, encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
@@ -239,7 +229,7 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch driver versions: %s", err)
 	}
-	return versions, nil
+	return map[string]interface{}{"version": versions}, nil
 }
 
 // Helper function
@@ -254,14 +244,8 @@ func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) 
 	return jobItems, nil
 }
 
-func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecOutput, error) {
+func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
 	logs.Info("Getting destination spec for type: %s and version: %s", req.Type, req.Version)
-	if req.Type == "" {
-		return dto.SpecOutput{}, fmt.Errorf("destination type is required")
-	}
-	if req.Version == "" {
-		return dto.SpecOutput{}, fmt.Errorf("destination version is required")
-	}
 
 	destinationType := "iceberg"
 	if req.Type == "s3" {
@@ -271,15 +255,22 @@ func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.Spe
 	// Determine driver and available tags
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		// utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
-		return dto.SpecOutput{}, fmt.Errorf("failed to get valid driver image tags: %s", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get valid driver image tags: %s", err)
+	}
+
+	if s.tempClient == nil {
+		return dto.SpecResponse{}, fmt.Errorf("temporal client not available")
 	}
 
 	specOutput, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
 	if err != nil {
 		logs.Error("Failed to get destination spec: %v", err)
-		return dto.SpecOutput{}, fmt.Errorf("failed to get destination spec: %s", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get destination spec: %s", err)
 	}
 
-	return specOutput, nil
+	return dto.SpecResponse{
+		Type:    req.Type,
+		Version: req.Version,
+		Spec:    specOutput.Spec,
+	}, nil
 }

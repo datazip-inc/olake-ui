@@ -102,7 +102,7 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	}
 
 	if s.tempClient != nil {
-		logs.Info("Creating Temporal workflow for sync job")
+		logs.Info("Creating Temporal workflow for sync job for job id %d", job.ID)
 		_, err = s.tempClient.ManageSync(ctx, job, temporal.ActionCreate)
 		if err != nil {
 			return fmt.Errorf("%s: %s", constants.ErrWorkflowExecutionFailed, err)
@@ -114,9 +114,6 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 }
 
 func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
-	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
 	logs.Info("Updating job: %s", req.Name)
 	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
@@ -207,6 +204,19 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	return nil, fmt.Errorf("temporal client is not available")
 }
 
+func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
+	job, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+	}
+	if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
+		return nil, fmt.Errorf("job workflow cancel failed id %d: %s", jobID, err)
+	}
+	return map[string]any{
+		"message": "job workflow cancel requested successfully",
+	}, nil
+}
+
 func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, userID *int) error {
 	logs.Info("Activating job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
@@ -214,7 +224,7 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, 
 		return fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
 
-	job.Active = req.Activate
+	job.Active = activate
 
 	if userID != nil {
 		user := &models.User{ID: *userID}
@@ -233,12 +243,10 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, 
 }
 
 func (s *JobService) IsJobNameUnique(ctx context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
-	if err := dto.Validate(req); err != nil {
-		return false, fmt.Errorf("invalid job name: %w", err)
-	}
 	logs.Info("Checking if job name is unique: %s", req.JobName)
 	return s.jobORM.IsJobNameUnique(projectID, req.JobName)
 }
+
 func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -37,7 +36,7 @@ func (c *AuthHandler) Login() {
 		return
 	}
 
-	user, err := c.authService.Login(context.Background(), req.Username, req.Password)
+	user, err := c.authService.Login(c.Ctx.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
@@ -103,7 +102,7 @@ func (c *AuthHandler) Signup() {
 		return
 	}
 
-	if err := c.authService.Signup(context.Background(), &req); err != nil {
+	if err := c.authService.Signup(c.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
 			respondWithError(&c.Controller, http.StatusConflict, "Username already exists", err)

@@ -56,12 +56,7 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	logResult, err := ExtractJSON(response)
-	if err != nil {
-		return nil, err
-	}
-
-	return logResult, nil
+	return ExtractJSON(response)
 }
 
 func GetWorkflowTimeout(op Command) time.Duration {

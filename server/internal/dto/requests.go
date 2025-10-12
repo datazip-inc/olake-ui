@@ -25,10 +25,6 @@ func Validate(s interface{}) error {
 	return nil
 }
 
-type CheckUniqueJobNameRequest struct {
-	JobName string `json:"job_name"`
-}
-
 // Common fields for source/destination config
 type ConnectorConfig struct {
 	Name    string `json:"name" validate:"required"`
@@ -114,5 +110,5 @@ type JobTaskRequest struct {
 	FilePath string `json:"file_path" validate:"required"`
 }
 type JobStatusRequest struct {
-	Activate bool `json:"activate" validate:"required"`
+	Activate bool `json:"activate"`
 }

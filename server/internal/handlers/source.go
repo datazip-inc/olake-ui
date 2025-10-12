@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,12 +20,12 @@ type SourceHandler struct {
 }
 
 func (c *SourceHandler) Prepare() {
-	var err error
-	c.sourceService, err = services.NewSourceService()
+	svc, err := services.NewSourceService()
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize source service", err)
 		return
 	}
+	c.sourceService = svc
 }
 
 // @router /project/:projectid/sources [get]
@@ -44,16 +45,16 @@ func (c *SourceHandler) CreateSource() {
 
 	var req dto.CreateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-
 	userID := GetUserIDFromSession(&c.Controller)
+
 	if err := c.sourceService.CreateSource(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
@@ -68,18 +69,21 @@ func (c *SourceHandler) UpdateSource() {
 
 	var req dto.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.UpdateSource(context.Background(), id, req, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update source", err)
+	if err := c.sourceService.UpdateSource(context.Background(), projectID, id, req, userID); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			status = http.StatusNotFound
+		}
+		respondWithError(&c.Controller, status, "Failed to update source", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req)
@@ -105,16 +109,15 @@ func (c *SourceHandler) DeleteSource() {
 func (c *SourceHandler) TestConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	result, err := c.sourceService.TestConnection(context.Background(), req)
+	result, err := c.sourceService.TestConnection(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
@@ -126,15 +129,15 @@ func (c *SourceHandler) TestConnection() {
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	catalog, err := c.sourceService.GetSourceCatalog(context.Background(), req)
+	catalog, err := c.sourceService.GetSourceCatalog(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
@@ -173,23 +176,22 @@ func (c *SourceHandler) GetSourceVersions() {
 }
 
 // @router /project/:projectid/sources/spec [post]
-// @router /project/:projectid/sources/spec [post]
 func (c *SourceHandler) GetProjectSourceSpec() {
 	var req dto.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	specOutput, err := c.sourceService.GetSourceSpec(c.Ctx.Request.Context(), req)
+	specResponse, err := c.sourceService.GetSourceSpec(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, resp)
+	utils.SuccessResponse(&c.Controller, specResponse)
 }

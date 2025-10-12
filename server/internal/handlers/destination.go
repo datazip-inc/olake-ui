@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -20,7 +19,6 @@ type DestHandler struct {
 func (c *DestHandler) Prepare() {
 	svc, err := services.NewDestinationService()
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service", err)
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize destination service", err)
 		return
 	}
@@ -41,29 +39,23 @@ func (c *DestHandler) GetAllDestinations() {
 // @router /project/:projectid/destinations [post]
 func (c *DestHandler) CreateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	if projectID == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "project ID is required", nil)
-		return
-	}
+
 	var req dto.CreateDestinationRequest
-
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
 
-	if err := c.destService.CreateDestination(context.Background(), req, projectID, userID); err != nil {
+	if err := c.destService.CreateDestination(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -74,21 +66,20 @@ func (c *DestHandler) UpdateDestination() {
 
 	var req dto.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
 
-	if err := c.destService.UpdateDestination(context.Background(), id, projectID, req, userID); err != nil {
+	if err := c.destService.UpdateDestination(c.Ctx.Request.Context(), id, projectID, req, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -96,28 +87,27 @@ func (c *DestHandler) UpdateDestination() {
 func (c *DestHandler) DeleteDestination() {
 	id := GetIDFromPath(&c.Controller)
 
-	resp, err := c.destService.DeleteDestination(context.Background(), id)
+	resp, err := c.destService.DeleteDestination(c.Ctx.Request.Context(), id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, response)
+	utils.SuccessResponse(&c.Controller, resp)
 }
 
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	result, err := c.destService.TestConnection(context.Background(), req)
+	result, err := c.destService.TestConnection(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
@@ -129,7 +119,7 @@ func (c *DestHandler) TestConnection() {
 func (c *DestHandler) GetDestinationJobs() {
 	id := GetIDFromPath(&c.Controller)
 
-	jobs, err := c.destService.GetDestinationJobs(context.Background(), id)
+	jobs, err := c.destService.GetDestinationJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
 		return
@@ -141,7 +131,7 @@ func (c *DestHandler) GetDestinationJobs() {
 func (c *DestHandler) GetDestinationVersions() {
 	destType := c.GetString("type")
 
-	versions, err := c.destService.GetDestinationVersions(context.Background(), destType)
+	versions, err := c.destService.GetDestinationVersions(c.Ctx.Request.Context(), destType)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
@@ -153,23 +143,18 @@ func (c *DestHandler) GetDestinationVersions() {
 func (c *DestHandler) GetDestinationSpec() {
 	var req dto.SpecRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	specOutput, err := c.destService.GetDestinationSpec(c.Ctx.Request.Context(), req)
+	specResponse, err := c.destService.GetDestinationSpec(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination spec", err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOutput.Spec,
-	})
+	utils.SuccessResponse(&c.Controller, specResponse)
 }

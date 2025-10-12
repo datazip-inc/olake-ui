@@ -92,10 +92,6 @@ func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]
 }
 
 func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRequest, projectID string, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Creating source with projectID: %s", projectID)
 	src := &models.Source{
 		Name:      req.Name,
@@ -121,10 +117,6 @@ func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRe
 }
 
 func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id int, req dto.UpdateSourceRequest, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Updating source with id: %d", id)
 	existing, err := s.sourceORM.GetByID(id)
 	if err != nil {
@@ -192,10 +184,6 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSo
 }
 
 func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestConnectionRequest) (map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Testing connection for source: %v", req.Type)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -210,8 +198,7 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 		return nil, fmt.Errorf("failed to encrypt source config: %s", err)
 	}
 
-	// Use "source" category for source connectivity tests
-	result, err := s.tempClient.TestConnection(ctx, "source", req.Type, req.Version, encryptedConfig)
+	result, err := s.tempClient.TestConnection(ctx, "config", req.Type, req.Version, encryptedConfig)
 	if err != nil {
 		logs.Error("Connection test failed: %v", err)
 	}
@@ -227,10 +214,6 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 }
 
 func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsRequest) (map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Getting source catalog for type=%s version=%s", req.Type, req.Version)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
@@ -294,23 +277,27 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 		return nil, fmt.Errorf("failed to get Docker versions for source type %s: %s", sourceType, err)
 	}
 
-	return versions, nil
+	return map[string]interface{}{"version": versions}, nil
 }
 
-func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecOutput, error) {
+func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
 	logs.Info("Getting source spec for type: %s and version: %s", req.Type, req.Version)
 	if req.Type == "" {
-		return dto.SpecOutput{}, fmt.Errorf("source type is required")
+		return dto.SpecResponse{}, fmt.Errorf("source type is required")
 	}
 	if req.Version == "" {
-		return dto.SpecOutput{}, fmt.Errorf("source version is required")
+		return dto.SpecResponse{}, fmt.Errorf("source version is required")
 	}
 
 	specOutput, err := s.tempClient.FetchSpec(ctx, "", req.Type, req.Version)
 	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("failed to fetch source spec: %s", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to fetch source spec: %s", err)
 	}
-	return specOutput, nil
+	return dto.SpecResponse{
+		Version: req.Version,
+		Type:    req.Type,
+		Spec:    specOutput.Spec,
+	}, nil
 }
 
 // Helper methods

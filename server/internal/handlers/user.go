@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -29,22 +28,20 @@ func (c *UserHandler) CreateUser() {
 		return
 	}
 
-	if err := c.userService.CreateUser(context.Background(), &req); err != nil {
+	if err := c.userService.CreateUser(c.Ctx.Request.Context(), &req); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, req)
 }
 
 // @router /users [get]
 func (c *UserHandler) GetAllUsers() {
-	users, err := c.userService.GetAllUsers(context.Background())
+	users, err := c.userService.GetAllUsers(c.Ctx.Request.Context())
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get users", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, users)
 }
 
@@ -58,7 +55,7 @@ func (c *UserHandler) UpdateUser() {
 		return
 	}
 
-	updatedUser, err := c.userService.UpdateUser(context.Background(), id, &req)
+	updatedUser, err := c.userService.UpdateUser(c.Ctx.Request.Context(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
 			respondWithError(&c.Controller, http.StatusNotFound, "User not found", err)
@@ -67,14 +64,13 @@ func (c *UserHandler) UpdateUser() {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update user", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, updatedUser)
 }
 
 // @router /users/:id [delete]
 func (c *UserHandler) DeleteUser() {
 	id := GetIDFromPath(&c.Controller)
-	if err := c.userService.DeleteUser(context.Background(), id); err != nil {
+	if err := c.userService.DeleteUser(c.Ctx.Request.Context(), id); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete user", err)
 		return
 	}

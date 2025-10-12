@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -40,16 +41,19 @@ func (c *JobHandler) GetAllJobs() {
 // @router /project/:projectid/jobs [post]
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req dto.CreateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
+
 	userID := GetUserIDFromSession(&c.Controller)
+
 	if err := c.jobService.CreateJob(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create job", err)
 		return
@@ -64,14 +68,13 @@ func (c *JobHandler) UpdateJob() {
 
 	var req dto.UpdateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-
 
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
@@ -107,16 +110,14 @@ func (c *JobHandler) SyncJob() {
 // @router /project/:projectid/jobs/:id/activate [put]
 func (c *JobHandler) ActivateJob() {
 	id := GetIDFromPath(&c.Controller)
-	var req struct {
-		Activate bool `json:"activate"`
-	}
 
+	var req dto.JobStatusRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -165,15 +166,15 @@ func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	var req dto.JobTaskRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	logs, err := c.jobService.GetTaskLogs(context.Background(), id, req.FilePath)
+	logs, err := c.jobService.GetTaskLogs(c.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
@@ -191,27 +192,20 @@ func (c *JobHandler) CheckUniqueJobName() {
 
 	var req dto.CheckUniqueJobNameRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	if req.JobName == "" {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Job name is required", nil)
-		return
-	}
-
-	isUnique, err := c.jobService.CheckUniqueJobName(projectId, req.JobName)
+	unique, err := c.jobService.CheckUniqueJobName(projectId, req.JobName)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job uniqness", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{
-		Unique: isUnique,
-	})
+	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
 
 }
 
@@ -226,7 +220,7 @@ func (c *JobHandler) UpdateSyncTelemetry() {
 	}
 
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
