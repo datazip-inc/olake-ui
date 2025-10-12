@@ -5,7 +5,7 @@ import { CONNECTOR_TYPES } from "../../../utils/constants"
 
 export const connectorOptions: ConnectorOption[] = [
 	{
-		value: "Amazon S3",
+		value: CONNECTOR_TYPES.AMAZON_S3,
 		label: (
 			<div className="flex items-center">
 				<img
@@ -13,20 +13,20 @@ export const connectorOptions: ConnectorOption[] = [
 					alt={CONNECTOR_TYPES.AMAZON_S3}
 					className="mr-2 size-5"
 				/>
-				<span>Amazon S3</span>
+				<span>{CONNECTOR_TYPES.AMAZON_S3}</span>
 			</div>
 		),
 	},
 	{
-		value: "Apache Iceberg",
+		value: CONNECTOR_TYPES.APACHE_ICEBERG,
 		label: (
 			<div className="flex items-center">
 				<img
 					src={ApacheIceBerg}
-					alt="Apache Iceberg"
+					alt={CONNECTOR_TYPES.APACHE_ICEBERG}
 					className="mr-2 size-5"
 				/>
-				<span>Apache Iceberg</span>
+				<span>{CONNECTOR_TYPES.APACHE_ICEBERG}</span>
 			</div>
 		),
 	},

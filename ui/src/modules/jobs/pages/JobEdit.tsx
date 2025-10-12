@@ -33,6 +33,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	DEFAULT_CONNECTORS,
 } from "../../../utils/constants"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
@@ -227,7 +228,7 @@ const JobEdit: React.FC = () => {
 	const initializeForNewJob = () => {
 		setSourceData({
 			name: "New Source",
-			type: "MongoDB",
+			type: DEFAULT_CONNECTORS.SOURCE,
 			config: {
 				hosts: [],
 				username: "",
