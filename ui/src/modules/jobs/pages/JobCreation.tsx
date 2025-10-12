@@ -23,6 +23,7 @@ import {
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
 	TEST_CONNECTION_STATUS,
+	DEFAULT_CONNECTORS,
 } from "../../../utils/constants"
 
 // Internal imports from components
@@ -51,7 +52,7 @@ const JobCreation: React.FC = () => {
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
-		initialData.sourceConnector || "MongoDB",
+		initialData.sourceConnector || DEFAULT_CONNECTORS.SOURCE,
 	)
 	const [sourceFormData, setSourceFormData] = useState<any>(
 		initialData.sourceFormData || {},

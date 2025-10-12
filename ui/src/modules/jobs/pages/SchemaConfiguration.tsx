@@ -23,11 +23,10 @@ import {
 import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
+	STREAM_FILTERS,
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
-
-const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
