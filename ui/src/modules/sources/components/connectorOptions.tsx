@@ -1,14 +1,16 @@
 import { ConnectorOption } from "../../../types"
 import { getConnectorImage } from "../../../utils/utils"
+import { CONNECTOR_TYPES } from "../../../utils/constants"
+import { SourceConnector } from "../../../enums"
 
-const connectorOptions: ConnectorOption[] = [
+export const connectorOptions: ConnectorOption[] = [
 	{
-		value: "MongoDB",
+		value: SourceConnector.MONGODB,
 		label: (
 			<div className="flex items-center">
 				<img
-					src={getConnectorImage("MongoDB")}
-					alt="MongoDB"
+					src={getConnectorImage(CONNECTOR_TYPES.MONGODB)}
+					alt={CONNECTOR_TYPES.MONGODB}
 					className="mr-2 size-5"
 				/>
 				<span data-testid="connector-option-mongodb">MongoDB</span>
@@ -16,12 +18,12 @@ const connectorOptions: ConnectorOption[] = [
 		),
 	},
 	{
-		value: "Postgres",
+		value: SourceConnector.POSTGRES,
 		label: (
 			<div className="flex items-center">
 				<img
-					src={getConnectorImage("Postgres")}
-					alt="Postgres"
+					src={getConnectorImage(CONNECTOR_TYPES.POSTGRES)}
+					alt={CONNECTOR_TYPES.POSTGRES}
 					className="mr-2 size-5"
 				/>
 				<span data-testid="connector-option-postgres">Postgres</span>
@@ -29,12 +31,12 @@ const connectorOptions: ConnectorOption[] = [
 		),
 	},
 	{
-		value: "MySQL",
+		value: SourceConnector.MYSQL,
 		label: (
 			<div className="flex items-center">
 				<img
-					src={getConnectorImage("MySQL")}
-					alt="MySQL"
+					src={getConnectorImage(CONNECTOR_TYPES.MYSQL)}
+					alt={CONNECTOR_TYPES.MYSQL}
 					className="mr-2 size-5"
 				/>
 				<span data-testid="connector-option-mysql">MySQL</span>
@@ -42,12 +44,12 @@ const connectorOptions: ConnectorOption[] = [
 		),
 	},
 	{
-		value: "Oracle",
+		value: SourceConnector.ORACLE,
 		label: (
 			<div className="flex items-center">
 				<img
-					src={getConnectorImage("Oracle")}
-					alt="Oracle"
+					src={getConnectorImage(CONNECTOR_TYPES.ORACLE)}
+					alt={CONNECTOR_TYPES.ORACLE}
 					className="mr-2 h-4 w-5"
 				/>
 				<span data-testid="connector-option-oracle">Oracle</span>

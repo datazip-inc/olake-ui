@@ -49,6 +49,10 @@ import {
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 	TEST_CONNECTION_STATUS,
+	STATUS_VALUES,
+	CONNECTOR_TYPE_MAP,
+	TAB_TYPE_VALUES,
+	DEFAULT_CONNECTORS,
 } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
@@ -69,7 +73,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const formRef = useRef<any>(null)
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
-	const [activeTab, setActiveTab] = useState("config")
+	const [activeTab, setActiveTab] = useState<
+		(typeof TAB_TYPE_VALUES)[keyof typeof TAB_TYPE_VALUES]
+	>(TAB_TYPE_VALUES.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [selectedVersion, setSelectedVersion] = useState("")
 	const [availableVersions, setAvailableVersions] = useState<
@@ -124,12 +130,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		if (initialData) {
 			setSourceName(initialData.name || "")
-			const connectorTypeMap: Record<string, string> = {
-				mongodb: "MongoDB",
-				postgres: "Postgres",
-				mysql: "MySQL",
-				oracle: "Oracle",
-			}
+			const connectorTypeMap: Record<string, string> = CONNECTOR_TYPE_MAP
 			let normalizedType =
 				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
 
@@ -261,9 +262,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceData = {
 			id: source?.id || 0,
 			name: sourceName,
-			type: connector || "MongoDB",
+			type: connector || DEFAULT_CONNECTORS.SOURCE,
 			version: selectedVersion,
-			status: "active" as const,
+			status: STATUS_VALUES.ACTIVE,
 			config: configStr,
 			created_at: source?.created_at || new Date().toISOString(),
 			updated_at: source?.updated_at || new Date().toISOString(),
@@ -496,22 +497,22 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<div className="mt-2 flex w-fit rounded-md bg-background-primary p-1">
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
-												activeTab === "config"
+												activeTab === TAB_TYPE_VALUES.CONFIG
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
 											}`}
-											onClick={() => setActiveTab("config")}
+											onClick={() => setActiveTab(TAB_TYPE_VALUES.CONFIG)}
 										>
 											Config
 										</button>
 
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
-												activeTab === "jobs"
+												activeTab === TAB_TYPE_VALUES.JOBS
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
 											}`}
-											onClick={() => setActiveTab("jobs")}
+											onClick={() => setActiveTab(TAB_TYPE_VALUES.JOBS)}
 										>
 											Associated jobs
 										</button>
@@ -519,7 +520,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								</div>
 							)}
 
-							{activeTab === "config" ? (
+							{activeTab === TAB_TYPE_VALUES.CONFIG ? (
 								<div className="bg-white">
 									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 										<div className="mb-4 flex items-center gap-1 text-lg font-medium">

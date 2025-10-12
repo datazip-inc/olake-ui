@@ -2,10 +2,11 @@ import { ConnectorOption } from "../../../types"
 import AWSS3 from "../../../assets/AWSS3.svg"
 import ApacheIceBerg from "../../../assets/ApacheIceBerg.svg"
 import { CONNECTOR_TYPES } from "../../../utils/constants"
+import { DestinationConnector } from "../../../enums"
 
 export const connectorOptions: ConnectorOption[] = [
 	{
-		value: "Amazon S3",
+		value: DestinationConnector.AMAZON_S3,
 		label: (
 			<div className="flex items-center">
 				<img
@@ -18,12 +19,12 @@ export const connectorOptions: ConnectorOption[] = [
 		),
 	},
 	{
-		value: "Apache Iceberg",
+		value: DestinationConnector.APACHE_ICEBERG,
 		label: (
 			<div className="flex items-center">
 				<img
 					src={ApacheIceBerg}
-					alt="Apache Iceberg"
+					alt={CONNECTOR_TYPES.APACHE_ICEBERG}
 					className="mr-2 size-5"
 				/>
 				<span data-testid="connector-option-iceberg">Apache Iceberg</span>
