@@ -15,6 +15,14 @@ export class CreateSourcePage extends BasePage {
 	readonly setupTypeNew: Locator
 	readonly setupTypeExisting: Locator
 
+	// Connector test ID mappings for selection
+	private readonly connectorTestIdMap: Record<string, string> = {
+		MongoDB: "connector-option-mongodb",
+		Postgres: "connector-option-postgres",
+		MySQL: "connector-option-mysql",
+		Oracle: "connector-option-oracle",
+	}
+
 	constructor(page: Page) {
 		super(page)
 		this.sourceNameInput = page.getByPlaceholder(
@@ -115,11 +123,20 @@ export class CreateSourcePage extends BasePage {
 
 	async selectConnector(connector: string) {
 		await this.connectorSelect.click()
-		await this.page
-			.locator("div")
-			.filter({ hasText: new RegExp(`^${connector}$`) })
-			.nth(1)
-			.click()
+
+		await this.page.waitForSelector(".ant-select-dropdown:visible")
+
+		const testId = this.connectorTestIdMap[connector]
+		if (testId) {
+			await this.page.getByTestId(testId).click()
+		} else {
+			await this.page
+				.locator(".ant-select-dropdown:visible")
+				.getByText(connector, { exact: true })
+				.click()
+		}
+
+		await expect(this.connectorSelect).toContainText(connector)
 	}
 
 	async clickCreate() {

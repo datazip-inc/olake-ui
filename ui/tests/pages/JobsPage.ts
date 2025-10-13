@@ -97,7 +97,7 @@ export class JobsPage extends BasePage {
 		})
 
 		// Ensure the button is enabled before clicking
-		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.MEDIUM })
+		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.LONG })
 
 		await viewLogsButton.click()
 	}

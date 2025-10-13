@@ -16,6 +16,12 @@ export class CreateDestinationPage extends BasePage {
 	readonly setupTypeExisting: Locator
 	readonly icebergCatalogInput: Locator
 
+	// Connector test ID mappings for selection
+	private readonly connectorTestIdMap: Record<string, string> = {
+		"Apache Iceberg": "connector-option-iceberg",
+		"Amazon S3": "connector-option-s3",
+	}
+
 	constructor(page: Page) {
 		super(page)
 		this.destinationNameInput = page.getByPlaceholder(
@@ -113,11 +119,20 @@ export class CreateDestinationPage extends BasePage {
 
 	async selectConnector(connector: string) {
 		await this.connectorSelect.click()
-		await this.page
-			.locator("div")
-			.filter({ hasText: new RegExp(`^${connector}$`) })
-			.nth(1)
-			.click()
+
+		await this.page.waitForSelector(".ant-select-dropdown:visible")
+
+		const testId = this.connectorTestIdMap[connector]
+		if (testId) {
+			await this.page.getByTestId(testId).click()
+		} else {
+			await this.page
+				.locator(".ant-select-dropdown:visible")
+				.getByText(connector, { exact: true })
+				.click()
+		}
+
+		await expect(this.connectorSelect).toContainText(connector)
 	}
 
 	/**
