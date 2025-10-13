@@ -1,4 +1,4 @@
-# Integration Test Suite
+# E2E Test Suite
 
 This directory contains end-to-end tests for the OLake frontend application using Playwright.
 
