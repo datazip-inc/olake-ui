@@ -3,7 +3,6 @@ package temporal
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
@@ -119,7 +118,7 @@ func (c *Client) GetCatalog(ctx context.Context, jobName, sourceType, version, c
 	if streamsConfig != "" {
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
 	}
-	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
+	if encryptionKey, _ := web.AppConfig.String("encryptionkey"); encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
@@ -167,7 +166,7 @@ func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, 
 		fmt.Sprintf("--%s", flag),
 		"/mnt/config/config.json",
 	}
-	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
+	if encryptionKey, _ := web.AppConfig.String("encryptionkey"); encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
