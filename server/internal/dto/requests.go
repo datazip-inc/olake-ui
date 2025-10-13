@@ -30,7 +30,6 @@ type ConnectorConfig struct {
 	Name    string `json:"name" validate:"required"`
 	Type    string `json:"type" validate:"required"`
 	Version string `json:"version" validate:"required"`
-	Source  string `json:"source_type" validate:"required"`
 	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
 }
 
@@ -52,16 +51,21 @@ type CheckUniqueJobNameRequest struct {
 
 // Test connection requests
 type SourceTestConnectionRequest struct {
-	ConnectorConfig
-	SourceID int `json:"source_id"`
+	Type    string `json:"type" validate:"required"`
+	Version string `json:"version" validate:"required"`
+	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
 }
 type StreamsRequest struct {
 	ConnectorConfig
-	JobID   int    `json:"job_id"`
+	JobID   int    `json:"job_id" validate:"required"`
 	JobName string `json:"job_name"`
 }
 type DestinationTestConnectionRequest struct {
-	ConnectorConfig
+	Type          string `json:"type" validate:"required"`
+	Version       string `json:"version" validate:"required"`
+	Config        string `json:"config" orm:"type(jsonb)" validate:"required"`
+	SourceType    string `json:"source_type"`
+	SourceVersion string `json:"source_version"`
 }
 
 type CreateSourceRequest struct {
@@ -86,8 +90,8 @@ type JobDestinationConfig = ConnectorConfig
 
 type CreateJobRequest struct {
 	Name          string               `json:"name" validate:"required"`
-	Source        JobSourceConfig      `json:"source" validate:"required,dive"`
-	Destination   JobDestinationConfig `json:"destination" validate:"required,dive"`
+	Source        JobSourceConfig      `json:"source" validate:"required"`
+	Destination   JobDestinationConfig `json:"destination" validate:"required"`
 	Frequency     string               `json:"frequency" validate:"required"`
 	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
 	Activate      bool                 `json:"activate,omitempty"`
@@ -95,8 +99,8 @@ type CreateJobRequest struct {
 
 type UpdateJobRequest struct {
 	Name          string               `json:"name" validate:"required"`
-	Source        JobSourceConfig      `json:"source" validate:"required,dive"`
-	Destination   JobDestinationConfig `json:"destination" validate:"required,dive"`
+	Source        JobSourceConfig      `json:"source" validate:"required"`
+	Destination   JobDestinationConfig `json:"destination" validate:"required"`
 	Frequency     string               `json:"frequency" validate:"required"`
 	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
 	Activate      bool                 `json:"activate,omitempty"`
@@ -106,5 +110,5 @@ type JobTaskRequest struct {
 	FilePath string `json:"file_path" validate:"required"`
 }
 type JobStatusRequest struct {
-	Activate bool `json:"activate" validate:"required"`
+	Activate bool `json:"activate"`
 }

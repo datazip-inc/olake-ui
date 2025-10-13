@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
@@ -42,13 +40,14 @@ func (c *DestHandler) CreateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CreateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.destService.CreateDestination(context.Background(), req, projectID, userID); err != nil {
+
+	if err := c.destService.CreateDestination(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
 		return
 	}
@@ -61,14 +60,14 @@ func (c *DestHandler) UpdateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.UpdateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
 
-	if err := c.destService.UpdateDestination(context.Background(), id, projectID, req, userID); err != nil {
+	if err := c.destService.UpdateDestination(c.Ctx.Request.Context(), id, projectID, req, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
@@ -79,7 +78,7 @@ func (c *DestHandler) UpdateDestination() {
 func (c *DestHandler) DeleteDestination() {
 	id := GetIDFromPath(&c.Controller)
 
-	resp, err := c.destService.DeleteDestination(context.Background(), id)
+	resp, err := c.destService.DeleteDestination(c.Ctx.Request.Context(), id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
 		return
@@ -90,12 +89,12 @@ func (c *DestHandler) DeleteDestination() {
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	result, err := c.destService.TestConnection(context.Background(), req)
+	result, err := c.destService.TestConnection(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
@@ -107,7 +106,7 @@ func (c *DestHandler) TestConnection() {
 func (c *DestHandler) GetDestinationJobs() {
 	id := GetIDFromPath(&c.Controller)
 
-	jobs, err := c.destService.GetDestinationJobs(context.Background(), id)
+	jobs, err := c.destService.GetDestinationJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
 		return
@@ -119,7 +118,7 @@ func (c *DestHandler) GetDestinationJobs() {
 func (c *DestHandler) GetDestinationVersions() {
 	destType := c.GetString("type")
 
-	versions, err := c.destService.GetDestinationVersions(context.Background(), destType)
+	versions, err := c.destService.GetDestinationVersions(c.Ctx.Request.Context(), destType)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
@@ -130,15 +129,15 @@ func (c *DestHandler) GetDestinationVersions() {
 // @router /project/:projectid/destinations/spec [post]
 func (c *DestHandler) GetDestinationSpec() {
 	var req dto.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	resp, err := c.destService.GetDestinationSpec(c.Ctx.Request.Context(), req)
+	specResponse, err := c.destService.GetDestinationSpec(c.Ctx.Request.Context(), req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination spec", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, resp)
+	utils.SuccessResponse(&c.Controller, specResponse)
 }

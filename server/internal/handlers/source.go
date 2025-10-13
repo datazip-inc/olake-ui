@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"net/http"
 
@@ -43,17 +43,17 @@ func (c *SourceHandler) CreateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CreateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
+
 	if err := c.sourceService.CreateSource(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -63,13 +63,13 @@ func (c *SourceHandler) UpdateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.UpdateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.UpdateSource(c.Ctx.Request.Context(), projectID, id, req, userID); err != nil {
+	if err := c.sourceService.UpdateSource(context.Background(), projectID, id, req, userID); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
@@ -77,7 +77,6 @@ func (c *SourceHandler) UpdateSource() {
 		respondWithError(&c.Controller, status, "Failed to update source", err)
 		return
 	}
-
 	utils.SuccessResponse(&c.Controller, req)
 }
 
@@ -100,7 +99,7 @@ func (c *SourceHandler) DeleteSource() {
 // @router /project/:projectid/sources/test [post]
 func (c *SourceHandler) TestConnection() {
 	var req dto.SourceTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -116,7 +115,7 @@ func (c *SourceHandler) TestConnection() {
 // @router /sources/streams [post]
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -147,7 +146,7 @@ func (c *SourceHandler) GetSourceJobs() {
 // @router /project/:projectid/sources/versions [get]
 func (c *SourceHandler) GetSourceVersions() {
 	sourceType := c.GetString("type")
-	versions, err := c.sourceService.GetSourceVersions(c.Ctx.Request.Context(), sourceType)
+	versions, err := c.sourceService.GetSourceVersions(context.Background(), sourceType)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "source type is required" {
@@ -162,16 +161,16 @@ func (c *SourceHandler) GetSourceVersions() {
 // @router /project/:projectid/sources/spec [post]
 func (c *SourceHandler) GetProjectSourceSpec() {
 	var req dto.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	resp, err := c.sourceService.GetSourceSpec(c.Ctx.Request.Context(), req)
+	specResponse, err := c.sourceService.GetSourceSpec(c.Ctx.Request.Context(), req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, resp)
+	utils.SuccessResponse(&c.Controller, specResponse)
 }

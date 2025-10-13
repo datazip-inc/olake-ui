@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -40,13 +41,15 @@ func (c *JobHandler) GetAllJobs() {
 // @router /project/:projectid/jobs [post]
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req dto.CreateJobRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
+
 	if err := c.jobService.CreateJob(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create job", err)
 		return
@@ -60,7 +63,7 @@ func (c *JobHandler) UpdateJob() {
 	jobID := GetIDFromPath(&c.Controller)
 
 	var req dto.UpdateJobRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -84,22 +87,6 @@ func (c *JobHandler) DeleteJob() {
 	utils.SuccessResponse(&c.Controller, jobName)
 }
 
-// @router /project/:projectid/jobs/check-unique [post]
-func (c *JobHandler) CheckUniqueJobName() {
-	projectID := c.Ctx.Input.Param(":projectid")
-	var req dto.CheckUniqueJobNameRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	unique, err := c.jobService.IsJobNameUnique(c.Ctx.Request.Context(), projectID, req)
-	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness", err)
-		return
-	}
-	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
-}
-
 // @router /project/:projectid/jobs/:id/sync [post]
 func (c *JobHandler) SyncJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
@@ -115,13 +102,15 @@ func (c *JobHandler) SyncJob() {
 // @router /project/:projectid/jobs/:id/activate [put]
 func (c *JobHandler) ActivateJob() {
 	id := GetIDFromPath(&c.Controller)
+
 	var req dto.JobStatusRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
+
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req, userID); err != nil {
+	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req.Activate, userID); err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
@@ -164,10 +153,11 @@ func (c *JobHandler) GetJobTasks() {
 func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	var req dto.JobTaskRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
+
 	logs, err := c.jobService.GetTaskLogs(c.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
@@ -178,4 +168,52 @@ func (c *JobHandler) GetTaskLogs() {
 		return
 	}
 	utils.SuccessResponse(&c.Controller, logs)
+}
+
+// @router /project/:projectid/jobs/check-unique [post]
+func (c *JobHandler) CheckUniqueJobName() {
+	projectId := c.Ctx.Input.Param(":projectid")
+
+	var req dto.CheckUniqueJobNameRequest
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	unique, err := c.jobService.CheckUniqueJobName(projectId, req.JobName)
+	if err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job uniqness", err)
+		return
+	}
+	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
+
+}
+
+// worker handler
+
+// @router /internal/worker/callback/sync-telemetry [post]
+func (c *JobHandler) UpdateSyncTelemetry() {
+	var req struct {
+		JobID      int    `json:"job_id"`
+		WorkflowID string `json:"workflow_id"`
+		Event      string `json:"event"`
+	}
+
+	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	if req.JobID == 0 || req.WorkflowID == "" {
+		respondWithError(&c.Controller, http.StatusBadRequest, "job_id and workflow_id are required", nil)
+		return
+	}
+
+	if err := c.jobService.UpdateSyncTelemetry(context.Background(), req.JobID, req.WorkflowID, req.Event); err != nil {
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update sync telemetry", err)
+		return
+	}
+
+	utils.SuccessResponse(&c.Controller, nil)
+
 }

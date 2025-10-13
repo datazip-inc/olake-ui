@@ -88,10 +88,6 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 }
 
 func (s *DestinationService) CreateDestination(ctx context.Context, req dto.CreateDestinationRequest, projectID string, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Creating destination: %s", req.Name)
 	destination := &models.Destination{
 		Name:      req.Name,
@@ -115,10 +111,6 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 }
 
 func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req dto.UpdateDestinationRequest, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
-	}
-
 	logs.Info("Updating destination with id: %d", id)
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
@@ -134,6 +126,7 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, proj
 		existingDest.UpdatedBy = user
 	}
 
+	// Cancel workflows for jobs linked to this destination before persisting change
 	jobs, err := s.jobORM.GetByDestinationID(existingDest.ID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch jobs for destination %d: %s", existingDest.ID, err)
@@ -181,16 +174,14 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
-	}
 	logs.Info("Testing connection with config: %v", req.Config)
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available")
 	}
 
+	// Determine driver and available tags
 	version := req.Version
-	driver := req.Source
+	driver := req.SourceType
 	if driver == "" {
 		var err error
 		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
@@ -198,6 +189,7 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 			return nil, fmt.Errorf("failed to get valid driver image tags: %s", err)
 		}
 	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		return nil, fmt.Errorf("%s encrypt config: %s", constants.ErrFailedToProcess, err)
@@ -235,45 +227,12 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 	// get available driver versions
 	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get valid driver image tags: %s", err)
+		return nil, fmt.Errorf("failed to fetch driver versions: %s", err)
 	}
-	return map[string]interface{}{"versions": versions}, nil
+	return map[string]interface{}{"version": versions}, nil
 }
 
-func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
-	if err := dto.Validate(&req); err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("invalid request: %w", err)
-	}
-
-	// TODO: make destinationType consistent. Only use parquet and iceberg.
-	destinationType := "iceberg"
-	if req.Type == "s3" {
-		destinationType = "parquet"
-	}
-
-	// Determine driver tag
-	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
-	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get valid driver image tags: %s", err)
-	}
-
-	if s.tempClient == nil {
-		return dto.SpecResponse{}, fmt.Errorf("temporal client not available")
-	}
-
-	specOut, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
-	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("Failed to get spec: %v", err)
-	}
-
-	return dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOut.Spec,
-	}, nil
-}
-
-// Helper
+// Helper function
 func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
 	jobItems := make([]dto.JobDataItem, 0, len(jobs))
 	for _, job := range jobs {
@@ -283,4 +242,35 @@ func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) 
 		})
 	}
 	return jobItems, nil
+}
+
+func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
+	logs.Info("Getting destination spec for type: %s and version: %s", req.Type, req.Version)
+
+	destinationType := "iceberg"
+	if req.Type == "s3" {
+		destinationType = "parquet"
+	}
+
+	// Determine driver and available tags
+	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
+	if err != nil {
+		return dto.SpecResponse{}, fmt.Errorf("failed to get valid driver image tags: %s", err)
+	}
+
+	if s.tempClient == nil {
+		return dto.SpecResponse{}, fmt.Errorf("temporal client not available")
+	}
+
+	specOutput, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
+	if err != nil {
+		logs.Error("Failed to get destination spec: %v", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get destination spec: %s", err)
+	}
+
+	return dto.SpecResponse{
+		Type:    req.Type,
+		Version: req.Version,
+		Spec:    specOutput.Spec,
+	}, nil
 }

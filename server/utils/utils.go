@@ -15,9 +15,7 @@ import (
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
-	"github.com/robfig/cron"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/dto"
 )
 
@@ -201,102 +199,4 @@ func ToCron(frequency string) string {
 	}
 }
 
-func CleanOldLogs(logDir string, retentionPeriod int) {
-	logs.Info("Running log cleaner...")
-	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
 
-	// check if old logs are present
-	shouldDelete := func(path string, cutoff time.Time) bool {
-		entries, _ := os.ReadDir(path)
-		if len(entries) == 0 {
-			return true
-		}
-
-		var foundOldLog bool
-		_ = filepath.Walk(path, func(filePath string, info os.FileInfo, _ error) error {
-			if info == nil || info.IsDir() {
-				return nil
-			}
-			if (strings.HasSuffix(filePath, ".log") || strings.HasSuffix(filePath, ".log.gz")) &&
-				info.ModTime().Before(cutoff) {
-				foundOldLog = true
-				return filepath.SkipDir
-			}
-			return nil
-		})
-		return foundOldLog
-	}
-
-	entries, err := os.ReadDir(logDir)
-	if err != nil {
-		logs.Error("failed to read log dir: %v", err)
-		return
-	}
-	// delete dir if old logs are found or is empty
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "telemetry" {
-			continue
-		}
-		dirPath := filepath.Join(logDir, entry.Name())
-		if toDelete := shouldDelete(dirPath, cutoff); toDelete {
-			logs.Info("Deleting folder: %s", dirPath)
-			_ = os.RemoveAll(dirPath)
-		}
-	}
-}
-
-// starts a log cleaner that removes old logs from the specified directory based on the retention period
-func InitLogCleaner(logDir string, retentionPeriod int) {
-	logs.Info("Log cleaner started...")
-	CleanOldLogs(logDir, retentionPeriod) // catchup missed cycles if any
-	c := cron.New()
-	err := c.AddFunc("@midnight", func() {
-		CleanOldLogs(logDir, retentionPeriod)
-	})
-	if err != nil {
-		logs.Error("Failed to start log cleaner: %v", err)
-		return
-	}
-	c.Start()
-}
-
-// GetRetentionPeriod returns the retention period for logs
-func GetLogRetentionPeriod() int {
-	if val := os.Getenv("LOG_RETENTION_PERIOD"); val != "" {
-		if retentionPeriod, err := strconv.Atoi(val); err == nil && retentionPeriod > 0 {
-			return retentionPeriod
-		}
-	}
-	return constants.DefaultLogRetentionPeriod
-}
-
-// ExtractJSON extracts and returns the last valid JSON block from output
-func ExtractJSON(output string) (map[string]interface{}, error) {
-	outputStr := strings.TrimSpace(output)
-	if outputStr == "" {
-		return nil, fmt.Errorf("empty output")
-	}
-
-	lines := strings.Split(outputStr, "\n")
-
-	// Find the last non-empty line with valid JSON
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-
-		start := strings.Index(line, "{")
-		end := strings.LastIndex(line, "}")
-		if start != -1 && end != -1 && end > start {
-			jsonPart := line[start : end+1]
-			var result map[string]interface{}
-			if err := json.Unmarshal([]byte(jsonPart), &result); err != nil {
-				continue // Skip invalid JSON
-			}
-			return result, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no valid JSON block found in output")
-}

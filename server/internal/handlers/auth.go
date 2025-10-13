@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -28,12 +26,12 @@ func (c *AuthHandler) Prepare() {
 // @router /login [post]
 func (c *AuthHandler) Login() {
 	var req dto.LoginRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	user, err := c.authService.Login(context.Background(), req.Username, req.Password)
+	user, err := c.authService.Login(c.Ctx.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
@@ -60,14 +58,14 @@ func (c *AuthHandler) Login() {
 func (c *AuthHandler) CheckAuth() {
 	userID := c.GetSession(constants.SessionUserID)
 	if userID == nil {
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated")
+		respondWithError(&c.Controller, http.StatusUnauthorized, "Not authenticated", nil)
 		return
 	}
 
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
 		if err := c.authService.ValidateUser(userIDInt); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session")
+			respondWithError(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
 	}
@@ -90,12 +88,12 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
+		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
 		return
 	}
 
-	if err := c.authService.Signup(context.Background(), &req); err != nil {
+	if err := c.authService.Signup(c.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
 			respondWithError(&c.Controller, http.StatusConflict, "Username already exists", err)

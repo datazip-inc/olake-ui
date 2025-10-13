@@ -46,7 +46,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || inputs.environment == 'dev' && 'ci/workerReleaseIssues' || 'develop') }}
+          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || inputs.environment == 'dev' && 'refactor/worker' || 'develop') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
