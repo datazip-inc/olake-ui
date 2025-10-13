@@ -12,6 +12,7 @@ export const TIMEOUTS = {
 export default defineConfig({
 	testDir: "./tests",
 	timeout: 10 * 60 * 1000, // 10 minutes global test timeout
+	retries: 2,
 	expect: {
 		timeout: 5 * 60 * 1000, // 5 minutes for expect assertions
 	},
