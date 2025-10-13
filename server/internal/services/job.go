@@ -148,7 +148,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	if s.tempClient != nil {
-		logs.Info("Updating Temporal workflow for sync job")
+		logs.Info("Updating Temporal workflow for sync job id %d", existingJob.ID)
 		_, err = s.tempClient.ManageSync(ctx, existingJob, temporal.ActionUpdate)
 		if err != nil {
 			return fmt.Errorf("temporal workflow execution failed: %s", err)
@@ -168,7 +168,7 @@ func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	jobName := job.Name
 
 	if s.tempClient != nil {
-		logs.Info("Deleting Temporal workflow")
+		logs.Info("Deleting Temporal workflow for sync job id %d", job.ID)
 		_, err := s.tempClient.ManageSync(ctx, job, temporal.ActionDelete)
 		if err != nil {
 			logs.Error("Temporal deletion failed: %v", err)
