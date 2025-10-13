@@ -4,9 +4,9 @@ import { defineConfig, devices } from "@playwright/test"
 
 // Constants
 export const TIMEOUTS = {
-	LONG: 5 * 60 * 1000, // 5 minutes
-	SHORT: 10000, // 10 seconds
-	INDEFINITE: 0, // No timeout (indefinite wait)
+	LONG: 10 * 60 * 1000, // 10 minutes
+	MEDIUM: 5 * 60 * 1000, // 5 minutes
+	SHORT: 10 * 1000, // 10 seconds
 } as const
 
 export default defineConfig({

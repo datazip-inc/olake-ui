@@ -89,7 +89,7 @@ export class CreateDestinationPage extends BasePage {
 	async selectCatalogType(
 		catalogType: "glue" | "jdbc" | "hive" | "rest",
 	): Promise<void> {
-		await this.icebergCatalogInput.click()
+		await this.icebergCatalogInput.click({ timeout: TIMEOUTS.LONG })
 
 		// Map catalog type to display name in UI
 		const catalogDisplayNames: Record<string, string> = {
@@ -279,7 +279,7 @@ export class CreateDestinationPage extends BasePage {
 
 	async expectSuccessModal() {
 		await expect(this.page.getByText("Connection successful")).toBeVisible({
-			timeout: TIMEOUTS.LONG,
+			timeout: TIMEOUTS.MEDIUM,
 		})
 	}
 
@@ -287,13 +287,13 @@ export class CreateDestinationPage extends BasePage {
 		const failure = this.page
 			.waitForSelector("text=Your test connection has failed", {
 				state: "visible",
-				timeout: TIMEOUTS.LONG,
+				timeout: TIMEOUTS.MEDIUM,
 			})
 			.then(() => "failure")
 		const success = this.page
 			.waitForSelector("text=Connection successful", {
 				state: "visible",
-				timeout: TIMEOUTS.LONG,
+				timeout: TIMEOUTS.MEDIUM,
 			})
 			.then(() => "success")
 

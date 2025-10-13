@@ -163,13 +163,13 @@ export class CreateSourcePage extends BasePage {
 		const failure = this.page
 			.waitForSelector("text=Your test connection has failed", {
 				state: "visible",
-				timeout: TIMEOUTS.LONG,
+				timeout: TIMEOUTS.MEDIUM,
 			})
 			.then(() => "failure")
 		const success = this.page
 			.waitForSelector("text=Connection successful", {
 				state: "visible",
-				timeout: TIMEOUTS.LONG,
+				timeout: TIMEOUTS.MEDIUM,
 			})
 			.then(() => "success")
 

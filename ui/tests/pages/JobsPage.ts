@@ -85,17 +85,19 @@ export class JobsPage extends BasePage {
 
 	async viewJobLogs() {
 		// Wait for the page to be fully loaded first
-		await this.page.waitForLoadState("networkidle", { timeout: TIMEOUTS.LONG })
+		await this.page.waitForLoadState("networkidle", {
+			timeout: TIMEOUTS.MEDIUM,
+		})
 
 		// Wait for the View logs button to be visible and enabled
 		const viewLogsButton = this.page.getByRole("button", { name: "View logs" })
 		await viewLogsButton.waitFor({
 			state: "visible",
-			timeout: TIMEOUTS.LONG,
+			timeout: TIMEOUTS.MEDIUM,
 		})
 
 		// Ensure the button is enabled before clicking
-		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.LONG })
+		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.MEDIUM })
 
 		await viewLogsButton.click()
 	}
