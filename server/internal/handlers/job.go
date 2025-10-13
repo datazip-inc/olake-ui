@@ -43,11 +43,7 @@ func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CreateJobRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -67,11 +63,7 @@ func (c *JobHandler) UpdateJob() {
 	jobID := GetIDFromPath(&c.Controller)
 
 	var req dto.UpdateJobRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -112,11 +104,7 @@ func (c *JobHandler) ActivateJob() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req dto.JobStatusRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -165,11 +153,7 @@ func (c *JobHandler) GetJobTasks() {
 func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 	var req dto.JobTaskRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -191,11 +175,7 @@ func (c *JobHandler) CheckUniqueJobName() {
 	projectId := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CheckUniqueJobNameRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}

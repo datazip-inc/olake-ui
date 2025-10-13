@@ -7,7 +7,6 @@ import (
 
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 )
 
@@ -22,9 +21,6 @@ func NewUserService() *UserService {
 }
 
 func (s *UserService) CreateUser(ctx context.Context, req *models.User) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("%s user: %s", constants.ErrFailedToCreate, err)
-	}
 	if err := s.userORM.Create(req); err != nil {
 		return fmt.Errorf("failed to create user: %s", err)
 	}
@@ -40,9 +36,6 @@ func (s *UserService) GetAllUsers(ctx context.Context) ([]*models.User, error) {
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, id int, req *models.User) (*models.User, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("%s user: %s", constants.ErrFailedToUpdate, err)
-	}
 	existingUser, err := s.userORM.GetByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found")

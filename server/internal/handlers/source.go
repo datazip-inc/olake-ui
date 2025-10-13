@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -44,11 +43,7 @@ func (c *SourceHandler) CreateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CreateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -68,11 +63,7 @@ func (c *SourceHandler) UpdateSource() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.UpdateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -108,11 +99,7 @@ func (c *SourceHandler) DeleteSource() {
 // @router /project/:projectid/sources/test [post]
 func (c *SourceHandler) TestConnection() {
 	var req dto.SourceTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -128,11 +115,7 @@ func (c *SourceHandler) TestConnection() {
 // @router /sources/streams [post]
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -178,11 +161,7 @@ func (c *SourceHandler) GetSourceVersions() {
 // @router /project/:projectid/sources/spec [post]
 func (c *SourceHandler) GetProjectSourceSpec() {
 	var req dto.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
