@@ -83,11 +83,6 @@ func (s *DestinationService) GetAllDestinations(_ context.Context, projectID str
 }
 
 func (s *DestinationService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("failed to validate destination request - project_id=%s destination_type=%s destination_name=%s error=%v",
-			projectID, req.Type, req.Name, err)
-	}
-
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -109,11 +104,6 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req *dto.Cre
 }
 
 func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("failed to validate update destination request - project_id=%s destination_id=%d destination_type=%s error=%v",
-			projectID, id, req.Type, err)
-	}
-
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find destination for update - project_id=%s destination_id=%d error=%v",
@@ -180,10 +170,6 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, nil, fmt.Errorf("failed to validate test connection request - destination_type=%s error=%v", req.Type, err)
-	}
-
 	if s.tempClient == nil {
 		return nil, nil, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
 			req.Type, req.Version)
@@ -253,12 +239,9 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 	return map[string]interface{}{"versions": versions}, nil
 }
 
+// TODO: cache spec in db for each version
 func (s *DestinationService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	if err := dto.Validate(&req); err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to validate get spec request - destination_type=%s destination_version=%s error=%v",
-			req.Type, req.Version, err)
-	}
-
+	// TODO: handle from frontend
 	destinationType := "iceberg"
 	if req.Type == "s3" {
 		destinationType = "parquet"

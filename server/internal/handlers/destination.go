@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
@@ -34,7 +33,7 @@ func (c *DestHandler) CreateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CreateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -56,7 +55,7 @@ func (c *DestHandler) UpdateDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.UpdateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -88,7 +87,7 @@ func (c *DestHandler) DeleteDestination() {
 // @router /project/:projectid/destinations/test [post]
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -139,7 +138,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
@@ -33,7 +32,7 @@ func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CreateJobRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -55,7 +54,7 @@ func (c *JobHandler) UpdateJob() {
 	jobID := GetIDFromPath(&c.Controller)
 
 	var req dto.UpdateJobRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -89,7 +88,7 @@ func (c *JobHandler) CheckUniqueJobName() {
 	projectID := c.Ctx.Input.Param(":projectid")
 
 	var req dto.CheckUniqueJobNameRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -123,7 +122,7 @@ func (c *JobHandler) ActivateJob() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req dto.JobStatusRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -179,7 +178,7 @@ func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
 
 	var req dto.JobTaskRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}

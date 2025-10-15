@@ -53,10 +53,6 @@ func (s *JobService) GetAllJobs(projectID string) ([]dto.JobResponse, error) {
 }
 
 func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
-	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("failed to validate job request - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
-	}
-
 	source, err := s.getOrCreateSource(&req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
@@ -100,11 +96,6 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 }
 
 func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
-	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("failed to validate update job request - project_id=%s job_id=%d job_name=%s error=%v",
-			projectID, jobID, req.Name, err)
-	}
-
 	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job for update - project_id=%s job_id=%d error=%v", projectID, jobID, err)
@@ -212,10 +203,6 @@ func (s *JobService) CancelJobRun(_ context.Context, projectID string, jobID int
 }
 
 func (s *JobService) ActivateJob(_ context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
-	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("failed to validate job status request - job_id=%d error=%v", jobID, err)
-	}
-
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job for activation - job_id=%d error=%v", jobID, err)
@@ -234,11 +221,6 @@ func (s *JobService) ActivateJob(_ context.Context, jobID int, req dto.JobStatus
 }
 
 func (s *JobService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
-	if err := dto.Validate(req); err != nil {
-		return false, fmt.Errorf("failed to validate job name uniqueness request - project_id=%s job_name=%s error=%v",
-			projectID, req.JobName, err)
-	}
-
 	unique, err := s.jobORM.IsJobNameUnique(projectID, req.JobName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check job name uniqueness - project_id=%s job_name=%s error=%v",
@@ -301,7 +283,7 @@ func (s *JobService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs - job_id=%d path=%s error=%v", jobID, mainSyncDir, err)
 	}
-
+	// TODO: need to add activity logs as well with sync logs
 	return logs, nil
 }
 

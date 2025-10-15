@@ -49,11 +49,9 @@ func (s *SourceService) GetAllSources(_ context.Context, projectID string) ([]dt
 	}
 
 	var allJobs []*models.Job
-	if len(sourceIDs) > 0 {
-		allJobs, err = s.jobORM.GetBySourceID(sourceIDs)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s source_count=%d error=%v", projectID, len(sourceIDs), err)
-		}
+	allJobs, err = s.jobORM.GetBySourceID(sourceIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s source_count=%d error=%v", projectID, len(sourceIDs), err)
 	}
 
 	jobsBySourceID := make(map[int][]*models.Job)
@@ -90,10 +88,6 @@ func (s *SourceService) GetAllSources(_ context.Context, projectID string) ([]dt
 }
 
 func (s *SourceService) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("failed to validate source request - project_id=%s source_type=%s source_name=%s error=%v", projectID, req.Type, req.Name, err)
-	}
-
 	src := &models.Source{
 		Name:      req.Name,
 		Type:      req.Type,
@@ -115,10 +109,6 @@ func (s *SourceService) CreateSource(ctx context.Context, req *dto.CreateSourceR
 }
 
 func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
-	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("failed to validate update source request - project_id=%s source_id=%d source_type=%s error=%v", projectID, id, req.Type, err)
-	}
-
 	existing, err := s.sourceORM.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find source for update - project_id=%s source_id=%d error=%v: %w", projectID, id, err, constants.ErrSourceNotFound)
@@ -178,10 +168,6 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSo
 }
 
 func (s *SourceService) TestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, nil, fmt.Errorf("failed to validate test connection request - source_type=%s error=%v", req.Type, err)
-	}
-
 	if s.tempClient == nil {
 		return nil, nil, fmt.Errorf("temporal client not available - source_type=%s source_version=%s", req.Type, req.Version)
 	}
@@ -212,10 +198,6 @@ func (s *SourceService) TestConnection(ctx context.Context, req *dto.SourceTestC
 }
 
 func (s *SourceService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
-	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("failed to validate get catalog request - source_type=%s job_id=%d error=%v", req.Type, req.JobID, err)
-	}
-
 	if s.tempClient == nil {
 		return nil, fmt.Errorf("temporal client not available - source_type=%s job_id=%d", req.Type, req.JobID)
 	}
@@ -276,6 +258,7 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 	return map[string]interface{}{"version": versions}, nil
 }
 
+// TODO: cache spec in db for each version
 func (s *SourceService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	if err := dto.Validate(&req); err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to validate get spec request - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)

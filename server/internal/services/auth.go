@@ -9,7 +9,6 @@ import (
 
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 )
@@ -25,10 +24,6 @@ func NewAuthService() *AuthService {
 }
 
 func (s *AuthService) Login(ctx context.Context, username, password string) (*models.User, error) {
-	if err := dto.Validate(&models.User{Username: username, Password: password}); err != nil {
-		return nil, fmt.Errorf("invalid credentials - username=%s error=%v: %w", username, err, constants.ErrInvalidCredentials)
-	}
-
 	user, err := s.userORM.FindByUsername(username)
 	if err != nil {
 		if strings.Contains(err.Error(), "no row found") {
@@ -47,11 +42,6 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 }
 
 func (s *AuthService) Signup(_ context.Context, user *models.User) error {
-	if err := dto.Validate(user); err != nil {
-		return fmt.Errorf("failed to validate signup request - username=%s email=%s error=%v: %w",
-			user.Username, user.Email, err, constants.ErrInvalidCredentials)
-	}
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password - username=%s error=%v: %w", user.Username, err, constants.ErrPasswordProcessing)
