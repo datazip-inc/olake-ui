@@ -40,7 +40,7 @@ const Jobs: React.FC = () => {
 
 	const handleSyncJob = async (id: string) => {
 		try {
-			navigate(`/jobs/${id}/history`)
+			navigate(`/jobs/${id}/history`) // navigate to job history so that user can see the tasks running
 			await jobService.syncJob(id)
 			message.success("Job sync started successfully")
 			await fetchJobs()
@@ -66,6 +66,7 @@ const Jobs: React.FC = () => {
 					selectedStreams: JSON.parse(savedJob.streams_config),
 					jobName: savedJob.name,
 					cronExpression: savedJob.frequency,
+					isJobNameFilled: true,
 				}
 				navigate("/jobs/new", {
 					state: {
@@ -86,6 +87,17 @@ const Jobs: React.FC = () => {
 			`Successfully ${checked ? "paused" : "resumed"} ${job?.name || id}`,
 		)
 		await fetchJobs()
+	}
+
+	// cancels the running job
+	const handleCancelJob = async (id: string) => {
+		try {
+			const response = await jobService.cancelJob(id)
+			message.success(response)
+		} catch (error) {
+			console.error("Error canceling job:", error)
+			message.error("Failed to cancel run")
+		}
 	}
 
 	const handleDeleteJob = (id: string) => {
@@ -213,6 +225,7 @@ const Jobs: React.FC = () => {
 							onEdit={handleEditJob}
 							onPause={handlePauseJob}
 							onDelete={handleDeleteJob}
+							onCancelJob={handleCancelJob}
 						/>
 					),
 				}))}

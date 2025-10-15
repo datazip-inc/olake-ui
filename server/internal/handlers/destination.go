@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
@@ -113,7 +115,7 @@ func (c *DestHandler) CreateDestination() {
 func (c *DestHandler) UpdateDestination() {
 	// Get destination ID from path
 	id := GetIDFromPath(&c.Controller)
-
+	projectID := c.Ctx.Input.Param(":projectid")
 	var req models.UpdateDestinationRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -140,8 +142,25 @@ func (c *DestHandler) UpdateDestination() {
 		existingDest.UpdatedBy = user
 	}
 
+	// Find jobs linked to this source
+	jobs, err := c.jobORM.GetByDestinationID(existingDest.ID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch jobs for destination %s", err))
+		return
+	}
+
+	// Cancel workflows for those jobs
+	for _, job := range jobs {
+		err := cancelJobWorkflow(c.tempClient, job, projectID)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+			return
+		}
+	}
+
+	// persist update
 	if err := c.destORM.Update(existingDest); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update destination %s", err))
 		return
 	}
 
@@ -220,15 +239,25 @@ func (c *DestHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
 		return
 	}
-
-	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
+	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
+	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), workflowID, "destination", driver, version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
-	utils.SuccessResponse(&c.Controller, result)
+	homeDir := docker.GetDefaultConfigDir()
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read logs: %s", err))
+		return
+	}
+	utils.SuccessResponse(&c.Controller, models.TestConnectionResponse{
+		ConnectionResult: result,
+		Logs:             logs,
+	})
 }
 
 // @router /destinations/:id/jobs [get]

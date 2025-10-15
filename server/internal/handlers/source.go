@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/datazip/olake-frontend/server/internal/constants"
 	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-frontend/server/internal/docker"
 	"github.com/datazip/olake-frontend/server/internal/models"
 	"github.com/datazip/olake-frontend/server/internal/telemetry"
 	"github.com/datazip/olake-frontend/server/internal/temporal"
@@ -120,6 +122,7 @@ func (c *SourceHandler) CreateSource() {
 // @router /project/:projectid/sources/:id [put]
 func (c *SourceHandler) UpdateSource() {
 	id := GetIDFromPath(&c.Controller)
+	projectID := c.Ctx.Input.Param(":projectid")
 	var req models.UpdateSourceRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
@@ -145,8 +148,25 @@ func (c *SourceHandler) UpdateSource() {
 		existingSource.UpdatedBy = user
 	}
 
+	// Find jobs linked to this source
+	jobs, err := c.jobORM.GetBySourceID(existingSource.ID)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch jobs for source %s", err))
+		return
+	}
+
+	// Cancel workflows for those jobs
+	for _, job := range jobs {
+		err := cancelJobWorkflow(c.tempClient, job, projectID)
+		if err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
+			return
+		}
+	}
+
+	// Persist update
 	if err := c.sourceORM.Update(existingSource); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update source")
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update source %s", err))
 		return
 	}
 
@@ -204,14 +224,25 @@ func (c *SourceHandler) TestConnection() {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt config")
 		return
 	}
-	result, err := c.tempClient.TestConnection(context.Background(), "config", req.Type, req.Version, encryptedConfig)
+	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
+	result, err := c.tempClient.TestConnection(context.Background(), workflowID, "config", req.Type, req.Version, encryptedConfig)
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
 			"status":  "failed",
 		}
 	}
-	utils.SuccessResponse(&c.Controller, result)
+	homeDir := docker.GetDefaultConfigDir()
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to read logs: %s", err))
+		return
+	}
+	utils.SuccessResponse(&c.Controller, models.TestConnectionResponse{
+		ConnectionResult: result,
+		Logs:             logs,
+	})
 }
 
 // @router /sources/streams[post]

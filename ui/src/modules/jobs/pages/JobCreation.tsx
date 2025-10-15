@@ -5,17 +5,20 @@ import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
-import { destinationService, sourceService, jobService } from "../../../api"
+import { destinationService, jobService, sourceService } from "../../../api"
 
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
 	getConnectorInLowerCase,
+	getSelectedStreams,
 	validateCronExpression,
+	validateStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 
 // Internal imports from components
@@ -29,6 +32,7 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
+import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -39,6 +43,7 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
+	// state to toggle documentation panel
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
@@ -53,6 +58,8 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
+
+	//state to hold catalog value to open documentation panel
 	const [destinationCatalogType, setDestinationCatalogType] = useState<
 		string | null
 	>(null)
@@ -73,7 +80,13 @@ const JobCreation: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState(
 		initialData.cronExpression || "* * * * *",
 	)
-	const [jobNameFilled, setJobNameFilled] = useState(false)
+
+	//once the job name is filled we will set this to true so the job name will be disabled
+	const [jobNameFilled, setJobNameFilled] = useState(
+		initialData.isJobNameFilled || false,
+	)
+	//when streams are loading we will disable back button
+	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 
 	const {
@@ -85,6 +98,7 @@ const JobCreation: React.FC = () => {
 		setShowFailureModal,
 		setSourceTestConnectionError,
 		setDestinationTestConnectionError,
+		setShowResetStreamsModal,
 	} = useAppStore()
 
 	const sourceRef = useRef<any>(null)
@@ -155,18 +169,25 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep(nextStep)
 					}, 1000)
 				} else {
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
 					setIsFromSources(isSource)
 					if (isSource) {
-						setSourceTestConnectionError(testResult.data?.message || "")
+						setSourceTestConnectionError(testConnectionError)
 					} else {
-						setDestinationTestConnectionError(testResult.data?.message || "")
+						setDestinationTestConnectionError(testConnectionError)
 					}
 					setShowFailureModal(true)
 				}
@@ -197,7 +218,10 @@ const JobCreation: React.FC = () => {
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
 			},
-			streams_config: JSON.stringify(selectedStreams),
+			streams_config: JSON.stringify({
+				...selectedStreams,
+				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
+			}),
 			frequency: cronExpression,
 		}
 
@@ -257,6 +281,12 @@ const JobCreation: React.FC = () => {
 				break
 			}
 			case JOB_CREATION_STEPS.STREAMS:
+				if (
+					!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+				) {
+					message.error("Filter Value cannot be empty")
+					return
+				}
 				await handleJobCreation()
 				break
 			case JOB_CREATION_STEPS.CONFIG:
@@ -283,6 +313,11 @@ const JobCreation: React.FC = () => {
 
 	//TODO: Handle steps properly
 
+	const handleConfirmResetStreams = () => {
+		setSelectedStreams([])
+		setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+	}
+
 	const nextStep = () => {
 		if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
@@ -297,7 +332,8 @@ const JobCreation: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
-			setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
+			// when we go back from streams we need to show configured streams will be lost modal
+			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
 		}
@@ -456,6 +492,7 @@ const JobCreation: React.FC = () => {
 								}
 								destinationType={getConnectorInLowerCase(destinationConnector)}
 								jobName={jobName}
+								onLoadingChange={setIsStreamsLoading}
 							/>
 						</div>
 					)}
@@ -497,7 +534,10 @@ const JobCreation: React.FC = () => {
 					{currentStep !== JOB_CREATION_STEPS.CONFIG && (
 						<button
 							onClick={handleBack}
-							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
+							className="mr-4 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb] disabled:cursor-not-allowed disabled:opacity-50"
+							disabled={
+								currentStep === JOB_CREATION_STEPS.STREAMS && isStreamsLoading
+							}
 						>
 							Back
 						</button>
@@ -532,6 +572,7 @@ const JobCreation: React.FC = () => {
 					/>
 				</div>
 			</div>
+			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
 		</div>
 	)
 }

@@ -5,7 +5,7 @@ import {
 	CornersOut,
 	CaretRight,
 	Info,
-	ArrowSquareOut,
+	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 
 import { DocumentationPanelProps } from "../../../types"
@@ -44,6 +44,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		if (!iframe) return
 
 		const handleLoad = () => {
+			// as the theme for ui is light themed we need to show only light theme in docs website as the default theme is dark
 			// Post message to iframe for theming
 			iframe.contentWindow?.postMessage({ theme: "light" }, "https://olake.io")
 
@@ -78,7 +79,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					className="flex items-center"
 					onClick={openInNewTab}
 					icon={
-						<ArrowSquareOut
+						<ArrowSquareOutIcon
 							size={16}
 							className="mr-2"
 						/>
@@ -144,7 +145,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 							<Button
 								type="default"
 								icon={
-									<ArrowSquareOut
+									<ArrowSquareOutIcon
 										size={20}
 										weight="bold"
 										className="text-primary"
@@ -184,7 +185,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 										title="Open documentation in new tab"
 										placement="left"
 									>
-										<ArrowSquareOut
+										<ArrowSquareOutIcon
 											size={25}
 											className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 											onClick={openInNewTab}

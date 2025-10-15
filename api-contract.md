@@ -127,15 +127,17 @@ http://localhost:8000
 - **Response**:
 
   ```json
-  {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "type": "string",
-      "version": "string",
-      "config": "json"
-    }
+{
+   "success": boolean,
+  "message": "string",
+  "data": {
+    "connection_result": {
+      "message": "string",
+      "status": "string"
+    },
+    "logs": "json"
   }
+}
   ```
 
 ### Create Source
@@ -305,15 +307,17 @@ http://localhost:8000
 
 - **Response**:
   ```json
-  {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "type": "string",
-      "version": "string",
-      "config": "json"
-    }
+ {
+  "success": boolean,
+  "message": "string",
+  "data": {
+    "connection_result": {
+      "message": "string",
+      "status": "string"
+    },
+    "logs": "json"
   }
+}
   ```
 
 ### Create Destination
@@ -679,6 +683,25 @@ http://localhost:8000
         "status": "string"
       }
     ]
+  }
+  ```
+
+### cancel Job workflow
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/cancel`
+- **Method**: GET
+- **Description**: Cancel the job workflow
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "message": "string"
+    }
   }
   ```
 
