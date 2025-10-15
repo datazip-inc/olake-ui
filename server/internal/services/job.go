@@ -285,7 +285,7 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	return tasks, nil
 }
 
-func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
+func (s *JobService) GetTaskLogs(_ context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
 	_, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job for logs - job_id=%d error=%v", jobID, err)
