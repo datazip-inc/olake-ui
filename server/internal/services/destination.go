@@ -227,7 +227,7 @@ func (s *DestinationService) TestConnection(ctx context.Context, req *dto.Destin
 	return result, logs, nil
 }
 
-func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]*models.Job, error) {
+func (s *DestinationService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
 	if _, err := s.destORM.GetByID(id); err != nil {
 		return nil, fmt.Errorf("failed to find destination - destination_id=%d error=%v", id, err)
 	}

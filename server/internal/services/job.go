@@ -211,7 +211,7 @@ func (s *JobService) CancelJobRun(_ context.Context, projectID string, jobID int
 	}, nil
 }
 
-func (s *JobService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
+func (s *JobService) ActivateJob(_ context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
 	if err := dto.Validate(req); err != nil {
 		return fmt.Errorf("failed to validate job status request - job_id=%d error=%v", jobID, err)
 	}
@@ -233,7 +233,7 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *JobService) IsJobNameUnique(ctx context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
+func (s *JobService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	if err := dto.Validate(req); err != nil {
 		return false, fmt.Errorf("failed to validate job name uniqueness request - project_id=%s job_name=%s error=%v",
 			projectID, req.JobName, err)

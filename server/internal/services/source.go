@@ -37,7 +37,7 @@ func NewSourceService() (*SourceService, error) {
 	}, nil
 }
 
-func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
+func (s *SourceService) GetAllSources(_ context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.sourceORM.GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve sources - project_id=%s error=%v", projectID, err)
@@ -249,7 +249,7 @@ func (s *SourceService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRe
 	return newStreams, nil
 }
 
-func (s *SourceService) GetSourceJobs(ctx context.Context, id int) ([]*models.Job, error) {
+func (s *SourceService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, error) {
 	if _, err := s.sourceORM.GetByID(id); err != nil {
 		return nil, fmt.Errorf("failed to find source - source_id=%d error=%v: %w", id, err, constants.ErrSourceNotFound)
 	}
