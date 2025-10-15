@@ -72,7 +72,7 @@ func TrackDestinationsStatus(ctx context.Context) {
 
 		for _, dest := range destinations {
 			// TODO: remove db calls loop
-			jobs, err := jobORM.GetByDestinationID(dest.ID)
+			jobs, err := jobORM.GetByDestinationID([]int{dest.ID})
 			if err != nil {
 				logs.Debug("Failed to get jobs for destination %d: %s", dest.ID, err)
 				break

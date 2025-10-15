@@ -55,7 +55,7 @@ func TrackSourcesStatus(ctx context.Context) {
 		activeSources := 0
 		for _, source := range sources {
 			// TODO: remove orm calls from loop
-			jobs, err := jobORM.GetBySourceID(source.ID)
+			jobs, err := jobORM.GetBySourceID([]int{source.ID})
 			if err != nil {
 				logs.Debug("failed to get all jobs for source[%d] in track source status: %s", source.ID, err)
 				break

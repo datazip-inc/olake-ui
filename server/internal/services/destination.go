@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
@@ -22,10 +20,9 @@ type DestinationService struct {
 }
 
 func NewDestinationService() (*DestinationService, error) {
-	logs.Info("Creating destination service")
 	tempClient, err := temporal.NewClient()
 	if err != nil {
-		return nil, fmt.Errorf("%s temporal client: %s", constants.ErrFailedToCreate, err)
+		return nil, fmt.Errorf("failed to create temporal client - error=%v", err)
 	}
 	return &DestinationService{
 		destORM:    database.NewDestinationORM(),
@@ -35,11 +32,9 @@ func NewDestinationService() (*DestinationService, error) {
 }
 
 func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
-	logs.Info("Retrieving destinations for project with id: %s", projectID)
 	destinations, err := s.destORM.GetAllByProjectID(projectID)
 	if err != nil {
-		logs.Error("Failed to retrieve destinations: %v", err)
-		return nil, fmt.Errorf("%s destinations: %s", constants.ErrFailedToRetrieve, err)
+		return nil, fmt.Errorf("failed to retrieve destinations - project_id=%s error=%v", projectID, err)
 	}
 
 	destIDs := make([]int, 0, len(destinations))
@@ -49,10 +44,10 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 
 	var allJobs []*models.Job
 	if len(destIDs) > 0 {
-		allJobs, err = s.jobORM.GetByDestinationIDs(destIDs)
+		allJobs, err = s.jobORM.GetByDestinationID(destIDs)
 		if err != nil {
-			logs.Error("Failed to get jobs: %v", err)
-			return nil, fmt.Errorf(constants.ErrFormatFailedToGetJobs, err)
+			return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s destination_count=%d error=%v",
+				projectID, len(destIDs), err)
 		}
 	}
 
@@ -63,7 +58,7 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 
 	destItems := make([]dto.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
-		item := dto.DestinationDataItem{
+		entity := dto.DestinationDataItem{
 			ID:        dest.ID,
 			Name:      dest.Name,
 			Type:      dest.DestType,
@@ -72,16 +67,16 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
-		setUsernames(&item.CreatedBy, &item.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
+		setUsernames(&entity.CreatedBy, &entity.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
 		jobItems, err := s.buildJobDataItems(jobs, projectID, "destination")
 		if err != nil {
-			logs.Error("Failed to build job items: %v", err)
-			return nil, fmt.Errorf("%s job data items: %s", constants.ErrFailedToProcess, err)
+			return nil, fmt.Errorf("failed to process job data items - project_id=%s destination_id=%d error=%v",
+				projectID, dest.ID, err)
 		}
-		item.Jobs = jobItems
-		destItems = append(destItems, item)
+		entity.Jobs = jobItems
+		destItems = append(destItems, entity)
 	}
 
 	return destItems, nil
@@ -89,10 +84,10 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 
 func (s *DestinationService) CreateDestination(ctx context.Context, req dto.CreateDestinationRequest, projectID string, userID *int) error {
 	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
+		return fmt.Errorf("failed to validate destination request - project_id=%s destination_type=%s destination_name=%s error=%v",
+			projectID, req.Type, req.Name, err)
 	}
 
-	logs.Info("Creating destination: %s", req.Name)
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -107,7 +102,8 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 	}
 
 	if err := s.destORM.Create(destination); err != nil {
-		return fmt.Errorf("failed to create destination: %s", err)
+		return fmt.Errorf("failed to create destination - project_id=%s destination_name=%s destination_type=%s user_id=%v error=%v",
+			projectID, req.Name, req.Type, userID, err)
 	}
 
 	telemetry.TrackDestinationCreation(ctx, destination)
@@ -116,37 +112,40 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 
 func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req dto.UpdateDestinationRequest, userID *int) error {
 	if err := dto.Validate(&req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
+		return fmt.Errorf("failed to validate update destination request - project_id=%s destination_id=%d destination_type=%s error=%v",
+			projectID, id, req.Type, err)
 	}
 
-	logs.Info("Updating destination with id: %d", id)
 	existingDest, err := s.destORM.GetByID(id)
 	if err != nil {
-		return fmt.Errorf("destination not found: %s", err)
+		return fmt.Errorf("failed to find destination for update - project_id=%s destination_id=%d error=%v",
+			projectID, id, err)
 	}
 
 	existingDest.Name = req.Name
 	existingDest.DestType = req.Type
 	existingDest.Version = req.Version
 	existingDest.Config = req.Config
+
 	if userID != nil {
 		user := &models.User{ID: *userID}
 		existingDest.UpdatedBy = user
 	}
 
-	jobs, err := s.jobORM.GetByDestinationID(existingDest.ID)
+	jobs, err := s.jobORM.GetByDestinationID([]int{existingDest.ID})
 	if err != nil {
-		return fmt.Errorf("failed to fetch jobs for destination %d: %s", existingDest.ID, err)
+		return fmt.Errorf("failed to fetch jobs for destination update - project_id=%s destination_id=%d error=%v",
+			projectID, existingDest.ID, err)
 	}
 
-	for _, job := range jobs {
-		if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
-			return fmt.Errorf("failed to cancel workflow for job %d: %s", job.ID, err)
-		}
+	if err := cancelAllJobWorkflows(s.tempClient, jobs, projectID); err != nil {
+		return fmt.Errorf("failed to cancel workflows for destination update - project_id=%s destination_id=%d job_count=%d error=%v",
+			projectID, existingDest.ID, len(jobs), err)
 	}
 
 	if err := s.destORM.Update(existingDest); err != nil {
-		return fmt.Errorf("failed to update destination: %s", err)
+		return fmt.Errorf("failed to update destination - project_id=%s destination_id=%d destination_name=%s error=%v",
+			projectID, id, req.Name, err)
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
@@ -154,26 +153,30 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, proj
 }
 
 func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
-	logs.Info("Deleting destination with id: %d", id)
 	dest, err := s.destORM.GetByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("destination not found: %s", err)
+		return nil, fmt.Errorf("failed to find destination for deletion - destination_id=%d error=%v", id, err)
 	}
 
-	jobs, err := s.jobORM.GetByDestinationID(id)
+	jobs, err := s.jobORM.GetByDestinationID([]int{id})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs for destination: %s", err)
+		return nil, fmt.Errorf("failed to retrieve jobs for destination deletion - destination_id=%d error=%v", id, err)
 	}
 
+	var jobIDs []int
 	for _, job := range jobs {
 		job.Active = false
-		if err := s.jobORM.Update(job); err != nil {
-			return nil, fmt.Errorf("failed to deactivate job %d: %s", job.ID, err)
-		}
+		jobIDs = append(jobIDs, job.ID)
+	}
+
+	if err := s.jobORM.UpdateAllJobs(jobIDs); err != nil {
+		return nil, fmt.Errorf("failed to deactivate jobs for destination deletion - destination_id=%d job_count=%d error=%v",
+			id, len(jobIDs), err)
 	}
 
 	if err := s.destORM.Delete(id); err != nil {
-		return nil, fmt.Errorf("failed to delete destination: %s", err)
+		return nil, fmt.Errorf("failed to delete destination - destination_id=%d destination_name=%s error=%v",
+			id, dest.Name, err)
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
@@ -182,11 +185,12 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 
 func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, error) {
 	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("invalid request: %w", err)
+		return nil, fmt.Errorf("failed to validate test connection request - destination_type=%s error=%v", req.Type, err)
 	}
-	logs.Info("Testing connection with config: %v", req.Config)
+
 	if s.tempClient == nil {
-		return nil, fmt.Errorf("temporal client not available")
+		return nil, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
+			req.Type, req.Version)
 	}
 
 	version := req.Version
@@ -195,75 +199,86 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 		var err error
 		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get valid driver image tags: %s", err)
+			return nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
 		}
 	}
+
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("%s encrypt config: %s", constants.ErrFailedToProcess, err)
+		return nil, fmt.Errorf("failed to encrypt config for test connection - destination_type=%s destination_version=%s error=%v",
+			req.Type, req.Version, err)
 	}
+
 	result, err := s.tempClient.TestConnection(ctx, "destination", driver, version, encryptedConfig)
 	if err != nil {
-		logs.Error("Connection test failed: %v", err)
+		// return map[string]interface{}{
+		// 		"message": err.Error(),
+		// 		"status":  "failed",
+		// 	}, fmt.Errorf("connection test failed - destination_type=%s destination_version=%s error=%v",
+		// 		req.Type, req.Version, err)
 	}
+
 	if result == nil {
 		result = map[string]interface{}{
-			"message": err.Error(),
+			"message": "Connection test failed",
 			"status":  "failed",
 		}
 	}
+
 	return result, nil
 }
 
 func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]*models.Job, error) {
-	logs.Info("Retrieving jobs for destination with id: %d", id)
 	if _, err := s.destORM.GetByID(id); err != nil {
-		return nil, fmt.Errorf("destination not found: %s", err)
+		return nil, fmt.Errorf("failed to find destination - destination_id=%d error=%v", id, err)
 	}
-	jobs, err := s.jobORM.GetByDestinationID(id)
+
+	jobs, err := s.jobORM.GetByDestinationID([]int{id})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve jobs: %s", err)
+		return nil, fmt.Errorf("failed to get jobs by destination - destination_id=%d error=%v", id, err)
 	}
+
 	return jobs, nil
 }
 
 func (s *DestinationService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
-	logs.Info("Retrieving versions for destination type: %s", destType)
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")
 	}
-	// get available driver versions
+
 	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get valid driver image tags: %s", err)
+		return nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", destType, err)
 	}
+
 	return map[string]interface{}{"versions": versions}, nil
 }
 
 func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
 	if err := dto.Validate(&req); err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("invalid request: %w", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to validate get spec request - destination_type=%s destination_version=%s error=%v",
+			req.Type, req.Version, err)
 	}
 
-	// TODO: make destinationType consistent. Only use parquet and iceberg.
 	destinationType := "iceberg"
 	if req.Type == "s3" {
 		destinationType = "parquet"
 	}
 
-	// Determine driver tag
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get valid driver image tags: %s", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
 	}
 
 	if s.tempClient == nil {
-		return dto.SpecResponse{}, fmt.Errorf("temporal client not available")
+		return dto.SpecResponse{}, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
+			req.Type, req.Version)
 	}
 
 	specOut, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
 	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("Failed to get spec: %v", err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get spec - destination_type=%s destination_version=%s error=%v",
+			req.Type, req.Version, err)
 	}
 
 	return dto.SpecResponse{
@@ -273,7 +288,6 @@ func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.Spe
 	}, nil
 }
 
-// Helper
 func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
 	jobItems := make([]dto.JobDataItem, 0, len(jobs))
 	for _, job := range jobs {

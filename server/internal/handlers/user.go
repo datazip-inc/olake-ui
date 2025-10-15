@@ -7,18 +7,13 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/internal/services"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
 type UserHandler struct {
 	web.Controller
-	userService *services.UserService
-}
-
-func (c *UserHandler) Prepare() {
-	c.userService = services.NewUserService()
 }
 
 // @router /users [post]
@@ -29,7 +24,9 @@ func (c *UserHandler) CreateUser() {
 		return
 	}
 
-	if err := c.userService.CreateUser(context.Background(), &req); err != nil {
+	logger.Info("Create user initiated - username=%s email=%s", req.Username, req.Email)
+
+	if err := UserSvc().CreateUser(context.Background(), &req); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
 		return
 	}
@@ -39,7 +36,9 @@ func (c *UserHandler) CreateUser() {
 
 // @router /users [get]
 func (c *UserHandler) GetAllUsers() {
-	users, err := c.userService.GetAllUsers(context.Background())
+	logger.Info("Get all users initiated")
+
+	users, err := UserSvc().GetAllUsers(context.Background())
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get users", err)
 		return
@@ -58,7 +57,9 @@ func (c *UserHandler) UpdateUser() {
 		return
 	}
 
-	updatedUser, err := c.userService.UpdateUser(context.Background(), id, &req)
+	logger.Info("Update user initiated - user_id=%d username=%s", id, req.Username)
+
+	updatedUser, err := UserSvc().UpdateUser(context.Background(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
 			respondWithError(&c.Controller, http.StatusNotFound, "User not found", err)
@@ -74,7 +75,9 @@ func (c *UserHandler) UpdateUser() {
 // @router /users/:id [delete]
 func (c *UserHandler) DeleteUser() {
 	id := GetIDFromPath(&c.Controller)
-	if err := c.userService.DeleteUser(context.Background(), id); err != nil {
+	logger.Info("Delete user initiated - user_id=%d", id)
+
+	if err := UserSvc().DeleteUser(context.Background(), id); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete user", err)
 		return
 	}

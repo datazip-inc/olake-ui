@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
@@ -23,8 +22,7 @@ func main() {
 	constants.Init()
 
 	// init logger
-	logsdir, _ := config.String("logsdir")
-	logger.InitLogger(logsdir)
+	logger.Init()
 
 	// init log cleaner
 	utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())

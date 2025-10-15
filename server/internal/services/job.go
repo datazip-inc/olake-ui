@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/dto"
@@ -29,11 +27,9 @@ type JobService struct {
 }
 
 func NewJobService() (*JobService, error) {
-	logs.Info("Creating job service")
 	tempClient, err := temporal.NewClient()
 	if err != nil {
-		logs.Error("Failed to create Temporal client: %v", err)
-		//Q: return nil or error?
+		return nil, fmt.Errorf("failed to create temporal client - error=%v", err)
 	}
 	return &JobService{
 		jobORM:     database.NewJobORM(),
@@ -44,10 +40,9 @@ func NewJobService() (*JobService, error) {
 }
 
 func (s *JobService) GetAllJobs(projectID string) ([]dto.JobResponse, error) {
-	logs.Info("Retrieving jobs by project ID: %s", projectID)
 	jobs, err := s.jobORM.GetAllJobsByProjectID(projectID)
 	if err != nil {
-		return nil, fmt.Errorf("%s jobs by project ID: %s", constants.ErrFailedToRetrieve, err)
+		return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s error=%v", projectID, err)
 	}
 
 	jobResponses := make([]dto.JobResponse, 0, len(jobs))
@@ -61,17 +56,17 @@ func (s *JobService) GetAllJobs(projectID string) ([]dto.JobResponse, error) {
 
 func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
 	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
+		return fmt.Errorf("failed to validate job request - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
-	logs.Info("Creating job: %s", req.Name)
+
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process source: %s", err)
+		return fmt.Errorf("failed to process source - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
 
 	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process destination: %s", err)
+		return fmt.Errorf("failed to process destination - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
 
 	job := &models.Job{
@@ -92,39 +87,43 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	}
 
 	if err := s.jobORM.Create(job); err != nil {
-		return fmt.Errorf("%s job: %s", constants.ErrFailedToCreate, err)
+		return fmt.Errorf("failed to create job - project_id=%s job_name=%s source_id=%d destination_id=%d user_id=%v error=%v",
+			projectID, req.Name, source.ID, dest.ID, userID, err)
 	}
 
 	if s.tempClient != nil {
-		logs.Info("Creating Temporal workflow for sync job id %d", job.ID)
 		_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
 		if err != nil {
-			return fmt.Errorf("%s: %s", constants.ErrWorkflowExecutionFailed, err)
+			return fmt.Errorf("failed to create temporal workflow - project_id=%s job_id=%d job_name=%s error=%v",
+				projectID, job.ID, req.Name, err)
 		}
-		logs.Info("Successfully created sync job via Temporal for job id %d", job.ID)
 	}
+
 	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
 	return nil
 }
 
 func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
 	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
+		return fmt.Errorf("failed to validate update job request - project_id=%s job_id=%d job_name=%s error=%v",
+			projectID, jobID, req.Name, err)
 	}
-	logs.Info("Updating job: %s", req.Name)
+
 	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return fmt.Errorf("job not found: %s", err)
+		return fmt.Errorf("failed to find job for update - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process source: %s", err)
+		return fmt.Errorf("failed to process source for job update - project_id=%s job_id=%d error=%v",
+			projectID, jobID, err)
 	}
 
 	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to process destination: %s", err)
+		return fmt.Errorf("failed to process destination for job update - project_id=%s job_id=%d error=%v",
+			projectID, jobID, err)
 	}
 
 	existingJob.Name = req.Name
@@ -141,73 +140,78 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	if err := s.jobORM.Update(existingJob); err != nil {
-		return fmt.Errorf("failed to update job: %s", err)
+		return fmt.Errorf("failed to update job - project_id=%s job_id=%d job_name=%s error=%v",
+			projectID, jobID, req.Name, err)
 	}
 
 	if s.tempClient != nil {
-		logs.Info("Updating Temporal workflow for sync job id %d", existingJob.ID)
 		_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
 		if err != nil {
-			return fmt.Errorf("temporal workflow execution failed: %s", err)
+			return fmt.Errorf("failed to update temporal workflow - project_id=%s job_id=%d error=%v",
+				projectID, existingJob.ID, err)
 		}
 	}
+
 	telemetry.TrackJobEntity(ctx)
 	return nil
 }
 
 func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
-	logs.Info("Deleting job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return "", fmt.Errorf("job not found id %d: %s", jobID, err)
+		return "", fmt.Errorf("failed to find job for deletion - job_id=%d error=%v", jobID, err)
 	}
 
 	jobName := job.Name
 
 	if s.tempClient != nil {
-		logs.Info("Deleting Temporal workflow for sync job id %d", job.ID)
 		_, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
 		if err != nil {
-			logs.Error("Temporal deletion failed: %v", err)
+			return "", fmt.Errorf("failed to delete temporal workflow - project_id=%s job_id=%d error=%v",
+				job.ProjectID, job.ID, err)
 		}
 	}
 
 	if err := s.jobORM.Delete(jobID); err != nil {
-		return "", fmt.Errorf("failed to delete job id %d: %s", jobID, err)
+		return "", fmt.Errorf("failed to delete job - job_id=%d job_name=%s error=%v", jobID, jobName, err)
 	}
+
 	telemetry.TrackJobEntity(ctx)
 	return jobName, nil
 }
 
 func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
-	logs.Info("Syncing job with id: %d", jobID)
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+		return nil, fmt.Errorf("failed to find job for sync - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
 	if job.SourceID == nil || job.DestID == nil {
-		return nil, fmt.Errorf("job must have both source and destination configured")
+		return nil, fmt.Errorf("job must have both source and destination configured - project_id=%s job_id=%d", projectID, jobID)
 	}
 
 	if s.tempClient != nil {
 		resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
 		if err != nil {
-			return nil, fmt.Errorf("temporal execution failed: %s", err)
+			return nil, fmt.Errorf("failed to trigger sync - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 		}
 		return resp, nil
 	}
 
-	return nil, fmt.Errorf("temporal client is not available")
+	return nil, fmt.Errorf("temporal client not available - project_id=%s job_id=%d", projectID, jobID)
 }
+
 func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+		return nil, fmt.Errorf("failed to find job for cancel - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
-	if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
-		return nil, fmt.Errorf("job workflow cancel failed id %d: %s", jobID, err)
+
+	jobSlice := []*models.Job{job}
+	if err := cancelAllJobWorkflows(s.tempClient, jobSlice, projectID); err != nil {
+		return nil, fmt.Errorf("failed to cancel job workflow - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
+
 	return map[string]any{
 		"message": "job workflow cancel requested successfully",
 	}, nil
@@ -215,12 +219,12 @@ func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID i
 
 func (s *JobService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
 	if err := dto.Validate(req); err != nil {
-		return fmt.Errorf("invalid request: %w", err)
+		return fmt.Errorf("failed to validate job status request - job_id=%d error=%v", jobID, err)
 	}
-	logs.Info("Activating job with id: %d", jobID)
+
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return fmt.Errorf("job not found id %d: %s", jobID, err)
+		return fmt.Errorf("failed to find job for activation - job_id=%d error=%v", jobID, err)
 	}
 
 	job.Active = req.Activate
@@ -231,7 +235,7 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	}
 
 	if err := s.jobORM.Update(job); err != nil {
-		return fmt.Errorf("failed to update job activation status: %s", err)
+		return fmt.Errorf("failed to update job activation status - job_id=%d activate=%v error=%v", jobID, req.Activate, err)
 	}
 
 	return nil
@@ -239,15 +243,23 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 
 func (s *JobService) IsJobNameUnique(ctx context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	if err := dto.Validate(req); err != nil {
-		return false, fmt.Errorf("invalid job name: %w", err)
+		return false, fmt.Errorf("failed to validate job name uniqueness request - project_id=%s job_name=%s error=%v",
+			projectID, req.JobName, err)
 	}
-	logs.Info("Checking if job name is unique: %s", req.JobName)
-	return s.jobORM.IsJobNameUnique(projectID, req.JobName)
+
+	unique, err := s.jobORM.IsJobNameUnique(projectID, req.JobName)
+	if err != nil {
+		return false, fmt.Errorf("failed to check job name uniqueness - project_id=%s job_name=%s error=%v",
+			projectID, req.JobName, err)
+	}
+
+	return unique, nil
 }
+
 func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+		return nil, fmt.Errorf("failed to find job for tasks - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
 	if s.tempClient == nil {
@@ -261,7 +273,7 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 		Query: query,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to list workflows: %s", err)
+		return nil, fmt.Errorf("failed to list workflows - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
 	for _, execution := range resp.Executions {
@@ -282,26 +294,25 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 }
 
 func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
-	logs.Info("Getting task logs for job with id: %d", jobID)
 	_, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+		return nil, fmt.Errorf("failed to find job for logs - job_id=%d error=%v", jobID, err)
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
 	mainSyncDir := filepath.Join(docker.DefaultConfigDir, syncFolderName)
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("no sync directory found: %s", mainSyncDir)
+		return nil, fmt.Errorf("sync directory not found - job_id=%d path=%s error=%v", jobID, mainSyncDir, err)
 	}
 
 	logsDir := filepath.Join(mainSyncDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found for job id %d", jobID)
+		return nil, fmt.Errorf("logs directory not found - job_id=%d path=%s error=%v", jobID, logsDir, err)
 	}
 
 	files, err := os.ReadDir(logsDir)
 	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("no sync log directory found for job id %d", jobID)
+		return nil, fmt.Errorf("failed to read logs directory - job_id=%d path=%s error=%v", jobID, logsDir, err)
 	}
 
 	syncDir := filepath.Join(logsDir, files[0].Name())
@@ -309,7 +320,7 @@ func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string
 
 	logContent, err := os.ReadFile(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read log file for job id %d: %s", jobID, logPath)
+		return nil, fmt.Errorf("failed to read log file - job_id=%d file_path=%s error=%v", jobID, logPath, err)
 	}
 
 	var logs []map[string]interface{}
@@ -387,7 +398,6 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.Job
 }
 
 func (s *JobService) getOrCreateSource(config dto.JobSourceConfig, projectID string, userID *int) (*models.Source, error) {
-	// TODO: need to make source creation for job and source api at same place
 	sources, err := s.sourceORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(sources) > 0 {
 		source := sources[0]
@@ -397,10 +407,12 @@ func (s *JobService) getOrCreateSource(config dto.JobSourceConfig, projectID str
 			source.UpdatedBy = &models.User{ID: *userID}
 		}
 		if err := s.sourceORM.Update(source); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update existing source - project_id=%s source_name=%s source_type=%s error=%v",
+				projectID, config.Name, config.Type, err)
 		}
 		return source, nil
 	}
+
 	source := &models.Source{
 		Name:      config.Name,
 		Type:      config.Type,
@@ -414,7 +426,8 @@ func (s *JobService) getOrCreateSource(config dto.JobSourceConfig, projectID str
 		source.UpdatedBy = user
 	}
 	if err := s.sourceORM.Create(source); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create source - project_id=%s source_name=%s source_type=%s error=%v",
+			projectID, config.Name, config.Type, err)
 	}
 	return source, nil
 }
@@ -429,10 +442,12 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 			dest.UpdatedBy = &models.User{ID: *userID}
 		}
 		if err := s.destORM.Update(dest); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to update existing destination - project_id=%s destination_name=%s destination_type=%s error=%v",
+				projectID, config.Name, config.Type, err)
 		}
 		return dest, nil
 	}
+
 	dest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,
@@ -446,7 +461,8 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 		dest.UpdatedBy = user
 	}
 	if err := s.destORM.Create(dest); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create destination - project_id=%s destination_name=%s destination_type=%s error=%v",
+			projectID, config.Name, config.Type, err)
 	}
 	return dest, nil
 }

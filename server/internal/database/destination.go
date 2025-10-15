@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
@@ -49,7 +48,7 @@ func (r *DestinationORM) Create(destination *models.Destination) error {
 
 func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&destinations)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy("-updated_at").All(&destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all destinations: %s", err)
 	}
@@ -94,7 +93,6 @@ func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 }
 
 func (r *DestinationORM) Update(destination *models.Destination) error {
-	destination.UpdatedAt = time.Now()
 
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(destination.Config)

@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
@@ -68,7 +67,7 @@ func (r *JobORM) Create(job *models.Job) error {
 // GetAll retrieves all jobs
 func (r *JobORM) GetAll() ([]*models.Job, error) {
 	var jobs []*models.Job
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&jobs)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy("-updated_at").All(&jobs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all jobs: %s", err)
 	}
@@ -173,7 +172,6 @@ func (r *JobORM) GetByID(id int, decrypt bool) (*models.Job, error) {
 
 // Update a job
 func (r *JobORM) Update(job *models.Job) error {
-	job.UpdatedAt = time.Now()
 	_, err := r.ormer.Update(job)
 	return err
 }
@@ -187,8 +185,7 @@ func (r *JobORM) UpdateAllJobs(ids []int) error {
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("id__in", ids).
 		Update(orm.Params{
-			"active":     false,
-			"updated_at": time.Now(),
+			"active": false,
 		})
 	return err
 }
@@ -199,48 +196,48 @@ func (r *JobORM) Delete(id int) error {
 	return err
 }
 
-// GetBySourceID retrieves all jobs associated with a source ID
-func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	source := &models.Source{ID: sourceID}
+// // GetBySourceID retrieves all jobs associated with a source ID
+// func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
+// 	var jobs []*models.Job
+// 	source := &models.Source{ID: sourceID}
 
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("source_id", source).
-		RelatedSel().
-		All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by source ID: %s", err)
-	}
+// 	_, err := r.ormer.QueryTable(r.TableName).
+// 		Filter("source_id", source).
+// 		RelatedSel().
+// 		All(&jobs)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get jobs by source ID: %s", err)
+// 	}
 
-	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-	}
+// 	// Decrypt related Source and Destination configs
+// 	if err := r.decryptJobSliceConfig(jobs); err != nil {
+// 		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+// 	}
 
-	return jobs, nil
-}
+// 	return jobs, nil
+// }
 
-// GetByDestinationID retrieves all jobs associated with a destination ID
-func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	dest := &models.Destination{ID: destID}
+// // GetByDestinationID retrieves all jobs associated with a destination ID
+// func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
+// 	var jobs []*models.Job
+// 	dest := &models.Destination{ID: destID}
 
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("dest_id", dest).
-		RelatedSel().
-		All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination ID: %s", err)
-	}
+// 	_, err := r.ormer.QueryTable(r.TableName).
+// 		Filter("dest_id", dest).
+// 		RelatedSel().
+// 		All(&jobs)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get jobs by destination ID: %s", err)
+// 	}
 
-	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-	}
+// 	// Decrypt related Source and Destination configs
+// 	if err := r.decryptJobSliceConfig(jobs); err != nil {
+// 		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+// 	}
 
-	return jobs, nil
-}
-func (r *JobORM) GetBySourceIDs(sourceIDs []int) ([]*models.Job, error) {
+//		return jobs, nil
+//	}
+func (r *JobORM) GetBySourceID(sourceIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
 	if len(sourceIDs) == 0 {
 		return jobs, nil
@@ -251,7 +248,7 @@ func (r *JobORM) GetBySourceIDs(sourceIDs []int) ([]*models.Job, error) {
 	}
 	return jobs, nil
 }
-func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
+func (r *JobORM) GetByDestinationID(destIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
 	if len(destIDs) == 0 {
 		return jobs, nil

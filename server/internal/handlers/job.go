@@ -5,31 +5,22 @@ import (
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
-
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/dto"
-	"github.com/datazip/olake-ui/server/internal/services"
+	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
 type JobHandler struct {
 	web.Controller
-	jobService *services.JobService
-}
-
-func (c *JobHandler) Prepare() {
-	svc, err := services.NewJobService()
-	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize job service", err)
-		return
-	}
-	c.jobService = svc
 }
 
 // @router /project/:projectid/jobs [get]
 func (c *JobHandler) GetAllJobs() {
 	projectID := c.Ctx.Input.Param(":projectid")
-	jobs, err := c.jobService.GetAllJobs(projectID)
+	logger.Info("Get all jobs initiated - project_id=%s", projectID)
+
+	jobs, err := JobSvc().GetAllJobs(projectID)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID", err)
 		return
@@ -40,6 +31,7 @@ func (c *JobHandler) GetAllJobs() {
 // @router /project/:projectid/jobs [post]
 func (c *JobHandler) CreateJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req dto.CreateJobRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
@@ -47,7 +39,10 @@ func (c *JobHandler) CreateJob() {
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.CreateJob(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+	logger.Info("Create job initiated - project_id=%s job_name=%s user_id=%v",
+		projectID, req.Name, userID)
+
+	if err := JobSvc().CreateJob(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create job", err)
 		return
 	}
@@ -66,7 +61,10 @@ func (c *JobHandler) UpdateJob() {
 	}
 
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
+	logger.Info("Update job initiated - project_id=%s job_id=%d job_name=%s user_id=%v",
+		projectID, jobID, req.Name, userID)
+
+	if err := JobSvc().UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
 		return
 	}
@@ -76,7 +74,9 @@ func (c *JobHandler) UpdateJob() {
 // @router /project/:projectid/jobs/:id [delete]
 func (c *JobHandler) DeleteJob() {
 	id := GetIDFromPath(&c.Controller)
-	jobName, err := c.jobService.DeleteJob(c.Ctx.Request.Context(), id)
+	logger.Info("Delete job initiated - job_id=%d", id)
+
+	jobName, err := JobSvc().DeleteJob(c.Ctx.Request.Context(), id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete job", err)
 		return
@@ -87,12 +87,16 @@ func (c *JobHandler) DeleteJob() {
 // @router /project/:projectid/jobs/check-unique [post]
 func (c *JobHandler) CheckUniqueJobName() {
 	projectID := c.Ctx.Input.Param(":projectid")
+
 	var req dto.CheckUniqueJobNameRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-	unique, err := c.jobService.IsJobNameUnique(c.Ctx.Request.Context(), projectID, req)
+
+	logger.Info("Check unique job name initiated - project_id=%s job_name=%s", projectID, req.JobName)
+
+	unique, err := JobSvc().IsJobNameUnique(c.Ctx.Request.Context(), projectID, req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness", err)
 		return
@@ -104,7 +108,9 @@ func (c *JobHandler) CheckUniqueJobName() {
 func (c *JobHandler) SyncJob() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	id := GetIDFromPath(&c.Controller)
-	result, err := c.jobService.SyncJob(c.Ctx.Request.Context(), projectID, id)
+	logger.Info("Sync job initiated - project_id=%s job_id=%d", projectID, id)
+
+	result, err := JobSvc().SyncJob(c.Ctx.Request.Context(), projectID, id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to sync job", err)
 		return
@@ -115,13 +121,17 @@ func (c *JobHandler) SyncJob() {
 // @router /project/:projectid/jobs/:id/activate [put]
 func (c *JobHandler) ActivateJob() {
 	id := GetIDFromPath(&c.Controller)
+
 	var req dto.JobStatusRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
+
 	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.jobService.ActivateJob(c.Ctx.Request.Context(), id, req, userID); err != nil {
+	logger.Info("Activate job initiated - job_id=%d user_id=%v", id, userID)
+
+	if err := JobSvc().ActivateJob(c.Ctx.Request.Context(), id, req, userID); err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
@@ -136,7 +146,9 @@ func (c *JobHandler) ActivateJob() {
 func (c *JobHandler) CancelJobRun() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	id := GetIDFromPath(&c.Controller)
-	resp, err := c.jobService.CancelJobRun(c.Ctx.Request.Context(), projectID, id)
+	logger.Info("Cancel job run initiated - project_id=%s job_id=%d", projectID, id)
+
+	resp, err := JobSvc().CancelJobRun(c.Ctx.Request.Context(), projectID, id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to cancel job run", err)
 		return
@@ -148,7 +160,9 @@ func (c *JobHandler) CancelJobRun() {
 func (c *JobHandler) GetJobTasks() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	id := GetIDFromPath(&c.Controller)
-	tasks, err := c.jobService.GetJobTasks(c.Ctx.Request.Context(), projectID, id)
+	logger.Info("Get job tasks initiated - project_id=%s job_id=%d", projectID, id)
+
+	tasks, err := JobSvc().GetJobTasks(c.Ctx.Request.Context(), projectID, id)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
@@ -163,12 +177,16 @@ func (c *JobHandler) GetJobTasks() {
 // @router /project/:projectid/jobs/:id/logs [get]
 func (c *JobHandler) GetTaskLogs() {
 	id := GetIDFromPath(&c.Controller)
+
 	var req dto.JobTaskRequest
 	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-	logs, err := c.jobService.GetTaskLogs(c.Ctx.Request.Context(), id, req.FilePath)
+
+	logger.Info("Get task logs initiated - job_id=%d file_path=%s", id, req.FilePath)
+
+	logs, err := JobSvc().GetTaskLogs(c.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {

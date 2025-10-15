@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 	"golang.org/x/crypto/bcrypt"
@@ -57,7 +56,6 @@ func (r *UserORM) GetByID(id int) (*models.User, error) {
 }
 
 func (r *UserORM) Update(user *models.User) error {
-	user.UpdatedAt = time.Now()
 	_, err := r.ormer.Update(user)
 	return err
 }
