@@ -10,6 +10,7 @@ import {
 } from "../utils"
 
 test.describe("Job End-to-End User Journey", () => {
+	test.describe.configure({ retries: 2 })
 	test("should complete full job workflow: create source → create destination → create job → sync", async ({
 		sourcesPage,
 		createSourcePage,

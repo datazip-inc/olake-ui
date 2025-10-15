@@ -2,6 +2,7 @@ import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
 import { DestinationFormConfig } from "../types/PageConfig.types"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateDestinationPage extends BasePage {
 	readonly destinationNameInput: Locator
@@ -117,24 +118,6 @@ export class CreateDestinationPage extends BasePage {
 		await this.destinationNameInput.fill(name)
 	}
 
-	async selectConnector(connector: string) {
-		await this.connectorSelect.click()
-
-		await this.page.waitForSelector(".ant-select-dropdown:visible")
-
-		const testId = this.connectorTestIdMap[connector]
-		if (testId) {
-			await this.page.getByTestId(testId).click()
-		} else {
-			await this.page
-				.locator(".ant-select-dropdown:visible")
-				.getByText(connector, { exact: true })
-				.click()
-		}
-
-		await expect(this.connectorSelect).toContainText(connector)
-	}
-
 	/**
 	 * Waits for and captures the destination spec API response after connector selection
 	 * Returns the response data
@@ -181,7 +164,12 @@ export class CreateDestinationPage extends BasePage {
 	async selectConnectorAndWaitForSpec(connector: string) {
 		console.log(`→ Selecting connector: ${connector}`)
 		const specPromise = this.waitForDestinationSpecResponse()
-		await this.selectConnector(connector)
+		await selectConnector(
+			this.page,
+			this.connectorSelect,
+			connector,
+			this.connectorTestIdMap,
+		)
 		return await specPromise
 	}
 

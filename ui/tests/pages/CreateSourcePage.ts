@@ -2,6 +2,7 @@ import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
 import { SourceFormConfig } from "../types/PageConfig.types"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateSourcePage extends BasePage {
 	readonly sourceNameInput: Locator
@@ -121,24 +122,6 @@ export class CreateSourcePage extends BasePage {
 		await this.sourceNameInput.fill(name)
 	}
 
-	async selectConnector(connector: string) {
-		await this.connectorSelect.click()
-
-		await this.page.waitForSelector(".ant-select-dropdown:visible")
-
-		const testId = this.connectorTestIdMap[connector]
-		if (testId) {
-			await this.page.getByTestId(testId).click()
-		} else {
-			await this.page
-				.locator(".ant-select-dropdown:visible")
-				.getByText(connector, { exact: true })
-				.click()
-		}
-
-		await expect(this.connectorSelect).toContainText(connector)
-	}
-
 	async clickCreate() {
 		await this.createButton.click()
 	}
@@ -221,7 +204,12 @@ export class CreateSourcePage extends BasePage {
 	 */
 	async fillSourceForm(config: SourceFormConfig) {
 		// Select connector
-		await this.selectConnector(config.connector)
+		await selectConnector(
+			this.page,
+			this.connectorSelect,
+			config.connector,
+			this.connectorTestIdMap,
+		)
 
 		// Select version if provided
 		if (config.version) {
