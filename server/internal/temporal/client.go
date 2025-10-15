@@ -144,12 +144,12 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 }
 
 // TestConnection runs a workflow to test connection
-func (c *Client) TestConnection(ctx context.Context, flag, sourceType, version, config string) (map[string]interface{}, error) {
+func (c *Client) TestConnection(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType: sourceType,
 		Version:    version,
 		Config:     config,
-		WorkflowID: fmt.Sprintf("test-connection-%s-%d", sourceType, time.Now().Unix()),
+		WorkflowID: workflowID,
 		Command:    docker.Check,
 		Flag:       flag,
 	}

@@ -105,12 +105,16 @@ func (c *SourceHandler) TestConnection() {
 
 	logger.Info("Test source connection initiated - source_type=%s source_version=%s", req.Type, req.Version)
 
-	result, err := SourceSvc().TestConnection(c.Ctx.Request.Context(), req)
+	result, logs, err := SourceSvc().TestConnection(c.Ctx.Request.Context(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, result)
+
+	utils.SuccessResponse(&c.Controller, dto.TestConnectionResponse{
+		ConnectionResult: result,
+		Logs:             logs,
+	})
 }
 
 // @router /sources/streams [post]

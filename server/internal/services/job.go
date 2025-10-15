@@ -3,11 +3,8 @@ package services
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/datazip/olake-ui/server/internal/database"
@@ -16,6 +13,7 @@ import (
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
+	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/workflowservice/v1"
 )
 
@@ -300,48 +298,14 @@ func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-	mainSyncDir := filepath.Join(docker.DefaultConfigDir, syncFolderName)
-	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("sync directory not found - job_id=%d path=%s error=%v", jobID, mainSyncDir, err)
-	}
+	// Read the log file
 
-	logsDir := filepath.Join(mainSyncDir, "logs")
-	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found - job_id=%d path=%s error=%v", jobID, logsDir, err)
-	}
-
-	files, err := os.ReadDir(logsDir)
-	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("failed to read logs directory - job_id=%d path=%s error=%v", jobID, logsDir, err)
-	}
-
-	syncDir := filepath.Join(logsDir, files[0].Name())
-	logPath := filepath.Join(syncDir, "olake.log")
-
-	logContent, err := os.ReadFile(logPath)
+	// Get home directory
+	homeDir := docker.GetDefaultConfigDir()
+	mainSyncDir := filepath.Join(homeDir, syncFolderName)
+	logs, err := utils.ReadLogs(mainSyncDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read log file - job_id=%d file_path=%s error=%v", jobID, logPath, err)
-	}
-
-	var logs []map[string]interface{}
-	lines := strings.Split(string(logContent), "\n")
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		var logEntry struct {
-			Level   string    `json:"level"`
-			Time    time.Time `json:"time"`
-			Message string    `json:"message"`
-		}
-		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			continue
-		}
-		logs = append(logs, map[string]interface{}{
-			"level":   logEntry.Level,
-			"time":    logEntry.Time.UTC().Format(time.RFC3339),
-			"message": logEntry.Message,
-		})
+		return nil, fmt.Errorf("failed to read logs - job_id=%d path=%s error=%v", jobID, mainSyncDir, err)
 	}
 
 	return logs, nil

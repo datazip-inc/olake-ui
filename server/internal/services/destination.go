@@ -3,9 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
@@ -183,13 +185,13 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, error) {
+func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("failed to validate test connection request - destination_type=%s error=%v", req.Type, err)
+		return nil, nil, fmt.Errorf("failed to validate test connection request - destination_type=%s error=%v", req.Type, err)
 	}
 
 	if s.tempClient == nil {
-		return nil, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
+		return nil, nil, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
 			req.Type, req.Version)
 	}
 
@@ -199,17 +201,17 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 		var err error
 		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
+			return nil, nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
 		}
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for test connection - destination_type=%s destination_version=%s error=%v",
+		return nil, nil, fmt.Errorf("failed to encrypt config for test connection - destination_type=%s destination_version=%s error=%v",
 			req.Type, req.Version, err)
 	}
-
-	result, err := s.tempClient.TestConnection(ctx, "destination", driver, version, encryptedConfig)
+	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
+	result, err := s.tempClient.TestConnection(ctx, workflowID, "destination", driver, version, encryptedConfig)
 	if err != nil {
 		// return map[string]interface{}{
 		// 		"message": err.Error(),
@@ -217,7 +219,13 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 		// 	}, fmt.Errorf("connection test failed - destination_type=%s destination_version=%s error=%v",
 		// 		req.Type, req.Version, err)
 	}
-
+	homeDir := docker.GetDefaultConfigDir()
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read logs - destination_type=%s destination_version=%s error=%v",
+			req.Type, req.Version, err)
+	}
 	if result == nil {
 		result = map[string]interface{}{
 			"message": "Connection test failed",
@@ -225,7 +233,7 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 		}
 	}
 
-	return result, nil
+	return result, logs, nil
 }
 
 func (s *DestinationService) GetDestinationJobs(ctx context.Context, id int) ([]*models.Job, error) {

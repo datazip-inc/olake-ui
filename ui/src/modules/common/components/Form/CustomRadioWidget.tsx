@@ -1,3 +1,7 @@
+/**
+ * CustomRadioWidget is a component that renders a radio widget this overrides the default radio field template of rjsf
+ */
+
 import React from "react"
 import { Radio } from "antd"
 import { WidgetProps } from "@rjsf/utils"

@@ -3,10 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
@@ -183,32 +185,34 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSo
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestConnectionRequest) (map[string]interface{}, error) {
+func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if err := dto.Validate(&req); err != nil {
-		return nil, fmt.Errorf("failed to validate test connection request - source_type=%s error=%v", req.Type, err)
+		return nil, nil, fmt.Errorf("failed to validate test connection request - source_type=%s error=%v", req.Type, err)
 	}
 
 	if s.tempClient == nil {
-		return nil, fmt.Errorf("temporal client not available - source_type=%s source_version=%s", req.Type, req.Version)
+		return nil, nil, fmt.Errorf("temporal client not available - source_type=%s source_version=%s", req.Type, req.Version)
 	}
 
 	if req.Type == "" || req.Version == "" {
-		return nil, fmt.Errorf("missing required fields - source_type=%s source_version=%s", req.Type, req.Version)
+		return nil, nil, fmt.Errorf("missing required fields - source_type=%s source_version=%s", req.Type, req.Version)
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt config for test connection - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
+		return nil, nil, fmt.Errorf("failed to encrypt config for test connection - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
 	}
-
-	result, err := s.tempClient.TestConnection(ctx, "source", req.Type, req.Version, encryptedConfig)
+	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
+	result, err := s.tempClient.TestConnection(ctx, workflowID, "source", req.Type, req.Version, encryptedConfig)
 	if err != nil {
-		return map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
-		}, fmt.Errorf("connection test failed - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
+		return nil, nil, fmt.Errorf("connection test failed - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
 	}
-
+	homeDir := docker.GetDefaultConfigDir()
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read logs for test connection - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
+	}
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -216,7 +220,7 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 		}
 	}
 
-	return result, nil
+	return result, logs, nil
 }
 
 func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsRequest) (map[string]interface{}, error) {

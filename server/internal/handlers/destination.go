@@ -95,12 +95,16 @@ func (c *DestHandler) TestConnection() {
 
 	logger.Info("Test destination connection initiated - destination_type=%s destination_version=%s", req.Type, req.Version)
 
-	result, err := DestSvc().TestConnection(context.Background(), req)
+	result, logs, err := DestSvc().TestConnection(context.Background(), req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, result)
+
+	utils.SuccessResponse(&c.Controller, dto.TestConnectionResponse{
+		ConnectionResult: result,
+		Logs:             logs,
+	})
 }
 
 // @router /destinations/:id/jobs [get]
