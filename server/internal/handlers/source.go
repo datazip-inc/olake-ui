@@ -43,7 +43,7 @@ func (c *SourceHandler) CreateSource() {
 	logger.Info("Create source initiated - project_id=%s source_type=%s source_name=%s user_id=%v",
 		projectID, req.Type, req.Name, userID)
 
-	if err := SourceSvc().CreateSource(c.Ctx.Request.Context(), req, projectID, userID); err != nil {
+	if err := SourceSvc().CreateSource(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
@@ -66,7 +66,7 @@ func (c *SourceHandler) UpdateSource() {
 	logger.Info("Update source initiated - project_id=%s source_id=%d source_type=%s user_id=%v",
 		projectID, id, req.Type, userID)
 
-	if err := SourceSvc().UpdateSource(c.Ctx.Request.Context(), projectID, id, req, userID); err != nil {
+	if err := SourceSvc().UpdateSource(c.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
@@ -105,7 +105,7 @@ func (c *SourceHandler) TestConnection() {
 
 	logger.Info("Test source connection initiated - source_type=%s source_version=%s", req.Type, req.Version)
 
-	result, logs, err := SourceSvc().TestConnection(c.Ctx.Request.Context(), req)
+	result, logs, err := SourceSvc().TestConnection(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
@@ -128,7 +128,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 	logger.Info("Get source catalog initiated - source_type=%s source_version=%s job_id=%d",
 		req.Type, req.Version, req.JobID)
 
-	catalog, err := SourceSvc().GetSourceCatalog(c.Ctx.Request.Context(), req)
+	catalog, err := SourceSvc().GetSourceCatalog(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
@@ -184,7 +184,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	logger.Info("Get source spec initiated - project_id=%s source_type=%s source_version=%s",
 		projectID, req.Type, req.Version)
 
-	resp, err := SourceSvc().GetSourceSpec(c.Ctx.Request.Context(), req)
+	resp, err := SourceSvc().GetSourceSpec(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return

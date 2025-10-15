@@ -93,7 +93,6 @@ func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 }
 
 func (r *DestinationORM) Update(destination *models.Destination) error {
-
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(destination.Config)
 	if err != nil {

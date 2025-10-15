@@ -19,7 +19,7 @@ func NewUserService() *UserService {
 	}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, req *models.User) error {
+func (s *UserService) CreateUser(_ context.Context, req *models.User) error {
 	if err := dto.Validate(&req); err != nil {
 		return fmt.Errorf("failed to validate user request - username=%s email=%s error=%v",
 			req.Username, req.Email, err)
@@ -32,7 +32,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *models.User) error {
 	return nil
 }
 
-func (s *UserService) GetAllUsers(ctx context.Context) ([]*models.User, error) {
+func (s *UserService) GetAllUsers(_ context.Context) ([]*models.User, error) {
 	users, err := s.userORM.GetAll()
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve users - error=%v", err)
@@ -40,7 +40,7 @@ func (s *UserService) GetAllUsers(ctx context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-func (s *UserService) UpdateUser(ctx context.Context, id int, req *models.User) (*models.User, error) {
+func (s *UserService) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
 	if err := dto.Validate(&req); err != nil {
 		return nil, fmt.Errorf("failed to validate update user request - user_id=%d username=%s error=%v",
 			id, req.Username, err)
@@ -61,14 +61,14 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, req *models.User) 
 	return existingUser, nil
 }
 
-func (s *UserService) DeleteUser(ctx context.Context, id int) error {
+func (s *UserService) DeleteUser(_ context.Context, id int) error {
 	if err := s.userORM.Delete(id); err != nil {
 		return fmt.Errorf("failed to delete user - user_id=%d error=%v", id, err)
 	}
 	return nil
 }
 
-func (s *UserService) GetUserByID(ctx context.Context, id int) (*models.User, error) {
+func (s *UserService) GetUserByID(_ context.Context, id int) (*models.User, error) {
 	user, err := s.userORM.GetByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("user not found - user_id=%d error=%v", id, err)

@@ -82,7 +82,7 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 	return destItems, nil
 }
 
-func (s *DestinationService) CreateDestination(ctx context.Context, req dto.CreateDestinationRequest, projectID string, userID *int) error {
+func (s *DestinationService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
 	if err := dto.Validate(&req); err != nil {
 		return fmt.Errorf("failed to validate destination request - project_id=%s destination_type=%s destination_name=%s error=%v",
 			projectID, req.Type, req.Name, err)
@@ -108,7 +108,7 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 	return nil
 }
 
-func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req dto.UpdateDestinationRequest, userID *int) error {
+func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
 	if err := dto.Validate(&req); err != nil {
 		return fmt.Errorf("failed to validate update destination request - project_id=%s destination_id=%d destination_type=%s error=%v",
 			projectID, id, req.Type, err)
@@ -179,7 +179,7 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *DestinationService) TestConnection(ctx context.Context, req dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *DestinationService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if err := dto.Validate(&req); err != nil {
 		return nil, nil, fmt.Errorf("failed to validate test connection request - destination_type=%s error=%v", req.Type, err)
 	}
@@ -207,11 +207,8 @@ func (s *DestinationService) TestConnection(ctx context.Context, req dto.Destina
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
 	result, err := s.tempClient.TestConnection(ctx, workflowID, "destination", driver, version, encryptedConfig)
 	if err != nil {
-		// return map[string]interface{}{
-		// 		"message": err.Error(),
-		// 		"status":  "failed",
-		// 	}, fmt.Errorf("connection test failed - destination_type=%s destination_version=%s error=%v",
-		// 		req.Type, req.Version, err)
+		return nil, nil, fmt.Errorf("connection test failed - destination_type=%s destination_version=%s error=%v",
+			req.Type, req.Version, err)
 	}
 	homeDir := docker.GetDefaultConfigDir()
 	mainLogDir := filepath.Join(homeDir, workflowID)
@@ -256,7 +253,7 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 	return map[string]interface{}{"versions": versions}, nil
 }
 
-func (s *DestinationService) GetDestinationSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
+func (s *DestinationService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	if err := dto.Validate(&req); err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to validate get spec request - destination_type=%s destination_version=%s error=%v",
 			req.Type, req.Version, err)

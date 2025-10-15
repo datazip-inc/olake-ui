@@ -43,7 +43,7 @@ func (c *DestHandler) CreateDestination() {
 	logger.Info("Create destination initiated - project_id=%s destination_type=%s destination_name=%s user_id=%v",
 		projectID, req.Type, req.Name, userID)
 
-	if err := DestSvc().CreateDestination(context.Background(), req, projectID, userID); err != nil {
+	if err := DestSvc().CreateDestination(context.Background(), &req, projectID, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
 		return
 	}
@@ -65,7 +65,7 @@ func (c *DestHandler) UpdateDestination() {
 	logger.Info("Update destination initiated - project_id=%s destination_id=%d destination_type=%s user_id=%v",
 		projectID, id, req.Type, userID)
 
-	if err := DestSvc().UpdateDestination(context.Background(), id, projectID, req, userID); err != nil {
+	if err := DestSvc().UpdateDestination(context.Background(), id, projectID, &req, userID); err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
@@ -95,7 +95,7 @@ func (c *DestHandler) TestConnection() {
 
 	logger.Info("Test destination connection initiated - destination_type=%s destination_version=%s", req.Type, req.Version)
 
-	result, logs, err := DestSvc().TestConnection(context.Background(), req)
+	result, logs, err := DestSvc().TestConnection(context.Background(), &req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
@@ -147,7 +147,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	logger.Info("Get destination spec initiated - project_id=%s destination_type=%s destination_version=%s",
 		projectID, req.Type, req.Version)
 
-	resp, err := DestSvc().GetDestinationSpec(c.Ctx.Request.Context(), req)
+	resp, err := DestSvc().GetDestinationSpec(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
 		return

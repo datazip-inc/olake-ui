@@ -19,7 +19,7 @@ import (
 )
 
 // pullImage pulls the Docker image if needed
-func (r *Runner) pullImage(ctx context.Context, imageName string, version string) error {
+func (r *Runner) pullImage(ctx context.Context, imageName, version string) error {
 	// Only pull if version is "latest"; otherwise assume preloaded or let failure surface
 	if version == "latest" {
 		logs.Info("Pulling Docker image: %s", imageName)
@@ -39,7 +39,7 @@ func (r *Runner) pullImage(ctx context.Context, imageName string, version string
 
 // ExecuteDockerCommand executes a Docker command with the given parameters using Docker SDK
 // containerName is used for deterministic adoption/stop flows.
-func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName string, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
+func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
 	outputDir := "."
 	if configPath != "" {
 		outputDir = filepath.Dir(configPath)

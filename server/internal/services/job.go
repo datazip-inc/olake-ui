@@ -57,12 +57,12 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		return fmt.Errorf("failed to validate job request - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
 
-	source, err := s.getOrCreateSource(req.Source, projectID, userID)
+	source, err := s.getOrCreateSource(&req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
 
-	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
+	dest, err := s.getOrCreateDestination(&req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
@@ -110,13 +110,13 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to find job for update - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
-	source, err := s.getOrCreateSource(req.Source, projectID, userID)
+	source, err := s.getOrCreateSource(&req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update - project_id=%s job_id=%d error=%v",
 			projectID, jobID, err)
 	}
 
-	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
+	dest, err := s.getOrCreateDestination(&req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update - project_id=%s job_id=%d error=%v",
 			projectID, jobID, err)
@@ -355,7 +355,7 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.Job
 	return jobResp
 }
 
-func (s *JobService) getOrCreateSource(config dto.JobSourceConfig, projectID string, userID *int) (*models.Source, error) {
+func (s *JobService) getOrCreateSource(config *dto.JobSourceConfig, projectID string, userID *int) (*models.Source, error) {
 	sources, err := s.sourceORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(sources) > 0 {
 		source := sources[0]
@@ -390,7 +390,7 @@ func (s *JobService) getOrCreateSource(config dto.JobSourceConfig, projectID str
 	return source, nil
 }
 
-func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s *JobService) getOrCreateDestination(config *dto.JobDestinationConfig, projectID string, userID *int) (*models.Destination, error) {
 	destinations, err := s.destORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(destinations) > 0 {
 		dest := destinations[0]

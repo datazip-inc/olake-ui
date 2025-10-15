@@ -89,7 +89,7 @@ func (s *SourceService) GetAllSources(ctx context.Context, projectID string) ([]
 	return items, nil
 }
 
-func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRequest, projectID string, userID *int) error {
+func (s *SourceService) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
 	if err := dto.Validate(&req); err != nil {
 		return fmt.Errorf("failed to validate source request - project_id=%s source_type=%s source_name=%s error=%v", projectID, req.Type, req.Name, err)
 	}
@@ -114,7 +114,7 @@ func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRe
 	return nil
 }
 
-func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id int, req dto.UpdateSourceRequest, userID *int) error {
+func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
 	if err := dto.Validate(&req); err != nil {
 		return fmt.Errorf("failed to validate update source request - project_id=%s source_id=%d source_type=%s error=%v", projectID, id, req.Type, err)
 	}
@@ -177,7 +177,7 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSo
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *SourceService) TestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if err := dto.Validate(&req); err != nil {
 		return nil, nil, fmt.Errorf("failed to validate test connection request - source_type=%s error=%v", req.Type, err)
 	}
@@ -211,7 +211,7 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 	return result, logs, nil
 }
 
-func (s *SourceService) GetSourceCatalog(ctx context.Context, req dto.StreamsRequest) (map[string]interface{}, error) {
+func (s *SourceService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
 	if err := dto.Validate(&req); err != nil {
 		return nil, fmt.Errorf("failed to validate get catalog request - source_type=%s job_id=%d error=%v", req.Type, req.JobID, err)
 	}
@@ -276,7 +276,7 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 	return map[string]interface{}{"version": versions}, nil
 }
 
-func (s *SourceService) GetSourceSpec(ctx context.Context, req dto.SpecRequest) (dto.SpecResponse, error) {
+func (s *SourceService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	if err := dto.Validate(&req); err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to validate get spec request - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
 	}
