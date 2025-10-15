@@ -102,11 +102,9 @@ func (s *SourceService) CreateSource(ctx context.Context, req dto.CreateSourceRe
 		ProjectID: projectID,
 	}
 
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		src.CreatedBy = user
-		src.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	src.CreatedBy = user
+	src.UpdatedBy = user
 
 	if err := s.sourceORM.Create(src); err != nil {
 		return fmt.Errorf("failed to create source - project_id=%s source_name=%s source_type=%s user_id=%v error=%v", projectID, req.Name, req.Type, userID, err)
@@ -131,20 +129,16 @@ func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id i
 	existing.Type = req.Type
 	existing.Version = req.Version
 
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		existing.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	existing.UpdatedBy = user
 
 	jobs, err := s.jobORM.GetBySourceID([]int{existing.ID})
 	if err != nil {
 		return fmt.Errorf("failed to fetch jobs for source update - project_id=%s source_id=%d error=%v", projectID, existing.ID, err)
 	}
 
-	if len(jobs) > 0 {
-		if err := cancelAllJobWorkflows(s.tempClient, jobs, projectID); err != nil {
-			return fmt.Errorf("failed to cancel workflows for source update - project_id=%s source_id=%d job_count=%d error=%v", projectID, existing.ID, len(jobs), err)
-		}
+	if err := cancelAllJobWorkflows(s.tempClient, jobs, projectID); err != nil {
+		return fmt.Errorf("failed to cancel workflows for source update - project_id=%s source_id=%d job_count=%d error=%v", projectID, existing.ID, len(jobs), err)
 	}
 
 	if err := s.sourceORM.Update(existing); err != nil {
@@ -171,10 +165,8 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSo
 		jobIDs = append(jobIDs, job.ID)
 	}
 
-	if len(jobIDs) > 0 {
-		if err := s.jobORM.UpdateAllJobs(jobIDs); err != nil {
-			return nil, fmt.Errorf("failed to update jobs for source deletion - source_id=%d job_count=%d error=%v", id, len(jobIDs), err)
-		}
+	if err := s.jobORM.UpdateAllJobs(jobIDs); err != nil {
+		return nil, fmt.Errorf("failed to update jobs for source deletion - source_id=%d job_count=%d error=%v", id, len(jobIDs), err)
 	}
 
 	if err := s.sourceORM.Delete(id); err != nil {
@@ -192,10 +184,6 @@ func (s *SourceService) TestConnection(ctx context.Context, req dto.SourceTestCo
 
 	if s.tempClient == nil {
 		return nil, nil, fmt.Errorf("temporal client not available - source_type=%s source_version=%s", req.Type, req.Version)
-	}
-
-	if req.Type == "" || req.Version == "" {
-		return nil, nil, fmt.Errorf("missing required fields - source_type=%s source_version=%s", req.Type, req.Version)
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)

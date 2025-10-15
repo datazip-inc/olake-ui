@@ -78,11 +78,9 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		ProjectID:     projectID,
 	}
 
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		job.CreatedBy = user
-		job.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	job.CreatedBy = user
+	job.UpdatedBy = user
 
 	if err := s.jobORM.Create(job); err != nil {
 		return fmt.Errorf("failed to create job - project_id=%s job_name=%s source_id=%d destination_id=%d user_id=%v error=%v",
@@ -132,10 +130,8 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
 
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		existingJob.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	existingJob.UpdatedBy = user
 
 	if err := s.jobORM.Update(existingJob); err != nil {
 		return fmt.Errorf("failed to update job - project_id=%s job_id=%d job_name=%s error=%v",
@@ -227,10 +223,8 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 
 	job.Active = req.Activate
 
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		job.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	job.UpdatedBy = user
 
 	if err := s.jobORM.Update(job); err != nil {
 		return fmt.Errorf("failed to update job activation status - job_id=%d activate=%v error=%v", jobID, req.Activate, err)

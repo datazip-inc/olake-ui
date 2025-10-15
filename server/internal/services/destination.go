@@ -45,12 +45,10 @@ func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID s
 	}
 
 	var allJobs []*models.Job
-	if len(destIDs) > 0 {
-		allJobs, err = s.jobORM.GetByDestinationID(destIDs)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s destination_count=%d error=%v",
-				projectID, len(destIDs), err)
-		}
+	allJobs, err = s.jobORM.GetByDestinationID(destIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s destination_count=%d error=%v",
+			projectID, len(destIDs), err)
 	}
 
 	jobsByDestID := make(map[int][]*models.Job)
@@ -97,11 +95,9 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req dto.Crea
 		Config:    req.Config,
 		ProjectID: projectID,
 	}
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		destination.CreatedBy = user
-		destination.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	destination.CreatedBy = user
+	destination.UpdatedBy = user
 
 	if err := s.destORM.Create(destination); err != nil {
 		return fmt.Errorf("failed to create destination - project_id=%s destination_name=%s destination_type=%s user_id=%v error=%v",
@@ -129,10 +125,8 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, proj
 	existingDest.Version = req.Version
 	existingDest.Config = req.Config
 
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		existingDest.UpdatedBy = user
-	}
+	user := &models.User{ID: *userID}
+	existingDest.UpdatedBy = user
 
 	jobs, err := s.jobORM.GetByDestinationID([]int{existingDest.ID})
 	if err != nil {
