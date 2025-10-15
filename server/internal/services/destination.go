@@ -33,7 +33,7 @@ func NewDestinationService() (*DestinationService, error) {
 	}, nil
 }
 
-func (s *DestinationService) GetAllDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
+func (s *DestinationService) GetAllDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	destinations, err := s.destORM.GetAllByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve destinations - project_id=%s error=%v", projectID, err)

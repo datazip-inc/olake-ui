@@ -46,7 +46,7 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 	return user, nil
 }
 
-func (s *AuthService) Signup(ctx context.Context, user *models.User) error {
+func (s *AuthService) Signup(_ context.Context, user *models.User) error {
 	if err := dto.Validate(user); err != nil {
 		return fmt.Errorf("failed to validate signup request - username=%s email=%s error=%v: %w",
 			user.Username, user.Email, err, constants.ErrInvalidCredentials)

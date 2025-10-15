@@ -180,7 +180,7 @@ func TrackEvent(ctx context.Context, eventName string, properties map[string]int
 	if err != nil {
 		return err
 	}
-
+	ctx = context.Background()
 	req, err := http.NewRequestWithContext(ctx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
 	if err != nil {
 		return err

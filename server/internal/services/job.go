@@ -195,7 +195,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	return nil, fmt.Errorf("temporal client not available - project_id=%s job_id=%d", projectID, jobID)
 }
 
-func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
+func (s *JobService) CancelJobRun(_ context.Context, projectID string, jobID int) (map[string]any, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job for cancel - project_id=%s job_id=%d error=%v", projectID, jobID, err)

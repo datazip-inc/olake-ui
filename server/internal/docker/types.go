@@ -15,7 +15,7 @@ const (
 	ContainerMountDir = "/mnt/config"
 
 	// Docker related
-	//dockerImagePrefix = "olakego/source"
+	// dockerImagePrefix = "olakego/source"
 
 	// Environment variables
 	envPersistentDir = "PERSISTENT_DIR"

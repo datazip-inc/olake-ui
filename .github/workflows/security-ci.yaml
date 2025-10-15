@@ -38,7 +38,7 @@ jobs:
           check-latest: "true"
           go-version: "1.24.x"
       - name: Install gosec
-        run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- latest -b $(go env GOPATH)/bin
+        run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- v2.20.1 -b $(go env GOPATH)/bin
       - name: Run Gosec Security Scanner
         working-directory: ./server
         run: $(go env GOPATH)/bin/gosec -exclude=G115 -severity=high -confidence=medium ./...
