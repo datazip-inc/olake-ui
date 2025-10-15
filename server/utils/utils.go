@@ -18,7 +18,8 @@ import (
 	"github.com/robfig/cron"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {
@@ -48,7 +49,10 @@ func SuccessResponse(ctx *web.Controller, data interface{}) {
 	RespondJSON(ctx, http.StatusOK, true, "success", data)
 }
 
-func ErrorResponse(ctx *web.Controller, status int, message string) {
+func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
+	if err != nil {
+		logger.Error("%s: %s", message, err)
+	}
 	RespondJSON(ctx, status, false, message, nil)
 }
 

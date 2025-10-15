@@ -6,8 +6,8 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
@@ -22,7 +22,7 @@ func (c *DestHandler) GetAllDestinations() {
 
 	items, err := DestSvc().GetAllDestinations(c.Ctx.Request.Context(), projectID)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destinations", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get destinations", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, items)
@@ -34,7 +34,7 @@ func (c *DestHandler) CreateDestination() {
 
 	var req dto.CreateDestinationRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func (c *DestHandler) CreateDestination() {
 		projectID, req.Type, req.Name, userID)
 
 	if err := DestSvc().CreateDestination(context.Background(), &req, projectID, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req)
@@ -56,7 +56,7 @@ func (c *DestHandler) UpdateDestination() {
 
 	var req dto.UpdateDestinationRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (c *DestHandler) UpdateDestination() {
 		projectID, id, req.Type, userID)
 
 	if err := DestSvc().UpdateDestination(context.Background(), id, projectID, &req, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req)
@@ -78,7 +78,7 @@ func (c *DestHandler) DeleteDestination() {
 
 	resp, err := DestSvc().DeleteDestination(context.Background(), id)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, resp)
@@ -88,7 +88,7 @@ func (c *DestHandler) DeleteDestination() {
 func (c *DestHandler) TestConnection() {
 	var req dto.DestinationTestConnectionRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -96,7 +96,7 @@ func (c *DestHandler) TestConnection() {
 
 	result, logs, err := DestSvc().TestConnection(context.Background(), &req)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
 	}
 
@@ -113,7 +113,7 @@ func (c *DestHandler) GetDestinationJobs() {
 
 	jobs, err := DestSvc().GetDestinationJobs(context.Background(), id)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{"jobs": jobs})
@@ -127,7 +127,7 @@ func (c *DestHandler) GetDestinationVersions() {
 
 	versions, err := DestSvc().GetDestinationVersions(context.Background(), destType)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, versions)
@@ -139,7 +139,7 @@ func (c *DestHandler) GetDestinationSpec() {
 
 	var req dto.SpecRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -148,7 +148,7 @@ func (c *DestHandler) GetDestinationSpec() {
 
 	resp, err := DestSvc().GetDestinationSpec(c.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get destination spec", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, resp)

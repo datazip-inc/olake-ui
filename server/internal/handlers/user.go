@@ -19,14 +19,14 @@ type UserHandler struct {
 func (c *UserHandler) CreateUser() {
 	var req models.User
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
 	logger.Info("Create user initiated - username=%s email=%s", req.Username, req.Email)
 
 	if err := UserSvc().CreateUser(context.Background(), &req); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
 		return
 	}
 
@@ -39,7 +39,7 @@ func (c *UserHandler) GetAllUsers() {
 
 	users, err := UserSvc().GetAllUsers(context.Background())
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get users", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get users", err)
 		return
 	}
 
@@ -52,7 +52,7 @@ func (c *UserHandler) UpdateUser() {
 
 	var req models.User
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -61,10 +61,10 @@ func (c *UserHandler) UpdateUser() {
 	updatedUser, err := UserSvc().UpdateUser(context.Background(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
-			respondWithError(&c.Controller, http.StatusNotFound, "User not found", err)
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found", err)
 			return
 		}
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update user", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update user", err)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (c *UserHandler) DeleteUser() {
 	logger.Info("Delete user initiated - user_id=%d", id)
 
 	if err := UserSvc().DeleteUser(context.Background(), id); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete user", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete user", err)
 		return
 	}
 

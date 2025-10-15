@@ -9,8 +9,9 @@ import (
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
-	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
 	"github.com/datazip/olake-ui/server/utils"
@@ -185,8 +186,10 @@ func (s *SourceService) TestConnection(ctx context.Context, req *dto.SourceTestC
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read logs for test connection - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
+		logger.Error("failed to read logs - source_type=%s source_version=%s error=%v",
+			req.Type, req.Version, err)
 	}
+	// TODO: handle from frontend
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
@@ -198,10 +201,6 @@ func (s *SourceService) TestConnection(ctx context.Context, req *dto.SourceTestC
 }
 
 func (s *SourceService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
-	if s.tempClient == nil {
-		return nil, fmt.Errorf("temporal client not available - source_type=%s job_id=%d", req.Type, req.JobID)
-	}
-
 	oldStreams := ""
 	if req.JobID >= 0 {
 		job, err := s.jobORM.GetByID(req.JobID, true)
@@ -260,14 +259,6 @@ func (s *SourceService) GetSourceVersions(ctx context.Context, sourceType string
 
 // TODO: cache spec in db for each version
 func (s *SourceService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	if err := dto.Validate(&req); err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to validate get spec request - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
-	}
-
-	if s.tempClient == nil {
-		return dto.SpecResponse{}, fmt.Errorf("temporal client not available - source_type=%s source_version=%s", req.Type, req.Version)
-	}
-
 	specOut, err := s.tempClient.FetchSpec(ctx, "", req.Type, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)

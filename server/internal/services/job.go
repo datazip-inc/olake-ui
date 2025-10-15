@@ -9,8 +9,8 @@ import (
 
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
-	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
 	"github.com/datazip/olake-ui/server/utils"
@@ -83,12 +83,10 @@ func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 			projectID, req.Name, source.ID, dest.ID, userID, err)
 	}
 
-	if s.tempClient != nil {
-		_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
-		if err != nil {
-			return fmt.Errorf("failed to create temporal workflow - project_id=%s job_id=%d job_name=%s error=%v",
-				projectID, job.ID, req.Name, err)
-		}
+	_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
+	if err != nil {
+		return fmt.Errorf("failed to create temporal workflow - project_id=%s job_id=%d job_name=%s error=%v",
+			projectID, job.ID, req.Name, err)
 	}
 
 	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
@@ -129,12 +127,10 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 			projectID, jobID, req.Name, err)
 	}
 
-	if s.tempClient != nil {
-		_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
-		if err != nil {
-			return fmt.Errorf("failed to update temporal workflow - project_id=%s job_id=%d error=%v",
-				projectID, existingJob.ID, err)
-		}
+	_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
+	if err != nil {
+		return fmt.Errorf("failed to update temporal workflow - project_id=%s job_id=%d error=%v",
+			projectID, existingJob.ID, err)
 	}
 
 	telemetry.TrackJobEntity(ctx)
@@ -149,12 +145,10 @@ func (s *JobService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 
 	jobName := job.Name
 
-	if s.tempClient != nil {
-		_, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
-		if err != nil {
-			return "", fmt.Errorf("failed to delete temporal workflow - project_id=%s job_id=%d error=%v",
-				job.ProjectID, job.ID, err)
-		}
+	_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
+	if err != nil {
+		return "", fmt.Errorf("failed to delete temporal workflow - project_id=%s job_id=%d error=%v",
+			job.ProjectID, job.ID, err)
 	}
 
 	if err := s.jobORM.Delete(jobID); err != nil {
@@ -175,15 +169,11 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		return nil, fmt.Errorf("job must have both source and destination configured - project_id=%s job_id=%d", projectID, jobID)
 	}
 
-	if s.tempClient != nil {
-		resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
-		if err != nil {
-			return nil, fmt.Errorf("failed to trigger sync - project_id=%s job_id=%d error=%v", projectID, jobID, err)
-		}
-		return resp, nil
+	resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to trigger sync - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
-
-	return nil, fmt.Errorf("temporal client not available - project_id=%s job_id=%d", projectID, jobID)
+	return resp, nil
 }
 
 func (s *JobService) CancelJobRun(_ context.Context, projectID string, jobID int) (map[string]any, error) {
@@ -196,7 +186,7 @@ func (s *JobService) CancelJobRun(_ context.Context, projectID string, jobID int
 	if err := cancelAllJobWorkflows(s.tempClient, jobSlice, projectID); err != nil {
 		return nil, fmt.Errorf("failed to cancel job workflow - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
-
+	// TODO : remove nested parsing from frontend
 	return map[string]any{
 		"message": "job workflow cancel requested successfully",
 	}, nil

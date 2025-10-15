@@ -11,7 +11,7 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/utils"
 	"github.com/docker/docker/api/types/container"

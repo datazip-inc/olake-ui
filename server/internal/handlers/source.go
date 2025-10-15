@@ -6,8 +6,8 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
@@ -22,7 +22,7 @@ func (c *SourceHandler) GetAllSources() {
 
 	sources, err := SourceSvc().GetAllSources(c.Ctx.Request.Context(), projectID)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, sources)
@@ -34,7 +34,7 @@ func (c *SourceHandler) CreateSource() {
 
 	var req dto.CreateSourceRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func (c *SourceHandler) CreateSource() {
 		projectID, req.Type, req.Name, userID)
 
 	if err := SourceSvc().CreateSource(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
 
@@ -57,7 +57,7 @@ func (c *SourceHandler) UpdateSource() {
 
 	var req dto.UpdateSourceRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -70,7 +70,7 @@ func (c *SourceHandler) UpdateSource() {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
 		}
-		respondWithError(&c.Controller, status, "Failed to update source", err)
+		utils.ErrorResponse(&c.Controller, status, "Failed to update source", err)
 		return
 	}
 
@@ -85,9 +85,9 @@ func (c *SourceHandler) DeleteSource() {
 	resp, err := SourceSvc().DeleteSource(c.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found", err)
 		} else {
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete source", err)
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source", err)
 		}
 		return
 	}
@@ -98,7 +98,7 @@ func (c *SourceHandler) DeleteSource() {
 func (c *SourceHandler) TestConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -106,7 +106,7 @@ func (c *SourceHandler) TestConnection() {
 
 	result, logs, err := SourceSvc().TestConnection(c.Ctx.Request.Context(), &req)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (c *SourceHandler) TestConnection() {
 func (c *SourceHandler) GetSourceCatalog() {
 	var req dto.StreamsRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -129,7 +129,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 
 	catalog, err := SourceSvc().GetSourceCatalog(c.Ctx.Request.Context(), &req)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, catalog)
@@ -143,9 +143,9 @@ func (c *SourceHandler) GetSourceJobs() {
 	jobs, err := SourceSvc().GetSourceJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found", err)
 		} else {
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
 		}
 		return
 	}
@@ -164,7 +164,7 @@ func (c *SourceHandler) GetSourceVersions() {
 		if err.Error() == "source type is required" {
 			status = http.StatusBadRequest
 		}
-		respondWithError(&c.Controller, status, "Failed to get source versions", err)
+		utils.ErrorResponse(&c.Controller, status, "Failed to get source versions", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, versions)
@@ -176,7 +176,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 
 	var req dto.SpecRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -185,7 +185,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 
 	resp, err := SourceSvc().GetSourceSpec(c.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, err.Error())
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
 		return
 	}
 

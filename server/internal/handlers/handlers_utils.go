@@ -8,8 +8,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
-	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 
 	"github.com/datazip/olake-ui/server/utils"
 )
@@ -19,18 +18,10 @@ func GetIDFromPath(c *web.Controller) int {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		respondWithError(c, http.StatusBadRequest, "Invalid id", err)
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid id", err)
 		return 0
 	}
 	return id
-}
-
-// Helper to log and respond with error
-func respondWithError(c *web.Controller, statusCode int, msg string, err error) {
-	if err != nil {
-		logger.Error("%s: %s", msg, err)
-	}
-	utils.ErrorResponse(c, statusCode, msg)
 }
 
 // Helper to extract user ID from session

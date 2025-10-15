@@ -5,8 +5,8 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
 	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
@@ -21,7 +21,7 @@ func (c *JobHandler) GetAllJobs() {
 
 	jobs, err := JobSvc().GetAllJobs(projectID)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, jobs)
@@ -33,7 +33,7 @@ func (c *JobHandler) CreateJob() {
 
 	var req dto.CreateJobRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -42,7 +42,7 @@ func (c *JobHandler) CreateJob() {
 		projectID, req.Name, userID)
 
 	if err := JobSvc().CreateJob(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create job", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req.Name)
@@ -55,7 +55,7 @@ func (c *JobHandler) UpdateJob() {
 
 	var req dto.UpdateJobRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (c *JobHandler) UpdateJob() {
 		projectID, jobID, req.Name, userID)
 
 	if err := JobSvc().UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, req.Name)
@@ -77,7 +77,7 @@ func (c *JobHandler) DeleteJob() {
 
 	jobName, err := JobSvc().DeleteJob(c.Ctx.Request.Context(), id)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete job", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, jobName)
@@ -89,7 +89,7 @@ func (c *JobHandler) CheckUniqueJobName() {
 
 	var req dto.CheckUniqueJobNameRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (c *JobHandler) CheckUniqueJobName() {
 
 	unique, err := JobSvc().IsJobNameUnique(c.Ctx.Request.Context(), projectID, req)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
@@ -111,7 +111,7 @@ func (c *JobHandler) SyncJob() {
 
 	result, err := JobSvc().SyncJob(c.Ctx.Request.Context(), projectID, id)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to sync job", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to sync job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, result)
@@ -123,7 +123,7 @@ func (c *JobHandler) ActivateJob() {
 
 	var req dto.JobStatusRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (c *JobHandler) ActivateJob() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		respondWithError(&c.Controller, statusCode, "Failed to activate job", err)
+		utils.ErrorResponse(&c.Controller, statusCode, "Failed to activate job", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, nil)
@@ -149,7 +149,7 @@ func (c *JobHandler) CancelJobRun() {
 
 	resp, err := JobSvc().CancelJobRun(c.Ctx.Request.Context(), projectID, id)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to cancel job run", err)
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to cancel job run", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, resp)
@@ -167,7 +167,7 @@ func (c *JobHandler) GetJobTasks() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		respondWithError(&c.Controller, statusCode, "Failed to get job tasks", err)
+		utils.ErrorResponse(&c.Controller, statusCode, "Failed to get job tasks", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, tasks)
@@ -179,7 +179,7 @@ func (c *JobHandler) GetTaskLogs() {
 
 	var req dto.JobTaskRequest
 	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -191,7 +191,7 @@ func (c *JobHandler) GetTaskLogs() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		respondWithError(&c.Controller, statusCode, "Failed to get task logs", err)
+		utils.ErrorResponse(&c.Controller, statusCode, "Failed to get task logs", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, logs)

@@ -8,8 +8,9 @@ import (
 
 	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
-	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 	"github.com/datazip/olake-ui/server/internal/temporal"
 	"github.com/datazip/olake-ui/server/utils"
@@ -170,11 +171,6 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 }
 
 func (s *DestinationService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
-	if s.tempClient == nil {
-		return nil, nil, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
-			req.Type, req.Version)
-	}
-
 	version := req.Version
 	driver := req.Source
 	if driver == "" {
@@ -200,9 +196,10 @@ func (s *DestinationService) TestConnection(ctx context.Context, req *dto.Destin
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read logs - destination_type=%s destination_version=%s error=%v",
+		logger.Error("failed to read logs - destination_type=%s destination_version=%s error=%v",
 			req.Type, req.Version, err)
 	}
+	// TODO: handle from frontend
 	if result == nil {
 		result = map[string]interface{}{
 			"message": "Connection test failed",
@@ -250,11 +247,6 @@ func (s *DestinationService) GetDestinationSpec(ctx context.Context, req *dto.Sp
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
-	}
-
-	if s.tempClient == nil {
-		return dto.SpecResponse{}, fmt.Errorf("temporal client not available - destination_type=%s destination_version=%s",
-			req.Type, req.Version)
 	}
 
 	specOut, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
