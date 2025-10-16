@@ -48,7 +48,7 @@ func (r *SourceORM) Create(source *models.Source) error {
 
 func (r *SourceORM) GetAll() ([]*models.Source, error) {
 	var sources []*models.Source
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy("-updated_at").All(&sources)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all sources: %s", err)
 	}

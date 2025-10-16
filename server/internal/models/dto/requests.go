@@ -1,33 +1,8 @@
 package dto
 
-import (
-	"fmt"
-
-	"github.com/go-playground/validator/v10"
-)
-
-// ValidateStruct validates any struct that has `validate` tags.
-func Validate(s interface{}) error {
-	validate := validator.New()
-	err := validate.Struct(s)
-	if err != nil {
-		if _, ok := err.(*validator.InvalidValidationError); ok {
-			return fmt.Errorf("invalid validation error: %v", err)
-		}
-
-		// collect all validation errors into a single message
-		var errorMessages string
-		for _, err := range err.(validator.ValidationErrors) {
-			errorMessages += fmt.Sprintf("Field '%s' failed validation rule '%s'; ", err.Field(), err.Tag())
-		}
-		return fmt.Errorf("validation failed: %s", errorMessages)
-	}
-	return nil
-}
-
 // Common fields for source/destination config
 // source and destiantion are driver in olake cli
-type driverConfig struct {
+type DriverConfig struct {
 	Name    string `json:"name" validate:"required"`
 	Type    string `json:"type" validate:"required"`
 	Version string `json:"version" validate:"required"`
@@ -100,17 +75,13 @@ type UpdateDestinationRequest struct {
 	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
 }
 
-// Job source and destination configurations
-type JobSourceConfig = driverConfig
-type JobDestinationConfig = driverConfig
-
 type CreateJobRequest struct {
-	Name          string                `json:"name" validate:"required"`
-	Source        *JobSourceConfig      `json:"source" validate:"required"`
-	Destination   *JobDestinationConfig `json:"destination" validate:"required"`
-	Frequency     string                `json:"frequency" validate:"required"`
-	StreamsConfig string                `json:"streams_config" orm:"type(jsonb)" validate:"required"`
-	Activate      bool                  `json:"activate,omitempty"`
+	Name          string        `json:"name" validate:"required"`
+	Source        *DriverConfig `json:"source" validate:"required"`
+	Destination   *DriverConfig `json:"destination" validate:"required"`
+	Frequency     string        `json:"frequency" validate:"required"`
+	StreamsConfig string        `json:"streams_config" orm:"type(jsonb)" validate:"required"`
+	Activate      bool          `json:"activate,omitempty"`
 }
 
 type UpdateJobRequest = CreateJobRequest

@@ -51,7 +51,8 @@ func SuccessResponse(ctx *web.Controller, data interface{}) {
 
 func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
 	if err != nil {
-		logger.Errorf("%s", err)
+		requestURL := ctx.Ctx.Input.URI()
+		logger.Errorf("%s:%s", requestURL, err)
 	}
 	RespondJSON(ctx, status, false, message, nil)
 }

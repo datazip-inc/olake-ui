@@ -45,7 +45,10 @@ func (s *JobService) GetAllJobs(projectID string) ([]dto.JobResponse, error) {
 
 	jobResponses := make([]dto.JobResponse, 0, len(jobs))
 	for _, job := range jobs {
-		jobResp := s.buildJobResponse(job, projectID)
+		jobResp, err := s.buildJobResponse(job, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build job response - project_id=%s job_id=%d error=%v", projectID, job.ID, err)
+		}
 		jobResponses = append(jobResponses, jobResp)
 	}
 
@@ -165,10 +168,6 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		return nil, fmt.Errorf("failed to find job for sync - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
-	if job.SourceID == nil || job.DestID == nil {
-		return nil, fmt.Errorf("job must have both source and destination configured - project_id=%s job_id=%d", projectID, jobID)
-	}
-
 	resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to trigger sync - project_id=%s job_id=%d error=%v", projectID, jobID, err)
@@ -226,10 +225,6 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 		return nil, fmt.Errorf("failed to find job for tasks - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
-	if s.tempClient == nil {
-		return []dto.JobTask{}, nil
-	}
-
 	var tasks []dto.JobTask
 	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
 
@@ -279,7 +274,7 @@ func (s *JobService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	return logs, nil
 }
 
-func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.JobResponse {
+func (s *JobService) buildJobResponse(job *models.Job, projectID string) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:            job.ID,
 		Name:          job.Name,
@@ -291,7 +286,7 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.Job
 	}
 
 	if job.SourceID != nil {
-		jobResp.Source = dto.JobSourceConfig{
+		jobResp.Source = dto.DriverConfig{
 			Name:    job.SourceID.Name,
 			Type:    job.SourceID.Type,
 			Config:  job.SourceID.Config,
@@ -300,7 +295,7 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.Job
 	}
 
 	if job.DestID != nil {
-		jobResp.Destination = dto.JobDestinationConfig{
+		jobResp.Destination = dto.DriverConfig{
 			Name:    job.DestID.Name,
 			Type:    job.DestID.DestType,
 			Config:  job.DestID.Config,
@@ -315,21 +310,23 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.Job
 		jobResp.UpdatedBy = job.UpdatedBy.Username
 	}
 
-	if s.tempClient != nil {
-		query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
-		if resp, err := s.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
-			Query:    query,
-			PageSize: 1,
-		}); err == nil && len(resp.Executions) > 0 {
-			jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-			jobResp.LastRunState = resp.Executions[0].Status.String()
-		}
+	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
+	resp, err := s.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+		Query:    query,
+		PageSize: 1,
+	})
+	if err != nil {
+		return dto.JobResponse{}, fmt.Errorf("failed to list workflows - project_id=%s job_id=%d error=%v", projectID, job.ID, err)
+	}
+	if len(resp.Executions) > 0 {
+		jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
+		jobResp.LastRunState = resp.Executions[0].Status.String()
 	}
 
-	return jobResp
+	return jobResp, nil
 }
 
-func (s *JobService) getOrCreateSource(config *dto.JobSourceConfig, projectID string, userID *int) (*models.Source, error) {
+func (s *JobService) getOrCreateSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
 	sources, err := s.sourceORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(sources) > 0 {
 		source := sources[0]
@@ -364,7 +361,7 @@ func (s *JobService) getOrCreateSource(config *dto.JobSourceConfig, projectID st
 	return source, nil
 }
 
-func (s *JobService) getOrCreateDestination(config *dto.JobDestinationConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s *JobService) getOrCreateDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
 	destinations, err := s.destORM.GetByNameAndType(config.Name, config.Type, projectID)
 	if err == nil && len(destinations) > 0 {
 		dest := destinations[0]

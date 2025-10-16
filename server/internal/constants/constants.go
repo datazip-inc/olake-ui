@@ -24,10 +24,18 @@ var (
 	DefaultLogRetentionPeriod = 30
 	DefaultSpecVersion        = "v0.2.0"
 	// logging
-	EnvLogLevel  = "LOG_LEVEL"
-	EnvLogFormat = "LOG_FORMAT"
+	EnvLogLevel          = "LOG_LEVEL"
+	EnvLogFormat         = "LOG_FORMAT"
+	OrderByUpdatedAtDesc = "-updated_at"
 )
 
+// Supported database/source types
+var SupportedDriverTypes = []string{
+	"mysql",
+	"postgres",
+	"oracle",
+	"mongodb",
+}
 var RequiredConfigVariable = []string{
 	"OLAKE_POSTGRES_USER",
 	"OLAKE_POSTGRES_PASSWORD",

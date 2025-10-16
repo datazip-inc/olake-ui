@@ -67,7 +67,7 @@ func (r *JobORM) Create(job *models.Job) error {
 // GetAll retrieves all jobs
 func (r *JobORM) GetAll() ([]*models.Job, error) {
 	var jobs []*models.Job
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy("-updated_at").All(&jobs)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&jobs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all jobs: %s", err)
 	}
@@ -89,7 +89,7 @@ func (r *JobORM) GetAllJobsByProjectID(projectID string) ([]*models.Job, error) 
 	_, err := r.ormer.QueryTable(r.TableName).
 		Filter("project_id", projectID).
 		RelatedSel().
-		OrderBy("-updated_at").
+		OrderBy(constants.OrderByUpdatedAtDesc).
 		All(&jobs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs for project ID %s: %w", projectID, err)

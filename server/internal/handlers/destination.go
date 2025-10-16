@@ -123,6 +123,10 @@ func (c *DestHandler) GetDestinationJobs() {
 func (c *DestHandler) GetDestinationVersions() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	destType := c.GetString("type")
+	if err := dto.ValidateDriverType(destType); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 	logger.Info("Get destination versions initiated - project_id=%s destination_type=%s", projectID, destType)
 
 	versions, err := svc.Destination.GetDestinationVersions(context.Background(), destType)
