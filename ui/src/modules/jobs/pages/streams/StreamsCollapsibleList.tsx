@@ -243,7 +243,7 @@ const StreamsCollapsibleList = ({
 							<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
 								{/* Sliding background */}
 								<div
-									className={`absolute inset-y-0.5 w-[calc(50%-2px)] rounded-sm bg-white shadow-sm transition-transform duration-300 ease-in-out ${
+									className={`absolute inset-y-0.5 w-[calc(50%-2px)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out ${
 										!allAppend
 											? "translate-x-0.5"
 											: "translate-x-[calc(100%+2px)]"
