@@ -525,7 +525,13 @@ const StreamConfiguration = ({
 			? columnType.find(t => t !== "null") || columnType[0]
 			: columnType
 
-		if (primaryType === "string" || primaryType === "timestamp") {
+		if (
+			primaryType === "string" ||
+			primaryType === "timestamp" ||
+			primaryType === "timestamp_micro" ||
+			primaryType === "timestamp_nano" ||
+			primaryType === "timestamp_milli"
+		) {
 			// Check if value is already wrapped in quotes
 			if (!value.startsWith('"') && !value.endsWith('"')) {
 				return `"${value}"`
