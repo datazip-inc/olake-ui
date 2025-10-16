@@ -53,12 +53,12 @@ func (s *JobService) GetAllJobs(projectID string) ([]dto.JobResponse, error) {
 }
 
 func (s *JobService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
-	source, err := s.getOrCreateSource(&req.Source, projectID, userID)
+	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
 
-	dest, err := s.getOrCreateDestination(&req.Destination, projectID, userID)
+	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination - project_id=%s job_name=%s error=%v", projectID, req.Name, err)
 	}
@@ -99,13 +99,13 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to find job for update - project_id=%s job_id=%d error=%v", projectID, jobID, err)
 	}
 
-	source, err := s.getOrCreateSource(&req.Source, projectID, userID)
+	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update - project_id=%s job_id=%d error=%v",
 			projectID, jobID, err)
 	}
 
-	dest, err := s.getOrCreateDestination(&req.Destination, projectID, userID)
+	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update - project_id=%s job_id=%d error=%v",
 			projectID, jobID, err)
@@ -241,14 +241,16 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	}
 
 	for _, execution := range resp.Executions {
-		var runTime time.Duration
-		startTime := execution.StartTime.AsTime()
+		startTime := execution.StartTime.AsTime().UTC()
+		var runTime string
 		if execution.CloseTime != nil {
-			runTime = execution.CloseTime.AsTime().Sub(startTime)
+			runTime = execution.CloseTime.AsTime().UTC().Sub(startTime).Round(time.Second).String()
+		} else {
+			runTime = time.Since(startTime).Round(time.Second).String()
 		}
 		tasks = append(tasks, dto.JobTask{
-			Runtime:   runTime.String(),
-			StartTime: startTime.UTC().Format(time.RFC3339),
+			Runtime:   runTime,
+			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
 		})

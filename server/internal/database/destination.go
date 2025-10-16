@@ -63,7 +63,7 @@ func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 
 func (r *DestinationORM) GetAllByProjectID(projectID string) ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().All(&destinations)
+	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().OrderBy("-updated_at").All(&destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all destinations by project_id[%s]: %s", projectID, err)
 	}

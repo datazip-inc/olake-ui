@@ -80,63 +80,29 @@ func (r *JobORM) GetAll() ([]*models.Job, error) {
 	return jobs, nil
 }
 
-// GetAllByProjectID retrieves all jobs for a specific project
+// GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
+// including related Source and Destination, sorted by latest update time.
 func (r *JobORM) GetAllJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	// Query sources in the project using ORM
-	var sources []models.Source
-	sourceQs := r.ormer.QueryTable(constants.TableNameMap[constants.SourceTable])
-	_, err := sourceQs.Filter("project_id", projectID).All(&sources)
+	// Directly query jobs filtered by project_id — since each job already stores project_id
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("project_id", projectID).
+		RelatedSel().
+		OrderBy("-updated_at").
+		All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sources for project ID %s: %s", projectID, err)
+		return nil, fmt.Errorf("failed to get jobs for project ID %s: %w", projectID, err)
 	}
 
-	// Query destinations in the project using ORM
-	var destinations []models.Destination
-	destQs := r.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable])
-	_, err = destQs.Filter("project_id", projectID).All(&destinations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get destinations for project ID %s: %s", projectID, err)
-	}
-
-	// If no sources or destinations in the project, return empty array
-	if len(sources) == 0 && len(destinations) == 0 {
-		return jobs, nil
-	}
-
-	// Extract IDs for filtering
-	sourceIDs := make([]int, len(sources))
-	for i := range sources {
-		sourceIDs[i] = sources[i].ID
-	}
-
-	destIDs := make([]int, len(destinations))
-	for i := range destinations {
-		destIDs[i] = destinations[i].ID
-	}
-
-	// Build query for jobs
-	qs := r.ormer.QueryTable(r.TableName)
-
-	// Create OR condition for sources and destinations
-	cond := orm.NewCondition()
-	if len(sourceIDs) > 0 {
-		cond = cond.Or("source_id__in", sourceIDs)
-	}
-	if len(destIDs) > 0 {
-		cond = cond.Or("dest_id__in", destIDs)
-	}
-
-	// Add RelatedSel to load the related Source and Destination objects
-	_, err = qs.SetCond(cond).RelatedSel().All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs with related data for project ID %s: %s", projectID, err)
+	// If project has no jobs, return empty slice (not nil)
+	if len(jobs) == 0 {
+		return []*models.Job{}, nil
 	}
 
 	// Decrypt related Source and Destination configs
 	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+		return nil, fmt.Errorf("failed to decrypt job configs for project ID %s: %w", projectID, err)
 	}
 
 	return jobs, nil

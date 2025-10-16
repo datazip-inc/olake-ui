@@ -178,7 +178,7 @@ func (s *SourceService) TestConnection(ctx context.Context, req *dto.SourceTestC
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.tempClient.TestConnection(ctx, workflowID, "source", req.Type, req.Version, encryptedConfig)
+	result, err := s.tempClient.TestConnection(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("connection test failed - source_type=%s source_version=%s error=%v", req.Type, req.Version, err)
 	}

@@ -172,7 +172,7 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 
 func (s *DestinationService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	version := req.Version
-	driver := req.Source
+	driver := req.SourceType
 	if driver == "" {
 		var err error
 		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
@@ -233,7 +233,7 @@ func (s *DestinationService) GetDestinationVersions(ctx context.Context, destTyp
 		return nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", destType, err)
 	}
 
-	return map[string]interface{}{"versions": versions}, nil
+	return map[string]interface{}{"version": versions}, nil
 }
 
 // TODO: cache spec in db for each version
