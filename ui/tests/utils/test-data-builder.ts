@@ -61,12 +61,8 @@ export class TestDataBuilder {
 		catalogType?: CatalogType,
 	): string {
 		return catalogType
-			? this.uniqueName(
-					`e2e_${this.SOURCE_CONNECTOR_LABELS[sourceConnector]}_${this.DESTINATION_CONNECTOR_LABELS[destinationConnector]}_${this.CATALOG_TYPE_LABELS[catalogType]}_job`,
-				)
-			: this.uniqueName(
-					`e2e_${this.SOURCE_CONNECTOR_LABELS[sourceConnector]}_${this.DESTINATION_CONNECTOR_LABELS[destinationConnector]}_job`,
-				)
+			? `${this.SOURCE_CONNECTOR_LABELS[sourceConnector]}_${this.DESTINATION_CONNECTOR_LABELS[destinationConnector]}_${this.CATALOG_TYPE_LABELS[catalogType]}_job`
+			: `${this.SOURCE_CONNECTOR_LABELS[sourceConnector]}_${this.DESTINATION_CONNECTOR_LABELS[destinationConnector]}_job`
 	}
 
 	static timestamp(): number {
