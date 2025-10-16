@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/models"
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties
@@ -72,7 +72,7 @@ func TrackDestinationsStatus(ctx context.Context) {
 
 		for _, dest := range destinations {
 			// TODO: remove db calls loop
-			jobs, err := jobORM.GetByDestinationID(dest.ID)
+			jobs, err := jobORM.GetByDestinationID([]int{dest.ID})
 			if err != nil {
 				logs.Debug("Failed to get jobs for destination %d: %s", dest.ID, err)
 				break

@@ -2,13 +2,12 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 // JobORM handles database operations for jobs
@@ -68,7 +67,7 @@ func (r *JobORM) Create(job *models.Job) error {
 // GetAll retrieves all jobs
 func (r *JobORM) GetAll() ([]*models.Job, error) {
 	var jobs []*models.Job
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&jobs)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&jobs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all jobs: %s", err)
 	}
@@ -81,51 +80,29 @@ func (r *JobORM) GetAll() ([]*models.Job, error) {
 	return jobs, nil
 }
 
-// GetAllByProjectID retrieves all jobs for a specific project
-func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
+// GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
+// including related Source and Destination, sorted by latest update time.
+func (r *JobORM) GetAllJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	// Query sources in the project
-	sourceTable := constants.TableNameMap[constants.SourceTable]
-	sources := []int{}
-	_, err := r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, sourceTable), projectID).QueryRows(&sources)
+	// Directly query jobs filtered by project_id — since each job already stores project_id
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("project_id", projectID).
+		RelatedSel().
+		OrderBy(constants.OrderByUpdatedAtDesc).
+		All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sources for project ID %s: %s", projectID, err)
+		return nil, fmt.Errorf("failed to get jobs for project ID %s: %w", projectID, err)
 	}
 
-	// Query destinations in the project
-	destTable := constants.TableNameMap[constants.DestinationTable]
-	destinations := []int{}
-	_, err = r.ormer.Raw(fmt.Sprintf(`SELECT id FROM %q WHERE project_id = ?`, destTable), projectID).QueryRows(&destinations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get destinations for project ID %s: %s", projectID, err)
-	}
-
-	// If no sources or destinations in the project, return empty array
-	if len(sources) == 0 && len(destinations) == 0 {
-		return jobs, nil
-	}
-
-	// Build query
-	qs := r.ormer.QueryTable(r.TableName)
-	// Filter by sources or destinations from the project
-	if len(sources) > 0 {
-		qs = qs.Filter("source_id__in", sources)
-	}
-
-	if len(destinations) > 0 {
-		qs = qs.Filter("dest_id__in", destinations)
-	}
-
-	// Add RelatedSel to load the related Source and Destination objects
-	_, err = qs.RelatedSel().All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs with related data for project ID %s: %s", projectID, err)
+	// If project has no jobs, return empty slice (not nil)
+	if len(jobs) == 0 {
+		return []*models.Job{}, nil
 	}
 
 	// Decrypt related Source and Destination configs
 	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+		return nil, fmt.Errorf("failed to decrypt job configs for project ID %s: %w", projectID, err)
 	}
 
 	return jobs, nil
@@ -161,57 +138,50 @@ func (r *JobORM) GetByID(id int, decrypt bool) (*models.Job, error) {
 
 // Update a job
 func (r *JobORM) Update(job *models.Job) error {
-	job.UpdatedAt = time.Now()
 	_, err := r.ormer.Update(job)
+	return err
+}
+
+// BulkDeactivate deactivates multiple jobs by their IDs in a single query
+func (r *JobORM) UpdateAllJobs(ids []int) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	_, err := r.ormer.QueryTable(r.TableName).
+		Filter("id__in", ids).
+		Update(orm.Params{
+			"active": false,
+		})
 	return err
 }
 
 // Delete a job
 func (r *JobORM) Delete(id int) error {
-	job := &models.Job{ID: id}
-	_, err := r.ormer.Delete(job)
+	_, err := r.ormer.Delete(&models.Job{ID: id})
 	return err
 }
 
-// GetBySourceID retrieves all jobs associated with a source ID
-func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
+func (r *JobORM) GetBySourceID(sourceIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
-	source := &models.Source{ID: sourceID}
-
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("source_id", source).
-		RelatedSel().
-		All(&jobs)
+	if len(sourceIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := r.ormer.QueryTable(r.TableName).Filter("source_id__in", sourceIDs).RelatedSel().All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by source ID: %s", err)
+		return nil, err
 	}
-
-	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-	}
-
 	return jobs, nil
 }
-
-// GetByDestinationID retrieves all jobs associated with a destination ID
-func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
+func (r *JobORM) GetByDestinationID(destIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
-	dest := &models.Destination{ID: destID}
-
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("dest_id", dest).
-		RelatedSel().
-		All(&jobs)
+	if len(destIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := r.ormer.QueryTable(r.TableName).Filter("dest_id__in", destIDs).RelatedSel().All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination ID: %s", err)
+		return nil, err
 	}
-
-	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-	}
-
 	return jobs, nil
 }
 

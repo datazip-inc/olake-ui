@@ -2,13 +2,12 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 // SourceORM handles database operations for sources
@@ -49,7 +48,7 @@ func (r *SourceORM) Create(source *models.Source) error {
 
 func (r *SourceORM) GetAll() ([]*models.Source, error) {
 	var sources []*models.Source
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&sources)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all sources: %s", err)
 	}
@@ -79,8 +78,6 @@ func (r *SourceORM) GetByID(id int) (*models.Source, error) {
 }
 
 func (r *SourceORM) Update(source *models.Source) error {
-	// TODO: remove all code managed db timestamps
-	source.UpdatedAt = time.Now()
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(source.Config)
 	if err != nil {

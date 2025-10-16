@@ -2,49 +2,42 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/beego/beego/v2/server/web"
-	"golang.org/x/crypto/bcrypt"
-
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 type AuthHandler struct {
 	web.Controller
-	userORM *database.UserORM
-}
-
-func (c *AuthHandler) Prepare() {
-	c.userORM = database.NewUserORM()
 }
 
 // @router /login [post]
 func (c *AuthHandler) Login() {
-	var req models.LoginRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	var req dto.LoginRequest
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	user, err := c.userORM.FindByUsername(req.Username)
+	logger.Info("Login initiated - username=%s", req.Username)
+
+	user, err := svc.Auth.Login(context.Background(), req.Username, req.Password)
 	if err != nil {
-		ErrorResponse := "Invalid credentials"
-		if strings.Contains(err.Error(), "no row found") {
-			ErrorResponse = "user not found, sign up first"
+		switch {
+		case errors.Is(err, constants.ErrUserNotFound):
+			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
+		case errors.Is(err, constants.ErrInvalidCredentials):
+			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid credentials", err)
+		default:
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Login failed", err)
 		}
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, ErrorResponse)
-		return
-	}
-
-	if err := c.userORM.ComparePassword(user.Password, req.Password); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid credentials")
 		return
 	}
 
@@ -53,8 +46,6 @@ func (c *AuthHandler) Login() {
 		_ = c.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	telemetry.TrackUserLogin(context.Background(), user)
-
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		"username": user.Username,
 	})
@@ -62,12 +53,23 @@ func (c *AuthHandler) Login() {
 
 // @router /checkauth [get]
 func (c *AuthHandler) CheckAuth() {
-	if userID := c.GetSession(constants.SessionUserID); userID == nil {
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated")
+	userID := c.GetSession(constants.SessionUserID)
+	if userID == nil {
+		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
+	logger.Info("Check auth initiated - user_id=%v", userID)
+
+	// Optional: Validate that the user still exists in the database
+	if userIDInt, ok := userID.(int); ok {
+		if err := svc.Auth.ValidateUser(userIDInt); err != nil {
+			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
+			return
+		}
+	}
+
+	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Authenticated",
 		Success: true,
 	})
@@ -75,8 +77,15 @@ func (c *AuthHandler) CheckAuth() {
 
 // @router /logout [post]
 func (c *AuthHandler) Logout() {
-	_ = c.DestroySession()
-	utils.SuccessResponse(&c.Controller, models.LoginResponse{
+	userID := c.GetSession(constants.SessionUserID)
+	logger.Info("Logout initiated - user_id=%v", userID)
+
+	err := c.DestroySession()
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to destroy session", err)
+		return
+	}
+	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Logged out successfully",
 		Success: true,
 	})
@@ -85,21 +94,22 @@ func (c *AuthHandler) Logout() {
 // @router /signup [post]
 func (c *AuthHandler) Signup() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password")
-		return
-	}
-	req.Password = string(hashedPassword)
+	logger.Info("Signup initiated - username=%s email=%s", req.Username, req.Email)
 
-	if err := c.userORM.Create(&req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists")
+	if err := svc.Auth.Signup(context.Background(), &req); err != nil {
+		switch {
+		case errors.Is(err, constants.ErrUserAlreadyExists):
+			utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists", err)
+		case errors.Is(err, constants.ErrPasswordProcessing):
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password", err)
+		default:
+			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
+		}
 		return
 	}
 
@@ -111,6 +121,8 @@ func (c *AuthHandler) Signup() {
 
 // @router /telemetry-id [get]
 func (c *AuthHandler) GetTelemetryID() {
+	logger.Info("Get telemetry ID initiated")
+
 	telemetryID := telemetry.GetTelemetryUserID()
 	utils.SuccessResponse(&c.Controller, map[string]interface{}{
 		telemetry.TelemetryUserIDFile: string(telemetryID),

@@ -6,48 +6,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/utils"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"golang.org/x/mod/semver"
 )
-
-// Constants
-const (
-	DefaultDirPermissions  = 0755
-	DefaultFilePermissions = 0644
-)
-
-// Command represents a Docker command type
-type Command string
-
-const (
-	Discover Command = "discover"
-	Spec     Command = "spec"
-	Check    Command = "check"
-	Sync     Command = "sync"
-)
-
-// File configuration for different operations
-type FileConfig struct {
-	Name string
-	Data string
-}
-
-// Runner is responsible for executing Docker commands
-type Runner struct {
-	WorkingDir  string
-	anonymousID string
-}
 
 // NewRunner creates a new Docker runner
 func NewRunner(workingDir string) *Runner {
@@ -55,22 +25,38 @@ func NewRunner(workingDir string) *Runner {
 		logs.Critical("Failed to create working directory %s: %v", workingDir, err)
 	}
 
-	return &Runner{
-		WorkingDir:  workingDir,
-		anonymousID: telemetry.GetTelemetryUserID(),
+	// Initialize Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		logs.Critical("Failed to create Docker client: %v", err)
 	}
+
+	return &Runner{
+		WorkingDir:   workingDir,
+		anonymousID:  telemetry.GetTelemetryUserID(),
+		dockerClient: cli,
+	}
+}
+
+// Close closes the Docker client connection
+func (r *Runner) Close() error {
+	if r.dockerClient != nil {
+		return r.dockerClient.Close()
+	}
+	return nil
 }
 
 // GetDefaultConfigDir returns the default directory for storing config files
 func GetDefaultConfigDir() string {
-	return constants.DefaultConfigDir
+	// Keep using the docker package default to align with getHostOutputDir mapping rules
+	return DefaultConfigDir
 }
 
 // setupWorkDirectory creates a working directory and returns the full path
 func (r *Runner) setupWorkDirectory(subDir string) (string, error) {
 	workDir := filepath.Join(r.WorkingDir, subDir)
 	if err := utils.CreateDirectory(workDir, DefaultDirPermissions); err != nil {
-		return "", fmt.Errorf("failed to create work directory: %v", err)
+		return "", fmt.Errorf("failed to create work directory: %s", err)
 	}
 	return workDir, nil
 }
@@ -80,10 +66,20 @@ func (r *Runner) writeConfigFiles(workDir string, configs []FileConfig) error {
 	for _, config := range configs {
 		filePath := filepath.Join(workDir, config.Name)
 		if err := utils.WriteFile(filePath, []byte(config.Data), DefaultFilePermissions); err != nil {
-			return fmt.Errorf("failed to write %s: %v", config.Name, err)
+			return fmt.Errorf("failed to write %s: %s", config.Name, err)
 		}
 	}
 	return nil
+}
+
+// deleteConfigFiles removes only the config files written in the working directory
+func (r *Runner) deleteConfigFiles(workDir string, configs []FileConfig) {
+	for _, config := range configs {
+		filePath := filepath.Join(workDir, config.Name)
+		if err := os.Remove(filePath); err != nil {
+			logs.Warn("Failed to delete config file %s: %s", filePath, err)
+		}
+	}
 }
 
 // GetDockerImageName constructs a Docker image name based on source type and version
@@ -91,118 +87,28 @@ func (r *Runner) GetDockerImageName(sourceType, version string) string {
 	return fmt.Sprintf("olakego/source-%s:%s", sourceType, version)
 }
 
-// ExecuteDockerCommand executes a Docker command with the given parameters
-func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath string, additionalArgs ...string) ([]byte, error) {
-	outputDir := filepath.Dir(configPath)
-	if err := utils.CreateDirectory(outputDir, DefaultDirPermissions); err != nil {
-		return nil, err
+// FetchSpec runs the spec command and parses the resulting JSON spec
+func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (dto.SpecOutput, error) {
+	// For spec, no config file is needed; optionally pass destination-type
+	var extra []string
+	if strings.TrimSpace(destinationType) != "" {
+		extra = append(extra, "--destination-type", destinationType)
 	}
 
-	dockerArgs := r.buildDockerArgs(ctx, containerName, flag, command, sourceType, version, configPath, outputDir, additionalArgs...)
-	if len(dockerArgs) == 0 {
-		return nil, fmt.Errorf("failed to build docker args")
-	}
-
-	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
-
-	dockerCmd := exec.CommandContext(ctx, "docker", dockerArgs...)
-	output, err := dockerCmd.CombinedOutput()
-
-	logs.Info("Docker command output: %s\n", string(output))
-
+	output, err := r.ExecuteDockerCommand(ctx, workflowID, "", Spec, sourceType, version, "", extra...)
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("docker command failed with exit status %d", exitErr.ExitCode())
-		}
-		return nil, err
-	}
-
-	return output, nil
-}
-
-// buildDockerArgs constructs Docker command arguments
-func (r *Runner) buildDockerArgs(ctx context.Context, containerName, flag string, command Command, sourceType, version, configPath, outputDir string, additionalArgs ...string) []string {
-	hostOutputDir := r.getHostOutputDir(outputDir)
-
-	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
-	if err != nil {
-		logs.Critical("failed to get CONTAINER_REGISTRY_BASE: %s", err)
-		return nil
-	}
-	imageName := r.GetDockerImageName(sourceType, version)
-
-	// If using ECR, ensure login before run
-	if strings.Contains(repositoryBase, "ecr") {
-		imageName = fmt.Sprintf("%s/%s", repositoryBase, imageName)
-		accountID, region, _, err := utils.ParseECRDetails(imageName)
-		if err != nil {
-			logs.Critical("failed to parse ECR details: %s", err)
-			return nil
-		}
-		if err := utils.DockerLoginECR(ctx, region, accountID); err != nil {
-			logs.Critical("failed to login to ECR: %s", err)
-			return nil
-		}
-	}
-
-	// base docker args
-	dockerArgs := []string{"run", "--name", containerName}
-
-	if hostOutputDir != "" {
-		dockerArgs = append(dockerArgs, "-v", fmt.Sprintf("%s:/mnt/config", hostOutputDir))
-	}
-
-	for key, value := range utils.GetWorkerEnvVars() {
-		dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", key, value))
-	}
-
-	dockerArgs = append(dockerArgs, imageName, string(command))
-
-	if flag != "" {
-		dockerArgs = append(dockerArgs, fmt.Sprintf("--%s", flag))
-	}
-
-	if configPath != "" {
-		dockerArgs = append(dockerArgs, fmt.Sprintf("/mnt/config/%s", filepath.Base(configPath)))
-	}
-
-	if encryptionKey := os.Getenv(constants.EncryptionKey); encryptionKey != "" {
-		dockerArgs = append(dockerArgs, "--encryption-key", encryptionKey)
-	}
-
-	return append(dockerArgs, additionalArgs...)
-}
-
-// getHostOutputDir determines the host output directory path
-func (r *Runner) getHostOutputDir(outputDir string) string {
-	if persistentDir := os.Getenv("PERSISTENT_DIR"); persistentDir != "" {
-		hostOutputDir := strings.Replace(outputDir, constants.DefaultConfigDir, persistentDir, 1)
-		logs.Info("hostOutputDir %s\n", hostOutputDir)
-		return hostOutputDir
-	}
-	return outputDir
-}
-
-func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, version, workflowID string) (models.SpecOutput, error) {
-	flag := utils.Ternary(destinationType != "", "destination-type", "").(string)
-	dockerArgs := r.buildDockerArgs(ctx, workflowID, flag, Spec, sourceType, version, "", "", destinationType)
-
-	cmd := exec.CommandContext(ctx, "docker", dockerArgs...)
-	logs.Info("Running Docker command: docker %s\n", strings.Join(dockerArgs, " "))
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return models.SpecOutput{}, fmt.Errorf("docker command failed: %v\nOutput: %s", err, string(output))
+		return dto.SpecOutput{}, fmt.Errorf("docker command failed: %v", err)
 	}
 	spec, err := utils.ExtractJSON(string(output))
 	if err != nil {
-		return models.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
+		return dto.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
 	}
-	return models.SpecOutput{Spec: spec}, nil
+	return dto.SpecOutput{Spec: spec}, nil
 }
 
 // TestConnection runs the check command and returns connection status
 func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, config, workflowID string) (map[string]interface{}, error) {
-	workDir, err := r.setupWorkDirectory(workflowID)
+	workDir, err := r.setupWorkDirectory(WorkflowHash(workflowID))
 	if err != nil {
 		return nil, err
 	}
@@ -215,9 +121,11 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
 		return nil, err
 	}
+	defer r.deleteConfigFiles(workDir, configs)
 
 	configPath := filepath.Join(workDir, "config.json")
-	output, err := r.ExecuteDockerCommand(ctx, workflowID, flag, Check, sourceType, version, configPath)
+	// flag can be "", "config", etc.; pass as-is
+	output, err := r.ExecuteDockerCommand(ctx, WorkflowHash(workflowID), flag, Check, sourceType, version, configPath)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +156,7 @@ func (r *Runner) TestConnection(ctx context.Context, flag, sourceType, version, 
 
 // GetCatalog runs the discover command and returns catalog data
 func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, workflowID, streamsConfig, jobName string) (map[string]interface{}, error) {
-	workDir, err := r.setupWorkDirectory(workflowID)
+	workDir, err := r.setupWorkDirectory(WorkflowHash(workflowID))
 	if err != nil {
 		return nil, err
 	}
@@ -261,22 +169,24 @@ func (r *Runner) GetCatalog(ctx context.Context, sourceType, version, config, wo
 	if err := r.writeConfigFiles(workDir, configs); err != nil {
 		return nil, err
 	}
+	defer r.deleteConfigFiles(workDir, configs)
 
 	configPath := filepath.Join(workDir, "config.json")
 	catalogPath := filepath.Join(workDir, "streams.json")
+
 	var catalogsArgs []string
 	if streamsConfig != "" {
 		catalogsArgs = append(catalogsArgs, "--catalog", "/mnt/config/streams.json")
 	}
-	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
+	if jobName != "" && semver.IsValid(version) && semver.Compare(version, "v0.2.0") >= 0 {
 		catalogsArgs = append(catalogsArgs, "--destination-database-prefix", jobName)
 	}
-	_, err = r.ExecuteDockerCommand(ctx, workflowID, "config", Discover, sourceType, version, configPath, catalogsArgs...)
-	if err != nil {
+
+	if _, err = r.ExecuteDockerCommand(ctx, WorkflowHash(workflowID), "config", Discover, sourceType, version, configPath, catalogsArgs...); err != nil {
 		return nil, err
 	}
 
-	// Simplified JSON parsing - just parse if exists, return error if not
+	// Parse the resulting catalog file
 	return utils.ParseJSONFile(catalogPath)
 }
 
@@ -291,21 +201,22 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		logs.Error("workflowID %s: failed to setup work directory: %s", workflowID, err)
 		return nil, err
 	}
+	logs.Info("working directory path %s", workDir)
 
-	// Marker to indicate we have launched once; prevents relaunch after retries
+	// Marker to indicate we have launched once
 	launchedMarker := filepath.Join(workDir, "logs")
 
-	// Inspect container state
-	state := getContainerState(ctx, containerName, workflowID)
+	// Inspect container state using Docker SDK
+	state := r.getContainerState(ctx, containerName, workflowID)
 
 	// 1) If container is running, adopt and wait for completion
 	if state.Exists && state.Running {
 		logs.Info("workflowID %s: adopting running container %s", workflowID, containerName)
-		if err := waitContainer(ctx, containerName, workflowID); err != nil {
+		if err := r.waitContainer(ctx, containerName, workflowID); err != nil {
 			logs.Error("workflowID %s: container wait failed: %s", workflowID, err)
 			return nil, err
 		}
-		state = getContainerState(ctx, containerName, workflowID)
+		state = r.getContainerState(ctx, containerName, workflowID)
 	}
 
 	// 2) If container exists and exited, treat as finished: cleanup and return status
@@ -314,7 +225,6 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		if *state.ExitCode == 0 {
 			return map[string]interface{}{"status": "completed"}, nil
 		}
-		// Return typed error so policy can decide retry vs. fail-fast
 		return nil, fmt.Errorf("workflowID %s: container %s exit %d", workflowID, containerName, *state.ExitCode)
 	}
 
@@ -361,6 +271,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 		logs.Info("workflowID %s: container %s completed successfully", workflowID, containerName)
 		return map[string]interface{}{"status": "completed"}, nil
 	}
+
 	// Skip if container is not running, was already launched (logs exist), and no new run is needed.
 	logs.Info("workflowID %s: container %s already handled, skipping launch", workflowID, containerName)
 	return map[string]interface{}{"status": "skipped"}, nil
@@ -372,52 +283,36 @@ type ContainerState struct {
 	ExitCode *int
 }
 
-func getContainerState(ctx context.Context, name, workflowID string) ContainerState {
-	// docker inspect returns fields if exists
-	cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Status}} {{.State.Running}} {{.State.ExitCode}}", name)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		// treat not found as non-existent
-		logs.Warn("workflowID %s: docker inspect failed for %s: %s, output: %s", workflowID, name, err, string(out))
+func (r *Runner) getContainerState(ctx context.Context, name, workflowID string) ContainerState {
+	inspect, err := r.dockerClient.ContainerInspect(ctx, name)
+	if err != nil || inspect.ContainerJSONBase == nil || inspect.State == nil {
+		logs.Warn("workflowID %s: container inspect failed or state missing for %s: %v", workflowID, name, err)
 		return ContainerState{Exists: false}
 	}
-	// Split Docker inspect output into fields: status, running flag, and exit code
-	// Example: "exited false 137" → parts[0]="exited", parts[1]="false", parts[2]="137"
-	parts := strings.Fields(strings.TrimSpace(string(out)))
-	if len(parts) < 3 {
-		return ContainerState{Exists: false}
-	}
-	// Docker .State.Status can be "created", "running", "paused", "restarting", "removing", "exited", or "dead"; we only handle running vs exited/dead.
-	status := parts[0]
-	running := parts[1] == "true"
+	running := inspect.State.Running
 	var ec *int
-	if !running && (status == "exited" || status == "dead") {
-		if code, convErr := strconv.Atoi(parts[2]); convErr == nil {
-			ec = &code
-		}
+	if !running && inspect.State.ExitCode != 0 {
+		code := inspect.State.ExitCode
+		ec = &code
 	}
 	return ContainerState{Exists: true, Running: running, ExitCode: ec}
 }
 
-func waitContainer(ctx context.Context, name, workflowID string) error {
-	// docker wait prints exit code; validate non-zero as error
-	cmd := exec.CommandContext(ctx, "docker", "wait", name)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		logs.Error("workflowID %s: docker wait failed for %s: %s, output: %s", workflowID, name, err, string(out))
-		return fmt.Errorf("docker wait failed: %s", err)
+func (r *Runner) waitContainer(ctx context.Context, name, workflowID string) error {
+	statusCh, errCh := r.dockerClient.ContainerWait(ctx, name, "")
+	select {
+	case err := <-errCh:
+		if err != nil {
+			logs.Error("workflowID %s: container wait failed for %s: %s", workflowID, name, err)
+			return fmt.Errorf("docker wait failed: %s", err)
+		}
+		return nil
+	case status := <-statusCh:
+		if status.StatusCode != 0 {
+			return fmt.Errorf("workflowID %s: container %s exited with code %d", workflowID, name, status.StatusCode)
+		}
+		return nil
 	}
-	strOut := strings.TrimSpace(string(out))
-	code, convErr := strconv.Atoi(strOut)
-	if convErr != nil {
-		logs.Error("workflowID %s: failed to parse exit code from docker wait output %q: %s", workflowID, strOut, convErr)
-		return fmt.Errorf("failed to parse exit code: %s", convErr)
-	}
-
-	if code != 0 {
-		return fmt.Errorf("workflowID %s: container %s exited with code %d", workflowID, name, code)
-	}
-	return nil
 }
 
 // StopContainer stops a container by name, falling back to kill if needed.
@@ -430,23 +325,28 @@ func StopContainer(ctx context.Context, workflowID string) error {
 		return fmt.Errorf("empty container name")
 	}
 
-	stopCmd := exec.CommandContext(ctx, "docker", "stop", "-t", "5", containerName)
-	if out, err := stopCmd.CombinedOutput(); err != nil {
-		logs.Warn("workflowID %s: docker stop failed for %s: %s, output: %s", workflowID, containerName, err, string(out))
-		killCmd := exec.CommandContext(ctx, "docker", "kill", containerName)
-		if kout, kerr := killCmd.CombinedOutput(); kerr != nil {
-			logs.Error("workflowID %s: docker kill failed for %s: %s, output: %s", workflowID, containerName, kerr, string(kout))
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to init docker client: %v", err)
+	}
+	defer cli.Close()
+
+	// Graceful stop with timeout in seconds (use StopOptions{} if relying on engine default)
+	t := 5 // seconds
+	if err := cli.ContainerStop(ctx, containerName, container.StopOptions{Timeout: &t}); err != nil {
+		logs.Warn("workflowID %s: docker stop failed for %s: %s", workflowID, containerName, err)
+		if kerr := cli.ContainerKill(ctx, containerName, "SIGKILL"); kerr != nil {
+			logs.Error("workflowID %s: docker kill failed for %s: %s", workflowID, containerName, kerr)
 			return fmt.Errorf("docker kill failed: %s", kerr)
 		}
 	}
 
-	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", containerName)
-	if rmOut, rmErr := rmCmd.CombinedOutput(); rmErr != nil {
-		logs.Warn("workflowID %s: docker rm failed for %s: %s, output: %s", workflowID, containerName, rmErr, string(rmOut))
+	// Remove container
+	if err := cli.ContainerRemove(ctx, containerName, container.RemoveOptions{Force: true}); err != nil {
+		logs.Warn("workflowID %s: docker rm failed for %s: %s", workflowID, containerName, err)
 	} else {
 		logs.Info("workflowID %s: container %s removed successfully", workflowID, containerName)
 	}
-
 	return nil
 }
 

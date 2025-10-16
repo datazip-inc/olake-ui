@@ -1,56 +1,102 @@
 package logger
 
 import (
+	"io"
 	"os"
-	"path"
-	"sync"
+	"strings"
+	"time"
 
-	"github.com/beego/beego/v2/core/logs"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
 )
 
-var (
-	loggerInitOnce sync.Once
-)
+var logger zerolog.Logger
 
-func InitLogger(logdir string) {
-	loggerInitOnce.Do(func() {
-		// Clear existing loggers first
-		logs.Reset()
+func Init() {
+	format := viper.GetString(constants.EnvLogFormat)
+	level := viper.GetString(constants.EnvLogLevel)
 
-		// Create logs directory
-		if err := os.MkdirAll(logdir, 0755); err != nil {
-			panic("Failed to create log directory: " + err.Error())
+	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
+
+	var writer io.Writer
+	switch strings.ToLower(format) {
+	case "console":
+		// Use ConsoleWriter with built-in colors and formatting
+		writer = zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.RFC3339,
 		}
+	default:
+		// Default to JSON for production safety
+		writer = os.Stdout
+	}
 
-		// Console configuration
-		consoleConfig := `{
-			"level": 7,
-			"color": true
-		}`
+	logger = zerolog.New(writer).With().Timestamp().Logger()
+	zerolog.SetGlobalLevel(parseLogLevel(level))
+}
 
-		// File configuration
-		fileConfig := `{
-			"filename": "` + path.Join(logdir, "olake-server.log") + `",
-			"level": 7,
-			"maxlines": 1000,
-			"maxdays": 7,
-			"daily": false,
-			"rotate": true,
-			"perm": "0644"
-		}`
+// parseLogLevel converts a string level to a zerolog.Level
+func parseLogLevel(levelStr string) zerolog.Level {
+	switch strings.ToLower(levelStr) {
+	case "debug":
+		return zerolog.DebugLevel
+	case "info":
+		return zerolog.InfoLevel
+	case "warn":
+		return zerolog.WarnLevel
+	case "error":
+		return zerolog.ErrorLevel
+	case "fatal":
+		return zerolog.FatalLevel
+	default:
+		return zerolog.InfoLevel // Default to info level
+	}
+}
 
-		// Initialize loggers
-		if err := logs.SetLogger(logs.AdapterConsole, consoleConfig); err != nil {
-			panic("Console logger init failed: " + err.Error())
-		}
+// Info writes record with log level INFO
+func Info(v ...interface{}) {
+	if len(v) == 1 {
+		logger.Info().Interface("message", v[0]).Send()
+	} else {
+		logger.Info().Msgf("%s", v...)
+	}
+}
 
-		if err := logs.SetLogger(logs.AdapterFile, fileConfig); err != nil {
-			panic("File logger init failed: " + err.Error())
-		}
+func Infof(format string, v ...interface{}) {
+	logger.Info().Msgf(format, v...)
+}
 
-		// Configure logger behavior
-		logs.SetLogFuncCallDepth(3)
-		logs.EnableFuncCallDepth(true)
-		logs.SetLevel(logs.LevelDebug)
-	})
+func Debug(v ...interface{}) {
+	logger.Debug().Msgf("%s", v...)
+}
+
+func Debugf(format string, v ...interface{}) {
+	logger.Debug().Msgf(format, v...)
+}
+
+func Error(v ...interface{}) {
+	logger.Error().Msgf("%s", v...)
+}
+
+func Errorf(format string, v ...interface{}) {
+	logger.Error().Msgf(format, v...)
+}
+
+func Warn(v ...interface{}) {
+	logger.Warn().Msgf("%s", v...)
+}
+
+func Warnf(format string, v ...interface{}) {
+	logger.Warn().Msgf(format, v...)
+}
+
+func Fatal(v ...interface{}) {
+	logger.Fatal().Msgf("%s", v...)
+	os.Exit(1)
+}
+
+func Fatalf(format string, v ...interface{}) {
+	logger.Fatal().Msgf(format, v...)
+	os.Exit(1)
 }

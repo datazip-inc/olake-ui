@@ -17,8 +17,9 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/robfig/cron"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/models/dto"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {
@@ -36,7 +37,7 @@ func ToMapOfInterface(structure any) map[string]interface{} {
 
 func RespondJSON(ctx *web.Controller, status int, success bool, message string, data interface{}) {
 	ctx.Ctx.Output.SetStatus(status)
-	ctx.Data["json"] = models.JSONResponse{
+	ctx.Data["json"] = dto.JSONResponse{
 		Success: success,
 		Message: message,
 		Data:    data,
@@ -48,7 +49,11 @@ func SuccessResponse(ctx *web.Controller, data interface{}) {
 	RespondJSON(ctx, http.StatusOK, true, "success", data)
 }
 
-func ErrorResponse(ctx *web.Controller, status int, message string) {
+func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
+	if err != nil {
+		requestURL := ctx.Ctx.Input.URI()
+		logger.Errorf("%s:%s", requestURL, err)
+	}
 	RespondJSON(ctx, status, false, message, nil)
 }
 

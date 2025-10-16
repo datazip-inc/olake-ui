@@ -2,13 +2,12 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip/olake-ui/server/utils"
 )
 
 // DestinationORM handles database operations for destinations
@@ -49,7 +48,7 @@ func (r *DestinationORM) Create(destination *models.Destination) error {
 
 func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&destinations)
+	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all destinations: %s", err)
 	}
@@ -64,7 +63,7 @@ func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
 
 func (r *DestinationORM) GetAllByProjectID(projectID string) ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().All(&destinations)
+	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all destinations by project_id[%s]: %s", projectID, err)
 	}
@@ -94,8 +93,6 @@ func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
 }
 
 func (r *DestinationORM) Update(destination *models.Destination) error {
-	destination.UpdatedAt = time.Now()
-
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(destination.Config)
 	if err != nil {
@@ -108,6 +105,8 @@ func (r *DestinationORM) Update(destination *models.Destination) error {
 
 func (r *DestinationORM) Delete(id int) error {
 	destination := &models.Destination{ID: id}
+	// Use ORM's Delete method which will automatically handle the soft delete
+	// by setting the DeletedAt field due to the ORM tags in BaseModel
 	_, err := r.ormer.Delete(destination)
 	return err
 }
