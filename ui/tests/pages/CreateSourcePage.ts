@@ -3,6 +3,7 @@ import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
 import { SourceFormConfig } from "../types/PageConfig.types"
 import { selectConnector } from "../utils/page-utils"
+import { SourceConnector } from "../enums"
 
 export class CreateSourcePage extends BasePage {
 	readonly sourceNameInput: Locator
@@ -15,14 +16,7 @@ export class CreateSourcePage extends BasePage {
 	readonly testConnectionButton: Locator
 	readonly setupTypeNew: Locator
 	readonly setupTypeExisting: Locator
-
-	// Connector test ID mappings for selection
-	private readonly connectorTestIdMap: Record<string, string> = {
-		MongoDB: "connector-option-mongodb",
-		Postgres: "connector-option-postgres",
-		MySQL: "connector-option-mysql",
-		Oracle: "connector-option-oracle",
-	}
+	readonly existingSourceSelect: Locator
 
 	constructor(page: Page) {
 		super(page)
@@ -39,7 +33,10 @@ export class CreateSourcePage extends BasePage {
 			name: "Test Connection",
 		})
 		this.setupTypeNew = page.getByText("Set up a new source")
-		this.setupTypeExisting = page.getByText("Use an existing source")
+		this.setupTypeExisting = page.getByRole("radio", {
+			name: "Use an existing source",
+		})
+		this.existingSourceSelect = page.getByTestId("existing-source")
 	}
 
 	async goto() {
@@ -134,6 +131,13 @@ export class CreateSourcePage extends BasePage {
 		await this.backToSourcesLink.click()
 	}
 
+	async selectExistingSource(sourceName: string, connector: SourceConnector) {
+		await this.selectSetupType("existing")
+		await selectConnector(this.page, this.connectorSelect, connector)
+		await this.existingSourceSelect.click()
+		await this.page.getByText(sourceName, { exact: true }).click()
+	}
+
 	async selectSetupType(type: "new" | "existing") {
 		if (type === "new") {
 			await this.setupTypeNew.click()
@@ -204,12 +208,7 @@ export class CreateSourcePage extends BasePage {
 	 */
 	async fillSourceForm(config: SourceFormConfig) {
 		// Select connector
-		await selectConnector(
-			this.page,
-			this.connectorSelect,
-			config.connector,
-			this.connectorTestIdMap,
-		)
+		await selectConnector(this.page, this.connectorSelect, config.connector)
 
 		// Select version if provided
 		if (config.version) {

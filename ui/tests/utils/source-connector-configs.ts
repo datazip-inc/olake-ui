@@ -8,6 +8,7 @@
  * @module SourceConnectorConfigs
  */
 
+import { SourceConnector } from "../enums"
 import { SourceFormConfig } from "../types/PageConfig.types"
 
 /**
@@ -47,7 +48,7 @@ export const createPostgresSourceConfig = (data: {
 	}
 }): SourceFormConfig => ({
 	name: data.name,
-	connector: "Postgres",
+	connector: SourceConnector.Postgres,
 	version: data.version,
 	fields: {
 		host: data.host,
@@ -101,7 +102,7 @@ export const createMongoDBSourceConfig = (data: {
 	chunking_strategy?: "Split Vector" | "Timestamp"
 }): SourceFormConfig => ({
 	name: data.name,
-	connector: "MongoDB",
+	connector: SourceConnector.MongoDB,
 	version: data.version,
 	fields: {
 		hosts: data.hosts,
@@ -137,7 +138,7 @@ export const createMySQLSourceConfig = (data: {
 	ssl?: boolean
 }): SourceFormConfig => ({
 	name: data.name,
-	connector: "MySQL",
+	connector: SourceConnector.MySQL,
 	version: data.version,
 	fields: {
 		host: data.host,
@@ -163,7 +164,7 @@ export const createOracleSourceConfig = (data: {
 	version?: string
 }): SourceFormConfig => ({
 	name: data.name,
-	connector: "Oracle",
+	connector: SourceConnector.Oracle,
 	version: data.version,
 	fields: {
 		host: data.host,
@@ -179,7 +180,7 @@ export const createOracleSourceConfig = (data: {
  * Use this for custom or one-off configurations
  */
 export const createGenericSourceConfig = (
-	connector: string,
+	connector: SourceConnector,
 	name: string,
 	fields: Record<string, any>,
 	version?: string,

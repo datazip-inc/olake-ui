@@ -1,3 +1,4 @@
+import { SourceConnector, DestinationConnector, CatalogType } from "../enums"
 import { testAuthenticated as test, expect } from "../fixtures"
 import {
 	createPostgresSourceConfig,
@@ -23,9 +24,9 @@ test.describe("Job End-to-End User Journey", () => {
 		await jobsPage.goto()
 		await expect(page).toHaveURL("/jobs")
 
-		const SOURCE_CONNECTOR = "postgres"
-		const DEST_CONNECTOR = "iceberg"
-		const CATALOG_TYPE = "jdbc"
+		const SOURCE_CONNECTOR = SourceConnector.Postgres
+		const DEST_CONNECTOR = DestinationConnector.ApacheIceberg
+		const CATALOG_TYPE = CatalogType.JDBC
 
 		const sourceName = TestDataBuilder.getUniqueSourceName(SOURCE_CONNECTOR)
 		const destinationName =
@@ -82,6 +83,8 @@ test.describe("Job End-to-End User Journey", () => {
 			jobName,
 			streamName: JOB_CONFIG.streamName,
 			frequency: JOB_CONFIG.frequency,
+			sourceConnector: SOURCE_CONNECTOR,
+			destinationConnector: DEST_CONNECTOR,
 		})
 
 		await createJobPage.goToJobsPage()

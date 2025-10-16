@@ -5,6 +5,7 @@
  * All destination fields are under the 'writer' prefix in RJSF.
  */
 
+import { CatalogType, DestinationConnector } from "../enums"
 import { DestinationFormConfig } from "../types/PageConfig.types"
 
 /**
@@ -21,7 +22,7 @@ export const createS3DestinationConfig = (data: {
 	version?: string
 }): DestinationFormConfig => ({
 	name: data.name,
-	connector: "S3",
+	connector: DestinationConnector.AmazonS3,
 	version: data.version,
 	fields: {
 		s3_bucket: data.s3_bucket,
@@ -47,8 +48,8 @@ export const createIcebergGlueConfig = (data: {
 	version?: string
 }): DestinationFormConfig => ({
 	name: data.name,
-	connector: "Apache Iceberg",
-	catalogType: "glue",
+	connector: DestinationConnector.ApacheIceberg,
+	catalogType: CatalogType.Glue,
 	version: data.version,
 	fields: {
 		aws_region: data.aws_region,
@@ -79,8 +80,8 @@ export const createIcebergJdbcConfig = (data: {
 	version?: string
 }): DestinationFormConfig => ({
 	name: data.name,
-	connector: "Apache Iceberg",
-	catalogType: "jdbc",
+	connector: DestinationConnector.ApacheIceberg,
+	catalogType: CatalogType.JDBC,
 	version: data.version,
 	fields: {
 		jdbc_url: data.jdbc_url,
@@ -116,8 +117,8 @@ export const createIcebergHiveConfig = (data: {
 	version?: string
 }): DestinationFormConfig => ({
 	name: data.name,
-	connector: "Apache Iceberg",
-	catalogType: "hive",
+	connector: DestinationConnector.ApacheIceberg,
+	catalogType: CatalogType.Hive,
 	version: data.version,
 	fields: {
 		hive_uri: data.hive_uri,
@@ -158,8 +159,8 @@ export const createIcebergRestConfig = (data: {
 	version?: string
 }): DestinationFormConfig => ({
 	name: data.name,
-	connector: "Apache Iceberg",
-	catalogType: "rest",
+	connector: DestinationConnector.ApacheIceberg,
+	catalogType: CatalogType.Rest,
 	version: data.version,
 	fields: {
 		rest_catalog_url: data.rest_catalog_url,

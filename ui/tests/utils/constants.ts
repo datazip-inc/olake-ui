@@ -51,3 +51,15 @@ export const LOGIN_CREDENTIALS = {
 		password: "invalid",
 	},
 } as const
+
+export const DESTINATION_CONNECTOR_TEST_ID_MAP: Record<string, string> = {
+	"Apache Iceberg": "connector-option-iceberg",
+	"Amazon S3": "connector-option-s3",
+}
+
+export const SOURCE_CONNECTOR_TEST_ID_MAP: Record<string, string> = {
+	MongoDB: "connector-option-mongodb",
+	Postgres: "connector-option-postgres",
+	MySQL: "connector-option-mysql",
+	Oracle: "connector-option-oracle",
+}

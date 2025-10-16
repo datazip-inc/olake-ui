@@ -3,6 +3,7 @@ import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
 import { DestinationFormConfig } from "../types/PageConfig.types"
 import { selectConnector } from "../utils/page-utils"
+import { CatalogType, DestinationConnector } from "../enums"
 
 export class CreateDestinationPage extends BasePage {
 	readonly destinationNameInput: Locator
@@ -16,11 +17,14 @@ export class CreateDestinationPage extends BasePage {
 	readonly setupTypeNew: Locator
 	readonly setupTypeExisting: Locator
 	readonly icebergCatalogInput: Locator
+	readonly existingDestinationSelect: Locator
 
-	// Connector test ID mappings for selection
-	private readonly connectorTestIdMap: Record<string, string> = {
-		"Apache Iceberg": "connector-option-iceberg",
-		"Amazon S3": "connector-option-s3",
+	// Map catalog type to display name in UI
+	readonly catalogDisplayNames: Record<CatalogType, string> = {
+		[CatalogType.Glue]: "AWS Glue",
+		[CatalogType.JDBC]: "JDBC",
+		[CatalogType.Hive]: "Hive",
+		[CatalogType.Rest]: "REST",
 	}
 
 	constructor(page: Page) {
@@ -42,6 +46,7 @@ export class CreateDestinationPage extends BasePage {
 		})
 		this.setupTypeNew = page.getByText("Set up a new destination")
 		this.setupTypeExisting = page.getByText("Use an existing destination")
+		this.existingDestinationSelect = page.getByTestId("existing-destination")
 	}
 
 	async goto() {
@@ -93,20 +98,10 @@ export class CreateDestinationPage extends BasePage {
 	 *
 	 * @param catalogType - One of: "glue", "jdbc", "hive", "rest"
 	 */
-	async selectCatalogType(
-		catalogType: "glue" | "jdbc" | "hive" | "rest",
-	): Promise<void> {
+	async selectCatalogType(catalogType: CatalogType): Promise<void> {
 		await this.icebergCatalogInput.click({ timeout: TIMEOUTS.LONG })
 
-		// Map catalog type to display name in UI
-		const catalogDisplayNames: Record<string, string> = {
-			glue: "AWS Glue",
-			jdbc: "JDBC",
-			hive: "Hive",
-			rest: "REST",
-		}
-
-		const displayName = catalogDisplayNames[catalogType]
+		const displayName = this.catalogDisplayNames[catalogType]
 		await this.page.getByText(displayName, { exact: true }).click()
 
 		// Wait for form to update based on catalog type
@@ -116,6 +111,16 @@ export class CreateDestinationPage extends BasePage {
 	async fillDestinationName(name: string) {
 		await this.destinationNameInput.click()
 		await this.destinationNameInput.fill(name)
+	}
+
+	async selectExistingDestination(
+		destinationName: string,
+		connector: DestinationConnector,
+	) {
+		await this.selectSetupType("existing")
+		await selectConnector(this.page, this.connectorSelect, connector)
+		await this.existingDestinationSelect.click()
+		await this.page.getByText(destinationName, { exact: true }).click()
 	}
 
 	/**
@@ -161,15 +166,10 @@ export class CreateDestinationPage extends BasePage {
 	 * Returns the spec response data
 	 * Throws if API fails or times out
 	 */
-	async selectConnectorAndWaitForSpec(connector: string) {
+	async selectConnectorAndWaitForSpec(connector: DestinationConnector) {
 		console.log(`→ Selecting connector: ${connector}`)
 		const specPromise = this.waitForDestinationSpecResponse()
-		await selectConnector(
-			this.page,
-			this.connectorSelect,
-			connector,
-			this.connectorTestIdMap,
-		)
+		await selectConnector(this.page, this.connectorSelect, connector)
 		return await specPromise
 	}
 
@@ -226,7 +226,7 @@ export class CreateDestinationPage extends BasePage {
 		await this.fillDestinationName(config.name)
 
 		// For Iceberg, select catalog type first if provided
-		if (config.connector.toLowerCase() === "apache iceberg") {
+		if (config.connector === DestinationConnector.ApacheIceberg) {
 			if (config.catalogType) {
 				await this.selectCatalogType(config.catalogType)
 			}

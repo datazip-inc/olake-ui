@@ -1,13 +1,15 @@
 import { Page, Locator } from "@playwright/test"
 import { BasePage } from "./BasePage"
 import { JobFormConfig } from "../types/PageConfig.types"
+import { DestinationConnector, SourceConnector } from "../enums"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateJobPage extends BasePage {
 	readonly jobNameInput: Locator
 	readonly useExistingSourceRadio: Locator
 	readonly useExistingDestinationRadio: Locator
-	readonly sourceSelect: Locator
-	readonly destinationSelect: Locator
+	readonly existingSourceSelect: Locator
+	readonly existingDestinationSelect: Locator
 	readonly nextButton: Locator
 	readonly createJobButton: Locator
 	readonly cancelButton: Locator
@@ -28,8 +30,8 @@ export class CreateJobPage extends BasePage {
 		this.useExistingDestinationRadio = page.getByText(
 			"Use an existing destination",
 		)
-		this.sourceSelect = page.getByTestId("existing-source")
-		this.destinationSelect = page.getByTestId("existing-destination")
+		this.existingSourceSelect = page.getByTestId("existing-source")
+		this.existingDestinationSelect = page.getByTestId("existing-destination")
 		this.nextButton = page.getByRole("button", { name: "Next" })
 		this.createJobButton = page.getByRole("button", { name: "Create Job" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
@@ -55,30 +57,23 @@ export class CreateJobPage extends BasePage {
 		await this.expectVisible(this.nextButton)
 	}
 
-	async selectExistingSource(sourceName: string) {
+	async selectExistingSource(sourceName: string, connector: SourceConnector) {
 		await this.useExistingSourceRadio.check()
-		await this.sourceConnectorSelect.click()
-		await this.page
-			.locator("div")
-			.filter({ hasText: /^Postgres$/ })
-			.nth(1)
-			.click()
-		await this.sourceSelect.click()
+		await selectConnector(this.page, this.sourceConnectorSelect, connector)
+		await this.existingSourceSelect.click()
 
 		await this.page.getByText(sourceName).click()
 		await this.nextButton.click()
 	}
 
-	async selectExistingDestination(destinationName: string) {
+	async selectExistingDestination(
+		destinationName: string,
+		connector: DestinationConnector,
+	) {
 		await this.useExistingDestinationRadio.click()
-		await this.destinationConnectorSelect.click()
-		await this.page
-			.locator("div")
-			.filter({ hasText: /^Apache Iceberg$/ })
-			.nth(1)
-			.click()
+		await selectConnector(this.page, this.destinationConnectorSelect, connector)
 
-		await this.destinationSelect.click()
+		await this.existingDestinationSelect.click()
 		await this.page.getByText(destinationName, { exact: true }).click()
 		await this.nextButton.click()
 	}
@@ -125,10 +120,13 @@ export class CreateJobPage extends BasePage {
 		await this.configureJobSettings(data.jobName, data.frequency)
 
 		// Step 2: Select source
-		await this.selectExistingSource(data.sourceName)
+		await this.selectExistingSource(data.sourceName, data.sourceConnector)
 
 		// Step 3: Select destination
-		await this.selectExistingDestination(data.destinationName)
+		await this.selectExistingDestination(
+			data.destinationName,
+			data.destinationConnector,
+		)
 
 		// Step 4: Configure streams
 		await this.configureStreams(data.streamName)
