@@ -94,6 +94,7 @@ export interface SelectedStream {
 	normalization: boolean
 	filter?: string
 	disabled?: boolean
+	append_mode?: boolean
 }
 
 export interface StreamsDataStructure {
@@ -166,6 +167,11 @@ export interface ExtendedStreamConfigurationProps
 		namespace: string,
 		filterValue: string,
 	) => void
+	onIngestionModeChange: (
+		streamName: string,
+		namespace: string,
+		appendMode: boolean,
+	) => void
 }
 
 export interface GroupedStreamsCollapsibleListProps {
@@ -194,6 +200,7 @@ export interface GroupedStreamsCollapsibleListProps {
 			  }
 		>
 	>
+	allAppend: boolean
 }
 
 export interface StreamSchemaProps {

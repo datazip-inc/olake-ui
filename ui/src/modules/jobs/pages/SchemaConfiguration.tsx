@@ -5,6 +5,7 @@ import { sourceService } from "../../../api"
 import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
+	IngestionMode,
 	SchemaConfigurationProps,
 	SelectedStream,
 	StreamData,
@@ -21,6 +22,7 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+import IngestionModeChangeModal from "../../common/Modals/IngestionModeChangeModal"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -60,6 +62,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
 		useState(initialStreamsData)
+
+	const [allAppend, setAllAppend] = useState(false)
 
 	// Use ref to track if we've initialized to prevent double updates
 	const initialized = useRef(false)
@@ -354,6 +358,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							normalization: false,
 							filter: "",
 							disabled: false,
+							append_mode: allAppend,
 						},
 					]
 					changed = true
@@ -426,6 +431,63 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				selected_streams: updatedSelectedStreams,
 			}
 
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handleIngestionModeChange = (
+		streamName: string,
+		namespace: string,
+		appendMode: boolean,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, append_mode: appendMode } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handleAllStreamsUpdate = (ingestionMode: IngestionMode) => {
+		const appendMode = ingestionMode === IngestionMode.APPEND
+		setAllAppend(appendMode)
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			// Update all streams with the same append mode
+			const updateSelectedStreams = Object.fromEntries(
+				Object.entries(prev.selected_streams).map(([namespace, streams]) => [
+					namespace,
+					streams.map(stream => ({
+						...stream,
+						append_mode: appendMode,
+					})),
+				]),
+			)
+
+			const updated = {
+				...prev,
+				selected_streams: updateSelectedStreams,
+			}
 			setSelectedStreams(updated)
 			return updated
 		})
@@ -671,6 +733,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							setActiveStreamData={setActiveStreamData}
 							activeStreamData={activeStreamData}
 							onStreamSelect={handleStreamSelect}
+							allAppend={allAppend}
 							setSelectedStreams={(updatedSelectedStreams: any) => {
 								if (!apiResponse) return
 
@@ -736,6 +799,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
 							destinationType={destinationType}
+							onIngestionModeChange={handleIngestionModeChange}
 						/>
 					) : null}
 				</div>
@@ -749,6 +813,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				onSave={handleDestinationDatabaseSave}
 				originalDatabase={destinationDatabase || ""}
 				initialStreams={initialStreamsState || null}
+			/>
+
+			<IngestionModeChangeModal
+				ingestionMode={allAppend ? IngestionMode.UPSERT : IngestionMode.APPEND}
+				onConfirm={handleAllStreamsUpdate}
 			/>
 		</div>
 	)

@@ -4,6 +4,7 @@ import { Checkbox, Empty } from "antd"
 
 import { GroupedStreamsCollapsibleListProps } from "../../../../types"
 import StreamPanel from "./StreamPanel"
+import { useAppStore } from "../../../../store"
 
 const StreamsCollapsibleList = ({
 	groupedStreams,
@@ -11,7 +12,9 @@ const StreamsCollapsibleList = ({
 	setActiveStreamData,
 	activeStreamData,
 	onStreamSelect,
+	allAppend,
 }: GroupedStreamsCollapsibleListProps) => {
+	const { setShowIngestionModeChangeModal } = useAppStore()
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
@@ -223,75 +226,107 @@ const StreamsCollapsibleList = ({
 	}
 
 	return (
-		<div className="flex h-full flex-col">
-			{Object.keys(groupedStreams).length === 0 ? (
-				<Empty className="pt-10" />
-			) : (
-				<>
-					<div className="mb-4 flex items-center">
-						<Checkbox
-							checked={checkedStatus.global}
-							onChange={e => handleGlobalSyncAll(e.target.checked)}
-						>
-							Sync all
-						</Checkbox>
-					</div>
-					{Object.entries(groupedStreams).map(([ns, streams]) => {
-						return (
-							<div
-								key={ns}
-								className="mb-2 border border-solid border-[#e5e7eb]"
+		<>
+			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
+				{Object.keys(groupedStreams).length === 0 ? (
+					<Empty className="pt-10" />
+				) : (
+					<>
+						<div className="flex items-center justify-between rounded-t-[4px] border border-b-0 bg-white px-2 py-4">
+							<Checkbox
+								checked={checkedStatus.global}
+								onChange={e => handleGlobalSyncAll(e.target.checked)}
 							>
+								Sync all
+							</Checkbox>
+
+							<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
+								{/* Sliding background */}
 								<div
-									className="flex cursor-pointer items-center border-b border-solid border-gray-200 bg-background-primary p-3"
-									onClick={() => handleToggleNamespace(ns)}
+									className={`absolute inset-y-0.5 w-[calc(50%-2px)] rounded-sm bg-white shadow-sm transition-transform duration-300 ease-in-out ${
+										!allAppend
+											? "translate-x-0.5"
+											: "translate-x-[calc(100%+2px)]"
+									}`}
+								/>
+								<div
+									onClick={() =>
+										allAppend && setShowIngestionModeChangeModal(true)
+									}
+									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-2 text-center transition-colors duration-300`}
 								>
-									<Checkbox
-										checked={checkedStatus.namespaces[ns]}
-										onChange={e => handleNamespaceSyncAll(ns, e.target.checked)}
-										onClick={e => e.stopPropagation()}
-										className="mr-2"
-									/>
-									<span className="font-semibold">{ns}</span>
-									<span className="ml-auto">
-										{openNamespaces[ns] ? (
-											<CaretDown
-												className="size-4"
-												weight="fill"
-											/>
-										) : (
-											<CaretRight
-												className="size-4"
-												weight="fill"
-											/>
-										)}
-									</span>
+									All Upsert
 								</div>
-								{openNamespaces[ns] && (
-									<div className="w-full">
-										{streams.map(streamData => (
-											<StreamPanel
-												stream={streamData}
-												key={streamData?.stream?.name}
-												activeStreamData={activeStreamData}
-												setActiveStreamData={setActiveStreamData}
-												onStreamSelect={(streamName, checked) =>
-													handleStreamSelect(streamName, checked, ns)
-												}
-												isSelected={
-													checkedStatus.streams[ns]?.[streamData.stream.name] ||
-													false
-												}
-											/>
-										))}
-									</div>
-								)}
+								<div
+									onClick={() =>
+										!allAppend && setShowIngestionModeChangeModal(true)
+									}
+									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-2 text-center transition-colors duration-300`}
+								>
+									All Append
+								</div>
 							</div>
-						)
-					})}
-				</>
-			)}
-		</div>
+						</div>
+						{Object.entries(groupedStreams).map(([ns, streams]) => {
+							return (
+								<div
+									key={ns}
+									className="border-solid border-gray-200"
+								>
+									<div
+										className="flex cursor-pointer items-center border bg-background-primary p-3"
+										onClick={() => handleToggleNamespace(ns)}
+									>
+										<Checkbox
+											checked={checkedStatus.namespaces[ns]}
+											onChange={e =>
+												handleNamespaceSyncAll(ns, e.target.checked)
+											}
+											onClick={e => e.stopPropagation()}
+											className="mr-2"
+										/>
+										<span className="font-semibold">{ns}</span>
+										<span className="ml-auto">
+											{openNamespaces[ns] ? (
+												<CaretDown
+													className="size-4"
+													weight="fill"
+												/>
+											) : (
+												<CaretRight
+													className="size-4"
+													weight="fill"
+												/>
+											)}
+										</span>
+									</div>
+									{openNamespaces[ns] && (
+										<div className="w-full">
+											{streams.map(streamData => (
+												<StreamPanel
+													stream={streamData}
+													key={streamData?.stream?.name}
+													activeStreamData={activeStreamData}
+													setActiveStreamData={setActiveStreamData}
+													onStreamSelect={(streamName, checked) =>
+														handleStreamSelect(streamName, checked, ns)
+													}
+													isSelected={
+														checkedStatus.streams[ns]?.[
+															streamData.stream.name
+														] || false
+													}
+												/>
+											))}
+										</div>
+									)}
+								</div>
+							)
+						})}
+					</>
+				)}
+			</div>
+		</>
 	)
 }
 
