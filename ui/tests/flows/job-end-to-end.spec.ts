@@ -29,8 +29,10 @@ test.describe("Job End-to-End User Journey", () => {
 		const CATALOG_TYPE = CatalogType.JDBC
 
 		const sourceName = TestDataBuilder.getUniqueSourceName(SOURCE_CONNECTOR)
-		const destinationName =
-			TestDataBuilder.getUniqueDestinationName(DEST_CONNECTOR)
+		const destinationName = TestDataBuilder.getUniqueDestinationName(
+			DEST_CONNECTOR,
+			CATALOG_TYPE,
+		)
 		const jobName = TestDataBuilder.getUniqueJobName(
 			SOURCE_CONNECTOR,
 			DEST_CONNECTOR,
