@@ -20,7 +20,7 @@ func (c *DestHandler) GetAllDestinations() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	logger.Info("Get all destinations initiated - project_id=%s", projectID)
 
-	items, err := DestSvc().GetAllDestinations(c.Ctx.Request.Context(), projectID)
+	items, err := svc.Destination.GetAllDestinations(c.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get destinations", err)
 		return
@@ -42,7 +42,7 @@ func (c *DestHandler) CreateDestination() {
 	logger.Info("Create destination initiated - project_id=%s destination_type=%s destination_name=%s user_id=%v",
 		projectID, req.Type, req.Name, userID)
 
-	if err := DestSvc().CreateDestination(context.Background(), &req, projectID, userID); err != nil {
+	if err := svc.Destination.CreateDestination(context.Background(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create destination", err)
 		return
 	}
@@ -64,7 +64,7 @@ func (c *DestHandler) UpdateDestination() {
 	logger.Info("Update destination initiated - project_id=%s destination_id=%d destination_type=%s user_id=%v",
 		projectID, id, req.Type, userID)
 
-	if err := DestSvc().UpdateDestination(context.Background(), id, projectID, &req, userID); err != nil {
+	if err := svc.Destination.UpdateDestination(context.Background(), id, projectID, &req, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update destination", err)
 		return
 	}
@@ -76,7 +76,7 @@ func (c *DestHandler) DeleteDestination() {
 	id := GetIDFromPath(&c.Controller)
 	logger.Info("Delete destination initiated - destination_id=%d", id)
 
-	resp, err := DestSvc().DeleteDestination(context.Background(), id)
+	resp, err := svc.Destination.DeleteDestination(context.Background(), id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
 		return
@@ -94,7 +94,7 @@ func (c *DestHandler) TestConnection() {
 
 	logger.Info("Test destination connection initiated - destination_type=%s destination_version=%s", req.Type, req.Version)
 
-	result, logs, err := DestSvc().TestConnection(context.Background(), &req)
+	result, logs, err := svc.Destination.TestConnection(context.Background(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Failed to test connection", err)
 		return
@@ -111,7 +111,7 @@ func (c *DestHandler) GetDestinationJobs() {
 	id := GetIDFromPath(&c.Controller)
 	logger.Info("Get destination jobs initiated - destination_id=%d", id)
 
-	jobs, err := DestSvc().GetDestinationJobs(context.Background(), id)
+	jobs, err := svc.Destination.GetDestinationJobs(context.Background(), id)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
 		return
@@ -125,7 +125,7 @@ func (c *DestHandler) GetDestinationVersions() {
 	destType := c.GetString("type")
 	logger.Info("Get destination versions initiated - project_id=%s destination_type=%s", projectID, destType)
 
-	versions, err := DestSvc().GetDestinationVersions(context.Background(), destType)
+	versions, err := svc.Destination.GetDestinationVersions(context.Background(), destType)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
 		return
@@ -146,7 +146,7 @@ func (c *DestHandler) GetDestinationSpec() {
 	logger.Info("Get destination spec initiated - project_id=%s destination_type=%s destination_version=%s",
 		projectID, req.Type, req.Version)
 
-	resp, err := DestSvc().GetDestinationSpec(c.Ctx.Request.Context(), &req)
+	resp, err := svc.Destination.GetDestinationSpec(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get destination spec", err)
 		return

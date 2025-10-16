@@ -28,7 +28,7 @@ func (c *AuthHandler) Login() {
 
 	logger.Info("Login initiated - username=%s", req.Username)
 
-	user, err := AuthSvc().Login(context.Background(), req.Username, req.Password)
+	user, err := svc.Auth.Login(context.Background(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
@@ -63,7 +63,7 @@ func (c *AuthHandler) CheckAuth() {
 
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
-		if err := AuthSvc().ValidateUser(userIDInt); err != nil {
+		if err := svc.Auth.ValidateUser(userIDInt); err != nil {
 			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
@@ -80,7 +80,11 @@ func (c *AuthHandler) Logout() {
 	userID := c.GetSession(constants.SessionUserID)
 	logger.Info("Logout initiated - user_id=%v", userID)
 
-	_ = c.DestroySession()
+	err := c.DestroySession()
+	if err != nil {
+		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to destroy session", err)
+		return
+	}
 	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
 		Message: "Logged out successfully",
 		Success: true,
@@ -97,7 +101,7 @@ func (c *AuthHandler) Signup() {
 
 	logger.Info("Signup initiated - username=%s email=%s", req.Username, req.Email)
 
-	if err := AuthSvc().Signup(context.Background(), &req); err != nil {
+	if err := svc.Auth.Signup(context.Background(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
 			utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists", err)

@@ -26,7 +26,8 @@ func Validate(s interface{}) error {
 }
 
 // Common fields for source/destination config
-type ConnectorConfig struct {
+// source and destiantion are driver in olake cli
+type driverConfig struct {
 	Name    string `json:"name" validate:"required"`
 	Type    string `json:"type" validate:"required"`
 	Version string `json:"version" validate:"required"`
@@ -42,7 +43,6 @@ type LoginRequest struct {
 type SpecRequest struct {
 	Type    string `json:"type" validate:"required"`
 	Version string `json:"version" validate:"required"`
-	Catalog string `json:"catalog"`
 }
 
 // check unique job name request
@@ -101,8 +101,8 @@ type UpdateDestinationRequest struct {
 }
 
 // Job source and destination configurations
-type JobSourceConfig = ConnectorConfig
-type JobDestinationConfig = ConnectorConfig
+type JobSourceConfig = driverConfig
+type JobDestinationConfig = driverConfig
 
 type CreateJobRequest struct {
 	Name          string                `json:"name" validate:"required"`

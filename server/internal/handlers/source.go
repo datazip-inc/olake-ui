@@ -20,7 +20,7 @@ func (c *SourceHandler) GetAllSources() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	logger.Info("Get all sources initiated - project_id=%s", projectID)
 
-	sources, err := SourceSvc().GetAllSources(c.Ctx.Request.Context(), projectID)
+	sources, err := svc.Source.GetAllSources(c.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
 		return
@@ -42,7 +42,7 @@ func (c *SourceHandler) CreateSource() {
 	logger.Info("Create source initiated - project_id=%s source_type=%s source_name=%s user_id=%v",
 		projectID, req.Type, req.Name, userID)
 
-	if err := SourceSvc().CreateSource(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+	if err := svc.Source.CreateSource(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
@@ -65,7 +65,7 @@ func (c *SourceHandler) UpdateSource() {
 	logger.Info("Update source initiated - project_id=%s source_id=%d source_type=%s user_id=%v",
 		projectID, id, req.Type, userID)
 
-	if err := SourceSvc().UpdateSource(c.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
+	if err := svc.Source.UpdateSource(c.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
@@ -82,7 +82,7 @@ func (c *SourceHandler) DeleteSource() {
 	id := GetIDFromPath(&c.Controller)
 	logger.Info("Delete source initiated - source_id=%d", id)
 
-	resp, err := SourceSvc().DeleteSource(c.Ctx.Request.Context(), id)
+	resp, err := svc.Source.DeleteSource(c.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found", err)
@@ -104,7 +104,7 @@ func (c *SourceHandler) TestConnection() {
 
 	logger.Info("Test source connection initiated - source_type=%s source_version=%s", req.Type, req.Version)
 
-	result, logs, err := SourceSvc().TestConnection(c.Ctx.Request.Context(), &req)
+	result, logs, err := svc.Source.TestConnection(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
@@ -127,7 +127,7 @@ func (c *SourceHandler) GetSourceCatalog() {
 	logger.Info("Get source catalog initiated - source_type=%s source_version=%s job_id=%d",
 		req.Type, req.Version, req.JobID)
 
-	catalog, err := SourceSvc().GetSourceCatalog(c.Ctx.Request.Context(), &req)
+	catalog, err := svc.Source.GetSourceCatalog(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
@@ -140,7 +140,7 @@ func (c *SourceHandler) GetSourceJobs() {
 	id := GetIDFromPath(&c.Controller)
 	logger.Info("Get source jobs initiated - source_id=%d", id)
 
-	jobs, err := SourceSvc().GetSourceJobs(c.Ctx.Request.Context(), id)
+	jobs, err := svc.Source.GetSourceJobs(c.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found", err)
@@ -158,7 +158,7 @@ func (c *SourceHandler) GetSourceVersions() {
 	sourceType := c.GetString("type")
 	logger.Info("Get source versions initiated - project_id=%s source_type=%s", projectID, sourceType)
 
-	versions, err := SourceSvc().GetSourceVersions(c.Ctx.Request.Context(), sourceType)
+	versions, err := svc.Source.GetSourceVersions(c.Ctx.Request.Context(), sourceType)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "source type is required" {
@@ -183,7 +183,7 @@ func (c *SourceHandler) GetProjectSourceSpec() {
 	logger.Info("Get source spec initiated - project_id=%s source_type=%s source_version=%s",
 		projectID, req.Type, req.Version)
 
-	resp, err := SourceSvc().GetSourceSpec(c.Ctx.Request.Context(), &req)
+	resp, err := svc.Source.GetSourceSpec(c.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
 		return

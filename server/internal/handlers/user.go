@@ -25,7 +25,7 @@ func (c *UserHandler) CreateUser() {
 
 	logger.Info("Create user initiated - username=%s email=%s", req.Username, req.Email)
 
-	if err := UserSvc().CreateUser(context.Background(), &req); err != nil {
+	if err := svc.User.CreateUser(context.Background(), &req); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
 		return
 	}
@@ -37,7 +37,7 @@ func (c *UserHandler) CreateUser() {
 func (c *UserHandler) GetAllUsers() {
 	logger.Info("Get all users initiated")
 
-	users, err := UserSvc().GetAllUsers(context.Background())
+	users, err := svc.User.GetAllUsers(context.Background())
 	if err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get users", err)
 		return
@@ -58,7 +58,7 @@ func (c *UserHandler) UpdateUser() {
 
 	logger.Info("Update user initiated - user_id=%d username=%s", id, req.Username)
 
-	updatedUser, err := UserSvc().UpdateUser(context.Background(), id, &req)
+	updatedUser, err := svc.User.UpdateUser(context.Background(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
 			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found", err)
@@ -76,7 +76,7 @@ func (c *UserHandler) DeleteUser() {
 	id := GetIDFromPath(&c.Controller)
 	logger.Info("Delete user initiated - user_id=%d", id)
 
-	if err := UserSvc().DeleteUser(context.Background(), id); err != nil {
+	if err := svc.User.DeleteUser(context.Background(), id); err != nil {
 		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete user", err)
 		return
 	}

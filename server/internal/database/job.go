@@ -162,47 +162,6 @@ func (r *JobORM) Delete(id int) error {
 	return err
 }
 
-// // GetBySourceID retrieves all jobs associated with a source ID
-// func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
-// 	var jobs []*models.Job
-// 	source := &models.Source{ID: sourceID}
-
-// 	_, err := r.ormer.QueryTable(r.TableName).
-// 		Filter("source_id", source).
-// 		RelatedSel().
-// 		All(&jobs)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to get jobs by source ID: %s", err)
-// 	}
-
-// 	// Decrypt related Source and Destination configs
-// 	if err := r.decryptJobSliceConfig(jobs); err != nil {
-// 		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-// 	}
-
-// 	return jobs, nil
-// }
-
-// // GetByDestinationID retrieves all jobs associated with a destination ID
-// func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
-// 	var jobs []*models.Job
-// 	dest := &models.Destination{ID: destID}
-
-// 	_, err := r.ormer.QueryTable(r.TableName).
-// 		Filter("dest_id", dest).
-// 		RelatedSel().
-// 		All(&jobs)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to get jobs by destination ID: %s", err)
-// 	}
-
-// 	// Decrypt related Source and Destination configs
-// 	if err := r.decryptJobSliceConfig(jobs); err != nil {
-// 		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-// 	}
-
-//		return jobs, nil
-//	}
 func (r *JobORM) GetBySourceID(sourceIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
 	if len(sourceIDs) == 0 {
