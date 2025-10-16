@@ -274,6 +274,7 @@ func (s *JobService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	return logs, nil
 }
 
+// TODO: frontend needs to send source id and destination id
 func (s *JobService) buildJobResponse(job *models.Job, projectID string) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:            job.ID,

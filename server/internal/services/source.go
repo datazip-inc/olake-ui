@@ -151,7 +151,7 @@ func (s *SourceService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSo
 		return nil, fmt.Errorf("failed to retrieve jobs for source deletion - source_id=%d error=%v", id, err)
 	}
 	if len(jobs) > 0 {
-		return nil, fmt.Errorf("cannot delete source '%s' (id=%d) because it is used in %d jobs. Please delete the associated jobs first.", src.Name, id, len(jobs))
+		return nil, fmt.Errorf("cannot delete source '%s' (id=%d) because it is used in %d jobs; please delete the associated jobs first", src.Name, id, len(jobs))
 	}
 	jobIDs := make([]int, 0, len(jobs))
 	for _, job := range jobs {

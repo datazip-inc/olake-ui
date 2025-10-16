@@ -39,6 +39,8 @@ type StreamsRequest struct {
 	JobID   int    `json:"job_id" validate:"required"`
 	JobName string `json:"job_name" validate:"required"`
 }
+
+// TODO: frontend needs to send only version no need for source type and version
 type DestinationTestConnectionRequest struct {
 	Type          string `json:"type" validate:"required"`
 	Version       string `json:"version" validate:"required"`

@@ -150,7 +150,7 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 		return nil, fmt.Errorf("failed to retrieve jobs for destination deletion - destination_id=%d error=%v", id, err)
 	}
 	if len(jobs) > 0 {
-		return nil, fmt.Errorf("cannot delete destination '%s' (id=%d) because it is used in %d jobs. Please delete the associated jobs first.", dest.Name, id, len(jobs))
+		return nil, fmt.Errorf("cannot delete destination '%s' (id=%d) because it is used in %d jobs; please delete the associated jobs first", dest.Name, id, len(jobs))
 	}
 	var jobIDs []int
 	for _, job := range jobs {
