@@ -3,113 +3,118 @@ package database
 import (
 	"fmt"
 
-	"github.com/beego/beego/v2/client/orm"
-
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
-// SourceORM handles database operations for sources
-type SourceORM struct {
-	ormer     orm.Ormer
-	TableName string
-}
-
-func NewSourceORM() *SourceORM {
-	return &SourceORM{
-		ormer:     orm.NewOrm(),
-		TableName: constants.TableNameMap[constants.SourceTable],
-	}
-}
-
 // decryptSourceSliceConfigs decrypts config fields for a slice of sources
-func (r *SourceORM) decryptSourceSliceConfigs(sources []*models.Source) error {
+func (db *Database) decryptSourceSliceConfigs(sources []*models.Source) error {
 	for _, source := range sources {
 		dConfig, err := utils.Decrypt(source.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt source config: %s", err)
+			return fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
 		}
 		source.Config = dConfig
 	}
 	return nil
 }
 
-func (r *SourceORM) Create(source *models.Source) error {
+func (db *Database) CreateSource(source *models.Source) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(source.Config)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt source config: %s", err)
+		return fmt.Errorf("failed to encrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = eConfig
-	_, err = r.ormer.Insert(source)
+	_, err = db.ormer.Insert(source)
 	return err
 }
 
-func (r *SourceORM) GetAll() ([]*models.Source, error) {
+func (db *Database) ListSources() ([]*models.Source, error) {
 	var sources []*models.Source
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all sources: %s", err)
+		return nil, fmt.Errorf("failed to list sources: %s", err)
 	}
 
 	// Decrypt config after reading
-	if err := r.decryptSourceSliceConfigs(sources); err != nil {
-		return nil, fmt.Errorf("failed to decrypt source config: %s", err)
+	if err := db.decryptSourceSliceConfigs(sources); err != nil {
+		return nil, err
 	}
 
 	return sources, nil
 }
 
-func (r *SourceORM) GetByID(id int) (*models.Source, error) {
+func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 	source := &models.Source{ID: id}
-	err := r.ormer.Read(source)
+	err := db.ormer.Read(source)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get source by id[%d]: %s", id, err)
+		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)
 	}
 
 	// Decrypt config after reading
 	dConfig, err := utils.Decrypt(source.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt source config by id[%d]: %s", source.ID, err)
+		return nil, fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = dConfig
 	return source, nil
 }
 
-func (r *SourceORM) Update(source *models.Source) error {
+func (db *Database) UpdateSource(source *models.Source) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(source.Config)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt source config: %s", err)
+		return fmt.Errorf("failed to encrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = eConfig
-	_, err = r.ormer.Update(source)
+	_, err = db.ormer.Update(source)
 	return err
 }
 
-func (r *SourceORM) Delete(id int) error {
+func (db *Database) DeleteSource(id int) error {
 	source := &models.Source{ID: id}
-	_, err := r.ormer.Delete(source)
+	_, err := db.ormer.Delete(source)
 	return err
 }
 
-// GetByNameAndType retrieves sources by name, type, and project ID
-func (r *SourceORM) GetByNameAndType(name, sourceType, projectIDStr string) ([]*models.Source, error) {
-	var sources []*models.Source
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("name", name).
-		Filter("type", sourceType).
-		Filter("project_id", projectIDStr).
-		All(&sources)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get source by name: %s and type: %s and project_id: %s: %s", name, sourceType, projectIDStr, err)
-	}
+// GetSourcesByNameAndType retrieves sources by name, type, and project ID
+// func (db *Database) GetSourcesByNameAndType(name, sourceType, projectID string) ([]*models.Source, error) {
+// 	var sources []*models.Source
+// 	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+// 		Filter("name", name).
+// 		Filter("type", sourceType).
+// 		Filter("project_id", projectID).
+// 		All(&sources)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get sources project_id[%s], name[%s], type[%s]: %s", projectID, name, sourceType, err)
+// 	}
 
-	// Decrypt config after reading
-	if err := r.decryptSourceSliceConfigs(sources); err != nil {
-		return nil, fmt.Errorf("failed to decrypt source config: %s", err)
-	}
+// 	// Decrypt config after reading
+// 	if err := db.decryptSourceSliceConfigs(sources); err != nil {
+// 		return nil, err
+// 	}
 
-	return sources, nil
-}
+// 	return sources, nil
+// }
+
+// // GetByNameAndType retrieves sources by name, type, and project ID
+// func (db *Database) GetByNameAndType(name, sourceType, projectIDStr string) ([]*models.Source, error) {
+// 	var sources []*models.Source
+// 	_, err := db.ormer.QueryTable(r.TableName).
+// 		Filter("name", name).
+// 		Filter("type", sourceType).
+// 		Filter("project_id", projectIDStr).
+// 		All(&sources)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to get source by name: %s and type: %s and project_id: %s: %s", name, sourceType, projectIDStr, err)
+// 	}
+
+// 	// Decrypt config after reading
+// 	if err := r.decryptSourceSliceConfigs(sources); err != nil {
+// 		return nil, fmt.Errorf("failed to decrypt source config: %s", err)
+// 	}
+
+// 	return sources, nil
+// }

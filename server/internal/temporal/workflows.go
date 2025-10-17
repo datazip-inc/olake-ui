@@ -1,7 +1,6 @@
 package temporal
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -119,11 +118,11 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 	err = workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event
-		telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID)
+		telemetry.TrackSyncFailed(jobID, params.WorkflowID)
 		return nil, err
 	}
 
 	// Track sync completion
-	telemetry.TrackSyncCompleted(context.Background(), jobID, params.WorkflowID)
+	telemetry.TrackSyncCompleted(jobID, params.WorkflowID)
 	return result, nil
 }

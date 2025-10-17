@@ -27,15 +27,24 @@ var (
 	EnvLogLevel          = "LOG_LEVEL"
 	EnvLogFormat         = "LOG_FORMAT"
 	OrderByUpdatedAtDesc = "-updated_at"
+	// Frontend index path key
+	FrontendIndexPath = "FRONTEND_INDEX_PATH"
 )
 
 // Supported database/source types
-var SupportedDriverTypes = []string{
+var SupportedSourceTypes = []string{
 	"mysql",
 	"postgres",
 	"oracle",
 	"mongodb",
 }
+
+// Supported database/source types
+var SupportedDestinationTypes = []string{
+	"parquet",
+	"iceberg",
+}
+
 var RequiredConfigVariable = []string{
 	"OLAKE_POSTGRES_USER",
 	"OLAKE_POSTGRES_PASSWORD",
@@ -55,6 +64,7 @@ func Init() {
 	viper.SetDefault("RELEASE_CHANNEL", releasechannel)
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
+	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
 
 	checkForRequiredVariables(RequiredConfigVariable)
 

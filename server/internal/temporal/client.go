@@ -63,7 +63,7 @@ func NewClient() (*Client, error) {
 		HostPort: TemporalAddress,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Temporal client: %v", err)
+		return nil, fmt.Errorf("failed to create Temporal client: %s", err)
 	}
 
 	return &Client{
@@ -100,12 +100,12 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 
 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, DiscoverCatalogWorkflow, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute discover workflow: %v", err)
+		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
 
 	var result map[string]interface{}
 	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
+		return nil, fmt.Errorf("workflow execution failed: %s", err)
 	}
 
 	return result, nil
@@ -132,12 +132,12 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 
 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
 	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %v", err)
+		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %s", err)
 	}
 
 	var result dto.SpecOutput
 	if err := run.Get(ctx, &result); err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("workflow execution failed: %v", err)
+		return dto.SpecOutput{}, fmt.Errorf("workflow execution failed: %s", err)
 	}
 
 	return result, nil
@@ -161,12 +161,12 @@ func (c *Client) TestConnection(ctx context.Context, workflowID, flag, sourceTyp
 
 	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute test connection workflow: %v", err)
+		return nil, fmt.Errorf("failed to execute test connection workflow: %s", err)
 	}
 
 	var result map[string]interface{}
 	if err := run.Get(ctx, &result); err != nil {
-		return nil, fmt.Errorf("workflow execution failed: %v", err)
+		return nil, fmt.Errorf("workflow execution failed: %s", err)
 	}
 
 	return result, nil
@@ -299,7 +299,7 @@ func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.List
 	// Query workflows using the SDK's ListWorkflow method
 	resp, err := c.temporalClient.ListWorkflow(ctx, request)
 	if err != nil {
-		return nil, fmt.Errorf("error listing workflow executions: %v", err)
+		return nil, fmt.Errorf("error listing workflow executions: %s", err)
 	}
 
 	return resp, nil

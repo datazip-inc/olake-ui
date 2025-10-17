@@ -46,13 +46,13 @@ func main() {
     // Create and start a worker
     worker, err := temporal.NewWorker("")
     if err != nil {
-        log.Fatalf("Failed to create worker: %v", err)
+        log.Fatalf("Failed to create worker: %s", err)
     }
     
     // Start the worker
     go func() {
         if err := worker.Start(); err != nil {
-            log.Fatalf("Failed to start worker: %v", err)
+            log.Fatalf("Failed to start worker: %s", err)
         }
     }()
     
@@ -82,7 +82,7 @@ func main() {
     // Create a Temporal-based runner
     runner, err := docker.NewTemporalRunner("", "")
     if err != nil {
-        log.Fatalf("Failed to create Temporal runner: %v", err)
+        log.Fatalf("Failed to create Temporal runner: %s", err)
     }
     defer runner.Close()
     
@@ -97,7 +97,7 @@ func main() {
     
     result, err := runner.GetCatalog("postgres", "latest", config, 1)
     if err != nil {
-        log.Fatalf("Failed to get catalog: %v", err)
+        log.Fatalf("Failed to get catalog: %s", err)
     }
     
     fmt.Printf("Catalog result: %+v\n", result)

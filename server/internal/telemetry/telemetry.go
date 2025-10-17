@@ -14,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/logger"
 )
 
 var instance *Telemetry
@@ -38,10 +41,17 @@ type Telemetry struct {
 	locationInfo *LocationInfo
 	TempUserID   string
 	username     string
+	db           *database.Database
 }
 
 func InitTelemetry() {
 	go func() {
+		database, err := database.Init()
+		if err != nil {
+			logger.Debug("Failed to create database: %s", err)
+			return
+		}
+
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
 		}
@@ -70,6 +80,8 @@ func InitTelemetry() {
 			return string(idBytes)
 		}()
 
+		logger.Infof("telemetry initialized with user ID: %s", tempUserID)
+
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
@@ -81,6 +93,7 @@ func InitTelemetry() {
 			ipAddress:    ip,
 			TempUserID:   tempUserID,
 			locationInfo: getLocationFromIP(ip),
+			db:           database,
 		}
 	}()
 }

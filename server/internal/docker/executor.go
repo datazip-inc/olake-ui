@@ -25,13 +25,13 @@ func (r *Runner) pullImage(ctx context.Context, imageName, version string) error
 		logs.Info("Pulling Docker image: %s", imageName)
 		reader, err := r.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to pull image %s: %v", imageName, err)
+			return fmt.Errorf("failed to pull image %s: %s", imageName, err)
 		}
 		defer reader.Close()
 
 		// Read the pull output (optional, for logging)
 		if _, err = io.Copy(io.Discard, reader); err != nil {
-			logs.Warning("Failed to read image pull output: %v", err)
+			logs.Warning("Failed to read image pull output: %s", err)
 		}
 	}
 	return nil
@@ -93,7 +93,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag s
 	// Create container with deterministic name (may already exist if adopted)
 	resp, err := r.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
 	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "already in use") {
-		return nil, fmt.Errorf("failed to create container: %v", err)
+		return nil, fmt.Errorf("failed to create container: %s", err)
 	}
 	id := resp.ID
 	if id == "" {
@@ -105,7 +105,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag s
 	if err := r.dockerClient.ContainerStart(ctx, id, container.StartOptions{}); err != nil {
 		// If it's already running, continue
 		if !strings.Contains(strings.ToLower(err.Error()), "already started") {
-			return nil, fmt.Errorf("failed to start container: %v", err)
+			return nil, fmt.Errorf("failed to start container: %s", err)
 		}
 	}
 
@@ -114,7 +114,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag s
 	select {
 	case err := <-errCh:
 		if err != nil {
-			return nil, fmt.Errorf("error waiting for container: %v", err)
+			return nil, fmt.Errorf("error waiting for container: %s", err)
 		}
 	case status := <-statusCh:
 		if status.StatusCode != 0 {
@@ -127,7 +127,7 @@ func (r *Runner) ExecuteDockerCommand(ctx context.Context, containerName, flag s
 	// Get container logs
 	output, err := r.getContainerLogs(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get container logs: %v", err)
+		return nil, fmt.Errorf("failed to get container logs: %s", err)
 	}
 
 	logs.Info("Docker container output: %s", string(output))

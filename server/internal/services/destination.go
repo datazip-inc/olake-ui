@@ -6,38 +6,21 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
-	"github.com/datazip/olake-ui/server/internal/temporal"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
-type DestinationService struct {
-	destORM    *database.DestinationORM
-	jobORM     *database.JobORM
-	tempClient *temporal.Client
-}
+// Destination-related methods on AppService
 
-func NewDestinationService() (*DestinationService, error) {
-	tempClient, err := temporal.NewClient()
+// ListDestinations returns all destinations for a project with lightweight job summaries.
+func (s *AppService) ListDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
+	destinations, err := s.db.ListDestinationsByProjectID(projectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temporal client - error=%v", err)
-	}
-	return &DestinationService{
-		destORM:    database.NewDestinationORM(),
-		jobORM:     database.NewJobORM(),
-		tempClient: tempClient,
-	}, nil
-}
-
-func (s *DestinationService) GetAllDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
-	destinations, err := s.destORM.GetAllByProjectID(projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve destinations - project_id=%s error=%v", projectID, err)
+		return nil, fmt.Errorf("failed to list destinations: %s", err)
 	}
 
 	destIDs := make([]int, 0, len(destinations))
@@ -46,10 +29,9 @@ func (s *DestinationService) GetAllDestinations(_ context.Context, projectID str
 	}
 
 	var allJobs []*models.Job
-	allJobs, err = s.jobORM.GetByDestinationID(destIDs)
+	allJobs, err = s.db.GetJobsByDestinationID(destIDs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve jobs - project_id=%s destination_count=%d error=%v",
-			projectID, len(destIDs), err)
+		return nil, fmt.Errorf("failed to list jobs: %s", err)
 	}
 
 	jobsByDestID := make(map[int][]*models.Job)
@@ -71,10 +53,9 @@ func (s *DestinationService) GetAllDestinations(_ context.Context, projectID str
 		setUsernames(&entity.CreatedBy, &entity.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
-		jobItems, err := s.buildJobDataItems(jobs, projectID, "destination")
+		jobItems, err := buildJobDataItems(jobs)
 		if err != nil {
-			return nil, fmt.Errorf("failed to process job data items - project_id=%s destination_id=%d error=%v",
-				projectID, dest.ID, err)
+			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
 		entity.Jobs = jobItems
 		destItems = append(destItems, entity)
@@ -83,7 +64,7 @@ func (s *DestinationService) GetAllDestinations(_ context.Context, projectID str
 	return destItems, nil
 }
 
-func (s *DestinationService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
+func (s *AppService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -95,20 +76,18 @@ func (s *DestinationService) CreateDestination(ctx context.Context, req *dto.Cre
 	destination.CreatedBy = user
 	destination.UpdatedBy = user
 
-	if err := s.destORM.Create(destination); err != nil {
-		return fmt.Errorf("failed to create destination - project_id=%s destination_name=%s destination_type=%s user_id=%v error=%v",
-			projectID, req.Name, req.Type, userID, err)
+	if err := s.db.CreateDestination(destination); err != nil {
+		return fmt.Errorf("failed to create destination: %s", err)
 	}
 
 	telemetry.TrackDestinationCreation(ctx, destination)
 	return nil
 }
 
-func (s *DestinationService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
-	existingDest, err := s.destORM.GetByID(id)
+func (s *AppService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
+	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
-		return fmt.Errorf("failed to find destination for update - project_id=%s destination_id=%d error=%v",
-			projectID, id, err)
+		return fmt.Errorf("failed to get destination: %s", err)
 	}
 
 	existingDest.Name = req.Name
@@ -119,38 +98,35 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, proj
 	user := &models.User{ID: *userID}
 	existingDest.UpdatedBy = user
 
-	jobs, err := s.jobORM.GetByDestinationID([]int{existingDest.ID})
+	jobs, err := s.db.GetJobsByDestinationID([]int{existingDest.ID})
 	if err != nil {
-		return fmt.Errorf("failed to fetch jobs for destination update - project_id=%s destination_id=%d error=%v",
-			projectID, existingDest.ID, err)
+		return fmt.Errorf("failed to fetch jobs for destination update: %s", err)
 	}
 
-	if err := cancelAllJobWorkflows(s.tempClient, jobs, projectID); err != nil {
-		return fmt.Errorf("failed to cancel workflows for destination update - project_id=%s destination_id=%d job_count=%d error=%v",
-			projectID, existingDest.ID, len(jobs), err)
+	if err := cancelAllJobWorkflows(ctx, s.tempClient, jobs, projectID); err != nil {
+		return fmt.Errorf("failed to cancel workflows for destination update: %s", err)
 	}
 
-	if err := s.destORM.Update(existingDest); err != nil {
-		return fmt.Errorf("failed to update destination - project_id=%s destination_id=%d destination_name=%s error=%v",
-			projectID, id, req.Name, err)
+	if err := s.db.UpdateDestination(existingDest); err != nil {
+		return fmt.Errorf("failed to update destination: %s", err)
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
 	return nil
 }
 
-func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
-	dest, err := s.destORM.GetByID(id)
+func (s *AppService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
+	dest, err := s.db.GetDestinationByID(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find destination for deletion - destination_id=%d error=%v", id, err)
+		return nil, fmt.Errorf("failed to find destination: %s", err)
 	}
 
-	jobs, err := s.jobORM.GetByDestinationID([]int{id})
+	jobs, err := s.db.GetJobsByDestinationID([]int{id})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve jobs for destination deletion - destination_id=%d error=%v", id, err)
+		return nil, fmt.Errorf("failed to retrieve jobs for destination deletion: %s", err)
 	}
 	if len(jobs) > 0 {
-		return nil, fmt.Errorf("cannot delete destination '%s' (id=%d) because it is used in %d jobs; please delete the associated jobs first", dest.Name, id, len(jobs))
+		return nil, fmt.Errorf("cannot delete destination '%s' id[%d] because it is used in %d jobs; please delete the associated jobs first", dest.Name, id, len(jobs))
 	}
 	var jobIDs []int
 	for _, job := range jobs {
@@ -158,47 +134,43 @@ func (s *DestinationService) DeleteDestination(ctx context.Context, id int) (*dt
 		jobIDs = append(jobIDs, job.ID)
 	}
 
-	if err := s.jobORM.UpdateAllJobs(jobIDs); err != nil {
-		return nil, fmt.Errorf("failed to deactivate jobs for destination deletion - destination_id=%d job_count=%d error=%v",
-			id, len(jobIDs), err)
+	if err := s.db.DeactivateJobs(jobIDs); err != nil {
+		return nil, fmt.Errorf("failed to deactivate jobs for destination deletion: %s", err)
 	}
 
-	if err := s.destORM.Delete(id); err != nil {
-		return nil, fmt.Errorf("failed to delete destination - destination_id=%d destination_name=%s error=%v",
-			id, dest.Name, err)
+	if err := s.db.DeleteDestination(id); err != nil {
+		return nil, fmt.Errorf("failed to delete destination: %s", err)
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *DestinationService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *AppService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	version := req.Version
 	driver := req.SourceType
 	if driver == "" {
 		var err error
 		_, driver, err = utils.GetDriverImageTags(ctx, "", true)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
+			return nil, nil, fmt.Errorf("failed to get driver image tags: %s", err)
 		}
 	}
 
 	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to encrypt config for test connection - destination_type=%s destination_version=%s error=%v",
-			req.Type, req.Version, err)
+		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
 	result, err := s.tempClient.TestConnection(ctx, workflowID, "destination", driver, version, encryptedConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("connection test failed - destination_type=%s destination_version=%s error=%v",
-			req.Type, req.Version, err)
+		return nil, nil, fmt.Errorf("connection test failed: %s", err)
 	}
 	homeDir := docker.GetDefaultConfigDir()
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {
-		logger.Error("failed to read logs - destination_type=%s destination_version=%s error=%v",
+		logger.Error("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
 			req.Type, req.Version, err)
 	}
 	// TODO: handle from frontend
@@ -212,34 +184,34 @@ func (s *DestinationService) TestConnection(ctx context.Context, req *dto.Destin
 	return result, logs, nil
 }
 
-func (s *DestinationService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
-	if _, err := s.destORM.GetByID(id); err != nil {
-		return nil, fmt.Errorf("failed to find destination - destination_id=%d error=%v", id, err)
+func (s *AppService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
+	if _, err := s.db.GetDestinationByID(id); err != nil {
+		return nil, fmt.Errorf("failed to find destination: %s", err)
 	}
 
-	jobs, err := s.jobORM.GetByDestinationID([]int{id})
+	jobs, err := s.db.GetJobsByDestinationID([]int{id})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination - destination_id=%d error=%v", id, err)
+		return nil, fmt.Errorf("failed to get jobs by destination: %s", err)
 	}
 
 	return jobs, nil
 }
 
-func (s *DestinationService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
+func (s *AppService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")
 	}
 
 	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", destType, err)
+		return nil, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
 	return map[string]interface{}{"version": versions}, nil
 }
 
 // TODO: cache spec in db for each version
-func (s *DestinationService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
+func (s *AppService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	// TODO: handle from frontend
 	destinationType := "iceberg"
 	if req.Type == "s3" {
@@ -248,13 +220,12 @@ func (s *DestinationService) GetDestinationSpec(ctx context.Context, req *dto.Sp
 
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags - destination_type=%s error=%v", req.Type, err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
 	specOut, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
 	if err != nil {
-		return dto.SpecResponse{}, fmt.Errorf("failed to get spec - destination_type=%s destination_version=%s error=%v",
-			req.Type, req.Version, err)
+		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}
 
 	return dto.SpecResponse{
@@ -262,15 +233,4 @@ func (s *DestinationService) GetDestinationSpec(ctx context.Context, req *dto.Sp
 		Type:    req.Type,
 		Spec:    specOut.Spec,
 	}, nil
-}
-
-func (s *DestinationService) buildJobDataItems(jobs []*models.Job, _, _ string) ([]dto.JobDataItem, error) {
-	jobItems := make([]dto.JobDataItem, 0, len(jobs))
-	for _, job := range jobs {
-		jobItems = append(jobItems, dto.JobDataItem{
-			ID:   job.ID,
-			Name: job.Name,
-		})
-	}
-	return jobItems, nil
 }

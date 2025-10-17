@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/handlers"
 	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/services"
@@ -19,25 +21,17 @@ func main() {
 	constants.Init()
 	logger.Init()
 
-	err := database.Init()
-	if err != nil {
-		logger.Fatal("Failed to initialize database: %s", err)
-		return
-	}
-
-	// Initialize all services at once
+	// Initialize unified AppService
 	logger.Info("Initializing application services...")
-	svcs, err := services.InitServices()
+	appSvc, err := services.InitAppService()
 	if err != nil {
-		logger.Fatal("Failed to initialize services: %v", err)
+		logger.Fatal("Failed to initialize services: %s", err)
 		return
 	}
 	logger.Info("Application services initialized successfully")
 
-	// Initialize handlers with services
-	handlers.InitHandlers(svcs)
-
-	routes.Init()
+	h := handlers.NewHandler(appSvc)
+	routes.Init(h)
 	if key := os.Getenv(constants.EncryptionKey); key == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
@@ -45,5 +39,11 @@ func main() {
 		orm.Debug = true
 	}
 
-	web.Run()
+	go web.Run()
+
+	// Graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	<-ctx.Done()
+	logger.Info("Shutting down server...")
 }

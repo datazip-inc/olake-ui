@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/docker/docker/client"
 )
 
@@ -42,4 +43,5 @@ type Runner struct {
 	WorkingDir   string
 	anonymousID  string
 	dockerClient *client.Client
+	db           *database.Database
 }

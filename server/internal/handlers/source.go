@@ -4,190 +4,257 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/utils"
 )
 
-type SourceHandler struct {
-	web.Controller
-}
-
 // @router /project/:projectid/sources [get]
-func (c *SourceHandler) GetAllSources() {
-	projectID := c.Ctx.Input.Param(":projectid")
-	logger.Info("Get all sources initiated - project_id=%s", projectID)
-
-	sources, err := svc.Source.GetAllSources(c.Ctx.Request.Context(), projectID)
+func (h *Handler) ListSources() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, sources)
+
+	logger.Debugf("Get all sources initiated project_id[%s]", projectID)
+
+	sources, err := h.svc.GetAllSources(h.Ctx.Request.Context(), projectID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, sources)
 }
 
 // @router /project/:projectid/sources [post]
-func (c *SourceHandler) CreateSource() {
-	projectID := c.Ctx.Input.Param(":projectid")
+func (h *Handler) CreateSource() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
+		return
+	}
+
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 
 	var req dto.CreateSourceRequest
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	userID := GetUserIDFromSession(&c.Controller)
-	logger.Info("Create source initiated - project_id=%s source_type=%s source_name=%s user_id=%v",
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	logger.Debugf("Create source initiated project_id[%s] source_type[%s] source_name[%s] user_id[%v]",
 		projectID, req.Type, req.Name, userID)
 
-	if err := svc.Source.CreateSource(c.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
+	if err := h.svc.CreateSource(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create source", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, req)
+	utils.SuccessResponse(&h.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [put]
-func (c *SourceHandler) UpdateSource() {
-	id := GetIDFromPath(&c.Controller)
-	projectID := c.Ctx.Input.Param(":projectid")
-
-	var req dto.UpdateSourceRequest
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+func (h *Handler) UpdateSource() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
-	userID := GetUserIDFromSession(&c.Controller)
-	logger.Info("Update source initiated - project_id=%s source_id=%d source_type=%s user_id=%v",
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	var req dto.UpdateSourceRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	logger.Debugf("Update source initiated project_id[%s] source_id[%d] source_type[%s] user_id[%v]",
 		projectID, id, req.Type, userID)
 
-	if err := svc.Source.UpdateSource(c.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
+	if err := h.svc.UpdateSource(h.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(&c.Controller, status, "Failed to update source", err)
+		utils.ErrorResponse(&h.Controller, status, "Failed to update source", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, req)
+	utils.SuccessResponse(&h.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [delete]
-func (c *SourceHandler) DeleteSource() {
-	id := GetIDFromPath(&c.Controller)
-	logger.Info("Delete source initiated - source_id=%d", id)
+func (h *Handler) DeleteSource() {
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 
-	resp, err := svc.Source.DeleteSource(c.Ctx.Request.Context(), id)
+	logger.Debugf("Delete source initiated source_id[%d]", id)
+
+	resp, err := h.svc.DeleteSource(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&h.Controller, http.StatusNotFound, "Source not found", err)
 		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete source", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete source", err)
 		}
 		return
 	}
-	utils.SuccessResponse(&c.Controller, resp)
+	utils.SuccessResponse(&h.Controller, resp)
 }
 
 // @router /project/:projectid/sources/test [post]
-func (c *SourceHandler) TestConnection() {
+func (h *Handler) TestSourceConnection() {
 	var req dto.SourceTestConnectionRequest
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	logger.Info("Test source connection initiated - source_type=%s source_version=%s", req.Type, req.Version)
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 
-	result, logs, err := svc.Source.TestConnection(c.Ctx.Request.Context(), &req)
+	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
+
+	result, logs, err := h.svc.SourceTestConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to test connection", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, dto.TestConnectionResponse{
+	utils.SuccessResponse(&h.Controller, dto.TestConnectionResponse{
 		ConnectionResult: result,
 		Logs:             logs,
 	})
 }
 
 // @router /sources/streams [post]
-func (c *SourceHandler) GetSourceCatalog() {
+func (h *Handler) GetSourceCatalog() {
 	var req dto.StreamsRequest
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	logger.Info("Get source catalog initiated - source_type=%s source_version=%s job_id=%d",
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]",
 		req.Type, req.Version, req.JobID)
 
-	catalog, err := svc.Source.GetSourceCatalog(c.Ctx.Request.Context(), &req)
+	catalog, err := h.svc.GetSourceCatalog(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, catalog)
+	utils.SuccessResponse(&h.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
-func (c *SourceHandler) GetSourceJobs() {
-	id := GetIDFromPath(&c.Controller)
-	logger.Info("Get source jobs initiated - source_id=%d", id)
+func (h *Handler) GetSourceJobs() {
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 
-	jobs, err := svc.Source.GetSourceJobs(c.Ctx.Request.Context(), id)
+	logger.Debugf("Get source jobs initiated source_id[%d]", id)
+
+	jobs, err := h.svc.GetSourceJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&h.Controller, http.StatusNotFound, "Source not found", err)
 		} else {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
 		}
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"jobs": jobs})
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/sources/versions [get]
-func (c *SourceHandler) GetSourceVersions() {
-	projectID := c.Ctx.Input.Param(":projectid")
-	sourceType := c.GetString("type")
-	logger.Info("Get source versions initiated - project_id=%s source_type=%s", projectID, sourceType)
+func (h *Handler) GetSourceVersions() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 
-	versions, err := svc.Source.GetSourceVersions(c.Ctx.Request.Context(), sourceType)
+	sourceType := h.GetString("type")
+	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", projectID, sourceType)
+
+	versions, err := h.svc.GetSourceVersions(h.Ctx.Request.Context(), sourceType)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "source type is required" {
 			status = http.StatusBadRequest
 		}
-		utils.ErrorResponse(&c.Controller, status, "Failed to get source versions", err)
+		utils.ErrorResponse(&h.Controller, status, "Failed to get source versions", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, versions)
+	utils.SuccessResponse(&h.Controller, versions)
 }
 
 // @router /project/:projectid/sources/spec [post]
-func (c *SourceHandler) GetProjectSourceSpec() {
-	projectID := c.Ctx.Input.Param(":projectid")
+func (h *Handler) GetProjectSourceSpec() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
 
 	var req dto.SpecRequest
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	logger.Info("Get source spec initiated - project_id=%s source_type=%s source_version=%s",
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]",
 		projectID, req.Type, req.Version)
 
-	resp, err := svc.Source.GetSourceSpec(c.Ctx.Request.Context(), &req)
+	resp, err := h.svc.GetSourceSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, resp)
+	utils.SuccessResponse(&h.Controller, resp)
 }
