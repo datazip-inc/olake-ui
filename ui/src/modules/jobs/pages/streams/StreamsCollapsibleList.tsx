@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { CaretDown, CaretRight } from "@phosphor-icons/react"
+import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 
 import { GroupedStreamsCollapsibleListProps } from "../../../../types"
@@ -255,12 +255,12 @@ const StreamsCollapsibleList = ({
 									<span className="font-semibold">{ns}</span>
 									<span className="ml-auto">
 										{openNamespaces[ns] ? (
-											<CaretDown
+											<CaretDownIcon
 												className="size-4"
 												weight="fill"
 											/>
 										) : (
-											<CaretRight
+											<CaretRightIcon
 												className="size-4"
 												weight="fill"
 											/>
