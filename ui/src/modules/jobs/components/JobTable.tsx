@@ -138,6 +138,7 @@ const JobTable: React.FC<JobTableProps> = ({
 					>
 						<Button
 							type="text"
+							data-testid={`job-${record.name}`}
 							icon={<DotsThreeIcon className="size-5" />}
 						/>
 					</Dropdown>

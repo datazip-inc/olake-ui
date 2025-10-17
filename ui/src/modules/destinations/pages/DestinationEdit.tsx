@@ -503,6 +503,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							</label>
 							<div className="flex items-center">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={updateConnector}
 									className="h-8 w-full"
@@ -536,6 +537,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							) : versions.length > 0 ? (
 								<Select
 									value={selectedVersion}
+									data-testid="destination-version-select"
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"
