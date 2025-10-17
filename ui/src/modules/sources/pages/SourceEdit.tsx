@@ -534,6 +534,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												</label>
 												<div className="flex items-center">
 													<Select
+														data-testid="source-connector-select"
 														value={connector}
 														onChange={value => {
 															setConnector(value)
@@ -594,6 +595,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													</div>
 												) : availableVersions.length > 0 ? (
 													<Select
+														data-testid="source-version-select"
 														value={selectedVersion}
 														onChange={value => {
 															setSelectedVersion(value)
