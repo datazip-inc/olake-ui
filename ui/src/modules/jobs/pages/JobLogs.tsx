@@ -35,9 +35,9 @@ const JobLogs: React.FC = () => {
 		fetchTaskLogs,
 		fetchJobs,
 	} = useAppStore()
-	
-    const logContainerRef = useRef<HTMLDivElement>(null);
-	
+
+	const logContainerRef = useRef<HTMLDivElement>(null)
+
 	useEffect(() => {
 		if (!jobs.length) {
 			fetchJobs()
@@ -62,15 +62,15 @@ const JobLogs: React.FC = () => {
 	])
 
 	useEffect(() => {
-	  if (logContainerRef.current && taskLogs.length > 0 && !isLoadingTaskLogs) {
-		const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current;
-		const isAtBottom = scrollHeight - scrollTop - clientHeight < 10;
-		if (isAtBottom) {
-		  logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+		if (logContainerRef.current && taskLogs.length > 0 && !isLoadingTaskLogs) {
+			const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current
+			const isAtBottom = scrollHeight - scrollTop - clientHeight < 10
+			if (isAtBottom) {
+				logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+			}
 		}
-	  }
-	}, [taskLogs, isLoadingTaskLogs]);
-	
+	}, [taskLogs, isLoadingTaskLogs])
+
 	const job = jobs.find(j => j.id === Number(jobId))
 
 	const filteredLogs = taskLogs.filter(function (log) {
