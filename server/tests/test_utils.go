@@ -34,6 +34,7 @@ const (
     `
 
 	// Download destination docker-compose
+	// TODO: Either move destination and source config into the same Docker Compose setup or download both from the same location for consistency.
 	downloadDestinationComposeCmd = `
         cd /mnt &&
         curl -fsSL -o docker-compose.destination.yml \
@@ -271,7 +272,7 @@ func ExecCommandWithStreaming(ctx context.Context, t *testing.T, ctr testcontain
 }
 
 // PatchDockerCompose updates olake-ui and temporal-worker to build from local code
-// and prints the patched docker-compose.yml
+// TODO: Remove patch command and find alternative to use local code
 func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
 	patchCmd := `
     set -e
