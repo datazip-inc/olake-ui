@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button, Tooltip } from "antd"
@@ -36,6 +36,8 @@ const JobLogs: React.FC = () => {
 		fetchJobs,
 	} = useAppStore()
 
+	const logContainerRef = useRef<HTMLDivElement>(null)
+
 	useEffect(() => {
 		if (!jobs.length) {
 			fetchJobs()
@@ -58,6 +60,16 @@ const JobLogs: React.FC = () => {
 		jobs.length,
 		fetchJobs,
 	])
+
+	useEffect(() => {
+		if (logContainerRef.current && taskLogs.length > 0 && !isLoadingTaskLogs) {
+			const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current
+			const isAtBottom = scrollHeight - scrollTop - clientHeight < 10
+			if (isAtBottom) {
+				logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+			}
+		}
+	}, [taskLogs, isLoadingTaskLogs])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 
@@ -199,6 +211,7 @@ const JobLogs: React.FC = () => {
 					</div>
 				) : (
 					<div
+						ref={logContainerRef}
 						className={clsx(
 							"overflow-scroll rounded-xl bg-white",
 							filteredLogs.length > 0 && "border",
