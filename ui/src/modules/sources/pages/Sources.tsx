@@ -6,14 +6,13 @@ import { LinktreeLogoIcon, PlusIcon } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import analyticsService from "../../../api/services/analyticsService"
 import { Entity } from "../../../types"
-import { sourceTabs, STATUS_VALUES } from "../../../utils/constants"
+import { sourceTabs } from "../../../utils/constants"
+import { StatusValue } from "../../../enums"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
 
 const Sources: React.FC = () => {
-	const [activeTab, setActiveTab] = useState<
-		(typeof STATUS_VALUES)[keyof typeof STATUS_VALUES]
-	>(STATUS_VALUES.ACTIVE)
+	const [activeTab, setActiveTab] = useState<StatusValue>(StatusValue.ACTIVE)
 	const navigate = useNavigate()
 	const {
 		sources,
@@ -61,14 +60,14 @@ const Sources: React.FC = () => {
 	}
 
 	const filteredSources = (): Entity[] => {
-		if (activeTab === STATUS_VALUES.ACTIVE) {
+		if (activeTab === StatusValue.ACTIVE) {
 			return sources.filter(
 				source =>
 					source?.jobs &&
 					source.jobs.length > 0 &&
 					source.jobs.some(job => job.activate === true),
 			)
-		} else if (activeTab === STATUS_VALUES.INACTIVE) {
+		} else if (activeTab === StatusValue.INACTIVE) {
 			return sources.filter(
 				source =>
 					!source?.jobs ||
@@ -119,11 +118,7 @@ const Sources: React.FC = () => {
 
 			<Tabs
 				activeKey={activeTab}
-				onChange={(key: string) =>
-					setActiveTab(
-						key as (typeof STATUS_VALUES)[keyof typeof STATUS_VALUES],
-					)
-				}
+				onChange={(key: string) => setActiveTab(key as StatusValue)}
 				className="mb-4"
 				items={sourceTabs.map(tab => ({
 					key: tab.key,
@@ -135,7 +130,7 @@ const Sources: React.FC = () => {
 								tip="Loading sources..."
 							/>
 						</div>
-					) : tab.key === STATUS_VALUES.ACTIVE && showEmpty ? (
+					) : tab.key === StatusValue.ACTIVE && showEmpty ? (
 						<SourceEmptyState handleCreateSource={handleCreateSource} />
 					) : filteredSources().length === 0 ? (
 						<Empty

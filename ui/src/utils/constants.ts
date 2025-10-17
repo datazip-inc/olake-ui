@@ -282,39 +282,3 @@ export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
 	SUCCEEDED: "SUCCEEDED",
 	FAILED: "FAILED",
 } as const
-
-export const STREAM_FILTERS = [
-	"All tables",
-	"Selected",
-	"Not Selected",
-] as const
-
-export const CONNECTOR_TYPE_MAP: Record<string, string> = {
-	mongodb: "MongoDB",
-	postgres: "Postgres",
-	mysql: "MySQL",
-	oracle: "Oracle",
-} as const
-
-export const DEFAULT_CONNECTORS = {
-	SOURCE: "MongoDB",
-	DESTINATION: "Amazon S3",
-} as const
-
-export const TAB_TYPE_VALUES = {
-	CONFIG: "config" as const,
-	SCHEMA: "schema" as const,
-	JOBS: "jobs" as const,
-	PARTITIONING: "partitioning" as const,
-} as const
-
-export const STATUS_VALUES = {
-	ACTIVE: "active",
-	INACTIVE: "inactive",
-	PENDING: "pending",
-	FAILED: "failed",
-	RUNNING: "running",
-	SUCCESS: "success",
-	COMPLETED: "completed",
-	CANCELLED: "cancelled",
-} as const

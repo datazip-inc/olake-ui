@@ -30,8 +30,8 @@ import {
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 	TEST_CONNECTION_STATUS,
-	DEFAULT_CONNECTORS,
 } from "../../../utils/constants"
+import { SourceConnector } from "../../../enums"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -77,7 +77,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const formRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(
-			initialConnector || DEFAULT_CONNECTORS.SOURCE,
+			initialConnector || SourceConnector.MONGODB,
 		)
 		const [sourceName, setSourceName] = useState(initialName || "")
 		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")

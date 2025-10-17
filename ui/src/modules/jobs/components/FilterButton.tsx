@@ -1,6 +1,7 @@
 import clsx from "clsx"
 
-import { COLORS, STREAM_FILTERS } from "../../../utils/constants"
+import { COLORS } from "../../../utils/constants"
+import { StreamFilter } from "../../../enums"
 import { FilterButtonProps } from "../../../types"
 
 const FilterButton: React.FC<FilterButtonProps> = ({
@@ -11,9 +12,8 @@ const FilterButton: React.FC<FilterButtonProps> = ({
 	const isFilterSelected = selectedFilters.includes(filter)
 
 	const handleFilterSelect = (filter: string) => {
-		if (filter === STREAM_FILTERS[0]) {
-			// "All tables"
-			setSelectedFilters([STREAM_FILTERS[0]])
+		if (filter === StreamFilter.ALL_TABLES) {
+			setSelectedFilters([StreamFilter.ALL_TABLES])
 			return
 		}
 
@@ -24,7 +24,7 @@ const FilterButton: React.FC<FilterButtonProps> = ({
 
 		setSelectedFilters([
 			...selectedFilters.filter(
-				(selectedFilter: string) => selectedFilter !== STREAM_FILTERS[0], // "All tables"
+				(selectedFilter: string) => selectedFilter !== StreamFilter.ALL_TABLES,
 			),
 			filter,
 		])

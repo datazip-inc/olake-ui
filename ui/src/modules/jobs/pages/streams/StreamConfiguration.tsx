@@ -40,8 +40,8 @@ import {
 	PartitioningRegexTooltip,
 	SYNC_MODE_MAP,
 	TAB_STYLES,
-	TAB_TYPE_VALUES,
 } from "../../../../utils/constants"
+import { TabType } from "../../../../enums"
 import { operatorOptions } from "../../../../utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
@@ -61,9 +61,7 @@ const StreamConfiguration = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	onIngestionModeChange,
 }: ExtendedStreamConfigurationProps) => {
-	const [activeTab, setActiveTab] = useState<
-		(typeof TAB_TYPE_VALUES)[keyof typeof TAB_TYPE_VALUES]
-	>(TAB_TYPE_VALUES.CONFIG)
+	const [activeTab, setActiveTab] = useState<TabType>(TabType.CONFIG)
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
 	const [appendMode, setAppendMode] = useState(false)
 	const [normalization, setNormalization] =
@@ -119,7 +117,7 @@ const StreamConfiguration = ({
 		)
 
 	useEffect(() => {
-		setActiveTab(TAB_TYPE_VALUES.CONFIG)
+		setActiveTab(TabType.CONFIG)
 		const initialApiSyncMode = stream.stream.sync_mode
 
 		// Parse cursor field for default value
@@ -595,11 +593,7 @@ const StreamConfiguration = ({
 					"flex items-center justify-center gap-1 text-xs",
 				)}
 				style={{ fontWeight: 500, height: "28px", width: "100%" }}
-				onClick={() =>
-					setActiveTab(
-						id as (typeof TAB_TYPE_VALUES)[keyof typeof TAB_TYPE_VALUES],
-					)
-				}
+				onClick={() => setActiveTab(id as TabType)}
 				type="button"
 			>
 				<span className="flex items-center">{icon}</span>
@@ -1084,29 +1078,26 @@ const StreamConfiguration = ({
 			<div className="mb-4 w-full">
 				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton
-						id={TAB_TYPE_VALUES.CONFIG}
+						id={TabType.CONFIG}
 						label="Config"
 						icon={<SlidersHorizontalIcon className="size-3.5" />}
 					/>
 					<TabButton
-						id={TAB_TYPE_VALUES.SCHEMA}
+						id={TabType.SCHEMA}
 						label="Schema"
 						icon={<ColumnsPlusRightIcon className="size-3.5" />}
 					/>
 					<TabButton
-						id={TAB_TYPE_VALUES.PARTITIONING}
+						id={TabType.PARTITIONING}
 						label="Partitioning"
 						icon={<GridFourIcon className="size-3.5" />}
 					/>
 				</div>
 			</div>
 
-			{activeTab === TAB_TYPE_VALUES.CONFIG && renderConfigContent()}
-			{activeTab === TAB_TYPE_VALUES.SCHEMA && (
-				<StreamsSchema initialData={stream} />
-			)}
-			{activeTab === TAB_TYPE_VALUES.PARTITIONING &&
-				renderPartitioningContent()}
+			{activeTab === TabType.CONFIG && renderConfigContent()}
+			{activeTab === TabType.SCHEMA && <StreamsSchema initialData={stream} />}
+			{activeTab === TabType.PARTITIONING && renderPartitioningContent()}
 		</div>
 	)
 }
