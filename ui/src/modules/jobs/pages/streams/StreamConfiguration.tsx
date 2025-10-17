@@ -40,6 +40,7 @@ import {
 	SYNC_MODE_MAP,
 	TAB_STYLES,
 } from "../../../../utils/constants"
+import { TabType } from "../../../../enums"
 import { operatorOptions } from "../../../../utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
@@ -58,7 +59,7 @@ const StreamConfiguration = ({
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: ExtendedStreamConfigurationProps) => {
-	const [activeTab, setActiveTab] = useState("config")
+	const [activeTab, setActiveTab] = useState<TabType>(TabType.CONFIG)
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
 	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
@@ -113,7 +114,7 @@ const StreamConfiguration = ({
 		)
 
 	useEffect(() => {
-		setActiveTab("config")
+		setActiveTab(TabType.CONFIG)
 		const initialApiSyncMode = stream.stream.sync_mode
 
 		// Parse cursor field for default value
@@ -568,7 +569,7 @@ const StreamConfiguration = ({
 					"flex items-center justify-center gap-1 text-xs",
 				)}
 				style={{ fontWeight: 500, height: "28px", width: "100%" }}
-				onClick={() => setActiveTab(id)}
+				onClick={() => setActiveTab(id as TabType)}
 				type="button"
 			>
 				<span className="flex items-center">{icon}</span>
@@ -1017,26 +1018,26 @@ const StreamConfiguration = ({
 			<div className="mb-4 w-full">
 				<div className="grid grid-cols-3 gap-1 rounded-md bg-background-primary p-1">
 					<TabButton
-						id="config"
+						id={TabType.CONFIG}
 						label="Config"
 						icon={<SlidersHorizontal className="size-3.5" />}
 					/>
 					<TabButton
-						id="schema"
+						id={TabType.SCHEMA}
 						label="Schema"
 						icon={<ColumnsPlusRight className="size-3.5" />}
 					/>
 					<TabButton
-						id="partitioning"
+						id={TabType.PARTITIONING}
 						label="Partitioning"
 						icon={<GridFour className="size-3.5" />}
 					/>
 				</div>
 			</div>
 
-			{activeTab === "config" && renderConfigContent()}
-			{activeTab === "schema" && <StreamsSchema initialData={stream} />}
-			{activeTab === "partitioning" && renderPartitioningContent()}
+			{activeTab === TabType.CONFIG && renderConfigContent()}
+			{activeTab === TabType.SCHEMA && <StreamsSchema initialData={stream} />}
+			{activeTab === TabType.PARTITIONING && renderPartitioningContent()}
 		</div>
 	)
 }

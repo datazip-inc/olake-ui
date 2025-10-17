@@ -19,10 +19,9 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
 } from "../../../utils/constants"
+import { StreamFilter } from "../../../enums"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
-
-const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
 const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	setSelectedStreams,
@@ -648,7 +647,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					<div
 						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
 					>
-						{STREAM_FILTERS.map(filter => (
+						{Object.values(StreamFilter).map(filter => (
 							<FilterButton
 								key={filter}
 								filter={filter}

@@ -34,6 +34,7 @@ import {
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
 } from "../../../utils/constants"
+import { SourceConnector } from "../../../enums"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
 // Custom wrapper component for SourceEdit to use in job flow
@@ -227,7 +228,7 @@ const JobEdit: React.FC = () => {
 	const initializeForNewJob = () => {
 		setSourceData({
 			name: "New Source",
-			type: "MongoDB",
+			type: SourceConnector.MONGODB,
 			config: {
 				hosts: [],
 				username: "",
