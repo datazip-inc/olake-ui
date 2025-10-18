@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -14,117 +13,111 @@ import (
 	"github.com/datazip/olake-ui/server/utils"
 )
 
-type AuthHandler struct {
-	web.Controller
-}
-
 // @router /login [post]
-func (c *AuthHandler) Login() {
+func (h *Handler) Login() {
 	var req dto.LoginRequest
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	logger.Info("Login initiated - username=%s", req.Username)
+	logger.Debugf("Login initiated username[%s]", req.Username)
 
-	user, err := svc.Auth.Login(context.Background(), req.Username, req.Password)
+	user, err := h.svc.Login(h.Ctx.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
 		case errors.Is(err, constants.ErrInvalidCredentials):
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid credentials", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid credentials", err)
 		default:
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Login failed", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Login failed", err)
 		}
 		return
 	}
 
 	// check if session is enabled
 	if web.BConfig.WebConfig.Session.SessionOn {
-		_ = c.SetSession(constants.SessionUserID, user.ID)
+		_ = h.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{
 		"username": user.Username,
 	})
 }
 
 // @router /checkauth [get]
-func (c *AuthHandler) CheckAuth() {
-	userID := c.GetSession(constants.SessionUserID)
+func (h *Handler) CheckAuth() {
+	userID := h.GetSession(constants.SessionUserID)
 	if userID == nil {
-		utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
-	logger.Info("Check auth initiated - user_id=%v", userID)
+	logger.Debugf("Check auth initiated user_id[%v]", userID)
 
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
-		if err := svc.Auth.ValidateUser(userIDInt); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
+		if err := h.svc.ValidateUser(userIDInt); err != nil {
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
 	}
 
-	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
+	utils.SuccessResponse(&h.Controller, dto.LoginResponse{
 		Message: "Authenticated",
 		Success: true,
 	})
 }
 
 // @router /logout [post]
-func (c *AuthHandler) Logout() {
-	userID := c.GetSession(constants.SessionUserID)
-	logger.Info("Logout initiated - user_id=%v", userID)
+func (h *Handler) Logout() {
+	userID := h.GetSession(constants.SessionUserID)
+	logger.Debugf("Logout initiated user_id[%v]", userID)
 
-	err := c.DestroySession()
+	err := h.DestroySession()
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to destroy session", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to destroy session", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
-		Message: "Logged out successfully",
-		Success: true,
-	})
+
+	utils.SuccessResponse(&h.Controller, nil)
 }
 
 // @router /signup [post]
-func (c *AuthHandler) Signup() {
+func (h *Handler) Signup() {
 	var req models.User
-	if err := UnmarshalAndValidate(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	logger.Info("Signup initiated - username=%s email=%s", req.Username, req.Email)
+	logger.Debugf("Signup initiated username[%s] email[%s]", req.Username, req.Email)
 
-	if err := svc.Auth.Signup(context.Background(), &req); err != nil {
+	if err := h.svc.Signup(h.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
-			utils.ErrorResponse(&c.Controller, http.StatusConflict, "Username already exists", err)
+			utils.ErrorResponse(&h.Controller, http.StatusConflict, "Username already exists", err)
 		case errors.Is(err, constants.ErrPasswordProcessing):
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to process password", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to process password", err)
 		default:
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create user", err)
 		}
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
 	})
 }
 
 // @router /telemetry-id [get]
-func (c *AuthHandler) GetTelemetryID() {
-	logger.Info("Get telemetry ID initiated")
+func (h *Handler) GetTelemetryID() {
+	logger.Infof("Get telemetry ID initiated")
 
 	telemetryID := telemetry.GetTelemetryUserID()
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{
 		telemetry.TelemetryUserIDFile: string(telemetryID),
 	})
 }

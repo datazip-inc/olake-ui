@@ -42,7 +42,7 @@ func DiscoverCatalogActivity(ctx context.Context, params *ActivityParams) (map[s
 	return result, nil
 }
 
-// FetchSpecActivity runs the spec command to get connector specifications
+// FetchSpecActivity runs the spec command to get conndriverector specifications
 func FetchSpecActivity(ctx context.Context, params *ActivityParams) (dto.SpecOutput, error) {
 	runner := docker.NewRunner(docker.GetDefaultConfigDir())
 	return runner.FetchSpec(ctx, params.DestinationType, params.SourceType, params.Version, params.WorkflowID)

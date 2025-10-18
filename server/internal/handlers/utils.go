@@ -2,26 +2,32 @@ package handlers
 
 import (
 	"encoding/json"
-	"net/http"
+	"fmt"
 	"strconv"
 
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/models/dto"
-
-	"github.com/datazip/olake-ui/server/utils"
 )
 
 // get id from path
-func GetIDFromPath(c *web.Controller) int {
+func GetIDFromPath(c *web.Controller) (int, error) {
 	idStr := c.Ctx.Input.Param(":id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid id", err)
-		return 0
+		return 0, fmt.Errorf("invalid id: %s", err)
 	}
-	return id
+	return id, nil
+}
+
+// get id from path
+func GetProjectIDFromPath(c *web.Controller) (string, error) {
+	projectID := c.Ctx.Input.Param(":projectid")
+	if projectID == "" {
+		return "", fmt.Errorf("project id is required")
+	}
+	return projectID, nil
 }
 
 // Helper to extract user ID from session

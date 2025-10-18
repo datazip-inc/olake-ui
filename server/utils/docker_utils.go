@@ -69,7 +69,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 	// TODO: make constants file and validate all env vars in start of server
 	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %v", err)
+		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %s", err)
 	}
 	var tags []string
 	images := []string{imageName}

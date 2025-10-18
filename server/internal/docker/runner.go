@@ -21,20 +21,26 @@ import (
 
 // NewRunner creates a new Docker runner
 func NewRunner(workingDir string) *Runner {
+	database, err := database.Init()
+	if err != nil {
+		logs.Critical("Failed to create database: %s", err)
+	}
+
 	if err := utils.CreateDirectory(workingDir, DefaultDirPermissions); err != nil {
-		logs.Critical("Failed to create working directory %s: %v", workingDir, err)
+		logs.Critical("Failed to create working directory %s: %s", workingDir, err)
 	}
 
 	// Initialize Docker client
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		logs.Critical("Failed to create Docker client: %v", err)
+		logs.Critical("Failed to create Docker client: %s", err)
 	}
 
 	return &Runner{
 		WorkingDir:   workingDir,
 		anonymousID:  telemetry.GetTelemetryUserID(),
 		dockerClient: cli,
+		db:           database,
 	}
 }
 
@@ -97,7 +103,7 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 
 	output, err := r.ExecuteDockerCommand(ctx, workflowID, "", Spec, sourceType, version, "", extra...)
 	if err != nil {
-		return dto.SpecOutput{}, fmt.Errorf("docker command failed: %v", err)
+		return dto.SpecOutput{}, fmt.Errorf("docker command failed: %s", err)
 	}
 	spec, err := utils.ExtractJSON(string(output))
 	if err != nil {
@@ -231,8 +237,7 @@ func (r *Runner) RunSync(ctx context.Context, jobID int, workflowID string) (map
 	// 3) First launch path: only if we never launched and nothing is running
 	if _, err := os.Stat(launchedMarker); os.IsNotExist(err) {
 		logs.Info("workflowID %s: first launch path, preparing configs", workflowID)
-		jobORM := database.NewJobORM()
-		job, err := jobORM.GetByID(jobID, false)
+		job, err := r.db.GetJobByID(jobID, false)
 		if err != nil {
 			logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
 			return nil, err
@@ -286,7 +291,7 @@ type ContainerState struct {
 func (r *Runner) getContainerState(ctx context.Context, name, workflowID string) ContainerState {
 	inspect, err := r.dockerClient.ContainerInspect(ctx, name)
 	if err != nil || inspect.ContainerJSONBase == nil || inspect.State == nil {
-		logs.Warn("workflowID %s: container inspect failed or state missing for %s: %v", workflowID, name, err)
+		logs.Warn("workflowID %s: container inspect failed or state missing for %s: %s", workflowID, name, err)
 		return ContainerState{Exists: false}
 	}
 	running := inspect.State.Running
@@ -327,7 +332,7 @@ func StopContainer(ctx context.Context, workflowID string) error {
 
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return fmt.Errorf("failed to init docker client: %v", err)
+		return fmt.Errorf("failed to init docker client: %s", err)
 	}
 	defer cli.Close()
 
@@ -366,8 +371,7 @@ func (r *Runner) PersistJobStateFromFile(jobID int, workflowID string) error {
 		return err
 	}
 
-	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID, false)
+	job, err := r.db.GetJobByID(jobID, false)
 	if err != nil {
 		logs.Error("workflowID %s: failed to fetch job %d: %s", workflowID, jobID, err)
 		return err
@@ -382,7 +386,7 @@ func (r *Runner) PersistJobStateFromFile(jobID int, workflowID string) error {
 	job.State = string(stateJSON)
 	job.Active = true
 
-	if err := jobORM.Update(job); err != nil {
+	if err := r.db.UpdateJob(job); err != nil {
 		logs.Error("workflowID %s: failed to update job %d: %s", workflowID, jobID, err)
 		return err
 	}

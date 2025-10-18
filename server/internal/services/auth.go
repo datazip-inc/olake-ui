@@ -7,33 +7,23 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
 )
 
-type AuthService struct {
-	userORM *database.UserORM
-}
+// Auth-related methods on AppService
 
-func NewAuthService() *AuthService {
-	return &AuthService{
-		userORM: database.NewUserORM(),
-	}
-}
-
-func (s *AuthService) Login(ctx context.Context, username, password string) (*models.User, error) {
-	user, err := s.userORM.FindByUsername(username)
+func (s *AppService) Login(ctx context.Context, username, password string) (*models.User, error) {
+	user, err := s.db.GetUserByUsername(username)
 	if err != nil {
 		if strings.Contains(err.Error(), "no row found") {
-			return nil, fmt.Errorf("user not found - username=%s error=%v: %w", username, err, constants.ErrUserNotFound)
+			return nil, fmt.Errorf("user not found: %s", err)
 		}
-		return nil, fmt.Errorf("failed to find user - username=%s error=%v", username, err)
+		return nil, fmt.Errorf("failed to get user: %s", err)
 	}
 
-	if err := s.userORM.ComparePassword(user.Password, password); err != nil {
-		return nil, fmt.Errorf("invalid credentials - username=%s error=%v: %w", username, err, constants.ErrInvalidCredentials)
+	if err := s.db.CompareUserPassword(user.Password, password); err != nil {
+		return nil, fmt.Errorf("invalid credentials: %s", err)
 	}
 
 	telemetry.TrackUserLogin(ctx, user)
@@ -41,36 +31,35 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 	return user, nil
 }
 
-func (s *AuthService) Signup(_ context.Context, user *models.User) error {
+func (s *AppService) Signup(_ context.Context, user *models.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("failed to hash password - username=%s error=%v: %w", user.Username, err, constants.ErrPasswordProcessing)
+		return fmt.Errorf("failed to hash password: %s", err)
 	}
 	user.Password = string(hashedPassword)
 
-	if err := s.userORM.Create(user); err != nil {
+	if err := s.db.CreateUser(user); err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-			return fmt.Errorf("user already exists - username=%s email=%s error=%v: %w",
-				user.Username, user.Email, err, constants.ErrUserAlreadyExists)
+			return fmt.Errorf("user already exists: %s", err)
 		}
-		return fmt.Errorf("failed to create user - username=%s email=%s error=%v", user.Username, user.Email, err)
+		return fmt.Errorf("failed to create user: %s", err)
 	}
 
 	return nil
 }
 
-func (s *AuthService) GetUserByID(userID int) (*models.User, error) {
-	user, err := s.userORM.GetByID(userID)
+func (s *AppService) GetUserByID(userID int) (*models.User, error) {
+	user, err := s.db.GetUserByID(userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user - user_id=%d error=%v", userID, err)
+		return nil, fmt.Errorf("failed to find user: %s", err)
 	}
 	return user, nil
 }
 
-func (s *AuthService) ValidateUser(userID int) error {
-	_, err := s.userORM.GetByID(userID)
+func (s *AppService) ValidateUser(userID int) error {
+	_, err := s.db.GetUserByID(userID)
 	if err != nil {
-		return fmt.Errorf("failed to validate user - user_id=%d error=%v", userID, err)
+		return fmt.Errorf("failed to validate user: %s", err)
 	}
 	return nil
 }

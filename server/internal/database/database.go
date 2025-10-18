@@ -15,21 +15,25 @@ import (
 	"github.com/datazip/olake-ui/server/internal/models"
 )
 
-func Init() error {
+type Database struct {
+	ormer orm.Ormer
+}
+
+func Init() (*Database, error) {
 	// register driver
 	uri, err := BuildPostgresURIFromConfig()
 	if err != nil {
-		return fmt.Errorf("failed to build postgres uri: %s", err)
+		return nil, fmt.Errorf("failed to build postgres uri: %s", err)
 	}
 	err = orm.RegisterDriver("postgres", orm.DRPostgres)
 	if err != nil {
-		return fmt.Errorf("failed to register postgres driver: %s", err)
+		return nil, fmt.Errorf("failed to register postgres driver: %s", err)
 	}
 
 	// register database
 	err = orm.RegisterDataBase("default", "postgres", uri)
 	if err != nil {
-		return fmt.Errorf("failed to register postgres database: %s", err)
+		return nil, fmt.Errorf("failed to register postgres database: %s", err)
 	}
 
 	// enable session by default
@@ -54,7 +58,7 @@ func Init() error {
 	// Create tables if they do not exist
 	err = orm.RunSyncdb("default", false, true)
 	if err != nil {
-		return fmt.Errorf("failed to sync database schema: %s", err)
+		return nil, fmt.Errorf("failed to sync database schema: %s", err)
 	}
 	// Add session table if sessions are enabled
 	if web.BConfig.WebConfig.Session.SessionOn {
@@ -65,10 +69,10 @@ func Init() error {
 );`).Exec()
 
 		if err != nil {
-			return fmt.Errorf("failed to create session table: %s", err)
+			return nil, fmt.Errorf("failed to create session table: %s", err)
 		}
 	}
-	return nil
+	return &Database{ormer: orm.NewOrm()}, nil
 }
 
 // BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf

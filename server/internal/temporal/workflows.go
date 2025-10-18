@@ -7,6 +7,7 @@ import (
 
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -40,7 +41,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 	return result, nil
 }
 
-// FetchSpecWorkflow is a workflow for fetching connector specifications
+// FetchSpecWorkflow is a workflow for fetching driver specifications
 func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (dto.SpecOutput, error) {
 	// Execute the FetchSpecActivity directly
 	options := workflow.ActivityOptions{
@@ -119,11 +120,27 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 	err = workflow.ExecuteActivity(ctx, SyncActivity, params).Get(ctx, &result)
 	if err != nil {
 		// Track sync failure event
-		telemetry.TrackSyncFailed(context.Background(), jobID, params.WorkflowID)
+		telemetry.TrackSyncFailed(jobID, params.WorkflowID)
 		return nil, err
 	}
 
 	// Track sync completion
-	telemetry.TrackSyncCompleted(context.Background(), jobID, params.WorkflowID)
+	telemetry.TrackSyncCompleted(jobID, params.WorkflowID)
 	return result, nil
+}
+
+// cancelWorkflow cancels a workflow execution
+func (t *Temporal) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
+	return t.Client.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// ListWorkflow lists workflow executions based on the provided query
+func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
+	// Query workflows using the SDK's ListWorkflow method
+	resp, err := t.Client.ListWorkflow(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("error listing workflow executions: %s", err)
+	}
+
+	return resp, nil
 }

@@ -1,40 +1,35 @@
-// services/services.go
 package services
 
-import "fmt"
+import (
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/temporal"
+)
 
-type Services struct {
-	Source      *SourceService
-	Job         *JobService
-	Destination *DestinationService
-	User        *UserService
-	Auth        *AuthService
+// AppService is a unified service exposing all domain operations backed by shared deps.
+type AppService struct {
+	// single ORM facade using one Ormer
+	db       *database.Database
+	temporal *temporal.Temporal
 }
 
-func InitServices() (*Services, error) {
-	sourceService, err := NewSourceService()
+// InitAppService constructs a unified AppService with singletons.
+func InitAppService() (*AppService, error) {
+	db, err := database.Init()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize SourceService - error=%v", err)
+		return nil, err
+	}
+	return NewAppService(db)
+}
+
+// NewAppService wires a new AppService with singletons.
+func NewAppService(db *database.Database) (*AppService, error) {
+	client, err := temporal.NewClient()
+	if err != nil {
+		return nil, err
 	}
 
-	jobService, err := NewJobService()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize JobService - error=%v", err)
-	}
-
-	destinationService, err := NewDestinationService()
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize DestinationService - error=%v", err)
-	}
-
-	userService := NewUserService()
-	authService := NewAuthService()
-
-	return &Services{
-		Source:      sourceService,
-		Job:         jobService,
-		Destination: destinationService,
-		User:        userService,
-		Auth:        authService,
+	return &AppService{
+		db:       db,
+		temporal: client,
 	}, nil
 }
