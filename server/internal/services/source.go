@@ -107,7 +107,7 @@ func (s *AppService) UpdateSource(ctx context.Context, projectID string, id int,
 		return fmt.Errorf("failed to fetch jobs for source update: %s", err)
 	}
 
-	if err := cancelAllJobWorkflows(ctx, s.tempClient, jobs, projectID); err != nil {
+	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for source update: %s", err)
 	}
 
@@ -150,7 +150,7 @@ func (s *AppService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 }
 
 func (s *AppService) SourceTestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
-	if s.tempClient == nil {
+	if s.temporal == nil {
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
 
@@ -159,7 +159,7 @@ func (s *AppService) SourceTestConnection(ctx context.Context, req *dto.SourceTe
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.tempClient.TestConnection(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
+	result, err := s.temporal.TestConnection(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("connection test failed: %s", err)
 	}
@@ -196,7 +196,7 @@ func (s *AppService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}
 
-	newStreams, err := s.tempClient.GetCatalog(
+	newStreams, err := s.temporal.GetCatalog(
 		ctx,
 		req.Type,
 		req.Version,
@@ -240,7 +240,7 @@ func (s *AppService) GetSourceVersions(ctx context.Context, sourceType string) (
 
 // TODO: cache spec in db for each version
 func (s *AppService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	specOut, err := s.tempClient.FetchSpec(ctx, "", req.Type, req.Version)
+	specOut, err := s.temporal.FetchSpec(ctx, "", req.Type, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}

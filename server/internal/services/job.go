@@ -38,12 +38,12 @@ func (s *AppService) GetAllJobs(ctx context.Context, projectID string) ([]dto.Jo
 }
 
 func (s *AppService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
-	source, err := s.getOrCreateSource(req.Source, projectID, userID)
+	source, err := s.upsertSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
 	}
 
-	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
+	dest, err := s.upsertDestination(req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination: %s", err)
 	}
@@ -73,7 +73,7 @@ func (s *AppService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		}
 	}()
 
-	_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
+	_, err = s.temporal.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
 	if err != nil {
 		return fmt.Errorf("failed to create temporal workflow: %s", err)
 	}
@@ -88,33 +88,38 @@ func (s *AppService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to get job: %s", err)
 	}
 
-	source, err := s.getOrCreateSource(req.Source, projectID, userID)
+	// Snapshot previous job state for compensation on schedule update failure
+	prevJob := *existingJob
+
+	source, err := s.upsertSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update: %s", err)
 	}
 
-	dest, err := s.getOrCreateDestination(req.Destination, projectID, userID)
+	dest, err := s.upsertDestination(req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update: %s", err)
 	}
 
-	existingJob.Name = req.Name
+	existingJob.Name = req.Name // TODO: job name cant be changed
 	existingJob.SourceID = source
 	existingJob.DestID = dest
 	existingJob.Active = req.Activate
 	existingJob.Frequency = req.Frequency
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
-
-	user := &models.User{ID: *userID}
-	existingJob.UpdatedBy = user
+	existingJob.UpdatedBy = &models.User{ID: *userID}
 
 	if err := s.db.UpdateJob(existingJob); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
-	_, err = s.tempClient.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
+	_, err = s.temporal.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
 	if err != nil {
+		// Compensation: restore previous DB state if schedule update fails
+		if rerr := s.db.UpdateJob(&prevJob); rerr != nil {
+			logger.Errorf("failed to restore job after schedule update error: %s", rerr)
+		}
 		return fmt.Errorf("failed to update temporal workflow: %s", err)
 	}
 
@@ -130,7 +135,7 @@ func (s *AppService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 
 	jobName := job.Name
 
-	_, err = s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
+	_, err = s.temporal.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
 	if err != nil {
 		return "", fmt.Errorf("failed to delete temporal workflow: %s", err)
 	}
@@ -149,7 +154,7 @@ func (s *AppService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	resp, err := s.tempClient.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
+	resp, err := s.temporal.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to trigger sync: %s", err)
 	}
@@ -163,7 +168,7 @@ func (s *AppService) CancelJobRun(ctx context.Context, projectID string, jobID i
 	}
 
 	jobSlice := []*models.Job{job}
-	if err := cancelAllJobWorkflows(ctx, s.tempClient, jobSlice, projectID); err != nil {
+	if err := cancelAllJobWorkflows(ctx, s.temporal, jobSlice, projectID); err != nil {
 		return nil, fmt.Errorf("failed to cancel job workflow: %s", err)
 	}
 	// TODO : remove nested parsing from frontend
@@ -208,7 +213,7 @@ func (s *AppService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	var tasks []dto.JobTask
 	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
 
-	resp, err := s.tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+	resp, err := s.temporal.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
 	})
 	if err != nil {
@@ -268,6 +273,7 @@ func (s *AppService) buildJobResponse(ctx context.Context, job *models.Job, proj
 
 	if job.SourceID != nil {
 		jobResp.Source = dto.DriverConfig{
+			ID:      &job.SourceID.ID,
 			Name:    job.SourceID.Name,
 			Type:    job.SourceID.Type,
 			Config:  job.SourceID.Config,
@@ -277,6 +283,7 @@ func (s *AppService) buildJobResponse(ctx context.Context, job *models.Job, proj
 
 	if job.DestID != nil {
 		jobResp.Destination = dto.DriverConfig{
+			ID:      &job.DestID.ID,
 			Name:    job.DestID.Name,
 			Type:    job.DestID.DestType,
 			Config:  job.DestID.Config,
@@ -292,7 +299,7 @@ func (s *AppService) buildJobResponse(ctx context.Context, job *models.Job, proj
 	}
 
 	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
-	resp, err := s.tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+	resp, err := s.temporal.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 		Query:    query,
 		PageSize: 1,
 	})
@@ -307,68 +314,59 @@ func (s *AppService) buildJobResponse(ctx context.Context, job *models.Job, proj
 	return jobResp, nil
 }
 
-func (s *AppService) getOrCreateSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
-	sources, err := s.db.GetSourcesByNameAndType(config.Name, config.Type, projectID)
-	if err == nil && len(sources) > 0 {
-		source := sources[0]
-		source.Config = config.Config
-		source.Version = config.Version
-		if userID != nil {
-			source.UpdatedBy = &models.User{ID: *userID}
-		}
-		if err := s.db.UpdateSource(source); err != nil {
-			return nil, fmt.Errorf("failed to update source: %s", err)
-		}
-		return source, nil
+func (s *AppService) upsertSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
+	if config == nil {
+		return nil, fmt.Errorf("source config is required")
 	}
 
-	source := &models.Source{
+	// If ID provided, use that source as-is without modifying it.
+	if config.ID != nil {
+		return s.db.GetSourceByID(*config.ID)
+	}
+
+	user := &models.User{ID: *userID}
+	// Otherwise, create a new source.
+	newSource := &models.Source{
 		Name:      config.Name,
 		Type:      config.Type,
 		Config:    config.Config,
 		Version:   config.Version,
 		ProjectID: projectID,
+		CreatedBy: user,
+		UpdatedBy: user,
 	}
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		source.CreatedBy = user
-		source.UpdatedBy = user
-	}
-	if err := s.db.CreateSource(source); err != nil {
+	if err := s.db.CreateSource(newSource); err != nil {
 		return nil, fmt.Errorf("failed to create source: %s", err)
 	}
-	return source, nil
+
+	return newSource, nil
 }
 
-func (s *AppService) getOrCreateDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
-	destinations, err := s.db.GetDestinationsByNameAndType(config.Name, config.Type, projectID)
-	if err == nil && len(destinations) > 0 {
-		dest := destinations[0]
-		dest.Config = config.Config
-		dest.Version = config.Version
-		if userID != nil {
-			dest.UpdatedBy = &models.User{ID: *userID}
-		}
-		if err := s.db.UpdateDestination(dest); err != nil {
-			return nil, fmt.Errorf("failed to update destination: %s", err)
-		}
-		return dest, nil
+func (s *AppService) upsertDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
+	if config == nil {
+		return nil, fmt.Errorf("destination config is required")
 	}
 
-	dest := &models.Destination{
+	// If ID provided, use that destination as-is without modifying it.
+	if config.ID != nil {
+		return s.db.GetDestinationByID(*config.ID)
+	}
+
+	user := &models.User{ID: *userID}
+	// Otherwise, create a new destination.
+	newDest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,
 		Config:    config.Config,
 		Version:   config.Version,
 		ProjectID: projectID,
+		CreatedBy: user,
+		UpdatedBy: user,
 	}
-	if userID != nil {
-		user := &models.User{ID: *userID}
-		dest.CreatedBy = user
-		dest.UpdatedBy = user
-	}
-	if err := s.db.CreateDestination(dest); err != nil {
+
+	if err := s.db.CreateDestination(newDest); err != nil {
 		return nil, fmt.Errorf("failed to create destination: %s", err)
 	}
-	return dest, nil
+
+	return newDest, nil
 }

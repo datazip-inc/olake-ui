@@ -6,13 +6,13 @@ import (
 
 // Worker handles Temporal worker functionality
 type Worker struct {
-	worker worker.Worker
-	client *Client
+	worker   worker.Worker
+	temporal *Temporal
 }
 
 // NewWorker creates a new Temporal worker with the provided client
-func NewWorker(c *Client) *Worker {
-	w := worker.New(c.GetClient(), TaskQueue, worker.Options{})
+func NewWorker(temporal *Temporal) *Worker {
+	w := worker.New(temporal.Client, TaskQueue, worker.Options{})
 
 	// Register workflows
 	w.RegisterWorkflow(DiscoverCatalogWorkflow)
@@ -28,8 +28,8 @@ func NewWorker(c *Client) *Worker {
 	w.RegisterActivity(SyncCleanupActivity)
 
 	return &Worker{
-		worker: w,
-		client: c,
+		worker:   w,
+		temporal: temporal,
 	}
 }
 
@@ -41,5 +41,5 @@ func (w *Worker) Start() error {
 // Stop stops the worker and closes the client
 func (w *Worker) Stop() {
 	w.worker.Stop()
-	w.client.Close()
+	w.temporal.Close()
 }

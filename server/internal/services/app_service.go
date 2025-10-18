@@ -8,8 +8,8 @@ import (
 // AppService is a unified service exposing all domain operations backed by shared deps.
 type AppService struct {
 	// single ORM facade using one Ormer
-	db         *database.Database
-	tempClient *temporal.Client
+	db       *database.Database
+	temporal *temporal.Temporal
 }
 
 // InitAppService constructs a unified AppService with singletons.
@@ -29,7 +29,7 @@ func NewAppService(db *database.Database) (*AppService, error) {
 	}
 
 	return &AppService{
-		db:         db,
-		tempClient: client,
+		db:       db,
+		temporal: client,
 	}, nil
 }

@@ -48,14 +48,27 @@ func (h *Handler) CreateJob() {
 		return
 	}
 
-	if err := dto.ValidateSourceType(req.Source.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
+	// Conditional validation: if id present, we only require id; otherwise, require name/type/version/config.
+	if req.Source.ID == nil {
+		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			return
+		}
+		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("source name, version, and config are required when id is not provided"))
+			return
+		}
 	}
 
-	if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
+	if req.Destination.ID == nil {
+		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			return
+		}
+		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("destination name, version, and config are required when id is not provided"))
+			return
+		}
 	}
 
 	logger.Debugf("Create job initiated project_id[%s] job_name[%s] user_id[%v]",
@@ -94,14 +107,27 @@ func (h *Handler) UpdateJob() {
 		return
 	}
 
-	if err := dto.ValidateSourceType(req.Source.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
+	// Conditional validation: if id present, we only require id; otherwise, require name/type/version/config.
+	if req.Source.ID == nil {
+		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			return
+		}
+		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("source name, version, and config are required when id is not provided"))
+			return
+		}
 	}
 
-	if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
-		return
+	if req.Destination.ID == nil {
+		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			return
+		}
+		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("destination name, version, and config are required when id is not provided"))
+			return
+		}
 	}
 
 	logger.Debugf("Update job initiated project_id[%s] job_id[%d] job_name[%s] user_id[%v]",

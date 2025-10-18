@@ -11,7 +11,7 @@ import (
 	"go.temporal.io/api/workflowservice/v1"
 )
 
-func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Client, jobs []*models.Job, projectID string) error {
+func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, jobs []*models.Job, projectID string) error {
 	if len(jobs) == 0 {
 		return nil
 	}

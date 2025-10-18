@@ -103,7 +103,7 @@ func (s *AppService) UpdateDestination(ctx context.Context, id int, projectID st
 		return fmt.Errorf("failed to fetch jobs for destination update: %s", err)
 	}
 
-	if err := cancelAllJobWorkflows(ctx, s.tempClient, jobs, projectID); err != nil {
+	if err := cancelAllJobWorkflows(ctx, s.temporal, jobs, projectID); err != nil {
 		return fmt.Errorf("failed to cancel workflows for destination update: %s", err)
 	}
 
@@ -162,7 +162,7 @@ func (s *AppService) TestConnection(ctx context.Context, req *dto.DestinationTes
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
-	result, err := s.tempClient.TestConnection(ctx, workflowID, "destination", driver, version, encryptedConfig)
+	result, err := s.temporal.TestConnection(ctx, workflowID, "destination", driver, version, encryptedConfig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("connection test failed: %s", err)
 	}
@@ -223,7 +223,7 @@ func (s *AppService) GetDestinationSpec(ctx context.Context, req *dto.SpecReques
 		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	specOut, err := s.tempClient.FetchSpec(ctx, destinationType, driver, req.Version)
+	specOut, err := s.temporal.FetchSpec(ctx, destinationType, driver, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}

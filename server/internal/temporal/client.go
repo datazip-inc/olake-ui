@@ -53,36 +53,33 @@ func init() {
 }
 
 // Client provides methods to interact with Temporal
-type Client struct {
-	temporalClient client.Client
+type Temporal struct {
+	Client client.Client
 }
 
 // NewClient creates a new Temporal client
-func NewClient() (*Client, error) {
+func NewClient() (*Temporal, error) {
 	c, err := client.Dial(client.Options{
 		HostPort: TemporalAddress,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Temporal client: %s", err)
+		return nil, fmt.Errorf("failed to create temporal client: %s", err)
 	}
 
-	return &Client{
-		temporalClient: c,
+	return &Temporal{
+		Client: c,
 	}, nil
 }
 
 // Close closes the Temporal client
-func (c *Client) Close() {
-	if c.temporalClient != nil {
-		c.temporalClient.Close()
+func (t *Temporal) Close() {
+	if t.Client != nil {
+		t.Client.Close()
 	}
-}
-func (c *Client) GetClient() client.Client {
-	return c.temporalClient
 }
 
 // GetCatalog runs a workflow to discover catalog data
-func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
+func (t *Temporal) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -98,7 +95,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 		TaskQueue: TaskQueue,
 	}
 
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, DiscoverCatalogWorkflow, params)
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, DiscoverCatalogWorkflow, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
@@ -112,7 +109,7 @@ func (c *Client) GetCatalog(ctx context.Context, sourceType, version, config, st
 }
 
 // FetchSpec runs a workflow to fetch connector specifications
-func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
+func (t *Temporal) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
 	// spec version >= DefaultSpecVersion is required
 	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
 		version = constants.DefaultSpecVersion
@@ -130,7 +127,7 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 		TaskQueue: TaskQueue,
 	}
 
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, FetchSpecWorkflow, params)
 	if err != nil {
 		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %s", err)
 	}
@@ -144,7 +141,7 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 }
 
 // TestConnection runs a workflow to test connection
-func (c *Client) TestConnection(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
+func (t *Temporal) TestConnection(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType: sourceType,
 		Version:    version,
@@ -159,7 +156,7 @@ func (c *Client) TestConnection(ctx context.Context, workflowID, flag, sourceTyp
 		TaskQueue: TaskQueue,
 	}
 
-	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, TestConnectionWorkflow, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute test connection workflow: %s", err)
 	}
@@ -173,11 +170,11 @@ func (c *Client) TestConnection(ctx context.Context, workflowID, flag, sourceTyp
 }
 
 // ManageSync handles all sync operations (create, update, delete, trigger)
-func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, frequency string, action SyncAction) (map[string]interface{}, error) {
+func (t *Temporal) ManageSync(ctx context.Context, projectID string, jobID int, frequency string, action SyncAction) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("sync-%s-%d", projectID, jobID)
 	scheduleID := fmt.Sprintf("schedule-%s", workflowID)
 
-	handle := c.temporalClient.ScheduleClient().GetHandle(ctx, scheduleID)
+	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
 	currentSchedule, err := handle.Describe(ctx)
 	scheduleExists := err == nil
 	if action != ActionCreate && !scheduleExists {
@@ -191,13 +188,13 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 		if scheduleExists {
 			return nil, fmt.Errorf("schedule already exists")
 		}
-		return c.createSchedule(ctx, handle, scheduleID, workflowID, frequency, jobID)
+		return t.createSchedule(ctx, handle, scheduleID, workflowID, frequency, jobID)
 
 	case ActionUpdate:
 		if frequency == "" {
 			return nil, fmt.Errorf("frequency is required for updating schedule")
 		}
-		return c.updateSchedule(ctx, handle, currentSchedule, scheduleID, frequency)
+		return t.updateSchedule(ctx, handle, currentSchedule, scheduleID, frequency)
 
 	case ActionDelete:
 		if err := handle.Delete(ctx); err != nil {
@@ -234,9 +231,9 @@ func (c *Client) ManageSync(ctx context.Context, projectID string, jobID int, fr
 }
 
 // createSchedule creates a new schedule
-func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, scheduleID, workflowID, cronSpec string, jobID int) (map[string]interface{}, error) {
+func (t *Temporal) createSchedule(ctx context.Context, _ client.ScheduleHandle, scheduleID, workflowID, cronSpec string, jobID int) (map[string]interface{}, error) {
 	cronSpec = utils.ToCron(cronSpec)
-	_, err := c.temporalClient.ScheduleClient().Create(ctx, client.ScheduleOptions{
+	_, err := t.Client.ScheduleClient().Create(ctx, client.ScheduleOptions{
 		ID: scheduleID,
 		Spec: client.ScheduleSpec{
 			CronExpressions: []string{cronSpec},
@@ -261,7 +258,7 @@ func (c *Client) createSchedule(ctx context.Context, _ client.ScheduleHandle, sc
 }
 
 // updateSchedule updates an existing schedule
-func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, cronSpec string) (map[string]interface{}, error) {
+func (t *Temporal) updateSchedule(ctx context.Context, handle client.ScheduleHandle, currentSchedule *client.ScheduleDescription, _, cronSpec string) (map[string]interface{}, error) {
 	cronSpec = utils.ToCron(cronSpec)
 	// Check if update is needed
 	if len(currentSchedule.Schedule.Spec.CronExpressions) > 0 &&
@@ -290,14 +287,14 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 }
 
 // cancelWorkflow cancels a workflow execution
-func (c *Client) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
-	return c.temporalClient.CancelWorkflow(ctx, workflowID, runID)
+func (t *Temporal) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
+	return t.Client.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // ListWorkflow lists workflow executions based on the provided query
-func (c *Client) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
+func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
 	// Query workflows using the SDK's ListWorkflow method
-	resp, err := c.temporalClient.ListWorkflow(ctx, request)
+	resp, err := t.Client.ListWorkflow(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("error listing workflow executions: %s", err)
 	}
