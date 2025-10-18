@@ -17,9 +17,9 @@ import (
 )
 
 func main() {
-	telemetry.InitTelemetry()
 	constants.Init()
 	logger.Init()
+	telemetry.InitTelemetry()
 
 	// Initialize unified AppService
 	logger.Info("Initializing application services...")

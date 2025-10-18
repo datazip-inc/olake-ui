@@ -13,7 +13,7 @@ import (
 )
 
 // GetCatalog runs a workflow to discover catalog data
-func (t *Temporal) GetCatalog(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType:    sourceType,
 		Version:       version,
@@ -42,8 +42,8 @@ func (t *Temporal) GetCatalog(ctx context.Context, sourceType, version, config, 
 	return result, nil
 }
 
-// FetchSpec runs a workflow to fetch connector specifications
-func (t *Temporal) FetchSpec(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
+// FetchSpec runs a workflow to fetch driver specifications
+func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceType, version string) (dto.SpecOutput, error) {
 	// spec version >= DefaultSpecVersion is required
 	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
 		version = constants.DefaultSpecVersion
@@ -75,7 +75,7 @@ func (t *Temporal) FetchSpec(ctx context.Context, destinationType, sourceType, v
 }
 
 // TestConnection runs a workflow to test connection
-func (t *Temporal) TestConnection(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
+func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
 	params := &ActivityParams{
 		SourceType: sourceType,
 		Version:    version,

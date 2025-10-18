@@ -41,7 +41,7 @@ func DiscoverCatalogWorkflow(ctx workflow.Context, params *ActivityParams) (map[
 	return result, nil
 }
 
-// FetchSpecWorkflow is a workflow for fetching connector specifications
+// FetchSpecWorkflow is a workflow for fetching driver specifications
 func FetchSpecWorkflow(ctx workflow.Context, params *ActivityParams) (dto.SpecOutput, error) {
 	// Execute the FetchSpecActivity directly
 	options := workflow.ActivityOptions{

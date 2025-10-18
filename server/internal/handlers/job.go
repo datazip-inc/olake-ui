@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/utils"
@@ -14,7 +13,7 @@ import (
 func (h *Handler) ListJobs() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -22,7 +21,7 @@ func (h *Handler) ListJobs() {
 
 	jobs, err := h.svc.GetAllJobs(h.Ctx.Request.Context(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to retrieve jobs by project ID", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve jobs by project ID: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, jobs)
@@ -38,35 +37,35 @@ func (h *Handler) CreateJob() {
 
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.CreateJobRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	// Conditional validation: if id present, we only require id; otherwise, require name/type/version/config.
 	if req.Source.ID == nil {
 		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
 		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("source name, version, and config are required when id is not provided"))
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("source name, version, and config are required when source id is not provided: %s", err), err)
 			return
 		}
 	}
 
 	if req.Destination.ID == nil {
 		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
 		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("destination name, version, and config are required when id is not provided"))
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("destination name, version, and config are required when destination id is not provided: %s", err), err)
 			return
 		}
 	}
@@ -75,7 +74,7 @@ func (h *Handler) CreateJob() {
 		projectID, req.Name, userID)
 
 	if err := h.svc.CreateJob(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create job", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, req.Name)
@@ -91,41 +90,41 @@ func (h *Handler) UpdateJob() {
 
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	jobID, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.UpdateJobRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	// Conditional validation: if id present, we only require id; otherwise, require name/type/version/config.
 	if req.Source.ID == nil {
 		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
 		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("source name, version, and config are required when id is not provided"))
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("source name, version, and config are required when source id is not provided: %s", err), err)
 			return
 		}
 	}
 
 	if req.Destination.ID == nil {
 		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
 		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, fmt.Errorf("destination name, version, and config are required when id is not provided"))
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("destination name, version, and config are required when destination id is not provided: %s", err), err)
 			return
 		}
 	}
@@ -134,7 +133,7 @@ func (h *Handler) UpdateJob() {
 		projectID, jobID, req.Name, userID)
 
 	if err := h.svc.UpdateJob(h.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update job", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, req.Name)
@@ -144,7 +143,7 @@ func (h *Handler) UpdateJob() {
 func (h *Handler) DeleteJob() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -152,7 +151,7 @@ func (h *Handler) DeleteJob() {
 
 	jobName, err := h.svc.DeleteJob(h.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete job", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, jobName)
@@ -162,13 +161,13 @@ func (h *Handler) DeleteJob() {
 func (h *Handler) CheckUniqueJobName() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.CheckUniqueJobNameRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -176,7 +175,7 @@ func (h *Handler) CheckUniqueJobName() {
 
 	unique, err := h.svc.IsJobNameUnique(h.Ctx.Request.Context(), projectID, req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to check job name uniqueness", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check job name uniqueness: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
@@ -186,21 +185,21 @@ func (h *Handler) CheckUniqueJobName() {
 func (h *Handler) SyncJob() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	logger.Infof("Sync job initiated project_id[%s] job_id[%d]", projectID, id)
+	logger.Infof("Sync trigger initiated for project_id[%s] job_id[%d]", projectID, id)
 
 	result, err := h.svc.SyncJob(h.Ctx.Request.Context(), projectID, id)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to sync job", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger sync: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, result)
@@ -216,13 +215,13 @@ func (h *Handler) ActivateJob() {
 
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.JobStatusRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -233,7 +232,7 @@ func (h *Handler) ActivateJob() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		utils.ErrorResponse(&h.Controller, statusCode, "Failed to activate job", err)
+		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, nil)
@@ -243,13 +242,13 @@ func (h *Handler) ActivateJob() {
 func (h *Handler) CancelJobRun() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -257,7 +256,7 @@ func (h *Handler) CancelJobRun() {
 
 	resp, err := h.svc.CancelJobRun(h.Ctx.Request.Context(), projectID, id)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to cancel job run", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to cancel job run: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, resp)
@@ -267,13 +266,13 @@ func (h *Handler) CancelJobRun() {
 func (h *Handler) GetJobTasks() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -285,7 +284,7 @@ func (h *Handler) GetJobTasks() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		utils.ErrorResponse(&h.Controller, statusCode, "Failed to get job tasks", err)
+		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get job tasks: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, tasks)
@@ -295,13 +294,13 @@ func (h *Handler) GetJobTasks() {
 func (h *Handler) GetTaskLogs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.JobTaskRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -313,7 +312,7 @@ func (h *Handler) GetTaskLogs() {
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
 		}
-		utils.ErrorResponse(&h.Controller, statusCode, "Failed to get task logs", err)
+		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, logs)

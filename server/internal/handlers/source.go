@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/datazip/olake-ui/server/internal/constants"
@@ -14,7 +15,7 @@ import (
 func (h *Handler) ListSources() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -22,7 +23,7 @@ func (h *Handler) ListSources() {
 
 	sources, err := h.svc.GetAllSources(h.Ctx.Request.Context(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, sources)
@@ -38,18 +39,18 @@ func (h *Handler) CreateSource() {
 
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.CreateSourceRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -57,7 +58,7 @@ func (h *Handler) CreateSource() {
 		projectID, req.Type, req.Name, userID)
 
 	if err := h.svc.CreateSource(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create source", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create source: %s", err), err)
 		return
 	}
 
@@ -74,24 +75,24 @@ func (h *Handler) UpdateSource() {
 
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.UpdateSourceRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -103,7 +104,7 @@ func (h *Handler) UpdateSource() {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
 		}
-		utils.ErrorResponse(&h.Controller, status, "Failed to update source", err)
+		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to update source: %s", err), err)
 		return
 	}
 
@@ -114,7 +115,7 @@ func (h *Handler) UpdateSource() {
 func (h *Handler) DeleteSource() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -123,9 +124,9 @@ func (h *Handler) DeleteSource() {
 	resp, err := h.svc.DeleteSource(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			utils.ErrorResponse(&h.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
 		} else {
-			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete source", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete source: %s", err), err)
 		}
 		return
 	}
@@ -136,12 +137,12 @@ func (h *Handler) DeleteSource() {
 func (h *Handler) TestSourceConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -149,7 +150,7 @@ func (h *Handler) TestSourceConnection() {
 
 	result, logs, err := h.svc.SourceTestConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to test connection", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
 	}
 
@@ -163,12 +164,12 @@ func (h *Handler) TestSourceConnection() {
 func (h *Handler) GetSourceCatalog() {
 	var req dto.StreamsRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *Handler) GetSourceCatalog() {
 
 	catalog, err := h.svc.GetSourceCatalog(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, catalog)
@@ -187,7 +188,7 @@ func (h *Handler) GetSourceCatalog() {
 func (h *Handler) GetSourceJobs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -196,9 +197,9 @@ func (h *Handler) GetSourceJobs() {
 	jobs, err := h.svc.GetSourceJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			utils.ErrorResponse(&h.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
 		} else {
-			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source jobs: %s", err), err)
 		}
 		return
 	}
@@ -209,7 +210,7 @@ func (h *Handler) GetSourceJobs() {
 func (h *Handler) GetSourceVersions() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -222,7 +223,7 @@ func (h *Handler) GetSourceVersions() {
 		if err.Error() == "source type is required" {
 			status = http.StatusBadRequest
 		}
-		utils.ErrorResponse(&h.Controller, status, "Failed to get source versions", err)
+		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to get source versions: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, versions)
@@ -232,18 +233,18 @@ func (h *Handler) GetSourceVersions() {
 func (h *Handler) GetProjectSourceSpec() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.SpecRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -252,7 +253,7 @@ func (h *Handler) GetProjectSourceSpec() {
 
 	resp, err := h.svc.GetSourceSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
 		return
 	}
 

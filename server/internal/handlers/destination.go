@@ -1,11 +1,10 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
-	"errors"
-
-	"github.com/datazip/olake-ui/server/internal/constants"
 	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/utils"
@@ -15,13 +14,13 @@ import (
 func (h *Handler) ListDestinations() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	items, err := h.svc.ListDestinations(h.Ctx.Request.Context(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get destinations", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, items)
@@ -37,18 +36,18 @@ func (h *Handler) CreateDestination() {
 
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.CreateDestinationRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -56,7 +55,7 @@ func (h *Handler) CreateDestination() {
 		projectID, req.Type, req.Name, userID)
 
 	if err := h.svc.CreateDestination(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create destination", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
 		return
 	}
 
@@ -73,24 +72,24 @@ func (h *Handler) UpdateDestination() {
 
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.UpdateDestinationRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -98,7 +97,7 @@ func (h *Handler) UpdateDestination() {
 		projectID, id, req.Type, userID)
 
 	if err := h.svc.UpdateDestination(h.Ctx.Request.Context(), id, projectID, &req, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update destination", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, req)
@@ -108,7 +107,7 @@ func (h *Handler) UpdateDestination() {
 func (h *Handler) DeleteDestination() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -116,7 +115,7 @@ func (h *Handler) DeleteDestination() {
 
 	resp, err := h.svc.DeleteDestination(h.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete destination", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
 		return
 	}
 
@@ -127,7 +126,7 @@ func (h *Handler) DeleteDestination() {
 func (h *Handler) TestDestinationConnection() {
 	var req dto.DestinationTestConnectionRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -135,7 +134,7 @@ func (h *Handler) TestDestinationConnection() {
 
 	result, logs, err := h.svc.TestConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Failed to test connection", err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
 	}
 
@@ -149,7 +148,7 @@ func (h *Handler) TestDestinationConnection() {
 func (h *Handler) GetDestinationJobs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -157,7 +156,7 @@ func (h *Handler) GetDestinationJobs() {
 
 	jobs, err := h.svc.GetDestinationJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get destination jobs", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, map[string]interface{}{"jobs": jobs})
@@ -167,13 +166,13 @@ func (h *Handler) GetDestinationJobs() {
 func (h *Handler) GetDestinationVersions() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	destType := h.GetString("type")
 	if err := dto.ValidateDestinationType(destType); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -181,7 +180,7 @@ func (h *Handler) GetDestinationVersions() {
 
 	versions, err := h.svc.GetDestinationVersions(h.Ctx.Request.Context(), destType)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Failed to get destination versions", err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, versions)
@@ -191,13 +190,13 @@ func (h *Handler) GetDestinationVersions() {
 func (h *Handler) GetDestinationSpec() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.SpecRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -206,7 +205,7 @@ func (h *Handler) GetDestinationSpec() {
 
 	resp, err := h.svc.GetDestinationSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get destination spec", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, resp)
