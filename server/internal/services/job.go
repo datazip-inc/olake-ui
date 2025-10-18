@@ -12,7 +12,6 @@ import (
 	"github.com/datazip/olake-ui/server/internal/models"
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
-	"github.com/datazip/olake-ui/server/internal/temporal"
 	"github.com/datazip/olake-ui/server/utils"
 	"go.temporal.io/api/workflowservice/v1"
 )
@@ -73,8 +72,7 @@ func (s *AppService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		}
 	}()
 
-	_, err = s.temporal.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionCreate)
-	if err != nil {
+	if err = s.temporal.CreateSchedule(ctx, job.Frequency, job.ProjectID, job.ID); err != nil {
 		return fmt.Errorf("failed to create temporal workflow: %s", err)
 	}
 
@@ -114,7 +112,7 @@ func (s *AppService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
-	_, err = s.temporal.ManageSync(ctx, existingJob.ProjectID, existingJob.ID, existingJob.Frequency, temporal.ActionUpdate)
+	err = s.temporal.UpdateSchedule(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID)
 	if err != nil {
 		// Compensation: restore previous DB state if schedule update fails
 		if rerr := s.db.UpdateJob(&prevJob); rerr != nil {
@@ -133,10 +131,7 @@ func (s *AppService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 		return "", fmt.Errorf("failed to find job: %s", err)
 	}
 
-	jobName := job.Name
-
-	_, err = s.temporal.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionDelete)
-	if err != nil {
+	if err = s.temporal.DeleteSchedule(ctx, job.ProjectID, job.ID); err != nil {
 		return "", fmt.Errorf("failed to delete temporal workflow: %s", err)
 	}
 
@@ -145,7 +140,7 @@ func (s *AppService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	}
 
 	telemetry.TrackJobEntity(ctx)
-	return jobName, nil
+	return job.Name, nil
 }
 
 func (s *AppService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
@@ -154,11 +149,13 @@ func (s *AppService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	resp, err := s.temporal.ManageSync(ctx, job.ProjectID, job.ID, job.Frequency, temporal.ActionTrigger)
-	if err != nil {
+	if err := s.temporal.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
 		return nil, fmt.Errorf("failed to trigger sync: %s", err)
 	}
-	return resp, nil
+
+	return map[string]any{
+		"message": "sync triggered successfully",
+	}, nil
 }
 
 func (s *AppService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {

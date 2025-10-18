@@ -12,7 +12,7 @@ type Worker struct {
 
 // NewWorker creates a new Temporal worker with the provided client
 func NewWorker(temporal *Temporal) *Worker {
-	w := worker.New(temporal.Client, TaskQueue, worker.Options{})
+	w := worker.New(temporal.Client, temporal.taskQueue, worker.Options{})
 
 	// Register workflows
 	w.RegisterWorkflow(DiscoverCatalogWorkflow)

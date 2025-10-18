@@ -1,11 +1,13 @@
 package temporal
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/datazip/olake-ui/server/internal/models/dto"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
@@ -125,4 +127,20 @@ func RunSyncWorkflow(ctx workflow.Context, jobID int) (result map[string]interfa
 	// Track sync completion
 	telemetry.TrackSyncCompleted(jobID, params.WorkflowID)
 	return result, nil
+}
+
+// cancelWorkflow cancels a workflow execution
+func (t *Temporal) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
+	return t.Client.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// ListWorkflow lists workflow executions based on the provided query
+func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
+	// Query workflows using the SDK's ListWorkflow method
+	resp, err := t.Client.ListWorkflow(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("error listing workflow executions: %s", err)
+	}
+
+	return resp, nil
 }
