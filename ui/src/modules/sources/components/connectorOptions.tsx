@@ -11,7 +11,7 @@ const connectorOptions: ConnectorOption[] = [
 					alt="MongoDB"
 					className="mr-2 size-5"
 				/>
-				<span>MongoDB</span>
+				<span data-testid="connector-option-mongodb">MongoDB</span>
 			</div>
 		),
 	},
@@ -24,7 +24,7 @@ const connectorOptions: ConnectorOption[] = [
 					alt="Postgres"
 					className="mr-2 size-5"
 				/>
-				<span>Postgres</span>
+				<span data-testid="connector-option-postgres">Postgres</span>
 			</div>
 		),
 	},
@@ -37,7 +37,7 @@ const connectorOptions: ConnectorOption[] = [
 					alt="MySQL"
 					className="mr-2 size-5"
 				/>
-				<span>MySQL</span>
+				<span data-testid="connector-option-mysql">MySQL</span>
 			</div>
 		),
 	},
@@ -50,7 +50,7 @@ const connectorOptions: ConnectorOption[] = [
 					alt="Oracle"
 					className="mr-2 h-4 w-5"
 				/>
-				<span>Oracle</span>
+				<span data-testid="connector-option-oracle">Oracle</span>
 			</div>
 		),
 	},
