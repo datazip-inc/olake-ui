@@ -69,6 +69,8 @@ func GetWorkflowTimeout(op Command) time.Duration {
 		return time.Minute * 5
 	case Sync:
 		return time.Hour * 24 * 30
+	case ClearDestination:
+		return time.Minute * 60
 	// check what can the fallback time be
 	default:
 		return time.Minute * 5

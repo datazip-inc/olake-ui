@@ -120,6 +120,31 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("job not found: %s", err)
 	}
 
+	clearRunning, err := isClearRunning(ctx, s.tempClient, projectID, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get clear destination status: %s", err)
+	}
+	if clearRunning {
+		return fmt.Errorf("IN_PROGRESS")
+	}
+
+	diffCatalog, err := s.tempClient.GetStreamDiff(ctx, existingJob, existingJob.StreamsConfig, req.StreamsConfig)
+	if err != nil {
+		return fmt.Errorf("failed to get stream difference: %s", err)
+	}
+
+	if hasDifference(diffCatalog) {
+		diffCatalogJSON, err := json.Marshal(diffCatalog)
+		if err != nil {
+			return fmt.Errorf("failed to marshal diff catalog: %s", err)
+		}
+		logs.Info("Stream difference detected for job %d, running clear destination workflow", existingJob.ID)
+		if _, err := s.ClearDestination(ctx, projectID, jobID, string(diffCatalogJSON)); err != nil {
+			return fmt.Errorf("failed to run clear destination workflow: %s", err)
+		}
+		logs.Info("Successfully triggered clear destination workflow for job %d", existingJob.ID)
+	}
+
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
@@ -193,6 +218,14 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		return nil, fmt.Errorf("job must have both source and destination configured")
 	}
 
+	running, err := isClearRunning(ctx, s.tempClient, projectID, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get clear destination status: %s", err)
+	}
+	if running {
+		return nil, fmt.Errorf("IN_PROGRESS")
+	}
+
 	if s.tempClient != nil {
 		resp, err := s.tempClient.ManageSync(ctx, job, temporal.ActionTrigger)
 		if err != nil {
@@ -205,11 +238,11 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 }
 
 func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
-	job, err := s.jobORM.GetByID(jobID, true)
-	if err != nil {
+	if _, err := s.jobORM.GetByID(jobID, true); err != nil {
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
-	if err := cancelJobWorkflow(s.tempClient, job, projectID); err != nil {
+
+	if err := cancelJobWorkflow(ctx, s.tempClient, projectID, jobID); err != nil {
 		return nil, fmt.Errorf("job workflow cancel failed id %d: %s", jobID, err)
 	}
 	return map[string]any{
@@ -248,8 +281,7 @@ func (s *JobService) IsJobNameUnique(ctx context.Context, projectID string, req 
 }
 
 func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
-	job, err := s.jobORM.GetByID(jobID, true)
-	if err != nil {
+	if _, err := s.jobORM.GetByID(jobID, true); err != nil {
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
 
@@ -258,7 +290,10 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	}
 
 	var tasks []dto.JobTask
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
+	syncQuery := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, jobID, projectID, jobID)
+	clearQuery := fmt.Sprintf("WorkflowId between 'clear-destination-%s-%d' and 'clear-destination-%s-%d-~'", projectID, jobID, projectID, jobID)
+
+	query := fmt.Sprintf("(%s) OR (%s)", syncQuery, clearQuery)
 
 	resp, err := s.tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
@@ -275,11 +310,19 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 		} else {
 			runTime = time.Since(startTime).Round(time.Second).String()
 		}
+
+		workflowID := execution.Execution.WorkflowId
+		jobType := "sync"
+		if strings.HasPrefix(workflowID, "clear-destination-") {
+			jobType = "clear"
+		}
+
 		tasks = append(tasks, dto.JobTask{
 			Runtime:   runTime,
 			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
-			FilePath:  execution.Execution.WorkflowId,
+			FilePath:  workflowID,
+			JobType:   jobType,
 		})
 	}
 
@@ -288,13 +331,18 @@ func (s *JobService) GetJobTasks(ctx context.Context, projectID string, jobID in
 
 func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
 	logs.Info("Getting task logs for job with id: %d", jobID)
-	_, err := s.jobORM.GetByID(jobID, true)
-	if err != nil {
+	if _, err := s.jobORM.GetByID(jobID, true); err != nil {
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
 
-	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
+	var mainSyncDir string
+	if !strings.HasPrefix(filePath, "clear-destination-") {
+		syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
+		mainSyncDir = filepath.Join(constants.DefaultConfigDir, syncFolderName)
+	} else {
+		mainSyncDir = filepath.Join(constants.DefaultConfigDir, filePath)
+	}
+
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("no sync directory found: %s", mainSyncDir)
 	}
@@ -378,16 +426,30 @@ func (s *JobService) buildJobResponse(job *models.Job, projectID string) dto.Job
 	}
 
 	if s.tempClient != nil {
-		query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
-		if resp, err := s.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
+		syncQuery := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
+		clearQuery := fmt.Sprintf("WorkflowId between 'clear-destination-%s-%d' and 'clear-destination-%s-%d-~'", projectID, job.ID, projectID, job.ID)
+		query := fmt.Sprintf("(%s) OR (%s)", syncQuery, clearQuery)
+
+		resp, err := s.tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
 			Query:    query,
 			PageSize: 1,
-		}); err == nil && len(resp.Executions) > 0 {
-			jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-			jobResp.LastRunState = resp.Executions[0].Status.String()
+		})
+		if err != nil {
+			logs.Error("Failed to list workflows: %s", err)
+		}
+
+		if len(resp.Executions) > 0 {
+			execution := resp.Executions[0]
+			workflowID := execution.Execution.WorkflowId
+			runType := "sync"
+			if strings.HasPrefix(workflowID, "clear-destination-") {
+				runType = "clear"
+			}
+			jobResp.LastRunTime = execution.StartTime.AsTime().Format(time.RFC3339)
+			jobResp.LastRunState = execution.Status.String()
+			jobResp.LastRunType = runType
 		}
 	}
-
 	return jobResp
 }
 
@@ -456,6 +518,39 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 	return dest, nil
 }
 
+func (s *JobService) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
+	if _, err := s.jobORM.GetByID(jobID, true); err != nil {
+		return false, fmt.Errorf("job not found id %d: %s", jobID, err)
+	}
+	return isClearRunning(ctx, s.tempClient, projectID, jobID)
+}
+
+func (s *JobService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string) (map[string]interface{}, error) {
+	job, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+	}
+
+	if running, _ := isClearRunning(ctx, s.tempClient, projectID, jobID); running {
+		return nil, fmt.Errorf("IN_PROGRESS")
+	}
+
+	if running, _ := isSyncRunning(ctx, s.tempClient, projectID, jobID); running {
+		logs.Info("Sync is running for job %d, cancelling before clear destination", jobID)
+		if err := cancelJobWorkflow(ctx, s.tempClient, job.ProjectID, job.ID); err != nil {
+			return nil, err
+		}
+		logs.Info("Successfully cancelled sync for job %d", jobID)
+	}
+
+	result, err := s.tempClient.ClearDestination(ctx, job, streamsConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 func (s *JobService) CheckUniqueJobName(projectID string, jobName string) (bool, error) {
 	return s.jobORM.IsJobNameUnique(projectID, jobName)
 }
@@ -472,4 +567,15 @@ func (s *JobService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflo
 	}
 
 	return nil
+}
+
+func hasDifference(diffCatalog map[string]interface{}) bool {
+	if diffCatalog == nil {
+		return false
+	}
+	if streams, ok := diffCatalog["streams"].([]interface{}); ok {
+
+		return len(streams) > 0
+	}
+	return false
 }

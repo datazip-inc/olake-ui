@@ -37,6 +37,7 @@ type ExecutionRequest struct {
 	Configs       []JobConfig   `json:"configs"`
 	WorkflowID    string        `json:"workflow_id"`
 	JobID         int           `json:"job_id"`
+	ProjectID     string        `json:"project_id"`
 	Timeout       time.Duration `json:"timeout"`
 	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 }
@@ -57,10 +58,11 @@ const (
 	ActionPause   SyncAction = "pause"
 	ActionUnpause SyncAction = "unpause"
 
-	Discover Command = "discover"
-	Check    Command = "check"
-	Sync     Command = "sync"
-	Spec     Command = "spec"
+	Discover         Command = "discover"
+	Check            Command = "check"
+	Sync             Command = "sync"
+	Spec             Command = "spec"
+	ClearDestination Command = "clear-destination"
 )
 
 func init() {
@@ -222,6 +224,8 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 		version = constants.DefaultSpecVersion
 	}
 
+	version = "dev-clear"
+
 	cmdArgs := []string{
 		"spec",
 	}
@@ -260,6 +264,114 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 	return dto.SpecOutput{
 		Spec: result,
 	}, nil
+}
+
+func (c *Client) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) (map[string]interface{}, error) {
+	workflowID := fmt.Sprintf("clear-destination-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
+
+	catalog := utils.Ternary(streamsConfig != "", streamsConfig, job.StreamsConfig).(string)
+
+	// pause the sync schedule
+	// worker will unpause in cleanup
+	if _, err := c.ManageSync(ctx, job, ActionPause); err != nil {
+		return nil, err
+	}
+
+	configs := []JobConfig{
+		{Name: "streams.json", Data: catalog},
+		{Name: "state.json", Data: job.State},
+		{Name: "destination.json", Data: job.DestID.Config},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	cmdArgs := []string{
+		"clear-destination",
+		"--streams", "/mnt/config/streams.json",
+		"--state", "/mnt/config/state.json",
+		"--destination", "/mnt/config/destination.json",
+	}
+	if encryptionKey, _ := web.AppConfig.String("encryptionkey"); encryptionKey != "" {
+		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
+	}
+
+	req := &ExecutionRequest{
+		Type:          "docker",
+		Command:       ClearDestination,
+		ConnectorType: job.SourceID.Type,
+		Version:       job.SourceID.Version,
+		Args:          cmdArgs,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		JobID:         job.ID,
+		ProjectID:     job.ProjectID,
+		Timeout:       GetWorkflowTimeout(ClearDestination),
+		OutputFile:    "state.json",
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        workflowID,
+		TaskQueue: TaskQueue,
+	}
+
+	_, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "ExecuteClearWorkflow", req)
+	if err != nil {
+		_, _ = c.ManageSync(ctx, job, ActionUnpause)
+		return nil, fmt.Errorf("failed to execute clear destination workflow: %v", err)
+	}
+
+	return map[string]interface{}{
+		"message": "Clear destination initiated successfully",
+	}, nil
+}
+
+func (c *Client) GetStreamDiff(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
+	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
+
+	configs := []JobConfig{
+		{Name: "old_streams.json", Data: oldConfig},
+		{Name: "new_streams.json", Data: newConfig},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	cmdArgs := []string{
+		"discover",
+		"--streams", "/mnt/config/old_streams.json",
+		"--difference", "/mnt/config/new_streams.json",
+	}
+	if encryptionKey, _ := web.AppConfig.String("encryptionkey"); encryptionKey != "" {
+		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
+	}
+
+	req := &ExecutionRequest{
+		Type:          "docker",
+		Command:       Discover,
+		ConnectorType: job.SourceID.Type,
+		Version:       job.SourceID.Version,
+		Args:          cmdArgs,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		JobID:         job.ID,
+		ProjectID:     job.ProjectID,
+		Timeout:       GetWorkflowTimeout(Discover),
+		OutputFile:    "difference_streams.json",
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        workflowID,
+		TaskQueue: TaskQueue,
+	}
+
+	run, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute get stream difference workflow: %v", err)
+	}
+
+	diffStreams, err := ExtractWorkflowResponse(ctx, run)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
+	}
+
+	return diffStreams, nil
 }
 
 func (c *Client) ManageSync(ctx context.Context, job *models.Job, action SyncAction) (map[string]interface{}, error) {

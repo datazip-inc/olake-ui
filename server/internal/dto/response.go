@@ -54,6 +54,7 @@ type JobResponse struct {
 	Frequency     string               `json:"frequency"`
 	LastRunTime   string               `json:"last_run_time,omitempty"`
 	LastRunState  string               `json:"last_run_state,omitempty"`
+	LastRunType   string               `json:"last_run_type,omitempty"` // "sync" | "clear-destination"
 	CreatedAt     string               `json:"created_at"`
 	UpdatedAt     string               `json:"updated_at"`
 	Activate      bool                 `json:"activate"`
@@ -66,6 +67,7 @@ type JobTask struct {
 	StartTime string `json:"start_time"`
 	Status    string `json:"status"`
 	FilePath  string `json:"file_path"`
+	JobType   string `json:"job_type"` // "sync" | "clear-destination"
 }
 
 type SourceDataItem struct {
