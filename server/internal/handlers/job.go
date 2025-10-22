@@ -147,7 +147,7 @@ func (h *Handler) DeleteJob() {
 		return
 	}
 
-	logger.Info("Delete job initiated job_id[%d]", id)
+	logger.Infof("Delete job initiated job_id[%d]", id)
 
 	jobName, err := h.svc.DeleteJob(h.Ctx.Request.Context(), id)
 	if err != nil {
@@ -171,7 +171,7 @@ func (h *Handler) CheckUniqueJobName() {
 		return
 	}
 
-	logger.Info("Check unique job name initiated project_id[%s] job_name[%s]", projectID, req.JobName)
+	logger.Infof("Check unique job name initiated project_id[%s] job_name[%s]", projectID, req.JobName)
 
 	unique, err := h.svc.IsJobNameUnique(h.Ctx.Request.Context(), projectID, req)
 	if err != nil {

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
@@ -92,8 +93,6 @@ func (h *Handler) Signup() {
 		return
 	}
 
-	logger.Debugf("Signup initiated username[%s] email[%s]", req.Username, req.Email)
-
 	if err := h.svc.Signup(h.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
@@ -101,7 +100,7 @@ func (h *Handler) Signup() {
 		case errors.Is(err, constants.ErrPasswordProcessing):
 			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to process password", err)
 		default:
-			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create user", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
 		}
 		return
 	}

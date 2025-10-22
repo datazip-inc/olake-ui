@@ -24,7 +24,7 @@ func (h *Handler) CreateUser() {
 		return
 	}
 
-	logger.Info("Create user initiated username[%s] email[%s]", req.Username, req.Email)
+	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
 
 	if err := h.svc.CreateUser(h.Ctx.Request.Context(), &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
@@ -61,7 +61,7 @@ func (h *Handler) UpdateUser() {
 		return
 	}
 
-	logger.Info("Update user initiated user_id[%d] username[%s]", id, req.Username)
+	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)
 
 	updatedUser, err := h.svc.UpdateUser(h.Ctx.Request.Context(), id, &req)
 	if err != nil {
@@ -84,7 +84,7 @@ func (h *Handler) DeleteUser() {
 		return
 	}
 
-	logger.Info("Delete user initiated user_id[%d]", id)
+	logger.Infof("Delete user initiated user_id[%d]", id)
 
 	if err := h.svc.DeleteUser(h.Ctx.Request.Context(), id); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)

@@ -15,18 +15,15 @@ import (
 )
 
 func main() {
-	// Initialize telemetry
-	telemetry.InitTelemetry()
-	// check constants
+	// Initialize constants and logger before telemetry so build info is available
 	constants.Init()
-
-	// init logger
 	logger.Init()
+	telemetry.InitTelemetry()
 
 	// init log cleaner
 	utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())
 
-	logs.Info("Starting Olake Temporal worker...")
+	logger.Info("Starting Olake Temporal worker...")
 	// create temporal client
 	tClient, err := temporal.NewClient()
 	if err != nil {

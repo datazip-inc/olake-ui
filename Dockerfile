@@ -1,8 +1,6 @@
 # Stage 1: Go Builder (Backend)
 FROM golang:1.24.2-alpine AS go-builder
 
-# Build-time arguments for embedding version metadata
-ARG APP_VERSION="dev"
 
 # Install git, as it might be needed by go mod download or go build
 RUN apk add --no-cache git
@@ -18,16 +16,12 @@ COPY server/ ./server/
 
 # Build backend (assuming main package is at the root of 'server/' content)
 # Using -ldflags to create smaller binaries
-RUN cd server && \
-    go build -ldflags="-w -s \
-      -X github.com/datazip/olake-ui/server/internal/constants.version=${APP_VERSION} \
-      -o /app/olake-server .
+RUN cd server && go build -ldflags="-w -s" -o /app/olake-server .
 
 # Stage 2: Frontend Builder
 FROM node:20-alpine AS node-builder
 
 # Reuse build-time arguments during UI build if needed
-ARG APP_VERSION
 WORKDIR /app/ui
 
 # Install pnpm globally

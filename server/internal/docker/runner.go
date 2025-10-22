@@ -101,10 +101,11 @@ func (r *Runner) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 		extra = append(extra, "--destination-type", destinationType)
 	}
 
-	output, err := r.ExecuteDockerCommand(ctx, workflowID, "", Spec, sourceType, version, "", extra...)
+	output, err := r.ExecuteDockerCommand(ctx, workflowID, "", Spec, sourceType, version, filepath.Join(r.WorkingDir, "config.json"), extra...)
 	if err != nil {
 		return dto.SpecOutput{}, fmt.Errorf("docker command failed: %s", err)
 	}
+
 	spec, err := utils.ExtractJSON(string(output))
 	if err != nil {
 		return dto.SpecOutput{}, fmt.Errorf("failed to parse spec: %s", string(output))
