@@ -335,13 +335,8 @@ func (s *JobService) GetTaskLogs(ctx context.Context, jobID int, filePath string
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
 
-	var mainSyncDir string
-	if !strings.HasPrefix(filePath, "clear-destination-") {
-		syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-		mainSyncDir = filepath.Join(constants.DefaultConfigDir, syncFolderName)
-	} else {
-		mainSyncDir = filepath.Join(constants.DefaultConfigDir, filePath)
-	}
+	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
+	mainSyncDir := filepath.Join(constants.DefaultConfigDir, syncFolderName)
 
 	if _, err := os.Stat(mainSyncDir); os.IsNotExist(err) {
 		return nil, fmt.Errorf("no sync directory found: %s", mainSyncDir)

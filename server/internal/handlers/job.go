@@ -70,6 +70,10 @@ func (c *JobHandler) UpdateJob() {
 
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
+		if err.Error() == "IN_PROGRESS" {
+			respondWithError(&c.Controller, http.StatusConflict, "Clear destination is already running", err)
+			return
+		}
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
 		return
 	}
