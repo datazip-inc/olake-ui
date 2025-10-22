@@ -83,4 +83,5 @@ export interface CronParseResult {
 export enum IngestionMode {
 	UPSERT = "Upsert",
 	APPEND = "Append",
+	CUSTOM = "Custom",
 }

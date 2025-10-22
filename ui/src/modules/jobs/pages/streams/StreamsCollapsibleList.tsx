@@ -5,6 +5,9 @@ import { Checkbox, Empty } from "antd"
 import { GroupedStreamsCollapsibleListProps } from "../../../../types"
 import StreamPanel from "./StreamPanel"
 import { useAppStore } from "../../../../store"
+import { IngestionMode } from "../../../../types/commonTypes"
+import IngestionModeChangeModal from "../../../common/Modals/IngestionModeChangeModal"
+import { getIngestionMode } from "../../../../utils/utils"
 
 const StreamsCollapsibleList = ({
 	groupedStreams,
@@ -12,9 +15,10 @@ const StreamsCollapsibleList = ({
 	setActiveStreamData,
 	activeStreamData,
 	onStreamSelect,
-	allAppend,
+	onIngestionModeChange,
 }: GroupedStreamsCollapsibleListProps) => {
-	const { setShowIngestionModeChangeModal } = useAppStore()
+	const { setShowIngestionModeChangeModal, ingestionMode, setIngestionMode } =
+		useAppStore()
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
@@ -27,6 +31,13 @@ const StreamsCollapsibleList = ({
 		namespaces: {},
 		streams: {},
 	})
+	const [targetIngestionMode, setTargetIngestionMode] = useState<IngestionMode>(
+		IngestionMode.APPEND,
+	)
+
+	useEffect(() => {
+		setIngestionMode(getIngestionMode(selectedStreams))
+	}, [selectedStreams])
 
 	useEffect(() => {
 		if (Object.keys(openNamespaces).length === 0) {
@@ -243,27 +254,44 @@ const StreamsCollapsibleList = ({
 							<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
 								{/* Sliding background */}
 								<div
-									className={`absolute inset-y-0.5 w-[calc(50%-2px)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out ${
-										!allAppend
+									className={`absolute inset-y-0.5 w-[calc(34%)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out ${
+										ingestionMode === IngestionMode.UPSERT
 											? "translate-x-0.5"
-											: "translate-x-[calc(100%+2px)]"
+											: ingestionMode === IngestionMode.APPEND
+												? "translate-x-[calc(100%+0px)]"
+												: "translate-x-[calc(200%-2px)]"
 									}`}
 								/>
 								<div
-									onClick={() =>
-										allAppend && setShowIngestionModeChangeModal(true)
-									}
-									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-2 text-center transition-colors duration-300`}
+									onClick={() => {
+										if (ingestionMode !== IngestionMode.UPSERT) {
+											setTargetIngestionMode(IngestionMode.UPSERT)
+											setShowIngestionModeChangeModal(true)
+										}
+									}}
+									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`}
 								>
 									All Upsert
 								</div>
 								<div
-									onClick={() =>
-										!allAppend && setShowIngestionModeChangeModal(true)
-									}
-									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-2 text-center transition-colors duration-300`}
+									onClick={() => {
+										if (ingestionMode !== IngestionMode.APPEND) {
+											setTargetIngestionMode(IngestionMode.APPEND)
+											setShowIngestionModeChangeModal(true)
+										}
+									}}
+									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`}
 								>
 									All Append
+								</div>
+								<div
+									className={`relative z-10 flex items-center justify-center rounded-sm p-1 px-5 text-center transition-colors duration-300 ${
+										ingestionMode === IngestionMode.CUSTOM
+											? "cursor-default"
+											: "cursor-not-allowed opacity-40"
+									}`}
+								>
+									Custom
 								</div>
 							</div>
 						</div>
@@ -326,6 +354,10 @@ const StreamsCollapsibleList = ({
 					</>
 				)}
 			</div>
+			<IngestionModeChangeModal
+				ingestionMode={targetIngestionMode}
+				onConfirm={onIngestionModeChange}
+			/>
 		</>
 	)
 }

@@ -1,5 +1,5 @@
 import type { CheckboxChangeEvent } from "antd/es/checkbox"
-import type { UnknownObject } from "./index"
+import type { IngestionMode, UnknownObject } from "./index"
 
 export enum SyncMode {
 	FULL_REFRESH = "full_refresh",
@@ -200,7 +200,7 @@ export interface GroupedStreamsCollapsibleListProps {
 			  }
 		>
 	>
-	allAppend: boolean
+	onIngestionModeChange: (ingestionMode: IngestionMode) => void
 }
 
 export interface StreamSchemaProps {

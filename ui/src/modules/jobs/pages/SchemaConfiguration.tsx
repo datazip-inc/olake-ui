@@ -22,7 +22,6 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
-import IngestionModeChangeModal from "../../common/Modals/IngestionModeChangeModal"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -43,7 +42,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
-	const { setShowDestinationDatabaseModal } = useAppStore()
+	const { setShowDestinationDatabaseModal, ingestionMode, setIngestionMode } =
+		useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -62,8 +62,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
 		useState(initialStreamsData)
-
-	const [allAppend, setAllAppend] = useState(false)
 
 	// Use ref to track if we've initialized to prevent double updates
 	const initialized = useRef(false)
@@ -358,7 +356,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							normalization: false,
 							filter: "",
 							disabled: false,
-							append_mode: allAppend,
+							append_mode: ingestionMode === IngestionMode.APPEND,
 						},
 					]
 					changed = true
@@ -467,9 +465,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		})
 	}
 
-	const handleAllStreamsUpdate = (ingestionMode: IngestionMode) => {
+	const handleAllIngestionModeChange = (ingestionMode: IngestionMode) => {
 		const appendMode = ingestionMode === IngestionMode.APPEND
-		setAllAppend(appendMode)
+		setIngestionMode(ingestionMode)
 		setApiResponse(prev => {
 			if (!prev) return prev
 
@@ -733,7 +731,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							setActiveStreamData={setActiveStreamData}
 							activeStreamData={activeStreamData}
 							onStreamSelect={handleStreamSelect}
-							allAppend={allAppend}
 							setSelectedStreams={(updatedSelectedStreams: any) => {
 								if (!apiResponse) return
 
@@ -746,6 +743,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								// Pass it to the parent component
 								setSelectedStreams(fullData as CombinedStreamsData)
 							}}
+							onIngestionModeChange={handleAllIngestionModeChange}
 						/>
 					) : loading ? (
 						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
@@ -813,11 +811,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				onSave={handleDestinationDatabaseSave}
 				originalDatabase={destinationDatabase || ""}
 				initialStreams={initialStreamsState || null}
-			/>
-
-			<IngestionModeChangeModal
-				ingestionMode={allAppend ? IngestionMode.UPSERT : IngestionMode.APPEND}
-				onConfirm={handleAllStreamsUpdate}
 			/>
 		</div>
 	)

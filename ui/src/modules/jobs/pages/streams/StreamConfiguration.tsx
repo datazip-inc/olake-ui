@@ -20,6 +20,7 @@ import {
 	SlidersHorizontal,
 	X,
 	ArrowSquareOut,
+	InfoIcon,
 } from "@phosphor-icons/react"
 
 import {
@@ -776,7 +777,7 @@ const StreamConfiguration = ({
 						</Radio.Group>
 						{!isSelected && (
 							<div className="flex items-center gap-1 text-sm text-[#686868]">
-								<Info className="size-4" />
+								<InfoIcon className="size-4" />
 								Select the stream to configure ingestion mode
 							</div>
 						)}
