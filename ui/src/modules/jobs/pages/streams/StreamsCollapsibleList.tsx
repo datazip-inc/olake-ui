@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { CaretDown, CaretRight } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
+import clsx from "clsx"
 
 import { GroupedStreamsCollapsibleListProps } from "../../../../types"
 import StreamPanel from "./StreamPanel"
@@ -254,13 +255,16 @@ const StreamsCollapsibleList = ({
 							<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
 								{/* Sliding background */}
 								<div
-									className={`absolute inset-y-0.5 w-[calc(34%)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out ${
-										ingestionMode === IngestionMode.UPSERT
-											? "translate-x-0.5"
-											: ingestionMode === IngestionMode.APPEND
-												? "translate-x-[calc(100%+0px)]"
-												: "translate-x-[calc(200%-2px)]"
-									}`}
+									className={clsx(
+										"absolute inset-y-0.5 w-[calc(34%)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out",
+										{
+											"translate-x-0.5": ingestionMode === IngestionMode.UPSERT,
+											"translate-x-[calc(100%+0px)]":
+												ingestionMode === IngestionMode.APPEND,
+											"translate-x-[calc(200%-2px)]":
+												ingestionMode === IngestionMode.CUSTOM,
+										},
+									)}
 								/>
 								<div
 									onClick={() => {
@@ -285,11 +289,12 @@ const StreamsCollapsibleList = ({
 									All Append
 								</div>
 								<div
-									className={`relative z-10 flex items-center justify-center rounded-sm p-1 px-5 text-center transition-colors duration-300 ${
+									className={clsx(
+										"relative z-10 flex items-center justify-center rounded-sm p-1 px-5 text-center transition-colors duration-300",
 										ingestionMode === IngestionMode.CUSTOM
 											? "cursor-default"
-											: "cursor-not-allowed opacity-40"
-									}`}
+											: "cursor-not-allowed opacity-40",
+									)}
 								>
 									Custom
 								</div>

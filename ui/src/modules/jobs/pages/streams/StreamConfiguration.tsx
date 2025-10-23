@@ -756,12 +756,20 @@ const StreamConfiguration = ({
 					</div>
 
 					<div
-						className={`mb-4 ${!isSelected ? "font-normal text-gray-500" : "font-medium text-neutral-text"}`}
+						className={clsx(
+							"mb-4",
+							isSelected
+								? "font-medium text-neutral-text"
+								: "font-normal text-gray-500",
+						)}
 					>
 						<div className="mb-3">
 							<label className="block w-full">Ingestion Mode:</label>
 							<div
-								className={`text-xs ${!isSelected ? "text-gray-500" : "text-neutral-700"}`}
+								className={clsx(
+									"text-xs",
+									!isSelected ? "text-gray-500" : "text-neutral-700",
+								)}
 							>
 								Specify how the data will be ingested in the destination
 							</div>
