@@ -224,8 +224,6 @@ func (c *Client) FetchSpec(ctx context.Context, destinationType, sourceType, ver
 		version = constants.DefaultSpecVersion
 	}
 
-	version = "dev-clear"
-
 	cmdArgs := []string{
 		"spec",
 	}
