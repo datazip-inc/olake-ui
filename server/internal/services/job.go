@@ -286,13 +286,13 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, 
 	return nil
 }
 
-func (s *JobService) StreamsDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+func (s *JobService) DifferenceStreams(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
 	existingJob, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
 
-	diffCatalog, err := s.tempClient.GetStreamDiff(ctx, existingJob, existingJob.StreamsConfig, req.UpdatedStreamsConfig)
+	diffCatalog, err := s.tempClient.GetDifferenceStreams(ctx, existingJob, existingJob.StreamsConfig, req.UpdatedStreamsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stream difference: %s", err)
 	}

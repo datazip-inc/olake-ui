@@ -49,7 +49,7 @@ type ClearDestinationStatusResposne struct {
 }
 
 type StreamDifferenceResponse struct {
-	StreamDifference map[string]interface{} `json:"stream_difference"`
+	DifferenceStreams map[string]interface{} `json:"difference_streams"`
 }
 
 // Job response

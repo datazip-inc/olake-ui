@@ -223,8 +223,8 @@ func (c *JobHandler) ClearDestination() {
 	utils.SuccessResponse(&c.Controller, result)
 }
 
-// @router /project/:projectid/jobs/:id/stream-difference [post]
-func (c *JobHandler) StreamsDifference() {
+// @router /project/:projectid/jobs/:id/difference-streams [post]
+func (c *JobHandler) DifferenceStreams() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	jobID := GetIDFromPath(&c.Controller)
 
@@ -234,14 +234,14 @@ func (c *JobHandler) StreamsDifference() {
 		return
 	}
 
-	diffStreams, err := c.jobService.StreamsDifference(c.Ctx.Request.Context(), projectID, jobID, req)
+	diffStreams, err := c.jobService.DifferenceStreams(c.Ctx.Request.Context(), projectID, jobID, req)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "stream difference command failed", err)
 		return
 	}
 
 	utils.SuccessResponse(&c.Controller, dto.StreamDifferenceResponse{
-		StreamDifference: diffStreams,
+		DifferenceStreams: diffStreams,
 	})
 }
 

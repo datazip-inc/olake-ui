@@ -322,7 +322,7 @@ func (c *Client) ClearDestination(ctx context.Context, job *models.Job, streamsC
 	}, nil
 }
 
-func (c *Client) GetStreamDiff(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
+func (c *Client) GetDifferenceStreams(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
 
 	configs := []JobConfig{

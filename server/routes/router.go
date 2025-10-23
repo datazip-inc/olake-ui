@@ -89,7 +89,7 @@ func Init() {
 	web.Router("/api/v1/project/:projectid/jobs/check-unique", &handlers.JobHandler{}, "post:CheckUniqueJobName")
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", &handlers.JobHandler{}, "post:ClearDestination")
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", &handlers.JobHandler{}, "get:GetClearDestinationStatus")
-	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", &handlers.JobHandler{}, "post:StreamDifferences")
+	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", &handlers.JobHandler{}, "post:DifferenceStreams")
 
 	// worker callback routes
 	web.Router("/internal/worker/callback/sync-telemetry", &handlers.JobHandler{}, "post:UpdateSyncTelemetry")
