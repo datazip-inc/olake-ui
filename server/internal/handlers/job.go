@@ -203,7 +203,7 @@ func (c *JobHandler) GetClearDestinationStatus() {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get clear destination status", err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"running": running})
+	utils.SuccessResponse(&c.Controller, dto.ClearDestinationStatusResposne{Running: running})
 }
 
 // @router /project/:projectid/jobs/:id/clear-destination [post]

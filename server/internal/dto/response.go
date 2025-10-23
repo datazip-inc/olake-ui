@@ -44,6 +44,10 @@ type CheckUniqueJobNameResponse struct {
 	Unique bool `json:"unique"`
 }
 
+type ClearDestinationStatusResposne struct {
+	Running bool `json:"running"`
+}
+
 // Job response
 type JobResponse struct {
 	ID            int                  `json:"id"`
