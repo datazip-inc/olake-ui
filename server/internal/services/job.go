@@ -125,7 +125,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to get clear destination status: %s", err)
 	}
 	if clearRunning {
-		return fmt.Errorf("IN_PROGRESS")
+		return constants.ErrInProgress
 	}
 
 	diffCatalog, err := s.tempClient.GetStreamDiff(ctx, existingJob, existingJob.StreamsConfig, req.StreamsConfig)
@@ -133,7 +133,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to get stream difference: %s", err)
 	}
 
-	if hasDifference(diffCatalog) {
+	if streamDifferenceExists(diffCatalog) {
 		diffCatalogJSON, err := json.Marshal(diffCatalog)
 		if err != nil {
 			return fmt.Errorf("failed to marshal diff catalog: %s", err)
@@ -223,7 +223,7 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 		return nil, fmt.Errorf("Failed to get clear destination status: %s", err)
 	}
 	if running {
-		return nil, fmt.Errorf("IN_PROGRESS")
+		return nil, constants.ErrInProgress
 	}
 
 	if s.tempClient != nil {
@@ -527,11 +527,12 @@ func (s *JobService) ClearDestination(ctx context.Context, projectID string, job
 	}
 
 	if running, _ := isClearRunning(ctx, s.tempClient, projectID, jobID); running {
-		return nil, fmt.Errorf("IN_PROGRESS")
+		return nil, constants.ErrInProgress
 	}
 
+	// cancel sync if running
 	if running, _ := isSyncRunning(ctx, s.tempClient, projectID, jobID); running {
-		logs.Info("Sync is running for job %d, cancelling before clear destination", jobID)
+		logs.Info("Sync is running for job %d, cancelling before starting clear destination", jobID)
 		if err := cancelJobWorkflow(ctx, s.tempClient, job.ProjectID, job.ID); err != nil {
 			return nil, err
 		}
@@ -562,15 +563,4 @@ func (s *JobService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflo
 	}
 
 	return nil
-}
-
-func hasDifference(diffCatalog map[string]interface{}) bool {
-	if diffCatalog == nil {
-		return false
-	}
-	if streams, ok := diffCatalog["streams"].([]interface{}); ok {
-
-		return len(streams) > 0
-	}
-	return false
 }

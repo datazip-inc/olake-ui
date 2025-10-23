@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
@@ -70,8 +71,8 @@ func (c *JobHandler) UpdateJob() {
 
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
-		if err.Error() == "IN_PROGRESS" {
-			respondWithError(&c.Controller, http.StatusConflict, "Clear destination is already running", err)
+		if errors.Is(err, constants.ErrInProgress) {
+			respondWithError(&c.Controller, http.StatusConflict, "Clear destination workflow is already in progress", err)
 			return
 		}
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)
@@ -213,7 +214,7 @@ func (c *JobHandler) ClearDestination() {
 	result, err := c.jobService.ClearDestination(c.Ctx.Request.Context(), projectID, id, "")
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "IN_PROGRESS" {
+		if errors.Is(err, constants.ErrInProgress) {
 			statusCode = http.StatusConflict
 		}
 		respondWithError(&c.Controller, statusCode, "Failed to clear destination", err)

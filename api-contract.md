@@ -787,6 +787,47 @@ http://localhost:8000
   }
   ```
 
+
+### Clear destination for a Job
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
+- **Method**: POST
+- **Description**: clears the destination data
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "message": "string"
+    }
+  }
+  ```
+
+### Clear destination status
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
+- **Method**: GET
+- **Description**: gets the clear-destination status, either true (running) or false (not running)
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "running": "boolean"
+    }
+  }
+  ```
+
 ## Error Responses
 
 All endpoints may return the following error responses:
