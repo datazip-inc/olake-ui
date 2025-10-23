@@ -120,6 +120,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("job not found: %s", err)
 	}
 
+	// block when clear-destination is running
 	clearRunning, err := isClearRunning(ctx, s.tempClient, projectID, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get clear destination status: %s", err)
@@ -129,7 +130,11 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	// cancel sync before updating the job
-	if syncRunning, _ := isSyncRunning(ctx, s.tempClient, projectID, jobID); syncRunning {
+	syncRunning, err := isSyncRunning(ctx, s.tempClient, projectID, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to get sync status: %w", err)
+	}
+	if syncRunning {
 		logs.Info("sync is running for job %d, initiating cancel sync workflow", jobID)
 		if err := cancelJobWorkflow(ctx, s.tempClient, projectID, jobID); err != nil {
 			return err
@@ -137,18 +142,15 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		logs.Info("successfully cancelled sync for job %d", jobID)
 	}
 
-	diffCatalog, err := s.tempClient.GetStreamDiff(ctx, existingJob, existingJob.StreamsConfig, req.StreamsConfig)
-	if err != nil {
-		return fmt.Errorf("failed to get stream difference: %s", err)
+	// start clear destination
+	var diffCatalog map[string]interface{}
+	if err := json.Unmarshal([]byte(req.DifferenceStreams), &diffCatalog); err != nil {
+		return fmt.Errorf("invalid difference_streams JSON: %s", err)
 	}
 
-	if streamDifferenceExists(diffCatalog) {
-		diffCatalogJSON, err := json.Marshal(diffCatalog)
-		if err != nil {
-			return fmt.Errorf("failed to marshal diff catalog: %s", err)
-		}
+	if len(diffCatalog) != 0 {
 		logs.Info("Stream difference detected for job %d, running clear destination workflow", existingJob.ID)
-		if _, err := s.ClearDestination(ctx, projectID, jobID, string(diffCatalogJSON)); err != nil {
+		if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams); err != nil {
 			return fmt.Errorf("failed to run clear destination workflow: %s", err)
 		}
 		logs.Info("Successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -282,6 +284,20 @@ func (s *JobService) ActivateJob(ctx context.Context, jobID int, activate bool, 
 	}
 
 	return nil
+}
+
+func (s *JobService) StreamsDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+	existingJob, err := s.jobORM.GetByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+	}
+
+	diffCatalog, err := s.tempClient.GetStreamDiff(ctx, existingJob, existingJob.StreamsConfig, req.UpdatedStreamsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+	}
+
+	return diffCatalog, nil
 }
 
 func (s *JobService) IsJobNameUnique(ctx context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {

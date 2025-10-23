@@ -96,14 +96,14 @@ type CreateJobRequest struct {
 	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
 	Activate      bool                 `json:"activate,omitempty"`
 }
-
 type UpdateJobRequest struct {
-	Name          string               `json:"name" validate:"required"`
-	Source        JobSourceConfig      `json:"source" validate:"required"`
-	Destination   JobDestinationConfig `json:"destination" validate:"required"`
-	Frequency     string               `json:"frequency" validate:"required"`
-	StreamsConfig string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
-	Activate      bool                 `json:"activate,omitempty"`
+	Name              string               `json:"name" validate:"required"`
+	Source            JobSourceConfig      `json:"source" validate:"required"`
+	Destination       JobDestinationConfig `json:"destination" validate:"required"`
+	Frequency         string               `json:"frequency" validate:"required"`
+	StreamsConfig     string               `json:"streams_config" orm:"type(jsonb)" validate:"required"`
+	DifferenceStreams string               `json:"difference_streams" validate:"required"`
+	Activate          bool                 `json:"activate,omitempty"`
 }
 
 type JobTaskRequest struct {
@@ -111,4 +111,8 @@ type JobTaskRequest struct {
 }
 type JobStatusRequest struct {
 	Activate bool `json:"activate"`
+}
+
+type StreamDifferenceRequest struct {
+	UpdatedStreamsConfig string `json:"updated_streams_config" validate:"required"`
 }

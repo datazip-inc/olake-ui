@@ -61,14 +61,3 @@ func isSyncRunning(ctx context.Context, tempClient *temporal.Client, projectID s
 	}
 	return len(resp.Executions) > 0, nil
 }
-
-// check if stream difference exists in the diff catalog
-func streamDifferenceExists(diffCatalog map[string]interface{}) bool {
-	if diffCatalog == nil {
-		return false
-	}
-	if streams, ok := diffCatalog["streams"].([]interface{}); ok {
-		return len(streams) > 0
-	}
-	return false
-}

@@ -539,6 +539,7 @@ http://localhost:8000
     },
     "frequency": "string",
     "streams_config": "json",
+    "difference_streams", "json",
     "activate": "boolean" // send this to activate or deactivate job
   }
   ```
@@ -826,6 +827,31 @@ http://localhost:8000
     "message": "string",
     "data": {
       "running": "boolean"
+    }
+  }
+  ```
+
+### Difference Streams
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/stream-difference`
+- **Method**: POST
+- **Description**: returns the stream difference bewtween the saved and the updated streams
+- **Headers**: `Authorization: Bearer <token>`
+- - **Request Body**:
+
+  ```json
+  {
+    "updated_streams_config": "json"
+  }
+  ```
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "stream_difference": "json"
     }
   }
   ```
