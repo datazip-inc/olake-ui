@@ -2,7 +2,12 @@ import { useState } from "react"
 import clsx from "clsx"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import { LayoutProps } from "antd"
-import { CaretLeftIcon, InfoIcon, X, SignOutIcon } from "@phosphor-icons/react"
+import {
+	CaretLeftIcon,
+	InfoIcon,
+	SignOutIcon,
+	XIcon,
+} from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
@@ -17,7 +22,7 @@ const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 				onClick={onClose}
 				className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200"
 			>
-				<X
+				<XIcon
 					size={12}
 					color="#383838"
 				/>
