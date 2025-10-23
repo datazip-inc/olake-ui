@@ -503,6 +503,7 @@ http://localhost:8000
         "frequency": "string",
         "last_run_time": "timestamp",
         "last_run_state": "string",
+        "last_run_type": "string",
         "created_at": "timestamp",
         "updated_at": "timestamp",
         "created_by": "string", // username
@@ -673,10 +674,11 @@ http://localhost:8000
     "message": "string",
     "data": [
       {
-        "id": "string",
+        "file_path": "string",
         "start_time": "timestamp",
         "runtime": "integer",
-        "status": "string"
+        "status": "string",
+        "job_type": "string"
       }
     ]
   }
