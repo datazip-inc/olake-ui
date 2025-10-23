@@ -218,7 +218,7 @@ const JobHistory: React.FC = () => {
 										.catch(error => {
 											message.destroy()
 											message.error("Failed to fetch job history")
-											console.error(error)
+											console.error("Error fetching job history:", error)
 										})
 								}
 							}}
