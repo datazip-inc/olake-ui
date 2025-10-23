@@ -128,6 +128,15 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return constants.ErrInProgress
 	}
 
+	// cancel sync before updating the job
+	if syncRunning, _ := isSyncRunning(ctx, s.tempClient, projectID, jobID); syncRunning {
+		logs.Info("sync is running for job %d, initiating cancel sync workflow", jobID)
+		if err := cancelJobWorkflow(ctx, s.tempClient, projectID, jobID); err != nil {
+			return err
+		}
+		logs.Info("successfully cancelled sync for job %d", jobID)
+	}
+
 	diffCatalog, err := s.tempClient.GetStreamDiff(ctx, existingJob, existingJob.StreamsConfig, req.StreamsConfig)
 	if err != nil {
 		return fmt.Errorf("failed to get stream difference: %s", err)
@@ -527,16 +536,12 @@ func (s *JobService) ClearDestination(ctx context.Context, projectID string, job
 	}
 
 	if running, _ := isClearRunning(ctx, s.tempClient, projectID, jobID); running {
-		return nil, constants.ErrInProgress
+		return nil, fmt.Errorf("clear-destination is in progress: %w", constants.ErrInProgress)
 	}
 
 	// cancel sync if running
 	if running, _ := isSyncRunning(ctx, s.tempClient, projectID, jobID); running {
-		logs.Info("Sync is running for job %d, cancelling before starting clear destination", jobID)
-		if err := cancelJobWorkflow(ctx, s.tempClient, job.ProjectID, job.ID); err != nil {
-			return nil, err
-		}
-		logs.Info("Successfully cancelled sync for job %d", jobID)
+		return nil, fmt.Errorf("sync is in progress, please cancel it before running clear-destination: %w", constants.ErrInProgress)
 	}
 
 	result, err := s.tempClient.ClearDestination(ctx, job, streamsConfig)
