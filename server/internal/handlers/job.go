@@ -213,11 +213,11 @@ func (c *JobHandler) ClearDestination() {
 
 	result, err := c.jobService.ClearDestination(c.Ctx.Request.Context(), projectID, id, "")
 	if err != nil {
-		statusCode := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrInProgress) {
-			statusCode = http.StatusConflict
+			respondWithError(&c.Controller, http.StatusConflict, "Clear destination workflow already in progress", err)
+			return
 		}
-		respondWithError(&c.Controller, statusCode, "Failed to clear destination", err)
+		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to clear destination", err)
 		return
 	}
 	utils.SuccessResponse(&c.Controller, result)
