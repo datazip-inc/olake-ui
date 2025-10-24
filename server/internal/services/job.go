@@ -136,7 +136,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 	if syncRunning {
 		logs.Info("sync is running for job %d, initiating cancel sync workflow", jobID)
-		if err := cancelJobWorkflow(ctx, s.tempClient, projectID, jobID); err != nil {
+		if err := cancelJobWorkflow(s.tempClient, projectID, jobID); err != nil {
 			return err
 		}
 		logs.Info("successfully cancelled sync for job %d", jobID)
@@ -248,12 +248,12 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	return nil, fmt.Errorf("temporal client is not available")
 }
 
-func (s *JobService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
+func (s *JobService) CancelJobRun(projectID string, jobID int) (map[string]any, error) {
 	if _, err := s.jobORM.GetByID(jobID, true); err != nil {
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
 	}
 
-	if err := cancelJobWorkflow(ctx, s.tempClient, projectID, jobID); err != nil {
+	if err := cancelJobWorkflow(s.tempClient, projectID, jobID); err != nil {
 		return nil, fmt.Errorf("job workflow cancel failed id %d: %s", jobID, err)
 	}
 	return map[string]any{

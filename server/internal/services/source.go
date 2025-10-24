@@ -139,7 +139,7 @@ func (s *SourceService) UpdateSource(ctx context.Context, projectID string, id i
 		return fmt.Errorf("failed to fetch jobs for source %d: %s", existing.ID, err)
 	}
 	for _, job := range jobs {
-		if err := cancelJobWorkflow(ctx, s.tempClient, projectID, id); err != nil {
+		if err := cancelJobWorkflow(s.tempClient, projectID, id); err != nil {
 			return fmt.Errorf("failed to cancel workflow for job %d: %s", job.ID, err)
 		}
 	}

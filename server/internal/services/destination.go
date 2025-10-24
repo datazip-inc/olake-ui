@@ -133,7 +133,7 @@ func (s *DestinationService) UpdateDestination(ctx context.Context, id int, proj
 	}
 
 	for _, job := range jobs {
-		if err := cancelJobWorkflow(ctx, s.tempClient, job.ProjectID, job.ID); err != nil {
+		if err := cancelJobWorkflow(s.tempClient, job.ProjectID, job.ID); err != nil {
 			return fmt.Errorf("failed to cancel workflow for job %d: %s", job.ID, err)
 		}
 	}

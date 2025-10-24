@@ -8,13 +8,13 @@ import (
 	"go.temporal.io/api/workflowservice/v1"
 )
 
-func cancelJobWorkflow(ctx context.Context, tempClient *temporal.Client, projectID string, jobID int) error {
+func cancelJobWorkflow(tempClient *temporal.Client, projectID string, jobID int) error {
 	query := fmt.Sprintf(
 		"WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND ExecutionStatus = 'Running'",
 		projectID, jobID, projectID, jobID,
 	)
 
-	resp, err := tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+	resp, err := tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
 	})
 	if err != nil {
@@ -25,7 +25,7 @@ func cancelJobWorkflow(ctx context.Context, tempClient *temporal.Client, project
 	}
 
 	for _, wfExec := range resp.Executions {
-		if err := tempClient.CancelWorkflow(ctx,
+		if err := tempClient.CancelWorkflow(context.Background(),
 			wfExec.Execution.WorkflowId, wfExec.Execution.RunId); err != nil {
 			return fmt.Errorf("failed to cancel workflow[%s]: %s", wfExec.Execution.WorkflowId, err)
 		}

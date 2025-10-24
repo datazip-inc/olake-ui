@@ -130,7 +130,7 @@ func (c *JobHandler) ActivateJob() {
 func (c *JobHandler) CancelJobRun() {
 	projectID := c.Ctx.Input.Param(":projectid")
 	id := GetIDFromPath(&c.Controller)
-	resp, err := c.jobService.CancelJobRun(c.Ctx.Request.Context(), projectID, id)
+	resp, err := c.jobService.CancelJobRun(projectID, id)
 	if err != nil {
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to cancel job run", err)
 		return

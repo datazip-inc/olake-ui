@@ -311,7 +311,7 @@ func (c *Client) ClearDestination(ctx context.Context, job *models.Job, streamsC
 		TaskQueue: TaskQueue,
 	}
 
-	_, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "RunClearWorkflow", req)
+	_, err := c.temporalClient.ExecuteWorkflow(ctx, workflowOptions, "ExecuteClearWorkflow", req)
 	if err != nil {
 		_, _ = c.ManageSync(ctx, job, ActionUnpause)
 		return nil, fmt.Errorf("failed to execute clear destination workflow: %v", err)
@@ -444,7 +444,7 @@ func (c *Client) createSchedule(ctx context.Context, job *models.Job, scheduleID
 		},
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
-			Workflow:  "RunSyncWorkflow",
+			Workflow:  "ExecuteSyncWorkflow",
 			Args:      []any{req},
 			TaskQueue: TaskQueue,
 		},
@@ -475,7 +475,7 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 
 			input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
 				ID:        workflowID,
-				Workflow:  "RunSyncWorkflow",
+				Workflow:  "ExecuteSyncWorkflow",
 				Args:      []any{req},
 				TaskQueue: TaskQueue,
 			}
