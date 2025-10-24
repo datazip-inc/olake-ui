@@ -724,7 +724,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 			</div>
 
-			<div className="flex">
+			<div className={`flex rounded-[4px] ${!loading ? "border" : ""}`}>
 				<div
 					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
 				>
@@ -759,7 +759,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
+					className={`sticky top-0 flex w-1/2 flex-col ${!loading ? "border-l" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
