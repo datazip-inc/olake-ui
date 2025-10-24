@@ -4,7 +4,7 @@
 
 import { ArrayFieldTemplateProps } from "@rjsf/utils"
 import { Button } from "antd"
-import { Plus, Trash } from "@phosphor-icons/react"
+import { PlusIcon, TrashIcon } from "@phosphor-icons/react"
 
 const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 	const { items, canAdd, onAddClick } = props
@@ -25,7 +25,7 @@ const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 									type="text"
 									danger
 									onClick={item.onDropIndexClick(item.index)}
-									icon={<Trash className="text-red-500" />}
+									icon={<TrashIcon className="text-red-500" />}
 								/>
 							)}
 						</div>
@@ -40,7 +40,7 @@ const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 						size="middle"
 						className="px-3"
 						onClick={onAddClick}
-						icon={<Plus className="size-4" />}
+						icon={<PlusIcon className="size-4" />}
 					>
 						Add
 					</Button>

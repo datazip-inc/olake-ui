@@ -3,10 +3,10 @@ import clsx from "clsx"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
 import {
-	ArrowLeft,
-	ArrowRight,
-	ArrowsClockwise,
-	Eye,
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowsClockwiseIcon,
+	EyeIcon,
 } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -126,7 +126,7 @@ const JobHistory: React.FC = () => {
 			render: (_: any, record: any) => (
 				<Button
 					type="default"
-					icon={<Eye size={16} />}
+					icon={<EyeIcon size={16} />}
 					onClick={() => handleViewLogs(record.file_path)}
 				>
 					View logs
@@ -164,7 +164,7 @@ const JobHistory: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="size-5" />
+							<ArrowLeftIcon className="size-5" />
 						</Link>
 
 						<div className="flex flex-col items-start">
@@ -207,7 +207,7 @@ const JobHistory: React.FC = () => {
 					/>
 					<Tooltip title="Click to refetch">
 						<Button
-							icon={<ArrowsClockwise size={16} />}
+							icon={<ArrowsClockwiseIcon size={16} />}
 							onClick={() => {
 								if (jobId) {
 									fetchJobTasks(jobId)
@@ -274,7 +274,7 @@ const JobHistory: React.FC = () => {
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
 					View job configurations
-					<ArrowRight size={16} />
+					<ArrowRightIcon size={16} />
 				</Button>
 			</div>
 		</div>

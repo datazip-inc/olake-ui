@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { Warning } from "@phosphor-icons/react"
+import { WarningIcon } from "@phosphor-icons/react"
 import { Button, message, Modal } from "antd"
 import { useAppStore } from "../../../store"
 
@@ -18,7 +18,7 @@ const ClearDestinationAndSyncModal = () => {
 			centered
 		>
 			<div className="flex w-full flex-col items-center justify-center gap-8">
-				<Warning
+				<WarningIcon
 					className="size-16 text-primary"
 					weight="fill"
 				/>
