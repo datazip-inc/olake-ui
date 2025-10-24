@@ -1,13 +1,14 @@
 package dto
 
 // Common fields for source/destination config
-// source and destiantion are driver in olake cli
+// source and destination are driver in olake cli
 type DriverConfig struct {
-	Name    string `json:"name" validate:"required"`
-	Type    string `json:"type" validate:"required"`
-	Version string `json:"version" validate:"required"`
+	ID      *int   `json:"id,omitempty"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Version string `json:"version"`
 	Source  string `json:"source_type"`
-	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
+	Config  string `json:"config" orm:"type(jsonb)"`
 }
 
 type LoginRequest struct {

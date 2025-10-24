@@ -51,8 +51,7 @@ func SuccessResponse(ctx *web.Controller, data interface{}) {
 
 func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
 	if err != nil {
-		requestURL := ctx.Ctx.Input.URI()
-		logger.Errorf("%s:%s", requestURL, err)
+		logger.Errorf("error in request %s: %s", ctx.Ctx.Input.URI(), err)
 	}
 	RespondJSON(ctx, status, false, message, nil)
 }
@@ -139,7 +138,7 @@ func Ternary(cond bool, a, b any) any {
 func CreateDirectory(dirPath string, perm os.FileMode) error {
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(dirPath, perm); err != nil {
-			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+			return fmt.Errorf("failed to create directory %s: %s", dirPath, err)
 		}
 	}
 	return nil
@@ -153,7 +152,7 @@ func WriteFile(filePath string, data []byte, perm os.FileMode) error {
 	}
 
 	if err := os.WriteFile(filePath, data, perm); err != nil {
-		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
+		return fmt.Errorf("failed to write to file %s: %s", filePath, err)
 	}
 	return nil
 }
@@ -162,12 +161,12 @@ func WriteFile(filePath string, data []byte, perm os.FileMode) error {
 func ParseJSONFile(filePath string) (map[string]interface{}, error) {
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
+		return nil, fmt.Errorf("failed to read file %s: %s", filePath, err)
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(fileData, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
+		return nil, fmt.Errorf("failed to parse JSON from file %s: %s", filePath, err)
 	}
 
 	return result, nil
@@ -234,7 +233,7 @@ func CleanOldLogs(logDir string, retentionPeriod int) {
 
 	entries, err := os.ReadDir(logDir)
 	if err != nil {
-		logs.Error("failed to read log dir: %v", err)
+		logs.Error("failed to read log dir: %s", err)
 		return
 	}
 	// delete dir if old logs are found or is empty
@@ -259,7 +258,7 @@ func InitLogCleaner(logDir string, retentionPeriod int) {
 		CleanOldLogs(logDir, retentionPeriod)
 	})
 	if err != nil {
-		logs.Error("Failed to start log cleaner: %v", err)
+		logs.Error("Failed to start log cleaner: %s", err)
 		return
 	}
 	c.Start()

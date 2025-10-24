@@ -16,29 +16,25 @@ import (
 )
 
 func main() {
-	// Initialize telemetry
-	telemetry.InitTelemetry()
-	// check constants
+	// Initialize constants and logger before telemetry so build info is available
 	constants.Init()
-
-	// init logger
 	logger.Init()
+
+	db, err := database.Init()
+	if err != nil {
+		logger.Fatalf("Failed to initialize database: %s", err)
+		return
+	}
+	telemetry.InitTelemetry(db)
 
 	// init log cleaner
 	utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())
 
-	// init database
-	err := database.Init()
-	if err != nil {
-		logs.Critical("Failed to initialize database: %s", err)
-		os.Exit(1)
-	}
-
-	logs.Info("Starting Olake Temporal worker...")
+	logger.Info("Starting Olake Temporal worker...")
 	// create temporal client
 	tClient, err := temporal.NewClient()
 	if err != nil {
-		logs.Critical("Failed to create Temporal client: %v", err)
+		logs.Critical("Failed to create Temporal client: %s", err)
 		os.Exit(1)
 	}
 	defer tClient.Close()
@@ -49,7 +45,7 @@ func main() {
 	go func() {
 		err := worker.Start()
 		if err != nil {
-			logs.Critical("Failed to start worker: %v", err)
+			logs.Critical("Failed to start worker: %s", err)
 			os.Exit(1)
 		}
 	}()
@@ -60,9 +56,9 @@ func main() {
 
 	// wait for termination signal
 	sig := <-signalChan
-	logs.Info("Received signal %v, shutting down worker...", sig)
+	logger.Infof("Received signal %s, shutting down worker...", sig)
 
 	// stop the worker
 	worker.Stop()
-	logs.Info("Worker stopped. Goodbye!")
+	logger.Info("Worker stopped. Goodbye!")
 }

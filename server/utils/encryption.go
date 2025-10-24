@@ -105,12 +105,12 @@ func Decrypt(encryptedText string) (string, error) {
 	var config string
 	err = json.Unmarshal([]byte(encryptedText), &config)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal JSON string: %v", err)
+		return "", fmt.Errorf("failed to unmarshal JSON string: %s", err)
 	}
 
 	encryptedData, err := base64.StdEncoding.DecodeString(config)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 data: %v", err)
+		return "", fmt.Errorf("failed to decode base64 data: %s", err)
 	}
 
 	// Use KMS if client is provided

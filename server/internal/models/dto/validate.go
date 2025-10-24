@@ -13,7 +13,7 @@ func Validate(s interface{}) error {
 	err := validate.Struct(s)
 	if err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
-			return fmt.Errorf("invalid validation error: %v", err)
+			return fmt.Errorf("invalid validation: %s", err)
 		}
 
 		// collect all validation errors into a single message
@@ -26,12 +26,22 @@ func Validate(s interface{}) error {
 	return nil
 }
 
-// ValidateSourceType checks if the provided type is in the list of supported types
-func ValidateDriverType(t string) error {
-	for _, allowed := range constants.SupportedDriverTypes {
+// ValidateSourceType checks if the provided type is in the list of supported source types
+func ValidateSourceType(t string) error {
+	for _, allowed := range constants.SupportedSourceTypes {
 		if t == allowed {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid source type '%s', supported types are: %v", t, constants.SupportedDriverTypes)
+	return fmt.Errorf("invalid source type '%s', supported sources are: %v", t, constants.SupportedSourceTypes)
+}
+
+// ValidateDestinationType checks if the provided type is in the list of supported destination types
+func ValidateDestinationType(t string) error {
+	for _, allowed := range constants.SupportedDestinationTypes {
+		if t == allowed {
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid destination type '%s', supported destinations are: %v", t, constants.SupportedDestinationTypes)
 }

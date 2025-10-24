@@ -14,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/spf13/viper"
 )
 
 var instance *Telemetry
@@ -38,10 +42,12 @@ type Telemetry struct {
 	locationInfo *LocationInfo
 	TempUserID   string
 	username     string
+	db           *database.Database
 }
 
-func InitTelemetry() {
+func InitTelemetry(db *database.Database) {
 	go func() {
+
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
 		}
@@ -70,17 +76,20 @@ func InitTelemetry() {
 			return string(idBytes)
 		}()
 
+		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, viper.GetString("BUILD"))
+
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
-				OlakeVersion: OlakeVersion,
+				OlakeVersion: viper.GetString("BUILD"),
 				DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
 			ipAddress:    ip,
 			TempUserID:   tempUserID,
 			locationInfo: getLocationFromIP(ip),
+			db:           db,
 		}
 	}()
 }
