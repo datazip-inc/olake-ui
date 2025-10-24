@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/internal/telemetry"
 )
 
 // Auth-related methods on AppService

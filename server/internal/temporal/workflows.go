@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/models/dto"
-	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"

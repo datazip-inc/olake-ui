@@ -3,9 +3,9 @@ package database
 import (
 	"fmt"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
 // decryptSourceSliceConfigs decrypts config fields for a slice of sources

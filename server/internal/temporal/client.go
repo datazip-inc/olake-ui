@@ -3,9 +3,10 @@ package temporal
 import (
 	"context"
 	"fmt"
+
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/utils"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 )

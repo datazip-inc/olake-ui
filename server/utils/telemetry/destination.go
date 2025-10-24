@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties

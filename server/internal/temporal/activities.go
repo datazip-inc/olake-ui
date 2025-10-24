@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/docker"
-	"github.com/datazip/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/docker"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
 )

@@ -1,7 +1,7 @@
 package docker
 
 import (
-	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/docker/docker/client"
 )
 

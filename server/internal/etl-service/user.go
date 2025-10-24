@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 )
 
 // User-related methods on AppService

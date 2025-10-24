@@ -16,7 +16,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
-	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
 // utility provides encryption and decryption functionality using either AWS KMS or local AES-256-GCM.

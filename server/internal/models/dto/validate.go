@@ -3,7 +3,7 @@ package dto
 import (
 	"fmt"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/go-playground/validator/v10"
 )
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/rs/zerolog"
 	"github.com/spf13/viper"
 )

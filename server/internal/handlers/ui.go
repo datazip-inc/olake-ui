@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/spf13/viper"
 )
 

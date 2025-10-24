@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/internal/temporal"
 )
 
 // AppService is a unified service exposing all domain operations backed by shared deps.

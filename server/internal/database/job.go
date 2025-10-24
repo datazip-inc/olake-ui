@@ -5,9 +5,9 @@ import (
 
 	"github.com/beego/beego/v2/client/orm"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
 // decryptJobConfig decrypts Config fields in related Source and Destination

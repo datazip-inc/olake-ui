@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/spf13/viper"
 )
 
