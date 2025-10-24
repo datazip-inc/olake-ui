@@ -31,8 +31,8 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 			className={clsx(
 				"flex w-full items-center justify-between border-b border-solid border-[#e5e7eb] py-3 pl-6",
 				isActiveStream
-					? "bg-primary-100"
-					: "border-l border-r bg-white hover:bg-background-primary",
+					? "bg-[#D2D8F7]"
+					: "bg-white hover:bg-background-primary",
 			)}
 		>
 			<div
