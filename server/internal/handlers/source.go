@@ -21,7 +21,7 @@ func (h *Handler) ListSources() {
 
 	logger.Debugf("Get all sources initiated project_id[%s]", projectID)
 
-	sources, err := h.svc.GetAllSources(h.Ctx.Request.Context(), projectID)
+	sources, err := h.etl.GetAllSources(h.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
 		return
@@ -57,7 +57,7 @@ func (h *Handler) CreateSource() {
 	logger.Debugf("Create source initiated project_id[%s] source_type[%s] source_name[%s] user_id[%v]",
 		projectID, req.Type, req.Name, userID)
 
-	if err := h.svc.CreateSource(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+	if err := h.etl.CreateSource(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create source: %s", err), err)
 		return
 	}
@@ -99,7 +99,7 @@ func (h *Handler) UpdateSource() {
 	logger.Debugf("Update source initiated project_id[%s] source_id[%d] source_type[%s] user_id[%v]",
 		projectID, id, req.Type, userID)
 
-	if err := h.svc.UpdateSource(h.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
+	if err := h.etl.UpdateSource(h.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
@@ -121,7 +121,7 @@ func (h *Handler) DeleteSource() {
 
 	logger.Debugf("Delete source initiated source_id[%d]", id)
 
-	resp, err := h.svc.DeleteSource(h.Ctx.Request.Context(), id)
+	resp, err := h.etl.DeleteSource(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
@@ -148,7 +148,7 @@ func (h *Handler) TestSourceConnection() {
 
 	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.svc.SourceTestConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.SourceTestConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
@@ -176,7 +176,7 @@ func (h *Handler) GetSourceCatalog() {
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]",
 		req.Type, req.Version, req.JobID)
 
-	catalog, err := h.svc.GetSourceCatalog(h.Ctx.Request.Context(), &req)
+	catalog, err := h.etl.GetSourceCatalog(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
@@ -194,7 +194,7 @@ func (h *Handler) GetSourceJobs() {
 
 	logger.Debugf("Get source jobs initiated source_id[%d]", id)
 
-	jobs, err := h.svc.GetSourceJobs(h.Ctx.Request.Context(), id)
+	jobs, err := h.etl.GetSourceJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
@@ -217,7 +217,7 @@ func (h *Handler) GetSourceVersions() {
 	sourceType := h.GetString("type")
 	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", projectID, sourceType)
 
-	versions, err := h.svc.GetSourceVersions(h.Ctx.Request.Context(), sourceType)
+	versions, err := h.etl.GetSourceVersions(h.Ctx.Request.Context(), sourceType)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if err.Error() == "source type is required" {
@@ -251,7 +251,7 @@ func (h *Handler) GetProjectSourceSpec() {
 	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]",
 		projectID, req.Type, req.Version)
 
-	resp, err := h.svc.GetSourceSpec(h.Ctx.Request.Context(), &req)
+	resp, err := h.etl.GetSourceSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
 		return

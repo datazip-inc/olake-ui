@@ -17,7 +17,7 @@ import (
 // Source-related methods on AppService
 
 // GetAllSources returns all sources for a project with lightweight job summaries.
-func (s *AppService) GetAllSources(_ context.Context, projectID string) ([]dto.SourceDataItem, error) {
+func (s *ETLService) GetAllSources(_ context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
@@ -67,7 +67,7 @@ func (s *AppService) GetAllSources(_ context.Context, projectID string) ([]dto.S
 	return items, nil
 }
 
-func (s *AppService) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
+func (s *ETLService) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
 	src := &models.Source{
 		Name:      req.Name,
 		Type:      req.Type,
@@ -88,7 +88,7 @@ func (s *AppService) CreateSource(ctx context.Context, req *dto.CreateSourceRequ
 	return nil
 }
 
-func (s *AppService) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
+func (s *ETLService) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
 	existing, err := s.db.GetSourceByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to get source: %s", err)
@@ -119,7 +119,7 @@ func (s *AppService) UpdateSource(ctx context.Context, projectID string, id int,
 	return nil
 }
 
-func (s *AppService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
+func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
 	src, err := s.db.GetSourceByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find source: %s", err)
@@ -149,7 +149,7 @@ func (s *AppService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s *AppService) SourceTestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *ETLService) SourceTestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if s.temporal == nil {
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
@@ -181,7 +181,7 @@ func (s *AppService) SourceTestConnection(ctx context.Context, req *dto.SourceTe
 	return result, logs, nil
 }
 
-func (s *AppService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
+func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
 	oldStreams := ""
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
@@ -211,7 +211,7 @@ func (s *AppService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 	return newStreams, nil
 }
 
-func (s *AppService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, error) {
+func (s *ETLService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, error) {
 	if _, err := s.db.GetSourceByID(id); err != nil {
 		return nil, fmt.Errorf("failed to find source: %s", err)
 	}
@@ -224,7 +224,7 @@ func (s *AppService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, er
 	return jobs, nil
 }
 
-func (s *AppService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
+func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
 	if sourceType == "" {
 		return nil, fmt.Errorf("source type is required")
 	}
@@ -239,7 +239,7 @@ func (s *AppService) GetSourceVersions(ctx context.Context, sourceType string) (
 }
 
 // TODO: cache spec in db for each version
-func (s *AppService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
+func (s *ETLService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)

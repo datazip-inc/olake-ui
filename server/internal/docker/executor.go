@@ -185,7 +185,7 @@ func (r *Runner) buildCommandArgs(flag string, command Command, configPath strin
 func (r *Runner) getHostOutputDir(outputDir string) string {
 	if persistentDir := os.Getenv(envPersistentDir); persistentDir != "" {
 		hostOutputDir := strings.Replace(outputDir, DefaultConfigDir, persistentDir, 1)
-		logs.Info("hostOutputDir %s", hostOutputDir)
+		logs.Info("hostOutputDir %s, persistent dir: %s", hostOutputDir, persistentDir)
 		return hostOutputDir
 	}
 	return outputDir

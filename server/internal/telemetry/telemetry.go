@@ -45,13 +45,8 @@ type Telemetry struct {
 	db           *database.Database
 }
 
-func InitTelemetry() {
+func InitTelemetry(db *database.Database) {
 	go func() {
-		database, err := database.Init()
-		if err != nil {
-			logger.Debug("Failed to create database: %s", err)
-			return
-		}
 
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
@@ -94,7 +89,7 @@ func InitTelemetry() {
 			ipAddress:    ip,
 			TempUserID:   tempUserID,
 			locationInfo: getLocationFromIP(ip),
-			db:           database,
+			db:           db,
 		}
 	}()
 }

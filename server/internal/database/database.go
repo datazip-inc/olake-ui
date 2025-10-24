@@ -25,6 +25,7 @@ func Init() (*Database, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to build postgres uri: %s", err)
 	}
+
 	err = orm.RegisterDriver("postgres", orm.DRPostgres)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register postgres driver: %s", err)

@@ -19,7 +19,7 @@ func (h *Handler) ListJobs() {
 
 	logger.Debugf("Get all jobs initiated project_id[%s]", projectID)
 
-	jobs, err := h.svc.GetAllJobs(h.Ctx.Request.Context(), projectID)
+	jobs, err := h.etl.GetAllJobs(h.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve jobs by project ID: %s", err), err)
 		return
@@ -73,7 +73,7 @@ func (h *Handler) CreateJob() {
 	logger.Debugf("Create job initiated project_id[%s] job_name[%s] user_id[%v]",
 		projectID, req.Name, userID)
 
-	if err := h.svc.CreateJob(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+	if err := h.etl.CreateJob(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
 		return
 	}
@@ -132,7 +132,7 @@ func (h *Handler) UpdateJob() {
 	logger.Debugf("Update job initiated project_id[%s] job_id[%d] job_name[%s] user_id[%v]",
 		projectID, jobID, req.Name, userID)
 
-	if err := h.svc.UpdateJob(h.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
+	if err := h.etl.UpdateJob(h.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update job: %s", err), err)
 		return
 	}
@@ -149,7 +149,7 @@ func (h *Handler) DeleteJob() {
 
 	logger.Infof("Delete job initiated job_id[%d]", id)
 
-	jobName, err := h.svc.DeleteJob(h.Ctx.Request.Context(), id)
+	jobName, err := h.etl.DeleteJob(h.Ctx.Request.Context(), id)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete job: %s", err), err)
 		return
@@ -173,7 +173,7 @@ func (h *Handler) CheckUniqueJobName() {
 
 	logger.Infof("Check unique job name initiated project_id[%s] job_name[%s]", projectID, req.JobName)
 
-	unique, err := h.svc.IsJobNameUnique(h.Ctx.Request.Context(), projectID, req)
+	unique, err := h.etl.IsJobNameUnique(h.Ctx.Request.Context(), projectID, req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check job name uniqueness: %s", err), err)
 		return
@@ -197,7 +197,7 @@ func (h *Handler) SyncJob() {
 
 	logger.Infof("Sync trigger initiated for project_id[%s] job_id[%d]", projectID, id)
 
-	result, err := h.svc.SyncJob(h.Ctx.Request.Context(), projectID, id)
+	result, err := h.etl.SyncJob(h.Ctx.Request.Context(), projectID, id)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger sync: %s", err), err)
 		return
@@ -227,7 +227,7 @@ func (h *Handler) ActivateJob() {
 
 	logger.Debugf("Activate job initiated job_id[%d] user_id[%v]", id, userID)
 
-	if err := h.svc.ActivateJob(h.Ctx.Request.Context(), id, req, userID); err != nil {
+	if err := h.etl.ActivateJob(h.Ctx.Request.Context(), id, req, userID); err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
 			statusCode = http.StatusNotFound
@@ -254,7 +254,7 @@ func (h *Handler) CancelJobRun() {
 
 	logger.Infof("Cancel job run initiated project_id[%s] job_id[%d]", projectID, id)
 
-	resp, err := h.svc.CancelJobRun(h.Ctx.Request.Context(), projectID, id)
+	resp, err := h.etl.CancelJobRun(h.Ctx.Request.Context(), projectID, id)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to cancel job run: %s", err), err)
 		return
@@ -278,7 +278,7 @@ func (h *Handler) GetJobTasks() {
 
 	logger.Debugf("Get job tasks initiated project_id[%s] job_id[%d]", projectID, id)
 
-	tasks, err := h.svc.GetJobTasks(h.Ctx.Request.Context(), projectID, id)
+	tasks, err := h.etl.GetJobTasks(h.Ctx.Request.Context(), projectID, id)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {
@@ -306,7 +306,7 @@ func (h *Handler) GetTaskLogs() {
 
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
 
-	logs, err := h.svc.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
+	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		if err.Error() == "job not found" {

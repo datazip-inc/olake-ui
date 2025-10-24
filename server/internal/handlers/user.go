@@ -26,7 +26,7 @@ func (h *Handler) CreateUser() {
 
 	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
 
-	if err := h.svc.CreateUser(h.Ctx.Request.Context(), &req); err != nil {
+	if err := h.etl.CreateUser(h.Ctx.Request.Context(), &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
 		return
 	}
@@ -38,7 +38,7 @@ func (h *Handler) CreateUser() {
 func (h *Handler) GetAllUsers() {
 	logger.Info("Get all users initiated")
 
-	users, err := h.svc.GetAllUsers(h.Ctx.Request.Context())
+	users, err := h.etl.GetAllUsers(h.Ctx.Request.Context())
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
 		return
@@ -63,7 +63,7 @@ func (h *Handler) UpdateUser() {
 
 	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)
 
-	updatedUser, err := h.svc.UpdateUser(h.Ctx.Request.Context(), id, &req)
+	updatedUser, err := h.etl.UpdateUser(h.Ctx.Request.Context(), id, &req)
 	if err != nil {
 		if err.Error() == "user not found" {
 			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("user not found: %s", err), err)
@@ -86,7 +86,7 @@ func (h *Handler) DeleteUser() {
 
 	logger.Infof("Delete user initiated user_id[%d]", id)
 
-	if err := h.svc.DeleteUser(h.Ctx.Request.Context(), id); err != nil {
+	if err := h.etl.DeleteUser(h.Ctx.Request.Context(), id); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)
 		return
 	}

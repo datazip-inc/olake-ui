@@ -17,7 +17,7 @@ import (
 // Destination-related methods on AppService
 
 // ListDestinations returns all destinations for a project with lightweight job summaries.
-func (s *AppService) ListDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
+func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	destinations, err := s.db.ListDestinationsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list destinations: %s", err)
@@ -64,7 +64,7 @@ func (s *AppService) ListDestinations(_ context.Context, projectID string) ([]dt
 	return destItems, nil
 }
 
-func (s *AppService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
+func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -84,7 +84,7 @@ func (s *AppService) CreateDestination(ctx context.Context, req *dto.CreateDesti
 	return nil
 }
 
-func (s *AppService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
+func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
 	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to get destination: %s", err)
@@ -115,7 +115,7 @@ func (s *AppService) UpdateDestination(ctx context.Context, id int, projectID st
 	return nil
 }
 
-func (s *AppService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
+func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
 	dest, err := s.db.GetDestinationByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find destination: %s", err)
@@ -146,7 +146,7 @@ func (s *AppService) DeleteDestination(ctx context.Context, id int) (*dto.Delete
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *AppService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *ETLService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	version := req.Version
 	driver := req.SourceType
 	if driver == "" {
@@ -184,7 +184,7 @@ func (s *AppService) TestConnection(ctx context.Context, req *dto.DestinationTes
 	return result, logs, nil
 }
 
-func (s *AppService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
+func (s *ETLService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
 	if _, err := s.db.GetDestinationByID(id); err != nil {
 		return nil, fmt.Errorf("failed to find destination: %s", err)
 	}
@@ -197,7 +197,7 @@ func (s *AppService) GetDestinationJobs(_ context.Context, id int) ([]*models.Jo
 	return jobs, nil
 }
 
-func (s *AppService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
+func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
 	if destType == "" {
 		return nil, fmt.Errorf("destination type is required")
 	}
@@ -211,7 +211,7 @@ func (s *AppService) GetDestinationVersions(ctx context.Context, destType string
 }
 
 // TODO: cache spec in db for each version
-func (s *AppService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
+func (s *ETLService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	// TODO: handle from frontend
 	destinationType := "iceberg"
 	if req.Type == "s3" {

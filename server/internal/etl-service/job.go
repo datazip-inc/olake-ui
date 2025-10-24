@@ -18,7 +18,7 @@ import (
 
 // Job-related methods on AppService
 
-func (s *AppService) GetAllJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
+func (s *ETLService) GetAllJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
 	jobs, err := s.db.ListJobsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
@@ -36,7 +36,7 @@ func (s *AppService) GetAllJobs(ctx context.Context, projectID string) ([]dto.Jo
 	return jobResponses, nil
 }
 
-func (s *AppService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
 	source, err := s.upsertSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
@@ -80,7 +80,7 @@ func (s *AppService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	return nil
 }
 
-func (s *AppService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
+func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
 	existingJob, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %s", err)
@@ -125,7 +125,7 @@ func (s *AppService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	return nil
 }
 
-func (s *AppService) DeleteJob(ctx context.Context, jobID int) (string, error) {
+func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return "", fmt.Errorf("failed to find job: %s", err)
@@ -143,7 +143,7 @@ func (s *AppService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	return job.Name, nil
 }
 
-func (s *AppService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
+func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -158,7 +158,7 @@ func (s *AppService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	}, nil
 }
 
-func (s *AppService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
+func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -174,7 +174,7 @@ func (s *AppService) CancelJobRun(ctx context.Context, projectID string, jobID i
 	}, nil
 }
 
-func (s *AppService) ActivateJob(_ context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
+func (s *ETLService) ActivateJob(_ context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job: %s", err)
@@ -192,7 +192,7 @@ func (s *AppService) ActivateJob(_ context.Context, jobID int, req dto.JobStatus
 	return nil
 }
 
-func (s *AppService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
+func (s *ETLService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check job name uniqueness: %s", err)
@@ -201,7 +201,7 @@ func (s *AppService) IsJobNameUnique(_ context.Context, projectID string, req dt
 	return unique, nil
 }
 
-func (s *AppService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
+func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -236,7 +236,7 @@ func (s *AppService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	return tasks, nil
 }
 
-func (s *AppService) GetTaskLogs(_ context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
+func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -257,7 +257,7 @@ func (s *AppService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 }
 
 // TODO: frontend needs to send source id and destination id
-func (s *AppService) buildJobResponse(ctx context.Context, job *models.Job, projectID string) (dto.JobResponse, error) {
+func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, projectID string) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:            job.ID,
 		Name:          job.Name,
@@ -311,7 +311,7 @@ func (s *AppService) buildJobResponse(ctx context.Context, job *models.Job, proj
 	return jobResp, nil
 }
 
-func (s *AppService) upsertSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
+func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
 	if config == nil {
 		return nil, fmt.Errorf("source config is required")
 	}
@@ -339,7 +339,7 @@ func (s *AppService) upsertSource(config *dto.DriverConfig, projectID string, us
 	return newSource, nil
 }
 
-func (s *AppService) upsertDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
 	if config == nil {
 		return nil, fmt.Errorf("destination config is required")
 	}

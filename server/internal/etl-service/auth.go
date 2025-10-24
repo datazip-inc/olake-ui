@@ -13,7 +13,7 @@ import (
 
 // Auth-related methods on AppService
 
-func (s *AppService) Login(ctx context.Context, username, password string) (*models.User, error) {
+func (s *ETLService) Login(ctx context.Context, username, password string) (*models.User, error) {
 	user, err := s.db.GetUserByUsername(username)
 	if err != nil {
 		if strings.Contains(err.Error(), "no row found") {
@@ -31,7 +31,7 @@ func (s *AppService) Login(ctx context.Context, username, password string) (*mod
 	return user, nil
 }
 
-func (s *AppService) Signup(_ context.Context, user *models.User) error {
+func (s *ETLService) Signup(_ context.Context, user *models.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %s", err)
@@ -48,7 +48,7 @@ func (s *AppService) Signup(_ context.Context, user *models.User) error {
 	return nil
 }
 
-func (s *AppService) GetUserByID(userID int) (*models.User, error) {
+func (s *ETLService) GetUserByID(userID int) (*models.User, error) {
 	user, err := s.db.GetUserByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %s", err)
@@ -56,7 +56,7 @@ func (s *AppService) GetUserByID(userID int) (*models.User, error) {
 	return user, nil
 }
 
-func (s *AppService) ValidateUser(userID int) error {
+func (s *ETLService) ValidateUser(userID int) error {
 	_, err := s.db.GetUserByID(userID)
 	if err != nil {
 		return fmt.Errorf("failed to validate user: %s", err)

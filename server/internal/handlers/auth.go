@@ -24,7 +24,7 @@ func (h *Handler) Login() {
 
 	logger.Debugf("Login initiated username[%s]", req.Username)
 
-	user, err := h.svc.Login(h.Ctx.Request.Context(), req.Username, req.Password)
+	user, err := h.etl.Login(h.Ctx.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
@@ -59,7 +59,7 @@ func (h *Handler) CheckAuth() {
 
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
-		if err := h.svc.ValidateUser(userIDInt); err != nil {
+		if err := h.etl.ValidateUser(userIDInt); err != nil {
 			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
@@ -93,7 +93,7 @@ func (h *Handler) Signup() {
 		return
 	}
 
-	if err := h.svc.Signup(h.Ctx.Request.Context(), &req); err != nil {
+	if err := h.etl.Signup(h.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
 			utils.ErrorResponse(&h.Controller, http.StatusConflict, "Username already exists", err)

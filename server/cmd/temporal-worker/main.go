@@ -7,6 +7,7 @@ import (
 
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/database"
 	"github.com/datazip/olake-ui/server/internal/docker"
 	"github.com/datazip/olake-ui/server/internal/logger"
 	"github.com/datazip/olake-ui/server/internal/telemetry"
@@ -18,7 +19,13 @@ func main() {
 	// Initialize constants and logger before telemetry so build info is available
 	constants.Init()
 	logger.Init()
-	telemetry.InitTelemetry()
+
+	db, err := database.Init()
+	if err != nil {
+		logger.Fatalf("Failed to initialize database: %s", err)
+		return
+	}
+	telemetry.InitTelemetry(db)
 
 	// init log cleaner
 	utils.InitLogCleaner(docker.GetDefaultConfigDir(), utils.GetLogRetentionPeriod())

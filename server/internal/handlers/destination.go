@@ -18,7 +18,7 @@ func (h *Handler) ListDestinations() {
 		return
 	}
 
-	items, err := h.svc.ListDestinations(h.Ctx.Request.Context(), projectID)
+	items, err := h.etl.ListDestinations(h.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
 		return
@@ -54,7 +54,7 @@ func (h *Handler) CreateDestination() {
 	logger.Debugf("Create destination initiated project_id[%s] destination_type[%s] destination_name[%s] user_id[%v]",
 		projectID, req.Type, req.Name, userID)
 
-	if err := h.svc.CreateDestination(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+	if err := h.etl.CreateDestination(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
 		return
 	}
@@ -96,7 +96,7 @@ func (h *Handler) UpdateDestination() {
 	logger.Debugf("Update destination initiated project_id[%s], destination_id[%d], destination_type[%s], user_id[%v]",
 		projectID, id, req.Type, userID)
 
-	if err := h.svc.UpdateDestination(h.Ctx.Request.Context(), id, projectID, &req, userID); err != nil {
+	if err := h.etl.UpdateDestination(h.Ctx.Request.Context(), id, projectID, &req, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
 		return
 	}
@@ -113,7 +113,7 @@ func (h *Handler) DeleteDestination() {
 
 	logger.Debugf("Delete destination initiated destination_id[%d]", id)
 
-	resp, err := h.svc.DeleteDestination(h.Ctx.Request.Context(), id)
+	resp, err := h.etl.DeleteDestination(h.Ctx.Request.Context(), id)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
 		return
@@ -132,7 +132,7 @@ func (h *Handler) TestDestinationConnection() {
 
 	logger.Infof("Test destination connection initiated destination_type[%s] destination_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.svc.TestConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.TestConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
@@ -154,7 +154,7 @@ func (h *Handler) GetDestinationJobs() {
 
 	logger.Debugf("Get destination jobs initiated destination_id[%d]", id)
 
-	jobs, err := h.svc.GetDestinationJobs(h.Ctx.Request.Context(), id)
+	jobs, err := h.etl.GetDestinationJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
 		return
@@ -178,7 +178,7 @@ func (h *Handler) GetDestinationVersions() {
 
 	logger.Debugf("Get destination versions initiated project_id[%s] destination_type[%s]", projectID, destType)
 
-	versions, err := h.svc.GetDestinationVersions(h.Ctx.Request.Context(), destType)
+	versions, err := h.etl.GetDestinationVersions(h.Ctx.Request.Context(), destType)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
 		return
@@ -203,7 +203,7 @@ func (h *Handler) GetDestinationSpec() {
 	logger.Debugf("Get destination spec initiated project_id[%s] destination_type[%s] destination_version[%s]",
 		projectID, req.Type, req.Version)
 
-	resp, err := h.svc.GetDestinationSpec(h.Ctx.Request.Context(), &req)
+	resp, err := h.etl.GetDestinationSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return

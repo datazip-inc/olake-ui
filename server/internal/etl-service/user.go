@@ -9,7 +9,7 @@ import (
 
 // User-related methods on AppService
 
-func (s *AppService) CreateUser(_ context.Context, req *models.User) error {
+func (s *ETLService) CreateUser(_ context.Context, req *models.User) error {
 	if err := s.db.CreateUser(req); err != nil {
 		return fmt.Errorf("failed to create user: %s", err)
 	}
@@ -17,7 +17,7 @@ func (s *AppService) CreateUser(_ context.Context, req *models.User) error {
 	return nil
 }
 
-func (s *AppService) GetAllUsers(_ context.Context) ([]*models.User, error) {
+func (s *ETLService) GetAllUsers(_ context.Context) ([]*models.User, error) {
 	users, err := s.db.ListUsers()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %s", err)
@@ -25,7 +25,7 @@ func (s *AppService) GetAllUsers(_ context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-func (s *AppService) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
+func (s *ETLService) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
 	existingUser, err := s.db.GetUserByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %s", err)
@@ -41,7 +41,7 @@ func (s *AppService) UpdateUser(_ context.Context, id int, req *models.User) (*m
 	return existingUser, nil
 }
 
-func (s *AppService) DeleteUser(_ context.Context, id int) error {
+func (s *ETLService) DeleteUser(_ context.Context, id int) error {
 	if err := s.db.DeleteUser(id); err != nil {
 		return fmt.Errorf("failed to delete user: %s", err)
 	}
