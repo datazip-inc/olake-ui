@@ -538,13 +538,6 @@ func (s *JobService) getOrCreateDestination(config dto.JobDestinationConfig, pro
 	return dest, nil
 }
 
-func (s *JobService) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
-	if _, err := s.jobORM.GetByID(jobID, true); err != nil {
-		return false, fmt.Errorf("job not found id %d: %s", jobID, err)
-	}
-	return isClearRunning(ctx, s.tempClient, projectID, jobID)
-}
-
 func (s *JobService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string) (map[string]interface{}, error) {
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {

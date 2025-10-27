@@ -193,19 +193,6 @@ func (c *JobHandler) CheckUniqueJobName() {
 	utils.SuccessResponse(&c.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
-// @router /project/:projectid/jobs/:id/clear-destination [get]
-func (c *JobHandler) GetClearDestinationStatus() {
-	projectID := c.Ctx.Input.Param(":projectid")
-	jobID := GetIDFromPath(&c.Controller)
-
-	running, err := c.jobService.GetClearDestinationStatus(c.Ctx.Request.Context(), projectID, jobID)
-	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get clear destination status", err)
-		return
-	}
-	utils.SuccessResponse(&c.Controller, dto.ClearDestinationStatusResposne{Running: running})
-}
-
 // @router /project/:projectid/jobs/:id/clear-destination [post]
 func (c *JobHandler) ClearDestination() {
 	projectID := c.Ctx.Input.Param(":projectid")

@@ -44,10 +44,6 @@ type CheckUniqueJobNameResponse struct {
 	Unique bool `json:"unique"`
 }
 
-type ClearDestinationStatusResposne struct {
-	Running bool `json:"running"`
-}
-
 type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams"`
 }

@@ -810,28 +810,8 @@ http://localhost:8000
     }
   }
   ```
-
-### Clear destination status
----
-
-- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
-- **Method**: GET
-- **Description**: gets the clear-destination status, either true (running) or false (not running)
-- **Headers**: `Authorization: Bearer <token>`
-
-- **Response**: 
-
-  ```json
-  {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "running": "boolean"
-    }
-  }
-  ```
-
-### Difference Streams
+  
+  ### Difference Streams
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:id/difference-streams`
 - **Method**: POST
 - **Description**: returns the stream difference bewtween the saved and the updated streams

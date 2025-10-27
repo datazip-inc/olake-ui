@@ -444,7 +444,7 @@ func (c *Client) createSchedule(ctx context.Context, job *models.Job, scheduleID
 		},
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
-			Workflow:  "ExecuteSyncWorkflow",
+			Workflow:  "RunSyncWorkflow",
 			Args:      []any{req},
 			TaskQueue: TaskQueue,
 		},
@@ -475,7 +475,7 @@ func (c *Client) updateSchedule(ctx context.Context, handle client.ScheduleHandl
 
 			input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
 				ID:        workflowID,
-				Workflow:  "ExecuteSyncWorkflow",
+				Workflow:  "RunSyncWorkflow",
 				Args:      []any{req},
 				TaskQueue: TaskQueue,
 			}
