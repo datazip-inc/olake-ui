@@ -3,12 +3,12 @@ import { formatDistanceToNow } from "date-fns"
 import { Button, Modal, Table, message } from "antd"
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 
-import { useAppStore } from "../../../store"
-import { sourceService } from "../../../api"
-import { destinationService } from "../../../api/services/destinationService"
-import { EntityEditModalProps } from "../../../types"
-import { getConnectorImage } from "../../../utils/utils"
-import { TEST_CONNECTION_STATUS } from "../../../utils/constants"
+import { useAppStore } from "@store"
+import { sourceService } from "@api"
+import { destinationService } from "@api/services/destinationService"
+import { EntityEditModalProps } from "@app-types"
+import { getConnectorImage } from "@utils/utils"
+import { TEST_CONNECTION_STATUS } from "@utils/constants"
 
 const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 	const navigate = useNavigate()

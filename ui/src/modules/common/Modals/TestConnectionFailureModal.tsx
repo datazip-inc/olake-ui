@@ -4,9 +4,9 @@ import { message, Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
 import clsx from "clsx"
 
-import { useAppStore } from "../../../store"
-import ErrorIcon from "../../../assets/ErrorIcon.svg"
-import { getLogTextColor, getLogLevelClass } from "../../../utils/utils"
+import { useAppStore } from "@store"
+import ErrorIcon from "@assets/ErrorIcon.svg"
+import { getLogTextColor, getLogLevelClass } from "@utils/utils"
 
 const TestConnectionFailureModal = ({
 	fromSources,

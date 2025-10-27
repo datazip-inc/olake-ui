@@ -2,8 +2,8 @@ import { FC } from "react"
 import { WarningIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
 
-import { useAppStore } from "../../../store"
-import { ResetStreamsModalProps } from "../../../types"
+import { useAppStore } from "@store"
+import { ResetStreamsModalProps } from "@app-types"
 
 const ResetStreamsModal: FC<ResetStreamsModalProps> = ({ onConfirm }) => {
 	const { showResetStreamsModal, setShowResetStreamsModal } = useAppStore()
