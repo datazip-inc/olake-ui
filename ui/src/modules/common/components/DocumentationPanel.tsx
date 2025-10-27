@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react"
 import clsx from "clsx"
 import { Button, Tooltip } from "antd"
 import {
-	CornersOut,
-	CaretRight,
-	Info,
-	ArrowSquareOut,
+	CornersOutIcon,
+	CaretRightIcon,
+	InfoIcon,
+	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 
 import { DocumentationPanelProps } from "@app-types/index"
@@ -44,6 +44,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 		if (!iframe) return
 
 		const handleLoad = () => {
+			// as the theme for ui is light themed we need to show only light theme in docs website as the default theme is dark
 			// Post message to iframe for theming
 			iframe.contentWindow?.postMessage({ theme: "light" }, "https://olake.io")
 
@@ -78,7 +79,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					className="flex items-center"
 					onClick={openInNewTab}
 					icon={
-						<ArrowSquareOut
+						<ArrowSquareOutIcon
 							size={16}
 							className="mr-2"
 						/>
@@ -91,7 +92,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 					className="flex items-center bg-blue-600"
 					onClick={toggleDocPanel}
 					icon={
-						<CornersOut
+						<CornersOutIcon
 							size={16}
 							className="mr-2"
 						/>
@@ -120,7 +121,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 								isDocPanelCollapsed ? "rotate-180" : "rotate-0",
 							)}
 						>
-							<CaretRight size={16} />
+							<CaretRightIcon size={16} />
 						</div>
 					</button>
 				</div>
@@ -144,7 +145,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 							<Button
 								type="default"
 								icon={
-									<ArrowSquareOut
+									<ArrowSquareOutIcon
 										size={20}
 										weight="bold"
 										className="text-primary"
@@ -173,7 +174,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 						<div className="flex h-full w-full items-start justify-center">
 							<div className="absolute right-3 top-10 z-10 flex flex-col gap-2">
 								<div className="rounded-xl border border-gray-200 bg-neutral-light p-2">
-									<Info
+									<InfoIcon
 										size={25}
 										className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 										onClick={toggleDocPanel}
@@ -184,7 +185,7 @@ const DocumentationPanel: React.FC<DocumentationPanelProps> = ({
 										title="Open documentation in new tab"
 										placement="left"
 									>
-										<ArrowSquareOut
+										<ArrowSquareOutIcon
 											size={25}
 											className="cursor-pointer text-primary transition-all duration-300 ease-in-out hover:text-primary/80"
 											onClick={openInNewTab}

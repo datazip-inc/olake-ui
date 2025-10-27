@@ -1,12 +1,13 @@
 import { formatDistanceToNow } from "date-fns"
 import { Button, message, Modal, Table } from "antd"
-import { Warning } from "@phosphor-icons/react"
+import { WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
 import { Entity } from "@app-types/index"
 import { DeleteModalProps } from "@app-types/modalTypes"
 import { getConnectorImage } from "@utils/utils"
 
+//Entity Delete Modal
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 	const {
 		showDeleteModal,
@@ -137,7 +138,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 			width={600}
 		>
 			<div className="flex flex-col items-center justify-center gap-7 py-8">
-				<Warning
+				<WarningIcon
 					weight="fill"
 					className="h-[55px] w-[63px] text-danger"
 				/>

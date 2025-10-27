@@ -1,6 +1,10 @@
 import React, { useState } from "react"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
-import { DotsThree, PencilSimpleLine, Trash } from "@phosphor-icons/react"
+import {
+	DotsThreeIcon,
+	PencilSimpleLineIcon,
+	TrashIcon,
+} from "@phosphor-icons/react"
 
 import { Entity, SourceTableProps } from "@app-types/index"
 import { getConnectorImage, getConnectorLabel } from "@utils/utils"
@@ -45,13 +49,13 @@ const SourceTable: React.FC<SourceTableProps> = ({
 						items: [
 							{
 								key: "edit",
-								icon: <PencilSimpleLine className="size-4" />,
+								icon: <PencilSimpleLineIcon className="size-4" />,
 								label: "Edit",
 								onClick: () => onEdit(record.id.toString()),
 							},
 							{
 								key: "delete",
-								icon: <Trash className="size-4" />,
+								icon: <TrashIcon className="size-4" />,
 								label: "Delete",
 								danger: true,
 								onClick: () => onDelete(record),
@@ -63,7 +67,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				>
 					<Button
 						type="text"
-						icon={<DotsThree className="size-5" />}
+						icon={<DotsThreeIcon className="size-5" />}
 					/>
 				</Dropdown>
 			),

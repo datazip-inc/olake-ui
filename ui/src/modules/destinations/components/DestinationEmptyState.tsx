@@ -1,5 +1,5 @@
 import { Button } from "antd"
-import { PlayCircle, Plus } from "@phosphor-icons/react"
+import { PlayCircleIcon, PlusIcon } from "@phosphor-icons/react"
 
 import { DestinationTutorialYTLink } from "@utils/constants"
 import FirstDestination from "@assets/FirstDestination.svg"
@@ -29,7 +29,7 @@ const DestinationEmptyState = ({
 				className="border-1 mb-12 border-[1px] border-[#D9D9D9] bg-white px-6 py-4 text-black"
 				onClick={handleCreateDestination}
 			>
-				<Plus />
+				<PlusIcon />
 				New Destination
 			</Button>
 			<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-4 shadow-sm">
@@ -48,7 +48,7 @@ const DestinationEmptyState = ({
 					</a>
 					<div className="flex-1">
 						<div className="mb-1 flex items-center gap-1 text-xs">
-							<PlayCircle color="#9f9f9f" />
+							<PlayCircleIcon color="#9f9f9f" />
 							<span className="text-text-placeholder">OLake/ Tutorial</span>
 						</div>
 						<div className="text-xs">

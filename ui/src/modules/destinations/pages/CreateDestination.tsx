@@ -35,6 +35,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
+	TEST_CONNECTION_STATUS,
 	transformErrors,
 } from "@utils/constants"
 import EndpointTitle from "@utils/EndpointTitle"
@@ -267,6 +268,7 @@ const CreateDestination = forwardRef<
 			if (setupType === SETUP_TYPES.EXISTING) return
 
 			setLoading(true)
+			// cancels old requests when new one is made
 			return withAbortController(
 				signal =>
 					destinationService.getDestinationSpec(
@@ -306,6 +308,7 @@ const CreateDestination = forwardRef<
 			setShowSourceCancelModal(true)
 		}
 
+		//makes sure user enters destination name and version and fills all the required fields in the form
 		const validateDestination = async (): Promise<boolean> => {
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
@@ -368,11 +371,15 @@ const CreateDestination = forwardRef<
 
 			try {
 				setShowTestingModal(true)
+				//test the connection and show either success or failure modal based on the result
 				const testResult =
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)
 
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -381,7 +388,11 @@ const CreateDestination = forwardRef<
 							.catch(error => console.error("Error adding destination:", error))
 					}, 1000)
 				} else {
-					setDestinationTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setDestinationTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -493,6 +504,7 @@ const CreateDestination = forwardRef<
 						<div className="flex-start flex w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="w-full"
@@ -522,6 +534,7 @@ const CreateDestination = forwardRef<
 								) : versions && versions.length > 0 ? (
 									<Select
 										value={version}
+										data-testid="destination-version-select"
 										onChange={handleVersionChange}
 										className="w-full"
 										placeholder="Select version"
@@ -561,6 +574,7 @@ const CreateDestination = forwardRef<
 						<div className="w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="h-8 w-full"
@@ -576,6 +590,7 @@ const CreateDestination = forwardRef<
 							<Select
 								placeholder="Select a destination"
 								className="w-full"
+								data-testid="existing-destination"
 								onChange={handleExistingDestinationSelect}
 								value={existingDestination}
 								options={filteredDestinations.map(d => ({

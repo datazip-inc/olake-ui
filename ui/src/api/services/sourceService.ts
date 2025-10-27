@@ -79,7 +79,7 @@ export const sourceService = {
 					version: source.version,
 					config: source.config,
 				},
-				{ timeout: 0 },
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			return {
 				success: response.data.success,
@@ -101,7 +101,7 @@ export const sourceService = {
 			const response = await api.get<APIResponse<{ version: string[] }>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
 				{
-					timeout: 0,
+					timeout: 0, // Disable timeout for this request since it can take longer
 				},
 			)
 			return response.data
@@ -123,7 +123,7 @@ export const sourceService = {
 					type: type.toLowerCase(),
 					version,
 				},
-				{ timeout: 300000, signal },
+				{ timeout: 300000, signal }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
 			)
 			return response.data
 		} catch (error) {
@@ -132,6 +132,7 @@ export const sourceService = {
 		}
 	},
 
+	//fetches source specific streams
 	getSourceStreams: async (
 		name: string,
 		type: string,

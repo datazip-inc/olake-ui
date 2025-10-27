@@ -14,7 +14,10 @@
 		"lint:fix": "eslint \"**/*.{js,jsx,ts,tsx}\" --max-warnings 0 --fix",
 		"preview": "vite preview",
 		"format": "prettier --write \"**/*.{js,jsx,ts,tsx}\"",
-		"format:check": "prettier --check \"**/*.{js,jsx,ts,tsx}\""
+		"format:check": "prettier --check \"**/*.{js,jsx,ts,tsx}\"",
+		"test": "playwright test",
+		"test:headed": "playwright test --headed",
+		"test:codegen": "playwright codegen http://localhost:8000/login"
 	},
 	"dependencies": {
 		"@babel/runtime": "7.26.10",
@@ -22,8 +25,8 @@
 		"@rjsf/antd": "^5.24.12",
 		"@rjsf/core": "^5.24.12",
 		"@rjsf/utils": "^5.24.8",
-		"antd": "^5.24.3",
 		"@rjsf/validator-ajv8": "^5.24.12",
+		"antd": "^5.24.3",
 		"axios": "^1.8.2",
 		"clsx": "^2.1.1",
 		"cron-parser": "^5.3.0",
@@ -36,8 +39,9 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.19.0",
+		"@playwright/test": "^1.55.0",
 		"@types/json-schema": "^7.0.15",
-		"@types/node": "^22.13.10",
+		"@types/node": "^22.18.12",
 		"@types/react": "^18.2.62",
 		"@types/react-dom": "^18.2.16",
 		"@typescript-eslint/eslint-plugin": "^8.26.0",

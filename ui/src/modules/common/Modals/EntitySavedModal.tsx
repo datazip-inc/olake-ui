@@ -1,5 +1,10 @@
 import { useNavigate } from "react-router-dom"
-import { Check, GitCommit, Path, LinktreeLogo } from "@phosphor-icons/react"
+import {
+	CheckIcon,
+	GitCommitIcon,
+	PathIcon,
+	LinktreeLogoIcon,
+} from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
 import { useAppStore } from "@store/index"
 import { EntitySavedModalProps } from "@app-types/index"
@@ -23,11 +28,11 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 			<div className="flex flex-col items-center justify-center gap-4 py-4">
 				<div className="rounded-xl bg-neutral-light p-2">
 					{type === "source" ? (
-						<LinktreeLogo className="z-10 size-5 text-text-link" />
+						<LinktreeLogoIcon className="z-10 size-5 text-text-link" />
 					) : type === JOB_CREATION_STEPS.STREAMS ? (
-						<GitCommit className="z-10 size-5 text-text-link" />
+						<GitCommitIcon className="z-10 size-5 text-text-link" />
 					) : (
-						<Path className="z-10 size-5 text-text-link" />
+						<PathIcon className="z-10 size-5 text-text-link" />
 					)}
 				</div>
 				<div className="mb-4 text-center text-xl font-medium">
@@ -40,11 +45,11 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 				<div className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-[#D9D9D9] px-4 py-2">
 					<div className="flex items-center gap-1">
 						{type === "source" ? (
-							<LinktreeLogo className="size-5" />
+							<LinktreeLogoIcon className="size-5" />
 						) : type === JOB_CREATION_STEPS.STREAMS ? (
-							<GitCommit className="size-5" />
+							<GitCommitIcon className="size-5" />
 						) : (
-							<Path className="size-5" />
+							<PathIcon className="size-5" />
 						)}
 						<span>
 							{entityName ||
@@ -56,7 +61,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 						</span>
 					</div>
 					<div className="flex gap-1 rounded-xl bg-[#f6ffed] px-2 py-1">
-						<Check className="size-5 text-success" />
+						<CheckIcon className="size-5 text-success" />
 						<span className="ml-auto text-success">Success</span>
 					</div>
 				</div>

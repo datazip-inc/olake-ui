@@ -101,7 +101,7 @@ export const jobService = {
 			const response = await api.post<APIResponse<TaskLog[]>>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs`,
 				{ file_path: filePath },
-				{ timeout: 0 },
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			return response.data
 		} catch (error) {
@@ -110,6 +110,7 @@ export const jobService = {
 		}
 	},
 
+	//This either pauses or resumes the job
 	activateJob: async (
 		jobId: string,
 		activate: boolean,

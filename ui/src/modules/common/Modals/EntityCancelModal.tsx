@@ -1,7 +1,11 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
 import { Button, Modal } from "antd"
-import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
+import {
+	GitCommitIcon,
+	LinktreeLogoIcon,
+	PathIcon,
+} from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
 import { JOB_CREATION_STEPS } from "@utils/constants"
@@ -28,11 +32,11 @@ const EntityCancelModal: React.FC<EntityCancelModalProps> = ({
 			<div className="flex flex-col items-center justify-center gap-6 py-4">
 				<div className="rounded-xl bg-neutral-light p-2">
 					{type === JOB_CREATION_STEPS.SOURCE ? (
-						<LinktreeLogo className="z-10 size-6 text-text-link" />
+						<LinktreeLogoIcon className="z-10 size-6 text-text-link" />
 					) : type === JOB_CREATION_STEPS.DESTINATION ? (
-						<Path className="z-10 size-6 text-text-link" />
+						<PathIcon className="z-10 size-6 text-text-link" />
 					) : (
-						<GitCommit className="z-10 size-6 text-text-link" />
+						<GitCommitIcon className="z-10 size-6 text-text-link" />
 					)}
 				</div>
 				<div className="mb-4 text-center text-xl font-medium">

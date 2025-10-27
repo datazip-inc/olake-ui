@@ -1,5 +1,5 @@
 import { Button } from "antd"
-import { GitCommit, PlayCircle } from "@phosphor-icons/react"
+import { GitCommitIcon, PlayCircleIcon } from "@phosphor-icons/react"
 
 import { JobTutorialYTLink } from "@utils/constants"
 import FirstJob from "@assets/FirstJob.svg"
@@ -27,7 +27,7 @@ const JobEmptyState = ({
 				className="mb-12 bg-brand-blue text-sm"
 				onClick={handleCreateJob}
 			>
-				<GitCommit />
+				<GitCommitIcon />
 				Create your first Job
 			</Button>
 			<div className="w-[412px] rounded-xl border-[1px] border-[#D9D9D9] bg-white p-6 shadow-sm">
@@ -46,7 +46,7 @@ const JobEmptyState = ({
 					</a>
 					<div className="flex-1">
 						<div className="mb-1 flex items-center gap-1 text-xs">
-							<PlayCircle color="#9f9f9f" />
+							<PlayCircleIcon color="#9f9f9f" />
 							<span className="text-text-placeholder">OLake/ Tutorial</span>
 						</div>
 						<div className="text-xs">

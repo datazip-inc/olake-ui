@@ -1,4 +1,4 @@
-import { CaretRight } from "@phosphor-icons/react"
+import { CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, CheckboxChangeEvent } from "antd"
 import clsx from "clsx"
 
@@ -15,10 +15,12 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 		stream: { name, namespace },
 	} = stream
 
+	//activestream is the stream selected in the stream panel
 	const isActiveStream =
 		activeStreamData?.stream.name === name &&
 		activeStreamData?.stream.namespace === namespace
 
+	//opens the stream configuration when user clicks on stream or on checkbox
 	const handleChange = (e: CheckboxChangeEvent) => {
 		toggle(e)
 		setActiveStreamData(stream)
@@ -50,7 +52,7 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 				</div>
 				{!isActiveStream && (
 					<div className="mr-4">
-						<CaretRight className="size-4 text-gray-500" />
+						<CaretRightIcon className="size-4 text-gray-500" />
 					</div>
 				)}
 			</div>

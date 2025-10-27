@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Form, Input, Button, Card, message } from "antd"
-import { User, LockKey } from "@phosphor-icons/react"
+import { UserIcon, LockKeyIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "@store/index"
 import { LoginArgs } from "@app-types/index"
@@ -25,6 +25,7 @@ const Login: React.FC = () => {
 				duration: 3,
 				className: "font-medium",
 			})
+			// clear form in the case of error
 			form.resetFields()
 		}
 		setLoading(false)
@@ -56,7 +57,7 @@ const Login: React.FC = () => {
 					>
 						<Input
 							prefix={
-								<User
+								<UserIcon
 									className="site-form-item-icon text-gray-500"
 									weight="bold"
 									size={18}
@@ -76,7 +77,7 @@ const Login: React.FC = () => {
 					>
 						<Input.Password
 							prefix={
-								<LockKey
+								<LockKeyIcon
 									className="site-form-item-icon text-gray-500"
 									weight="bold"
 									size={18}
