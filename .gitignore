@@ -53,3 +53,11 @@ ui/test-results/
 ui/playwright-report/
 ui/blob-report/
 ui/tests/.auth/
+
+# Test files
+ui/tests/
+ui/tsconfig.test.json
+
+# Go module files
+go.mod
+go.sum
