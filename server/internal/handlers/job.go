@@ -98,6 +98,10 @@ func (c *JobHandler) SyncJob() {
 	id := GetIDFromPath(&c.Controller)
 	result, err := c.jobService.SyncJob(c.Ctx.Request.Context(), projectID, id)
 	if err != nil {
+		if errors.Is(err, constants.ErrInProgress) {
+			respondWithError(&c.Controller, http.StatusConflict, "Failed to sync job, clear destination is running", err)
+			return
+		}
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to sync job", err)
 		return
 	}

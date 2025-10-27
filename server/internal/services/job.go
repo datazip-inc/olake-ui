@@ -231,10 +231,10 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 
 	running, err := isClearRunning(ctx, s.tempClient, projectID, jobID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get clear destination status: %s", err)
+		return nil, fmt.Errorf("failed to get clear destination status: %s", err)
 	}
 	if running {
-		return nil, constants.ErrInProgress
+		return nil, fmt.Errorf("failed to sync job, clear destination is running: %w", constants.ErrInProgress)
 	}
 
 	if s.tempClient != nil {
