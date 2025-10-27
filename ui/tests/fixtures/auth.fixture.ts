@@ -1,1 +1,0 @@
-authenticated.fixture.ts
