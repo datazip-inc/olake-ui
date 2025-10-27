@@ -72,7 +72,7 @@ func (c *JobHandler) UpdateJob() {
 	userID := GetUserIDFromSession(&c.Controller)
 	if err := c.jobService.UpdateJob(c.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
 		if errors.Is(err, constants.ErrInProgress) {
-			respondWithError(&c.Controller, http.StatusConflict, "Clear destination workflow is already in progress", err)
+			respondWithError(&c.Controller, http.StatusConflict, "Clear destination operation is in progress", err)
 			return
 		}
 		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update job", err)

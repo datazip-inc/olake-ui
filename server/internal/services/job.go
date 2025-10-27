@@ -126,7 +126,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to get clear destination status: %s", err)
 	}
 	if clearRunning {
-		return constants.ErrInProgress
+		return fmt.Errorf("clear-destination is in progress: %w", constants.ErrInProgress)
 	}
 
 	// cancel sync before updating the job
@@ -148,7 +148,7 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("invalid difference_streams JSON: %s", err)
 	}
 
-	if len(diffCatalog) != 0 {
+	if len(diffCatalog) > 0 {
 		logs.Info("Stream difference detected for job %d, running clear destination workflow", existingJob.ID)
 		if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams); err != nil {
 			return fmt.Errorf("failed to run clear destination workflow: %s", err)
