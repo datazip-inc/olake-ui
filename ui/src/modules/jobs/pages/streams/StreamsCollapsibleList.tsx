@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { CaretDown, CaretRight } from "@phosphor-icons/react"
+import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
 

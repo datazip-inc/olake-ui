@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import { message } from "antd"
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
+import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
@@ -449,7 +449,7 @@ const JobEdit: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="mr-1 size-5" />
+							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 						<div className="text-2xl font-bold">
 							{jobName ? (jobName === "-" ? " " : jobName) : "New Job"}
@@ -577,7 +577,7 @@ const JobEdit: React.FC = () => {
 								: "Finish"
 							: "Next"}
 						{currentStep !== JOB_CREATION_STEPS.STREAMS && (
-							<ArrowRight className="size-4 text-white" />
+							<ArrowRightIcon className="size-4 text-white" />
 						)}
 					</button>
 				</div>
