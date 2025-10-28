@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
-import { Info, ArrowLeft } from "@phosphor-icons/react"
+import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
 import { useAppStore } from "../../../store"
@@ -300,7 +300,7 @@ const JobSettings: React.FC = () => {
 										to="/jobs"
 										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 									>
-										<ArrowLeft className="size-5" />
+										<ArrowLeftIcon className="size-5" />
 									</Link>
 
 									<div className="text-2xl font-bold">{job?.name}</div>
@@ -368,7 +368,7 @@ const JobSettings: React.FC = () => {
 															Cron Expression
 														</label>
 														<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
-															<Info
+															<InfoIcon
 																size={16}
 																className="cursor-help text-slate-900"
 															/>

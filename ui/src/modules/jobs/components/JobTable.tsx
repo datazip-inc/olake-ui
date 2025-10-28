@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
-	ArrowsClockwise,
-	ClockCounterClockwise,
-	DotsThree,
-	Gear,
-	Pause,
-	PencilSimple,
-	Play,
-	Trash,
+	ArrowsClockwiseIcon,
+	ClockCounterClockwiseIcon,
+	DotsThreeIcon,
+	GearIcon,
+	PauseIcon,
+	PencilSimpleIcon,
+	PlayIcon,
+	TrashIcon,
 	XIcon,
 } from "@phosphor-icons/react"
 
@@ -69,13 +69,13 @@ const JobTable: React.FC<JobTableProps> = ({
 						? [
 								{
 									key: "edit",
-									icon: <PencilSimple className="size-4" />,
+									icon: <PencilSimpleIcon className="size-4" />,
 									label: "Edit",
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
 									key: "delete",
-									icon: <Trash className="size-4" />,
+									icon: <TrashIcon className="size-4" />,
 									label: "Delete",
 									danger: true,
 									onClick: () => onDelete(record.id.toString()),
@@ -84,7 +84,7 @@ const JobTable: React.FC<JobTableProps> = ({
 						: [
 								{
 									key: "sync",
-									icon: <ArrowsClockwise className="size-4" />,
+									icon: <ArrowsClockwiseIcon className="size-4" />,
 									label: "Sync now",
 									disabled:
 										record.last_run_state?.toLowerCase() === "running" ||
@@ -93,7 +93,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								},
 								{
 									key: "edit",
-									icon: <PencilSimple className="size-4" />,
+									icon: <PencilSimpleIcon className="size-4" />,
 									label: "Edit Streams",
 									disabled: !record.activate,
 									onClick: () => onEdit(record.id.toString()),
@@ -101,9 +101,9 @@ const JobTable: React.FC<JobTableProps> = ({
 								{
 									key: "pause",
 									icon: record.activate ? (
-										<Pause className="size-4" />
+										<PauseIcon className="size-4" />
 									) : (
-										<Play className="size-4" />
+										<PlayIcon className="size-4" />
 									),
 									label: record.activate ? "Pause job" : "Resume job",
 									disabled: record.last_run_state?.toLowerCase() === "running",
@@ -122,21 +122,21 @@ const JobTable: React.FC<JobTableProps> = ({
 								},
 								{
 									key: "history",
-									icon: <ClockCounterClockwise className="size-4" />,
+									icon: <ClockCounterClockwiseIcon className="size-4" />,
 									label: "Job Logs & History",
 									disabled: !record.activate,
 									onClick: () => handleViewHistory(record.id.toString()),
 								},
 								{
 									key: "settings",
-									icon: <Gear className="size-4" />,
+									icon: <GearIcon className="size-4" />,
 									label: "Job settings",
 									disabled: !record.activate,
 									onClick: () => handleViewSettings(record.id.toString()),
 								},
 								{
 									key: "delete",
-									icon: <Trash className="size-4" />,
+									icon: <TrashIcon className="size-4" />,
 									label: "Delete",
 									danger: true,
 									onClick: () => onDelete(record.id.toString()),
@@ -152,7 +152,7 @@ const JobTable: React.FC<JobTableProps> = ({
 						<Button
 							type="text"
 							data-testid={`job-${record.name}`}
-							icon={<DotsThree className="size-5" />}
+							icon={<DotsThreeIcon className="size-5" />}
 						/>
 					</Dropdown>
 				)

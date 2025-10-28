@@ -14,7 +14,11 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
-import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PencilSimpleIcon,
+} from "@phosphor-icons/react"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
@@ -602,7 +606,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
-											<Info className="size-4 cursor-help text-primary" />
+											<InfoIcon className="size-4 cursor-help text-primary" />
 										</div>
 									</Tooltip>
 								</div>
@@ -623,7 +627,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 											title="Edit"
 											placement="top"
 										>
-											<PencilSimple
+											<PencilSimpleIcon
 												className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
 												onClick={() => setShowDestinationDatabaseModal(true)}
 											/>
@@ -636,7 +640,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 												rel="noopener noreferrer"
 												className="flex items-center text-gray-600 transition-colors hover:text-primary"
 											>
-												<ArrowSquareOut className="size-4" />
+												<ArrowSquareOutIcon className="size-4" />
 											</a>
 										</Tooltip>
 									</div>
