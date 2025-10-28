@@ -47,9 +47,10 @@ npm-debug*
 *.env.*
 
 # ----------------------------
-# Test Files
+# Test Output
 # ----------------------------
 ui/test-results/
 ui/playwright-report/
 ui/blob-report/
 ui/tests/.auth/
+ui/coverage/
