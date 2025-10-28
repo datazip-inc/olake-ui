@@ -14,7 +14,6 @@ import {
 import {
 	ColumnsPlusRightIcon,
 	GridFourIcon,
-	InfoIcon,
 	LightningIcon,
 	PlusIcon,
 	SlidersHorizontalIcon,

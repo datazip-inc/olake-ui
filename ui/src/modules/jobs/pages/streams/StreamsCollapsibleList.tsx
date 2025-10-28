@@ -321,12 +321,12 @@ const StreamsCollapsibleList = ({
 										<span className="font-semibold">{ns}</span>
 										<span className="ml-auto">
 											{openNamespaces[ns] ? (
-												<CaretDown
+												<CaretDownIcon
 													className="size-4"
 													weight="fill"
 												/>
 											) : (
-												<CaretRight
+												<CaretRightIcon
 													className="size-4"
 													weight="fill"
 												/>
