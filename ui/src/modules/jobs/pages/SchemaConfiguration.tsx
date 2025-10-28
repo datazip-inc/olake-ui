@@ -20,11 +20,6 @@ import {
 	PencilSimpleIcon,
 } from "@phosphor-icons/react"
 import {
-	ArrowSquareOutIcon,
-	InfoIcon,
-	PencilSimpleIcon,
-} from "@phosphor-icons/react"
-import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
 } from "../../../utils/constants"
