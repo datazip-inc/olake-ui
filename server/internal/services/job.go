@@ -149,11 +149,11 @@ func (s *JobService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	if len(diffCatalog) > 0 {
-		logs.Info("Stream difference detected for job %d, running clear destination workflow", existingJob.ID)
+		logs.Info("stream difference detected for job %d, running clear destination workflow", existingJob.ID)
 		if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams); err != nil {
 			return fmt.Errorf("failed to run clear destination workflow: %s", err)
 		}
-		logs.Info("Successfully triggered clear destination workflow for job %d", existingJob.ID)
+		logs.Info("successfully triggered clear destination workflow for job %d", existingJob.ID)
 	}
 
 	source, err := s.getOrCreateSource(req.Source, projectID, userID)
@@ -227,6 +227,10 @@ func (s *JobService) SyncJob(ctx context.Context, projectID string, jobID int) (
 
 	if job.SourceID == nil || job.DestID == nil {
 		return nil, fmt.Errorf("job must have both source and destination configured")
+	}
+
+	if !job.Active {
+		return nil, fmt.Errorf("job is paused, please unpause to sync job")
 	}
 
 	running, err := isClearRunning(ctx, s.tempClient, projectID, jobID)
@@ -542,6 +546,11 @@ func (s *JobService) ClearDestination(ctx context.Context, projectID string, job
 	job, err := s.jobORM.GetByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found id %d: %s", jobID, err)
+	}
+
+	// block operation if job is paused
+	if !job.Active {
+		return nil, fmt.Errorf("job is paused, please unpause to run clear destination")
 	}
 
 	if running, _ := isClearRunning(ctx, s.tempClient, projectID, jobID); running {
