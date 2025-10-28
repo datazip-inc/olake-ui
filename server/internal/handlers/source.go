@@ -1,196 +1,261 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
-	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
-	"github.com/datazip/olake-ui/server/internal/services"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-type SourceHandler struct {
-	web.Controller
-	sourceService *services.SourceService
-}
-
-func (c *SourceHandler) Prepare() {
-	var err error
-	c.sourceService, err = services.NewSourceService()
-	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to initialize source service", err)
-		return
-	}
-}
-
 // @router /project/:projectid/sources [get]
-func (c *SourceHandler) GetAllSources() {
-	projectID := c.Ctx.Input.Param(":projectid")
-	sources, err := c.sourceService.GetAllSources(context.Background(), projectID)
+func (h *Handler) ListSources() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to retrieve sources", err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, sources)
+
+	logger.Debugf("Get all sources initiated project_id[%s]", projectID)
+
+	sources, err := h.etl.GetAllSources(h.Ctx.Request.Context(), projectID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, sources)
 }
 
 // @router /project/:projectid/sources [post]
-func (c *SourceHandler) CreateSource() {
-	projectID := c.Ctx.Input.Param(":projectid")
-	var req dto.CreateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+func (h *Handler) CreateSource() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
-	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.CreateSource(context.Background(), req, projectID, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create source", err)
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, req)
+
+	var req dto.CreateSourceRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Create source initiated project_id[%s] source_type[%s] source_name[%s] user_id[%v]",
+		projectID, req.Type, req.Name, userID)
+
+	if err := h.etl.CreateSource(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create source: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [put]
-func (c *SourceHandler) UpdateSource() {
-	id := GetIDFromPath(&c.Controller)
-	var req dto.UpdateSourceRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+func (h *Handler) UpdateSource() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
-	userID := GetUserIDFromSession(&c.Controller)
-	if err := c.sourceService.UpdateSource(context.Background(), id, req, userID); err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to update source", err)
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, req)
+
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	var req dto.UpdateSourceRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Update source initiated project_id[%s] source_id[%d] source_type[%s] user_id[%v]",
+		projectID, id, req.Type, userID)
+
+	if err := h.etl.UpdateSource(h.Ctx.Request.Context(), projectID, id, &req, userID); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to update source: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, req)
 }
 
 // @router /project/:projectid/sources/:id [delete]
-func (c *SourceHandler) DeleteSource() {
-	id := GetIDFromPath(&c.Controller)
-	resp, err := c.sourceService.DeleteSource(context.Background(), id)
+func (h *Handler) DeleteSource() {
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Delete source initiated source_id[%d]", id)
+
+	resp, err := h.etl.DeleteSource(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
 		} else {
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to delete source", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete source: %s", err), err)
 		}
 		return
 	}
-	utils.SuccessResponse(&c.Controller, resp)
+	utils.SuccessResponse(&h.Controller, resp)
 }
 
 // @router /project/:projectid/sources/test [post]
-func (c *SourceHandler) TestConnection() {
+func (h *Handler) TestSourceConnection() {
 	var req dto.SourceTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	result, err := c.sourceService.TestConnection(context.Background(), req)
+	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
+
+	result, logs, err := h.etl.SourceTestConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to test connection", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, result)
+
+	utils.SuccessResponse(&h.Controller, dto.TestConnectionResponse{
+		ConnectionResult: result,
+		Logs:             logs,
+	})
 }
 
-// @router /sources/streams[post]
-func (c *SourceHandler) GetSourceCatalog() {
+// @router /sources/streams [post]
+func (h *Handler) GetSourceCatalog() {
 	var req dto.StreamsRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	catalog, err := c.sourceService.GetSourceCatalog(context.Background(), req)
-	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source catalog", err)
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, catalog)
+
+	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]",
+		req.Type, req.Version, req.JobID)
+
+	catalog, err := h.etl.GetSourceCatalog(h.Ctx.Request.Context(), &req)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, catalog)
 }
 
 // @router /sources/:id/jobs [get]
-func (c *SourceHandler) GetSourceJobs() {
-	id := GetIDFromPath(&c.Controller)
-	jobs, err := c.sourceService.GetSourceJobs(context.Background(), id)
+func (h *Handler) GetSourceJobs() {
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get source jobs initiated source_id[%d]", id)
+
+	jobs, err := h.etl.GetSourceJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
-			respondWithError(&c.Controller, http.StatusNotFound, "Source not found", err)
+			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
 		} else {
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source jobs", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source jobs: %s", err), err)
 		}
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"jobs": jobs})
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/sources/versions [get]
-func (c *SourceHandler) GetSourceVersions() {
-	sourceType := c.GetString("type")
-	versions, err := c.sourceService.GetSourceVersions(context.Background(), sourceType)
+func (h *Handler) GetSourceVersions() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		status := http.StatusInternalServerError
-		msg := "Failed to get Docker versions"
-		if err.Error() == "source type is required" {
-			status = http.StatusBadRequest
-			msg = "Source type is required"
-		}
-		respondWithError(&c.Controller, status, msg, err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{"version": versions})
+
+	sourceType := h.GetString("type")
+	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", projectID, sourceType)
+
+	versions, err := h.etl.GetSourceVersions(h.Ctx.Request.Context(), sourceType)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if err.Error() == "source type is required" {
+			status = http.StatusBadRequest
+		}
+		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to get source versions: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, versions)
 }
 
 // @router /project/:projectid/sources/spec [post]
-func (c *SourceHandler) GetProjectSourceSpec() {
-	_ = c.Ctx.Input.Param(":projectid")
+func (h *Handler) GetProjectSourceSpec() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 
 	var req dto.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	specOutput, err := c.sourceService.GetSourceSpec(c.Ctx.Request.Context(), req)
+	if err := dto.ValidateSourceType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]",
+		projectID, req.Type, req.Version)
+
+	resp, err := h.etl.GetSourceSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to get source spec", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, dto.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOutput.Spec,
-	})
+	utils.SuccessResponse(&h.Controller, resp)
 }

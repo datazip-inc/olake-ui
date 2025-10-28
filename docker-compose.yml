@@ -13,16 +13,19 @@ x-signup-defaults:
 x-encryption:
   key: &encryptionKey "" 
 
+x-envs:
+  shared: &sharedEnvs
+    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
+    OLAKE_SECRET_KEY: *encryptionKey
+    PERSISTENT_DIR: *hostPersistencePath
+
 services:
   olake-ui:
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest    
     pull_policy: always
     container_name: olake-ui
     environment:
-      CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
-      HOST_PERSISTENT_DIR: *hostPersistencePath
-      CONTAINER_PERSISTENT_DIR: *containerPersistentDir
-      OLAKE_SECRET_KEY: *encryptionKey
+      <<: *sharedEnvs
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
@@ -96,12 +99,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - <<: *workerConfigVolumeDetails
     environment:
-      CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
-      TEMPORAL_ADDRESS: "temporal:7233"
-      OLAKE_SECRET_KEY: *encryptionKey
-      HOST_PERSISTENT_DIR: *hostPersistencePath
-      CONTAINER_PERSISTENT_DIR: *containerPersistentDir
-      EXECUTOR_ENVIRONMENT: "docker"
+      <<: *sharedEnvs
       OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
     depends_on:
       temporal:

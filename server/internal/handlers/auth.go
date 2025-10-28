@@ -1,130 +1,122 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/beego/beego/v2/server/web"
-
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/dto"
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/internal/services"
-	"github.com/datazip/olake-ui/server/internal/telemetry"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
-type AuthHandler struct {
-	web.Controller
-	authService *services.AuthService
-}
-
-func (c *AuthHandler) Prepare() {
-	c.authService = services.NewAuthService()
-}
-
 // @router /login [post]
-func (c *AuthHandler) Login() {
+func (h *Handler) Login() {
 	var req dto.LoginRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	user, err := c.authService.Login(context.Background(), req.Username, req.Password)
+	logger.Debugf("Login initiated username[%s]", req.Username)
+
+	user, err := h.etl.Login(h.Ctx.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
-			respondWithError(&c.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
 		case errors.Is(err, constants.ErrInvalidCredentials):
-			respondWithError(&c.Controller, http.StatusUnauthorized, "Invalid credentials", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid credentials", err)
 		default:
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Login failed", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Login failed", err)
 		}
 		return
 	}
 
 	// check if session is enabled
 	if web.BConfig.WebConfig.Session.SessionOn {
-		_ = c.SetSession(constants.SessionUserID, user.ID)
+		_ = h.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{
 		"username": user.Username,
 	})
 }
 
 // @router /checkauth [get]
-func (c *AuthHandler) CheckAuth() {
-	userID := c.GetSession(constants.SessionUserID)
+func (h *Handler) CheckAuth() {
+	userID := h.GetSession(constants.SessionUserID)
 	if userID == nil {
-		respondWithError(&c.Controller, http.StatusUnauthorized, "Not authenticated", nil)
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
+	logger.Debugf("Check auth initiated user_id[%v]", userID)
+
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
-		if err := c.authService.ValidateUser(userIDInt); err != nil {
-			respondWithError(&c.Controller, http.StatusUnauthorized, "Invalid session", err)
+		if err := h.etl.ValidateUser(userIDInt); err != nil {
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid session", err)
 			return
 		}
 	}
 
-	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
+	utils.SuccessResponse(&h.Controller, dto.LoginResponse{
 		Message: "Authenticated",
 		Success: true,
 	})
 }
 
 // @router /logout [post]
-func (c *AuthHandler) Logout() {
-	_ = c.DestroySession()
-	utils.SuccessResponse(&c.Controller, dto.LoginResponse{
-		Message: "Logged out successfully",
-		Success: true,
-	})
+func (h *Handler) Logout() {
+	userID := h.GetSession(constants.SessionUserID)
+	logger.Debugf("Logout initiated user_id[%v]", userID)
+
+	err := h.DestroySession()
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to destroy session", err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, nil)
 }
 
 // @router /signup [post]
-func (c *AuthHandler) Signup() {
+func (h *Handler) Signup() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
-		return
-	}
-	if err := dto.Validate(&req); err != nil {
-		respondWithError(&c.Controller, http.StatusBadRequest, "Invalid request format", err)
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
-	if err := c.authService.Signup(context.Background(), &req); err != nil {
+	if err := h.etl.Signup(h.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
-			respondWithError(&c.Controller, http.StatusConflict, "Username already exists", err)
+			utils.ErrorResponse(&h.Controller, http.StatusConflict, "Username already exists", err)
 		case errors.Is(err, constants.ErrPasswordProcessing):
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to process password", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to process password", err)
 		default:
-			respondWithError(&c.Controller, http.StatusInternalServerError, "Failed to create user", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
 		}
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
 	})
 }
 
 // @router /telemetry-id [get]
-func (c *AuthHandler) GetTelemetryID() {
+func (h *Handler) GetTelemetryID() {
+	logger.Infof("Get telemetry ID initiated")
+
 	telemetryID := telemetry.GetTelemetryUserID()
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, map[string]interface{}{
 		telemetry.TelemetryUserIDFile: string(telemetryID),
 	})
 }

@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand"
-import type { APIResponse } from "../types"
+import type { APIResponse, TestConnectionError } from "../types"
 import type { EntityBase } from "../types"
 import type { Entity } from "../types"
 import { destinationService } from "../api"
@@ -8,8 +8,8 @@ export interface DestinationSlice {
 	destinations: Entity[]
 	isLoadingDestinations: boolean
 	destinationsError: string | null
-	destinationTestConnectionError: string | null
-	setDestinationTestConnectionError: (error: string | null) => void
+	destinationTestConnectionError: TestConnectionError | null
+	setDestinationTestConnectionError: (error: TestConnectionError | null) => void
 
 	fetchDestinations: () => Promise<Entity[]>
 	addDestination: (destination: EntityBase) => Promise<EntityBase>

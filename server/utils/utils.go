@@ -16,7 +16,8 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
 
-	"github.com/datazip/olake-ui/server/internal/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {
@@ -46,7 +47,10 @@ func SuccessResponse(ctx *web.Controller, data interface{}) {
 	RespondJSON(ctx, http.StatusOK, true, "success", data)
 }
 
-func ErrorResponse(ctx *web.Controller, status int, message string) {
+func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
+	if err != nil {
+		logger.Errorf("error in request %s: %s", ctx.Ctx.Input.URI(), err)
+	}
 	RespondJSON(ctx, status, false, message, nil)
 }
 
@@ -132,7 +136,7 @@ func Ternary(cond bool, a, b any) any {
 func CreateDirectory(dirPath string, perm os.FileMode) error {
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(dirPath, perm); err != nil {
-			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+			return fmt.Errorf("failed to create directory %s: %s", dirPath, err)
 		}
 	}
 	return nil
@@ -146,24 +150,9 @@ func WriteFile(filePath string, data []byte, perm os.FileMode) error {
 	}
 
 	if err := os.WriteFile(filePath, data, perm); err != nil {
-		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
+		return fmt.Errorf("failed to write to file %s: %s", filePath, err)
 	}
 	return nil
-}
-
-// ParseJSONFile parses a JSON file into a map
-func ParseJSONFile(filePath string) (map[string]interface{}, error) {
-	fileData, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileData, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
-	}
-
-	return result, nil
 }
 
 // ToCron converts a frequency string to a cron expression
@@ -199,4 +188,108 @@ func ToCron(frequency string) string {
 	}
 }
 
+// ExtractJSON extracts and returns the last valid JSON block from output
+func ExtractJSON(output string) (map[string]interface{}, error) {
+	outputStr := strings.TrimSpace(output)
+	if outputStr == "" {
+		return nil, fmt.Errorf("empty output")
+	}
 
+	lines := strings.Split(outputStr, "\n")
+
+	// Find the last non-empty line with valid JSON
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+
+		start := strings.Index(line, "{")
+		end := strings.LastIndex(line, "}")
+		if start != -1 && end != -1 && end > start {
+			jsonPart := line[start : end+1]
+			var result map[string]interface{}
+			if err := json.Unmarshal([]byte(jsonPart), &result); err != nil {
+				continue // Skip invalid JSON
+			}
+			return result, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no valid JSON block found in output")
+}
+
+// LogEntry represents a log entry
+type LogEntry struct {
+	Level   string          `json:"level"`
+	Time    time.Time       `json:"time"`
+	Message json.RawMessage `json:"message"` // store raw JSON
+}
+
+// ReadLogs reads logs from the given mainLogDir and returns structured log entries.
+func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
+	// Check if mainLogDir exists
+	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
+	}
+
+	// Logs directory
+	logsDir := filepath.Join(mainLogDir, "logs")
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
+	}
+
+	files, err := os.ReadDir(logsDir)
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
+	}
+
+	logDir := filepath.Join(logsDir, files[0].Name())
+	logPath := filepath.Join(logDir, "olake.log")
+	logContent, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log file: %s", logPath)
+	}
+
+	var parsedLogs []map[string]interface{}
+	lines := strings.Split(string(logContent), "\n")
+
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		var logEntry LogEntry
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			continue
+		}
+
+		if logEntry.Level == "debug" {
+			continue
+		}
+
+		// Convert Message to string safely
+		var messageStr string
+		var tmp interface{}
+		if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
+			switch v := tmp.(type) {
+			case string:
+				messageStr = v // plain string
+			default:
+				msgBytes, _ := json.Marshal(v) // object/array
+				messageStr = string(msgBytes)
+			}
+		} else {
+			// fallback: raw bytes as string
+			messageStr = string(logEntry.Message)
+		}
+
+		parsedLogs = append(parsedLogs, map[string]interface{}{
+			"level":   logEntry.Level,
+			"time":    logEntry.Time.UTC().Format(time.RFC3339),
+			"message": messageStr,
+		})
+	}
+
+	return parsedLogs, nil
+}

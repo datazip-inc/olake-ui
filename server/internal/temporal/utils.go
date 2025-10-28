@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 )
 
@@ -56,12 +56,12 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	logResult, err := ExtractJSON(response)
+	jsonResponse, err := ExtractJSON(response)
 	if err != nil {
 		return nil, err
 	}
 
-	return logResult, nil
+	return jsonResponse, nil
 }
 
 func GetWorkflowTimeout(op Command) time.Duration {

@@ -7,7 +7,13 @@ import {
 } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Input, message, Select, Spin } from "antd"
-import { ArrowLeft, ArrowRight, Info, Notebook } from "@phosphor-icons/react"
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
+	NotebookIcon,
+} from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
@@ -27,7 +33,9 @@ import {
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
+	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
+	TEST_CONNECTION_STATUS,
 	transformErrors,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
@@ -101,6 +109,9 @@ const CreateDestination = forwardRef<
 		const [schema, setSchema] = useState<any>(null)
 		const [loading, setLoading] = useState(false)
 		const [uiSchema, setUiSchema] = useState<any>(null)
+		const [existingDestination, setExistingDestination] = useState<
+			string | null
+		>(null)
 		const [filteredDestinations, setFilteredDestinations] = useState<
 			ExtendedDestination[]
 		>([])
@@ -257,6 +268,7 @@ const CreateDestination = forwardRef<
 			if (setupType === SETUP_TYPES.EXISTING) return
 
 			setLoading(true)
+			// cancels old requests when new one is made
 			return withAbortController(
 				signal =>
 					destinationService.getDestinationSpec(
@@ -296,6 +308,7 @@ const CreateDestination = forwardRef<
 			setShowSourceCancelModal(true)
 		}
 
+		//makes sure user enters destination name and version and fills all the required fields in the form
 		const validateDestination = async (): Promise<boolean> => {
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
@@ -358,11 +371,15 @@ const CreateDestination = forwardRef<
 
 			try {
 				setShowTestingModal(true)
+				//test the connection and show either success or failure modal based on the result
 				const testResult =
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)
 
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -371,7 +388,11 @@ const CreateDestination = forwardRef<
 							.catch(error => console.error("Error adding destination:", error))
 					}, 1000)
 				} else {
-					setDestinationTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setDestinationTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -395,16 +416,27 @@ const CreateDestination = forwardRef<
 		}
 
 		const handleConnectorChange = (value: string) => {
+			setConnector(value as ConnectorType)
+			if (setupType === SETUP_TYPES.EXISTING) {
+				setExistingDestination(null)
+				setDestinationName("")
+				onDestinationNameChange?.("")
+			}
+			setVersion("")
 			setFormData({})
 			setSchema(null)
-			setConnector(value as ConnectorType)
-			if (onConnectorChange) {
-				onConnectorChange(value)
-			}
+
+			// Parent callbacks
+			onConnectorChange?.(value)
+			onVersionChange?.("")
+			onFormDataChange?.({})
 		}
 
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
+			setDestinationName("")
+			onDestinationNameChange?.("")
+
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true)
@@ -414,12 +446,11 @@ const CreateDestination = forwardRef<
 			}
 			// Clear form data when switching to new destination
 			if (type === SETUP_TYPES.NEW) {
-				setDestinationName("")
 				setFormData({})
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
+				setExistingDestination(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
-				if (onDestinationNameChange) onDestinationNameChange("")
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
 				if (onFormDataChange) onFormDataChange({})
 				if (onVersionChange) onVersionChange("")
@@ -446,6 +477,7 @@ const CreateDestination = forwardRef<
 			if (onFormDataChange) onFormDataChange(configObj)
 			setDestinationName(selectedDestination.name)
 			setFormData(configObj)
+			setExistingDestination(value)
 		}
 
 		const handleVersionChange = (value: string) => {
@@ -480,7 +512,20 @@ const CreateDestination = forwardRef<
 							</FormField>
 						</div>
 						<div className="w-1/2">
-							<FormField label="Version:">
+							<FormField
+								label="OLake Version:"
+								tooltip="Choose the OLake version for the destination"
+								info={
+									<a
+										href={OLAKE_LATEST_VERSION_URL}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="flex items-center text-primary hover:text-primary/80"
+									>
+										<ArrowSquareOutIcon className="size-4" />
+									</a>
+								}
+							>
 								{loadingVersions ? (
 									<div className="flex h-8 items-center justify-center">
 										<Spin size="small" />
@@ -498,7 +543,7 @@ const CreateDestination = forwardRef<
 									/>
 								) : (
 									<div className="flex items-center gap-1 text-sm text-red-500">
-										<Info />
+										<InfoIcon />
 										No versions available
 									</div>
 								)}
@@ -543,7 +588,7 @@ const CreateDestination = forwardRef<
 								placeholder="Select a destination"
 								className="w-full"
 								onChange={handleExistingDestinationSelect}
-								value={undefined}
+								value={existingDestination}
 								options={filteredDestinations.map(d => ({
 									value: d.id,
 									label: d.name,
@@ -615,7 +660,7 @@ const CreateDestination = forwardRef<
 								to={"/destinations"}
 								className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 							>
-								<ArrowLeft className="mr-1 size-5" />
+								<ArrowLeftIcon className="mr-1 size-5" />
 							</Link>
 							<div className="text-lg font-bold">Create destination</div>
 						</div>
@@ -633,7 +678,7 @@ const CreateDestination = forwardRef<
 								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 									<div>
 										<div className="mb-4 flex items-center gap-2 text-base font-medium">
-											<Notebook className="size-5" />
+											<NotebookIcon className="size-5" />
 											Capture information
 										</div>
 
@@ -663,7 +708,7 @@ const CreateDestination = forwardRef<
 										}}
 									>
 										Create
-										<ArrowRight className="size-4 text-white" />
+										<ArrowRightIcon className="size-4 text-white" />
 									</button>
 								</div>
 							)}

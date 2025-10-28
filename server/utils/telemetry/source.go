@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 )
 
 // TrackSourceCreation tracks the creation of a new source with relevant properties
@@ -43,10 +42,7 @@ func TrackSourcesStatus(ctx context.Context) {
 			return
 		}
 
-		sourceORM := database.NewSourceORM()
-		jobORM := database.NewJobORM()
-
-		sources, err := sourceORM.GetAll()
+		sources, err := instance.db.ListSources()
 		if err != nil {
 			logs.Debug("failed to get all sources in track source status: %s", err)
 			return
@@ -55,7 +51,7 @@ func TrackSourcesStatus(ctx context.Context) {
 		activeSources := 0
 		for _, source := range sources {
 			// TODO: remove orm calls from loop
-			jobs, err := jobORM.GetBySourceID(source.ID)
+			jobs, err := instance.db.GetJobsBySourceID([]int{source.ID})
 			if err != nil {
 				logs.Debug("failed to get all jobs for source[%d] in track source status: %s", source.ID, err)
 				break

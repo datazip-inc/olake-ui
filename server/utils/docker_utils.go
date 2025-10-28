@@ -43,7 +43,7 @@ var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) 
 	"HOME":                    nil,
 	"SHLVL":                   nil,
 	"TERM":                    nil,
-	"HOST_PERSISTENT_DIR":     nil,
+	"PERSISTENT_DIR":          nil,
 	"CONTAINER_REGISTRY_BASE": nil,
 	"TEMPORAL_ADDRESS":        nil,
 	"OLAKE_SECRET_KEY":        nil,
@@ -69,7 +69,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 	// TODO: make constants file and validate all env vars in start of server
 	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %v", err)
+		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %s", err)
 	}
 	var tags []string
 	images := []string{imageName}

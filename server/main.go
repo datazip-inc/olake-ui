@@ -4,46 +4,42 @@ import (
 	"os"
 
 	"github.com/beego/beego/v2/client/orm"
-	"github.com/beego/beego/v2/core/config"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/database"
-	"github.com/datazip/olake-ui/server/internal/logger"
-	"github.com/datazip/olake-ui/server/internal/telemetry"
-	"github.com/datazip/olake-ui/server/routes"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
+	services "github.com/datazip-inc/olake-ui/server/internal/etl-service"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	"github.com/datazip-inc/olake-ui/server/routes"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
 func main() {
-	// TODO: check if we have to create a new config file for docker compatibility
-	if key := os.Getenv(constants.EncryptionKey); key == "" {
-		logs.Warning("Encryption key is not set. This is not recommended for production environments.")
-	}
-
-	// start telemetry service
-	telemetry.InitTelemetry()
-
-	// check constants
 	constants.Init()
-
-	// init logger
-	logsdir, _ := config.String("logsdir")
-	logger.InitLogger(logsdir)
-
-	// init database
-	err := database.Init()
+	logger.Init()
+	db, err := database.Init()
 	if err != nil {
-		logs.Critical("Failed to initialize database: %s", err)
+		logger.Fatalf("Failed to initialize database: %s", err)
 		return
 	}
 
-	// init routers
-	routes.Init()
+	// Initialize unified AppService
+	appSvc, err := services.InitAppService(db)
+	if err != nil {
+		logger.Fatalf("Failed to initialize services: %s", err)
+		return
+	}
+	logger.Info("Application services initialized successfully")
+	telemetry.InitTelemetry(db)
 
-	// setup environment mode
-	if web.BConfig.RunMode == "dev" {
-		orm.Debug = true
+	routes.Init(handlers.NewHandler(appSvc))
+	if key := os.Getenv(constants.EncryptionKey); key == "" {
+		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
+	if web.BConfig.RunMode == "dev" || web.BConfig.RunMode == "staging" {
+		orm.Debug = true
+	}
 	web.Run()
+	// TODO: handle gracefull shutdown
 }

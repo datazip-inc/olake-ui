@@ -23,7 +23,29 @@ var (
 	DefaultConfigDir          = "/tmp/olake-config"
 	DefaultLogRetentionPeriod = 30
 	DefaultSpecVersion        = "v0.2.0"
+	// logging
+	EnvLogLevel          = "LOG_LEVEL"
+	EnvLogFormat         = "LOG_FORMAT"
+	OrderByUpdatedAtDesc = "-updated_at"
+	// Frontend index path key
+	FrontendIndexPath = "FRONTEND_INDEX_PATH"
+	DockerTaskQueue   = "OLAKE_DOCKER_TASK_QUEUE"
+	K8sTaskQueue      = "OLAKE_K8S_TASK_QUEUE"
 )
+
+// Supported database/source types
+var SupportedSourceTypes = []string{
+	"mysql",
+	"postgres",
+	"oracle",
+	"mongodb",
+}
+
+// Supported database/source types
+var SupportedDestinationTypes = []string{
+	"parquet",
+	"iceberg",
+}
 
 var RequiredConfigVariable = []string{
 	"OLAKE_POSTGRES_USER",
@@ -44,6 +66,7 @@ func Init() {
 	viper.SetDefault("RELEASE_CHANNEL", releasechannel)
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
+	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
 
 	checkForRequiredVariables(RequiredConfigVariable)
 

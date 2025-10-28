@@ -2,37 +2,22 @@ package database
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/beego/beego/v2/client/orm"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-// JobORM handles database operations for jobs
-type JobORM struct {
-	ormer     orm.Ormer
-	TableName string
-}
-
-// NewJobORM creates a new instance of JobORM
-func NewJobORM() *JobORM {
-	return &JobORM{
-		ormer:     orm.NewOrm(),
-		TableName: constants.TableNameMap[constants.JobTable],
-	}
-}
-
 // decryptJobConfig decrypts Config fields in related Source and Destination
-func (r *JobORM) decryptJobConfig(job *models.Job) error {
+func (db *Database) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
 	// TODO: verify why source_id and dest_id coming nil, it must not nil
 	if job.SourceID != nil {
 		decryptedConfig, err := utils.Decrypt(job.SourceID.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt source config: %s", err)
+			return fmt.Errorf("failed to decrypt source config job_id[%d] source_id[%d]: %s", job.ID, job.SourceID.ID, err)
 		}
 		job.SourceID.Config = decryptedConfig
 	}
@@ -41,7 +26,7 @@ func (r *JobORM) decryptJobConfig(job *models.Job) error {
 	if job.DestID != nil {
 		decryptedConfig, err := utils.Decrypt(job.DestID.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt destination config: %s", err)
+			return fmt.Errorf("failed to decrypt destination config job_id[%d] dest_id[%d]: %s", job.ID, job.DestID.ID, err)
 		}
 		job.DestID.Config = decryptedConfig
 	}
@@ -50,227 +35,152 @@ func (r *JobORM) decryptJobConfig(job *models.Job) error {
 }
 
 // decryptJobSliceConfig decrypts related entities for a slice of jobs
-func (r *JobORM) decryptJobSliceConfig(jobs []*models.Job) error {
+func (db *Database) decryptJobSliceConfig(jobs []*models.Job) error {
 	for _, job := range jobs {
-		if err := r.decryptJobConfig(job); err != nil {
-			return fmt.Errorf("failed to decrypt job config: %s", err)
+		if err := db.decryptJobConfig(job); err != nil {
+			return fmt.Errorf("failed to decrypt job config job_id[%d]: %s", job.ID, err)
 		}
 	}
 	return nil
 }
 
 // Create a new job
-func (r *JobORM) Create(job *models.Job) error {
-	_, err := r.ormer.Insert(job)
+func (db *Database) CreateJob(job *models.Job) error {
+	_, err := db.ormer.Insert(job)
 	return err
 }
 
 // GetAll retrieves all jobs
-func (r *JobORM) GetAll() ([]*models.Job, error) {
+func (db *Database) ListJobs() ([]*models.Job, error) {
 	var jobs []*models.Job
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&jobs)
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all jobs: %s", err)
+		return nil, fmt.Errorf("failed to list jobs: %s", err)
 	}
 
 	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+	if err := db.decryptJobSliceConfig(jobs); err != nil {
+		return nil, err
 	}
 
 	return jobs, nil
 }
 
-// GetAllByProjectID retrieves all jobs for a specific project
-func (r *JobORM) GetAllByProjectID(projectID string) ([]*models.Job, error) {
+// GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
+// including related Source and Destination, sorted by latest update time.
+func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	// Query sources in the project using ORM
-	var sources []models.Source
-	sourceQs := r.ormer.QueryTable(constants.TableNameMap[constants.SourceTable])
-	_, err := sourceQs.Filter("project_id", projectID).All(&sources)
+	// Directly query jobs filtered by project_id — since each job already stores project_id
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
+		Filter("project_id", projectID).
+		RelatedSel().
+		OrderBy(constants.OrderByUpdatedAtDesc).
+		All(&jobs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sources for project ID %s: %s", projectID, err)
+		return nil, fmt.Errorf("failed to list jobs project_id[%s]: %s", projectID, err)
 	}
 
-	// Query destinations in the project using ORM
-	var destinations []models.Destination
-	destQs := r.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable])
-	_, err = destQs.Filter("project_id", projectID).All(&destinations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get destinations for project ID %s: %s", projectID, err)
-	}
-
-	// If no sources or destinations in the project, return empty array
-	if len(sources) == 0 && len(destinations) == 0 {
-		return jobs, nil
-	}
-
-	// Extract IDs for filtering
-	sourceIDs := make([]int, len(sources))
-	for i := range sources {
-		sourceIDs[i] = sources[i].ID
-	}
-
-	destIDs := make([]int, len(destinations))
-	for i := range destinations {
-		destIDs[i] = destinations[i].ID
-	}
-
-	// Build query for jobs
-	qs := r.ormer.QueryTable(r.TableName)
-
-	// Create OR condition for sources and destinations
-	cond := orm.NewCondition()
-	if len(sourceIDs) > 0 {
-		cond = cond.Or("source_id__in", sourceIDs)
-	}
-	if len(destIDs) > 0 {
-		cond = cond.Or("dest_id__in", destIDs)
-	}
-
-	// Add RelatedSel to load the related Source and Destination objects
-	_, err = qs.SetCond(cond).RelatedSel().All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs with related data for project ID %s: %s", projectID, err)
+	// If project has no jobs, return empty slice (not nil)
+	if len(jobs) == 0 {
+		return []*models.Job{}, nil
 	}
 
 	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+	if err := db.decryptJobSliceConfig(jobs); err != nil {
+		return nil, err
 	}
 
 	return jobs, nil
 }
 
 // GetByID retrieves a job by ID
-func (r *JobORM) GetByID(id int, decrypt bool) (*models.Job, error) {
+func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
 	job := &models.Job{ID: id}
-	err := r.ormer.Read(job)
+	err := db.ormer.Read(job)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get job by ID: %s", err)
+		return nil, fmt.Errorf("failed to get job id[%d]: %s", id, err)
 	}
 
 	// Load related entities (Source, Destination, etc.)
-	_, err = r.ormer.LoadRelated(job, "SourceID")
+	_, err = db.ormer.LoadRelated(job, "SourceID")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get job by ID: %s", err)
+		return nil, fmt.Errorf("failed to load source entities job_id[%d]: %s", id, err)
 	}
-	_, err = r.ormer.LoadRelated(job, "DestID")
+
+	_, err = db.ormer.LoadRelated(job, "DestID")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get job by ID: %s", err)
+		return nil, fmt.Errorf("failed to load destination entities job_id[%d]: %s", id, err)
 	}
 
 	// Decrypt related Source and Destination configs
 	if decrypt {
-		if err := r.decryptJobConfig(job); err != nil {
-			return nil, fmt.Errorf("failed to decrypt job config: %s", err)
+		if err := db.decryptJobConfig(job); err != nil {
+			return nil, err
 		}
 	}
 
 	return job, nil
 }
 
+func (db *Database) GetJobsBySourceID(sourceIDs []int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	if len(sourceIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).Filter("source_id__in", sourceIDs).RelatedSel().All(&jobs)
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
+func (db *Database) GetJobsByDestinationID(destIDs []int) ([]*models.Job, error) {
+	var jobs []*models.Job
+	if len(destIDs) == 0 {
+		return jobs, nil
+	}
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).Filter("dest_id__in", destIDs).RelatedSel().All(&jobs)
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
 // Update a job
-func (r *JobORM) Update(job *models.Job) error {
-	job.UpdatedAt = time.Now()
-	_, err := r.ormer.Update(job)
+func (db *Database) UpdateJob(job *models.Job) error {
+	_, err := db.ormer.Update(job)
 	return err
 }
 
 // BulkDeactivate deactivates multiple jobs by their IDs in a single query
-func (r *JobORM) UpdateAllJobs(ids []int) error {
+func (db *Database) DeactivateJobs(ids []int) error {
 	if len(ids) == 0 {
 		return nil
 	}
 
-	_, err := r.ormer.QueryTable(r.TableName).
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
 		Filter("id__in", ids).
 		Update(orm.Params{
-			"active":     false,
-			"updated_at": time.Now(),
+			"active": false,
 		})
 	return err
 }
 
 // Delete a job
-func (r *JobORM) Delete(id int) error {
-	_, err := r.ormer.Delete(&models.Job{ID: id})
+func (db *Database) DeleteJob(id int) error {
+	_, err := db.ormer.Delete(&models.Job{ID: id})
 	return err
 }
 
-// GetBySourceID retrieves all jobs associated with a source ID
-func (r *JobORM) GetBySourceID(sourceID int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	source := &models.Source{ID: sourceID}
-
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("source_id", source).
-		RelatedSel().
-		All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by source ID: %s", err)
-	}
-
-	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-	}
-
-	return jobs, nil
-}
-
-// GetByDestinationID retrieves all jobs associated with a destination ID
-func (r *JobORM) GetByDestinationID(destID int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	dest := &models.Destination{ID: destID}
-
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("dest_id", dest).
-		RelatedSel().
-		All(&jobs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination ID: %s", err)
-	}
-
-	// Decrypt related Source and Destination configs
-	if err := r.decryptJobSliceConfig(jobs); err != nil {
-		return nil, fmt.Errorf("failed to decrypt job config: %s", err)
-	}
-
-	return jobs, nil
-}
-
 // IsJobNameUnique checks if a job name is unique within a project in the jobs table.
-func (r *JobORM) IsJobNameUnique(projectID, jobName string) (bool, error) {
-	count, err := r.ormer.QueryTable(r.TableName).
+func (db *Database) IsJobNameUniqueInProject(projectID, jobName string) (bool, error) {
+	count, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
 		Filter("name", jobName).
 		Filter("project_id", projectID).
 		Count()
 	if err != nil {
-		return false, fmt.Errorf("failed to check job name uniqueness: %w", err)
+		return false, fmt.Errorf("failed to check job name uniqueness project_id[%s] job_name[%s]: %s", projectID, jobName, err)
 	}
 	return count == 0, nil
-}
-func (r *JobORM) GetBySourceIDs(sourceIDs []int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	if len(sourceIDs) == 0 {
-		return jobs, nil
-	}
-	_, err := r.ormer.QueryTable(r.TableName).Filter("source_id__in", sourceIDs).RelatedSel().All(&jobs)
-	if err != nil {
-		return nil, err
-	}
-	return jobs, nil
-}
-func (r *JobORM) GetByDestinationIDs(destIDs []int) ([]*models.Job, error) {
-	var jobs []*models.Job
-	if len(destIDs) == 0 {
-		return jobs, nil
-	}
-	_, err := r.ormer.QueryTable(r.TableName).Filter("dest_id__in", destIDs).RelatedSel().All(&jobs)
-	if err != nil {
-		return nil, err
-	}
-	return jobs, nil
 }

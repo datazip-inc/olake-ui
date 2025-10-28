@@ -38,18 +38,6 @@ var (
 	ErrFailedToDelete   = errors.New("failed to delete")
 )
 
-// Error message formats
-const (
-	// Format strings for error messages with dynamic values
-	ErrFormatFailedToFindUser          = "failed to find user: %s"
-	ErrFormatFailedToGetUser           = "failed to get user: %s"
-	ErrFormatFailedToGetCatalog        = "failed to get catalog: %s"
-	ErrFormatFailedToGetJobs           = "failed to get jobs: %s"
-	ErrFormatFailedToDeactivateJob     = "failed to deactivate job %d: %s"
-	ErrFormatFailedToGetDockerVersions = "failed to get Docker versions: %s"
-	ErrFormatFailedToRetrieveJobs      = "failed to retrieve jobs: %s"
-)
-
 // Success messages
 const (
 	MsgUserCreated   = "User created successfully"
@@ -68,7 +56,8 @@ const (
 
 // Validation messages
 const (
-	ValidationEmailRequired    = "Email is required"
-	ValidationPasswordRequired = "Password is required"
-	ValidationNameRequired     = "Name is required"
+	ValidationEmailRequired        = "Email is required"
+	ValidationPasswordRequired     = "Password is required"
+	ValidationNameRequired         = "Name is required"
+	ValidationInvalidRequestFormat = "Invalid request format"
 )

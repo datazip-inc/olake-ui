@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
 // BaseModel with common fields

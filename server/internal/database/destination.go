@@ -2,134 +2,96 @@ package database
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/beego/beego/v2/client/orm"
-
-	"github.com/datazip/olake-ui/server/internal/constants"
-	"github.com/datazip/olake-ui/server/internal/models"
-	"github.com/datazip/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-// DestinationORM handles database operations for destinations
-type DestinationORM struct {
-	ormer     orm.Ormer
-	TableName string
-}
-
-func NewDestinationORM() *DestinationORM {
-	return &DestinationORM{
-		ormer:     orm.NewOrm(),
-		TableName: constants.TableNameMap[constants.DestinationTable],
-	}
-}
-
 // decryptDestinationSliceConfigs decrypts config fields for a slice of destinations
-func (r *DestinationORM) decryptDestinationSliceConfigs(destinations []*models.Destination) error {
+func (db *Database) decryptDestinationSliceConfigs(destinations []*models.Destination) error {
 	for _, dest := range destinations {
 		dConfig, err := utils.Decrypt(dest.Config)
 		if err != nil {
-			return fmt.Errorf("failed to decrypt destination config: %s", err)
+			return fmt.Errorf("failed to decrypt destination config id[%d]: %s", dest.ID, err)
 		}
 		dest.Config = dConfig
 	}
 	return nil
 }
 
-func (r *DestinationORM) Create(destination *models.Destination) error {
+func (db *Database) CreateDestination(destination *models.Destination) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(destination.Config)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt destination config: %s", err)
+		return fmt.Errorf("failed to encrypt destination config id[%d]: %s", destination.ID, err)
 	}
 	destination.Config = eConfig
-	_, err = r.ormer.Insert(destination)
+	_, err = db.ormer.Insert(destination)
 	return err
 }
 
-func (r *DestinationORM) GetAll() ([]*models.Destination, error) {
+func (db *Database) ListDestinations() ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).RelatedSel().All(&destinations)
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&destinations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all destinations: %s", err)
+		return nil, fmt.Errorf("failed to list destinations: %s", err)
 	}
 
 	// Decrypt config after reading
-	if err := r.decryptDestinationSliceConfigs(destinations); err != nil {
-		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
+	if err := db.decryptDestinationSliceConfigs(destinations); err != nil {
+		return nil, err
 	}
 
 	return destinations, nil
 }
 
-func (r *DestinationORM) GetAllByProjectID(projectID string) ([]*models.Destination, error) {
+func (db *Database) ListDestinationsByProjectID(projectID string) ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).Filter("project_id", projectID).RelatedSel().All(&destinations)
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).Filter("project_id", projectID).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&destinations)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get all destinations by project_id[%s]: %s", projectID, err)
+		return nil, fmt.Errorf("failed to list destinations project_id[%s]: %s", projectID, err)
 	}
 
 	// Decrypt config after reading
-	if err := r.decryptDestinationSliceConfigs(destinations); err != nil {
-		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
+	if err := db.decryptDestinationSliceConfigs(destinations); err != nil {
+		return nil, err
 	}
 
 	return destinations, nil
 }
 
-func (r *DestinationORM) GetByID(id int) (*models.Destination, error) {
+func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
 	destination := &models.Destination{ID: id}
-	err := r.ormer.Read(destination)
+	err := db.ormer.Read(destination)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get destination by ID: %s", err)
+		return nil, fmt.Errorf("failed to get destination id[%d]: %s", id, err)
 	}
 
 	// Decrypt config after reading
 	dConfig, err := utils.Decrypt(destination.Config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt config for destination[%d]: %s", destination.ID, err)
+		return nil, fmt.Errorf("failed to decrypt destination config id[%d]: %s", destination.ID, err)
 	}
 	destination.Config = dConfig
 	return destination, nil
 }
 
-func (r *DestinationORM) Update(destination *models.Destination) error {
-	destination.UpdatedAt = time.Now()
-
+func (db *Database) UpdateDestination(destination *models.Destination) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(destination.Config)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt destination config: %s", err)
+		return fmt.Errorf("failed to encrypt destination[%d] config: %s", destination.ID, err)
 	}
 	destination.Config = eConfig
-	_, err = r.ormer.Update(destination)
+	_, err = db.ormer.Update(destination)
 	return err
 }
 
-func (r *DestinationORM) Delete(id int) error {
+func (db *Database) DeleteDestination(id int) error {
 	destination := &models.Destination{ID: id}
 	// Use ORM's Delete method which will automatically handle the soft delete
 	// by setting the DeletedAt field due to the ORM tags in BaseModel
-	_, err := r.ormer.Delete(destination)
+	_, err := db.ormer.Delete(destination)
 	return err
-}
-
-// GetByNameAndType retrieves destinations by name, destType, and project ID
-func (r *DestinationORM) GetByNameAndType(name, destType, projectID string) ([]*models.Destination, error) {
-	var destinations []*models.Destination
-	_, err := r.ormer.QueryTable(r.TableName).
-		Filter("name", name).
-		Filter("dest_type", destType).
-		Filter("project_id", projectID).
-		All(&destinations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get destination in project[%s] by name[%s] and type[%s]: %s", projectID, name, destType, err)
-	}
-
-	// Decrypt config after reading
-	if err := r.decryptDestinationSliceConfigs(destinations); err != nil {
-		return nil, fmt.Errorf("failed to decrypt destination config: %s", err)
-	}
-
-	return destinations, nil
 }

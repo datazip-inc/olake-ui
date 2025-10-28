@@ -1,5 +1,5 @@
 import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem } from "../types"
+import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -229,6 +229,7 @@ export const JOB_STEP_NUMBERS = {
 	STREAMS: 4,
 } as const
 
+// not showing oneof and const errors
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
@@ -249,4 +250,31 @@ export const LABELS = {
 		title: "Iceberg Database Name",
 		folderType: "Iceberg DB",
 	},
+} as const
+
+/**
+ * Matches a single or compound filter expression of the form:
+ *  - column operator value
+ *  - column operator value (and|or) column operator value
+ *
+ * Operators: >=, <=, !=, >, <, =
+ * Value can be a quoted string ("..."), a number (int/float), or a word (\w+)
+ *
+ * Capture groups:
+ *  1: first column name
+ *  2: first operator
+ *  3: first value
+ *  4: logical operator (and|or) [optional]
+ *  5: second column name [optional]
+ *  6: second operator [optional]
+ *  7: second value [optional]
+ */
+export const FILTER_REGEX =
+	/^(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+)\s*(?:(and|or)\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+))?\s*$/
+
+export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
+
+export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
+	SUCCEEDED: "SUCCEEDED",
+	FAILED: "FAILED",
 } as const
