@@ -87,7 +87,7 @@ export const DESTINATION_LABELS = {
 	APACHE_ICEBERG: "apache iceberg",
 }
 
-export const JOB_TYPES = {
+export const JOB_STATUS = {
 	ACTIVE: "active",
 	INACTIVE: "inactive",
 	SAVED: "saved",

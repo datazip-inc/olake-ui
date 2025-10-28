@@ -105,13 +105,6 @@ const StreamConfiguration = ({
 		}
 	}, [fromJobEditFlow, initialSelectedStreams])
 
-	// Check if this stream was in the initial job streams
-	const isStreamInInitialSelection =
-		fromJobEditFlow &&
-		initialJobStreams?.selected_streams?.[stream.stream.namespace || ""]?.some(
-			(s: { stream_name: string }) => s.stream_name === stream.stream.name,
-		)
-
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
@@ -742,7 +735,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={normalization}
 							onChange={handleNormalizationChange}
-							disabled={!isSelected || isStreamInInitialSelection}
+							disabled={!isSelected}
 						/>
 					</div>
 				</div>
@@ -765,7 +758,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={fullLoadFilter}
 							onChange={handleFullLoadFilterChange}
-							disabled={!isSelected || isStreamInInitialSelection}
+							disabled={!isSelected}
 						/>
 					</div>
 					{fullLoadFilter && (
@@ -819,13 +812,13 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={!!activePartitionRegex || isStreamInInitialSelection}
+						disabled={!!activePartitionRegex}
 					/>
 					{!activePartitionRegex ? (
 						<Button
 							className="mt-2 w-fit bg-primary px-2 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
-							disabled={!partitionRegex || isStreamInInitialSelection}
+							disabled={!partitionRegex}
 						>
 							Set Partition
 						</Button>
@@ -842,7 +835,6 @@ const StreamConfiguration = ({
 									size="small"
 									className="rounded-md py-1 text-sm"
 									onClick={handleClearPartitionRegex}
-									disabled={isStreamInInitialSelection}
 								>
 									Delete Partition
 								</Button>
@@ -875,7 +867,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600",
 									)}
-									disabled={isStreamInInitialSelection || !isSelected}
+									disabled={!isSelected}
 								>
 									AND
 								</button>
@@ -888,7 +880,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600",
 									)}
-									disabled={isStreamInInitialSelection || !isSelected}
+									disabled={!isSelected}
 								>
 									OR
 								</button>
@@ -898,7 +890,7 @@ const StreamConfiguration = ({
 								danger
 								icon={<X className="size-4" />}
 								onClick={() => handleRemoveFilter(index)}
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							>
 								Remove
 							</Button>
@@ -932,7 +924,7 @@ const StreamConfiguration = ({
 								options={getColumnOptions()}
 								labelInValue={false}
 								optionLabelProp="value"
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							/>
 						</div>
 						<div>
@@ -947,7 +939,7 @@ const StreamConfiguration = ({
 									handleFilterConditionChange(index, "operator", value)
 								}
 								options={operatorOptions}
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							/>
 						</div>
 						<div>
@@ -958,7 +950,7 @@ const StreamConfiguration = ({
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							/>
 						</div>
 					</div>
@@ -970,7 +962,7 @@ const StreamConfiguration = ({
 					icon={<Plus className="size-4" />}
 					onClick={handleAddFilter}
 					className="w-fit"
-					disabled={isStreamInInitialSelection || !isSelected}
+					disabled={!isSelected}
 				>
 					New Column filter
 				</Button>

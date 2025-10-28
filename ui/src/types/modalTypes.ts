@@ -16,3 +16,12 @@ export interface DestinationDatabaseModalProps {
 export interface ResetStreamsModalProps {
 	onConfirm: () => void
 }
+
+export interface StreamDifferenceModalProps {
+	streamDifference: StreamsDataStructure
+	onConfirm: () => void
+}
+
+export interface StreamEditDisabledModalProps {
+	from: "jobSettings" | "jobEdit"
+}

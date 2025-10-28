@@ -9,7 +9,9 @@ export interface ModalSlice {
 	showDeleteModal: boolean
 	showDeleteJobModal: boolean
 	showClearDataModal: boolean
-	showClearDestinationAndSyncModal: boolean
+	showClearDestinationModal: boolean
+	showStreamDifferenceModal: boolean
+	showStreamEditDisabledModal: boolean
 	showEditSourceModal: boolean
 	showEditDestinationModal: boolean
 	showDestinationDatabaseModal: boolean
@@ -22,7 +24,9 @@ export interface ModalSlice {
 	setShowDeleteModal: (show: boolean) => void
 	setShowDeleteJobModal: (show: boolean) => void
 	setShowClearDataModal: (show: boolean) => void
-	setShowClearDestinationAndSyncModal: (show: boolean) => void
+	setShowClearDestinationModal: (show: boolean) => void
+	setShowStreamDifferenceModal: (show: boolean) => void
+	setShowStreamEditDisabledModal: (show: boolean) => void
 	setShowEditSourceModal: (show: boolean) => void
 	setShowEditDestinationModal: (show: boolean) => void
 	setShowDestinationDatabaseModal: (show: boolean) => void
@@ -38,7 +42,9 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	showDeleteModal: false,
 	showDeleteJobModal: false,
 	showClearDataModal: false,
-	showClearDestinationAndSyncModal: false,
+	showClearDestinationModal: false,
+	showStreamDifferenceModal: false,
+	showStreamEditDisabledModal: false,
 	showEditSourceModal: false,
 	showEditDestinationModal: false,
 	showDestinationDatabaseModal: false,
@@ -52,8 +58,12 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	setShowDeleteModal: show => set({ showDeleteModal: show }),
 	setShowDeleteJobModal: show => set({ showDeleteJobModal: show }),
 	setShowClearDataModal: show => set({ showClearDataModal: show }),
-	setShowClearDestinationAndSyncModal: show =>
-		set({ showClearDestinationAndSyncModal: show }),
+	setShowClearDestinationModal: show =>
+		set({ showClearDestinationModal: show }),
+	setShowStreamDifferenceModal: show =>
+		set({ showStreamDifferenceModal: show }),
+	setShowStreamEditDisabledModal: show =>
+		set({ showStreamEditDisabledModal: show }),
 	setShowEditSourceModal: show => set({ showEditSourceModal: show }),
 	setShowEditDestinationModal: show => set({ showEditDestinationModal: show }),
 	setShowDestinationDatabaseModal: show =>

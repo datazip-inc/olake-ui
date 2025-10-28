@@ -1,7 +1,7 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult, SelectedStream } from "../types"
+import { CronParseResult, JobType, SelectedStream } from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -82,6 +82,17 @@ export const getStatusClass = (status: string) => {
 	}
 }
 
+export const getJobTypeClass = (jobType: JobType) => {
+	switch (jobType) {
+		case JobType.Sync:
+			return "text-[#52C41A] bg-[#F6FFED]"
+		case JobType.ClearDestination:
+			return "text-amber-700 bg-amber-50"
+		default:
+			return "text-[rgba(0,0,0,88)] bg-transparent"
+	}
+}
+
 export const getConnectorInLowerCase = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
@@ -121,6 +132,17 @@ export const getStatusLabel = (status: string) => {
 			return "Completed"
 		default:
 			return status
+	}
+}
+
+export const getJobTypeLabel = (lastRunType: JobType) => {
+	switch (lastRunType) {
+		case JobType.Sync:
+			return "Sync"
+		case JobType.ClearDestination:
+			return "Clear Destination"
+		default:
+			return lastRunType
 	}
 }
 

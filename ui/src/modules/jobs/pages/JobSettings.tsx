@@ -16,7 +16,9 @@ import {
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
-import ClearDestinationAndSyncModal from "../../common/Modals/ClearDestinationAndSyncModal"
+import ClearDestinationModal from "../../common/Modals/ClearDestinationModal"
+import { JobType } from "../../../types/jobTypes"
+import StreamEditDisabledModal from "../../common/Modals/StreamEditDisabledModal"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -42,8 +44,14 @@ const JobSettings: React.FC = () => {
 		days: DAYS.map(day => ({ value: day, label: day })),
 	}
 
-	const { jobs, fetchJobs, setShowDeleteJobModal, setSelectedJobId } =
-		useAppStore()
+	const {
+		jobs,
+		fetchJobs,
+		setShowDeleteJobModal,
+		setSelectedJobId,
+		setShowClearDestinationModal,
+		setShowStreamEditDisabledModal,
+	} = useAppStore()
 
 	useEffect(() => {
 		if (!jobs.length) {
@@ -61,6 +69,10 @@ const JobSettings: React.FC = () => {
 			setPauseJob(!job.activate)
 		}
 	}, [job])
+
+	const isClearDestinationRunning =
+		job?.last_run_type === JobType.ClearDestination &&
+		job?.last_run_state.toLowerCase() === "running"
 
 	const getParsedDate = (value: Date) => value.toUTCString()
 
@@ -204,6 +216,19 @@ const JobSettings: React.FC = () => {
 		setShowDeleteJobModal(true)
 	}
 
+	const handleClearDestination = () => {
+		if (jobId) {
+			setSelectedJobId(jobId)
+		}
+		setShowClearDestinationModal(true)
+	}
+
+	useEffect(() => {
+		if (isClearDestinationRunning) {
+			setShowStreamEditDisabledModal(true)
+		}
+	}, [isClearDestinationRunning])
+
 	// Helper to determine if time selection should be shown
 	const isTimeSelectionFrequency = (freq: string): boolean => {
 		return freq === "days" || freq === "weeks"
@@ -249,6 +274,8 @@ const JobSettings: React.FC = () => {
 					typeof job.streams_config === "string"
 						? job.streams_config
 						: JSON.stringify(job.streams_config),
+				// In settings page, we are not modifying the streams, there will be no stream difference
+				difference_streams: "{}",
 			}
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
@@ -433,12 +460,31 @@ const JobSettings: React.FC = () => {
 									/>
 								</div>
 							</div>
-
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
 								<div className="border-gray-200 pt-4">
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
-											<div className="font-medium">Delete the job:</div>
+											<div className="font-medium">Clear Destination</div>
+											<div className="text-sm text-text-tertiary">
+												This will erase all data that was synced by this job in
+												the destination.
+											</div>
+										</div>
+										<button
+											onClick={handleClearDestination}
+											className="rounded-md border px-4 py-1 font-light disabled:cursor-not-allowed disabled:opacity-50"
+											disabled={isClearDestinationRunning || !job?.activate}
+										>
+											Clear Destination
+										</button>
+									</div>
+								</div>
+							</div>
+							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
+								<div className="border-gray-200 pt-4">
+									<div className="mb-2 flex items-center justify-between">
+										<div className="flex flex-col gap-2">
+											<div className="font-medium">Delete the job</div>
 											<div className="text-sm text-text-tertiary">
 												No data will be deleted in your source and destination.
 											</div>
@@ -453,7 +499,6 @@ const JobSettings: React.FC = () => {
 								</div>
 								<DeleteJobModal fromJobSettings={true} />
 								<ClearDataModal />
-								<ClearDestinationAndSyncModal />
 							</div>
 						</div>
 					</div>
@@ -469,6 +514,8 @@ const JobSettings: React.FC = () => {
 					</Button>
 				</div>
 			</div>
+			<ClearDestinationModal />
+			<StreamEditDisabledModal from="jobSettings" />
 		</>
 	)
 }
