@@ -3,7 +3,7 @@ x-app-defaults:
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
-    target: &containerPersistentDir /tmp/olake-config
+    target: /tmp/olake-config
 
 x-signup-defaults:
   username: &defaultUsername "admin"

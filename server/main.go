@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -33,7 +31,7 @@ func main() {
 	telemetry.InitTelemetry(db)
 
 	routes.Init(handlers.NewHandler(appSvc))
-	if key := os.Getenv(constants.EncryptionKey); key == "" {
+	if key, _ := web.AppConfig.String("encryptionkey"); key == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
