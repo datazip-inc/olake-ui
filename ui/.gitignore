@@ -16,7 +16,11 @@ npm-debug*
 *.env.*
 
 # tests
-**/tests/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+**/.auth/
+**/coverage/
 
 # Editor directories and files
 .DS_Store
