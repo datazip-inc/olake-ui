@@ -1,7 +1,12 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult, JobType, SelectedStream } from "../types"
+import {
+	CronParseResult,
+	JobType,
+	IngestionMode,
+	SelectedStream,
+} from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -562,4 +567,27 @@ export const validateStreams = (selections: {
 	return !Object.values(selections).some(streams =>
 		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
 	)
+}
+
+export const getIngestionMode = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): IngestionMode => {
+	const selectedStreamsObj = getSelectedStreams(selectedStreams)
+	const allSelectedStreams: SelectedStream[] = []
+
+	// Flatten all streams from all namespaces
+	Object.values(selectedStreamsObj).forEach((streams: SelectedStream[]) => {
+		allSelectedStreams.push(...streams)
+	})
+
+	if (allSelectedStreams.length === 0) return IngestionMode.UPSERT
+
+	const appendCount = allSelectedStreams.filter(
+		s => s.append_mode === true,
+	).length
+	const upsertCount = allSelectedStreams.filter(s => !s.append_mode).length
+
+	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
+	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
+	return IngestionMode.CUSTOM
 }

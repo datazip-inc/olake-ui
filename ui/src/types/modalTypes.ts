@@ -1,3 +1,4 @@
+import { IngestionMode } from "./commonTypes"
 import { StreamsDataStructure } from "./streamTypes"
 
 export interface DeleteModalProps {
@@ -24,4 +25,9 @@ export interface StreamDifferenceModalProps {
 
 export interface StreamEditDisabledModalProps {
 	from: "jobSettings" | "jobEdit"
+}
+
+export interface IngestionModeChangeModalProps {
+	onConfirm: (ingestionMode: IngestionMode) => void
+	ingestionMode: IngestionMode
 }
