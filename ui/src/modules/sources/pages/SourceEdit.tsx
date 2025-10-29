@@ -50,7 +50,7 @@ import {
 	transformErrors,
 	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
-import { SourceConnector, StatusValue, TabType } from "../../../enums"
+import { SourceConnector, SourceStatus, SourceTab } from "../../../enums"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
@@ -70,7 +70,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const formRef = useRef<any>(null)
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
-	const [activeTab, setActiveTab] = useState<TabType>(TabType.CONFIG)
+	const [activeTab, setActiveTab] = useState<SourceTab>(SourceTab.CONFIG)
 	const [connector, setConnector] = useState<string | null>(null)
 	const [selectedVersion, setSelectedVersion] = useState("")
 	const [availableVersions, setAvailableVersions] = useState<
@@ -125,12 +125,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		if (initialData) {
 			setSourceName(initialData.name || "")
-			const connectorTypeMap: Record<string, string> = {
-				[SourceConnector.MONGODB.toLowerCase()]: SourceConnector.MONGODB,
-				[SourceConnector.POSTGRES.toLowerCase()]: SourceConnector.POSTGRES,
-				[SourceConnector.MYSQL.toLowerCase()]: SourceConnector.MYSQL,
-				[SourceConnector.ORACLE.toLowerCase()]: SourceConnector.ORACLE,
-			}
 			let normalizedType =
 				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
 
@@ -264,7 +258,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			name: sourceName,
 			type: connector || SourceConnector.MONGODB,
 			version: selectedVersion,
-			status: StatusValue.ACTIVE,
+			status: SourceStatus.ACTIVE,
 			config: configStr,
 			created_at: source?.created_at || new Date().toISOString(),
 			updated_at: source?.updated_at || new Date().toISOString(),
@@ -497,22 +491,22 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<div className="mt-2 flex w-fit rounded-md bg-background-primary p-1">
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
-												activeTab === TabType.CONFIG
+													activeTab === SourceTab.CONFIG
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
 											}`}
-											onClick={() => setActiveTab(TabType.CONFIG)}
+											onClick={() => setActiveTab(SourceTab.CONFIG)}
 										>
 											Config
 										</button>
 
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
-												activeTab === TabType.JOBS
+													activeTab === SourceTab.JOBS
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
 											}`}
-											onClick={() => setActiveTab(TabType.JOBS)}
+											onClick={() => setActiveTab(SourceTab.JOBS)}
 										>
 											Associated jobs
 										</button>
@@ -520,7 +514,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								</div>
 							)}
 
-							{activeTab === TabType.CONFIG ? (
+							{activeTab === SourceTab.CONFIG ? (
 								<div className="bg-white">
 									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 										<div className="mb-4 flex items-center gap-1 text-lg font-medium">

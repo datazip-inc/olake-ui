@@ -1,4 +1,6 @@
 export { SourceConnector, DestinationConnector } from "./connectorEnum"
 export { StreamFilter } from "./streamFilterEnum"
 export { TabType } from "./tabTypeEnum"
-export { StatusValue } from "./statusValueEnum"
+export { SourceStatus } from "./statusValueEnum"
+export { StreamTab } from "./streamTabEnum"
+export { SourceTab } from "./sourceTabEnum"

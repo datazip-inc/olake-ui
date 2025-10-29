@@ -7,11 +7,12 @@ import analyticsService from "../../../api/services/analyticsService"
 import { useAppStore } from "../../../store"
 import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
+import { SourceStatus } from "../../../enums"
 import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"
 
 const Destinations: React.FC = () => {
-	const [activeTab, setActiveTab] = useState("active")
+	const [activeTab, setActiveTab] = useState<SourceStatus>(SourceStatus.ACTIVE)
 	const navigate = useNavigate()
 	const {
 		destinations,
@@ -58,25 +59,25 @@ const Destinations: React.FC = () => {
 		}, 1000)
 	}
 
-	const filteredDestinations = (): Entity[] => {
-		// a destination is active if it has jobs and at least one job is active
-		if (activeTab === "active") {
-			return destinations.filter(
-				destination =>
-					destination?.jobs &&
-					destination.jobs.length > 0 &&
-					destination.jobs.some(job => job.activate === true),
-			)
-		} else if (activeTab === "inactive") {
-			return destinations.filter(
-				destination =>
-					!destination?.jobs ||
-					destination.jobs.length === 0 ||
-					destination.jobs.every(job => job.activate === false),
-			)
+		const filteredDestinations = (): Entity[] => {
+			// a destination is active if it has jobs and at least one job is active
+			if (activeTab === SourceStatus.ACTIVE) {
+				return destinations.filter(
+					destination =>
+						destination?.jobs &&
+						destination.jobs.length > 0 &&
+						destination.jobs.some(job => job.activate === true),
+				)
+			} else if (activeTab === SourceStatus.INACTIVE) {
+				return destinations.filter(
+					destination =>
+						!destination?.jobs ||
+						destination.jobs.length === 0 ||
+						destination.jobs.every(job => job.activate === false),
+				)
+			}
+			return []
 		}
-		return []
-	}
 
 	const showEmpty = !isLoadingDestinations && destinations.length === 0
 
@@ -116,7 +117,7 @@ const Destinations: React.FC = () => {
 
 			<Tabs
 				activeKey={activeTab}
-				onChange={setActiveTab}
+				onChange={(key: string) => setActiveTab(key as SourceStatus)}
 				className="mb-4"
 				items={destinationTabs.map(tab => ({
 					key: tab.key,
@@ -128,7 +129,7 @@ const Destinations: React.FC = () => {
 								tip="Loading destinations..."
 							/>
 						</div>
-					) : tab.key === "active" && showEmpty ? (
+					) : tab.key === SourceStatus.ACTIVE && showEmpty ? (
 						<DestinationEmptyState
 							handleCreateDestination={handleCreateDestination}
 						/>
