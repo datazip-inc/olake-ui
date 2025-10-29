@@ -491,7 +491,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 									<div className="mt-2 flex w-fit rounded-md bg-background-primary p-1">
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
-													activeTab === SourceTab.CONFIG
+												activeTab === SourceTab.CONFIG
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
 											}`}
@@ -502,7 +502,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 										<button
 											className={`mr-1 w-56 rounded-md px-3 py-1.5 text-center text-sm font-normal ${
-													activeTab === SourceTab.JOBS
+												activeTab === SourceTab.JOBS
 													? "bg-primary text-neutral-light"
 													: "bg-background-primary text-text-primary"
 											}`}

@@ -59,25 +59,25 @@ const Destinations: React.FC = () => {
 		}, 1000)
 	}
 
-		const filteredDestinations = (): Entity[] => {
-			// a destination is active if it has jobs and at least one job is active
-			if (activeTab === SourceStatus.ACTIVE) {
-				return destinations.filter(
-					destination =>
-						destination?.jobs &&
-						destination.jobs.length > 0 &&
-						destination.jobs.some(job => job.activate === true),
-				)
-			} else if (activeTab === SourceStatus.INACTIVE) {
-				return destinations.filter(
-					destination =>
-						!destination?.jobs ||
-						destination.jobs.length === 0 ||
-						destination.jobs.every(job => job.activate === false),
-				)
-			}
-			return []
+	const filteredDestinations = (): Entity[] => {
+		// a destination is active if it has jobs and at least one job is active
+		if (activeTab === SourceStatus.ACTIVE) {
+			return destinations.filter(
+				destination =>
+					destination?.jobs &&
+					destination.jobs.length > 0 &&
+					destination.jobs.some(job => job.activate === true),
+			)
+		} else if (activeTab === SourceStatus.INACTIVE) {
+			return destinations.filter(
+				destination =>
+					!destination?.jobs ||
+					destination.jobs.length === 0 ||
+					destination.jobs.every(job => job.activate === false),
+			)
 		}
+		return []
+	}
 
 	const showEmpty = !isLoadingDestinations && destinations.length === 0
 
