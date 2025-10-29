@@ -19,7 +19,6 @@ type LoginRequest struct {
 type SpecRequest struct {
 	Type    string `json:"type" validate:"required"`
 	Version string `json:"version" validate:"required"`
-	Catalog string `json:"catalog"`
 }
 
 // check unique job name request

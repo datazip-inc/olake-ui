@@ -66,7 +66,7 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 		},
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
-			Workflow:  "RunSyncWorkflow",
+			Workflow:  RunSyncWorkflow,
 			Args:      []any{req},
 			TaskQueue: t.taskQueue,
 		},

@@ -8,9 +8,13 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/mod/semver"
+)
+
+const (
+	RunSyncWorkflow = "RunSyncWorkflow"
+	ExecuteWorkflow = "ExecuteWorkflow"
 )
 
 type Command string
@@ -47,7 +51,6 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
 	cmdArgs := []string{
@@ -86,7 +89,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute discover workflow: %s", err)
 	}
@@ -133,7 +136,7 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
 		return dto.SpecOutput{}, fmt.Errorf("failed to execute fetch spec workflow: %s", err)
 	}
@@ -152,7 +155,6 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag, sourceType, version, config string) (map[string]interface{}, error) {
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
 	cmdArgs := []string{
@@ -180,7 +182,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		TaskQueue: t.taskQueue,
 	}
 
-	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, "ExecuteWorkflow", req)
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute test connection workflow: %s", err)
 	}

@@ -8,20 +8,11 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 )
 
 // buildExecutionReqForSync builds the ExecutionRequest for a sync job
 func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionRequest {
-	configs := []JobConfig{
-		{Name: "source.json", Data: job.SourceID.Config},
-		{Name: "destination.json", Data: job.DestID.Config},
-		{Name: "streams.json", Data: job.StreamsConfig},
-		{Name: "state.json", Data: job.State},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
-	}
-
 	args := []string{
 		"sync",
 		"--config", "/mnt/config/source.json",
@@ -36,7 +27,6 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
 		Args:          args,
-		Configs:       configs,
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(Sync),
