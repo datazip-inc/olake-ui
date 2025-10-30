@@ -80,28 +80,7 @@ export interface CronParseResult {
 	customCronExpression?: string
 }
 
-export interface EmptyStateConfig {
-	image: string
-	welcomeText: string
-	welcomeTextColor: string
-	heading: string
-	description: string
-	descriptionColor: string
-
-	button: {
-		text: string
-		icon: string
-		className: string
-	}
-
-	tutorial: {
-		link: string
-		image: string
-		altText: string
-	}
-}
-
 export interface EmptyStateProps {
-	config: EmptyStateConfig
+	page: "job" | "source" | "destination"
 	onButtonClick: () => void
 }
