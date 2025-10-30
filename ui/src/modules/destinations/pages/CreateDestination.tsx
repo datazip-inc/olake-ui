@@ -360,15 +360,14 @@ const CreateDestination = forwardRef<
 			const isValid = await validateDestination()
 			if (!isValid) return
 
-			const trimmedFormData = trimFormDataStrings(formData)
 			const newDestinationData = {
-				name: destinationName.trim(),
+				name: destinationName,
 				type:
 					connector === CONNECTOR_TYPES.AMAZON_S3
 						? DESTINATION_INTERNAL_TYPES.S3
 						: DESTINATION_INTERNAL_TYPES.ICEBERG,
 				version,
-				config: JSON.stringify({ ...trimmedFormData }),
+				config: JSON.stringify({ ...formData }),
 			}
 
 			try {
@@ -407,7 +406,7 @@ const CreateDestination = forwardRef<
 		const handleDestinationNameChange = (
 			e: React.ChangeEvent<HTMLInputElement>,
 		) => {
-			const newName = e.target.value
+			const newName = e.target.value.trim()
 			if (newName.length >= 1) {
 				setDestinationNameError(null)
 			}
@@ -633,9 +632,10 @@ const CreateDestination = forwardRef<
 									widgets={widgets}
 									formData={formData}
 									onChange={e => {
-										setFormData(e.formData)
-										if (onFormDataChange) onFormDataChange(e.formData)
-										const catalogValue = e.formData?.writer?.catalog_type
+										const trimmedData = trimFormDataStrings(e.formData)
+										setFormData(trimmedData)
+										if (onFormDataChange) onFormDataChange(trimmedData)
+										const catalogValue = trimmedData?.writer?.catalog_type
 										if (catalogValue) setCatalog(catalogValue)
 									}}
 									onSubmit={handleCreate}

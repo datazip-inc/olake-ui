@@ -256,15 +256,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		: transformJobs((source?.jobs || []).slice(0, DISPLAYED_JOBS_COUNT))
 
 	const getSourceData = () => {
-		const trimmedFormData = trimFormDataStrings(formData)
 		const configStr =
-			typeof trimmedFormData === "string"
-				? trimmedFormData
-				: JSON.stringify(trimmedFormData)
+			typeof formData === "string" ? formData : JSON.stringify(formData)
 
 		const sourceData = {
 			id: source?.id || 0,
-			name: sourceName.trim(),
+			name: sourceName,
 			type: connector || "MongoDB",
 			version: selectedVersion,
 			status: "active" as const,
@@ -645,7 +642,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													}}
 													widgets={widgets}
 													formData={formData}
-													onChange={e => setFormData(e.formData)}
+													onChange={e => {
+														const trimmedData = trimFormDataStrings(e.formData)
+														setFormData(trimmedData)
+													}}
 													transformErrors={transformErrors}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchema}

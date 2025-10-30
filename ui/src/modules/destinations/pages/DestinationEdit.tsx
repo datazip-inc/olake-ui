@@ -271,15 +271,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const getDestinationData = () => {
-		const trimmedFormData = trimFormDataStrings(formData)
 		const configStr =
-			typeof trimmedFormData === "string"
-				? trimmedFormData
-				: JSON.stringify(trimmedFormData)
+			typeof formData === "string" ? formData : JSON.stringify(formData)
 
 		const destinationData = {
 			...(destination || {}),
-			name: destinationName.trim(),
+			name: destinationName,
 			type:
 				connector === CONNECTOR_TYPES.APACHE_ICEBERG
 					? DESTINATION_INTERNAL_TYPES.ICEBERG
@@ -599,8 +596,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						widgets={widgets}
 						formData={formData}
 						onChange={e => {
-							setFormData(e.formData)
-							const catalogValue = e.formData?.writer?.catalog_type
+							const trimmedData = trimFormDataStrings(e.formData)
+							setFormData(trimmedData)
+							if (onFormDataChange) onFormDataChange(trimmedData)
+							const catalogValue = trimmedData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
 						}}
 						transformErrors={transformErrors}

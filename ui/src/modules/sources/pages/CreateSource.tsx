@@ -273,12 +273,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			const isValid = await validateSource()
 			if (!isValid) return
 
-			const trimmedFormData = trimFormDataStrings(formData)
 			const newSourceData = {
-				name: sourceName.trim(),
+				name: sourceName,
 				type: connector.toLowerCase(),
 				version: selectedVersion,
-				config: JSON.stringify(trimmedFormData),
+				config: JSON.stringify(formData),
 			}
 
 			try {
@@ -317,7 +316,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		const handleSourceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-			const newName = e.target.value
+			const newName = e.target.value.trim()
 			if (newName.length >= 1) {
 				setSourceNameError(null)
 			}
@@ -554,8 +553,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									widgets={widgets}
 									formData={formData}
 									onChange={e => {
-										setFormData(e.formData)
-										if (onFormDataChange) onFormDataChange(e.formData)
+										const trimmedData = trimFormDataStrings(e.formData)
+										setFormData(trimmedData)
+										if (onFormDataChange) onFormDataChange(trimmedData)
 									}}
 									transformErrors={transformErrors}
 									uiSchema={uiSchema}
