@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -316,4 +317,30 @@ func (h *Handler) GetTaskLogs() {
 		return
 	}
 	utils.SuccessResponse(&h.Controller, logs)
+}
+
+// @router /internal/worker/callback/sync-telemetry [post]
+func (h *Handler) UpdateSyncTelemetry() {
+	var req struct {
+		JobID      int    `json:"job_id"`
+		WorkflowID string `json:"workflow_id"`
+		Event      string `json:"event"`
+	}
+
+	if err := json.Unmarshal(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request format", err)
+		return
+	}
+
+	if req.JobID == 0 || req.WorkflowID == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "job_id and workflow_id are required", nil)
+		return
+	}
+
+	if err := h.etl.UpdateSyncTelemetry(h.Ctx.Request.Context(), req.JobID, req.WorkflowID, req.Event); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update sync telemetry", err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, nil)
 }

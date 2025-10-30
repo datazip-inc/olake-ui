@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/docker"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -163,7 +163,7 @@ func (s *ETLService) SourceTestConnection(ctx context.Context, req *dto.SourceTe
 	if err != nil {
 		return nil, nil, fmt.Errorf("connection test failed: %s", err)
 	}
-	homeDir := docker.GetDefaultConfigDir()
+	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {

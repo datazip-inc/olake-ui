@@ -5,9 +5,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/datazip-inc/olake-ui/server/internal/docker"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -72,7 +73,7 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		}
 	}()
 
-	if err = s.temporal.CreateSchedule(ctx, job.Frequency, job.ProjectID, job.ID); err != nil {
+	if err = s.temporal.CreateSchedule(ctx, job); err != nil {
 		return fmt.Errorf("failed to create temporal workflow: %s", err)
 	}
 
@@ -243,10 +244,9 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
-	// Read the log file
 
 	// Get home directory
-	homeDir := docker.GetDefaultConfigDir()
+	homeDir := constants.DefaultConfigDir
 	mainSyncDir := filepath.Join(homeDir, syncFolderName)
 	logs, err := utils.ReadLogs(mainSyncDir)
 	if err != nil {
@@ -366,4 +366,18 @@ func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID strin
 	}
 
 	return newDest, nil
+}
+
+// worker service
+func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID, event string) error {
+	switch strings.ToLower(event) {
+	case "started":
+		telemetry.TrackSyncStart(ctx, jobID, workflowID)
+	case "completed":
+		telemetry.TrackSyncCompleted(jobID, workflowID)
+	case "failed":
+		telemetry.TrackSyncFailed(jobID, workflowID)
+	}
+
+	return nil
 }

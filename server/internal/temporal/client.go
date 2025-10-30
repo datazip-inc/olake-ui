@@ -6,8 +6,10 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
 
@@ -51,9 +53,12 @@ func (t *Temporal) WorkflowAndScheduleID(projectID string, jobID int) (string, s
 }
 
 // createSchedule creates a new schedule
-func (t *Temporal) CreateSchedule(ctx context.Context, frequency, projectID string, jobID int) error {
-	workflowID, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
-	cronExpression := utils.ToCron(frequency)
+func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
+	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
+	cronExpression := utils.ToCron(job.Frequency)
+
+	req := buildExecutionReqForSync(job, workflowID)
+
 	_, err := t.Client.ScheduleClient().Create(ctx, client.ScheduleOptions{
 		ID: scheduleID,
 		Spec: client.ScheduleSpec{
@@ -62,7 +67,7 @@ func (t *Temporal) CreateSchedule(ctx context.Context, frequency, projectID stri
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
 			Workflow:  RunSyncWorkflow,
-			Args:      []any{jobID},
+			Args:      []any{req},
 			TaskQueue: t.taskQueue,
 		},
 		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
@@ -112,4 +117,20 @@ func (t *Temporal) TriggerSchedule(ctx context.Context, projectID string, jobID 
 	return t.Client.ScheduleClient().GetHandle(ctx, scheduleID).Trigger(ctx, client.ScheduleTriggerOptions{
 		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 	})
+}
+
+// cancelWorkflow cancels a workflow execution
+func (t *Temporal) CancelWorkflow(ctx context.Context, workflowID, runID string) error {
+	return t.Client.CancelWorkflow(ctx, workflowID, runID)
+}
+
+// ListWorkflow lists workflow executions based on the provided query
+func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.ListWorkflowExecutionsRequest) (*workflowservice.ListWorkflowExecutionsResponse, error) {
+	// Query workflows using the SDK's ListWorkflow method
+	resp, err := t.Client.ListWorkflow(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("error listing workflow executions: %s", err)
+	}
+
+	return resp, nil
 }

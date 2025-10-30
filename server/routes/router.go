@@ -87,4 +87,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", h, "get:CancelJobRun")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", h, "post:GetTaskLogs")
 	web.Router("/api/v1/project/:projectid/jobs/check-unique", h, "post:CheckUniqueJobName")
+
+	// worker callback routes
+	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
 }

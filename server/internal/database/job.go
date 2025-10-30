@@ -174,7 +174,7 @@ func (db *Database) DeleteJob(id int) error {
 }
 
 // IsJobNameUnique checks if a job name is unique within a project in the jobs table.
-func (db *Database) IsJobNameUniqueInProject(projectID string, jobName string) (bool, error) {
+func (db *Database) IsJobNameUniqueInProject(projectID, jobName string) (bool, error) {
 	count, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
 		Filter("name", jobName).
 		Filter("project_id", projectID).
