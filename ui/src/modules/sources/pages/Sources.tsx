@@ -7,8 +7,8 @@ import { useAppStore } from "../../../store"
 import analyticsService from "../../../api/services/analyticsService"
 import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
+import EmptyState from "../../common/components/EmptyState"
 import SourceTable from "../components/SourceTable"
-import SourceEmptyState from "../components/SourceEmptyState"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -130,7 +130,10 @@ const Sources: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<SourceEmptyState handleCreateSource={handleCreateSource} />
+						<EmptyState
+							page="source"
+							onButtonClick={handleCreateSource}
+						/>
 					) : filteredSources().length === 0 ? (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}

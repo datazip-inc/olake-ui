@@ -7,7 +7,7 @@ import analyticsService from "../../../api/services/analyticsService"
 import { useAppStore } from "../../../store"
 import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
-import DestinationEmptyState from "../components/DestinationEmptyState"
+import EmptyState from "../../common/components/EmptyState"
 import DestinationTable from "../components/DestinationTable"
 
 const Destinations: React.FC = () => {
@@ -129,8 +129,9 @@ const Destinations: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === "active" && showEmpty ? (
-						<DestinationEmptyState
-							handleCreateDestination={handleCreateDestination}
+						<EmptyState
+							page="destination"
+							onButtonClick={handleCreateDestination}
 						/>
 					) : filteredDestinations().length === 0 ? (
 						<Empty
