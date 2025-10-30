@@ -21,9 +21,9 @@ type Temporal struct {
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
 	// Choose task queue based on deployment mode
-	temporalAddress := web.AppConfig.DefaultString("TEMPORAL_ADDRESS", "localhost:7233")
+	temporalAddress := web.AppConfig.DefaultString(constants.ConfTemporalAddress, constants.DefaultTemporalAddress)
 	taskQueue := constants.DockerTaskQueue
-	if web.AppConfig.DefaultString("DEPLOYMENT_MODE", "docker") == "kubernetes" {
+	if web.AppConfig.DefaultString(constants.ConfDeploymentMode, "docker") == "kubernetes" {
 		taskQueue = constants.K8sTaskQueue
 	}
 

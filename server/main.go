@@ -31,7 +31,7 @@ func main() {
 	telemetry.InitTelemetry(db)
 
 	routes.Init(handlers.NewHandler(appSvc))
-	if key, _ := web.AppConfig.String("encryptionkey"); key == "" {
+	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 

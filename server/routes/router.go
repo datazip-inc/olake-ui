@@ -5,6 +5,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/datazip-inc/olake-ui/server/internal/middleware"
 )
@@ -33,7 +34,7 @@ func CustomCorsFilter(ctx *context.Context) {
 }
 
 func Init(h *handlers.Handler) {
-	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "localdev" {
+	if runmode, err := web.AppConfig.String(constants.ConfRunMode); err == nil && runmode == "localdev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
 		// Serve static frontend files

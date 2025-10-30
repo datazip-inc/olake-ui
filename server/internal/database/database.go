@@ -83,16 +83,16 @@ func BuildPostgresURIFromConfig() (string, error) {
 	logs.Info("Building Postgres URI from config")
 
 	// First, check if postgresdb is set directly
-	if dsn, err := web.AppConfig.String("postgresdb"); err == nil && dsn != "" {
+	if dsn, err := web.AppConfig.String(constants.ConfPostgresDB); err == nil && dsn != "" {
 		return dsn, nil
 	}
 
-	user, _ := web.AppConfig.String("OLAKE_POSTGRES_USER")
-	password, _ := web.AppConfig.String("OLAKE_POSTGRES_PASSWORD")
-	host, _ := web.AppConfig.String("OLAKE_POSTGRES_HOST")
-	port, _ := web.AppConfig.String("OLAKE_POSTGRES_PORT")
-	dbName, _ := web.AppConfig.String("OLAKE_POSTGRES_DBNAME")
-	sslMode, _ := web.AppConfig.String("OLAKE_POSTGRES_SSLMODE")
+	user, _ := web.AppConfig.String(constants.ConfOLakePostgresUser)
+	password, _ := web.AppConfig.String(constants.ConfOLakePostgresPassword)
+	host, _ := web.AppConfig.String(constants.ConfOLakePostgresHost)
+	port, _ := web.AppConfig.String(constants.ConfOLakePostgresPort)
+	dbName, _ := web.AppConfig.String(constants.ConfOLakePostgresDBname)
+	sslMode, _ := web.AppConfig.String(constants.ConfOLakePostgresSslmode)
 
 	u := &url.URL{
 		Scheme: "postgres",
