@@ -33,6 +33,7 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -255,12 +256,15 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		: transformJobs((source?.jobs || []).slice(0, DISPLAYED_JOBS_COUNT))
 
 	const getSourceData = () => {
+		const trimmedFormData = trimFormDataStrings(formData)
 		const configStr =
-			typeof formData === "string" ? formData : JSON.stringify(formData)
+			typeof trimmedFormData === "string"
+				? trimmedFormData
+				: JSON.stringify(trimmedFormData)
 
 		const sourceData = {
 			id: source?.id || 0,
-			name: sourceName,
+			name: sourceName.trim(),
 			type: connector || "MongoDB",
 			version: selectedVersion,
 			status: "active" as const,

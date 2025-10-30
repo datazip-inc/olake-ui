@@ -24,6 +24,7 @@ import {
 	getConnectorLabel,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -272,11 +273,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			const isValid = await validateSource()
 			if (!isValid) return
 
+			const trimmedFormData = trimFormDataStrings(formData)
 			const newSourceData = {
-				name: sourceName,
+				name: sourceName.trim(),
 				type: connector.toLowerCase(),
 				version: selectedVersion,
-				config: JSON.stringify(formData),
+				config: JSON.stringify(trimmedFormData),
 			}
 
 			try {

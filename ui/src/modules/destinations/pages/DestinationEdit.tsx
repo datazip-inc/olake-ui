@@ -38,6 +38,7 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import {
@@ -270,12 +271,15 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const getDestinationData = () => {
+		const trimmedFormData = trimFormDataStrings(formData)
 		const configStr =
-			typeof formData === "string" ? formData : JSON.stringify(formData)
+			typeof trimmedFormData === "string"
+				? trimmedFormData
+				: JSON.stringify(trimmedFormData)
 
 		const destinationData = {
 			...(destination || {}),
-			name: destinationName,
+			name: destinationName.trim(),
 			type:
 				connector === CONNECTOR_TYPES.APACHE_ICEBERG
 					? DESTINATION_INTERNAL_TYPES.ICEBERG

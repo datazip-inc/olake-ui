@@ -29,6 +29,7 @@ import {
 	getConnectorDocumentationPath,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -359,14 +360,15 @@ const CreateDestination = forwardRef<
 			const isValid = await validateDestination()
 			if (!isValid) return
 
+			const trimmedFormData = trimFormDataStrings(formData)
 			const newDestinationData = {
-				name: destinationName,
+				name: destinationName.trim(),
 				type:
 					connector === CONNECTOR_TYPES.AMAZON_S3
 						? DESTINATION_INTERNAL_TYPES.S3
 						: DESTINATION_INTERNAL_TYPES.ICEBERG,
 				version,
-				config: JSON.stringify({ ...formData }),
+				config: JSON.stringify({ ...trimmedFormData }),
 			}
 
 			try {
