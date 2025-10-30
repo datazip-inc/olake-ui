@@ -175,14 +175,27 @@ func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID i
 	}, nil
 }
 
-func (s *ETLService) ActivateJob(_ context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
+func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job: %s", err)
 	}
 
-	job.Active = req.Activate
+	if req.Activate == job.Active {
+		return nil
+	}
 
+	if req.Activate {
+		if err := s.temporal.UnpauseSchedule(ctx, job.ProjectID, job.ID); err != nil {
+			return fmt.Errorf("failed to unpause schedule: %s", err)
+		}
+	} else {
+		if err := s.temporal.PauseSchedule(ctx, job.ProjectID, job.ID); err != nil {
+			return fmt.Errorf("failed to pause schedule: %s", err)
+		}
+	}
+
+	job.Active = req.Activate
 	user := &models.User{ID: *userID}
 	job.UpdatedBy = user
 
