@@ -159,20 +159,17 @@ func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	}, nil
 }
 
-func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
+func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find job: %s", err)
+		return fmt.Errorf("failed to find job: %s", err)
 	}
 
 	jobSlice := []*models.Job{job}
 	if err := cancelAllJobWorkflows(ctx, s.temporal, jobSlice, projectID); err != nil {
-		return nil, fmt.Errorf("failed to cancel job workflow: %s", err)
+		return fmt.Errorf("failed to cancel job workflow: %s", err)
 	}
-	// TODO : remove nested parsing from frontend
-	return map[string]any{
-		"message": "job workflow cancel requested successfully",
-	}, nil
+	return nil
 }
 
 func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {

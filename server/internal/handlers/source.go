@@ -26,7 +26,7 @@ func (h *Handler) ListSources() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, sources)
+	utils.SuccessResponse(&h.Controller, "sources listed successfully", sources)
 }
 
 // @router /project/:projectid/sources [post]
@@ -62,7 +62,7 @@ func (h *Handler) CreateSource() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, req)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s created successfully", req.Name), req)
 }
 
 // @router /project/:projectid/sources/:id [put]
@@ -108,7 +108,7 @@ func (h *Handler) UpdateSource() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, req)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s updated successfully", req.Name), req)
 }
 
 // @router /project/:projectid/sources/:id [delete]
@@ -130,7 +130,7 @@ func (h *Handler) DeleteSource() {
 		}
 		return
 	}
-	utils.SuccessResponse(&h.Controller, resp)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s deleted successfully", resp.Name), resp)
 }
 
 // @router /project/:projectid/sources/test [post]
@@ -154,7 +154,7 @@ func (h *Handler) TestSourceConnection() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, dto.TestConnectionResponse{
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s connection tested successfully", req.Type), dto.TestConnectionResponse{
 		ConnectionResult: result,
 		Logs:             logs,
 	})
@@ -181,7 +181,7 @@ func (h *Handler) GetSourceCatalog() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, catalog)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
 }
 
 // @router /sources/:id/jobs [get]
@@ -203,7 +203,7 @@ func (h *Handler) GetSourceJobs() {
 		}
 		return
 	}
-	utils.SuccessResponse(&h.Controller, map[string]interface{}{"jobs": jobs})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s jobs listed successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/sources/versions [get]
@@ -226,7 +226,7 @@ func (h *Handler) GetSourceVersions() {
 		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to get source versions: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, versions)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s versions fetched successfully", sourceType), versions)
 }
 
 // @router /project/:projectid/sources/spec [post]
@@ -257,5 +257,5 @@ func (h *Handler) GetProjectSourceSpec() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, resp)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s spec fetched successfully", req.Type), resp)
 }

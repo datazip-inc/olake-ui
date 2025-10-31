@@ -42,7 +42,7 @@ func (h *Handler) Login() {
 		_ = h.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	utils.SuccessResponse(&h.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, "login successful", map[string]interface{}{
 		"username": user.Username,
 	})
 }
@@ -65,7 +65,7 @@ func (h *Handler) CheckAuth() {
 		}
 	}
 
-	utils.SuccessResponse(&h.Controller, dto.LoginResponse{
+	utils.SuccessResponse(&h.Controller, "authenticated successfully", dto.LoginResponse{
 		Message: "Authenticated",
 		Success: true,
 	})
@@ -82,7 +82,7 @@ func (h *Handler) Logout() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, nil)
+	utils.SuccessResponse(&h.Controller, "logout successful", nil)
 }
 
 // @router /signup [post]
@@ -105,7 +105,7 @@ func (h *Handler) Signup() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, "user created successfully", map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
 	})
@@ -116,7 +116,7 @@ func (h *Handler) GetTelemetryID() {
 	logger.Infof("Get telemetry ID initiated")
 
 	telemetryID := telemetry.GetTelemetryUserID()
-	utils.SuccessResponse(&h.Controller, map[string]interface{}{
+	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", map[string]interface{}{
 		telemetry.TelemetryUserIDFile: string(telemetryID),
 	})
 }

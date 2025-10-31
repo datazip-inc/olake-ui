@@ -25,7 +25,7 @@ func (h *Handler) ListJobs() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve jobs by project ID: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, jobs)
+	utils.SuccessResponse(&h.Controller, "jobs listed successfully", jobs)
 }
 
 // @router /project/:projectid/jobs [post]
@@ -48,14 +48,14 @@ func (h *Handler) CreateJob() {
 		return
 	}
 
-	// Conditional validation: if id present, we only require id; otherwise, require name/type/version/config.
+	// Conditional validation
 	if req.Source.ID == nil {
 		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
 			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
 		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("source name, version, and config are required when source id is not provided: %s", err), err)
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "source name, version, and config are required when source id is not provided", err)
 			return
 		}
 	}
@@ -66,19 +66,18 @@ func (h *Handler) CreateJob() {
 			return
 		}
 		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("destination name, version, and config are required when destination id is not provided: %s", err), err)
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "destination name, version, and config are required when destination id is not provided", err)
 			return
 		}
 	}
 
-	logger.Debugf("Create job initiated project_id[%s] job_name[%s] user_id[%v]",
-		projectID, req.Name, userID)
+	logger.Debugf("Create job initiated project_id[%s] job_name[%s] user_id[%v]", projectID, req.Name, userID)
 
 	if err := h.etl.CreateJob(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, req.Name)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
 }
 
 // @router /project/:projectid/jobs/:id [put]
@@ -107,37 +106,26 @@ func (h *Handler) UpdateJob() {
 		return
 	}
 
-	// Conditional validation: if id present, we only require id; otherwise, require name/type/version/config.
 	if req.Source.ID == nil {
 		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
 			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
-		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("source name, version, and config are required when source id is not provided: %s", err), err)
-			return
-		}
 	}
-
 	if req.Destination.ID == nil {
 		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
 			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
-		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
-			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("destination name, version, and config are required when destination id is not provided: %s", err), err)
-			return
-		}
 	}
 
-	logger.Debugf("Update job initiated project_id[%s] job_id[%d] job_name[%s] user_id[%v]",
-		projectID, jobID, req.Name, userID)
+	logger.Debugf("Update job initiated project_id[%s] job_id[%d] job_name[%s] user_id[%v]", projectID, jobID, req.Name, userID)
 
 	if err := h.etl.UpdateJob(h.Ctx.Request.Context(), &req, projectID, jobID, userID); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update job: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, req.Name)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
 }
 
 // @router /project/:projectid/jobs/:id [delete]
@@ -155,7 +143,7 @@ func (h *Handler) DeleteJob() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete job: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, jobName)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
 }
 
 // @router /project/:projectid/jobs/check-unique [post]
@@ -179,7 +167,7 @@ func (h *Handler) CheckUniqueJobName() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check job name uniqueness: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, dto.CheckUniqueJobNameResponse{Unique: unique})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job name '%s' uniqueness checked successfully", req.JobName), dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
 // @router /project/:projectid/jobs/:id/sync [post]
@@ -203,7 +191,7 @@ func (h *Handler) SyncJob() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger sync: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, result)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("sync triggered successfully for job_id[%d]", id), result)
 }
 
 // @router /project/:projectid/jobs/:id/activate [put]
@@ -236,7 +224,7 @@ func (h *Handler) ActivateJob() {
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %s activated successfully", id), nil)
 }
 
 // @router /project/:projectid/jobs/:id/cancel [post]
@@ -255,12 +243,11 @@ func (h *Handler) CancelJobRun() {
 
 	logger.Infof("Cancel job run initiated project_id[%s] job_id[%d]", projectID, id)
 
-	resp, err := h.etl.CancelJobRun(h.Ctx.Request.Context(), projectID, id)
-	if err != nil {
+	if err := h.etl.CancelJobRun(h.Ctx.Request.Context(), projectID, id); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to cancel job run: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, resp)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
 }
 
 // @router /project/:projectid/jobs/:id/tasks [get]
@@ -288,7 +275,7 @@ func (h *Handler) GetJobTasks() {
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get job tasks: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, tasks)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
 // @router /project/:projectid/jobs/:id/logs [get]
@@ -316,7 +303,7 @@ func (h *Handler) GetTaskLogs() {
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, logs)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
 }
 
 // @router /internal/worker/callback/sync-telemetry [post]
@@ -342,5 +329,5 @@ func (h *Handler) UpdateSyncTelemetry() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("sync telemetry updated successfully for job_id[%d] workflow_id[%s] event[%s]", req.JobID, req.WorkflowID, req.Event), nil)
 }
