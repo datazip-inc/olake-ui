@@ -55,7 +55,7 @@ func (s *ETLService) GetAllSources(_ context.Context, _ string) ([]dto.SourceDat
 		setUsernames(&item.CreatedBy, &item.UpdatedBy, src.CreatedBy, src.UpdatedBy)
 
 		jobs := jobsBySourceID[src.ID]
-		jobItems, err := buildJobDataItems(jobs)
+		jobItems, err := buildJobDataItems(jobs, s.temporal, "source")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}

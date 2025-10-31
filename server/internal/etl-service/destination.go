@@ -53,7 +53,7 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 		setUsernames(&entity.CreatedBy, &entity.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
-		jobItems, err := buildJobDataItems(jobs)
+		jobItems, err := buildJobDataItems(jobs, s.temporal, "destination")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
