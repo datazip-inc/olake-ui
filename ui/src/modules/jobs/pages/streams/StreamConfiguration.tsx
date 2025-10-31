@@ -12,14 +12,14 @@ import {
 	Tooltip,
 } from "antd"
 import {
-	ColumnsPlusRight,
-	GridFour,
-	Info,
-	Lightning,
-	Plus,
-	SlidersHorizontal,
-	X,
-	ArrowSquareOut,
+	ColumnsPlusRightIcon,
+	GridFourIcon,
+	LightningIcon,
+	PlusIcon,
+	SlidersHorizontalIcon,
+	XIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
 } from "@phosphor-icons/react"
 
 import {
@@ -30,6 +30,7 @@ import {
 	MultiFilterCondition,
 	CombinedStreamsData,
 	SyncMode,
+	IngestionMode,
 } from "../../../../types"
 
 import {
@@ -57,9 +58,11 @@ const StreamConfiguration = ({
 	fromJobEditFlow = false,
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
+	onIngestionModeChange,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
+	const [appendMode, setAppendMode] = useState(false)
 	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
@@ -141,7 +144,13 @@ const StreamConfiguration = ({
 			partition_regex: initialPartitionRegex || "",
 			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
-	}, [stream, initialNormalization])
+
+		setAppendMode(
+			initialSelectedStreams?.selected_streams?.[
+				stream.stream.namespace || ""
+			]?.find(s => s.stream_name === stream.stream.name)?.append_mode || false,
+		)
+	}, [stream, initialNormalization, initialSelectedStreams])
 
 	useEffect(() => {
 		// Skip when change originated from local user action
@@ -247,6 +256,15 @@ const StreamConfiguration = ({
 			...formData,
 			sync_mode: newApiSyncMode,
 		})
+	}
+
+	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
+		setAppendMode(ingestionMode === IngestionMode.APPEND)
+		onIngestionModeChange(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			ingestionMode === IngestionMode.APPEND,
+		)
 	}
 
 	const handleNormalizationChange = (checked: boolean) => {
@@ -507,7 +525,13 @@ const StreamConfiguration = ({
 			? columnType.find(t => t !== "null") || columnType[0]
 			: columnType
 
-		if (primaryType === "string" || primaryType === "timestamp") {
+		if (
+			primaryType === "string" ||
+			primaryType === "timestamp" ||
+			primaryType === "timestamp_micro" ||
+			primaryType === "timestamp_nano" ||
+			primaryType === "timestamp_milli"
+		) {
 			// Check if value is already wrapped in quotes
 			if (!value.startsWith('"') && !value.endsWith('"')) {
 				return `"${value}"`
@@ -624,7 +648,7 @@ const StreamConfiguration = ({
 											<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 												Cursor field:
 												<Tooltip title="Column for identifying new/updated records ">
-													<Info className="size-3.5 cursor-pointer" />
+													<InfoIcon className="size-3.5 cursor-pointer" />
 												</Tooltip>
 											</label>
 											<Select
@@ -662,7 +686,7 @@ const StreamConfiguration = ({
 													<Tooltip title="Alternative cursor column in case cursor column encounters null values">
 														<Button
 															type="default"
-															icon={<Plus className="size-4" />}
+															icon={<PlusIcon className="size-4" />}
 															onClick={() => setShowFallbackSelector(true)}
 															className="mb-[2px] flex items-center gap-1"
 														>
@@ -678,7 +702,7 @@ const StreamConfiguration = ({
 													<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 														Fallback Cursor:
 														<Tooltip title="Alternative cursor column in case cursor column encounters null values">
-															<Info className="size-3.5 cursor-pointer text-neutral-text" />
+															<InfoIcon className="size-3.5 cursor-pointer text-neutral-text" />
 														</Tooltip>
 													</label>
 													<Select
@@ -729,6 +753,42 @@ const StreamConfiguration = ({
 								</div>
 							)}
 					</div>
+
+					<div
+						className={clsx(
+							"mb-4",
+							isSelected
+								? "font-medium text-neutral-text"
+								: "font-normal text-gray-500",
+						)}
+					>
+						<div className="mb-3">
+							<label className="block w-full">Ingestion Mode:</label>
+							<div
+								className={clsx(
+									"text-xs",
+									!isSelected ? "text-gray-500" : "text-neutral-700",
+								)}
+							>
+								Specify how the data will be ingested in the destination
+							</div>
+						</div>
+						<Radio.Group
+							disabled={!isSelected}
+							className="mb-4 grid grid-cols-2 gap-4"
+							value={appendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
+							onChange={e => handleIngestionModeChange(e.target.value)}
+						>
+							<Radio value={IngestionMode.UPSERT}>Upsert</Radio>
+							<Radio value={IngestionMode.APPEND}>Append</Radio>
+						</Radio.Group>
+						{!isSelected && (
+							<div className="flex items-center gap-1 text-sm text-[#686868]">
+								<InfoIcon className="size-4" />
+								Select the stream to configure ingestion mode
+							</div>
+						)}
+					</div>
 				</div>
 
 				<div
@@ -748,7 +808,7 @@ const StreamConfiguration = ({
 				</div>
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
-						<Info className="size-4" />
+						<InfoIcon className="size-4" />
 						Select the stream to configure Normalization
 					</div>
 				)}
@@ -777,7 +837,7 @@ const StreamConfiguration = ({
 				</div>
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
-						<Info className="size-4" />
+						<InfoIcon className="size-4" />
 						Select the stream to configure Data Filter
 					</div>
 				)}
@@ -797,7 +857,7 @@ const StreamConfiguration = ({
 				<div className="text-neutral-text">Partitioning regex:</div>
 
 				<Tooltip title={PartitioningRegexTooltip}>
-					<Info className="size-5 cursor-help items-center pt-1 text-gray-500" />
+					<InfoIcon className="size-5 cursor-help items-center pt-1 text-gray-500" />
 				</Tooltip>
 				<a
 					href={
@@ -809,7 +869,7 @@ const StreamConfiguration = ({
 					rel="noopener noreferrer"
 					className="flex items-center text-primary hover:text-primary/80"
 				>
-					<ArrowSquareOut className="size-5" />
+					<ArrowSquareOutIcon className="size-5" />
 				</a>
 			</div>
 			{isSelected ? (
@@ -852,7 +912,7 @@ const StreamConfiguration = ({
 				</>
 			) : (
 				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
-					<Info className="size-4" />
+					<InfoIcon className="size-4" />
 					Select the stream to configure Partitioning
 				</div>
 			)}
@@ -896,7 +956,7 @@ const StreamConfiguration = ({
 							<Button
 								type="text"
 								danger
-								icon={<X className="size-4" />}
+								icon={<XIcon className="size-4" />}
 								onClick={() => handleRemoveFilter(index)}
 								disabled={isStreamInInitialSelection || !isSelected}
 							>
@@ -910,7 +970,7 @@ const StreamConfiguration = ({
 						</div>
 						{index === 0 && (
 							<div className="mb-4 flex items-center gap-1 rounded-lg bg-warning-light p-2 text-warning-light">
-								<Lightning className="size-4 font-bold text-warning" />
+								<LightningIcon className="size-4 font-bold text-warning" />
 								<div className="text-warning-dark">
 									Selecting indexed columns will enhance performance
 								</div>
@@ -967,7 +1027,7 @@ const StreamConfiguration = ({
 			{multiFilterCondition.conditions.length < 2 && (
 				<Button
 					type="default"
-					icon={<Plus className="size-4" />}
+					icon={<PlusIcon className="size-4" />}
 					onClick={handleAddFilter}
 					className="w-fit"
 					disabled={isStreamInInitialSelection || !isSelected}
@@ -997,7 +1057,7 @@ const StreamConfiguration = ({
 								<div className="flex items-center whitespace-nowrap font-medium">
 									Destination Table{" "}
 									<Tooltip title={DESTINATION_TABLE_TOOLTIP_TEXT}>
-										<Info className="size-5 cursor-help items-center px-0.5 text-gray-500" />
+										<InfoIcon className="size-5 cursor-help items-center px-0.5 text-gray-500" />
 									</Tooltip>{" "}
 									:
 								</div>
@@ -1019,17 +1079,17 @@ const StreamConfiguration = ({
 					<TabButton
 						id="config"
 						label="Config"
-						icon={<SlidersHorizontal className="size-3.5" />}
+						icon={<SlidersHorizontalIcon className="size-3.5" />}
 					/>
 					<TabButton
 						id="schema"
 						label="Schema"
-						icon={<ColumnsPlusRight className="size-3.5" />}
+						icon={<ColumnsPlusRightIcon className="size-3.5" />}
 					/>
 					<TabButton
 						id="partitioning"
 						label="Partitioning"
-						icon={<GridFour className="size-3.5" />}
+						icon={<GridFourIcon className="size-3.5" />}
 					/>
 				</div>
 			</div>

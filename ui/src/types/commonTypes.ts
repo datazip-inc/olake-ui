@@ -80,6 +80,12 @@ export interface CronParseResult {
 	customCronExpression?: string
 }
 
+export enum IngestionMode {
+	UPSERT = "Upsert",
+	APPEND = "Append",
+	CUSTOM = "Custom",
+}
+
 export interface EmptyStateProps {
 	page: "job" | "source" | "destination"
 	onButtonClick: () => void
