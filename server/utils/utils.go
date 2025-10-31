@@ -199,4 +199,77 @@ func ToCron(frequency string) string {
 	}
 }
 
+// LogEntry represents a log entry
+type LogEntry struct {
+	Level   string          `json:"level"`
+	Time    time.Time       `json:"time"`
+	Message json.RawMessage `json:"message"` // store raw JSON
+}
 
+// ReadLogs reads logs from the given mainLogDir and returns structured log entries.
+func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
+	// Check if mainLogDir exists
+	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
+	}
+
+	// Logs directory
+	logsDir := filepath.Join(mainLogDir, "logs")
+	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
+	}
+
+	files, err := os.ReadDir(logsDir)
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
+	}
+
+	logDir := filepath.Join(logsDir, files[0].Name())
+	logPath := filepath.Join(logDir, "olake.log")
+	logContent, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read log file: %s", logPath)
+	}
+
+	var parsedLogs []map[string]interface{}
+	lines := strings.Split(string(logContent), "\n")
+
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		var logEntry LogEntry
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			continue
+		}
+
+		if logEntry.Level == "debug" {
+			continue
+		}
+
+		// Convert Message to string safely
+		var messageStr string
+		var tmp interface{}
+		if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
+			switch v := tmp.(type) {
+			case string:
+				messageStr = v // plain string
+			default:
+				msgBytes, _ := json.Marshal(v) // object/array
+				messageStr = string(msgBytes)
+			}
+		} else {
+			// fallback: raw bytes as string
+			messageStr = string(logEntry.Message)
+		}
+
+		parsedLogs = append(parsedLogs, map[string]interface{}{
+			"level":   logEntry.Level,
+			"time":    logEntry.Time.UTC().Format(time.RFC3339),
+			"message": messageStr,
+		})
+	}
+
+	return parsedLogs, nil
+}

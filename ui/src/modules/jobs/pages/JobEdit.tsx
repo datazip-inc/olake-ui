@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import { message } from "antd"
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
+import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
@@ -14,6 +14,7 @@ import {
 	SourceData,
 	DestinationData,
 	StreamsDataStructure,
+	JobType,
 } from "../../../types"
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
@@ -35,6 +36,8 @@ import {
 	JOB_STEP_NUMBERS,
 } from "../../../utils/constants"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
+import StreamDifferenceModal from "../../common/Modals/StreamDifferenceModal"
+import StreamEditDisabledModal from "../../common/Modals/StreamEditDisabledModal"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -132,6 +135,8 @@ const JobEdit: React.FC = () => {
 		fetchSources,
 		fetchDestinations,
 		setShowResetStreamsModal,
+		setShowStreamDifferenceModal,
+		setShowStreamEditDisabledModal,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -144,7 +149,8 @@ const JobEdit: React.FC = () => {
 	const [destinationData, setDestinationData] =
 		useState<DestinationData | null>(null)
 	const [nextStep, setNextStep] = useState<JobCreationSteps | null>(null)
-
+	const [streamDifference, setStreamDifference] =
+		useState<StreamsDataStructure | null>(null)
 	// Streams step states
 	const [selectedStreams, setSelectedStreams] = useState<StreamsDataStructure>({
 		selected_streams: {},
@@ -171,6 +177,16 @@ const JobEdit: React.FC = () => {
 		}
 		loadData()
 	}, [])
+
+	// Disable stream editing if clear destination is running
+	useEffect(() => {
+		if (
+			job?.last_run_type === JobType.ClearDestination &&
+			job?.last_run_state.toLowerCase() === "running"
+		) {
+			setShowStreamEditDisabledModal(true)
+		}
+	}, [job])
 
 	const initializeFromExistingJob = (job: Job) => {
 		setJobName(job.name)
@@ -339,8 +355,50 @@ const JobEdit: React.FC = () => {
 						}),
 			frequency: cronExpression,
 			activate: job?.activate,
+			difference_streams: JSON.stringify(streamDifference),
 		}
 		return jobUpdateRequestPayload
+	}
+
+	const handleStreamDifference = async () => {
+		if (!sourceData || !destinationData || !jobId) {
+			message.error("Source and destination data are required")
+			return
+		}
+
+		if (
+			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+		) {
+			message.error("Filter Value cannot be empty")
+			return
+		}
+
+		const streamDifferenceResponse = (
+			await jobService.getStreamDifference(
+				jobId,
+				typeof selectedStreams === "string"
+					? selectedStreams
+					: JSON.stringify({
+							...selectedStreams,
+							selected_streams: getSelectedStreams(
+								selectedStreams.selected_streams,
+							),
+						}),
+			)
+		).data?.difference_streams
+
+		const diff =
+			typeof streamDifferenceResponse === "string"
+				? JSON.parse(streamDifferenceResponse || "{}")
+				: streamDifferenceResponse || {}
+		const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
+		// if there is a stream difference, show the stream difference modal
+		if (hasDiff) {
+			setStreamDifference(streamDifferenceResponse)
+			setShowStreamDifferenceModal(true)
+			return
+		}
+		handleJobSubmit()
 	}
 
 	// Handle job submission
@@ -356,18 +414,17 @@ const JobEdit: React.FC = () => {
 			message.error("Filter Value cannot be empty")
 			return
 		}
-
 		setIsSubmitting(true)
-
 		try {
 			// Create the job update payload
 			const jobUpdatePayload = getjobUpdatePayLoad()
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
-			message.success("Job updated successfully!")
 
-			// Refresh jobs and navigate back to jobs list
-			fetchJobs()
+			// wait for 1 second before refreshing jobs to avoid fetching old state
+			await new Promise(resolve => setTimeout(resolve, 1000))
+			message.success("Job updated successfully!")
+			await fetchJobs()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
@@ -389,7 +446,7 @@ const JobEdit: React.FC = () => {
 				setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 			}
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
-			handleJobSubmit()
+			handleStreamDifference()
 		} else if (currentStep === JOB_CREATION_STEPS.CONFIG) {
 			if (!jobName.trim()) {
 				message.error("Job name is required")
@@ -413,6 +470,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	const handleStepClick = async (step: string) => {
+		if (step === currentStep) return
 		if (currentStep === JOB_CREATION_STEPS.STREAMS) {
 			setNextStep(step as JobCreationSteps)
 			setShowResetStreamsModal(true)
@@ -449,7 +507,7 @@ const JobEdit: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="mr-1 size-5" />
+							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 						<div className="text-2xl font-bold">
 							{jobName ? (jobName === "-" ? " " : jobName) : "New Job"}
@@ -577,7 +635,7 @@ const JobEdit: React.FC = () => {
 								: "Finish"
 							: "Next"}
 						{currentStep !== JOB_CREATION_STEPS.STREAMS && (
-							<ArrowRight className="size-4 text-white" />
+							<ArrowRightIcon className="size-4 text-white" />
 						)}
 					</button>
 				</div>
@@ -586,6 +644,13 @@ const JobEdit: React.FC = () => {
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={isFromSources} />
 			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
+			{streamDifference && (
+				<StreamDifferenceModal
+					streamDifference={streamDifference}
+					onConfirm={handleJobSubmit}
+				/>
+			)}
+			<StreamEditDisabledModal from="jobEdit" />
 		</div>
 	)
 }

@@ -1,7 +1,12 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult, SelectedStream } from "../types"
+import {
+	CronParseResult,
+	JobType,
+	IngestionMode,
+	SelectedStream,
+} from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -15,6 +20,7 @@ import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 
+// These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
@@ -37,6 +43,7 @@ export const getConnectorImage = (connector: string) => {
 	}
 }
 
+// These are used to show documentation path for the connector
 export const getConnectorDocumentationPath = (
 	connector: string,
 	catalog: string | null,
@@ -75,6 +82,17 @@ export const getStatusClass = (status: string) => {
 			return "text-primary-700 bg-primary-200"
 		case "scheduled":
 			return "text-[rgba(0,0,0,88)] bg-neutral-light"
+		default:
+			return "text-[rgba(0,0,0,88)] bg-transparent"
+	}
+}
+
+export const getJobTypeClass = (jobType: JobType) => {
+	switch (jobType) {
+		case JobType.Sync:
+			return "text-[#52C41A] bg-[#F6FFED]"
+		case JobType.ClearDestination:
+			return "text-amber-700 bg-amber-50"
 		default:
 			return "text-[rgba(0,0,0,88)] bg-transparent"
 	}
@@ -119,6 +137,17 @@ export const getStatusLabel = (status: string) => {
 			return "Completed"
 		default:
 			return status
+	}
+}
+
+export const getJobTypeLabel = (lastRunType: JobType) => {
+	switch (lastRunType) {
+		case JobType.Sync:
+			return "Sync"
+		case JobType.ClearDestination:
+			return "Clear Destination"
+		default:
+			return lastRunType
 	}
 }
 
@@ -189,6 +218,7 @@ export const getFrequencyValue = (frequency: string) => {
 	}
 }
 
+// removes the saved job from local storage when user deletes the job or completes entire flow and create
 export const removeSavedJobFromLocalStorage = (jobId: string) => {
 	const savedJobs = localStorage.getItem("savedJobs")
 	if (savedJobs) {
@@ -432,6 +462,7 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 
 export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
 
+// used to cancel old requests when new one is made which helps in removing the old data
 export const withAbortController = <T>(
 	fn: AbortableFunction<T>,
 	onSuccess: (data: T) => void,
@@ -473,11 +504,13 @@ export const withAbortController = <T>(
 	}
 }
 
+// for small screen items shown will be 6 else 8
 export const getResponsivePageSize = () => {
 	const screenHeight = window.innerHeight
 	return screenHeight >= 900 ? 8 : 6
 }
 
+// validate alphanumeric underscore
 export const validateAlphanumericUnderscore = (
 	value: string,
 ): { validValue: string; errorMessage: string } => {
@@ -522,6 +555,7 @@ export const getSelectedStreams = (selectedStreams: {
 	)
 }
 
+// validates filter expression
 export const validateFilter = (filter: string): boolean => {
 	if (!filter.trim()) return false
 	return FILTER_REGEX.test(filter.trim())
@@ -533,4 +567,27 @@ export const validateStreams = (selections: {
 	return !Object.values(selections).some(streams =>
 		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
 	)
+}
+
+export const getIngestionMode = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): IngestionMode => {
+	const selectedStreamsObj = getSelectedStreams(selectedStreams)
+	const allSelectedStreams: SelectedStream[] = []
+
+	// Flatten all streams from all namespaces
+	Object.values(selectedStreamsObj).forEach((streams: SelectedStream[]) => {
+		allSelectedStreams.push(...streams)
+	})
+
+	if (allSelectedStreams.length === 0) return IngestionMode.UPSERT
+
+	const appendCount = allSelectedStreams.filter(
+		s => s.append_mode === true,
+	).length
+	const upsertCount = allSelectedStreams.filter(s => !s.append_mode).length
+
+	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
+	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
+	return IngestionMode.CUSTOM
 }

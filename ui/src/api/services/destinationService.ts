@@ -11,6 +11,7 @@ import { getConnectorInLowerCase } from "../../utils/utils"
 
 // TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {
+	//destination connector typemap
 	const typeMap: Record<string, string> = {
 		"amazon s3": "s3",
 		"apache iceberg": "iceberg",
@@ -93,6 +94,7 @@ export const destinationService = {
 					source_type: source_type,
 					source_version: source_version,
 				},
+				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0 },
 			)
 			return {
@@ -136,6 +138,7 @@ export const destinationService = {
 				source_type: source_type,
 				source_version: source_version,
 			},
+			//timeout is 300000 as spec takes more time as it needs to fetch the spec from the destination
 			{ timeout: 300000, signal },
 		)
 		return response.data

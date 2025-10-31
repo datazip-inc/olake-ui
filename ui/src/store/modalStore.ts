@@ -1,4 +1,5 @@
 import { StateCreator } from "zustand"
+import { IngestionMode } from "../types/commonTypes"
 
 export interface ModalSlice {
 	showTestingModal: boolean
@@ -9,11 +10,15 @@ export interface ModalSlice {
 	showDeleteModal: boolean
 	showDeleteJobModal: boolean
 	showClearDataModal: boolean
-	showClearDestinationAndSyncModal: boolean
+	showClearDestinationModal: boolean
+	showStreamDifferenceModal: boolean
+	showStreamEditDisabledModal: boolean
 	showEditSourceModal: boolean
 	showEditDestinationModal: boolean
 	showDestinationDatabaseModal: boolean
 	showResetStreamsModal: boolean
+	showIngestionModeChangeModal: boolean
+	ingestionMode: IngestionMode
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
 	setShowFailureModal: (show: boolean) => void
@@ -22,11 +27,15 @@ export interface ModalSlice {
 	setShowDeleteModal: (show: boolean) => void
 	setShowDeleteJobModal: (show: boolean) => void
 	setShowClearDataModal: (show: boolean) => void
-	setShowClearDestinationAndSyncModal: (show: boolean) => void
+	setShowClearDestinationModal: (show: boolean) => void
+	setShowStreamDifferenceModal: (show: boolean) => void
+	setShowStreamEditDisabledModal: (show: boolean) => void
 	setShowEditSourceModal: (show: boolean) => void
 	setShowEditDestinationModal: (show: boolean) => void
 	setShowDestinationDatabaseModal: (show: boolean) => void
 	setShowResetStreamsModal: (show: boolean) => void
+	setShowIngestionModeChangeModal: (show: boolean) => void
+	setIngestionMode: (mode: IngestionMode) => void
 }
 
 export const createModalSlice: StateCreator<ModalSlice> = set => ({
@@ -38,12 +47,15 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	showDeleteModal: false,
 	showDeleteJobModal: false,
 	showClearDataModal: false,
-	showClearDestinationAndSyncModal: false,
+	showClearDestinationModal: false,
+	showStreamDifferenceModal: false,
+	showStreamEditDisabledModal: false,
 	showEditSourceModal: false,
 	showEditDestinationModal: false,
 	showDestinationDatabaseModal: false,
 	showResetStreamsModal: false,
-
+	showIngestionModeChangeModal: false,
+	ingestionMode: IngestionMode.UPSERT,
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
 	setShowFailureModal: show => set({ showFailureModal: show }),
@@ -52,11 +64,18 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	setShowDeleteModal: show => set({ showDeleteModal: show }),
 	setShowDeleteJobModal: show => set({ showDeleteJobModal: show }),
 	setShowClearDataModal: show => set({ showClearDataModal: show }),
-	setShowClearDestinationAndSyncModal: show =>
-		set({ showClearDestinationAndSyncModal: show }),
+	setShowClearDestinationModal: show =>
+		set({ showClearDestinationModal: show }),
+	setShowStreamDifferenceModal: show =>
+		set({ showStreamDifferenceModal: show }),
+	setShowStreamEditDisabledModal: show =>
+		set({ showStreamEditDisabledModal: show }),
 	setShowEditSourceModal: show => set({ showEditSourceModal: show }),
 	setShowEditDestinationModal: show => set({ showEditDestinationModal: show }),
 	setShowDestinationDatabaseModal: show =>
 		set({ showDestinationDatabaseModal: show }),
 	setShowResetStreamsModal: show => set({ showResetStreamsModal: show }),
+	setShowIngestionModeChangeModal: show =>
+		set({ showIngestionModeChangeModal: show }),
+	setIngestionMode: mode => set({ ingestionMode: mode }),
 })

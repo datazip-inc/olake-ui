@@ -29,6 +29,7 @@ import {
 	CONNECTOR_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
@@ -283,7 +284,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				const testResult =
 					await sourceService.testSourceConnection(newSourceData)
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -296,7 +300,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							})
 					}, 1000)
 				} else {
-					setSourceTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setSourceTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -339,7 +347,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setSetupType(type)
 			setSourceName("")
 			onSourceNameChange?.("")
-
+			// show documentation only in the case of new
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true) // Close doc panel
@@ -407,6 +415,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						value={connector}
 						onChange={handleConnectorChange}
+						data-testid="source-connector-select"
 						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
 						options={connectorOptions}
 						{...(setupType !== SETUP_TYPES.NEW
@@ -451,6 +460,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"
+									data-testid="source-version-select"
 									options={versions.map(version => ({
 										value: version,
 										label: version,
@@ -495,6 +505,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						placeholder="Select a source"
 						className="w-full"
+						data-testid="existing-source"
 						onChange={handleExistingSourceSelect}
 						value={existingSource}
 						options={filteredSources.map(s => ({
@@ -549,7 +560,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									validator={validator}
 									omitExtraData
 									liveOmit
-									showErrorList={false}
+									showErrorList={false} // adding this will not show error list
 									onSubmit={handleCreate}
 								/>
 							</div>

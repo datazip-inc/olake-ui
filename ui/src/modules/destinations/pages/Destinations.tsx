@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Path, Plus } from "@phosphor-icons/react"
+import { PathIcon, PlusIcon } from "@phosphor-icons/react"
 import { Button, Tabs, Empty, message, Spin } from "antd"
 
 import analyticsService from "../../../api/services/analyticsService"
@@ -59,6 +59,7 @@ const Destinations: React.FC = () => {
 	}
 
 	const filteredDestinations = (): Entity[] => {
+		// a destination is active if it has jobs and at least one job is active
 		if (activeTab === "active") {
 			return destinations.filter(
 				destination =>
@@ -99,14 +100,14 @@ const Destinations: React.FC = () => {
 		<div className="p-6">
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center">
-					<Path className="mr-2 size-6" />
+					<PathIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Destinations</h1>
 				</div>
 				<button
 					onClick={handleCreateDestination}
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 				>
-					<Plus className="size-4 text-white" />
+					<PlusIcon className="size-4 text-white" />
 					Create Destination
 				</button>
 			</div>

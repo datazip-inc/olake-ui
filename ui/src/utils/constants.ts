@@ -1,5 +1,9 @@
-import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem } from "../types"
+import {
+	GitCommitIcon,
+	LinktreeLogoIcon,
+	PathIcon,
+} from "@phosphor-icons/react"
+import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -87,7 +91,7 @@ export const DESTINATION_LABELS = {
 	APACHE_ICEBERG: "apache iceberg",
 }
 
-export const JOB_TYPES = {
+export const JOB_STATUS = {
 	ACTIVE: "active",
 	INACTIVE: "inactive",
 	SAVED: "saved",
@@ -121,9 +125,9 @@ export const LOCALSTORAGE_TOKEN_KEY = "token"
 export const LOCALSTORAGE_USERNAME_KEY = "username"
 
 export const NAV_ITEMS: NavItem[] = [
-	{ path: "/jobs", label: "Jobs", icon: GitCommit },
-	{ path: "/sources", label: "Sources", icon: LinktreeLogo },
-	{ path: "/destinations", label: "Destinations", icon: Path },
+	{ path: "/jobs", label: "Jobs", icon: GitCommitIcon },
+	{ path: "/sources", label: "Sources", icon: LinktreeLogoIcon },
+	{ path: "/destinations", label: "Destinations", icon: PathIcon },
 ]
 
 export const sourceTabs = [
@@ -229,6 +233,7 @@ export const JOB_STEP_NUMBERS = {
 	STREAMS: 4,
 } as const
 
+// not showing oneof and const errors
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
@@ -272,3 +277,8 @@ export const FILTER_REGEX =
 	/^(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+)\s*(?:(and|or)\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+))?\s*$/
 
 export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
+
+export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
+	SUCCEEDED: "SUCCEEDED",
+	FAILED: "FAILED",
+} as const
