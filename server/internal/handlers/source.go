@@ -203,7 +203,7 @@ func (h *Handler) GetSourceJobs() {
 		}
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s jobs listed successfully", id), map[string]interface{}{"jobs": jobs})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %d jobs listed successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/sources/versions [get]

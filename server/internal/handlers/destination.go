@@ -160,7 +160,7 @@ func (h *Handler) GetDestinationJobs() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %d jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/destinations/versions [get]

@@ -145,12 +145,7 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 }
 
 func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
-	job, err := s.db.GetJobByID(jobID, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find job: %s", err)
-	}
-
-	if err := s.temporal.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
+	if err := s.temporal.TriggerSchedule(ctx, projectID, jobID); err != nil {
 		return nil, fmt.Errorf("failed to trigger sync: %s", err)
 	}
 

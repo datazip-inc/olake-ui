@@ -224,7 +224,7 @@ func (h *Handler) ActivateJob() {
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %s activated successfully", id), nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %d activated successfully", id), nil)
 }
 
 // @router /project/:projectid/jobs/:id/cancel [post]
