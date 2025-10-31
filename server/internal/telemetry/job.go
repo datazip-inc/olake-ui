@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/models"
 )
 
 // TrackJobCreation tracks the creation of a new job with relevant properties

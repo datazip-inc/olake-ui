@@ -3,11 +3,9 @@ on:
   push:
     branches:
       - "master"
-      - "feat/bff-api"
   pull_request:
     branches:
       - "*"
-      - "feat/bff-api"
   workflow_dispatch:
     inputs:
       logLevel:
@@ -39,8 +37,8 @@ jobs:
         with:
           check-latest: "true"
           go-version: "1.24.x"
-      - name: install gosec
-        run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+      - name: Install gosec
+        run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- latest -b $(go env GOPATH)/bin
       - name: Run Gosec Security Scanner
         working-directory: ./server
         run: $(go env GOPATH)/bin/gosec -exclude=G115 -severity=high -confidence=medium ./...

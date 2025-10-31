@@ -11,8 +11,8 @@ import (
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
 	_ "github.com/lib/pq"                                     // required for registering driver
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/models"
 )
 
 func Init() error {

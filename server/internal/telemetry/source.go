@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/models"
 )
 
 // TrackSourceCreation tracks the creation of a new source with relevant properties

@@ -5,7 +5,8 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
-	"github.com/datazip/olake-frontend/server/internal/handlers"
+	"github.com/datazip/olake-ui/server/internal/handlers"
+	"github.com/datazip/olake-ui/server/internal/middleware"
 )
 
 // writeDefaultCorsHeaders sets common CORS headers
@@ -43,7 +44,7 @@ func Init() {
 	}
 
 	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
+	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
 	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
@@ -86,4 +87,9 @@ func Init() {
 	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", &handlers.JobHandler{}, "get:CancelJobRun")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", &handlers.JobHandler{}, "post:GetTaskLogs")
 	web.Router("/api/v1/project/:projectid/jobs/check-unique", &handlers.JobHandler{}, "post:CheckUniqueJobName")
+	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", &handlers.JobHandler{}, "post:ClearDestination")
+	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", &handlers.JobHandler{}, "post:DifferenceStreams")
+
+	// worker callback routes
+	web.Router("/internal/worker/callback/sync-telemetry", &handlers.JobHandler{}, "post:UpdateSyncTelemetry")
 }

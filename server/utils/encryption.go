@@ -11,12 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
-	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/beego/beego/v2/server/web"
 )
 
 // utility provides encryption and decryption functionality using either AWS KMS or local AES-256-GCM.
@@ -31,7 +30,7 @@ import (
 func getSecretKey() ([]byte, *kms.Client, error) {
 	// TODO: can we move this to constants and set key and kms client
 	// TODO: use viper package to read environment variables
-	envKey := os.Getenv(constants.EncryptionKey)
+	envKey, _ := web.AppConfig.String("encryptionkey")
 	if strings.TrimSpace(envKey) == "" {
 		return []byte{}, nil, nil // Encryption is disabled
 	}

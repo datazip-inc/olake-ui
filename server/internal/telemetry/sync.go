@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/database"
 )
 
 type jobDetails struct {

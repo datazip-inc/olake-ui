@@ -1,22 +1,20 @@
 package main
 
 import (
-	"os"
-
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/logger"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/routes"
+	"github.com/datazip/olake-ui/server/internal/constants"
+	"github.com/datazip/olake-ui/server/internal/database"
+	"github.com/datazip/olake-ui/server/internal/logger"
+	"github.com/datazip/olake-ui/server/internal/telemetry"
+	"github.com/datazip/olake-ui/server/routes"
 )
 
 func main() {
 	// TODO: check if we have to create a new config file for docker compatibility
-	if key := os.Getenv(constants.EncryptionKey); key == "" {
+	if key, _ := web.AppConfig.String("encryptionkey"); key == "" {
 		logs.Warning("Encryption key is not set. This is not recommended for production environments.")
 	}
 
