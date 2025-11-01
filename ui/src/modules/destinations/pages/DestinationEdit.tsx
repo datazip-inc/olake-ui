@@ -13,11 +13,11 @@ import {
 } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
-	ArrowLeft,
-	ArrowSquareOut,
-	Info,
-	Notebook,
-	PencilSimple,
+	ArrowLeftIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
+	NotebookIcon,
+	PencilSimpleIcon,
 } from "@phosphor-icons/react"
 import validator from "@rjsf/validator-ajv8"
 import Form from "@rjsf/antd"
@@ -487,7 +487,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		<div className="rounded-lg">
 			<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 				<div className="mb-4 flex items-center gap-1 text-lg font-medium">
-					<Notebook className="size-5" />
+					<NotebookIcon className="size-5" />
 					Capture information
 				</div>
 
@@ -499,6 +499,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							</label>
 							<div className="flex items-center">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={updateConnector}
 									className="h-8 w-full"
@@ -511,7 +512,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
 								OLake Version:
 								<Tooltip title="Choose the OLake version for the destination">
-									<Info
+									<InfoIcon
 										size={16}
 										className="cursor-help text-slate-900"
 									/>
@@ -522,7 +523,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 									rel="noopener noreferrer"
 									className="flex items-center text-primary hover:text-primary/80"
 								>
-									<ArrowSquareOut className="size-4" />
+									<ArrowSquareOutIcon className="size-4" />
 								</a>
 							</label>
 							{loadingVersions ? (
@@ -532,6 +533,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							) : versions.length > 0 ? (
 								<Select
 									value={selectedVersion}
+									data-testid="destination-version-select"
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"
@@ -543,7 +545,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 								/>
 							) : (
 								<div className="flex items-center gap-1 text-sm text-red-500">
-									<Info />
+									<InfoIcon />
 									No versions available
 								</div>
 							)}
@@ -651,7 +653,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 							to="/destinations"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="size-5" />
+							<ArrowLeftIcon className="size-5" />
 						</Link>
 						<div className="text-lg font-bold">{destinationName}</div>
 					</div>
@@ -675,7 +677,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											}
 											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
-											<PencilSimple className="size-4" />
+											<PencilSimpleIcon className="size-4" />
 											Edit Destination
 										</Link>
 									</div>

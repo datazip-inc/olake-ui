@@ -1,5 +1,5 @@
 import { FieldTemplateProps } from "@rjsf/utils"
-import { Info, Plus, Trash } from "@phosphor-icons/react"
+import { InfoIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { Tooltip, Button } from "antd"
 import { useState, useEffect } from "react"
 
@@ -42,7 +42,7 @@ function KeyValueRow({
 			<Button
 				type="text"
 				onClick={() => onDelete(keyName)}
-				icon={<Trash className="text-red-500" />}
+				icon={<TrashIcon className="text-red-500" />}
 			/>
 		</div>
 	)
@@ -81,7 +81,7 @@ function NewKeyValueRow({
 			<Button
 				type="text"
 				onClick={onAdd}
-				icon={<Plus className="text-blue-500" />}
+				icon={<PlusIcon className="text-blue-500" />}
 			/>
 		</div>
 	)
@@ -225,7 +225,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 							title={description || rawDescription}
 							placement="right"
 						>
-							<Info className="ml-1 text-gray-500 hover:text-gray-600" />
+							<InfoIcon className="ml-1 text-gray-500 hover:text-gray-600" />
 						</Tooltip>
 					)}
 				</label>

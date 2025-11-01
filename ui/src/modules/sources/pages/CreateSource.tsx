@@ -421,6 +421,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						value={connector}
 						onChange={handleConnectorChange}
+						data-testid="source-connector-select"
 						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
 						options={connectorOptions}
 						{...(setupType !== SETUP_TYPES.NEW
@@ -465,6 +466,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"
+									data-testid="source-version-select"
 									options={versions.map(version => ({
 										value: version,
 										label: version,
@@ -509,6 +511,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						placeholder="Select a source"
 						className="w-full"
+						data-testid="existing-source"
 						onChange={handleExistingSourceSelect}
 						value={existingSource}
 						options={filteredSources.map(s => ({

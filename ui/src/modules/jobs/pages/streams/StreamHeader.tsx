@@ -1,4 +1,4 @@
-import { CaretRight } from "@phosphor-icons/react"
+import { CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, CheckboxChangeEvent } from "antd"
 import clsx from "clsx"
 
@@ -32,7 +32,7 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 				"flex w-full items-center justify-between border-b border-solid border-[#e5e7eb] py-3 pl-6",
 				isActiveStream
 					? "bg-primary-100"
-					: "bg-white hover:bg-background-primary",
+					: "border-l border-r bg-white hover:bg-background-primary",
 			)}
 		>
 			<div
@@ -52,7 +52,7 @@ const StreamHeader: React.FC<StreamHeaderProps> = ({
 				</div>
 				{!isActiveStream && (
 					<div className="mr-4">
-						<CaretRight className="size-4 text-gray-500" />
+						<CaretRightIcon className="size-4 text-gray-500" />
 					</div>
 				)}
 			</div>

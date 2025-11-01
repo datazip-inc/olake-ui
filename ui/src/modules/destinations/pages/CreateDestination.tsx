@@ -511,6 +511,7 @@ const CreateDestination = forwardRef<
 						<div className="flex-start flex w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="w-full"
@@ -540,6 +541,7 @@ const CreateDestination = forwardRef<
 								) : versions && versions.length > 0 ? (
 									<Select
 										value={version}
+										data-testid="destination-version-select"
 										onChange={handleVersionChange}
 										className="w-full"
 										placeholder="Select version"
@@ -579,6 +581,7 @@ const CreateDestination = forwardRef<
 						<div className="w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="h-8 w-full"
@@ -594,6 +597,7 @@ const CreateDestination = forwardRef<
 							<Select
 								placeholder="Select a destination"
 								className="w-full"
+								data-testid="existing-destination"
 								onChange={handleExistingDestinationSelect}
 								value={existingDestination}
 								options={filteredDestinations.map(d => ({

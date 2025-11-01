@@ -17,7 +17,7 @@ import (
 // Source-related methods on AppService
 
 // GetAllSources returns all sources for a project with lightweight job summaries.
-func (s *ETLService) GetAllSources(_ context.Context, projectID string) ([]dto.SourceDataItem, error) {
+func (s *ETLService) GetAllSources(_ context.Context, _ string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
@@ -55,7 +55,7 @@ func (s *ETLService) GetAllSources(_ context.Context, projectID string) ([]dto.S
 		setUsernames(&item.CreatedBy, &item.UpdatedBy, src.CreatedBy, src.UpdatedBy)
 
 		jobs := jobsBySourceID[src.ID]
-		jobItems, err := buildJobDataItems(jobs)
+		jobItems, err := buildJobDataItems(jobs, s.temporal, "source")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
