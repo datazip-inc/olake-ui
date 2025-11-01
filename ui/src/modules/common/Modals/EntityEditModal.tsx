@@ -82,7 +82,6 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				setTimeout(async () => {
 					setShowSuccessModal(false)
 					await updateEntity(selectedEntity.id.toString(), selectedEntity)
-					message.success(`${entityType} updated successfully`)
 					navigate(navigatePath)
 				}, 2000)
 			} else {
@@ -95,7 +94,6 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				setShowFailureModal(true)
 			}
 		} catch (error) {
-			message.error(`Failed to update ${entityType}`)
 			console.error(error)
 		}
 	}

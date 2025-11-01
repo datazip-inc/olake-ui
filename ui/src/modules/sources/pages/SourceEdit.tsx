@@ -1,16 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import {
-	Input,
-	Button,
-	Select,
-	Switch,
-	message,
-	Table,
-	Spin,
-	Tooltip,
-} from "antd"
+import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
 	GenderNeuter,
@@ -198,8 +189,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				const response = await sourceService.getSourceVersions(
 					getConnectorInLowerCase(connector),
 				)
-				if (response.success && response.data?.version) {
-					const versions = response.data.version.map((version: string) => ({
+				if (response?.version) {
+					const versions = response.version.map((version: string) => ({
 						label: version,
 						value: version,
 					}))
@@ -316,11 +307,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		if (sourceId) {
 			updateSource(sourceId, getSourceData())
 				.then(() => {
-					message.success("Source updated successfully")
 					navigate("/sources")
 				})
 				.catch(error => {
-					message.error("Failed to update source")
 					console.error(error)
 				})
 		}
@@ -346,14 +335,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
 			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
 			// Refetch sources to update the UI with the latest source details
 			await fetchSources()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 		}
 	}
 

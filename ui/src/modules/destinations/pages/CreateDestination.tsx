@@ -82,6 +82,7 @@ const CreateDestination = forwardRef<
 			onConnectorChange,
 			onFormDataChange,
 			onVersionChange,
+			onExistingDestinationIdChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
 			sourceConnector,
@@ -226,10 +227,12 @@ const CreateDestination = forwardRef<
 				setLoadingVersions(true)
 				try {
 					const response = await destinationService.getDestinationVersions(
-						connector.toLowerCase(),
+						connector.toLowerCase() === CONNECTOR_TYPES.APACHE_ICEBERG
+							? DESTINATION_INTERNAL_TYPES.ICEBERG
+							: DESTINATION_INTERNAL_TYPES.S3,
 					)
-					if (response.data?.version) {
-						const receivedVersions = response.data.version
+					if (response?.version) {
+						const receivedVersions = response?.version
 						setVersions(receivedVersions)
 						if (receivedVersions.length > 0) {
 							let defaultVersion = receivedVersions[0]
@@ -419,6 +422,7 @@ const CreateDestination = forwardRef<
 			setConnector(value as ConnectorType)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingDestination(null)
+				onExistingDestinationIdChange?.(null)
 				setDestinationName("")
 				onDestinationNameChange?.("")
 			}
@@ -435,6 +439,7 @@ const CreateDestination = forwardRef<
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
 			setDestinationName("")
+			onExistingDestinationIdChange?.(null)
 			onDestinationNameChange?.("")
 
 			if (onDocsMinimizedChange) {
@@ -450,6 +455,7 @@ const CreateDestination = forwardRef<
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingDestination(null)
+				onExistingDestinationIdChange?.(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
 				if (onFormDataChange) onFormDataChange({})
@@ -478,6 +484,7 @@ const CreateDestination = forwardRef<
 			setDestinationName(selectedDestination.name)
 			setFormData(configObj)
 			setExistingDestination(value)
+			onExistingDestinationIdChange?.(selectedDestination.id)
 		}
 
 		const handleVersionChange = (value: string) => {

@@ -30,7 +30,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = set => ({
 		try {
 			const response = await jobService.getJobTasks(jobId)
 			set({
-				jobTasks: response.data,
+				jobTasks: response,
 				isLoadingJobTasks: false,
 			})
 		} catch (error) {
@@ -49,7 +49,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = set => ({
 		try {
 			const response = await jobService.getTaskLogs(jobId, taskId, filePath)
 			set({
-				taskLogs: response.data,
+				taskLogs: response,
 				isLoadingTaskLogs: false,
 			})
 		} catch (error) {

@@ -145,7 +145,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					fromJobEditFlow ? jobId : -1,
 				)
 
-				const rawApiResponse = response.data as any
+				const rawApiResponse = response as any
 				const processedResponseData: CombinedStreamsData = {
 					streams: [],
 					selected_streams: {},

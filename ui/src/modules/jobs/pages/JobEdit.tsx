@@ -364,7 +364,6 @@ const JobEdit: React.FC = () => {
 			const jobUpdatePayload = getjobUpdatePayLoad()
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
-			message.success("Job updated successfully!")
 
 			// Refresh jobs and navigate back to jobs list
 			fetchJobs()

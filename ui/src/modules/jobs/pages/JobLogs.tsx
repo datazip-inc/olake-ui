@@ -2,7 +2,11 @@ import { useEffect, useState } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, message, Button, Tooltip } from "antd"
-import { ArrowLeft, ArrowRight, ArrowsClockwise } from "@phosphor-icons/react"
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowsClockwiseIcon,
+} from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import {
@@ -43,10 +47,7 @@ const JobLogs: React.FC = () => {
 
 		if (jobId) {
 			if (isTaskLog && filePath) {
-				fetchTaskLogs(jobId, historyId || "1", filePath).catch(error => {
-					message.error("Failed to fetch task logs")
-					console.error(error)
-				})
+				fetchTaskLogs(jobId, historyId || "1", filePath)
 			}
 		}
 	}, [
@@ -122,7 +123,7 @@ const JobLogs: React.FC = () => {
 									to={`/jobs/${jobId}/history`}
 									className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 								>
-									<ArrowLeft className="size-5" />
+									<ArrowLeftIcon className="size-5" />
 								</Link>
 							</div>
 							<div className="flex flex-col items-start">
@@ -166,19 +167,10 @@ const JobLogs: React.FC = () => {
 					/>
 					<Tooltip title="Click to refetch the logs">
 						<Button
-							icon={<ArrowsClockwise size={16} />}
+							icon={<ArrowsClockwiseIcon size={16} />}
 							onClick={() => {
 								if (isTaskLog && filePath) {
 									fetchTaskLogs(jobId!, historyId || "1", filePath)
-										.then(() => {
-											message.destroy()
-											message.success("Logs refetched successfully")
-										})
-										.catch(error => {
-											message.destroy()
-											message.error("Failed to refetch task logs")
-											console.error(error)
-										})
 								}
 							}}
 							className="flex items-center"
@@ -293,7 +285,7 @@ const JobLogs: React.FC = () => {
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
 					View job configurations
-					<ArrowRight size={16} />
+					<ArrowRightIcon size={16} />
 				</Button>
 			</div>
 		</div>

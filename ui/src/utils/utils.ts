@@ -504,9 +504,9 @@ export const handleSpecResponse = (
 	errorType: "source" | "destination" = "source",
 ) => {
 	try {
-		if (response.success && response.data?.spec?.jsonschema) {
-			setSchema(response.data.spec.jsonschema)
-			setUiSchema(JSON.parse(response.data.spec.uischema))
+		if (response?.spec?.jsonschema) {
+			setSchema(response.spec.jsonschema)
+			setUiSchema(JSON.parse(response.spec.uischema))
 		} else {
 			console.error(`Failed to get ${errorType} spec:`, response.message)
 		}
