@@ -75,7 +75,8 @@ var RequiredConfigVariable = []string{
 
 func Init() {
 	viper.AutomaticEnv()
-
+	viper.SetDefault(EnvLogFormat, "console")
+	viper.SetDefault(EnvLogLevel, "info")
 	viper.SetDefault("PORT", defaultPort)
 	viper.SetDefault("BUILD", version)
 	viper.SetDefault("COMMITSHA", commitsha)

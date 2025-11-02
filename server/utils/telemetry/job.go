@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 // TrackJobCreation tracks the creation of a new job with relevant properties
@@ -32,7 +32,7 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 		}
 
 		if err := TrackEvent(ctx, EventJobCreated, properties); err != nil {
-			logs.Debug("Failed to track job creation event: %s", err)
+			logger.Debug("Failed to track job creation event: %s", err)
 			return
 		}
 		TrackJobEntity(ctx)

@@ -6,13 +6,13 @@ import (
 	"net/url"
 
 	"github.com/beego/beego/v2/client/orm"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
 	_ "github.com/lib/pq"                                     // required for registering driver
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 type Database struct {
@@ -80,7 +80,7 @@ func Init() (*Database, error) {
 // BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf
 // and constructs the Postgres connection URI.
 func BuildPostgresURIFromConfig() (string, error) {
-	logs.Info("Building Postgres URI from config")
+	logger.Info("Building Postgres URI from config")
 
 	// First, check if postgresdb is set directly
 	if dsn, err := web.AppConfig.String(constants.ConfPostgresDB); err == nil && dsn != "" {
