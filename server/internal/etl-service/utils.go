@@ -9,7 +9,9 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/temporal"
+	"go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/converter"
 )
 
 func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, jobs []*models.Job, projectID string) error {
@@ -21,7 +23,7 @@ func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, j
 	var conditions []string
 	for _, job := range jobs {
 		conditions = append(conditions, fmt.Sprintf(
-			"(WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~')",
+			"(WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND OperationType = 'sync')",
 			projectID, job.ID, projectID, job.ID,
 		))
 	}
@@ -107,4 +109,67 @@ func setJobWorkflowInfo(jobInfo *dto.JobDataItem, jobID int, projectID string, t
 		jobInfo.LastRunState = ""
 	}
 	return nil
+}
+
+// Checks if the sync worklfow run is "sync" or "clear-destination"
+func syncWorkflowOperationType(execution *workflow.WorkflowExecutionInfo) temporal.Command {
+	if execution.SearchAttributes == nil {
+		return temporal.Sync
+	}
+
+	opTypePayload, ok := execution.SearchAttributes.IndexedFields["OperationType"]
+	if !ok || opTypePayload == nil {
+		return temporal.Sync
+	}
+
+	var opType string
+	if err := converter.GetDefaultDataConverter().FromPayload(opTypePayload, &opType); err == nil {
+		return temporal.Command(opType)
+	}
+
+	return temporal.Sync
+}
+
+// isWorkflowRunning checks if workflows of a specific type are running
+func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, opType temporal.Command) (bool, error) {
+	query := fmt.Sprintf(
+		"WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND OperationType = '%s' AND ExecutionStatus = 'Running'",
+		projectID, jobID, projectID, jobID, opType,
+	)
+
+	resp, err := tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+		Query: query,
+	})
+	if err != nil {
+		return false, err
+	}
+	return len(resp.Executions) > 0, nil
+}
+
+// waitForSyncToStop waits for sync workflows to stop with timeout
+func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, maxWaitTime time.Duration) error {
+	deadline := time.Now().Add(maxWaitTime)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		running, err := isWorkflowRunning(ctx, tempClient, projectID, jobID, temporal.Sync)
+		if err != nil {
+			return fmt.Errorf("failed to check sync status: %s", err)
+		}
+		if !running {
+			return nil
+		}
+
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting for sync to stop after %v", maxWaitTime)
+		}
+
+		select {
+		case <-ticker.C:
+			continue
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }

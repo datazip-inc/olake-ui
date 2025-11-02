@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/temporal"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
@@ -87,6 +89,37 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to get job: %s", err)
 	}
 
+	// Block when clear-destination is running
+	if clearRunning, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination); clearRunning {
+		return fmt.Errorf("clear-destination is in progress, cannot update job")
+	}
+
+	// Cancel sync before updating the job
+	if syncRunning, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); syncRunning {
+		logger.Infof("sync is running for job %d, cancelling sync workflow", jobID)
+		jobSlice := []*models.Job{existingJob}
+		if err := cancelAllJobWorkflows(ctx, s.temporal, jobSlice, projectID); err != nil {
+			return fmt.Errorf("failed to cancel sync: %s", err)
+		}
+		logger.Infof("successfully cancelled sync for job %d", jobID)
+	}
+
+	// Handle stream difference if provided
+	if req.DifferenceStreams != "" {
+		var diffCatalog map[string]interface{}
+		if err := json.Unmarshal([]byte(req.DifferenceStreams), &diffCatalog); err != nil {
+			return fmt.Errorf("invalid difference_streams JSON: %s", err)
+		}
+
+		if len(diffCatalog) > 0 {
+			logger.Infof("stream difference detected for job %d, running clear destination workflow", existingJob.ID)
+			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams); err != nil {
+				return fmt.Errorf("failed to run clear destination workflow: %s", err)
+			}
+			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
+		}
+	}
+
 	// Snapshot previous job state for compensation on schedule update failure
 	prevJob := *existingJob
 
@@ -113,7 +146,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
-	err = s.temporal.UpdateSchedule(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID)
+	err = s.temporal.UpdateScheduleSpec(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID)
 	if err != nil {
 		// Compensation: restore previous DB state if schedule update fails
 		if rerr := s.db.UpdateJob(&prevJob); rerr != nil {
@@ -145,6 +178,15 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 }
 
 func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find job: %s", err)
+	}
+
+	if !job.Active {
+		return nil, fmt.Errorf("job is paused, please unpause to run sync")
+	}
+
 	if err := s.temporal.TriggerSchedule(ctx, projectID, jobID); err != nil {
 		return nil, fmt.Errorf("failed to trigger sync: %s", err)
 	}
@@ -198,6 +240,46 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
+func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string) (map[string]interface{}, error) {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found: %s", err)
+	}
+
+	if !job.Active {
+		return nil, fmt.Errorf("job is paused, please unpause to run clear destination")
+	}
+
+	// Check if sync is running and wait for it to stop
+	if running, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); running {
+		if err := waitForSyncToStop(ctx, s.temporal, projectID, jobID, 5*time.Second); err != nil {
+			return nil, fmt.Errorf("sync is in progress, please cancel it before running clear-destination")
+		}
+	}
+
+	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"message": "Clear destination initiated successfully",
+	}, nil
+}
+
+func (s *ETLService) GetStreamDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("job not found: %s", err)
+	}
+
+	diffCatalog, err := s.temporal.GetDifferenceStreams(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stream difference: %s", err)
+	}
+
+	return diffCatalog, nil
+}
+
 func (s *ETLService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
 	if err != nil {
@@ -231,11 +313,15 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 		} else {
 			runTime = time.Since(startTime).Round(time.Second).String()
 		}
+
+		opType := syncWorkflowOperationType(execution)
+		jobType := utils.Ternary(opType == temporal.Sync, "sync", "clear").(string)
 		tasks = append(tasks, dto.JobTask{
 			Runtime:   runTime,
 			StartTime: startTime.Format(time.RFC3339),
 			Status:    execution.Status.String(),
 			FilePath:  execution.Execution.WorkflowId,
+			JobType:   jobType,
 		})
 	}
 
@@ -309,8 +395,10 @@ func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, proj
 		return dto.JobResponse{}, fmt.Errorf("failed to list workflows: %s", err)
 	}
 	if len(resp.Executions) > 0 {
+		opType := syncWorkflowOperationType(resp.Executions[0])
 		jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
 		jobResp.LastRunState = resp.Executions[0].Status.String()
+		jobResp.LastRunType = utils.Ternary(opType == temporal.Sync, "sync", "clear").(string)
 	}
 
 	return jobResp, nil

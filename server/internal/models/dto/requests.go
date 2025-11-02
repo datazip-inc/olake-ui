@@ -87,7 +87,23 @@ type CreateJobRequest struct {
 	Activate      bool          `json:"activate,omitempty"`
 }
 
-type UpdateJobRequest = CreateJobRequest
+type UpdateJobRequest struct {
+	Name              string        `json:"name" validate:"required"`
+	Source            *DriverConfig `json:"source" validate:"required"`
+	Destination       *DriverConfig `json:"destination" validate:"required"`
+	Frequency         string        `json:"frequency" validate:"required"`
+	StreamsConfig     string        `json:"streams_config" orm:"type(jsonb)" validate:"required"`
+	DifferenceStreams string        `json:"difference_streams,omitempty"`
+	Activate          bool          `json:"activate,omitempty"`
+}
+
+type StreamDifferenceRequest struct {
+	UpdatedStreamsConfig string `json:"updated_streams_config" validate:"required"`
+}
+
+type StreamDifferenceResponse struct {
+	DifferenceStreams map[string]interface{} `json:"difference_streams"`
+}
 
 type JobTaskRequest struct {
 	FilePath string `json:"file_path" validate:"required"`

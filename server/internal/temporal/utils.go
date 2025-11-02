@@ -34,6 +34,41 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 	}
 }
 
+// buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
+func buildExecutionReqForClearDestination(job *models.Job, workflowID string, streamsConfig string) ExecutionRequest {
+	catalog := streamsConfig
+	if catalog == "" {
+		catalog = job.StreamsConfig
+	}
+
+	configs := []JobConfig{
+		{Name: "streams.json", Data: catalog},
+		{Name: "state.json", Data: job.State},
+		{Name: "destination.json", Data: job.DestID.Config},
+	}
+
+	args := []string{
+		"clear-destination",
+		"--streams", "/mnt/config/streams.json",
+		"--state", "/mnt/config/state.json",
+		"--destination", "/mnt/config/destination.json",
+	}
+
+	return ExecutionRequest{
+		Type:          "docker",
+		Command:       ClearDestination,
+		ConnectorType: job.SourceID.Type,
+		Version:       job.SourceID.Version,
+		Args:          args,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		ProjectID:     job.ProjectID,
+		JobID:         job.ID,
+		Timeout:       GetWorkflowTimeout(ClearDestination),
+		OutputFile:    "state.json",
+	}
+}
+
 // extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
 func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
 	var result map[string]interface{}
@@ -63,6 +98,8 @@ func GetWorkflowTimeout(op Command) time.Duration {
 	case Spec:
 		return time.Minute * 5
 	case Sync:
+		return time.Hour * 24 * 30
+	case ClearDestination:
 		return time.Hour * 24 * 30
 	// check what can the fallback time be
 	default:

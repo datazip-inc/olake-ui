@@ -250,6 +250,59 @@ func (h *Handler) CancelJobRun() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
 }
 
+// @router /project/:projectid/jobs/:id/clear-destination [post]
+func (h *Handler) ClearDestination() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+	result, err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "")
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), result)
+}
+
+// @router /project/:projectid/jobs/:id/stream-difference [post]
+func (h *Handler) GetStreamDifference() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	var req dto.StreamDifferenceRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get stream difference initiated project_id[%s] job_id[%d]", projectID, id)
+
+	diffStreams, err := h.etl.GetStreamDifference(h.Ctx.Request.Context(), projectID, id, req)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get stream difference", err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{
+		DifferenceStreams: diffStreams,
+	})
+}
+
 // @router /project/:projectid/jobs/:id/tasks [get]
 func (h *Handler) GetJobTasks() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)

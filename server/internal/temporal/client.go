@@ -75,8 +75,8 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 	return err
 }
 
-// updateSchedule updates an existing schedule
-func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID string, jobID int) error {
+// UpdateScheduleSpec updates an existing schedule's spec
+func (t *Temporal) UpdateScheduleSpec(ctx context.Context, frequency, projectID string, jobID int) error {
 	cronExpression := utils.ToCron(frequency)
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 
@@ -85,6 +85,26 @@ func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID stri
 		DoUpdate: func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
 			input.Description.Schedule.Spec = &client.ScheduleSpec{
 				CronExpressions: []string{cronExpression},
+			}
+			return &client.ScheduleUpdate{
+				Schedule: &input.Description.Schedule,
+			}, nil
+		},
+	})
+}
+
+// UpdateScheduleAction updates the action (workflow args) of an existing schedule
+func (t *Temporal) UpdateScheduleAction(ctx context.Context, projectID string, jobID int, req interface{}) error {
+	workflowID, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
+
+	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
+	return handle.Update(ctx, client.ScheduleUpdateOptions{
+		DoUpdate: func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
+			input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
+				ID:        workflowID,
+				Workflow:  RunSyncWorkflow,
+				Args:      []any{req},
+				TaskQueue: t.taskQueue,
 			}
 			return &client.ScheduleUpdate{
 				Schedule: &input.Description.Schedule,
