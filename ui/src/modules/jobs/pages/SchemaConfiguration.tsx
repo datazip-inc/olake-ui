@@ -6,6 +6,7 @@ import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
 	IngestionMode,
+	IngestionMode,
 	SchemaConfigurationProps,
 	SelectedStream,
 	StreamData,
@@ -15,6 +16,11 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PencilSimpleIcon,
+} from "@phosphor-icons/react"
 import {
 	ArrowSquareOutIcon,
 	InfoIcon,
@@ -46,6 +52,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
+	const { setShowDestinationDatabaseModal, ingestionMode, setIngestionMode } =
+		useAppStore()
 	const { setShowDestinationDatabaseModal, ingestionMode, setIngestionMode } =
 		useAppStore()
 	const [searchText, setSearchText] = useState("")
@@ -361,6 +369,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							filter: "",
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
+							append_mode: ingestionMode === IngestionMode.APPEND,
 						},
 					]
 					changed = true
@@ -433,6 +442,63 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				selected_streams: updatedSelectedStreams,
 			}
 
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handleIngestionModeChange = (
+		streamName: string,
+		namespace: string,
+		appendMode: boolean,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, append_mode: appendMode } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handleAllIngestionModeChange = (ingestionMode: IngestionMode) => {
+		const appendMode = ingestionMode === IngestionMode.APPEND
+		setIngestionMode(ingestionMode)
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			// Update all streams with the same append mode
+			const updateSelectedStreams = Object.fromEntries(
+				Object.entries(prev.selected_streams).map(([namespace, streams]) => [
+					namespace,
+					streams.map(stream => ({
+						...stream,
+						append_mode: appendMode,
+					})),
+				]),
+			)
+
+			const updated = {
+				...prev,
+				selected_streams: updateSelectedStreams,
+			}
 			setSelectedStreams(updated)
 			return updated
 		})
@@ -667,6 +733,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
 											<InfoIcon className="size-4 cursor-help text-primary" />
+											<InfoIcon className="size-4 cursor-help text-primary" />
 										</div>
 									</Tooltip>
 								</div>
@@ -701,6 +768,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 												rel="noopener noreferrer"
 												className="flex items-center text-gray-600 transition-colors hover:text-primary"
 											>
+												<ArrowSquareOutIcon className="size-4" />
 												<ArrowSquareOutIcon className="size-4" />
 											</a>
 										</Tooltip>
@@ -747,6 +815,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								// Pass it to the parent component
 								setSelectedStreams(fullData as CombinedStreamsData)
 							}}
+							onIngestionModeChange={handleAllIngestionModeChange}
 							onIngestionModeChange={handleAllIngestionModeChange}
 						/>
 					) : loading ? (
@@ -801,6 +870,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
 							destinationType={destinationType}
+							onIngestionModeChange={handleIngestionModeChange}
 							onIngestionModeChange={handleIngestionModeChange}
 						/>
 					) : null}

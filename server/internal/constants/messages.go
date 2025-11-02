@@ -36,6 +36,7 @@ var (
 	ErrFailedToCreate   = errors.New("failed to create")
 	ErrFailedToUpdate   = errors.New("failed to update")
 	ErrFailedToDelete   = errors.New("failed to delete")
+	ErrInProgress       = errors.New("in progress")
 )
 
 // Success messages

@@ -542,6 +542,7 @@ http://localhost:8080
         "frequency": "string",
         "last_run_time": "timestamp",
         "last_run_state": "string",
+        "last_run_type": "string",
         "created_at": "timestamp",
         "updated_at": "timestamp",
         "activate": "boolean",
@@ -578,7 +579,8 @@ http://localhost:8080
     },
     "frequency": "string",
     "streams_config": "json",
-    "activate": "boolean", // send this to activate or deactivate job
+    "difference_streams": "string",
+    "activate": "boolean" // send this to activate or deactivate job
   }
   ```
 
@@ -715,11 +717,12 @@ http://localhost:8080
     "message": "string",
     "data": [
       {
-        "id":"string",
+        "file_path": "string",
         "start_time": "timestamp",
         "runtime": "integer",
-        "status": "string"
-      },
+        "status": "string",
+        "job_type": "string"
+      }
     ]
   }
   ```
@@ -810,6 +813,52 @@ http://localhost:8080
     "message": "string",
     "data": {
      "unique": "boolean"
+    }
+  }
+  ```
+
+
+### Clear destination for a Job
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
+- **Method**: POST
+- **Description**: clears the destination data
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "message": "string"
+    }
+  }
+  ```
+  
+  ### Difference Streams
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/difference-streams`
+- **Method**: POST
+- **Description**: returns the stream difference bewtween the saved and the updated streams
+- **Headers**: `Authorization: Bearer <token>`
+- - **Request Body**:
+
+  ```json
+  {
+    "updated_streams_config": "json"
+  }
+  ```
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "difference_streams": "json"
     }
   }
   ```

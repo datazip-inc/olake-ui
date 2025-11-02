@@ -14,9 +14,11 @@ import {
 	XIcon,
 } from "@phosphor-icons/react"
 
-import { EntityBase, Job, JobTableProps } from "../../../types"
+import { EntityBase, Job, JobTableProps, JobType } from "../../../types"
 import {
 	getConnectorImage,
+	getJobTypeClass,
+	getJobTypeLabel,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
@@ -84,12 +86,16 @@ const JobTable: React.FC<JobTableProps> = ({
 									key: "sync",
 									icon: <ArrowsClockwiseIcon className="size-4" />,
 									label: "Sync now",
+									disabled:
+										record.last_run_state?.toLowerCase() === "running" ||
+										!record.activate,
 									onClick: () => onSync(record.id.toString()),
 								},
 								{
 									key: "edit",
 									icon: <PencilSimpleIcon className="size-4" />,
 									label: "Edit Streams",
+									disabled: !record.activate,
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
@@ -100,25 +106,32 @@ const JobTable: React.FC<JobTableProps> = ({
 										<PlayIcon className="size-4" />
 									),
 									label: record.activate ? "Pause job" : "Resume job",
+									disabled: record.last_run_state?.toLowerCase() === "running",
 									onClick: () => onPause(record.id.toString(), record.activate),
 								},
 								{
 									key: "cancel",
 									icon: <XIcon className="size-4" />,
 									label: "Cancel Run",
-									disabled: record.last_run_state?.toLowerCase() !== "running",
+									disabled:
+										!record.activate ||
+										record.last_run_state?.toLowerCase() !== "running" ||
+										(record.last_run_type === JobType.ClearDestination &&
+											record.last_run_state?.toLowerCase() === "running"),
 									onClick: () => onCancelJob(record.id.toString()),
 								},
 								{
 									key: "history",
 									icon: <ClockCounterClockwiseIcon className="size-4" />,
 									label: "Job Logs & History",
+									disabled: !record.activate,
 									onClick: () => handleViewHistory(record.id.toString()),
 								},
 								{
 									key: "settings",
 									icon: <GearIcon className="size-4" />,
 									label: "Job settings",
+									disabled: !record.activate,
 									onClick: () => handleViewSettings(record.id.toString()),
 								},
 								{
@@ -190,13 +203,13 @@ const JobTable: React.FC<JobTableProps> = ({
 			),
 		},
 		{
-			title: "Last sync",
+			title: "Last Run",
 			dataIndex: "last_run_time",
 			key: "last_run_time",
 			render: formatLastSyncTime,
 		},
 		{
-			title: "Last sync status",
+			title: "Last Run status",
 			dataIndex: "last_run_state",
 			key: "last_run_state",
 			render: (status: string) => {
@@ -207,6 +220,21 @@ const JobTable: React.FC<JobTableProps> = ({
 					>
 						{getStatusIcon(status.toLowerCase())}
 						<span>{getStatusLabel(status.toLowerCase())}</span>
+					</div>
+				)
+			},
+		},
+		{
+			title: "Job Type",
+			dataIndex: "last_run_type",
+			key: "last_run_type",
+			render: (lastRunType: JobType) => {
+				if (!lastRunType) return <div className="pl-4">-</div>
+				return (
+					<div
+						className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getJobTypeClass(lastRunType)}`}
+					>
+						<span>{getJobTypeLabel(lastRunType)}</span>
 					</div>
 				)
 			},

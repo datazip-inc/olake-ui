@@ -1,6 +1,14 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
-import { APIResponse, Job, JobBase, JobTask, TaskLog } from "../../types"
+import {
+	APIResponse,
+	Job,
+	JobBase,
+	JobTask,
+	StreamsDataStructure,
+	TaskLog,
+} from "../../types"
+import { AxiosError } from "axios"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
@@ -75,7 +83,9 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error syncing job:", error)
-			throw error
+			throw error instanceof AxiosError && error.response?.data.message
+				? error.response?.data.message
+				: "Failed to sync job"
 		}
 	},
 
@@ -136,6 +146,40 @@ export const jobService = {
 			return response.data.data
 		} catch (error) {
 			console.error("Error checking job name uniqueness:", error)
+			throw error
+		}
+	},
+
+	clearDestination: async (
+		jobId: string,
+	): Promise<APIResponse<{ message: string }>> => {
+		try {
+			const response = await api.post<APIResponse<{ message: string }>>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
+			)
+
+			return response.data
+		} catch (error) {
+			console.error("Error clearing destination:", error)
+			throw error instanceof AxiosError && error.response?.data.message
+				? `Failed to clear destination: ${error.response?.data.message}`
+				: "Failed to clear destination, Please try again."
+		}
+	},
+	getStreamDifference: async (
+		jobId: string,
+		streamsConfig: string,
+	): Promise<APIResponse<{ difference_streams: StreamsDataStructure }>> => {
+		try {
+			const response = await api.post<
+				APIResponse<{ difference_streams: StreamsDataStructure }>
+			>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
+				{ updated_streams_config: streamsConfig },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error getting stream difference:", error)
 			throw error
 		}
 	},
