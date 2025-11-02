@@ -101,10 +101,6 @@ type StreamDifferenceRequest struct {
 	UpdatedStreamsConfig string `json:"updated_streams_config" validate:"required"`
 }
 
-type StreamDifferenceResponse struct {
-	DifferenceStreams map[string]interface{} `json:"difference_streams"`
-}
-
 type JobTaskRequest struct {
 	FilePath string `json:"file_path" validate:"required"`
 }
