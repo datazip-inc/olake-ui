@@ -16,15 +16,23 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 		}
 
 		properties := map[string]interface{}{
-			"job_id":           job.ID,
-			"job_name":         job.Name,
-			"project_id":       job.ProjectID,
-			"source_type":      job.SourceID.Type,
-			"source_name":      job.SourceID.Name,
-			"destination_type": job.DestID.DestType,
-			"destination_name": job.DestID.Name,
-			"frequency":        job.Frequency,
-			"active":           job.Active,
+			"job_id":     job.ID,
+			"job_name":   job.Name,
+			"project_id": job.ProjectID,
+			"frequency":  job.Frequency,
+			"active":     job.Active,
+		}
+
+		// Safely add source properties
+		if job.SourceID != nil {
+			properties["source_type"] = job.SourceID.Type
+			properties["source_name"] = job.SourceID.Name
+		}
+
+		// Safely add destination properties
+		if job.DestID != nil {
+			properties["destination_type"] = job.DestID.DestType
+			properties["destination_name"] = job.DestID.Name
 		}
 
 		if !job.CreatedAt.IsZero() {
