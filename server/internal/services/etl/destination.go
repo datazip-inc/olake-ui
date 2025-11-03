@@ -145,7 +145,7 @@ func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.Delete
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *ETLService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	version := req.Version
 	driver := req.SourceType
 	if driver == "" {
@@ -212,18 +212,12 @@ func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string
 
 // TODO: cache spec in db for each version
 func (s *ETLService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	// TODO: handle from frontend
-	destinationType := "iceberg"
-	if req.Type == "s3" {
-		destinationType = "parquet"
-	}
-
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	specOut, err := s.temporal.GetDriverSpecs(ctx, destinationType, driver, req.Version)
+	specOut, err := s.temporal.GetDriverSpecs(ctx, req.Type, driver, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}

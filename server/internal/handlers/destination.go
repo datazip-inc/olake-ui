@@ -133,7 +133,7 @@ func (h *Handler) TestDestinationConnection() {
 
 	logger.Infof("Test destination connection initiated destination_type[%s] destination_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.etl.TestConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.TestDestinationConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return

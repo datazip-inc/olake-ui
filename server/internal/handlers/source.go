@@ -21,7 +21,7 @@ func (h *Handler) ListSources() {
 
 	logger.Debugf("Get all sources initiated project_id[%s]", projectID)
 
-	sources, err := h.etl.GetAllSources(h.Ctx.Request.Context(), projectID)
+	sources, err := h.etl.ListSources(h.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
 		return
@@ -134,7 +134,7 @@ func (h *Handler) DeleteSource() {
 }
 
 // @router /project/:projectid/sources/test [post]
-func (h *Handler) TestSourceConnection() {
+func (h *Handler) SourceTestConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -230,7 +230,7 @@ func (h *Handler) GetSourceVersions() {
 }
 
 // @router /project/:projectid/sources/spec [post]
-func (h *Handler) GetProjectSourceSpec() {
+func (h *Handler) GetSourceSpec() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

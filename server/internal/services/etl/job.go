@@ -19,7 +19,7 @@ import (
 
 // Job-related methods on AppService
 
-func (s *ETLService) GetAllJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
+func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
 	jobs, err := s.db.ListJobsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
@@ -209,7 +209,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *ETLService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
+func (s *ETLService) CheckUniqueJobName(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check job name uniqueness: %s", err)
