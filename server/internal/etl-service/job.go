@@ -40,6 +40,13 @@ func (s *ETLService) GetAllJobs(ctx context.Context, projectID string) ([]dto.Jo
 }
 
 func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check job name uniqueness: %s", err)
+	}
+	if !unique {
+		return fmt.Errorf("job name '%s' is not unique", req.Name)
+	}
 	source, err := s.upsertSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)

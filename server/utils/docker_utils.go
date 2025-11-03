@@ -15,9 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"golang.org/x/mod/semver"
 )
 
@@ -88,7 +88,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
-			logs.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
+			logger.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to fetch cached image tags for %s: %s", imageName, err)

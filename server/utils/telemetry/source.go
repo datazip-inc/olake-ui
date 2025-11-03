@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 // TrackSourceCreation tracks the creation of a new source with relevant properties
@@ -27,7 +27,7 @@ func TrackSourceCreation(ctx context.Context, source *models.Source) {
 		}
 
 		if err := TrackEvent(ctx, EventSourceCreated, properties); err != nil {
-			logs.Debug("Failed to track source creation event: %s", err)
+			logger.Debug("Failed to track source creation event: %s", err)
 			return
 		}
 		// Track sources status after creation
@@ -44,7 +44,7 @@ func TrackSourcesStatus(ctx context.Context) {
 
 		sources, err := instance.db.ListSources()
 		if err != nil {
-			logs.Debug("failed to get all sources in track source status: %s", err)
+			logger.Debug("failed to get all sources in track source status: %s", err)
 			return
 		}
 
@@ -53,7 +53,7 @@ func TrackSourcesStatus(ctx context.Context) {
 			// TODO: remove orm calls from loop
 			jobs, err := instance.db.GetJobsBySourceID([]int{source.ID})
 			if err != nil {
-				logs.Debug("failed to get all jobs for source[%d] in track source status: %s", source.ID, err)
+				logger.Debug("failed to get all jobs for source[%d] in track source status: %s", source.ID, err)
 				break
 			}
 			if len(jobs) > 0 {
@@ -69,7 +69,7 @@ func TrackSourcesStatus(ctx context.Context) {
 		}
 
 		if err := TrackEvent(ctx, EventSourcesUpdated, props); err != nil {
-			logs.Debug("failed to track source status event: %s", err)
+			logger.Debug("failed to track source status event: %s", err)
 		}
 	}()
 }

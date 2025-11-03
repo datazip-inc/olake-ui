@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
 
@@ -119,7 +118,7 @@ func ULID() string {
 	t := time.Now()
 	newUlid, err := ulid.New(ulid.Timestamp(t), entropy)
 	if err != nil {
-		logs.Critical(err)
+		logger.Fatal(err)
 	}
 
 	return newUlid.String()

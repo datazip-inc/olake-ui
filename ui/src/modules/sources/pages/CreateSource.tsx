@@ -70,6 +70,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			onVersionChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
+			onExistingSourceIdChange,
 		},
 		ref,
 	) => {
@@ -155,15 +156,15 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data?.version) {
-						setVersions(response.data.version)
+					if (response?.version) {
+						setVersions(response.version)
 						if (
-							response.data.version.length > 0 &&
+							response.version.length > 0 &&
 							(!initialVersion ||
 								connector !== initialConnector ||
 								initialVersion === "")
 						) {
-							let defaultVersion = response.data.version[0]
+							let defaultVersion = response.version[0]
 							if (
 								connector.toLowerCase() === initialConnector &&
 								initialVersion
@@ -201,8 +202,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			return withAbortController(
 				signal =>
 					sourceService.getSourceSpec(connector, selectedVersion, signal),
-				response =>
-					handleSpecResponse(response, setSchema, setUiSchema, "source"),
+				response => {
+					console.log("response from create source", response)
+					handleSpecResponse(response, setSchema, setUiSchema, "source")
+				},
 				error => {
 					setSchema({})
 					setUiSchema({})
@@ -330,6 +333,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setConnector(value)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
 				setSourceName("")
 				onSourceNameChange?.("")
 			}
@@ -361,6 +365,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
 				if (onFormDataChange) onFormDataChange({})
@@ -390,6 +395,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSourceName(selectedSource.name)
 				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
+				onExistingSourceIdChange?.(selectedSource.id)
 			}
 		}
 

@@ -83,7 +83,7 @@ export const ENTITY_TYPES = {
 
 export const DESTINATION_INTERNAL_TYPES = {
 	ICEBERG: "iceberg",
-	S3: "s3",
+	S3: "parquet",
 }
 
 export const DESTINATION_LABELS = {

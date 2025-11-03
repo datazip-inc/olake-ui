@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 type jobDetails struct {
@@ -175,7 +175,7 @@ func TrackSyncStart(ctx context.Context, jobID int, workflowID string) {
 
 		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncStarted)
 		if err != nil {
-			logs.Debug("failed to track sync start event: %s", err)
+			logger.Debug("failed to track sync start event: %s", err)
 		}
 	}()
 }
@@ -188,7 +188,7 @@ func TrackSyncFailed(jobID int, workflowID string) {
 
 		err := trackSyncEvent(context.Background(), jobID, workflowID, EventSyncFailed)
 		if err != nil {
-			logs.Debug("failed to track sync failed event: %s", err)
+			logger.Debug("failed to track sync failed event: %s", err)
 		}
 	}()
 }
@@ -201,7 +201,7 @@ func TrackSyncCompleted(jobID int, workflowID string) {
 
 		err := trackSyncEvent(context.Background(), jobID, workflowID, EventSyncCompleted)
 		if err != nil {
-			logs.Debug("failed to track sync completed event: %s", err)
+			logger.Debug("failed to track sync completed event: %s", err)
 		}
 	}()
 }

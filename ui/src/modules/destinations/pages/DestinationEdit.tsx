@@ -208,14 +208,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					connectorType.toLowerCase(),
 				)
 
-				if (response.data?.version) {
-					setVersions(response.data.version)
+				if (response?.version) {
+					setVersions(response.version)
 
 					// If no version is selected, set the first one as default
-					if (!selectedVersion && response.data.version.length > 0) {
-						setSelectedVersion(response.data.version[0])
+					if (!selectedVersion && response.version.length > 0) {
+						setSelectedVersion(response.version[0])
 						if (onVersionChange) {
-							onVersionChange(response.data.version[0])
+							onVersionChange(response.version[0])
 						}
 					}
 				} else {
@@ -350,7 +350,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		if (destinationId) {
 			updateDestination(destinationId, getDestinationData())
 				.then(() => {
-					message.success("Destination updated successfully")
 					navigate("/destinations")
 				})
 				.catch(error => {
@@ -376,9 +375,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
 			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
 			await fetchDestinations()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
