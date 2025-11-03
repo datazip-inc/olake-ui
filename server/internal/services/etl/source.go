@@ -148,7 +148,7 @@ func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s *ETLService) SourceTestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if s.temporal == nil {
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}

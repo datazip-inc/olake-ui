@@ -134,7 +134,7 @@ func (h *Handler) DeleteSource() {
 }
 
 // @router /project/:projectid/sources/test [post]
-func (h *Handler) SourceTestConnection() {
+func (h *Handler) TestSourceConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -148,7 +148,7 @@ func (h *Handler) SourceTestConnection() {
 
 	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.etl.SourceTestConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.TestSourceConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
