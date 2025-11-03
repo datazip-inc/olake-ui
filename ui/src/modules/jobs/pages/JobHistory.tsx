@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
+import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
@@ -25,7 +25,8 @@ const JobHistory: React.FC = () => {
 	const pageSize = 8
 	const [isDelayingCall, setIsDelayingCall] = useState(false)
 	const retryCountRef = useRef(0)
-	const THROTTLE_DELAY = 1000
+	const THROTTLE_DELAY = 500
+	const MAX_RETRIES = 2
 
 	const {
 		jobs,
@@ -41,43 +42,43 @@ const JobHistory: React.FC = () => {
 			fetchJobs()
 		}
 
-		if (jobId) {
-			const fetchWithRetry = async () => {
-				setIsDelayingCall(true)
-				try {
-					await fetchJobTasks(jobId)
-					await new Promise(resolve => setTimeout(resolve, 1000))
-					if (jobTasks && jobTasks.length > 0) {
-						retryCountRef.current = 0
-						setIsDelayingCall(false)
-						return
-					}
+		if (!jobId) {
+			return
+		}
 
-					// try fetching tasks 4 times with a delay of 1 second
-					if (retryCountRef.current < 4) {
-						retryCountRef.current++
-						setTimeout(fetchWithRetry, THROTTLE_DELAY)
-					} else {
-						setIsDelayingCall(false)
-					}
-				} catch (error) {
-					console.error("Error fetching job tasks:", error)
-					if (retryCountRef.current < 4) {
-						retryCountRef.current++
-						setTimeout(fetchWithRetry, THROTTLE_DELAY)
-					} else {
-						setIsDelayingCall(false)
-					}
+		let timeoutId: NodeJS.Timeout
+
+		const fetchWithRetry = async () => {
+			try {
+				setIsDelayingCall(true)
+				await new Promise(resolve => setTimeout(resolve, THROTTLE_DELAY))
+				await fetchJobTasks(jobId)
+
+				// retry MAX_RETRIES times with a delay of THROTTLE_DELAY
+				if (retryCountRef.current < MAX_RETRIES) {
+					retryCountRef.current++
+					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
+				} else {
+					setIsDelayingCall(false)
+				}
+			} catch (err) {
+				console.error(err)
+				if (retryCountRef.current < MAX_RETRIES) {
+					retryCountRef.current++
+					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
+				} else {
+					setIsDelayingCall(false)
 				}
 			}
-
-			fetchWithRetry()
-
-			return () => {
-				retryCountRef.current = 0
-			}
 		}
-	}, [jobId, fetchJobTasks, jobs.length, fetchJobs])
+
+		fetchWithRetry()
+
+		return () => {
+			clearTimeout(timeoutId)
+			retryCountRef.current = 0
+		}
+	}, [jobId])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 	const handleViewLogs = (filePath: string) => {
@@ -211,15 +212,6 @@ const JobHistory: React.FC = () => {
 							onClick={() => {
 								if (jobId) {
 									fetchJobTasks(jobId)
-										.then(() => {
-											message.destroy()
-											message.success("Job history refetched successfully")
-										})
-										.catch(error => {
-											message.destroy()
-											message.error("Failed to fetch job history")
-											console.error("Error fetching job history:", error)
-										})
 								}
 							}}
 							className="flex items-center"
