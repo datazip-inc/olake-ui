@@ -163,19 +163,17 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error clearing destination:", error)
-			throw error instanceof AxiosError && error.response?.data.message
-				? `Failed to clear destination: ${error.response?.data.message}`
-				: "Failed to clear destination, Please try again."
+			throw error
 		}
 	},
 	getStreamDifference: async (
 		jobId: string,
 		streamsConfig: string,
-	): Promise<APIResponse<{ difference_streams: StreamsDataStructure }>> => {
+	): Promise<{ difference_streams: StreamsDataStructure }> => {
 		try {
-			const response = await api.post<
-				APIResponse<{ difference_streams: StreamsDataStructure }>
-			>(
+			const response = await api.post<{
+				difference_streams: StreamsDataStructure
+			}>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
 				{ updated_streams_config: streamsConfig },
 			)

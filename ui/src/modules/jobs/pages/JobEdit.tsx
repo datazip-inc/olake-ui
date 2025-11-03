@@ -167,15 +167,9 @@ const JobEdit: React.FC = () => {
 
 	// Load job data on component mount
 	useEffect(() => {
-		const loadData = async () => {
-			try {
-				await Promise.all([fetchJobs(), fetchSources(), fetchDestinations()])
-			} catch (error) {
-				console.error("Error loading data:", error)
-				message.error("Failed to load job data. Please try again.")
-			}
-		}
-		loadData()
+		fetchJobs()
+		fetchSources()
+		fetchDestinations()
 	}, [])
 
 	// Disable stream editing if clear destination is running
@@ -385,7 +379,7 @@ const JobEdit: React.FC = () => {
 							),
 						}),
 			)
-		).data?.difference_streams
+		)?.difference_streams
 
 		const diff =
 			typeof streamDifferenceResponse === "string"
@@ -423,12 +417,10 @@ const JobEdit: React.FC = () => {
 
 			// wait for 1 second before refreshing jobs to avoid fetching old state
 			await new Promise(resolve => setTimeout(resolve, 1000))
-			message.success("Job updated successfully!")
 			await fetchJobs()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
-			message.error("Failed to save job. Please try again.")
 		} finally {
 			setIsSubmitting(false)
 		}

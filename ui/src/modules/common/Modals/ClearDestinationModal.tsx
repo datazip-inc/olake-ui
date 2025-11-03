@@ -23,15 +23,12 @@ const ClearDestinationModal = () => {
 		}
 		setIsLoading(true)
 		try {
-			const response = await jobService.clearDestination(selectedJobId)
+			await jobService.clearDestination(selectedJobId)
 			// wait for 1 second before refreshing jobs to avoid fetching old state
 			await new Promise(resolve => setTimeout(resolve, 1000))
 			await fetchJobs()
-			message.success(response.data.message)
 			navigate(`/jobs/${selectedJobId}/history`)
 		} catch (error) {
-			message.destroy()
-			message.error(error as string)
 			console.error("Failed to clear destination", error)
 		} finally {
 			setShowClearDestinationModal(false)
