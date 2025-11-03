@@ -263,7 +263,7 @@ func (h *Handler) ClearDestination() {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	result, err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "")
+	result, err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
 		return

@@ -120,7 +120,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 
 		if len(diffCatalog) > 0 {
 			logger.Infof("stream difference detected for job %d, running clear destination workflow", existingJob.ID)
-			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams); err != nil {
+			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, 10*time.Second); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -247,7 +247,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string) (map[string]interface{}, error) {
+func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration) (map[string]interface{}, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)
@@ -259,7 +259,7 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 
 	// Check if sync is running and wait for it to stop
 	if running, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); running {
-		if err := waitForSyncToStop(ctx, s.temporal, projectID, jobID, 5*time.Second); err != nil {
+		if err := waitForSyncToStop(ctx, s.temporal, projectID, jobID, syncWaitTime); err != nil {
 			return nil, fmt.Errorf("sync is in progress, please cancel it before running clear-destination")
 		}
 	}
