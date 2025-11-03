@@ -12,7 +12,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/temporal"
+	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
@@ -21,7 +21,7 @@ import (
 
 // Job-related methods on AppService
 
-func (s *ETLService) GetAllJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
+func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
 	jobs, err := s.db.ListJobsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
@@ -148,7 +148,11 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
 	existingJob.UpdatedBy = &models.User{ID: *userID}
-
+	// cancel existing workflow
+	err = cancelAllJobWorkflows(ctx, s.temporal, []*models.Job{existingJob}, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to cancel workflow for job %s", err)
+	}
 	if err := s.db.UpdateJob(existingJob); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
@@ -227,7 +231,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	}
 
 	if req.Activate {
-		if err := s.temporal.UnpauseSchedule(ctx, job.ProjectID, job.ID); err != nil {
+		if err := s.temporal.ResumeSchedule(ctx, job.ProjectID, job.ID); err != nil {
 			return fmt.Errorf("failed to unpause schedule: %s", err)
 		}
 	} else {
@@ -287,7 +291,7 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, projectID string, 
 	return diffCatalog, nil
 }
 
-func (s *ETLService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
+func (s *ETLService) CheckUniqueJobName(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check job name uniqueness: %s", err)

@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -20,7 +22,7 @@ func (h *Handler) ListJobs() {
 
 	logger.Debugf("Get all jobs initiated project_id[%s]", projectID)
 
-	jobs, err := h.etl.GetAllJobs(h.Ctx.Request.Context(), projectID)
+	jobs, err := h.etl.ListJobs(h.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve jobs by project ID: %s", err), err)
 		return
@@ -111,10 +113,18 @@ func (h *Handler) UpdateJob() {
 			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 			return
 		}
+		if req.Source.Name == "" || req.Source.Version == "" || req.Source.Config == "" {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "source name, version, and config are required when source id is not provided", err)
+			return
+		}
 	}
 	if req.Destination.ID == nil {
 		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
 			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+			return
+		}
+		if req.Destination.Name == "" || req.Destination.Version == "" || req.Destination.Config == "" {
+			utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "destination name, version, and config are required when destination id is not provided", err)
 			return
 		}
 	}
@@ -162,7 +172,7 @@ func (h *Handler) CheckUniqueJobName() {
 
 	logger.Infof("Check unique job name initiated project_id[%s] job_name[%s]", projectID, req.JobName)
 
-	unique, err := h.etl.IsJobNameUnique(h.Ctx.Request.Context(), projectID, req)
+	unique, err := h.etl.CheckUniqueJobName(h.Ctx.Request.Context(), projectID, req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check job name uniqueness: %s", err), err)
 		return
@@ -224,7 +234,7 @@ func (h *Handler) ActivateJob() {
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %d activated successfully", id), nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %d %s successfully", id, utils.Ternary(req.Activate, "resumed", "paused")), nil)
 }
 
 // @router /project/:projectid/jobs/:id/cancel [post]
@@ -350,7 +360,7 @@ func (h *Handler) GetTaskLogs() {
 	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "job not found" {
+		if errors.Is(err, constants.ErrJobNotFound) {
 			statusCode = http.StatusNotFound
 		}
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get task logs: %s", err), err)

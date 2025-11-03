@@ -21,7 +21,7 @@ func (h *Handler) ListSources() {
 
 	logger.Debugf("Get all sources initiated project_id[%s]", projectID)
 
-	sources, err := h.etl.GetAllSources(h.Ctx.Request.Context(), projectID)
+	sources, err := h.etl.ListSources(h.Ctx.Request.Context(), projectID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
 		return
@@ -148,7 +148,7 @@ func (h *Handler) TestSourceConnection() {
 
 	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.etl.SourceTestConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.TestSourceConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
@@ -230,7 +230,7 @@ func (h *Handler) GetSourceVersions() {
 }
 
 // @router /project/:projectid/sources/spec [post]
-func (h *Handler) GetProjectSourceSpec() {
+func (h *Handler) GetSourceSpec() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

@@ -189,6 +189,7 @@ const JobEdit: React.FC = () => {
 
 		// Set source data from job
 		setSourceData({
+			id: job.source.id?.toString(),
 			name: job.source.name,
 			type: job.source.type,
 			config: sourceConfig,
@@ -200,6 +201,7 @@ const JobEdit: React.FC = () => {
 
 		// Set destination data from job
 		setDestinationData({
+			id: job.destination.id?.toString(),
 			name: job.destination.name,
 			type: job.destination.type,
 			config: destConfig,
@@ -321,6 +323,7 @@ const JobEdit: React.FC = () => {
 		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
+				id: job?.source.id,
 				name: sourceData?.name || "",
 				type: getConnectorInLowerCase(sourceData?.type || ""),
 				config:
@@ -330,6 +333,7 @@ const JobEdit: React.FC = () => {
 				version: sourceData?.version || "",
 			},
 			destination: {
+				id: job?.destination.id,
 				name: destinationData?.name || "",
 				type: getConnectorInLowerCase(destinationData?.type || ""),
 				config:

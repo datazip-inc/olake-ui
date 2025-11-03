@@ -22,10 +22,6 @@ type Temporal struct {
 func NewClient() (*Temporal, error) {
 	// Choose task queue based on deployment mode
 	temporalAddress := web.AppConfig.DefaultString(constants.ConfTemporalAddress, constants.DefaultTemporalAddress)
-	taskQueue := constants.DockerTaskQueue
-	if web.AppConfig.DefaultString(constants.ConfDeploymentMode, "docker") == "kubernetes" {
-		taskQueue = constants.K8sTaskQueue
-	}
 
 	c, err := client.Dial(client.Options{
 		HostPort: temporalAddress,
@@ -36,7 +32,7 @@ func NewClient() (*Temporal, error) {
 
 	return &Temporal{
 		Client:    c,
-		taskQueue: taskQueue,
+		taskQueue: constants.TemporalTaskQueue,
 	}, nil
 }
 
@@ -120,10 +116,10 @@ func (t *Temporal) PauseSchedule(ctx context.Context, projectID string, jobID in
 	})
 }
 
-func (t *Temporal) UnpauseSchedule(ctx context.Context, projectID string, jobID int) error {
+func (t *Temporal) ResumeSchedule(ctx context.Context, projectID string, jobID int) error {
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 	return t.Client.ScheduleClient().GetHandle(ctx, scheduleID).Unpause(ctx, client.ScheduleUnpauseOptions{
-		Note: "user paused the schedule",
+		Note: "user resumed the schedule",
 	})
 }
 

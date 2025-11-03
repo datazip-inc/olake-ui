@@ -227,7 +227,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	clearReq := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
 	err := t.UpdateScheduleAction(ctx, job.ProjectID, job.ID, clearReq)
 	if err != nil {
-		_ = t.UnpauseSchedule(ctx, job.ProjectID, job.ID)
+		_ = t.ResumeSchedule(ctx, job.ProjectID, job.ID)
 		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
 	}
 
@@ -241,7 +241,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 			logger.Errorf("failed to restore schedule to sync mode for job %d: %s", job.ID, err)
 		}
 
-		if err := t.UnpauseSchedule(restoreCtx, job.ProjectID, job.ID); err != nil {
+		if err := t.ResumeSchedule(restoreCtx, job.ProjectID, job.ID); err != nil {
 			logger.Errorf("failed to unpause schedule for job %d: %s", job.ID, err)
 		}
 	}()
