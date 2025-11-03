@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/beego/beego/v2/server/web"
-	services "github.com/datazip-inc/olake-ui/server/internal/etl-service"
+	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
 
 type Handler struct {
