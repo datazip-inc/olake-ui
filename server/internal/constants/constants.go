@@ -30,7 +30,7 @@ var (
 	OrderByUpdatedAtDesc = "-updated_at"
 	// Frontend index path key
 	FrontendIndexPath = "FRONTEND_INDEX_PATH"
-	TemporalTaskQueue   = "OLAKE_DOCKER_TASK_QUEUE"
+	TemporalTaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
 
 	// conf keys
 	ConfEncryptionKey         = "encryptionkey"
