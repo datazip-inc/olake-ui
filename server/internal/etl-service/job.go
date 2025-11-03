@@ -115,7 +115,11 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
 	existingJob.UpdatedBy = &models.User{ID: *userID}
-
+	// cancel existing workflow
+	err = cancelAllJobWorkflows(ctx, s.temporal, []*models.Job{existingJob}, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to cancel workflow for job %s", err)
+	}
 	if err := s.db.UpdateJob(existingJob); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}

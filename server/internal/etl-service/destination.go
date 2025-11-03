@@ -10,7 +10,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -171,7 +170,7 @@ func (s *ETLService) TestConnection(ctx context.Context, req *dto.DestinationTes
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {
-		logger.Error("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
+		return nil, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
 			req.Type, req.Version, err)
 	}
 	// TODO: handle from frontend

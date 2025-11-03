@@ -10,7 +10,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -167,7 +166,7 @@ func (s *ETLService) SourceTestConnection(ctx context.Context, req *dto.SourceTe
 	mainLogDir := filepath.Join(homeDir, workflowID)
 	logs, err := utils.ReadLogs(mainLogDir)
 	if err != nil {
-		logger.Error("failed to read logs source_type[%s] source_version[%s]: %s",
+		return nil, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
 			req.Type, req.Version, err)
 	}
 	// TODO: handle from frontend
@@ -251,6 +250,3 @@ func (s *ETLService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (d
 		Spec:    specOut.Spec,
 	}, nil
 }
-
-// Helper methods
-// removed duplicate helpers in favor of shared utilities
