@@ -9,7 +9,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/mod/semver"
 )
@@ -224,27 +223,13 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
+	// unpause and update args back to sync is performed in the activity cleanup
 	clearReq := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
 	err := t.UpdateScheduleAction(ctx, job.ProjectID, job.ID, clearReq)
 	if err != nil {
 		_ = t.ResumeSchedule(ctx, job.ProjectID, job.ID)
 		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
 	}
-
-	// the next schedule runs with the sync request
-	defer func() {
-		restoreCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-		defer cancel()
-
-		syncReq := buildExecutionReqForSync(job, workflowID)
-		if err := t.UpdateScheduleAction(restoreCtx, job.ProjectID, job.ID, syncReq); err != nil {
-			logger.Errorf("failed to restore schedule to sync mode for job %d: %s", job.ID, err)
-		}
-
-		if err := t.ResumeSchedule(restoreCtx, job.ProjectID, job.ID); err != nil {
-			logger.Errorf("failed to unpause schedule for job %d: %s", job.ID, err)
-		}
-	}()
 
 	return t.TriggerSchedule(ctx, job.ProjectID, job.ID)
 }
