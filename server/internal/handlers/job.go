@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -305,7 +307,7 @@ func (h *Handler) GetTaskLogs() {
 	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		if err.Error() == "job not found" {
+		if errors.Is(err, constants.ErrJobNotFound) {
 			statusCode = http.StatusNotFound
 		}
 		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get task logs: %s", err), err)

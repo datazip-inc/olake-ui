@@ -189,7 +189,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	}
 
 	if req.Activate {
-		if err := s.temporal.UnpauseSchedule(ctx, job.ProjectID, job.ID); err != nil {
+		if err := s.temporal.ResumeSchedule(ctx, job.ProjectID, job.ID); err != nil {
 			return fmt.Errorf("failed to unpause schedule: %s", err)
 		}
 	} else {

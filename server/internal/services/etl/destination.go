@@ -162,23 +162,24 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
 	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "destination", driver, version, encryptedConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	logs, err := utils.ReadLogs(mainLogDir)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
-			req.Type, req.Version, err)
-	}
 	// TODO: handle from frontend
 	if result == nil {
 		result = map[string]interface{}{
 			"message": "Connection test failed",
 			"status":  "failed",
 		}
+	}
+
+	if err != nil {
+		return result, nil, fmt.Errorf("connection test failed: %s", err)
+	}
+
+	homeDir := constants.DefaultConfigDir
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		return result, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
+			req.Type, req.Version, err)
 	}
 
 	return result, logs, nil

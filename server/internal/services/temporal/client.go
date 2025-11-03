@@ -100,10 +100,10 @@ func (t *Temporal) PauseSchedule(ctx context.Context, projectID string, jobID in
 	})
 }
 
-func (t *Temporal) UnpauseSchedule(ctx context.Context, projectID string, jobID int) error {
+func (t *Temporal) ResumeSchedule(ctx context.Context, projectID string, jobID int) error {
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 	return t.Client.ScheduleClient().GetHandle(ctx, scheduleID).Unpause(ctx, client.ScheduleUnpauseOptions{
-		Note: "user paused the schedule",
+		Note: "user resumed the schedule",
 	})
 }
 
