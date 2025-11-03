@@ -12,7 +12,7 @@ import { getConnectorInLowerCase } from "../../utils/utils"
 const normalizeDestinationType = (type: string): string => {
 	//destination connector typemap
 	const typeMap: Record<string, string> = {
-		"amazon s3": "s3",
+		"amazon s3": "parquet",
 		"apache iceberg": "iceberg",
 	}
 	return typeMap[type.toLowerCase()] || type.toLowerCase()
