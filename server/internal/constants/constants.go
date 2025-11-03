@@ -23,6 +23,7 @@ var (
 	DefaultConfigDir          = "/tmp/olake-config"
 	DefaultLogRetentionPeriod = 30
 	DefaultSpecVersion        = "v0.2.0"
+	DefaultTemporalAddress    = "localhost:7233"
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
 	EnvLogFormat         = "LOG_FORMAT"
@@ -31,6 +32,21 @@ var (
 	FrontendIndexPath = "FRONTEND_INDEX_PATH"
 	DockerTaskQueue   = "OLAKE_DOCKER_TASK_QUEUE"
 	K8sTaskQueue      = "OLAKE_K8S_TASK_QUEUE"
+
+	// conf keys
+	ConfEncryptionKey         = "encryptionkey"
+	ConfTemporalAddress       = "TEMPORAL_ADDRESS"
+	ConfDeploymentMode        = "DEPLOYMENT_MODE"
+	ConfRunMode               = "runmode"
+	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
+	// database keys
+	ConfPostgresDB            = "postgresdb"
+	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
+	ConfOLakePostgresPassword = "OLAKE_POSTGRES_PASSWORD"
+	ConfOLakePostgresHost     = "OLAKE_POSTGRES_HOST"
+	ConfOLakePostgresPort     = "OLAKE_POSTGRES_PORT"
+	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
+	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
 )
 
 // Supported database/source types
@@ -59,7 +75,8 @@ var RequiredConfigVariable = []string{
 
 func Init() {
 	viper.AutomaticEnv()
-
+	viper.SetDefault(EnvLogFormat, "console")
+	viper.SetDefault(EnvLogLevel, "info")
 	viper.SetDefault("PORT", defaultPort)
 	viper.SetDefault("BUILD", version)
 	viper.SetDefault("COMMITSHA", commitsha)

@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, message, Pagination, Tooltip } from "antd"
+import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import {
-	ArrowLeft,
-	ArrowRight,
-	ArrowsClockwise,
-	Eye,
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowsClockwiseIcon,
+	EyeIcon,
 } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -25,7 +25,8 @@ const JobHistory: React.FC = () => {
 	const pageSize = 8
 	const [isDelayingCall, setIsDelayingCall] = useState(false)
 	const retryCountRef = useRef(0)
-	const THROTTLE_DELAY = 1000
+	const THROTTLE_DELAY = 500
+	const MAX_RETRIES = 2
 
 	const {
 		jobs,
@@ -41,43 +42,43 @@ const JobHistory: React.FC = () => {
 			fetchJobs()
 		}
 
-		if (jobId) {
-			const fetchWithRetry = async () => {
-				setIsDelayingCall(true)
-				try {
-					await fetchJobTasks(jobId)
-					await new Promise(resolve => setTimeout(resolve, 1000))
-					if (jobTasks && jobTasks.length > 0) {
-						retryCountRef.current = 0
-						setIsDelayingCall(false)
-						return
-					}
+		if (!jobId) {
+			return
+		}
 
-					// try fetching tasks 4 times with a delay of 1 second
-					if (retryCountRef.current < 4) {
-						retryCountRef.current++
-						setTimeout(fetchWithRetry, THROTTLE_DELAY)
-					} else {
-						setIsDelayingCall(false)
-					}
-				} catch (error) {
-					console.error("Error fetching job tasks:", error)
-					if (retryCountRef.current < 4) {
-						retryCountRef.current++
-						setTimeout(fetchWithRetry, THROTTLE_DELAY)
-					} else {
-						setIsDelayingCall(false)
-					}
+		let timeoutId: NodeJS.Timeout
+
+		const fetchWithRetry = async () => {
+			try {
+				setIsDelayingCall(true)
+				await new Promise(resolve => setTimeout(resolve, THROTTLE_DELAY))
+				await fetchJobTasks(jobId)
+
+				// retry MAX_RETRIES times with a delay of THROTTLE_DELAY
+				if (retryCountRef.current < MAX_RETRIES) {
+					retryCountRef.current++
+					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
+				} else {
+					setIsDelayingCall(false)
+				}
+			} catch (err) {
+				console.error(err)
+				if (retryCountRef.current < MAX_RETRIES) {
+					retryCountRef.current++
+					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
+				} else {
+					setIsDelayingCall(false)
 				}
 			}
-
-			fetchWithRetry()
-
-			return () => {
-				retryCountRef.current = 0
-			}
 		}
-	}, [jobId, fetchJobTasks, jobs.length, fetchJobs])
+
+		fetchWithRetry()
+
+		return () => {
+			clearTimeout(timeoutId)
+			retryCountRef.current = 0
+		}
+	}, [jobId])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 	const handleViewLogs = (filePath: string) => {
@@ -126,7 +127,7 @@ const JobHistory: React.FC = () => {
 			render: (_: any, record: any) => (
 				<Button
 					type="default"
-					icon={<Eye size={16} />}
+					icon={<EyeIcon size={16} />}
 					onClick={() => handleViewLogs(record.file_path)}
 				>
 					View logs
@@ -164,7 +165,7 @@ const JobHistory: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="size-5" />
+							<ArrowLeftIcon className="size-5" />
 						</Link>
 
 						<div className="flex flex-col items-start">
@@ -207,16 +208,10 @@ const JobHistory: React.FC = () => {
 					/>
 					<Tooltip title="Click to refetch">
 						<Button
-							icon={<ArrowsClockwise size={16} />}
+							icon={<ArrowsClockwiseIcon size={16} />}
 							onClick={() => {
 								if (jobId) {
-									fetchJobTasks(jobId).catch(error => {
-										message.error("Failed to fetch job tasks after delay")
-										console.error(
-											"Error fetching job tasks after delay:",
-											error,
-										)
-									})
+									fetchJobTasks(jobId)
 								}
 							}}
 							className="flex items-center"
@@ -271,7 +266,7 @@ const JobHistory: React.FC = () => {
 					onClick={() => navigate(`/jobs/${jobId}/settings`)}
 				>
 					View job configurations
-					<ArrowRight size={16} />
+					<ArrowRightIcon size={16} />
 				</Button>
 			</div>
 		</div>

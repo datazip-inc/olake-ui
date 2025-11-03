@@ -1,7 +1,7 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult, SelectedStream } from "../types"
+import { CronParseResult, IngestionMode, SelectedStream } from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -504,9 +504,9 @@ export const handleSpecResponse = (
 	errorType: "source" | "destination" = "source",
 ) => {
 	try {
-		if (response.success && response.data?.spec?.jsonschema) {
-			setSchema(response.data.spec.jsonschema)
-			setUiSchema(JSON.parse(response.data.spec.uischema))
+		if (response?.spec?.jsonschema) {
+			setSchema(response.spec.jsonschema)
+			setUiSchema(JSON.parse(response.spec.uischema))
 		} else {
 			console.error(`Failed to get ${errorType} spec:`, response.message)
 		}
@@ -540,4 +540,27 @@ export const validateStreams = (selections: {
 	return !Object.values(selections).some(streams =>
 		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
 	)
+}
+
+export const getIngestionMode = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): IngestionMode => {
+	const selectedStreamsObj = getSelectedStreams(selectedStreams)
+	const allSelectedStreams: SelectedStream[] = []
+
+	// Flatten all streams from all namespaces
+	Object.values(selectedStreamsObj).forEach((streams: SelectedStream[]) => {
+		allSelectedStreams.push(...streams)
+	})
+
+	if (allSelectedStreams.length === 0) return IngestionMode.UPSERT
+
+	const appendCount = allSelectedStreams.filter(
+		s => s.append_mode === true,
+	).length
+	const upsertCount = allSelectedStreams.filter(s => !s.append_mode).length
+
+	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
+	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
+	return IngestionMode.CUSTOM
 }

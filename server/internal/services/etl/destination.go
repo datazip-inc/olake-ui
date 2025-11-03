@@ -10,7 +10,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -53,7 +52,7 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 		setUsernames(&entity.CreatedBy, &entity.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
-		jobItems, err := buildJobDataItems(jobs)
+		jobItems, err := buildJobDataItems(jobs, s.temporal, "destination")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
@@ -146,7 +145,7 @@ func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.Delete
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *ETLService) TestConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	version := req.Version
 	driver := req.SourceType
 	if driver == "" {
@@ -163,23 +162,24 @@ func (s *ETLService) TestConnection(ctx context.Context, req *dto.DestinationTes
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
 	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "destination", driver, version, encryptedConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	logs, err := utils.ReadLogs(mainLogDir)
-	if err != nil {
-		logger.Error("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
-			req.Type, req.Version, err)
-	}
 	// TODO: handle from frontend
 	if result == nil {
 		result = map[string]interface{}{
 			"message": "Connection test failed",
 			"status":  "failed",
 		}
+	}
+
+	if err != nil {
+		return result, nil, fmt.Errorf("connection test failed: %s", err)
+	}
+
+	homeDir := constants.DefaultConfigDir
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		return result, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
+			req.Type, req.Version, err)
 	}
 
 	return result, logs, nil
@@ -213,18 +213,12 @@ func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string
 
 // TODO: cache spec in db for each version
 func (s *ETLService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
-	// TODO: handle from frontend
-	destinationType := "iceberg"
-	if req.Type == "s3" {
-		destinationType = "parquet"
-	}
-
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	specOut, err := s.temporal.GetDriverSpecs(ctx, destinationType, driver, req.Version)
+	specOut, err := s.temporal.GetDriverSpecs(ctx, req.Type, driver, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)
 	}

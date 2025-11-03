@@ -10,14 +10,13 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
 // Source-related methods on AppService
 
 // GetAllSources returns all sources for a project with lightweight job summaries.
-func (s *ETLService) GetAllSources(_ context.Context, projectID string) ([]dto.SourceDataItem, error) {
+func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
@@ -55,7 +54,7 @@ func (s *ETLService) GetAllSources(_ context.Context, projectID string) ([]dto.S
 		setUsernames(&item.CreatedBy, &item.UpdatedBy, src.CreatedBy, src.UpdatedBy)
 
 		jobs := jobsBySourceID[src.ID]
-		jobItems, err := buildJobDataItems(jobs)
+		jobItems, err := buildJobDataItems(jobs, s.temporal, "source")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
@@ -149,7 +148,7 @@ func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s *ETLService) SourceTestConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if s.temporal == nil {
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
@@ -160,22 +159,23 @@ func (s *ETLService) SourceTestConnection(ctx context.Context, req *dto.SourceTe
 	}
 	workflowID := fmt.Sprintf("test-connection-%s-%d", req.Type, time.Now().Unix())
 	result, err := s.temporal.VerifyDriverCredentials(ctx, workflowID, "config", req.Type, req.Version, encryptedConfig)
-	if err != nil {
-		return nil, nil, fmt.Errorf("connection test failed: %s", err)
-	}
-	homeDir := constants.DefaultConfigDir
-	mainLogDir := filepath.Join(homeDir, workflowID)
-	logs, err := utils.ReadLogs(mainLogDir)
-	if err != nil {
-		logger.Error("failed to read logs source_type[%s] source_version[%s]: %s",
-			req.Type, req.Version, err)
-	}
 	// TODO: handle from frontend
 	if result == nil {
 		result = map[string]interface{}{
 			"message": err.Error(),
 			"status":  "failed",
 		}
+	}
+
+	if err != nil {
+		return result, nil, fmt.Errorf("connection test failed: %s", err)
+	}
+	homeDir := constants.DefaultConfigDir
+	mainLogDir := filepath.Join(homeDir, workflowID)
+	logs, err := utils.ReadLogs(mainLogDir)
+	if err != nil {
+		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
+			req.Type, req.Version, err)
 	}
 
 	return result, logs, nil
@@ -251,6 +251,3 @@ func (s *ETLService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (d
 		Spec:    specOut.Spec,
 	}, nil
 }
-
-// Helper methods
-// removed duplicate helpers in favor of shared utilities

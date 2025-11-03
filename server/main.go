@@ -5,8 +5,8 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	services "github.com/datazip-inc/olake-ui/server/internal/etl-service"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/routes"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
@@ -31,7 +31,7 @@ func main() {
 	telemetry.InitTelemetry(db)
 
 	routes.Init(handlers.NewHandler(appSvc))
-	if key, _ := web.AppConfig.String("encryptionkey"); key == "" {
+	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 

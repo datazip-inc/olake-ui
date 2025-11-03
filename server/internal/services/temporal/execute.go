@@ -67,7 +67,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		cmdArgs = append(cmdArgs, "--catalog", "/mnt/config/streams.json")
 	}
 
-	if encryptionKey, _ := web.AppConfig.String("encryptionkey"); encryptionKey != "" {
+	if encryptionKey, _ := web.AppConfig.String(constants.ConfEncryptionKey); encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 
@@ -162,7 +162,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		fmt.Sprintf("--%s", flag),
 		"/mnt/config/config.json",
 	}
-	if encryptionKey, _ := web.AppConfig.String("encryptionkey"); encryptionKey != "" {
+	if encryptionKey, _ := web.AppConfig.String(constants.ConfEncryptionKey); encryptionKey != "" {
 		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
 	}
 

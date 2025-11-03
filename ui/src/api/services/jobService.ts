@@ -1,15 +1,15 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
-import { APIResponse, Job, JobBase, JobTask, TaskLog } from "../../types"
+import { Job, JobBase, JobTask, TaskLog } from "../../types"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
 		try {
-			const response = await api.get<APIResponse<Job[]>>(
+			const response = await api.get<Job[]>(
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
 			)
 
-			return response.data.data
+			return response.data
 		} catch (error) {
 			console.error("Error fetching jobs from API:", error)
 			throw error
@@ -21,6 +21,7 @@ export const jobService = {
 			const response = await api.post<Job>(
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
 				job,
+				{ showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -34,6 +35,7 @@ export const jobService = {
 			const response = await api.put<Job>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				job,
+				{ showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -46,6 +48,7 @@ export const jobService = {
 		try {
 			await api.delete(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				{ showNotification: true },
 			)
 		} catch (error) {
 			console.error("Error deleting job:", error)
@@ -55,10 +58,11 @@ export const jobService = {
 
 	cancelJob: async (id: string): Promise<string> => {
 		try {
-			const response = await api.get<APIResponse<any>>(
+			const response = await api.get<any>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/cancel`,
+				{ showNotification: true },
 			)
-			return response.data.data.message
+			return response.data.message
 		} catch (error) {
 			console.error("Error canceling job:", error)
 			throw error
@@ -67,10 +71,10 @@ export const jobService = {
 
 	syncJob: async (id: string): Promise<any> => {
 		try {
-			const response = await api.post<APIResponse<any>>(
+			const response = await api.post<any>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/sync`,
 				{},
-				{ timeout: 0 }, // Disable timeout for this request since it can take longer
+				{ timeout: 0, showNotification: true }, // Disable timeout for this request since it can take longer
 			)
 			return response.data
 		} catch (error) {
@@ -79,11 +83,11 @@ export const jobService = {
 		}
 	},
 
-	getJobTasks: async (id: string): Promise<APIResponse<JobTask[]>> => {
+	getJobTasks: async (id: string): Promise<JobTask[]> => {
 		try {
-			const response = await api.get<APIResponse<JobTask[]>>(
+			const response = await api.get<JobTask[]>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/tasks`,
-				{ timeout: 0 }, // Disable timeout for this request
+				{ timeout: 0, showNotification: true }, // Disable timeout for this request, no toast for fetching tasks
 			)
 			return response.data
 		} catch (error) {
@@ -96,12 +100,12 @@ export const jobService = {
 		jobId: string,
 		taskId: string,
 		filePath: string,
-	): Promise<APIResponse<TaskLog[]>> => {
+	): Promise<TaskLog[]> => {
 		try {
-			const response = await api.post<APIResponse<TaskLog[]>>(
+			const response = await api.post<TaskLog[]>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs`,
 				{ file_path: filePath },
-				{ timeout: 0 }, // Disable timeout for this request since it can take longer
+				{ timeout: 0, showNotification: true }, // Disable timeout for this request since it can take longer, no toast for logs
 			)
 			return response.data
 		} catch (error) {
@@ -111,14 +115,12 @@ export const jobService = {
 	},
 
 	//This either pauses or resumes the job
-	activateJob: async (
-		jobId: string,
-		activate: boolean,
-	): Promise<APIResponse<any>> => {
+	activateJob: async (jobId: string, activate: boolean): Promise<any> => {
 		try {
-			const response = await api.post<APIResponse<any>>(
+			const response = await api.post<any>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/activate`,
 				{ activate },
+				{ showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -129,11 +131,11 @@ export const jobService = {
 
 	checkJobNameUnique: async (jobName: string): Promise<{ unique: boolean }> => {
 		try {
-			const response = await api.post<APIResponse<{ unique: boolean }>>(
+			const response = await api.post<{ unique: boolean }>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/check-unique`,
 				{ job_name: jobName },
 			)
-			return response.data.data
+			return response.data
 		} catch (error) {
 			console.error("Error checking job name uniqueness:", error)
 			throw error

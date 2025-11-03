@@ -5,8 +5,9 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
-	"github.com/datazip-inc/olake-ui/server/internal/middleware"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/middleware"
 )
 
 // writeDefaultCorsHeaders sets common CORS headers
@@ -33,7 +34,7 @@ func CustomCorsFilter(ctx *context.Context) {
 }
 
 func Init(h *handlers.Handler) {
-	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "localdev" {
+	if runmode, err := web.AppConfig.String(constants.ConfRunMode); err == nil && runmode == "localdev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
 		// Serve static frontend files
@@ -65,7 +66,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/sources/test", h, "post:TestSourceConnection")
 	web.Router("/api/v1/project/:projectid/sources/streams", h, "post:GetSourceCatalog")
 	web.Router("/api/v1/project/:projectid/sources/versions", h, "get:GetSourceVersions")
-	web.Router("/api/v1/project/:projectid/sources/spec", h, "post:GetProjectSourceSpec")
+	web.Router("/api/v1/project/:projectid/sources/spec", h, "post:GetSourceSpec")
 
 	// Destination routes
 	web.Router("/api/v1/project/:projectid/destinations", h, "get:ListDestinations")

@@ -94,5 +94,5 @@ type JobTaskRequest struct {
 }
 
 type JobStatusRequest struct {
-	Activate bool `json:"activate" validate:"required"`
+	Activate bool `json:"activate"`
 }

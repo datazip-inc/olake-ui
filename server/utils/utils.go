@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
 
@@ -43,8 +42,8 @@ func RespondJSON(ctx *web.Controller, status int, success bool, message string, 
 	_ = ctx.ServeJSON()
 }
 
-func SuccessResponse(ctx *web.Controller, data interface{}) {
-	RespondJSON(ctx, http.StatusOK, true, "success", data)
+func SuccessResponse(ctx *web.Controller, message string, data interface{}) {
+	RespondJSON(ctx, http.StatusOK, true, message, data)
 }
 
 func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
@@ -119,7 +118,7 @@ func ULID() string {
 	t := time.Now()
 	newUlid, err := ulid.New(ulid.Timestamp(t), entropy)
 	if err != nil {
-		logs.Critical(err)
+		logger.Fatal(err)
 	}
 
 	return newUlid.String()

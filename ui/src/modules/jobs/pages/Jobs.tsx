@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button, Tabs, Empty, message, Spin } from "antd"
-import { GitCommit, Plus } from "@phosphor-icons/react"
+import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
@@ -42,7 +42,6 @@ const Jobs: React.FC = () => {
 		try {
 			navigate(`/jobs/${id}/history`) // navigate to job history so that user can see the tasks running
 			await jobService.syncJob(id)
-			message.success("Job sync started successfully")
 			await fetchJobs()
 		} catch (error) {
 			message.error("Failed to sync job")
@@ -81,22 +80,16 @@ const Jobs: React.FC = () => {
 	}
 
 	const handlePauseJob = async (id: string, checked: boolean) => {
-		const job = jobs.find(j => j.id.toString() === id)
 		await jobService.activateJob(id, !checked)
-		message.success(
-			`Successfully ${checked ? "paused" : "resumed"} ${job?.name || id}`,
-		)
 		await fetchJobs()
 	}
 
 	// cancels the running job
 	const handleCancelJob = async (id: string) => {
 		try {
-			const response = await jobService.cancelJob(id)
-			message.success(response)
+			await jobService.cancelJob(id)
 		} catch (error) {
 			console.error("Error canceling job:", error)
-			message.error("Failed to cancel run")
 		}
 	}
 
@@ -179,14 +172,14 @@ const Jobs: React.FC = () => {
 		<div className="p-6">
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center gap-2">
-					<GitCommit className="mr-2 size-6" />
+					<GitCommitIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
 				<button
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 					onClick={handleCreateJob}
 				>
-					<Plus className="size-4 text-white" />
+					<PlusIcon className="size-4 text-white" />
 					Create Job
 				</button>
 			</div>

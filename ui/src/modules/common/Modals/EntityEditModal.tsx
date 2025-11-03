@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Button, Modal, Table, message } from "antd"
-import { InfoIcon, Warning } from "@phosphor-icons/react"
+import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api"
@@ -82,7 +82,6 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				setTimeout(async () => {
 					setShowSuccessModal(false)
 					await updateEntity(selectedEntity.id.toString(), selectedEntity)
-					message.success(`${entityType} updated successfully`)
 					navigate(navigatePath)
 				}, 2000)
 			} else {
@@ -95,7 +94,6 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 				setShowFailureModal(true)
 			}
 		} catch (error) {
-			message.error(`Failed to update ${entityType}`)
 			console.error(error)
 		}
 	}
@@ -165,7 +163,7 @@ const EntityEditModal = ({ entityType }: EntityEditModalProps) => {
 			<Modal
 				title={
 					<div className="flex justify-center">
-						<Warning
+						<WarningIcon
 							weight="fill"
 							className="size-12 text-primary"
 						/>

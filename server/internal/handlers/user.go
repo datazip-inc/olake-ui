@@ -30,7 +30,7 @@ func (h *Handler) CreateUser() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, req)
+	utils.SuccessResponse(&h.Controller, "user created successfully", req)
 }
 
 // @router /users [get]
@@ -43,7 +43,7 @@ func (h *Handler) GetAllUsers() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, users)
+	utils.SuccessResponse(&h.Controller, "users listed successfully", users)
 }
 
 // @router /users/:id [put]
@@ -72,7 +72,7 @@ func (h *Handler) UpdateUser() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, updatedUser)
+	utils.SuccessResponse(&h.Controller, "user updated successfully", updatedUser)
 }
 
 // @router /users/:id [delete]
@@ -90,5 +90,5 @@ func (h *Handler) DeleteUser() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, nil)
+	utils.SuccessResponse(&h.Controller, "user deleted successfully", nil)
 }

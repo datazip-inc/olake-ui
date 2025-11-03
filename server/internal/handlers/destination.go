@@ -23,7 +23,7 @@ func (h *Handler) ListDestinations() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, items)
+	utils.SuccessResponse(&h.Controller, "Destinations listed successfully", items)
 }
 
 // @router /project/:projectid/destinations [post]
@@ -59,7 +59,7 @@ func (h *Handler) CreateDestination() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, req)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 
 // @router /project/:projectid/destinations/:id [put]
@@ -100,7 +100,7 @@ func (h *Handler) UpdateDestination() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, req)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
 // @router /project/:projectid/destinations/:id [delete]
@@ -119,11 +119,12 @@ func (h *Handler) DeleteDestination() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, resp)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
 }
 
 // @router /project/:projectid/destinations/test [post]
 func (h *Handler) TestDestinationConnection() {
+	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -132,13 +133,13 @@ func (h *Handler) TestDestinationConnection() {
 
 	logger.Infof("Test destination connection initiated destination_type[%s] destination_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.etl.TestConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.TestDestinationConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, dto.TestConnectionResponse{
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s connection tested successfully", req.Type), dto.TestConnectionResponse{
 		ConnectionResult: result,
 		Logs:             logs,
 	})
@@ -159,7 +160,7 @@ func (h *Handler) GetDestinationJobs() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, map[string]interface{}{"jobs": jobs})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %d jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/destinations/versions [get]
@@ -183,7 +184,7 @@ func (h *Handler) GetDestinationVersions() {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, versions)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
 }
 
 // @router /project/:projectid/destinations/spec [post]
@@ -208,5 +209,5 @@ func (h *Handler) GetDestinationSpec() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, resp)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s spec fetched successfully", req.Type), resp)
 }

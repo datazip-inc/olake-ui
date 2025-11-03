@@ -1,4 +1,8 @@
-import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
+import {
+	GitCommitIcon,
+	LinktreeLogoIcon,
+	PathIcon,
+} from "@phosphor-icons/react"
 import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
 import { getResponsivePageSize } from "./utils"
 
@@ -79,7 +83,7 @@ export const ENTITY_TYPES = {
 
 export const DESTINATION_INTERNAL_TYPES = {
 	ICEBERG: "iceberg",
-	S3: "s3",
+	S3: "parquet",
 }
 
 export const DESTINATION_LABELS = {
@@ -121,9 +125,9 @@ export const LOCALSTORAGE_TOKEN_KEY = "token"
 export const LOCALSTORAGE_USERNAME_KEY = "username"
 
 export const NAV_ITEMS: NavItem[] = [
-	{ path: "/jobs", label: "Jobs", icon: GitCommit },
-	{ path: "/sources", label: "Sources", icon: LinktreeLogo },
-	{ path: "/destinations", label: "Destinations", icon: Path },
+	{ path: "/jobs", label: "Jobs", icon: GitCommitIcon },
+	{ path: "/sources", label: "Sources", icon: LinktreeLogoIcon },
+	{ path: "/destinations", label: "Destinations", icon: PathIcon },
 ]
 
 export const sourceTabs = [

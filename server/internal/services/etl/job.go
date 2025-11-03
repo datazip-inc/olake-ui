@@ -19,7 +19,7 @@ import (
 
 // Job-related methods on AppService
 
-func (s *ETLService) GetAllJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
+func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobResponse, error) {
 	jobs, err := s.db.ListJobsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
@@ -38,6 +38,13 @@ func (s *ETLService) GetAllJobs(ctx context.Context, projectID string) ([]dto.Jo
 }
 
 func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
+	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check job name uniqueness: %s", err)
+	}
+	if !unique {
+		return fmt.Errorf("job name '%s' is not unique", req.Name)
+	}
 	source, err := s.upsertSource(req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
@@ -108,7 +115,11 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
 	existingJob.UpdatedBy = &models.User{ID: *userID}
-
+	// cancel existing workflow
+	err = cancelAllJobWorkflows(ctx, s.temporal, []*models.Job{existingJob}, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to cancel workflow for job %s", err)
+	}
 	if err := s.db.UpdateJob(existingJob); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
@@ -145,12 +156,7 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 }
 
 func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
-	job, err := s.db.GetJobByID(jobID, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find job: %s", err)
-	}
-
-	if err := s.temporal.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
+	if err := s.temporal.TriggerSchedule(ctx, projectID, jobID); err != nil {
 		return nil, fmt.Errorf("failed to trigger sync: %s", err)
 	}
 
@@ -159,30 +165,40 @@ func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (
 	}, nil
 }
 
-func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) (map[string]any, error) {
-	job, err := s.db.GetJobByID(jobID, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find job: %s", err)
-	}
-
-	jobSlice := []*models.Job{job}
-	if err := cancelAllJobWorkflows(ctx, s.temporal, jobSlice, projectID); err != nil {
-		return nil, fmt.Errorf("failed to cancel job workflow: %s", err)
-	}
-	// TODO : remove nested parsing from frontend
-	return map[string]any{
-		"message": "job workflow cancel requested successfully",
-	}, nil
-}
-
-func (s *ETLService) ActivateJob(_ context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
+func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to find job: %s", err)
 	}
 
-	job.Active = req.Activate
+	jobSlice := []*models.Job{job}
+	if err := cancelAllJobWorkflows(ctx, s.temporal, jobSlice, projectID); err != nil {
+		return fmt.Errorf("failed to cancel job workflow: %s", err)
+	}
+	return nil
+}
 
+func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return fmt.Errorf("failed to find job: %s", err)
+	}
+
+	if req.Activate == job.Active {
+		return nil
+	}
+
+	if req.Activate {
+		if err := s.temporal.ResumeSchedule(ctx, job.ProjectID, job.ID); err != nil {
+			return fmt.Errorf("failed to unpause schedule: %s", err)
+		}
+	} else {
+		if err := s.temporal.PauseSchedule(ctx, job.ProjectID, job.ID); err != nil {
+			return fmt.Errorf("failed to pause schedule: %s", err)
+		}
+	}
+
+	job.Active = req.Activate
 	user := &models.User{ID: *userID}
 	job.UpdatedBy = user
 
@@ -193,7 +209,7 @@ func (s *ETLService) ActivateJob(_ context.Context, jobID int, req dto.JobStatus
 	return nil
 }
 
-func (s *ETLService) IsJobNameUnique(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
+func (s *ETLService) CheckUniqueJobName(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
 	if err != nil {
 		return false, fmt.Errorf("failed to check job name uniqueness: %s", err)
