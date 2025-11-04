@@ -165,7 +165,7 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 	// TODO: handle from frontend
 	if result == nil {
 		result = map[string]interface{}{
-			"message": "Connection test failed",
+			"message": err.Error(),
 			"status":  "failed",
 		}
 	}

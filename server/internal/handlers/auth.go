@@ -28,11 +28,11 @@ func (h *Handler) Login() {
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserNotFound):
-			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "user not found, sign up first", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, fmt.Sprintf("user not found, sign up first: %s", err), err)
 		case errors.Is(err, constants.ErrInvalidCredentials):
-			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid credentials", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, fmt.Sprintf("Invalid credentials: %s", err), err)
 		default:
-			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Login failed", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Login failed: %s", err), err)
 		}
 		return
 	}
@@ -60,7 +60,7 @@ func (h *Handler) CheckAuth() {
 	// Optional: Validate that the user still exists in the database
 	if userIDInt, ok := userID.(int); ok {
 		if err := h.etl.ValidateUser(userIDInt); err != nil {
-			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid session", err)
+			utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, fmt.Sprintf("Invalid session: %s", err), err)
 			return
 		}
 	}
@@ -78,7 +78,7 @@ func (h *Handler) Logout() {
 
 	err := h.DestroySession()
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to destroy session", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to destroy session: %s", err), err)
 		return
 	}
 
@@ -96,9 +96,9 @@ func (h *Handler) Signup() {
 	if err := h.etl.Signup(h.Ctx.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
-			utils.ErrorResponse(&h.Controller, http.StatusConflict, "Username already exists", err)
+			utils.ErrorResponse(&h.Controller, http.StatusConflict, fmt.Sprintf("Username already exists: %s", err), err)
 		case errors.Is(err, constants.ErrPasswordProcessing):
-			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to process password", err)
+			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to process password: %s", err), err)
 		default:
 			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
 		}
