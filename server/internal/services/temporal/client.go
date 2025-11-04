@@ -9,6 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
@@ -21,10 +22,15 @@ type Temporal struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
-	temporalAddress := web.AppConfig.DefaultString(constants.ConfTemporalAddress, constants.DefaultTemporalAddress)
+	temporalAddress, err := web.AppConfig.String(constants.ConfTemporalAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get temporal address: %s", err)
+	}
+
+	logger.Info("TEMPORAL INIT DONE", temporalAddress)
 
 	var temporalClient *Temporal
-	err := utils.RetryWithBackoff(func() error {
+	err = utils.RetryWithBackoff(func() error {
 		client, dialErr := client.Dial(client.Options{
 			HostPort: temporalAddress,
 		})
