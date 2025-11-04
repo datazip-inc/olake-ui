@@ -3,6 +3,7 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -20,20 +21,28 @@ type Temporal struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
-	// Choose task queue based on deployment mode
 	temporalAddress := web.AppConfig.DefaultString(constants.ConfTemporalAddress, constants.DefaultTemporalAddress)
 
-	c, err := client.Dial(client.Options{
-		HostPort: temporalAddress,
-	})
+	var temporalClient *Temporal
+	err := utils.RetryWithBackoff(func() error {
+		client, dialErr := client.Dial(client.Options{
+			HostPort: temporalAddress,
+		})
+		if dialErr != nil {
+			return fmt.Errorf("failed to create temporal client: %s", dialErr)
+		}
+
+		temporalClient = &Temporal{
+			Client:    client,
+			taskQueue: constants.TemporalTaskQueue,
+		}
+		return nil
+	}, 3, time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temporal client: %s", err)
+		return nil, err
 	}
 
-	return &Temporal{
-		Client:    c,
-		taskQueue: constants.TemporalTaskQueue,
-	}, nil
+	return temporalClient, nil
 }
 
 // Close closes the Temporal client
