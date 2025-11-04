@@ -45,7 +45,7 @@ export interface SourceJob {
 }
 
 export interface SourceData {
-	id?: string
+	id?: number
 	name: string
 	type: string
 	config: Record<string, any>

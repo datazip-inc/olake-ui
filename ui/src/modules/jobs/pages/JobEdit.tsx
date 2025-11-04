@@ -161,15 +161,9 @@ const JobEdit: React.FC = () => {
 
 	// Load job data on component mount
 	useEffect(() => {
-		const loadData = async () => {
-			try {
-				await Promise.all([fetchJobs(), fetchSources(), fetchDestinations()])
-			} catch (error) {
-				console.error("Error loading data:", error)
-				message.error("Failed to load job data. Please try again.")
-			}
-		}
-		loadData()
+		fetchJobs()
+		fetchSources()
+		fetchDestinations()
 	}, [])
 
 	const initializeFromExistingJob = (job: Job) => {
@@ -179,6 +173,7 @@ const JobEdit: React.FC = () => {
 
 		// Set source data from job
 		setSourceData({
+			id: job.source.id,
 			name: job.source.name,
 			type: job.source.type,
 			config: sourceConfig,
@@ -190,6 +185,7 @@ const JobEdit: React.FC = () => {
 
 		// Set destination data from job
 		setDestinationData({
+			id: job.destination.id,
 			name: job.destination.name,
 			type: job.destination.type,
 			config: destConfig,
@@ -311,6 +307,7 @@ const JobEdit: React.FC = () => {
 		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
+				...(sourceData?.id && { id: sourceData.id }),
 				name: sourceData?.name || "",
 				type: getConnectorInLowerCase(sourceData?.type || ""),
 				config:
@@ -320,6 +317,7 @@ const JobEdit: React.FC = () => {
 				version: sourceData?.version || "",
 			},
 			destination: {
+				...(destinationData?.id && { id: destinationData.id }),
 				name: destinationData?.name || "",
 				type: getConnectorInLowerCase(destinationData?.type || ""),
 				config:

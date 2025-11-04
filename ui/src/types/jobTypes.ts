@@ -4,12 +4,14 @@ export interface Job {
 	id: number
 	name: string
 	source: {
+		id?: number
 		name: string
 		type: string
 		version: string
 		config: string
 	}
 	destination: {
+		id?: number
 		name: string
 		type: string
 		version: string
