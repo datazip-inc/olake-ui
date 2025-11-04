@@ -368,7 +368,6 @@ const JobEdit: React.FC = () => {
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
-			message.error("Failed to save job. Please try again.")
 		} finally {
 			setIsSubmitting(false)
 		}

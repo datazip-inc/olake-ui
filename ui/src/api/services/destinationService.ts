@@ -96,7 +96,7 @@ export const destinationService = {
 					source_version: source_version,
 				},
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
-				{ timeout: 0 },
+				{ timeout: 0, disableErrorNotification: true },
 			)
 			return {
 				success: true,
@@ -140,7 +140,7 @@ export const destinationService = {
 				source_version: source_version,
 			},
 			//timeout is 300000 as spec takes more time as it needs to fetch the spec from the destination
-			{ timeout: 300000, signal },
+			{ timeout: 300000, signal, disableErrorNotification: true },
 		)
 		return response.data
 	},

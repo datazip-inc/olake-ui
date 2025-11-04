@@ -80,7 +80,7 @@ export const sourceService = {
 					version: source.version,
 					config: source.config,
 				},
-				{ timeout: 0 }, // Disable timeout for this request since it can take longer
+				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
 			return {
 				success: true,
@@ -124,7 +124,7 @@ export const sourceService = {
 					type: type.toLowerCase(),
 					version,
 				},
-				{ timeout: 300000, signal }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
+				{ timeout: 300000, signal, disableErrorNotification: true }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
 			)
 			return response.data
 		} catch (error) {

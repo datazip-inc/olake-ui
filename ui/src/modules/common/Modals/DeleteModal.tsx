@@ -35,20 +35,12 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 
 	const handleDeleteSource = () => {
 		message.info(`Deleting source ${selectedSource?.name}`)
-		deleteSource(selectedSource?.id as unknown as string).catch(error => {
-			message.error("Failed to delete source")
-			console.error(error)
-		})
+		deleteSource(selectedSource?.id as unknown as string)
 		setShowDeleteModal(false)
 	}
 	const handleDeleteDestination = () => {
 		message.info(`Deleting destination ${selectedDestination?.name}`)
-		deleteDestination(selectedDestination?.id as unknown as string).catch(
-			error => {
-				message.error("Failed to delete destination")
-				console.error(error)
-			},
-		)
+		deleteDestination(selectedDestination?.id as unknown as string)
 		setShowDeleteModal(false)
 	}
 

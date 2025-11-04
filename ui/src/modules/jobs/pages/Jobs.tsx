@@ -27,10 +27,7 @@ const Jobs: React.FC = () => {
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchJobs().catch(error => {
-			message.error("Failed to fetch jobs")
-			console.error(error)
-		})
+		fetchJobs()
 	}, [fetchJobs])
 
 	const handleCreateJob = () => {
