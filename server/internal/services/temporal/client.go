@@ -9,7 +9,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
@@ -26,8 +25,6 @@ func NewClient() (*Temporal, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get temporal address: %s", err)
 	}
-
-	logger.Info("TEMPORAL INIT DONE", temporalAddress)
 
 	var temporalClient *Temporal
 	err = utils.RetryWithBackoff(func() error {
