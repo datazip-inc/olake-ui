@@ -27,10 +27,7 @@ const Jobs: React.FC = () => {
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchJobs().catch(error => {
-			message.error("Failed to fetch jobs")
-			console.error(error)
-		})
+		fetchJobs()
 	}, [fetchJobs])
 
 	const handleCreateJob = () => {
@@ -42,7 +39,6 @@ const Jobs: React.FC = () => {
 		try {
 			navigate(`/jobs/${id}/history`) // navigate to job history so that user can see the tasks running
 			await jobService.syncJob(id)
-			message.success("Job sync started successfully")
 			await fetchJobs()
 		} catch (error) {
 			message.error("Failed to sync job")
@@ -81,22 +77,16 @@ const Jobs: React.FC = () => {
 	}
 
 	const handlePauseJob = async (id: string, checked: boolean) => {
-		const job = jobs.find(j => j.id.toString() === id)
 		await jobService.activateJob(id, !checked)
-		message.success(
-			`Successfully ${checked ? "paused" : "resumed"} ${job?.name || id}`,
-		)
 		await fetchJobs()
 	}
 
 	// cancels the running job
 	const handleCancelJob = async (id: string) => {
 		try {
-			const response = await jobService.cancelJob(id)
-			message.success(response)
+			await jobService.cancelJob(id)
 		} catch (error) {
 			console.error("Error canceling job:", error)
-			message.error("Failed to cancel run")
 		}
 	}
 
@@ -133,17 +123,19 @@ const Jobs: React.FC = () => {
 	const updateJobsList = () => {
 		switch (activeTab) {
 			case JOB_TYPES.ACTIVE:
-				setFilteredJobs(jobs.filter(job => job.activate === true))
+				setFilteredJobs(jobs.filter(job => job?.activate === true))
 				break
 			case JOB_TYPES.INACTIVE:
-				setFilteredJobs(jobs.filter(job => job.activate === false))
+				setFilteredJobs(jobs.filter(job => job?.activate === false))
 				break
 			case JOB_TYPES.SAVED:
 				setFilteredJobs(savedJobs)
 				break
 			case JOB_TYPES.FAILED:
 				setFilteredJobs(
-					jobs.filter(job => job.last_run_state?.toLowerCase() === "failed"),
+					jobs.filter(
+						job => (job?.last_run_state ?? "").toLowerCase() === "failed",
+					),
 				)
 				break
 			default:

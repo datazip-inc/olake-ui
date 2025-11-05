@@ -51,10 +51,11 @@ BACKEND_ENV_VARS = \
       OLAKE_POSTGRES_PORT=5432 \
       OLAKE_POSTGRES_DBNAME=postgres \
       OLAKE_POSTGRES_SSLMODE=disable \
-      LOGS_DIR=./logger/logs \
+      LOGS_DIR=$(PWD)/logger/logs \
       SESSION_ON=true \
       TEMPORAL_ADDRESS=localhost:7233 \
-      CONTAINER_REGISTRY_BASE=registry-1.docker.io
+      CONTAINER_REGISTRY_BASE=registry-1.docker.io \
+	  PERSISTENT_DIR=$(PWD)/olake-config
 
 # Frontend environment variables
 FRONTEND_ENV_VARS = \

@@ -1,16 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import {
-	Input,
-	Button,
-	Select,
-	Switch,
-	message,
-	Spin,
-	Table,
-	Tooltip,
-} from "antd"
+import { Input, Button, Select, Switch, Spin, Table, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
 	ArrowLeftIcon,
@@ -63,6 +54,8 @@ import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplat
 
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import { AxiosError } from "axios"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({
 	fromJobFlow = false,
@@ -93,6 +86,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [isLoading, setIsLoading] = useState(false)
 	const [destination, setDestination] = useState<Entity | null>(null)
+	const [specError, setSpecError] = useState<string | null>(null)
 
 	const {
 		destinations,
@@ -105,6 +99,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setShowFailureModal,
 		setDestinationTestConnectionError,
 		updateDestination,
+		setShowSpecFailedModal,
 	} = useAppStore()
 
 	const navigate = useNavigate()
@@ -208,14 +203,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 					connectorType.toLowerCase(),
 				)
 
-				if (response.data?.version) {
-					setVersions(response.data.version)
+				if (response?.version) {
+					setVersions(response.version)
 
 					// If no version is selected, set the first one as default
-					if (!selectedVersion && response.data.version.length > 0) {
-						setSelectedVersion(response.data.version[0])
+					if (!selectedVersion && response.version.length > 0) {
+						setSelectedVersion(response.version[0])
 						if (onVersionChange) {
-							onVersionChange(response.data.version[0])
+							onVersionChange(response.version[0])
 						}
 					}
 				} else {
@@ -232,7 +227,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		fetchVersions()
 	}, [connector])
 
-	useEffect(() => {
+	const handleFetchSpec = () => {
 		if (!selectedVersion || !connector) {
 			setSchema(null)
 			setUiSchema(null)
@@ -257,9 +252,19 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 				setSchema({})
 				setUiSchema({})
 				console.error("Error fetching destination spec:", error)
+				if (error instanceof AxiosError) {
+					setSpecError(error.response?.data.message)
+				} else {
+					setSpecError("Failed to fetch spec, Please try again.")
+				}
+				setShowSpecFailedModal(true)
 			},
 			() => setIsLoading(false),
 		)
+	}
+
+	useEffect(() => {
+		handleFetchSpec()
 	}, [connector, selectedVersion, fromJobFlow, sourceConnector, sourceVersion])
 
 	const handleVersionChange = (value: string) => {
@@ -348,15 +353,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const saveDestination = () => {
 		if (destinationId) {
-			updateDestination(destinationId, getDestinationData())
-				.then(() => {
-					message.success("Destination updated successfully")
-					navigate("/destinations")
-				})
-				.catch(error => {
-					message.error("Failed to update source")
-					console.error(error)
-				})
+			updateDestination(destinationId, getDestinationData()).then(() => {
+				navigate("/destinations")
+			})
 		}
 	}
 
@@ -374,16 +373,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	// }
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
-		try {
-			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
-			await fetchDestinations()
-		} catch (error) {
-			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
-		}
+		await jobService.activateJob(jobId, !checked)
+		await fetchDestinations()
 	}
 
 	const toggleDocsPanel = () => {
@@ -764,6 +755,13 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={false} />
 			<EntityEditModal entityType={ENTITY_TYPES.DESTINATION as EntityType} />
+			{specError && (
+				<SpecFailedModal
+					fromSource={false}
+					error={specError}
+					onTryAgain={handleFetchSpec}
+				/>
+			)}
 		</div>
 	)
 }

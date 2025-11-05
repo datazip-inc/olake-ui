@@ -5,9 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 // TrackDestinationCreation tracks the creation of a new destination with relevant properties
@@ -27,7 +26,7 @@ func TrackDestinationCreation(ctx context.Context, dest *models.Destination) {
 		var configMap map[string]interface{}
 		// parse config to get catalog_type
 		if err := json.Unmarshal([]byte(dest.Config), &configMap); err != nil {
-			logs.Debug("Failed to unmarshal config: %s", err)
+			logger.Debug("Failed to unmarshal config: %s", err)
 			return
 		}
 
@@ -42,7 +41,7 @@ func TrackDestinationCreation(ctx context.Context, dest *models.Destination) {
 		}
 
 		if err := TrackEvent(ctx, EventDestinationCreated, properties); err != nil {
-			logs.Debug("Failed to track destination creation event: %s", err)
+			logger.Debug("Failed to track destination creation event: %s", err)
 			return
 		}
 
@@ -58,13 +57,9 @@ func TrackDestinationsStatus(ctx context.Context) {
 			return
 		}
 
-		// TODO: remove creation of orm from here
-		destORM := database.NewDestinationORM()
-		jobORM := database.NewJobORM()
-
-		destinations, err := destORM.GetAll()
+		destinations, err := instance.db.ListDestinations()
 		if err != nil {
-			logs.Debug("Failed to get all destinations: %s", err)
+			logger.Debug("Failed to get all destinations: %s", err)
 			return
 		}
 
@@ -72,9 +67,9 @@ func TrackDestinationsStatus(ctx context.Context) {
 
 		for _, dest := range destinations {
 			// TODO: remove db calls loop
-			jobs, err := jobORM.GetByDestinationID(dest.ID)
+			jobs, err := instance.db.GetJobsByDestinationID([]int{dest.ID})
 			if err != nil {
-				logs.Debug("Failed to get jobs for destination %d: %s", dest.ID, err)
+				logger.Debug("Failed to get jobs for destination %d: %s", dest.ID, err)
 				break
 			}
 			if len(jobs) > 0 {
@@ -90,7 +85,7 @@ func TrackDestinationsStatus(ctx context.Context) {
 		}
 
 		if err := TrackEvent(ctx, EventDestinationsUpdated, props); err != nil {
-			logs.Debug("failed to track destination status event: %s", err)
+			logger.Debug("failed to track destination status event: %s", err)
 		}
 	}()
 }

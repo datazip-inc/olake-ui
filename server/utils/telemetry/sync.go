@@ -9,9 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 type jobDetails struct {
@@ -25,8 +24,7 @@ type jobDetails struct {
 }
 
 func getJobDetails(jobID int) (*jobDetails, error) {
-	jobORM := database.NewJobORM()
-	job, err := jobORM.GetByID(jobID, false)
+	job, err := instance.db.GetJobByID(jobID, false)
 	if err != nil || job == nil {
 		if job == nil {
 			return nil, fmt.Errorf("job not found")
@@ -40,7 +38,7 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	}
 
 	if job.CreatedBy != nil {
-		if user, err := database.NewUserORM().GetByID(job.CreatedBy.ID); err == nil {
+		if user, err := instance.db.GetUserByID(job.CreatedBy.ID); err == nil {
 			details.CreatedBy = user.Username
 		}
 	}
@@ -177,33 +175,33 @@ func TrackSyncStart(ctx context.Context, jobID int, workflowID string) {
 
 		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncStarted)
 		if err != nil {
-			logs.Debug("failed to track sync start event: %s", err)
+			logger.Debug("failed to track sync start event: %s", err)
 		}
 	}()
 }
 
-func TrackSyncFailed(ctx context.Context, jobID int, workflowID string) {
+func TrackSyncFailed(jobID int, workflowID string) {
 	go func() {
 		if instance == nil {
 			return
 		}
 
-		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncFailed)
+		err := trackSyncEvent(context.Background(), jobID, workflowID, EventSyncFailed)
 		if err != nil {
-			logs.Debug("failed to track sync failed event: %s", err)
+			logger.Debug("failed to track sync failed event: %s", err)
 		}
 	}()
 }
 
-func TrackSyncCompleted(ctx context.Context, jobID int, workflowID string) {
+func TrackSyncCompleted(jobID int, workflowID string) {
 	go func() {
 		if instance == nil {
 			return
 		}
 
-		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncCompleted)
+		err := trackSyncEvent(context.Background(), jobID, workflowID, EventSyncCompleted)
 		if err != nil {
-			logs.Debug("failed to track sync completed event: %s", err)
+			logger.Debug("failed to track sync completed event: %s", err)
 		}
 	}()
 }
