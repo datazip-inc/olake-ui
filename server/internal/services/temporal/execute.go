@@ -225,7 +225,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	// update schedule to use clear-destination request
 	// unpause and update args back to sync is performed in the activity cleanup
 	clearReq := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
-	err := t.UpdateScheduleAction(ctx, job.ProjectID, job.ID, clearReq)
+	err := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &clearReq)
 	if err != nil {
 		_ = t.ResumeSchedule(ctx, job.ProjectID, job.ID)
 		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
@@ -234,8 +234,8 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	return t.TriggerSchedule(ctx, job.ProjectID, job.ID)
 }
 
-// GetDifferenceStreams compares old and new stream configs and returns the difference
-func (t *Temporal) GetDifferenceStreams(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
+// GetStreamDifference compares old and new stream configs and returns the difference
+func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
 
 	configs := []JobConfig{

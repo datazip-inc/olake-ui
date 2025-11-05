@@ -23,8 +23,8 @@ func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, j
 	var conditions []string
 	for _, job := range jobs {
 		conditions = append(conditions, fmt.Sprintf(
-			"(WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND OperationType = 'sync')",
-			projectID, job.ID, projectID, job.ID,
+			"(WorkflowId BETWEEN 'sync-%s-%d' AND 'sync-%s-%d-~' AND OperationType != '%s')",
+			projectID, job.ID, projectID, job.ID, temporal.ClearDestination,
 		))
 	}
 
@@ -148,12 +148,18 @@ func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, proje
 
 // waitForSyncToStop waits for sync workflows to stop with timeout
 func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, maxWaitTime time.Duration) error {
-	deadline := time.Now().Add(maxWaitTime)
-	ticker := time.NewTicker(500 * time.Millisecond)
+	if maxWaitTime <= 0 {
+		return nil
+	}
+
+	timedCtx, cancel := context.WithTimeout(ctx, maxWaitTime)
+	defer cancel()
+
+	ticker := time.NewTicker(600 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
-		running, err := isWorkflowRunning(ctx, tempClient, projectID, jobID, temporal.Sync)
+		running, err := isWorkflowRunning(timedCtx, tempClient, projectID, jobID, temporal.Sync)
 		if err != nil {
 			return fmt.Errorf("failed to check sync status: %s", err)
 		}
@@ -161,15 +167,11 @@ func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, proje
 			return nil
 		}
 
-		if time.Now().After(deadline) {
-			return fmt.Errorf("timeout waiting for sync to stop after %v", maxWaitTime)
-		}
-
 		select {
+		case <-timedCtx.Done():
+			return fmt.Errorf("timeout waiting for sync to stop after %v", maxWaitTime)
 		case <-ticker.C:
 			continue
-		case <-ctx.Done():
-			return ctx.Err()
 		}
 	}
 }

@@ -102,13 +102,8 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	// Cancel sync before updating the job
-	if syncRunning, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); syncRunning {
-		logger.Infof("sync is running for job %d, cancelling sync workflow", jobID)
-		jobSlice := []*models.Job{existingJob}
-		if err := cancelAllJobWorkflows(ctx, s.temporal, jobSlice, projectID); err != nil {
-			return fmt.Errorf("failed to cancel sync: %s", err)
-		}
-		logger.Infof("successfully cancelled sync for job %d", jobID)
+	if err := cancelAllJobWorkflows(ctx, s.temporal, []*models.Job{existingJob}, projectID); err != nil {
+		return fmt.Errorf("failed to cancel sync: %s", err)
 	}
 
 	// Handle stream difference if provided
@@ -120,7 +115,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 
 		if len(diffCatalog) > 0 {
 			logger.Infof("stream difference detected for job %d, running clear destination workflow", existingJob.ID)
-			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, 10*time.Second); err != nil {
+			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, 20*time.Second); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -148,16 +143,12 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
 	existingJob.UpdatedBy = &models.User{ID: *userID}
-	// cancel existing workflow
-	err = cancelAllJobWorkflows(ctx, s.temporal, []*models.Job{existingJob}, projectID)
-	if err != nil {
-		return fmt.Errorf("failed to cancel workflow for job %s", err)
-	}
+
 	if err := s.db.UpdateJob(existingJob); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
-	err = s.temporal.UpdateScheduleSpec(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID)
+	err = s.temporal.UpdateSchedule(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID, nil)
 	if err != nil {
 		// Compensation: restore previous DB state if schedule update fails
 		if rerr := s.db.UpdateJob(&prevJob); rerr != nil {
@@ -283,7 +274,7 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, projectID string, 
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
-	diffCatalog, err := s.temporal.GetDifferenceStreams(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
+	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stream difference: %s", err)
 	}
