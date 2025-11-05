@@ -119,10 +119,10 @@ const StreamsCollapsibleList = ({
 
 		setCheckedStatus(newCheckedStatus)
 
-		// sort the grouped streams baseds
+		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status
 		if (
 			Object.keys(groupedStreams).length > 0 &&
-			sortedGroupedNamespaces.length === 0
+			sortedGroupedNamespaces.length === 0 // only sort once when initializing
 		) {
 			const sortStreamsByCheckedStatus = (
 				streams: StreamData[],
