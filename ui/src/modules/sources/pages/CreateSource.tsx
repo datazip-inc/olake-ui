@@ -47,6 +47,8 @@ import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplat
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
+import { AxiosError } from "axios"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -88,6 +90,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 		const [existingSource, setExistingSource] = useState<string | null>(null)
+		const [specError, setSpecError] = useState<string | null>(null)
 
 		const navigate = useNavigate()
 
@@ -101,6 +104,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			addSource,
 			setShowFailureModal,
 			setSourceTestConnectionError,
+			setShowSpecFailedModal,
 		} = useAppStore()
 
 		useEffect(() => {
@@ -190,7 +194,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			fetchVersions()
 		}, [connector, initialConnector])
 
-		useEffect(() => {
+		const handleFetchSpec = () => {
 			if (!selectedVersion) {
 				setSchema(null)
 				return
@@ -203,16 +207,25 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				signal =>
 					sourceService.getSourceSpec(connector, selectedVersion, signal),
 				response => {
-					console.log("response from create source", response)
 					handleSpecResponse(response, setSchema, setUiSchema, "source")
 				},
 				error => {
 					setSchema({})
 					setUiSchema({})
 					console.error("Error fetching source spec:", error)
+					if (error instanceof AxiosError) {
+						setSpecError(error.response?.data.message)
+					} else {
+						setSpecError("Failed to fetch spec, Please try again.")
+					}
+					setShowSpecFailedModal(true)
 				},
 				() => setLoading(false),
 			)
+		}
+
+		useEffect(() => {
+			handleFetchSpec()
 		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {
@@ -663,6 +676,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					type="source"
 					navigateTo={fromJobFlow ? "jobs/new" : "sources"}
 				/>
+				{specError && (
+					<SpecFailedModal
+						fromSource
+						error={specError}
+						onTryAgain={handleFetchSpec}
+					/>
+				)}
 			</div>
 		)
 	},

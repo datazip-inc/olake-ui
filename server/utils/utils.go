@@ -292,3 +292,22 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 
 	return parsedLogs, nil
 }
+
+// RetryWithBackoff retries a function with exponential backoff
+func RetryWithBackoff(fn func() error, maxRetries int, initialDelay time.Duration) error {
+	var errMsg error
+	for i := 0; i < maxRetries; i++ {
+		if err := fn(); err != nil {
+			errMsg = err
+			if i < maxRetries-1 {
+				delay := initialDelay * time.Duration(1<<uint(i)) // exponential: 1s, 2s, 4s, 8s...
+				logger.Warnf("Retry attempt %d/%d failed: %s. Retrying in %v...", i+1, maxRetries, err, delay)
+				time.Sleep(delay)
+				continue
+			}
+		} else {
+			return nil
+		}
+	}
+	return fmt.Errorf("failed after %d retries: %s", maxRetries, errMsg)
+}

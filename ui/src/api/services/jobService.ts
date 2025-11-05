@@ -29,7 +29,6 @@ export const jobService = {
 			const response = await api.post<Job>(
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
 				job,
-				{ showNotification: true },
 			)
 			return response.data
 		} catch (error) {

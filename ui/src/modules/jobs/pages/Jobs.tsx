@@ -27,10 +27,7 @@ const Jobs: React.FC = () => {
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchJobs().catch(error => {
-			message.error("Failed to fetch jobs")
-			console.error(error)
-		})
+		fetchJobs()
 	}, [fetchJobs])
 
 	const handleCreateJob = () => {
@@ -126,17 +123,19 @@ const Jobs: React.FC = () => {
 	const updateJobsList = () => {
 		switch (activeTab) {
 			case JOB_STATUS.ACTIVE:
-				setFilteredJobs(jobs.filter(job => job.activate === true))
+				setFilteredJobs(jobs.filter(job => job?.activate === true))
 				break
 			case JOB_STATUS.INACTIVE:
-				setFilteredJobs(jobs.filter(job => job.activate === false))
+				setFilteredJobs(jobs.filter(job => job?.activate === false))
 				break
 			case JOB_STATUS.SAVED:
 				setFilteredJobs(savedJobs)
 				break
 			case JOB_STATUS.FAILED:
 				setFilteredJobs(
-					jobs.filter(job => job.last_run_state?.toLowerCase() === "failed"),
+					jobs.filter(
+						job => (job?.last_run_state ?? "").toLowerCase() === "failed",
+					),
 				)
 				break
 			default:

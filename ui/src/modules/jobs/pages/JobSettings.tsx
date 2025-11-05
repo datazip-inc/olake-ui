@@ -139,7 +139,6 @@ const JobSettings: React.FC = () => {
 			await fetchJobs()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 			// Revert optimistic update on error
 			setPauseJob(!checked)
 		} finally {

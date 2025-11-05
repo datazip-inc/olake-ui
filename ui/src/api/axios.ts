@@ -16,6 +16,7 @@ import { notificationService } from "./services/notificationService"
 declare module "axios" {
 	export interface AxiosRequestConfig {
 		showNotification?: boolean // Controls whether the interceptor shows a toast (default: false)
+		disableErrorNotification?: boolean
 	}
 }
 
@@ -68,15 +69,22 @@ api.interceptors.response.use(
 	},
 	(error: AxiosError) => {
 		const payload = error.response?.data as any
+		const config = error.config
 
 		// Skip showing errors for canceled requests
-		if (axios.isCancel(error) || error.code === "ERR_CANCELED") {
+		if (
+			axios.isCancel(error) ||
+			error.code === "ERR_CANCELED" ||
+			config?.disableErrorNotification
+		) {
 			return Promise.reject(error)
 		}
 
 		// Always show error toasts
 		if (payload.message) {
-			notificationService.error(payload.message)
+			notificationService.error(
+				payload.message || "An error occurred! Please try again.",
+			)
 		}
 
 		// Handle specific HTTP status codes
