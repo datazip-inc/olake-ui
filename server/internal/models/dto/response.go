@@ -54,6 +54,10 @@ type StreamDifferenceResponse struct {
 	DifferenceStreams map[string]interface{} `json:"difference_streams"`
 }
 
+type ClearDestinationStatusResponse struct {
+	Running bool `json:"running"`
+}
+
 // Job response
 type JobResponse struct {
 	ID            int          `json:"id"`

@@ -837,6 +837,26 @@ http://localhost:8080
     }
   }
   ```
+
+### Get Clear Destination Status
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
+- **Method**: GET
+- **Description**: Get the status of clear destination operation for a job
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "running": "boolean"
+    }
+  }
+  ```
   
   ### Difference Streams
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:id/difference-streams`

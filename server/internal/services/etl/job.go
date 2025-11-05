@@ -282,6 +282,20 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, projectID string, 
 	return diffCatalog, nil
 }
 
+func (s *ETLService) GetClearDestinationStatus(ctx context.Context, projectID string, jobID int) (bool, error) {
+	_, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return false, fmt.Errorf("job not found: %s", err)
+	}
+
+	isClearRunning, err := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if clear destination is running: %s", err)
+	}
+
+	return isClearRunning, nil
+}
+
 func (s *ETLService) CheckUniqueJobName(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
 	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
 	if err != nil {

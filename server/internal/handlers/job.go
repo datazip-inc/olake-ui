@@ -313,6 +313,30 @@ func (h *Handler) GetStreamDifference() {
 	})
 }
 
+// @router /project/:projectid/jobs/:id/stream-difference [get]
+func (h *Handler) GetClearDestinationStatus() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	status, err := h.etl.GetClearDestinationStatus(h.Ctx.Request.Context(), projectID, jobID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get clear destination status: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination status retrieved successfully for job_id[%d]", jobID), dto.ClearDestinationStatusResponse{
+		Running: status,
+	})
+}
+
 // @router /project/:projectid/jobs/:id/tasks [get]
 func (h *Handler) GetJobTasks() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)

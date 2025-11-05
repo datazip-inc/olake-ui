@@ -89,6 +89,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", h, "post:GetTaskLogs")
 	web.Router("/api/v1/project/:projectid/jobs/check-unique", h, "post:CheckUniqueJobName")
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "post:ClearDestination")
+	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "get:GetClearDestinationStatus")
 	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", h, "post:GetStreamDifference")
 
 	// worker callback routes
