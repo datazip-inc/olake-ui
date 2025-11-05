@@ -24,10 +24,7 @@ const Sources: React.FC = () => {
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchSources().catch(error => {
-			message.error("Failed to fetch sources")
-			console.error(error)
-		})
+		fetchSources()
 	}, [fetchSources])
 
 	const handleCreateSource = () => {
@@ -45,10 +42,7 @@ const Sources: React.FC = () => {
 		// For inactive sources, delete directly without showing modal
 		if (!source?.jobs || source.jobs.length === 0) {
 			message.info(`Deleting source ${source?.name}`)
-			deleteSource(String(source.id)).catch(error => {
-				message.error("Failed to delete source")
-				console.error(error)
-			})
+			deleteSource(String(source.id))
 			return
 		}
 

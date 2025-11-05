@@ -66,7 +66,7 @@ export interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
 }
 
 export interface DestinationData {
-	id?: string
+	id?: number
 	name: string
 	type: string
 	config: Record<string, any>

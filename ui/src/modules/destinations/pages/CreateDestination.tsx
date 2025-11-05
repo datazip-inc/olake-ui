@@ -54,6 +54,8 @@ import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplat
 import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import { AxiosError } from "axios"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
@@ -119,6 +121,7 @@ const CreateDestination = forwardRef<
 		const [destinationNameError, setDestinationNameError] = useState<
 			string | null
 		>(null)
+		const [specError, setSpecError] = useState<string | null>(null)
 		const navigate = useNavigate()
 
 		const resetVersionState = () => {
@@ -140,6 +143,7 @@ const CreateDestination = forwardRef<
 			setShowFailureModal,
 			setShowSourceCancelModal,
 			setDestinationTestConnectionError,
+			setShowSpecFailedModal,
 		} = useAppStore()
 
 		const parseDestinationConfig = (
@@ -261,7 +265,7 @@ const CreateDestination = forwardRef<
 			fetchVersions()
 		}, [connector, onVersionChange, setupType])
 
-		useEffect(() => {
+		const handleFetchSpec = () => {
 			if (!version) {
 				setSchema(null)
 				setUiSchema(null)
@@ -289,9 +293,19 @@ const CreateDestination = forwardRef<
 					setSchema({})
 					setUiSchema({})
 					console.error("Error fetching destination spec:", error)
+					if (error instanceof AxiosError) {
+						setSpecError(error.response?.data.message)
+					} else {
+						setSpecError("Failed to fetch spec, Please try again.")
+					}
+					setShowSpecFailedModal(true)
 				},
 				() => setLoading(false),
 			)
+		}
+
+		useEffect(() => {
+			handleFetchSpec()
 		}, [
 			connector,
 			version,
@@ -747,6 +761,13 @@ const CreateDestination = forwardRef<
 					type="destination"
 					navigateTo={fromJobFlow ? "jobs/new" : "destinations"}
 				/>
+				{specError && (
+					<SpecFailedModal
+						fromSource={false}
+						error={specError}
+						onTryAgain={handleFetchSpec}
+					/>
+				)}
 			</div>
 		)
 	},

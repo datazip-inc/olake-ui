@@ -289,12 +289,6 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
         print "      dockerfile: Dockerfile";
         next
       }
-      if (svc=="temporal-worker" && $0 ~ /^    image:/) {
-        print "    build:";
-        print "      context: .";
-        print "      dockerfile: worker.Dockerfile";
-        next
-      }
       print
     }
     ' /mnt/docker-compose.yml > "$tmpfile" && mv "$tmpfile" /mnt/docker-compose.yml
