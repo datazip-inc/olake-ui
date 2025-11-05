@@ -683,17 +683,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									<div className="text-gray-600">{destinationDatabase}</div>
 
 									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
-										{!fromJobEditFlow && (
-											<Tooltip
-												title="Edit"
-												placement="top"
-											>
-												<PencilSimpleIcon
-													className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
-													onClick={() => setShowDestinationDatabaseModal(true)}
-												/>
-											</Tooltip>
-										)}
+										<Tooltip
+											title="Edit"
+											placement="top"
+										>
+											<PencilSimpleIcon
+												className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
+												onClick={() => setShowDestinationDatabaseModal(true)}
+											/>
+										</Tooltip>
 										<Tooltip title="View Documentation">
 											<a
 												href="https://olake.io/docs/understanding/terminologies/olake#7-tablecolumn-normalization--destination-database-creation"
