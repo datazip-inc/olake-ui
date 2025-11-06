@@ -83,7 +83,6 @@ const JobSettings: React.FC = () => {
 	}, [job])
 
 	useEffect(() => {
-		console.log("selectedJobId: ", selectedJobId)
 		fetchSelectedClearDestinationStatus()
 	}, [selectedJobId])
 

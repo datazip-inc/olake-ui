@@ -34,8 +34,6 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
 	fetchSelectedClearDestinationStatus: async () => {
 		const jobId = get().selectedJobId
 
-		console.log("fetch Clear destination called with job Id", jobId)
-
 		if (!jobId) return
 
 		try {
