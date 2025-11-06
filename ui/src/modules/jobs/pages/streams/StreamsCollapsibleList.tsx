@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
@@ -42,6 +42,8 @@ const StreamsCollapsibleList = ({
 		[string, StreamData[]][]
 	>([])
 
+	const prevGroupedStreams = useRef(groupedStreams)
+
 	useEffect(() => {
 		setIngestionMode(getIngestionMode(selectedStreams))
 	}, [selectedStreams])
@@ -65,6 +67,23 @@ const StreamsCollapsibleList = ({
 			})
 		}
 	}, [groupedStreams])
+
+	const dataHasChanged = () => {
+		const prev = prevGroupedStreams.current
+		const current = groupedStreams
+
+		const prevKeys = Object.keys(prev)
+		const currentKeys = Object.keys(current)
+
+		if (prevKeys.length !== currentKeys.length) return true
+
+		for (const key of currentKeys) {
+			if (!prev[key]) return true
+			if (prev[key].length !== current[key].length) return true
+		}
+
+		return false
+	}
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -120,10 +139,7 @@ const StreamsCollapsibleList = ({
 		setCheckedStatus(newCheckedStatus)
 
 		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status
-		if (
-			Object.keys(groupedStreams).length > 0 &&
-			sortedGroupedNamespaces.length === 0 // only sort once when initializing
-		) {
+		if (sortedGroupedNamespaces.length === 0 || dataHasChanged()) {
 			const sortStreamsByCheckedStatus = (
 				streams: StreamData[],
 				namespace: string,
@@ -174,6 +190,8 @@ const StreamsCollapsibleList = ({
 				...namespacesWithCheckedStreams,
 				...namespacesWithoutCheckedStreams,
 			])
+
+			prevGroupedStreams.current = groupedStreams
 		}
 	}, [selectedStreams, groupedStreams])
 
