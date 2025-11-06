@@ -1,7 +1,7 @@
 import { StateCreator } from "zustand"
 import type { Entity } from "../types"
 import { jobService } from "../api"
-
+import { ModalSlice } from "./modalStore"
 export interface SelectionSlice {
 	selectedJobId: string | null
 	selectedHistoryId: string | null
@@ -16,10 +16,12 @@ export interface SelectionSlice {
 	fetchSelectedClearDestinationStatus: () => void
 }
 
-export const createSelectionSlice: StateCreator<SelectionSlice> = (
-	set,
-	get,
-) => ({
+export const createSelectionSlice: StateCreator<
+	SelectionSlice & ModalSlice,
+	[],
+	[],
+	SelectionSlice
+> = (set, get) => ({
 	selectedJobId: null,
 	selectedHistoryId: null,
 	selectedSource: {} as Entity,
@@ -41,6 +43,11 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
 				isClearDestinationStatusLoading: true,
 			})
 			const status = await jobService.getClearDestinationStatus(jobId)
+
+			if (status.running) {
+				set({ showStreamEditDisabledModal: true })
+			}
+
 			set({
 				selectedClearDestinationRunning: status.running,
 				isClearDestinationStatusLoading: false,

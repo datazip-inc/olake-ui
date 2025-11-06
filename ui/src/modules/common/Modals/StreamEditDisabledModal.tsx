@@ -10,8 +10,8 @@ const StreamEditDisabledModal = ({ from }: StreamEditDisabledModalProps) => {
 		useAppStore()
 
 	const handleCloseModal = () => {
-		navigate("/jobs")
 		setShowStreamEditDisabledModal(false)
+		navigate("/jobs")
 	}
 
 	return (

@@ -62,7 +62,6 @@ const JobSettings: React.FC = () => {
 		setShowDeleteJobModal,
 		setSelectedJobId,
 		setShowClearDestinationModal,
-		setShowStreamEditDisabledModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -230,12 +229,6 @@ const JobSettings: React.FC = () => {
 		}
 		setShowClearDestinationModal(true)
 	}
-
-	useEffect(() => {
-		if (selectedClearDestinationRunning) {
-			setShowStreamEditDisabledModal(true)
-		}
-	}, [selectedClearDestinationRunning])
 
 	// Helper to determine if time selection should be shown
 	const isTimeSelectionFrequency = (freq: string): boolean => {
