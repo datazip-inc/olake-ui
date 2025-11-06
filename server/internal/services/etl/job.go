@@ -97,7 +97,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	// Block when clear-destination is running
-	if clearRunning, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination); clearRunning {
+	if clearRunning, _, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination); clearRunning {
 		return fmt.Errorf("clear-destination is in progress, cannot update job")
 	}
 
@@ -115,7 +115,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 
 		if len(diffCatalog) > 0 {
 			logger.Infof("stream difference detected for job %d, running clear destination workflow", existingJob.ID)
-			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, 20*time.Second); err != nil {
+			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, 30*time.Second); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -253,7 +253,7 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 	}
 
 	// Check if sync is running and wait for it to stop
-	if running, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); running {
+	if running, _, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); running {
 		if err := waitForSyncToStop(ctx, s.temporal, projectID, jobID, syncWaitTime); err != nil {
 			logger.Infof("failed to wait for sync to stop: %s", err)
 			return nil, fmt.Errorf("sync is in progress, please cancel it before running clear-destination")
@@ -289,7 +289,7 @@ func (s *ETLService) GetClearDestinationStatus(ctx context.Context, projectID st
 		return false, fmt.Errorf("job not found: %s", err)
 	}
 
-	isClearRunning, err := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination)
+	isClearRunning, _, err := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination)
 	if err != nil {
 		return false, fmt.Errorf("failed to check if clear destination is running: %s", err)
 	}
