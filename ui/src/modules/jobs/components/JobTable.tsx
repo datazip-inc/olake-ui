@@ -268,15 +268,18 @@ const JobTable: React.FC<JobTableProps> = ({
 					/>
 				</div>
 
-				<Table
-					dataSource={currentPageData}
-					columns={getTableColumns()}
-					rowKey="id"
-					loading={loading}
-					pagination={false}
-					className="overflow-hidden rounded-xl"
-					rowClassName="no-hover"
-				/>
+				<div className="overflow-x-auto">
+					<Table
+						dataSource={currentPageData}
+						columns={getTableColumns()}
+						rowKey="id"
+						loading={loading}
+						pagination={false}
+						className="min-w-[1200px] overflow-hidden"
+						rowClassName="no-hover"
+						scroll={{ x: 1200 }}
+					/>
+				</div>
 			</div>
 
 			<div className="z-100 fixed bottom-[60px] right-[40px] flex justify-end bg-white p-2">
