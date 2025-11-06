@@ -1,7 +1,6 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
 import {
-	APIResponse,
 	Job,
 	JobBase,
 	JobTask,
@@ -151,11 +150,23 @@ export const jobService = {
 		}
 	},
 
-	clearDestination: async (
-		jobId: string,
-	): Promise<APIResponse<{ message: string }>> => {
+	clearDestination: async (jobId: string): Promise<{ message: string }> => {
 		try {
-			const response = await api.post<APIResponse<{ message: string }>>(
+			const response = await api.post<{ message: string }>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
+			)
+
+			return response.data
+		} catch (error) {
+			console.error("Error clearing destination:", error)
+			throw error
+		}
+	},
+	getClearDestinationStatus: async (
+		jobId: string,
+	): Promise<{ running: boolean }> => {
+		try {
+			const response = await api.get<{ running: boolean }>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
 			)
 
@@ -175,7 +186,7 @@ export const jobService = {
 			}>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
 				{ updated_streams_config: streamsConfig },
-				{timeout: 30000}
+				{ timeout: 30000 },
 			)
 			return response.data
 		} catch (error) {

@@ -24,6 +24,7 @@ import {
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { PAGE_SIZE } from "../../../utils/constants"
+import { useAppStore } from "../../../store"
 
 const formatLastSyncTime = (text?: string) => {
 	if (!text) return <div className="pl-4">-</div>
@@ -49,12 +50,14 @@ const JobTable: React.FC<JobTableProps> = ({
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
 	const navigate = useNavigate()
+	const { setSelectedJobId } = useAppStore()
 
 	const handleViewHistory = (jobId: string) => {
 		navigate(`/jobs/${jobId}/history`)
 	}
 
 	const handleViewSettings = (jobId: string) => {
+		setSelectedJobId(jobId)
 		navigate(`/jobs/${jobId}/settings`)
 	}
 
