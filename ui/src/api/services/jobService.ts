@@ -42,7 +42,7 @@ export const jobService = {
 			const response = await api.put<Job>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				job,
-				{ showNotification: true },
+				{ timeout: 30000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -175,6 +175,7 @@ export const jobService = {
 			}>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
 				{ updated_streams_config: streamsConfig },
+				{timeout: 30000}
 			)
 			return response.data
 		} catch (error) {
