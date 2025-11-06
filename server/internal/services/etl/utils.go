@@ -140,7 +140,8 @@ func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, proje
 	)
 
 	resp, err := tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
-		Query: query,
+		Query:    query,
+		PageSize: 1,
 	})
 	if err != nil {
 		return false, nil, err

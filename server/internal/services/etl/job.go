@@ -107,6 +107,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	// Handle stream difference if provided
+	// TODO: handle clear-destination workflow failure
 	if req.DifferenceStreams != "" {
 		var diffCatalog map[string]interface{}
 		if err := json.Unmarshal([]byte(req.DifferenceStreams), &diffCatalog); err != nil {
@@ -115,7 +116,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 
 		if len(diffCatalog) > 0 {
 			logger.Infof("stream difference detected for job %d, running clear destination workflow", existingJob.ID)
-			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, 30*time.Second); err != nil {
+			if _, err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
