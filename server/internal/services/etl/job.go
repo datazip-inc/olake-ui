@@ -255,6 +255,7 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 	// Check if sync is running and wait for it to stop
 	if running, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.Sync); running {
 		if err := waitForSyncToStop(ctx, s.temporal, projectID, jobID, syncWaitTime); err != nil {
+			logger.Infof("failed to wait for sync to stop: %s", err)
 			return nil, fmt.Errorf("sync is in progress, please cancel it before running clear-destination")
 		}
 	}

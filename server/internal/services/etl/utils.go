@@ -149,7 +149,7 @@ func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, proje
 // waitForSyncToStop waits for sync workflows to stop with timeout
 func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, maxWaitTime time.Duration) error {
 	if maxWaitTime <= 0 {
-		return nil
+		return fmt.Errorf("max wait time is 0")
 	}
 
 	timedCtx, cancel := context.WithTimeout(ctx, maxWaitTime)
