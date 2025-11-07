@@ -12,13 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
-	"github.com/robfig/cron"
 
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {
@@ -36,7 +34,7 @@ func ToMapOfInterface(structure any) map[string]interface{} {
 
 func RespondJSON(ctx *web.Controller, status int, success bool, message string, data interface{}) {
 	ctx.Ctx.Output.SetStatus(status)
-	ctx.Data["json"] = models.JSONResponse{
+	ctx.Data["json"] = dto.JSONResponse{
 		Success: success,
 		Message: message,
 		Data:    data,
@@ -44,11 +42,14 @@ func RespondJSON(ctx *web.Controller, status int, success bool, message string, 
 	_ = ctx.ServeJSON()
 }
 
-func SuccessResponse(ctx *web.Controller, data interface{}) {
-	RespondJSON(ctx, http.StatusOK, true, "success", data)
+func SuccessResponse(ctx *web.Controller, message string, data interface{}) {
+	RespondJSON(ctx, http.StatusOK, true, message, data)
 }
 
-func ErrorResponse(ctx *web.Controller, status int, message string) {
+func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
+	if err != nil {
+		logger.Errorf("error in request %s: %s", ctx.Ctx.Input.URI(), err)
+	}
 	RespondJSON(ctx, status, false, message, nil)
 }
 
@@ -117,7 +118,7 @@ func ULID() string {
 	t := time.Now()
 	newUlid, err := ulid.New(ulid.Timestamp(t), entropy)
 	if err != nil {
-		logs.Critical(err)
+		logger.Fatal(err)
 	}
 
 	return newUlid.String()
@@ -134,7 +135,7 @@ func Ternary(cond bool, a, b any) any {
 func CreateDirectory(dirPath string, perm os.FileMode) error {
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		if err := os.MkdirAll(dirPath, perm); err != nil {
-			return fmt.Errorf("failed to create directory %s: %v", dirPath, err)
+			return fmt.Errorf("failed to create directory %s: %s", dirPath, err)
 		}
 	}
 	return nil
@@ -148,24 +149,9 @@ func WriteFile(filePath string, data []byte, perm os.FileMode) error {
 	}
 
 	if err := os.WriteFile(filePath, data, perm); err != nil {
-		return fmt.Errorf("failed to write to file %s: %v", filePath, err)
+		return fmt.Errorf("failed to write to file %s: %s", filePath, err)
 	}
 	return nil
-}
-
-// ParseJSONFile parses a JSON file into a map
-func ParseJSONFile(filePath string) (map[string]interface{}, error) {
-	fileData, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %v", filePath, err)
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(fileData, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON from file %s: %v", filePath, err)
-	}
-
-	return result, nil
 }
 
 // ToCron converts a frequency string to a cron expression
@@ -199,75 +185,6 @@ func ToCron(frequency string) string {
 	default:
 		return frequency
 	}
-}
-
-func CleanOldLogs(logDir string, retentionPeriod int) {
-	logs.Info("Running log cleaner...")
-	cutoff := time.Now().AddDate(0, 0, -retentionPeriod)
-
-	// check if old logs are present
-	shouldDelete := func(path string, cutoff time.Time) bool {
-		entries, _ := os.ReadDir(path)
-		if len(entries) == 0 {
-			return true
-		}
-
-		var foundOldLog bool
-		_ = filepath.Walk(path, func(filePath string, info os.FileInfo, _ error) error {
-			if info == nil || info.IsDir() {
-				return nil
-			}
-			if (strings.HasSuffix(filePath, ".log") || strings.HasSuffix(filePath, ".log.gz")) &&
-				info.ModTime().Before(cutoff) {
-				foundOldLog = true
-				return filepath.SkipDir
-			}
-			return nil
-		})
-		return foundOldLog
-	}
-
-	entries, err := os.ReadDir(logDir)
-	if err != nil {
-		logs.Error("failed to read log dir: %v", err)
-		return
-	}
-	// delete dir if old logs are found or is empty
-	for _, entry := range entries {
-		if !entry.IsDir() || entry.Name() == "telemetry" {
-			continue
-		}
-		dirPath := filepath.Join(logDir, entry.Name())
-		if toDelete := shouldDelete(dirPath, cutoff); toDelete {
-			logs.Info("Deleting folder: %s", dirPath)
-			_ = os.RemoveAll(dirPath)
-		}
-	}
-}
-
-// starts a log cleaner that removes old logs from the specified directory based on the retention period
-func InitLogCleaner(logDir string, retentionPeriod int) {
-	logs.Info("Log cleaner started...")
-	CleanOldLogs(logDir, retentionPeriod) // catchup missed cycles if any
-	c := cron.New()
-	err := c.AddFunc("@midnight", func() {
-		CleanOldLogs(logDir, retentionPeriod)
-	})
-	if err != nil {
-		logs.Error("Failed to start log cleaner: %v", err)
-		return
-	}
-	c.Start()
-}
-
-// GetRetentionPeriod returns the retention period for logs
-func GetLogRetentionPeriod() int {
-	if val := os.Getenv("LOG_RETENTION_PERIOD"); val != "" {
-		if retentionPeriod, err := strconv.Atoi(val); err == nil && retentionPeriod > 0 {
-			return retentionPeriod
-		}
-	}
-	return constants.DefaultLogRetentionPeriod
 }
 
 // ExtractJSON extracts and returns the last valid JSON block from output
@@ -374,4 +291,26 @@ func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
 	}
 
 	return parsedLogs, nil
+}
+
+// RetryWithBackoff retries a function with exponential backoff
+func RetryWithBackoff(fn func() error, maxRetries int, initialDelay time.Duration) error {
+	delay := initialDelay
+	var errMsg error
+
+	for retry := 0; retry < maxRetries; retry++ {
+		if err := fn(); err != nil {
+			errMsg = err
+			if retry < maxRetries-1 {
+				logger.Warnf("Retry attempt %d/%d failed: %s. Retrying in %v...", retry+1, maxRetries, err, delay)
+				time.Sleep(delay)
+				delay *= 2
+				continue
+			}
+		} else {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("failed after %d retries: %s", maxRetries, errMsg)
 }

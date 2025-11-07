@@ -1,9 +1,4 @@
-package models
-
-type LoginResponse struct {
-	Message string `json:"message"`
-	Success bool   `json:"success"`
-}
+package dto
 
 type JSONResponse struct {
 	Success bool        `json:"success"`
@@ -18,13 +13,6 @@ type SpecResponse struct {
 }
 type SpecOutput struct {
 	Spec map[string]interface{} `json:"spec"`
-}
-
-// Reuse generic API response with generics
-type APIResponse[T any] struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Data    T      `json:"data"`
 }
 
 type DeleteSourceResponse struct {
@@ -52,19 +40,19 @@ type TestConnectionResponse struct {
 
 // Job response
 type JobResponse struct {
-	ID            int                  `json:"id"`
-	Name          string               `json:"name"`
-	Source        JobSourceConfig      `json:"source"`
-	Destination   JobDestinationConfig `json:"destination"`
-	StreamsConfig string               `json:"streams_config"`
-	Frequency     string               `json:"frequency"`
-	LastRunTime   string               `json:"last_run_time,omitempty"`
-	LastRunState  string               `json:"last_run_state,omitempty"`
-	CreatedAt     string               `json:"created_at"`
-	UpdatedAt     string               `json:"updated_at"`
-	Activate      bool                 `json:"activate"`
-	CreatedBy     string               `json:"created_by,omitempty"`
-	UpdatedBy     string               `json:"updated_by,omitempty"`
+	ID            int          `json:"id"`
+	Name          string       `json:"name"`
+	Source        DriverConfig `json:"source"`
+	Destination   DriverConfig `json:"destination"`
+	StreamsConfig string       `json:"streams_config"`
+	Frequency     string       `json:"frequency"`
+	LastRunTime   string       `json:"last_run_time,omitempty"`
+	LastRunState  string       `json:"last_run_state,omitempty"`
+	CreatedAt     string       `json:"created_at"`
+	UpdatedAt     string       `json:"updated_at"`
+	Activate      bool         `json:"activate"`
+	CreatedBy     string       `json:"created_by,omitempty"`
+	UpdatedBy     string       `json:"updated_by,omitempty"`
 }
 
 type JobTask struct {

@@ -66,7 +66,7 @@ const getSystemInfo = async () => {
 const getTelemetryID = async (): Promise<string> => {
 	try {
 		const response = await api.get("/telemetry-id")
-		return response.data.data.user_id || ""
+		return response.data.user_id || ""
 	} catch (error) {
 		console.error("Error fetching telemetry ID:", error)
 		return ""

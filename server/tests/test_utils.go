@@ -243,6 +243,10 @@ func DinDTestContainer(t *testing.T) error {
 	}
 	t.Log("Playwright tests passed successfully.")
 
+	// wait before verifying iceberg data
+	t.Log("Waiting for 20 seconds before verifying iceberg data...")
+	time.Sleep(20 * time.Second)
+
 	// Step 11: Verify in iceberg
 	t.Logf("Starting Iceberg data verification...")
 	VerifyIcebergTest(ctx, t, ctr, host, sparkPort.Port())
@@ -271,7 +275,7 @@ func ExecCommandWithStreaming(ctx context.Context, t *testing.T, ctr testcontain
 	return exitCode, output.String(), nil
 }
 
-// PatchDockerCompose updates olake-ui and temporal-worker to build from local code
+// PatchDockerCompose updates olake-ui to build from local code
 // TODO: Remove patch command and find alternative to use local code
 func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
 	patchCmd := `
@@ -287,12 +291,6 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
         print "    build:";
         print "      context: .";
         print "      dockerfile: Dockerfile";
-        next
-      }
-      if (svc=="temporal-worker" && $0 ~ /^    image:/) {
-        print "    build:";
-        print "      context: .";
-        print "      dockerfile: worker.Dockerfile";
         next
       }
       print
