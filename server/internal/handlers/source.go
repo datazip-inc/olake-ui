@@ -216,14 +216,13 @@ func (h *Handler) GetSourceVersions() {
 
 	sourceType := h.GetString("type")
 	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", projectID, sourceType)
-
+	if sourceType == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to get source versions: %s", err), err)
+		return
+	}
 	versions, err := h.etl.GetSourceVersions(h.Ctx.Request.Context(), sourceType)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if err.Error() == "source type is required" {
-			status = http.StatusBadRequest
-		}
-		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to get source versions: %s", err), err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source versions: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s versions fetched successfully", sourceType), versions)
