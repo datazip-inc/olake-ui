@@ -231,7 +231,7 @@ const CreateDestination = forwardRef<
 				setLoadingVersions(true)
 				try {
 					const response = await destinationService.getDestinationVersions(
-						connector.toLowerCase() === CONNECTOR_TYPES.APACHE_ICEBERG
+						connector === CONNECTOR_TYPES.APACHE_ICEBERG
 							? DESTINATION_INTERNAL_TYPES.ICEBERG
 							: DESTINATION_INTERNAL_TYPES.S3,
 					)
@@ -305,7 +305,7 @@ const CreateDestination = forwardRef<
 		}
 
 		useEffect(() => {
-			handleFetchSpec()
+			return handleFetchSpec()
 		}, [
 			connector,
 			version,

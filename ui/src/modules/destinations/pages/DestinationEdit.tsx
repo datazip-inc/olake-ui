@@ -264,7 +264,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	useEffect(() => {
-		handleFetchSpec()
+		return handleFetchSpec()
 	}, [connector, selectedVersion, fromJobFlow, sourceConnector, sourceVersion])
 
 	const handleVersionChange = (value: string) => {
