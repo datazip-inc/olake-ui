@@ -21,10 +21,13 @@ type Temporal struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
-	temporalAddress := web.AppConfig.DefaultString(constants.ConfTemporalAddress, constants.DefaultTemporalAddress)
+	temporalAddress, err := web.AppConfig.String(constants.ConfTemporalAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get temporal address: %s", err)
+	}
 
 	var temporalClient *Temporal
-	err := utils.RetryWithBackoff(func() error {
+	err = utils.RetryWithBackoff(func() error {
 		client, dialErr := client.Dial(client.Options{
 			HostPort: temporalAddress,
 		})

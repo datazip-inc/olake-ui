@@ -65,10 +65,7 @@ func (h *Handler) CheckAuth() {
 		}
 	}
 
-	utils.SuccessResponse(&h.Controller, "authenticated successfully", dto.LoginResponse{
-		Message: "Authenticated",
-		Success: true,
-	})
+	utils.SuccessResponse(&h.Controller, "authenticated successfully", nil)
 }
 
 // @router /logout [post]

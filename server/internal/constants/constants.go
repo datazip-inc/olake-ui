@@ -24,8 +24,9 @@ var (
 	DefaultConfigDir          = "/tmp/olake-config"
 	DefaultLogRetentionPeriod = 30
 	DefaultSpecVersion        = "v0.2.0"
-	DefaultTemporalAddress    = "localhost:7233"
-	DefaultCancelSyncWaitTime       = 30 * time.Second
+
+	DefaultCancelSyncWaitTime = 30 * time.Second
+
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
 	EnvLogFormat         = "LOG_FORMAT"

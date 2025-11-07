@@ -225,10 +225,6 @@ func (s *ETLService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, er
 }
 
 func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
-	if sourceType == "" {
-		return nil, fmt.Errorf("source type is required")
-	}
-
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
