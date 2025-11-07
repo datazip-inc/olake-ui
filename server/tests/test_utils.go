@@ -243,6 +243,10 @@ func DinDTestContainer(t *testing.T) error {
 	}
 	t.Log("Playwright tests passed successfully.")
 
+	// wait before verifying iceberg data
+	t.Log("Waiting for 20 seconds before verifying iceberg data...")
+	time.Sleep(20 * time.Second)
+
 	// Step 11: Verify in iceberg
 	t.Logf("Starting Iceberg data verification...")
 	VerifyIcebergTest(ctx, t, ctr, host, sparkPort.Port())
