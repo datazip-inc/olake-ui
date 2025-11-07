@@ -85,3 +85,8 @@ export enum IngestionMode {
 	APPEND = "Append",
 	CUSTOM = "Custom",
 }
+
+export interface EmptyStateProps {
+	page: "job" | "source" | "destination"
+	onButtonClick: () => void
+}

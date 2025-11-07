@@ -8,8 +8,8 @@ import { jobService } from "../../../api"
 import analyticsService from "../../../api/services/analyticsService"
 import { JobType } from "../../../types/jobTypes"
 import { JOB_TYPES } from "../../../utils/constants"
+import EmptyState from "../../common/components/EmptyState"
 import JobTable from "../components/JobTable"
-import JobEmptyState from "../components/JobEmptyState"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 
 const Jobs: React.FC = () => {
@@ -201,7 +201,10 @@ const Jobs: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === JOB_TYPES.ACTIVE && showEmpty ? (
-						<JobEmptyState handleCreateJob={handleCreateJob} />
+						<EmptyState
+							page="job"
+							onButtonClick={handleCreateJob}
+						/>
 					) : filteredJobs.length === 0 ? (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
