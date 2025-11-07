@@ -313,7 +313,7 @@ func (h *Handler) GetStreamDifference() {
 	})
 }
 
-// @router /project/:projectid/jobs/:id/stream-difference [get]
+// @router /project/:projectid/jobs/:id/clear-destination [get]
 func (h *Handler) GetClearDestinationStatus() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {

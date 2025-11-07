@@ -3,6 +3,7 @@ package constants
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/beego/beego/v2/core/config"
 	"github.com/beego/beego/v2/server/web"
@@ -24,6 +25,7 @@ var (
 	DefaultLogRetentionPeriod = 30
 	DefaultSpecVersion        = "v0.2.0"
 	DefaultTemporalAddress    = "localhost:7233"
+	DefaultCancelSyncWaitTime       = 30 * time.Second
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
 	EnvLogFormat         = "LOG_FORMAT"
