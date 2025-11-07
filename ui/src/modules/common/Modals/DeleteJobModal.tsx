@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { Button, message, Modal } from "antd"
+import { Button, Modal } from "antd"
 import { WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
@@ -41,10 +41,7 @@ const DeleteJobModal = ({
 						onClick={() => {
 							setShowDeleteJobModal(false)
 							if (selectedJobId) {
-								deleteJob(selectedJobId).catch(error => {
-									message.error("Failed to delete job")
-									console.error(error)
-								})
+								deleteJob(selectedJobId)
 							}
 							if (fromJobSettings) {
 								setTimeout(() => {

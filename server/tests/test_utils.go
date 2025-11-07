@@ -271,7 +271,7 @@ func ExecCommandWithStreaming(ctx context.Context, t *testing.T, ctr testcontain
 	return exitCode, output.String(), nil
 }
 
-// PatchDockerCompose updates olake-ui and temporal-worker to build from local code
+// PatchDockerCompose updates olake-ui to build from local code
 // TODO: Remove patch command and find alternative to use local code
 func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Container) error {
 	patchCmd := `
@@ -287,12 +287,6 @@ func PatchDockerCompose(ctx context.Context, t *testing.T, ctr testcontainers.Co
         print "    build:";
         print "      context: .";
         print "      dockerfile: Dockerfile";
-        next
-      }
-      if (svc=="temporal-worker" && $0 ~ /^    image:/) {
-        print "    build:";
-        print "      context: .";
-        print "      dockerfile: worker.Dockerfile";
         next
       }
       print

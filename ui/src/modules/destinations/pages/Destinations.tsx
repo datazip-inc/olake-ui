@@ -24,10 +24,7 @@ const Destinations: React.FC = () => {
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchDestinations().catch(error => {
-			message.error("Failed to fetch destinations")
-			console.error(error)
-		})
+		fetchDestinations()
 	}, [fetchDestinations])
 
 	const handleCreateDestination = () => {
