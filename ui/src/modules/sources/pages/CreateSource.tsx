@@ -225,7 +225,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		}
 
 		useEffect(() => {
-			handleFetchSpec()
+			return handleFetchSpec()
 		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {

@@ -118,7 +118,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 	if ip == IPNotFound || ip == "" {
 		return locationInfo
 	}
-
+	// TODO: remove context.Background() from everywhere creare a context in main.go
 	ctx, cancel := context.WithTimeout(context.Background(), TelemetryConfigTimeout)
 	defer cancel()
 

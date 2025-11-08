@@ -107,7 +107,6 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	// Handle stream difference if provided
-	// TODO: handle clear-destination workflow failure
 	if req.DifferenceStreams != "" {
 		var diffCatalog map[string]interface{}
 		if err := json.Unmarshal([]byte(req.DifferenceStreams), &diffCatalog); err != nil {
@@ -143,7 +142,6 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	existingJob.StreamsConfig = req.StreamsConfig
 	existingJob.ProjectID = projectID
 	existingJob.UpdatedBy = &models.User{ID: *userID}
-
 	if err := s.db.UpdateJob(existingJob); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}

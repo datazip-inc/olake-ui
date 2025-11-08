@@ -44,6 +44,8 @@ const (
 	ExecuteWorkflow = "ExecuteWorkflow"
 )
 
+// TODO: check if we can add command args as constants for all the methods
+
 // DiscoverStreams runs a workflow to discover catalog data
 func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
