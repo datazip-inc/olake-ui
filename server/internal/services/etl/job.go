@@ -276,7 +276,7 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 	return nil
 }
 
-func (s *ETLService) GetStreamDifference(ctx context.Context, projectID string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
+func (s *ETLService) GetStreamDifference(ctx context.Context, _ string, jobID int, req dto.StreamDifferenceRequest) (map[string]interface{}, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("job not found: %s", err)

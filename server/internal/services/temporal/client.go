@@ -85,7 +85,6 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 
 // UpdateScheduleSpec updates an existing schedule's spec
 func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID string, jobID int, args *ExecutionRequest) error {
-
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 
 	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
