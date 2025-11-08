@@ -267,12 +267,11 @@ func (h *Handler) ClearDestination() {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	result, err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0)
-	if err != nil {
+	if err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), result)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
 }
 
 // @router /project/:projectid/jobs/:id/stream-difference [post]
@@ -403,4 +402,27 @@ func (h *Handler) UpdateSyncTelemetry() {
 	}
 
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("sync telemetry updated successfully for job_id[%d] workflow_id[%s] event[%s]", req.JobID, req.WorkflowID, req.Event), nil)
+}
+
+// RecoverClearDestination handles recovery from stuck clear-destination workflows (internal use only)
+// @router /projects/:project_id/jobs/:job_id/recover-clear-destination [post]
+func (h *Handler) RecoverClearDestination() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := h.etl.RecoverFromClearDestination(h.Ctx.Request.Context(), projectID, jobID); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to recover from clear-destination: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
 }

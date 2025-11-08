@@ -831,10 +831,7 @@ http://localhost:8080
   ```json
   {
     "success": "boolean",
-    "message": "string",
-    "data": {
-      "message": "string"
-    }
+    "message": "string"
   }
   ```
 

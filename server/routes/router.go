@@ -92,6 +92,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "get:GetClearDestinationStatus")
 	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", h, "post:GetStreamDifference")
 
-	// worker callback routes
+	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
+	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", h, "post:RecoverClearDestination")
 }

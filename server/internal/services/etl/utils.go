@@ -149,22 +149,25 @@ func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, proje
 	return len(resp.Executions) > 0, resp.Executions, nil
 }
 
-// waitForSyncToStop waits for sync workflows to stop with timeout
+// waitForSyncToStop checks if a sync workflow is running and optionally waits for it to stop.
+// - If sync is not running: returns nil immediately
+// - If sync is running and maxWaitTime <= 0: returns error immediately (no wait)
+// - If sync is running and maxWaitTime > 0: waits up to maxWaitTime for sync to complete
 func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, maxWaitTime time.Duration) error {
-	if maxWaitTime <= 0 {
-		return fmt.Errorf("wait timeout is 0, skipping sync wait")
-	}
-
-	timedCtx, cancel := context.WithTimeout(ctx, maxWaitTime)
-	defer cancel()
-
-	isSyncRunning, executions, err := isWorkflowRunning(timedCtx, tempClient, projectID, jobID, temporal.Sync)
+	isSyncRunning, executions, err := isWorkflowRunning(ctx, tempClient, projectID, jobID, temporal.Sync)
 	if err != nil {
 		return fmt.Errorf("failed to check sync status: %s", err)
 	}
 	if !isSyncRunning {
 		return nil
 	}
+
+	if maxWaitTime <= 0 {
+		return fmt.Errorf("sync is in progress, unable to trigger clear destination")
+	}
+
+	timedCtx, cancel := context.WithTimeout(ctx, maxWaitTime)
+	defer cancel()
 
 	workflowID := executions[0].Execution.WorkflowId
 	runID := executions[0].Execution.RunId

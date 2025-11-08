@@ -156,3 +156,10 @@ func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.Li
 
 	return resp, nil
 }
+
+// RestoreSyncSchedule restores schedule back to sync workflow from clear-destination
+func (t *Temporal) RestoreSyncSchedule(ctx context.Context, job *models.Job) error {
+	workflowID, _ := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
+	syncReq := buildExecutionReqForSync(job, workflowID)
+	return t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq)
+}

@@ -14,7 +14,6 @@ import (
 )
 
 type ExecutionRequest struct {
-	Type          string        `json:"type"`
 	Command       Command       `json:"command"`
 	ConnectorType string        `json:"connector_type"`
 	Version       string        `json:"version"`
@@ -73,7 +72,6 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Discover,
 		ConnectorType: sourceType,
 		Version:       version,
@@ -120,7 +118,6 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Spec,
 		ConnectorType: sourceType,
 		Version:       version,
@@ -168,7 +165,6 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Check,
 		ConnectorType: sourceType,
 		Version:       version,
@@ -213,21 +209,16 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
 	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
 
+	// update the sync schedule to use clear-destination request
 	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
 	if _, err := handle.Describe(ctx); err != nil {
 		return fmt.Errorf("schedule does not exist: %s", err)
 	}
 
-	if err := t.PauseSchedule(ctx, job.ProjectID, job.ID); err != nil {
-		return fmt.Errorf("failed to pause sync schedule: %s", err)
-	}
-
 	// update schedule to use clear-destination request
-	// unpause and update args back to sync is performed in the activity cleanup
 	clearReq := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
 	err := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &clearReq)
 	if err != nil {
-		_ = t.ResumeSchedule(ctx, job.ProjectID, job.ID)
 		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
 	}
 
@@ -253,7 +244,6 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Discover,
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
