@@ -5,7 +5,6 @@
 ## Base URL
 ```
 http://localhost:8080
-http://localhost:8080
 ```
 
 ## Authentication
@@ -42,7 +41,6 @@ http://localhost:8080
   ```json
   {
     "email":"string",
-    "email":"string",
     "username": "string",
     "password": "string"
   }
@@ -55,9 +53,7 @@ http://localhost:8080
     "message": "string",
     "data": {
       "email":"string",
-      "username": "string",
-      "email":"string",
-      "username": "string",
+      "username": "string"
     }
   }
   ```
@@ -69,8 +65,7 @@ http://localhost:8080
 - **Headers**: `Authorization: Bearer <token>` // we are using cookie currently so frontend take care accordingly
 - **Response**:
   ```json
-   {
-   {
+  {
     "success": "boolean",
     "message": "string",
     "data": {
@@ -80,28 +75,6 @@ http://localhost:8080
   ```
 
 ## Sources
-### Get All Version Of Source 
-- **Endpoint**: `/api/v1/project/:projectid/sources/versions`
-- **Method**: GET
-- **Description**: Give spec based on source type
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "type":"string",
-  }
-  ```
-- **Response**:
-
-  ```json
-   {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-     "version":["string","string"]
-    }
-  }
-  ```
 ### Get All Version Of Source 
 - **Endpoint**: `/api/v1/project/:projectid/sources/versions`
 - **Method**: GET
@@ -168,8 +141,6 @@ http://localhost:8080
   {
     "type":"string",
     "version":"string",
-    "type":"string",
-    "version":"string",
     "config": "json"
   }
   ```
@@ -202,9 +173,6 @@ http://localhost:8080
     "name": "string",  // we have to make sure in database that it must also unique according to project id (for doubt let us discuss)
     "type": "string", 
     "version":"string", // this field need to be shown on frontend as well, we discussed at time of design as well
-    "name": "string",  // we have to make sure in database that it must also unique according to project id (for doubt let us discuss)
-    "type": "string", 
-    "version":"string", // this field need to be shown on frontend as well, we discussed at time of design as well
     "config": "json"
   }
   ```
@@ -213,12 +181,6 @@ http://localhost:8080
   {
     "success": "boolean",
     "message": "string",
-    "data": { // whatever received send back
-        "name": "string",  
-        "type": "string", 
-        "version":"string", 
-        "config": "json"
-      }
     "data": { // whatever received send back
         "name": "string",  
         "type": "string", 
@@ -276,9 +238,6 @@ http://localhost:8080
     "name": "string",  
     "type": "string", 
     "version":"string", 
-    "name": "string",  
-    "type": "string", 
-    "version":"string", 
     "config": "json"
   }
   ```
@@ -291,16 +250,11 @@ http://localhost:8080
       "name": "string",  
       "type": "string", 
       "version":"string",
-    "data": { // send same back
-      "name": "string",  
-      "type": "string", 
-      "version":"string",
       "config": "json"
     }
   }
   ```
 
-### Delete Source 
 ### Delete Source 
 
 - **Endpoint**: `/api/v1/project/:projectid/sources/:id`
@@ -309,13 +263,6 @@ http://localhost:8080
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
 ```json
-  {    // Note: it is soft delete not hard delete
-      "success": "boolean",
-      "message": "string",
-      "data": { 
-        "name" :"string", // name of source deleted
-      }
-  }
   {    // Note: it is soft delete not hard delete
       "success": "boolean",
       "message": "string",
@@ -350,28 +297,6 @@ http://localhost:8080
     }
   }
   ```
-### Get All Version Of Destinations 
-- **Endpoint**: `/api/v1/project/:projectid/destinations/versions`
-- **Method**: GET
-- **Description**: Give spec based on source type
-- **Headers**: `Authorization: Bearer <token>`
-- **Request Body**:
-  ```json
-  {
-    "type":"string",
-  }
-  ```
-- **Response**:
-
-  ```json
-   {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-     "version":["string","string"]
-    }
-  }
-  ```
 ### Destination Spec
 - **Endpoint**: `/api/v1/project/:projectid/destinations/spec`
 - **Method**: GET
@@ -381,14 +306,11 @@ http://localhost:8080
   ```json
   {
     "type":"string",
-    "version": "string",
-    "type":"string",
-    "version": "string",
+    "version": "string"
   }
   ```
 - **Response**:
   ```json
- {
  {
     "success": "boolean",
     "message": "string",
@@ -405,7 +327,6 @@ http://localhost:8080
 
 // currently this is not avaialable in olake will build this
 
-### Test Destination 
 ### Test Destination 
 
 - **Endpoint**: `/api/v1/project/:projectid/destinations/test`
@@ -449,8 +370,7 @@ http://localhost:8080
     "name": "string",
     "type": "string",
     "config": "json",
-    "version":"string",
-    "version":"string",
+    "version":"string"
   }
   ```
 - **Response**:
@@ -463,8 +383,7 @@ http://localhost:8080
       "name": "string",
       "type": "string",
       "config": "json",
-      "version":"string", // to create a job same version of destination and same version of source required
-      "version":"string", // to create a job same version of destination and same version of source required
+      "version":"string" // to create a job same version of destination and same version of source required
     }
   }
   ```
@@ -477,7 +396,6 @@ http://localhost:8080
 - **Headers**: `Authorization: Bearer <token>`
 - **Response**:
   ```json
-{
 {
     "success": "boolean",
     "message": "string",
@@ -519,8 +437,7 @@ http://localhost:8080
     "name": "string",
     "type": "string",
     "config": "json",
-    "version":"string",
-    "version":"string",
+    "version":"string"
   }
   ```
 - **Response**:
@@ -531,7 +448,6 @@ http://localhost:8080
     "data": {
       "name": "string",
       "type": "string",
-      "version":"string",
       "version":"string",
       "config": "json"
     }
@@ -547,20 +463,11 @@ http://localhost:8080
 - **Response**:
 
 ```json
-
   { // NOTE: this is only soft delete not hard
     "success": "boolean",
     "message": "string",
     "data": {
-      "name": "string",
-    }
-  }
-
-  { // NOTE: this is only soft delete not hard
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "name": "string",
+      "name": "string"
     }
   }
 ```
@@ -588,12 +495,10 @@ http://localhost:8080
       "name": "string",
       "type": "string",
       "config": "string",
-      "version": "string",
-      "version": "string",
+      "version": "string"
     },
     "frequency": "string",
-    "streams_config": "json",
-    "streams_config": "json",
+    "streams_config": "json"
   }
   ```
 
@@ -604,14 +509,12 @@ http://localhost:8080
     "message": "string",
     "data": {
       // request body as it is 
-      // request body as it is 
     }
   }
   ```
 
 ### Get All Jobs
 
-- **Endpoint**: `/api/v1/project/:projectid/jobs` // also use endpoint for filter such as  /jobs/dest_id="some_id" or /jobs/source_id="some_id"
 - **Endpoint**: `/api/v1/project/:projectid/jobs` // also use endpoint for filter such as  /jobs/dest_id="some_id" or /jobs/source_id="some_id"
 - **Method**: GET
 - **Description**: Retrieve all jobs
@@ -629,17 +532,14 @@ http://localhost:8080
           "name": "string",
           "type": "string",
           "config": "json",
-          "version": "string",
-          "version": "string",
+          "version": "string"
         },
         "destination": {
           "name": "string",
           "type": "string",
           "config": "json",
-          "version": "string",
-          "version": "string",
+          "version": "string"
         },
-        "streams_config":"json",
         "streams_config":"json",
         "frequency": "string",
         "last_run_time": "timestamp",
@@ -649,11 +549,7 @@ http://localhost:8080
         "updated_at": "timestamp",
         "activate": "boolean",
         "created_by":  "string", // username 
-        "updated_by":  "string", // username
-      // can also send state but if it is required
-        "activate": "boolean",
-        "created_by":  "string", // username 
-        "updated_by":  "string", // username
+        "updated_by":  "string" // username
       // can also send state but if it is required
       }
     ]
@@ -675,15 +571,13 @@ http://localhost:8080
       "name": "string",
       "type": "string",
       "config": "json",
-      "version": "string",
-      "version": "string",
+      "version": "string"
     },
     "destination": {
       "name": "string",
       "type": "string",
       "config": "json",
-      "version": "string",
-      "version": "string",
+      "version": "string"
     },
     "frequency": "string",
     "streams_config": "json",
@@ -703,20 +597,17 @@ http://localhost:8080
         "name": "string",
         "type": "string",
         "config": "json",
-        "version": "string",
-        "version": "string",
+        "version": "string"
       },
       "destination": {
         "name": "string",
         "type": "string",
         "config": "json",
-        "version": "string",
-        "version": "string",
+        "version": "string"
       },
       "frequency": "string",
       "streams_config": "json",
-      "activate": "boolean",
-      "activate": "boolean",
+      "activate": "boolean"
     }
   }
   ```
@@ -735,11 +626,6 @@ http://localhost:8080
 
 ```json
 {
-    "success": "boolean",
-    "message": "string",
-    "data": {
-      "name": "boolean"
-    }
     "success": "boolean",
     "message": "string",
     "data": {
@@ -904,7 +790,6 @@ http://localhost:8080
     "success": "boolean",
     "message": "string",
     "data": {
-      "task_logs":"json"
       "task_logs":"json"
     }
   }
