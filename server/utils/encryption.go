@@ -11,12 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/kms"
-	"github.com/datazip/olake-frontend/server/internal/constants"
+	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
 // utility provides encryption and decryption functionality using either AWS KMS or local AES-256-GCM.
@@ -31,7 +31,7 @@ import (
 func getSecretKey() ([]byte, *kms.Client, error) {
 	// TODO: can we move this to constants and set key and kms client
 	// TODO: use viper package to read environment variables
-	envKey := os.Getenv(constants.EncryptionKey)
+	envKey, _ := web.AppConfig.String(constants.ConfEncryptionKey)
 	if strings.TrimSpace(envKey) == "" {
 		return []byte{}, nil, nil // Encryption is disabled
 	}
@@ -105,12 +105,12 @@ func Decrypt(encryptedText string) (string, error) {
 	var config string
 	err = json.Unmarshal([]byte(encryptedText), &config)
 	if err != nil {
-		return "", fmt.Errorf("failed to unmarshal JSON string: %v", err)
+		return "", fmt.Errorf("failed to unmarshal JSON string: %s", err)
 	}
 
 	encryptedData, err := base64.StdEncoding.DecodeString(config)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode base64 data: %v", err)
+		return "", fmt.Errorf("failed to decode base64 data: %s", err)
 	}
 
 	// Use KMS if client is provided

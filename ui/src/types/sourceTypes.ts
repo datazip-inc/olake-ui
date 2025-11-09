@@ -29,6 +29,7 @@ export interface CreateSourceProps {
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void
 	onVersionChange?: (version: string) => void
+	onExistingSourceIdChange?: (id: number | null) => void
 	docsMinimized?: boolean
 	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }
@@ -44,7 +45,7 @@ export interface SourceJob {
 }
 
 export interface SourceData {
-	id?: string
+	id?: number
 	name: string
 	type: string
 	config: Record<string, any>

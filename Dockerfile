@@ -1,6 +1,7 @@
 # Stage 1: Go Builder (Backend)
 FROM golang:1.24.2-alpine AS go-builder
 
+
 # Install git, as it might be needed by go mod download or go build
 RUN apk add --no-cache git
 
@@ -19,6 +20,8 @@ RUN cd server && go build -ldflags="-w -s" -o /app/olake-server .
 
 # Stage 2: Frontend Builder
 FROM node:20-alpine AS node-builder
+
+# Reuse build-time arguments during UI build if needed
 WORKDIR /app/ui
 
 # Install pnpm globally

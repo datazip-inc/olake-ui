@@ -79,3 +79,9 @@ export interface CronParseResult {
 	selectedDay?: string
 	customCronExpression?: string
 }
+
+export enum IngestionMode {
+	UPSERT = "Upsert",
+	APPEND = "Append",
+	CUSTOM = "Custom",
+}

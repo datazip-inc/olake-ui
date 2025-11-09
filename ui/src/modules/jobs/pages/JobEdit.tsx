@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import { message } from "antd"
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react"
+import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
@@ -161,15 +161,9 @@ const JobEdit: React.FC = () => {
 
 	// Load job data on component mount
 	useEffect(() => {
-		const loadData = async () => {
-			try {
-				await Promise.all([fetchJobs(), fetchSources(), fetchDestinations()])
-			} catch (error) {
-				console.error("Error loading data:", error)
-				message.error("Failed to load job data. Please try again.")
-			}
-		}
-		loadData()
+		fetchJobs()
+		fetchSources()
+		fetchDestinations()
 	}, [])
 
 	const initializeFromExistingJob = (job: Job) => {
@@ -179,6 +173,7 @@ const JobEdit: React.FC = () => {
 
 		// Set source data from job
 		setSourceData({
+			id: job.source.id,
 			name: job.source.name,
 			type: job.source.type,
 			config: sourceConfig,
@@ -190,6 +185,7 @@ const JobEdit: React.FC = () => {
 
 		// Set destination data from job
 		setDestinationData({
+			id: job.destination.id,
 			name: job.destination.name,
 			type: job.destination.type,
 			config: destConfig,
@@ -311,6 +307,7 @@ const JobEdit: React.FC = () => {
 		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
+				...(sourceData?.id && { id: sourceData.id }),
 				name: sourceData?.name || "",
 				type: getConnectorInLowerCase(sourceData?.type || ""),
 				config:
@@ -320,6 +317,7 @@ const JobEdit: React.FC = () => {
 				version: sourceData?.version || "",
 			},
 			destination: {
+				...(destinationData?.id && { id: destinationData.id }),
 				name: destinationData?.name || "",
 				type: getConnectorInLowerCase(destinationData?.type || ""),
 				config:
@@ -364,14 +362,12 @@ const JobEdit: React.FC = () => {
 			const jobUpdatePayload = getjobUpdatePayLoad()
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
-			message.success("Job updated successfully!")
 
 			// Refresh jobs and navigate back to jobs list
 			fetchJobs()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
-			message.error("Failed to save job. Please try again.")
 		} finally {
 			setIsSubmitting(false)
 		}
@@ -449,7 +445,7 @@ const JobEdit: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="mr-1 size-5" />
+							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 						<div className="text-2xl font-bold">
 							{jobName ? (jobName === "-" ? " " : jobName) : "New Job"}
@@ -577,7 +573,7 @@ const JobEdit: React.FC = () => {
 								: "Finish"
 							: "Next"}
 						{currentStep !== JOB_CREATION_STEPS.STREAMS && (
-							<ArrowRight className="size-4 text-white" />
+							<ArrowRightIcon className="size-4 text-white" />
 						)}
 					</button>
 				</div>

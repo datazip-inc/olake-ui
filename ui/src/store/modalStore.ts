@@ -1,4 +1,5 @@
 import { StateCreator } from "zustand"
+import { IngestionMode } from "../types/commonTypes"
 
 export interface ModalSlice {
 	showTestingModal: boolean
@@ -14,6 +15,9 @@ export interface ModalSlice {
 	showEditDestinationModal: boolean
 	showDestinationDatabaseModal: boolean
 	showResetStreamsModal: boolean
+	showIngestionModeChangeModal: boolean
+	ingestionMode: IngestionMode
+	showSpecFailedModal: boolean
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
 	setShowFailureModal: (show: boolean) => void
@@ -27,6 +31,9 @@ export interface ModalSlice {
 	setShowEditDestinationModal: (show: boolean) => void
 	setShowDestinationDatabaseModal: (show: boolean) => void
 	setShowResetStreamsModal: (show: boolean) => void
+	setShowIngestionModeChangeModal: (show: boolean) => void
+	setIngestionMode: (mode: IngestionMode) => void
+	setShowSpecFailedModal: (show: boolean) => void
 }
 
 export const createModalSlice: StateCreator<ModalSlice> = set => ({
@@ -43,7 +50,9 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	showEditDestinationModal: false,
 	showDestinationDatabaseModal: false,
 	showResetStreamsModal: false,
-
+	showIngestionModeChangeModal: false,
+	ingestionMode: IngestionMode.UPSERT,
+	showSpecFailedModal: false,
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
 	setShowFailureModal: show => set({ showFailureModal: show }),
@@ -59,4 +68,8 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	setShowDestinationDatabaseModal: show =>
 		set({ showDestinationDatabaseModal: show }),
 	setShowResetStreamsModal: show => set({ showResetStreamsModal: show }),
+	setShowIngestionModeChangeModal: show =>
+		set({ showIngestionModeChangeModal: show }),
+	setIngestionMode: mode => set({ ingestionMode: mode }),
+	setShowSpecFailedModal: show => set({ showSpecFailedModal: show }),
 })

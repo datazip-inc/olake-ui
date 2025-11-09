@@ -29,6 +29,7 @@ import {
 	CONNECTOR_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
@@ -46,6 +47,8 @@ import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplat
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
+import { AxiosError } from "axios"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -69,6 +72,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			onVersionChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
+			onExistingSourceIdChange,
 		},
 		ref,
 	) => {
@@ -86,6 +90,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 		const [existingSource, setExistingSource] = useState<string | null>(null)
+		const [specError, setSpecError] = useState<string | null>(null)
 
 		const navigate = useNavigate()
 
@@ -99,6 +104,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			addSource,
 			setShowFailureModal,
 			setSourceTestConnectionError,
+			setShowSpecFailedModal,
 		} = useAppStore()
 
 		useEffect(() => {
@@ -154,15 +160,15 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data?.version) {
-						setVersions(response.data.version)
+					if (response?.version) {
+						setVersions(response.version)
 						if (
-							response.data.version.length > 0 &&
+							response.version.length > 0 &&
 							(!initialVersion ||
 								connector !== initialConnector ||
 								initialVersion === "")
 						) {
-							let defaultVersion = response.data.version[0]
+							let defaultVersion = response.version[0]
 							if (
 								connector.toLowerCase() === initialConnector &&
 								initialVersion
@@ -188,7 +194,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			fetchVersions()
 		}, [connector, initialConnector])
 
-		useEffect(() => {
+		const handleFetchSpec = () => {
 			if (!selectedVersion) {
 				setSchema(null)
 				return
@@ -200,15 +206,26 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			return withAbortController(
 				signal =>
 					sourceService.getSourceSpec(connector, selectedVersion, signal),
-				response =>
-					handleSpecResponse(response, setSchema, setUiSchema, "source"),
+				response => {
+					handleSpecResponse(response, setSchema, setUiSchema, "source")
+				},
 				error => {
 					setSchema({})
 					setUiSchema({})
 					console.error("Error fetching source spec:", error)
+					if (error instanceof AxiosError) {
+						setSpecError(error.response?.data.message)
+					} else {
+						setSpecError("Failed to fetch spec, Please try again.")
+					}
+					setShowSpecFailedModal(true)
 				},
 				() => setLoading(false),
 			)
+		}
+
+		useEffect(() => {
+			return handleFetchSpec()
 		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {
@@ -283,7 +300,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				const testResult =
 					await sourceService.testSourceConnection(newSourceData)
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -296,7 +316,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 							})
 					}, 1000)
 				} else {
-					setSourceTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setSourceTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -322,6 +346,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setConnector(value)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
 				setSourceName("")
 				onSourceNameChange?.("")
 			}
@@ -339,7 +364,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setSetupType(type)
 			setSourceName("")
 			onSourceNameChange?.("")
-
+			// show documentation only in the case of new
 			if (onDocsMinimizedChange) {
 				if (type === SETUP_TYPES.EXISTING) {
 					onDocsMinimizedChange(true) // Close doc panel
@@ -353,6 +378,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
 				if (onFormDataChange) onFormDataChange({})
@@ -382,6 +408,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSourceName(selectedSource.name)
 				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
+				onExistingSourceIdChange?.(selectedSource.id)
 			}
 		}
 
@@ -407,6 +434,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						value={connector}
 						onChange={handleConnectorChange}
+						data-testid="source-connector-select"
 						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
 						options={connectorOptions}
 						{...(setupType !== SETUP_TYPES.NEW
@@ -451,6 +479,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									onChange={handleVersionChange}
 									className="w-full"
 									placeholder="Select version"
+									data-testid="source-version-select"
 									options={versions.map(version => ({
 										value: version,
 										label: version,
@@ -495,6 +524,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<Select
 						placeholder="Select a source"
 						className="w-full"
+						data-testid="existing-source"
 						onChange={handleExistingSourceSelect}
 						value={existingSource}
 						options={filteredSources.map(s => ({
@@ -549,7 +579,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 									validator={validator}
 									omitExtraData
 									liveOmit
-									showErrorList={false}
+									showErrorList={false} // adding this will not show error list
 									onSubmit={handleCreate}
 								/>
 							</div>
@@ -646,6 +676,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					type="source"
 					navigateTo={fromJobFlow ? "jobs/new" : "sources"}
 				/>
+				{specError && (
+					<SpecFailedModal
+						fromSource
+						error={specError}
+						onTryAgain={handleFetchSpec}
+					/>
+				)}
 			</div>
 		)
 	},

@@ -1,339 +1,213 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/beego/beego/v2/server/web"
-
-	"github.com/datazip/olake-frontend/server/internal/constants"
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/internal/telemetry"
-	"github.com/datazip/olake-frontend/server/internal/temporal"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-type DestHandler struct {
-	web.Controller
-	destORM    *database.DestinationORM
-	jobORM     *database.JobORM
-	userORM    *database.UserORM
-	tempClient *temporal.Client
-}
-
-func (c *DestHandler) Prepare() {
-	c.destORM = database.NewDestinationORM()
-	c.jobORM = database.NewJobORM()
-	c.userORM = database.NewUserORM()
-	var err error
-	c.tempClient, err = temporal.NewClient()
-	if err != nil {
-		logs.Error("Failed to create Temporal client: %v", err)
-	}
-}
-
 // @router /project/:projectid/destinations [get]
-func (c *DestHandler) GetAllDestinations() {
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-	destinations, err := c.destORM.GetAllByProjectID(projectIDStr)
+func (h *Handler) ListDestinations() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve destinations")
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	destItems := make([]models.DestinationDataItem, 0, len(destinations))
-	for _, dest := range destinations {
-		item := models.DestinationDataItem{
-			ID:        dest.ID,
-			Name:      dest.Name,
-			Type:      dest.DestType,
-			Version:   dest.Version,
-			Config:    dest.Config,
-			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
-		}
 
-		setUsernames(&item.CreatedBy, &item.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
-
-		jobs, err := c.jobORM.GetByDestinationID(dest.ID)
-		var success bool
-		item.Jobs, success = buildJobDataItems(jobs, err, projectIDStr, "destination", c.tempClient, &c.Controller)
-		if !success {
-			return // Error occurred in buildJobDataItems
-		}
-
-		destItems = append(destItems, item)
+	items, err := h.etl.ListDestinations(h.Ctx.Request.Context(), projectID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
+		return
 	}
-
-	utils.SuccessResponse(&c.Controller, destItems)
+	utils.SuccessResponse(&h.Controller, "Destinations listed successfully", items)
 }
 
 // @router /project/:projectid/destinations [post]
-func (c *DestHandler) CreateDestination() {
-	// Get project ID from path
-	projectIDStr := c.Ctx.Input.Param(":projectid")
-
-	var req models.CreateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-	// Convert request to Destination model
-	destination := &models.Destination{
-		Name:      req.Name,
-		DestType:  req.Type,
-		Version:   req.Version,
-		Config:    req.Config,
-		ProjectID: projectIDStr,
-	}
-
-	// Set created by if user is logged in
-	userID := c.GetSession(constants.SessionUserID)
-	if userID != nil {
-		user := &models.User{ID: userID.(int)}
-		destination.CreatedBy = user
-		destination.UpdatedBy = user
-	}
-
-	if err := c.destORM.Create(destination); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create destination: %s", err))
+func (h *Handler) CreateDestination() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
-	// Track destination creation event
-	telemetry.TrackDestinationCreation(context.Background(), destination)
-	utils.SuccessResponse(&c.Controller, req)
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	var req dto.CreateDestinationRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := dto.ValidateDestinationType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Create destination initiated project_id[%s] destination_type[%s] destination_name[%s] user_id[%v]",
+		projectID, req.Type, req.Name, userID)
+
+	if err := h.etl.CreateDestination(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 
 // @router /project/:projectid/destinations/:id [put]
-func (c *DestHandler) UpdateDestination() {
-	// Get destination ID from path
-	id := GetIDFromPath(&c.Controller)
-	projectID := c.Ctx.Input.Param(":projectid")
-	var req models.UpdateDestinationRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+func (h *Handler) UpdateDestination() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
-	// Get existing destination
-	existingDest, err := c.destORM.GetByID(id)
+
+	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	// Update fields
-	existingDest.Name = req.Name
-	existingDest.DestType = req.Type
-	existingDest.Version = req.Version
-	existingDest.Config = req.Config
-	existingDest.UpdatedAt = time.Now()
-
-	// Update user who made changes
-	userID := c.GetSession(constants.SessionUserID)
-	if userID != nil {
-		user := &models.User{ID: userID.(int)}
-		existingDest.UpdatedBy = user
-	}
-
-	// Find jobs linked to this source
-	jobs, err := c.jobORM.GetByDestinationID(existingDest.ID)
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to fetch jobs for destination %s", err))
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	// Cancel workflows for those jobs
-	for _, job := range jobs {
-		err := cancelJobWorkflow(c.tempClient, job, projectID)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to cancel workflow for job %s", err))
-			return
-		}
-	}
-
-	// persist update
-	if err := c.destORM.Update(existingDest); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to update destination %s", err))
+	var req dto.UpdateDestinationRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	// Track destinations status after update
-	telemetry.TrackDestinationsStatus(context.Background())
+	if err := dto.ValidateDestinationType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 
-	utils.SuccessResponse(&c.Controller, req)
+	logger.Debugf("Update destination initiated project_id[%s], destination_id[%d], destination_type[%s], user_id[%v]",
+		projectID, id, req.Type, userID)
+
+	if err := h.etl.UpdateDestination(h.Ctx.Request.Context(), id, projectID, &req, userID); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
 // @router /project/:projectid/destinations/:id [delete]
-func (c *DestHandler) DeleteDestination() {
-	// Get destination ID from path
-	id := GetIDFromPath(&c.Controller)
-	// Get the name for the response
-	dest, err := c.destORM.GetByID(id)
+func (h *Handler) DeleteDestination() {
+	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	jobs, err := c.jobORM.GetByDestinationID(id)
+	logger.Debugf("Delete destination initiated destination_id[%d]", id)
+
+	resp, err := h.etl.DeleteDestination(h.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to get source by id")
-	}
-	for _, job := range jobs {
-		job.Active = false
-		if err := c.jobORM.Update(job); err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to deactivate jobs using this destination")
-			return
-		}
-	}
-	if err := c.destORM.Delete(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete destination")
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
 		return
 	}
 
-	// Track destinations status after deletion
-	telemetry.TrackDestinationsStatus(context.Background())
-
-	utils.SuccessResponse(&c.Controller, &models.DeleteDestinationResponse{
-		Name: dest.Name,
-	})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
 }
 
 // @router /project/:projectid/destinations/test [post]
-func (c *DestHandler) TestConnection() {
-	var req models.DestinationTestConnectionRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-	if req.Type == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination type is required")
+func (h *Handler) TestDestinationConnection() {
+	// need to remove sourceVersion from request
+	var req dto.DestinationTestConnectionRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	if req.Version == "" || req.Version == "latest" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "valid destination version required")
-		return
-	}
+	logger.Infof("Test destination connection initiated destination_type[%s] destination_version[%s]", req.Type, req.Version)
 
-	// Determine driver and available tags
-	version := req.Version
-	driver := req.Source
-	if driver == "" {
-		var err error
-		_, driver, err = utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
-		if err != nil {
-			utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
-			return
-		}
-	}
-
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	result, logs, err := h.etl.TestDestinationConnection(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to encrypt destination config: "+err.Error())
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
 	}
 
-	result, err := c.tempClient.TestConnection(c.Ctx.Request.Context(), "destination", driver, version, encryptedConfig)
-	if result == nil {
-		result = map[string]interface{}{
-			"message": err.Error(),
-			"status":  "failed",
-		}
-	}
-	utils.SuccessResponse(&c.Controller, result)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s connection tested successfully", req.Type), dto.TestConnectionResponse{
+		ConnectionResult: result,
+		Logs:             logs,
+	})
 }
 
 // @router /destinations/:id/jobs [get]
-func (c *DestHandler) GetDestinationJobs() {
-	id := GetIDFromPath(&c.Controller)
-	// Check if destination exists
-	_, err := c.destORM.GetByID(id)
+func (h *Handler) GetDestinationJobs() {
+	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "Destination not found")
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	// Create a job ORM and get jobs by destination ID
-	jobORM := database.NewJobORM()
-	jobs, err := jobORM.GetByDestinationID(id)
+	logger.Debugf("Get destination jobs initiated destination_id[%d]", id)
+
+	jobs, err := h.etl.GetDestinationJobs(h.Ctx.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve jobs")
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
 		return
 	}
-
-	// Format as required by API contract
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"jobs": jobs,
-	})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %d jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
 // @router /project/:projectid/destinations/versions [get]
-func (c *DestHandler) GetDestinationVersions() {
-	// Get destination type from query parameter
-	destType := c.GetString("type")
-	if destType == "" {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Destination type is required")
-		return
-	}
-
-	// get available driver versions
-	versions, _, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
+func (h *Handler) GetDestinationVersions() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch driver versions: %s", err))
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, map[string]interface{}{
-		"version": versions,
-	})
+	destType := h.GetString("type")
+	if err := dto.ValidateDestinationType(destType); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get destination versions initiated project_id[%s] destination_type[%s]", projectID, destType)
+
+	versions, err := h.etl.GetDestinationVersions(h.Ctx.Request.Context(), destType)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
 }
 
 // @router /project/:projectid/destinations/spec [post]
-func (c *DestHandler) GetDestinationSpec() {
-	_ = c.Ctx.Input.Param(":projectid")
-
-	var req models.SpecRequest
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
-		return
-	}
-	var specOutput models.SpecOutput
-	var err error
-	// TODO: make destinationType consistent. Only use parquet and iceberg.
-	destinationType := "iceberg"
-	if req.Type == "s3" {
-		destinationType = "parquet"
-	}
-	version := req.Version
-
-	// Determine driver and available tags
-	_, driver, err := utils.GetDriverImageTags(c.Ctx.Request.Context(), "", true)
+func (h *Handler) GetDestinationSpec() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get valid driver image tags: %s", err))
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	if c.tempClient != nil {
-		specOutput, err = c.tempClient.FetchSpec(
-			c.Ctx.Request.Context(),
-			destinationType,
-			driver,
-			version,
-		)
+	var req dto.SpecRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
 	}
+
+	logger.Debugf("Get destination spec initiated project_id[%s] destination_type[%s] destination_version[%s]",
+		projectID, req.Type, req.Version)
+
+	resp, err := h.etl.GetDestinationSpec(h.Ctx.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to get spec: %v", err))
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&c.Controller, models.SpecResponse{
-		Version: req.Version,
-		Type:    req.Type,
-		Spec:    specOutput.Spec,
-	})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s spec fetched successfully", req.Type), resp)
 }

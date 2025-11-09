@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
-import { Info, ArrowLeft } from "@phosphor-icons/react"
+import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
 import { useAppStore } from "../../../store"
@@ -124,13 +124,9 @@ const JobSettings: React.FC = () => {
 
 		try {
 			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
 			await fetchJobs()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 			// Revert optimistic update on error
 			setPauseJob(!checked)
 		} finally {
@@ -252,12 +248,10 @@ const JobSettings: React.FC = () => {
 			}
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
-			message.success("Job settings saved successfully")
 			await fetchJobs()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job settings:", error)
-			message.error("Failed to save job settings")
 		}
 	}
 
@@ -273,7 +267,7 @@ const JobSettings: React.FC = () => {
 										to="/jobs"
 										className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 									>
-										<ArrowLeft className="size-5" />
+										<ArrowLeftIcon className="size-5" />
 									</Link>
 
 									<div className="text-2xl font-bold">{job?.name}</div>
@@ -341,7 +335,7 @@ const JobSettings: React.FC = () => {
 															Cron Expression
 														</label>
 														<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
-															<Info
+															<InfoIcon
 																size={16}
 																className="cursor-help text-slate-900"
 															/>

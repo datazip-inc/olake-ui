@@ -1,5 +1,5 @@
 import { FieldTemplateProps } from "@rjsf/utils"
-import { Info, Plus, Trash } from "@phosphor-icons/react"
+import { InfoIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { Tooltip, Button } from "antd"
 import { useState, useEffect } from "react"
 
@@ -42,13 +42,13 @@ function KeyValueRow({
 			<Button
 				type="text"
 				onClick={() => onDelete(keyName)}
-				icon={<Trash className="text-red-500" />}
+				icon={<TrashIcon className="text-red-500" />}
 			/>
 		</div>
 	)
 }
 
-// --- NewKeyValueRow: Renders inputs for adding a new key-value pair ---
+// --- NewKeyValueRow: Renders inputs for adding a new key-value pair for type = object ---
 function NewKeyValueRow({
 	newKey,
 	newValue,
@@ -81,11 +81,15 @@ function NewKeyValueRow({
 			<Button
 				type="text"
 				onClick={onAdd}
-				icon={<Plus className="text-blue-500" />}
+				icon={<PlusIcon className="text-blue-500" />}
 			/>
 		</div>
 	)
 }
+
+/**
+ * CustomFieldTemplate is a component that renders a custom field template this overrides the default field template of rjsf Field specific layout is defined here
+ */
 
 export default function CustomFieldTemplate(props: FieldTemplateProps) {
 	// --- Props Destructure ---
@@ -221,7 +225,7 @@ export default function CustomFieldTemplate(props: FieldTemplateProps) {
 							title={description || rawDescription}
 							placement="right"
 						>
-							<Info className="ml-1 text-gray-500 hover:text-gray-600" />
+							<InfoIcon className="ml-1 text-gray-500 hover:text-gray-600" />
 						</Tooltip>
 					)}
 				</label>

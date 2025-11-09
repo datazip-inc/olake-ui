@@ -1,7 +1,7 @@
 import { message } from "antd"
 import parser from "cron-parser"
 
-import { CronParseResult, SelectedStream } from "../types"
+import { CronParseResult, IngestionMode, SelectedStream } from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -15,6 +15,7 @@ import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 
+// These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
 	const lowerConnector = connector.toLowerCase()
 
@@ -37,6 +38,7 @@ export const getConnectorImage = (connector: string) => {
 	}
 }
 
+// These are used to show documentation path for the connector
 export const getConnectorDocumentationPath = (
 	connector: string,
 	catalog: string | null,
@@ -189,6 +191,7 @@ export const getFrequencyValue = (frequency: string) => {
 	}
 }
 
+// removes the saved job from local storage when user deletes the job or completes entire flow and create
 export const removeSavedJobFromLocalStorage = (jobId: string) => {
 	const savedJobs = localStorage.getItem("savedJobs")
 	if (savedJobs) {
@@ -432,6 +435,7 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 
 export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
 
+// used to cancel old requests when new one is made which helps in removing the old data
 export const withAbortController = <T>(
 	fn: AbortableFunction<T>,
 	onSuccess: (data: T) => void,
@@ -473,11 +477,13 @@ export const withAbortController = <T>(
 	}
 }
 
+// for small screen items shown will be 6 else 8
 export const getResponsivePageSize = () => {
 	const screenHeight = window.innerHeight
 	return screenHeight >= 900 ? 8 : 6
 }
 
+// validate alphanumeric underscore
 export const validateAlphanumericUnderscore = (
 	value: string,
 ): { validValue: string; errorMessage: string } => {
@@ -498,9 +504,9 @@ export const handleSpecResponse = (
 	errorType: "source" | "destination" = "source",
 ) => {
 	try {
-		if (response.success && response.data?.spec?.jsonschema) {
-			setSchema(response.data.spec.jsonschema)
-			setUiSchema(JSON.parse(response.data.spec.uischema))
+		if (response?.spec?.jsonschema) {
+			setSchema(response.spec.jsonschema)
+			setUiSchema(JSON.parse(response.spec.uischema))
 		} else {
 			console.error(`Failed to get ${errorType} spec:`, response.message)
 		}
@@ -522,6 +528,7 @@ export const getSelectedStreams = (selectedStreams: {
 	)
 }
 
+// validates filter expression
 export const validateFilter = (filter: string): boolean => {
 	if (!filter.trim()) return false
 	return FILTER_REGEX.test(filter.trim())
@@ -533,4 +540,27 @@ export const validateStreams = (selections: {
 	return !Object.values(selections).some(streams =>
 		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
 	)
+}
+
+export const getIngestionMode = (selectedStreams: {
+	[key: string]: SelectedStream[]
+}): IngestionMode => {
+	const selectedStreamsObj = getSelectedStreams(selectedStreams)
+	const allSelectedStreams: SelectedStream[] = []
+
+	// Flatten all streams from all namespaces
+	Object.values(selectedStreamsObj).forEach((streams: SelectedStream[]) => {
+		allSelectedStreams.push(...streams)
+	})
+
+	if (allSelectedStreams.length === 0) return IngestionMode.UPSERT
+
+	const appendCount = allSelectedStreams.filter(
+		s => s.append_mode === true,
+	).length
+	const upsertCount = allSelectedStreams.filter(s => !s.append_mode).length
+
+	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
+	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
+	return IngestionMode.CUSTOM
 }

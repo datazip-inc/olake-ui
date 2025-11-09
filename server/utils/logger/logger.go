@@ -1,0 +1,102 @@
+package logger
+
+import (
+	"io"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
+)
+
+var logger zerolog.Logger
+
+func Init() {
+	format := viper.GetString(constants.EnvLogFormat)
+	level := viper.GetString(constants.EnvLogLevel)
+
+	zerolog.TimestampFunc = func() time.Time { return time.Now().UTC() }
+
+	var writer io.Writer
+	switch strings.ToLower(format) {
+	case "console":
+		// Use ConsoleWriter with built-in colors and formatting
+		writer = zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.RFC3339,
+		}
+	default:
+		// Default to JSON for production safety
+		writer = os.Stdout
+	}
+
+	logger = zerolog.New(writer).With().Timestamp().Logger()
+	zerolog.SetGlobalLevel(parseLogLevel(level))
+}
+
+// parseLogLevel converts a string level to a zerolog.Level
+func parseLogLevel(levelStr string) zerolog.Level {
+	switch strings.ToLower(levelStr) {
+	case "debug":
+		return zerolog.DebugLevel
+	case "info":
+		return zerolog.InfoLevel
+	case "warn":
+		return zerolog.WarnLevel
+	case "error":
+		return zerolog.ErrorLevel
+	case "fatal":
+		return zerolog.FatalLevel
+	default:
+		return zerolog.InfoLevel // Default to info level
+	}
+}
+
+// Info writes record with log level INFO
+func Info(v ...interface{}) {
+	if len(v) == 1 {
+		logger.Info().Interface("message", v[0]).Send()
+	} else {
+		logger.Info().Msgf("%s", v...)
+	}
+}
+
+func Infof(format string, v ...interface{}) {
+	logger.Info().Msgf(format, v...)
+}
+
+func Debug(v ...interface{}) {
+	logger.Debug().Msgf("%s", v...)
+}
+
+func Debugf(format string, v ...interface{}) {
+	logger.Debug().Msgf(format, v...)
+}
+
+func Error(v ...interface{}) {
+	logger.Error().Msgf("%s", v...)
+}
+
+func Errorf(format string, v ...interface{}) {
+	logger.Error().Msgf(format, v...)
+}
+
+func Warn(v ...interface{}) {
+	logger.Warn().Msgf("%s", v...)
+}
+
+func Warnf(format string, v ...interface{}) {
+	logger.Warn().Msgf(format, v...)
+}
+
+func Fatal(v ...interface{}) {
+	logger.Fatal().Msgf("%s", v...)
+	os.Exit(1)
+}
+
+func Fatalf(format string, v ...interface{}) {
+	logger.Fatal().Msgf(format, v...)
+	os.Exit(1)
+}
