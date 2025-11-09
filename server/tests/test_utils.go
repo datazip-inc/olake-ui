@@ -244,8 +244,8 @@ func DinDTestContainer(t *testing.T) error {
 	t.Log("Playwright tests passed successfully.")
 
 	// wait before verifying iceberg data
-	t.Log("Waiting for 20 seconds before verifying iceberg data...")
-	time.Sleep(20 * time.Second)
+	t.Log("Waiting for 60 seconds before verifying iceberg data...")
+	time.Sleep(60 * time.Second)
 
 	// Step 11: Verify in iceberg
 	t.Logf("Starting Iceberg data verification...")
