@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, message, Button, Tooltip } from "antd"
+import { Input, Spin, Button, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
@@ -47,10 +47,7 @@ const JobLogs: React.FC = () => {
 
 		if (jobId) {
 			if (isTaskLog && filePath) {
-				fetchTaskLogs(jobId, historyId || "1", filePath).catch(error => {
-					message.error("Failed to fetch task logs")
-					console.error(error)
-				})
+				fetchTaskLogs(jobId, historyId || "1", filePath)
 			}
 		}
 	}, [
@@ -174,15 +171,6 @@ const JobLogs: React.FC = () => {
 							onClick={() => {
 								if (isTaskLog && filePath) {
 									fetchTaskLogs(jobId!, historyId || "1", filePath)
-										.then(() => {
-											message.destroy()
-											message.success("Logs refetched successfully")
-										})
-										.catch(error => {
-											message.destroy()
-											message.error("Failed to refetch task logs")
-											console.error(error)
-										})
 								}
 							}}
 							className="flex items-center"

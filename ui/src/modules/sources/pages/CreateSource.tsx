@@ -48,6 +48,8 @@ import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplat
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
+import { AxiosError } from "axios"
 
 // Create ref handle interface
 export interface CreateSourceHandle {
@@ -71,6 +73,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			onVersionChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
+			onExistingSourceIdChange,
 		},
 		ref,
 	) => {
@@ -88,6 +91,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [filteredSources, setFilteredSources] = useState<Source[]>([])
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 		const [existingSource, setExistingSource] = useState<string | null>(null)
+		const [specError, setSpecError] = useState<string | null>(null)
 
 		const navigate = useNavigate()
 
@@ -101,6 +105,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			addSource,
 			setShowFailureModal,
 			setSourceTestConnectionError,
+			setShowSpecFailedModal,
 		} = useAppStore()
 
 		useEffect(() => {
@@ -156,15 +161,15 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					const response = await sourceService.getSourceVersions(
 						connector.toLowerCase(),
 					)
-					if (response.data?.version) {
-						setVersions(response.data.version)
+					if (response?.version) {
+						setVersions(response.version)
 						if (
-							response.data.version.length > 0 &&
+							response.version.length > 0 &&
 							(!initialVersion ||
 								connector !== initialConnector ||
 								initialVersion === "")
 						) {
-							let defaultVersion = response.data.version[0]
+							let defaultVersion = response.version[0]
 							if (
 								connector.toLowerCase() === initialConnector &&
 								initialVersion
@@ -190,7 +195,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			fetchVersions()
 		}, [connector, initialConnector])
 
-		useEffect(() => {
+		const handleFetchSpec = () => {
 			if (!selectedVersion) {
 				setSchema(null)
 				return
@@ -202,15 +207,26 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			return withAbortController(
 				signal =>
 					sourceService.getSourceSpec(connector, selectedVersion, signal),
-				response =>
-					handleSpecResponse(response, setSchema, setUiSchema, "source"),
+				response => {
+					handleSpecResponse(response, setSchema, setUiSchema, "source")
+				},
 				error => {
 					setSchema({})
 					setUiSchema({})
 					console.error("Error fetching source spec:", error)
+					if (error instanceof AxiosError) {
+						setSpecError(error.response?.data.message)
+					} else {
+						setSpecError("Failed to fetch spec, Please try again.")
+					}
+					setShowSpecFailedModal(true)
 				},
 				() => setLoading(false),
 			)
+		}
+
+		useEffect(() => {
+			return handleFetchSpec()
 		}, [connector, selectedVersion, setupType])
 
 		useEffect(() => {
@@ -331,6 +347,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setConnector(value)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
 				setSourceName("")
 				onSourceNameChange?.("")
 			}
@@ -362,6 +379,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
 				if (onFormDataChange) onFormDataChange({})
@@ -391,6 +409,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				setSourceName(selectedSource.name)
 				setConnector(getConnectorLabel(selectedSource.type))
 				setSelectedVersion(selectedSource.version)
+				onExistingSourceIdChange?.(selectedSource.id)
 			}
 		}
 
@@ -659,6 +678,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					type="source"
 					navigateTo={fromJobFlow ? "jobs/new" : "sources"}
 				/>
+				{specError && (
+					<SpecFailedModal
+						fromSource
+						error={specError}
+						onTryAgain={handleFetchSpec}
+					/>
+				)}
 			</div>
 		)
 	},

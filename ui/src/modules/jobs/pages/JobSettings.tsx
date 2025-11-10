@@ -124,13 +124,9 @@ const JobSettings: React.FC = () => {
 
 		try {
 			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
 			await fetchJobs()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 			// Revert optimistic update on error
 			setPauseJob(!checked)
 		} finally {
@@ -252,12 +248,10 @@ const JobSettings: React.FC = () => {
 			}
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
-			message.success("Job settings saved successfully")
 			await fetchJobs()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job settings:", error)
-			message.error("Failed to save job settings")
 		}
 	}
 

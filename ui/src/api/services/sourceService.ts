@@ -2,7 +2,6 @@ import api from "../axios"
 import { API_CONFIG } from "../config"
 import {
 	Entity,
-	APIResponse,
 	EntityBase,
 	EntityTestRequest,
 	EntityTestResponse,
@@ -11,11 +10,11 @@ import {
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
 		try {
-			const response = await api.get<APIResponse<Entity[]>>(
+			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
 			)
 
-			return response.data.data.map(item => ({
+			return response.data.map(item => ({
 				...item,
 				config: JSON.parse(item.config),
 			}))
@@ -27,7 +26,7 @@ export const sourceService = {
 
 	createSource: async (source: EntityBase) => {
 		try {
-			const response = await api.post<APIResponse<EntityBase>>(
+			const response = await api.post<EntityBase>(
 				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
 				source,
 			)
@@ -40,7 +39,7 @@ export const sourceService = {
 
 	updateSource: async (id: string, source: EntityBase) => {
 		try {
-			const response = await api.put<APIResponse<Entity>>(
+			const response = await api.put<Entity>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
 				{
 					name: source.name,
@@ -51,6 +50,7 @@ export const sourceService = {
 							? source.config
 							: JSON.stringify(source.config),
 				},
+				{ showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -63,6 +63,7 @@ export const sourceService = {
 		try {
 			await api.delete(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+				{ showNotification: true },
 			)
 		} catch (error) {
 			console.error("Error deleting source:", error)
@@ -72,19 +73,19 @@ export const sourceService = {
 
 	testSourceConnection: async (source: EntityTestRequest) => {
 		try {
-			const response = await api.post<APIResponse<EntityTestResponse>>(
+			const response = await api.post<EntityTestResponse>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: source.type.toLowerCase(),
 					version: source.version,
 					config: source.config,
 				},
-				{ timeout: 0 }, // Disable timeout for this request since it can take longer
+				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
 			return {
-				success: response.data.success,
-				message: response.data.message,
-				data: response.data.data,
+				success: true,
+				message: "success",
+				data: response.data,
 			}
 		} catch (error) {
 			console.error("Error testing source connection:", error)
@@ -98,7 +99,7 @@ export const sourceService = {
 
 	getSourceVersions: async (type: string) => {
 		try {
-			const response = await api.get<APIResponse<{ version: string[] }>>(
+			const response = await api.get<{ version: string[] }>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
 				{
 					timeout: 0, // Disable timeout for this request since it can take longer
@@ -117,13 +118,13 @@ export const sourceService = {
 		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<APIResponse<any>>(
+			const response = await api.post<any>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: type.toLowerCase(),
 					version,
 				},
-				{ timeout: 300000, signal }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
+				{ timeout: 300000, signal, disableErrorNotification: true }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
 			)
 			return response.data
 		} catch (error) {
@@ -142,7 +143,7 @@ export const sourceService = {
 		job_id?: number,
 	) => {
 		try {
-			const response = await api.post<APIResponse<Record<string, unknown>>>(
+			const response = await api.post<Record<string, unknown>>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 				{
 					name,

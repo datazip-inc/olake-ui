@@ -62,6 +62,7 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
+	const [existingSourceId, setExistingSourceId] = useState<number | null>(null)
 
 	//state to hold catalog value to open documentation panel
 	const [destinationCatalogType, setDestinationCatalogType] = useState<
@@ -77,6 +78,10 @@ const JobCreation: React.FC = () => {
 	const [destinationVersion, setDestinationVersion] = useState(
 		initialData.destinationVersion || "",
 	)
+	const [existingDestinationId, setExistingDestinationId] = useState<
+		number | null
+	>(null)
+
 	const [selectedStreams, setSelectedStreams] = useState<any>(
 		initialData.selectedStreams || [],
 	)
@@ -150,7 +155,6 @@ const JobCreation: React.FC = () => {
 			const response = await jobService.checkJobNameUnique(jobName)
 			return response.unique
 		} catch {
-			message.error("Failed to check job name uniqueness. Please try again.")
 			return null
 		}
 	}
@@ -211,12 +215,14 @@ const JobCreation: React.FC = () => {
 		const newJobData: JobBase = {
 			name: jobName,
 			source: {
+				...(existingSourceId && { id: existingSourceId }),
 				name: sourceName,
 				type: getConnectorInLowerCase(sourceConnector),
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
 			destination: {
+				...(existingDestinationId && { id: existingDestinationId }),
 				name: destinationName,
 				type: getConnectorInLowerCase(destinationConnector),
 				version: destinationVersion,
@@ -241,7 +247,6 @@ const JobCreation: React.FC = () => {
 			setShowEntitySavedModal(true)
 		} catch (error) {
 			console.error("Error adding job:", error)
-			message.error("Failed to create job")
 		}
 	}
 
@@ -380,12 +385,10 @@ const JobCreation: React.FC = () => {
 				job.id === savedJobId ? jobData : job,
 			)
 			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
-			message.success("Job saved successfully!")
 		} else {
 			// Create new saved job
 			savedJobs.push(jobData)
 			localStorage.setItem("savedJobs", JSON.stringify(savedJobs))
-			message.success("Job saved successfully!")
 		}
 
 		navigate("/jobs")
@@ -423,6 +426,7 @@ const JobCreation: React.FC = () => {
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
+								onExistingSourceIdChange={setExistingSourceId}
 								initialConnector={sourceConnector}
 								onFormDataChange={data => {
 									setSourceFormData(data)
@@ -447,6 +451,7 @@ const JobCreation: React.FC = () => {
 								fromJobFlow={true}
 								stepNumber={JOB_STEP_NUMBERS.DESTINATION}
 								stepTitle="Set up your destination"
+								onExistingDestinationIdChange={setExistingDestinationId}
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
 								initialConnector={getConnectorInLowerCase(destinationConnector)}

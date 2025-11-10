@@ -3,8 +3,8 @@ package telemetry
 import (
 	"context"
 
-	"github.com/beego/beego/v2/core/logs"
-	"github.com/datazip/olake-frontend/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 // TrackUserLogin tracks when a user logs in to  olake-ui
@@ -22,7 +22,7 @@ func TrackUserLogin(ctx context.Context, user *models.User) {
 
 		err := TrackEvent(ctx, EventUserLogin, properties)
 		if err != nil {
-			logs.Debug("Failed to track user login event: %s", err)
+			logger.Debug("Failed to track user login event: %s", err)
 		}
 	}()
 }

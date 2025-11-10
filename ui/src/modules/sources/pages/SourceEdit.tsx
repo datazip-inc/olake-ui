@@ -1,16 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import {
-	Input,
-	Button,
-	Select,
-	Switch,
-	message,
-	Table,
-	Spin,
-	Tooltip,
-} from "antd"
+import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
 	GenderNeuterIcon,
@@ -55,6 +46,8 @@ import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplat
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import { AxiosError } from "axios"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -85,6 +78,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
+	const [specError, setSpecError] = useState<string | null>(null)
 
 	const {
 		sources,
@@ -95,6 +89,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		setShowSuccessModal,
 		setShowFailureModal,
 		setSourceTestConnectionError,
+		setShowSpecFailedModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -157,7 +152,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		}
 	}, [initialData])
 
-	useEffect(() => {
+	const handleFetchSpec = () => {
 		if (!selectedVersion || !connector) {
 			setSchema(null)
 			return
@@ -177,9 +172,19 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				setSchema({})
 				setUiSchema({})
 				console.error("Error fetching source spec:", error)
+				if (error instanceof AxiosError) {
+					setSpecError(error.response?.data.message)
+				} else {
+					setSpecError("Failed to fetch spec, Please try again.")
+				}
+				setShowSpecFailedModal(true)
 			},
 			() => setLoading(false),
 		)
+	}
+
+	useEffect(() => {
+		return handleFetchSpec()
 	}, [connector, selectedVersion])
 
 	const resetVersionState = () => {
@@ -199,8 +204,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				const response = await sourceService.getSourceVersions(
 					getConnectorInLowerCase(connector),
 				)
-				if (response.success && response.data?.version) {
-					const versions = response.data.version.map((version: string) => ({
+				if (response?.version) {
+					const versions = response.version.map((version: string) => ({
 						label: version,
 						value: version,
 					}))
@@ -317,11 +322,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		if (sourceId) {
 			updateSource(sourceId, getSourceData())
 				.then(() => {
-					message.success("Source updated successfully")
 					navigate("/sources")
 				})
 				.catch(error => {
-					message.error("Failed to update source")
 					console.error(error)
 				})
 		}
@@ -347,14 +350,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
 			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
 			// Refetch sources to update the UI with the latest source details
 			await fetchSources()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 		}
 	}
 
@@ -730,6 +729,13 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			<TestConnectionFailureModal fromSources={true} />
 			<DeleteModal fromSource={true} />
 			<EntityEditModal entityType="source" />
+			{specError && (
+				<SpecFailedModal
+					fromSource
+					error={specError}
+					onTryAgain={handleFetchSpec}
+				/>
+			)}
 		</div>
 	)
 }

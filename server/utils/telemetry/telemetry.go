@@ -14,6 +14,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/datazip-inc/olake-ui/server/internal/database"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/spf13/viper"
 )
 
 var instance *Telemetry
@@ -38,9 +42,10 @@ type Telemetry struct {
 	locationInfo *LocationInfo
 	TempUserID   string
 	username     string
+	db           *database.Database
 }
 
-func InitTelemetry() {
+func InitTelemetry(db *database.Database) {
 	go func() {
 		if disabled, _ := strconv.ParseBool(os.Getenv("TELEMETRY_DISABLED")); disabled {
 			return
@@ -70,17 +75,20 @@ func InitTelemetry() {
 			return string(idBytes)
 		}()
 
+		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, viper.GetString("BUILD"))
+
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
-				OlakeVersion: OlakeVersion,
+				OlakeVersion: viper.GetString("BUILD"),
 				DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
 			ipAddress:    ip,
 			TempUserID:   tempUserID,
 			locationInfo: getLocationFromIP(ip),
+			db:           db,
 		}
 	}()
 }
@@ -110,7 +118,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 	if ip == IPNotFound || ip == "" {
 		return locationInfo
 	}
-
+	// TODO: remove context.Background() from everywhere creare a context in main.go
 	ctx, cancel := context.WithTimeout(context.Background(), TelemetryConfigTimeout)
 	defer cancel()
 
@@ -144,7 +152,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 }
 
 // TrackEvent sends a custom event to Segment
-func TrackEvent(ctx context.Context, eventName string, properties map[string]interface{}) error {
+func TrackEvent(_ context.Context, eventName string, properties map[string]interface{}) error {
 	if instance.httpClient == nil {
 		return fmt.Errorf("telemetry client is nil")
 	}
@@ -180,8 +188,7 @@ func TrackEvent(ctx context.Context, eventName string, properties map[string]int
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequestWithContext(ctx, "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
+	req, err := http.NewRequestWithContext(context.Background(), "POST", ProxyTrackURL, strings.NewReader(string(propsBody)))
 	if err != nil {
 		return err
 	}
