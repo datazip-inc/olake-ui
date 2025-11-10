@@ -344,9 +344,7 @@ const JobEdit: React.FC = () => {
 			},
 			streams_config: JSON.stringify({
 				...selectedStreams,
-				selected_streams: getSelectedStreams(
-					selectedStreams.selected_streams,
-				),
+				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
 			}),
 			frequency: cronExpression,
 			activate: job?.activate,
