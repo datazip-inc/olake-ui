@@ -2,11 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -227,11 +225,7 @@ func (h *Handler) ActivateJob() {
 	logger.Debugf("Activate job initiated job_id[%d] user_id[%v]", id, userID)
 
 	if err := h.etl.ActivateJob(h.Ctx.Request.Context(), id, req, userID); err != nil {
-		statusCode := http.StatusInternalServerError
-		if err.Error() == "job not found" {
-			statusCode = http.StatusNotFound
-		}
-		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to activate job: %s", err), err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %d %s successfully", id, utils.Ternary(req.Activate, "resumed", "paused")), nil)
@@ -273,12 +267,11 @@ func (h *Handler) ClearDestination() {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	result, err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0)
-	if err != nil {
+	if err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), result)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
 }
 
 // @router /project/:projectid/jobs/:id/stream-difference [post]
@@ -355,11 +348,7 @@ func (h *Handler) GetJobTasks() {
 
 	tasks, err := h.etl.GetJobTasks(h.Ctx.Request.Context(), projectID, id)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if err.Error() == "job not found" {
-			statusCode = http.StatusNotFound
-		}
-		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get job tasks: %s", err), err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get job tasks: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
@@ -383,11 +372,7 @@ func (h *Handler) GetTaskLogs() {
 
 	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if errors.Is(err, constants.ErrJobNotFound) {
-			statusCode = http.StatusNotFound
-		}
-		utils.ErrorResponse(&h.Controller, statusCode, fmt.Sprintf("failed to get task logs: %s", err), err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
@@ -417,4 +402,27 @@ func (h *Handler) UpdateSyncTelemetry() {
 	}
 
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("sync telemetry updated successfully for job_id[%d] workflow_id[%s] event[%s]", req.JobID, req.WorkflowID, req.Event), nil)
+}
+
+// RecoverClearDestination handles recovery from stuck clear-destination workflows (internal use only)
+// @router /projects/:project_id/jobs/:job_id/recover-clear-destination [post]
+func (h *Handler) RecoverClearDestination() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := h.etl.RecoverFromClearDestination(h.Ctx.Request.Context(), projectID, jobID); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to recover from clear-destination: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
 }

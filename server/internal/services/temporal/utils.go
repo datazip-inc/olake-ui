@@ -22,7 +22,6 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 	}
 
 	return ExecutionRequest{
-		Type:          "docker",
 		Command:       Sync,
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
@@ -35,7 +34,7 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 }
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
-func buildExecutionReqForClearDestination(job *models.Job, workflowID string, streamsConfig string) ExecutionRequest {
+func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) ExecutionRequest {
 	catalog := streamsConfig
 	if catalog == "" {
 		catalog = job.StreamsConfig
@@ -55,7 +54,6 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID string, st
 	}
 
 	return ExecutionRequest{
-		Type:          "docker",
 		Command:       ClearDestination,
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
@@ -71,7 +69,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID string, st
 
 // extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
 func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[string]interface{}, error) {
-	var result map[string]interface{}
+	result := make(map[string]interface{})
 	if err := run.Get(ctx, &result); err != nil {
 		return nil, fmt.Errorf("workflow execution failed: %v", err)
 	}

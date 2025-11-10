@@ -64,10 +64,6 @@ func (h *Handler) UpdateUser() {
 
 	updatedUser, err := h.etl.UpdateUser(h.Ctx.Request.Context(), id, &req)
 	if err != nil {
-		if err.Error() == "user not found" {
-			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("user not found: %s", err), err)
-			return
-		}
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
 		return
 	}

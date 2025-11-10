@@ -21,10 +21,13 @@ type Temporal struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
-	temporalAddress := web.AppConfig.DefaultString(constants.ConfTemporalAddress, constants.DefaultTemporalAddress)
+	temporalAddress, err := web.AppConfig.String(constants.ConfTemporalAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get temporal address: %s", err)
+	}
 
 	var temporalClient *Temporal
-	err := utils.RetryWithBackoff(func() error {
+	err = utils.RetryWithBackoff(func() error {
 		client, dialErr := client.Dial(client.Options{
 			HostPort: temporalAddress,
 		})
@@ -82,7 +85,6 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 
 // UpdateScheduleSpec updates an existing schedule's spec
 func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID string, jobID int, args *ExecutionRequest) error {
-
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 
 	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
@@ -152,4 +154,11 @@ func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.Li
 	}
 
 	return resp, nil
+}
+
+// RestoreSyncSchedule restores schedule back to sync workflow from clear-destination
+func (t *Temporal) RestoreSyncSchedule(ctx context.Context, job *models.Job) error {
+	workflowID, _ := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
+	syncReq := buildExecutionReqForSync(job, workflowID)
+	return t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq)
 }
