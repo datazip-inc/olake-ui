@@ -298,7 +298,7 @@ func (h *Handler) GetStreamDifference() {
 
 	diffStreams, err := h.etl.GetStreamDifference(h.Ctx.Request.Context(), projectID, id, req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get stream difference", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{

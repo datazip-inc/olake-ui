@@ -97,7 +97,11 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	}
 
 	// Block when clear-destination is running
-	if clearRunning, _, _ := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination); clearRunning {
+	clearRunning, _, err := isWorkflowRunning(ctx, s.temporal, projectID, jobID, temporal.ClearDestination)
+	if err != nil {
+		return fmt.Errorf("failed to check if clear-destination is running: %s", err)
+	}
+	if clearRunning {
 		return fmt.Errorf("clear-destination is in progress, cannot update job")
 	}
 
@@ -259,18 +263,17 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 
 	// Check if sync is running and wait for it to stop
 	if err := waitForSyncToStop(ctx, s.temporal, projectID, jobID, syncWaitTime); err != nil {
-		logger.Infof("failed to wait for sync to stop: %s", err)
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
-			logger.Errorf("failed to resume schedule: %s", rerr)
+			return fmt.Errorf("wait error: %s, resume error: %s", err, rerr)
 		}
-		return fmt.Errorf("sync is in progress, please cancel it before running clear-destination")
+		return fmt.Errorf("failed to wait for sync to stop: %s", err)
 	}
 
 	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
-		if err := s.temporal.ResumeSchedule(ctx, projectID, jobID); err != nil {
-			logger.Errorf("failed to resume schedule: %s", err)
+		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
+			return fmt.Errorf("clear destination error: %s, resume error: %s", err, rerr)
 		}
-		return err
+		return fmt.Errorf("failed to clear destination: %s", err)
 	}
 
 	return nil

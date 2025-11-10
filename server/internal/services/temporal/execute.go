@@ -226,7 +226,15 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
 	}
 
-	return t.TriggerSchedule(ctx, job.ProjectID, job.ID)
+	if err := t.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
+		// revert back to sync
+		syncReq := buildExecutionReqForSync(job, workflowID)
+		if uerr := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq); uerr != nil {
+			return fmt.Errorf("trigger clear destination workflow failed: %s, revert to sync failed: %s", err, uerr)
+		}
+		return fmt.Errorf("failed to trigger clear destination workflow: %s", err)
+	}
+	return nil
 }
 
 // GetStreamDifference compares old and new stream configs and returns the difference
