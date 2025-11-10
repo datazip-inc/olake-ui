@@ -26,6 +26,7 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+import clsx from "clsx"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -708,7 +709,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						</div>
 					)}
 					<div
-						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+						className={clsx(
+							"flex w-1/2 flex-wrap gap-2",
+							destinationDatabase ? "justify-end" : "justify-start"
+						)}
 					>
 						{STREAM_FILTERS.map(filter => (
 							<FilterButton
@@ -724,7 +728,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			<div className="flex">
 				<div
-					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
+					className={clsx(
+						"max-h-[calc(100vh-250px)] overflow-y-auto",
+						activeStreamData ? "w-1/2" : "w-full"
+					)}
 				>
 					{!isLoading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
@@ -757,7 +764,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!isLoading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
+					className={clsx(
+						"sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl bg-white p-4 transition-all duration-150 ease-linear",
+						{ border: !isLoading }
+					)}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration

@@ -172,7 +172,7 @@ export const jobService = {
 
 			return response.data
 		} catch (error) {
-			console.error("Error clearing destination:", error)
+			console.error("Error fetching clear destination status:", error)
 			throw error
 		}
 	},

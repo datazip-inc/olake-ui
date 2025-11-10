@@ -275,9 +275,8 @@ const JobTable: React.FC<JobTableProps> = ({
 						rowKey="id"
 						loading={loading}
 						pagination={false}
-						className="min-w-[1200px] overflow-hidden"
+						className="min-w-[1200px]"
 						rowClassName="no-hover"
-						scroll={{ x: 1200 }}
 					/>
 				</div>
 			</div>
