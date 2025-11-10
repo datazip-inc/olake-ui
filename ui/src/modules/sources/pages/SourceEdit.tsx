@@ -183,7 +183,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	}
 
 	useEffect(() => {
-		handleFetchSpec()
+		return handleFetchSpec()
 	}, [connector, selectedVersion])
 
 	const resetVersionState = () => {

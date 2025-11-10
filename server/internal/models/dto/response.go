@@ -1,10 +1,5 @@
 package dto
 
-type LoginResponse struct {
-	Message string `json:"message"`
-	Success bool   `json:"success"`
-}
-
 type JSONResponse struct {
 	Success bool        `json:"success"`
 	Message string      `json:"message"`
@@ -18,13 +13,6 @@ type SpecResponse struct {
 }
 type SpecOutput struct {
 	Spec map[string]interface{} `json:"spec"`
-}
-
-// Reuse generic API response with generics
-type APIResponse[T any] struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	Data    T      `json:"data"`
 }
 
 type DeleteSourceResponse struct {

@@ -65,10 +65,7 @@ func (h *Handler) CheckAuth() {
 		}
 	}
 
-	utils.SuccessResponse(&h.Controller, "authenticated successfully", dto.LoginResponse{
-		Message: "Authenticated",
-		Success: true,
-	})
+	utils.SuccessResponse(&h.Controller, "authenticated successfully", nil)
 }
 
 // @router /logout [post]
@@ -113,7 +110,7 @@ func (h *Handler) Signup() {
 
 // @router /telemetry-id [get]
 func (h *Handler) GetTelemetryID() {
-	logger.Infof("Get telemetry ID initiated")
+	logger.Info("Get telemetry ID initiated")
 
 	telemetryID := telemetry.GetTelemetryUserID()
 	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", map[string]interface{}{
