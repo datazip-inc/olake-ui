@@ -7,11 +7,12 @@ import { useAppStore } from "../../../store"
 import analyticsService from "../../../api/services/analyticsService"
 import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
+import { SourceStatus } from "../../../enums"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
 
 const Sources: React.FC = () => {
-	const [activeTab, setActiveTab] = useState("active")
+	const [activeTab, setActiveTab] = useState<SourceStatus>(SourceStatus.ACTIVE)
 	const navigate = useNavigate()
 	const {
 		sources,
@@ -53,14 +54,14 @@ const Sources: React.FC = () => {
 	}
 
 	const filteredSources = (): Entity[] => {
-		if (activeTab === "active") {
+		if (activeTab === SourceStatus.ACTIVE) {
 			return sources.filter(
 				source =>
 					source?.jobs &&
 					source.jobs.length > 0 &&
 					source.jobs.some(job => job.activate === true),
 			)
-		} else if (activeTab === "inactive") {
+		} else if (activeTab === SourceStatus.INACTIVE) {
 			return sources.filter(
 				source =>
 					!source?.jobs ||
@@ -111,7 +112,7 @@ const Sources: React.FC = () => {
 
 			<Tabs
 				activeKey={activeTab}
-				onChange={setActiveTab}
+				onChange={(key: string) => setActiveTab(key as SourceStatus)}
 				className="mb-4"
 				items={sourceTabs.map(tab => ({
 					key: tab.key,
@@ -123,7 +124,7 @@ const Sources: React.FC = () => {
 								tip="Loading sources..."
 							/>
 						</div>
-					) : tab.key === "active" && showEmpty ? (
+					) : tab.key === SourceStatus.ACTIVE && showEmpty ? (
 						<SourceEmptyState handleCreateSource={handleCreateSource} />
 					) : filteredSources().length === 0 ? (
 						<Empty

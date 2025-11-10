@@ -31,6 +31,7 @@ import {
 	transformErrors,
 	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
+import { SourceConnector } from "../../../enums"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
@@ -78,7 +79,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 	) => {
 		const formRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState<SetupType>("new")
-		const [connector, setConnector] = useState(initialConnector || "MongoDB")
+		const [connector, setConnector] = useState(
+			initialConnector || SourceConnector.MONGODB,
+		)
 		const [sourceName, setSourceName] = useState(initialName || "")
 		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
 		const [versions, setVersions] = useState<string[]>([])

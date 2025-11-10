@@ -4,6 +4,7 @@ import {
 	PathIcon,
 } from "@phosphor-icons/react"
 import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
+import { SourceConnector, DestinationConnector } from "../enums"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -178,6 +179,18 @@ export const connectorTypeMap: Record<string, string> = {
 	postgres: "Postgres",
 	mysql: "MySQL",
 	oracle: "Oracle",
+}
+
+export const SourceConnectorLabel: Record<string, string> = {
+	[SourceConnector.MONGODB]: "MongoDB",
+	[SourceConnector.POSTGRES]: "Postgres",
+	[SourceConnector.MYSQL]: "MySQL",
+	[SourceConnector.ORACLE]: "Oracle",
+}
+
+export const DestinationConnectorLabel: Record<string, string> = {
+	[DestinationConnector.AMAZON_S3]: "Amazon S3",
+	[DestinationConnector.APACHE_ICEBERG]: "Apache Iceberg",
 }
 
 export const DAYS_MAP = {
