@@ -225,11 +225,16 @@ func (s *ETLService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, er
 }
 
 func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
-	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
-	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Docker versions: %s", err)
+	if sourceType == "" {
+		return nil, fmt.Errorf("source type is required")
 	}
+
+	// imageName := fmt.Sprintf("olakego/source-%s", sourceType)
+	// versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
+	versions := []string{"dev-latest"}
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get Docker versions: %s", err)
+	// }
 
 	return map[string]interface{}{"version": versions}, nil
 }

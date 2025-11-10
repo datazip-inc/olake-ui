@@ -107,9 +107,9 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
 	// spec version >= DefaultSpecVersion is required
-	if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
-		version = constants.DefaultSpecVersion
-	}
+	// if semver.Compare(version, constants.DefaultSpecVersion) < 0 {
+	// 	version = constants.DefaultSpecVersion
+	// }
 
 	cmdArgs := []string{
 		"spec",

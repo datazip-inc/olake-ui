@@ -208,6 +208,8 @@ func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string
 		return nil, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
+	versions = append(versions, "dev-latest")
+
 	return map[string]interface{}{"version": versions}, nil
 }
 
