@@ -9,6 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/mod/semver"
 )
@@ -53,6 +54,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
 	cmdArgs := []string{
