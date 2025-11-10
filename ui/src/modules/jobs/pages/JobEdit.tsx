@@ -342,15 +342,12 @@ const JobEdit: React.FC = () => {
 						: JSON.stringify(destinationData?.config),
 				version: destinationData?.version || "",
 			},
-			streams_config:
-				typeof selectedStreams === "string"
-					? selectedStreams
-					: JSON.stringify({
-							...selectedStreams,
-							selected_streams: getSelectedStreams(
-								selectedStreams.selected_streams,
-							),
-						}),
+			streams_config: JSON.stringify({
+				...selectedStreams,
+				selected_streams: getSelectedStreams(
+					selectedStreams.selected_streams,
+				),
+			}),
 			frequency: cronExpression,
 			activate: job?.activate,
 			difference_streams: JSON.stringify(streamDifference),
@@ -374,14 +371,12 @@ const JobEdit: React.FC = () => {
 		const streamDifferenceResponse = (
 			await jobService.getStreamDifference(
 				jobId,
-				typeof selectedStreams === "string"
-					? selectedStreams
-					: JSON.stringify({
-							...selectedStreams,
-							selected_streams: getSelectedStreams(
-								selectedStreams.selected_streams,
-							),
-						}),
+				JSON.stringify({
+					...selectedStreams,
+					selected_streams: getSelectedStreams(
+						selectedStreams.selected_streams,
+					),
+				}),
 			)
 		)?.difference_streams
 
