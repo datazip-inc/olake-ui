@@ -2,7 +2,7 @@ name: Olake UI Releaser
 
 on:
   release:
-    types: [published]
+    types: [ published ]
   workflow_dispatch:
     inputs:
       version:
@@ -18,5 +18,6 @@ jobs:
     name: Build and Release Olake UI
     uses: ./.github/workflows/build-and-release.yml
     with:
+      environment: master
       version: ${{ github.event.inputs.version || github.event.release.tag_name }}
     secrets: inherit
