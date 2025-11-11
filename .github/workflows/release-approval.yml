@@ -2,7 +2,7 @@ name: Olake UI Releaser
 
 on:
   release:
-    types: [ published ]
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
