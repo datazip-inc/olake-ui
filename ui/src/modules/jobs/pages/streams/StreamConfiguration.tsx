@@ -12,14 +12,14 @@ import {
 	Tooltip,
 } from "antd"
 import {
-	ColumnsPlusRight,
-	GridFour,
-	Info,
-	Lightning,
-	Plus,
-	SlidersHorizontal,
-	X,
-	ArrowSquareOut,
+	ColumnsPlusRightIcon,
+	GridFourIcon,
+	LightningIcon,
+	PlusIcon,
+	SlidersHorizontalIcon,
+	XIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
 } from "@phosphor-icons/react"
 
 import {
@@ -30,6 +30,7 @@ import {
 	MultiFilterCondition,
 	CombinedStreamsData,
 	SyncMode,
+	IngestionMode,
 } from "../../../../types"
 
 import {
@@ -57,9 +58,11 @@ const StreamConfiguration = ({
 	fromJobEditFlow = false,
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
+	onIngestionModeChange,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
+	const [appendMode, setAppendMode] = useState(false)
 	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
@@ -92,7 +95,7 @@ const StreamConfiguration = ({
 		CombinedStreamsData | undefined
 	>(undefined)
 
-	// Unique stream key
+	// Unique stream key to differentiate a stream with same name and different namespace
 	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	// Guard to prevent prop-driven effect from clobbering local edits
@@ -105,18 +108,12 @@ const StreamConfiguration = ({
 		}
 	}, [fromJobEditFlow, initialSelectedStreams])
 
-	// Check if this stream was in the initial job streams
-	const isStreamInInitialSelection =
-		fromJobEditFlow &&
-		initialJobStreams?.selected_streams?.[stream.stream.namespace || ""]?.some(
-			(s: { stream_name: string }) => s.stream_name === stream.stream.name,
-		)
-
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
 
 		// Parse cursor field for default value
+		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
 		if (
 			stream.stream.cursor_field &&
 			stream.stream.cursor_field.includes(":")
@@ -140,7 +137,13 @@ const StreamConfiguration = ({
 			partition_regex: initialPartitionRegex || "",
 			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
-	}, [stream, initialNormalization])
+
+		setAppendMode(
+			initialSelectedStreams?.selected_streams?.[
+				stream.stream.namespace || ""
+			]?.find(s => s.stream_name === stream.stream.name)?.append_mode || false,
+		)
+	}, [stream, initialNormalization, initialSelectedStreams])
 
 	useEffect(() => {
 		// Skip when change originated from local user action
@@ -248,6 +251,15 @@ const StreamConfiguration = ({
 		})
 	}
 
+	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
+		setAppendMode(ingestionMode === IngestionMode.APPEND)
+		onIngestionModeChange(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			ingestionMode === IngestionMode.APPEND,
+		)
+	}
+
 	const handleNormalizationChange = (checked: boolean) => {
 		setNormalization(checked)
 		onNormalizationChange(
@@ -277,6 +289,7 @@ const StreamConfiguration = ({
 		}
 	}
 
+	// deletes the partition regex for the corresponding stream
 	const handleClearPartitionRegex = () => {
 		setActivePartitionRegex("")
 		setPartitionRegex("")
@@ -448,6 +461,7 @@ const StreamConfiguration = ({
 		}
 	}
 
+	// get columns based on primary keys and cursor fields and their properties
 	const getColumnOptions = () => {
 		const properties = stream.stream.type_schema?.properties || {}
 		const primaryKeys = (stream.stream.source_defined_primary_key ||
@@ -496,6 +510,7 @@ const StreamConfiguration = ({
 			})
 	}
 
+	// when the type is either string or timestamp we wrap the value in quotes
 	const formatFilterValue = (columnName: string, value: string) => {
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type
@@ -503,7 +518,13 @@ const StreamConfiguration = ({
 			? columnType.find(t => t !== "null") || columnType[0]
 			: columnType
 
-		if (primaryType === "string" || primaryType === "timestamp") {
+		if (
+			primaryType === "string" ||
+			primaryType === "timestamp" ||
+			primaryType === "timestamp_micro" ||
+			primaryType === "timestamp_nano" ||
+			primaryType === "timestamp_milli"
+		) {
 			// Check if value is already wrapped in quotes
 			if (!value.startsWith('"') && !value.endsWith('"')) {
 				return `"${value}"`
@@ -620,7 +641,7 @@ const StreamConfiguration = ({
 											<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 												Cursor field:
 												<Tooltip title="Column for identifying new/updated records ">
-													<Info className="size-3.5 cursor-pointer" />
+													<InfoIcon className="size-3.5 cursor-pointer" />
 												</Tooltip>
 											</label>
 											<Select
@@ -658,7 +679,7 @@ const StreamConfiguration = ({
 													<Tooltip title="Alternative cursor column in case cursor column encounters null values">
 														<Button
 															type="default"
-															icon={<Plus className="size-4" />}
+															icon={<PlusIcon className="size-4" />}
 															onClick={() => setShowFallbackSelector(true)}
 															className="mb-[2px] flex items-center gap-1"
 														>
@@ -674,7 +695,7 @@ const StreamConfiguration = ({
 													<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
 														Fallback Cursor:
 														<Tooltip title="Alternative cursor column in case cursor column encounters null values">
-															<Info className="size-3.5 cursor-pointer text-neutral-text" />
+															<InfoIcon className="size-3.5 cursor-pointer text-neutral-text" />
 														</Tooltip>
 													</label>
 													<Select
@@ -725,6 +746,42 @@ const StreamConfiguration = ({
 								</div>
 							)}
 					</div>
+
+					<div
+						className={clsx(
+							"mb-4",
+							isSelected
+								? "font-medium text-neutral-text"
+								: "font-normal text-gray-500",
+						)}
+					>
+						<div className="mb-3">
+							<label className="block w-full">Ingestion Mode:</label>
+							<div
+								className={clsx(
+									"text-xs",
+									!isSelected ? "text-gray-500" : "text-neutral-700",
+								)}
+							>
+								Specify how the data will be ingested in the destination
+							</div>
+						</div>
+						<Radio.Group
+							disabled={!isSelected}
+							className="mb-4 grid grid-cols-2 gap-4"
+							value={appendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
+							onChange={e => handleIngestionModeChange(e.target.value)}
+						>
+							<Radio value={IngestionMode.UPSERT}>Upsert</Radio>
+							<Radio value={IngestionMode.APPEND}>Append</Radio>
+						</Radio.Group>
+						{!isSelected && (
+							<div className="flex items-center gap-1 text-sm text-[#686868]">
+								<InfoIcon className="size-4" />
+								Select the stream to configure ingestion mode
+							</div>
+						)}
+					</div>
 				</div>
 
 				<div
@@ -738,13 +795,13 @@ const StreamConfiguration = ({
 						<Switch
 							checked={normalization}
 							onChange={handleNormalizationChange}
-							disabled={!isSelected || isStreamInInitialSelection}
+							disabled={!isSelected}
 						/>
 					</div>
 				</div>
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
-						<Info className="size-4" />
+						<InfoIcon className="size-4" />
 						Select the stream to configure Normalization
 					</div>
 				)}
@@ -761,7 +818,7 @@ const StreamConfiguration = ({
 						<Switch
 							checked={fullLoadFilter}
 							onChange={handleFullLoadFilterChange}
-							disabled={!isSelected || isStreamInInitialSelection}
+							disabled={!isSelected}
 						/>
 					</div>
 					{fullLoadFilter && (
@@ -773,7 +830,7 @@ const StreamConfiguration = ({
 				</div>
 				{!isSelected && (
 					<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
-						<Info className="size-4" />
+						<InfoIcon className="size-4" />
 						Select the stream to configure Data Filter
 					</div>
 				)}
@@ -793,7 +850,7 @@ const StreamConfiguration = ({
 				<div className="text-neutral-text">Partitioning regex:</div>
 
 				<Tooltip title={PartitioningRegexTooltip}>
-					<Info className="size-5 cursor-help items-center pt-1 text-gray-500" />
+					<InfoIcon className="size-5 cursor-help items-center pt-1 text-gray-500" />
 				</Tooltip>
 				<a
 					href={
@@ -805,7 +862,7 @@ const StreamConfiguration = ({
 					rel="noopener noreferrer"
 					className="flex items-center text-primary hover:text-primary/80"
 				>
-					<ArrowSquareOut className="size-5" />
+					<ArrowSquareOutIcon className="size-5" />
 				</a>
 			</div>
 			{isSelected ? (
@@ -815,13 +872,13 @@ const StreamConfiguration = ({
 						className="w-full"
 						value={partitionRegex}
 						onChange={e => setPartitionRegex(e.target.value)}
-						disabled={!!activePartitionRegex || isStreamInInitialSelection}
+						disabled={!!activePartitionRegex}
 					/>
 					{!activePartitionRegex ? (
 						<Button
 							className="mt-2 w-fit bg-primary px-2 py-3 font-light text-white"
 							onClick={handleSetPartitionRegex}
-							disabled={!partitionRegex || isStreamInInitialSelection}
+							disabled={!partitionRegex}
 						>
 							Set Partition
 						</Button>
@@ -838,7 +895,6 @@ const StreamConfiguration = ({
 									size="small"
 									className="rounded-md py-1 text-sm"
 									onClick={handleClearPartitionRegex}
-									disabled={isStreamInInitialSelection}
 								>
 									Delete Partition
 								</Button>
@@ -848,7 +904,7 @@ const StreamConfiguration = ({
 				</>
 			) : (
 				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
-					<Info className="size-4" />
+					<InfoIcon className="size-4" />
 					Select the stream to configure Partitioning
 				</div>
 			)}
@@ -871,7 +927,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600",
 									)}
-									disabled={isStreamInInitialSelection || !isSelected}
+									disabled={!isSelected}
 								>
 									AND
 								</button>
@@ -884,7 +940,7 @@ const StreamConfiguration = ({
 											? "bg-white text-gray-800 shadow-sm"
 											: "bg-transparent text-gray-600",
 									)}
-									disabled={isStreamInInitialSelection || !isSelected}
+									disabled={!isSelected}
 								>
 									OR
 								</button>
@@ -892,9 +948,9 @@ const StreamConfiguration = ({
 							<Button
 								type="text"
 								danger
-								icon={<X className="size-4" />}
+								icon={<XIcon className="size-4" />}
 								onClick={() => handleRemoveFilter(index)}
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							>
 								Remove
 							</Button>
@@ -906,7 +962,7 @@ const StreamConfiguration = ({
 						</div>
 						{index === 0 && (
 							<div className="mb-4 flex items-center gap-1 rounded-lg bg-warning-light p-2 text-warning-light">
-								<Lightning className="size-4 font-bold text-warning" />
+								<LightningIcon className="size-4 font-bold text-warning" />
 								<div className="text-warning-dark">
 									Selecting indexed columns will enhance performance
 								</div>
@@ -928,7 +984,7 @@ const StreamConfiguration = ({
 								options={getColumnOptions()}
 								labelInValue={false}
 								optionLabelProp="value"
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							/>
 						</div>
 						<div>
@@ -943,7 +999,7 @@ const StreamConfiguration = ({
 									handleFilterConditionChange(index, "operator", value)
 								}
 								options={operatorOptions}
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							/>
 						</div>
 						<div>
@@ -954,7 +1010,7 @@ const StreamConfiguration = ({
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
-								disabled={isStreamInInitialSelection || !isSelected}
+								disabled={!isSelected}
 							/>
 						</div>
 					</div>
@@ -963,10 +1019,10 @@ const StreamConfiguration = ({
 			{multiFilterCondition.conditions.length < 2 && (
 				<Button
 					type="default"
-					icon={<Plus className="size-4" />}
+					icon={<PlusIcon className="size-4" />}
 					onClick={handleAddFilter}
 					className="w-fit"
-					disabled={isStreamInInitialSelection || !isSelected}
+					disabled={!isSelected}
 				>
 					New Column filter
 				</Button>
@@ -993,7 +1049,7 @@ const StreamConfiguration = ({
 								<div className="flex items-center whitespace-nowrap font-medium">
 									Destination Table{" "}
 									<Tooltip title={DESTINATION_TABLE_TOOLTIP_TEXT}>
-										<Info className="size-5 cursor-help items-center px-0.5 text-gray-500" />
+										<InfoIcon className="size-5 cursor-help items-center px-0.5 text-gray-500" />
 									</Tooltip>{" "}
 									:
 								</div>
@@ -1015,17 +1071,17 @@ const StreamConfiguration = ({
 					<TabButton
 						id="config"
 						label="Config"
-						icon={<SlidersHorizontal className="size-3.5" />}
+						icon={<SlidersHorizontalIcon className="size-3.5" />}
 					/>
 					<TabButton
 						id="schema"
 						label="Schema"
-						icon={<ColumnsPlusRight className="size-3.5" />}
+						icon={<ColumnsPlusRightIcon className="size-3.5" />}
 					/>
 					<TabButton
 						id="partitioning"
 						label="Partitioning"
-						icon={<GridFour className="size-3.5" />}
+						icon={<GridFourIcon className="size-3.5" />}
 					/>
 				</div>
 			</div>

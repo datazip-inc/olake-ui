@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button, Tabs, Empty, message, Spin } from "antd"
-import { LinktreeLogo, Plus } from "@phosphor-icons/react"
+import { LinktreeLogoIcon, PlusIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import analyticsService from "../../../api/services/analyticsService"
@@ -24,11 +24,8 @@ const Sources: React.FC = () => {
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchSources().catch(error => {
-			message.error("Failed to fetch sources")
-			console.error(error)
-		})
-	}, [fetchSources])
+		fetchSources()
+	}, [])
 
 	const handleCreateSource = () => {
 		analyticsService.trackEvent("create_source_clicked")
@@ -45,10 +42,7 @@ const Sources: React.FC = () => {
 		// For inactive sources, delete directly without showing modal
 		if (!source?.jobs || source.jobs.length === 0) {
 			message.info(`Deleting source ${source?.name}`)
-			deleteSource(String(source.id)).catch(error => {
-				message.error("Failed to delete source")
-				console.error(error)
-			})
+			deleteSource(String(source.id))
 			return
 		}
 
@@ -101,14 +95,14 @@ const Sources: React.FC = () => {
 		<div className="p-6">
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center">
-					<LinktreeLogo className="mr-2 size-6" />
+					<LinktreeLogoIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Sources</h1>
 				</div>
 				<button
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 					onClick={handleCreateSource}
 				>
-					<Plus className="size-4 text-white" />
+					<PlusIcon className="size-4 text-white" />
 					Create Source
 				</button>
 			</div>

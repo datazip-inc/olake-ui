@@ -1,0 +1,91 @@
+package telemetry
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
+)
+
+// TrackDestinationCreation tracks the creation of a new destination with relevant properties
+func TrackDestinationCreation(ctx context.Context, dest *models.Destination) {
+	go func() {
+		if instance == nil || dest == nil {
+			return
+		}
+
+		properties := map[string]interface{}{
+			"destination_id":   dest.ID,
+			"destination_name": dest.Name,
+			"destination_type": dest.DestType,
+			"version":          dest.Version,
+			"catalog":          "none",
+		}
+		var configMap map[string]interface{}
+		// parse config to get catalog_type
+		if err := json.Unmarshal([]byte(dest.Config), &configMap); err != nil {
+			logger.Debug("Failed to unmarshal config: %s", err)
+			return
+		}
+
+		if writer, exists := configMap["writer"].(map[string]interface{}); exists {
+			if catalogType, exists := writer["catalog_type"]; exists {
+				properties["catalog"] = catalogType
+			}
+		}
+
+		if !dest.CreatedAt.IsZero() {
+			properties["created_at"] = dest.CreatedAt.Format(time.RFC3339)
+		}
+
+		if err := TrackEvent(ctx, EventDestinationCreated, properties); err != nil {
+			logger.Debug("Failed to track destination creation event: %s", err)
+			return
+		}
+
+		// Track destinations status after creation
+		TrackDestinationsStatus(ctx)
+	}()
+}
+
+// TrackDestinationsStatus logs telemetry about active and inactive destinations
+func TrackDestinationsStatus(ctx context.Context) {
+	go func() {
+		if instance == nil {
+			return
+		}
+
+		destinations, err := instance.db.ListDestinations()
+		if err != nil {
+			logger.Debug("Failed to get all destinations: %s", err)
+			return
+		}
+
+		activeDestinations := 0
+
+		for _, dest := range destinations {
+			// TODO: remove db calls loop
+			jobs, err := instance.db.GetJobsByDestinationID([]int{dest.ID})
+			if err != nil {
+				logger.Debug("Failed to get jobs for destination %d: %s", dest.ID, err)
+				break
+			}
+			if len(jobs) > 0 {
+				activeDestinations++
+			}
+		}
+
+		// Prepare telemetry properties
+		props := map[string]interface{}{
+			"active_destinations":   activeDestinations,
+			"inactive_destinations": len(destinations) - activeDestinations,
+			"total_destinations":    len(destinations),
+		}
+
+		if err := TrackEvent(ctx, EventDestinationsUpdated, props); err != nil {
+			logger.Debug("failed to track destination status event: %s", err)
+		}
+	}()
+}

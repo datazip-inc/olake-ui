@@ -1,12 +1,13 @@
 import { formatDistanceToNow } from "date-fns"
 import { Button, message, Modal, Table } from "antd"
-import { Warning } from "@phosphor-icons/react"
+import { WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { Entity } from "../../../types"
 import { DeleteModalProps } from "../../../types/modalTypes"
 import { getConnectorImage } from "../../../utils/utils"
 
+//Entity Delete Modal
 const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 	const {
 		showDeleteModal,
@@ -34,20 +35,12 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 
 	const handleDeleteSource = () => {
 		message.info(`Deleting source ${selectedSource?.name}`)
-		deleteSource(selectedSource?.id as unknown as string).catch(error => {
-			message.error("Failed to delete source")
-			console.error(error)
-		})
+		deleteSource(selectedSource?.id as unknown as string)
 		setShowDeleteModal(false)
 	}
 	const handleDeleteDestination = () => {
 		message.info(`Deleting destination ${selectedDestination?.name}`)
-		deleteDestination(selectedDestination?.id as unknown as string).catch(
-			error => {
-				message.error("Failed to delete destination")
-				console.error(error)
-			},
-		)
+		deleteDestination(selectedDestination?.id as unknown as string)
 		setShowDeleteModal(false)
 	}
 
@@ -137,7 +130,7 @@ const DeleteModal = ({ fromSource }: DeleteModalProps) => {
 			width={600}
 		>
 			<div className="flex flex-col items-center justify-center gap-7 py-8">
-				<Warning
+				<WarningIcon
 					weight="fill"
 					className="h-[55px] w-[63px] text-danger"
 				/>

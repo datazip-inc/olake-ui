@@ -9,6 +9,16 @@ import {
 	HTTP_STATUS,
 	LOCALSTORAGE_TOKEN_KEY,
 } from "../utils/constants"
+import { notificationService } from "./services/notificationService"
+/**
+ * Extend Axios types to support our custom notification flag
+ */
+declare module "axios" {
+	export interface AxiosRequestConfig {
+		showNotification?: boolean // Controls whether the interceptor shows a toast (default: false)
+		disableErrorNotification?: boolean
+	}
+}
 
 /**
  * Creates and configures an axios instance with default settings
@@ -44,9 +54,39 @@ api.interceptors.request.use(
  */
 api.interceptors.response.use(
 	(response: AxiosResponse) => {
+		const config = response.config
+		const payload = response.data
+
+		// Show toast only if explicitly enabled for this request
+		if (config.showNotification === true) {
+			notificationService.success(payload.message)
+		}
+
+		// Return only the actual data to the caller (unwrap the envelope)
+		response.data = payload.data
+
 		return response
 	},
 	(error: AxiosError) => {
+		const payload = error.response?.data as any
+		const config = error.config
+
+		// Skip showing errors for canceled requests
+		if (
+			axios.isCancel(error) ||
+			error.code === "ERR_CANCELED" ||
+			config?.disableErrorNotification
+		) {
+			return Promise.reject(error)
+		}
+
+		// Always show error toasts
+
+		notificationService.error(
+			payload?.message || "Something went wrong! Please try again.",
+		)
+
+		// Handle specific HTTP status codes
 		if (error.response) {
 			const { status } = error.response
 

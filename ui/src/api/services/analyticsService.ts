@@ -1,6 +1,11 @@
+/**
+ * AnalyticsService handles sending analytics events
+ */
+
 import api from "../axios"
 import axios from "axios"
 
+// endpoint which handles rate limiting and forwards the events to mixpanel
 const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"
 
 const sendAnalyticsEvent = async (
@@ -57,10 +62,11 @@ const getSystemInfo = async () => {
 	}
 }
 
+// returns a unique user id for the user to track them across sessions
 const getTelemetryID = async (): Promise<string> => {
 	try {
 		const response = await api.get("/telemetry-id")
-		return response.data.data.user_id || ""
+		return response.data.user_id || ""
 	} catch (error) {
 		console.error("Error fetching telemetry ID:", error)
 		return ""
@@ -77,6 +83,7 @@ export const trackEvent = async (
 			return
 		}
 
+		// if user is already logged in we'll get the username from local storage
 		const username = localStorage.getItem("username")
 		const systemInfo = await getSystemInfo()
 

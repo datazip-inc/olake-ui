@@ -1,22 +1,20 @@
 import { StateCreator } from "zustand"
-import type { APIResponse } from "../types"
-import type { EntityBase } from "../types"
-import type { Entity } from "../types"
+import type { TestConnectionError, EntityBase, Entity } from "../types"
 import { destinationService } from "../api"
 
 export interface DestinationSlice {
 	destinations: Entity[]
 	isLoadingDestinations: boolean
 	destinationsError: string | null
-	destinationTestConnectionError: string | null
-	setDestinationTestConnectionError: (error: string | null) => void
+	destinationTestConnectionError: TestConnectionError | null
+	setDestinationTestConnectionError: (error: TestConnectionError | null) => void
 
 	fetchDestinations: () => Promise<Entity[]>
 	addDestination: (destination: EntityBase) => Promise<EntityBase>
 	updateDestination: (
 		id: string,
 		destination: Partial<Entity>,
-	) => Promise<APIResponse<EntityBase>>
+	) => Promise<EntityBase>
 	deleteDestination: (id: string) => Promise<void>
 }
 
@@ -54,7 +52,7 @@ export const createDestinationSlice: StateCreator<DestinationSlice> = set => ({
 					newDestination as unknown as Entity,
 				],
 			}))
-			return newDestination
+			return newDestination as EntityBase
 		} catch (error) {
 			set({
 				destinationsError:
@@ -70,11 +68,12 @@ export const createDestinationSlice: StateCreator<DestinationSlice> = set => ({
 				id,
 				destinationData as EntityBase,
 			)
-			const updatedDestData = updatedDestination.data as Entity
 
 			set(state => ({
 				destinations: state.destinations.map(destination =>
-					destination.id.toString() === id ? updatedDestData : destination,
+					destination.id.toString() === id
+						? (updatedDestination as unknown as Entity)
+						: destination,
 				),
 			}))
 			return updatedDestination

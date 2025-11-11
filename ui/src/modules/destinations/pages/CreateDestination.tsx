@@ -29,12 +29,14 @@ import {
 	getConnectorDocumentationPath,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
+	TEST_CONNECTION_STATUS,
 	transformErrors,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
@@ -53,6 +55,8 @@ import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplat
 import validator from "@rjsf/validator-ajv8"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import { AxiosError } from "axios"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
@@ -81,6 +85,7 @@ const CreateDestination = forwardRef<
 			onConnectorChange,
 			onFormDataChange,
 			onVersionChange,
+			onExistingDestinationIdChange,
 			docsMinimized = false,
 			onDocsMinimizedChange,
 			sourceConnector,
@@ -117,6 +122,7 @@ const CreateDestination = forwardRef<
 		const [destinationNameError, setDestinationNameError] = useState<
 			string | null
 		>(null)
+		const [specError, setSpecError] = useState<string | null>(null)
 		const navigate = useNavigate()
 
 		const resetVersionState = () => {
@@ -138,6 +144,7 @@ const CreateDestination = forwardRef<
 			setShowFailureModal,
 			setShowSourceCancelModal,
 			setDestinationTestConnectionError,
+			setShowSpecFailedModal,
 		} = useAppStore()
 
 		const parseDestinationConfig = (
@@ -158,13 +165,13 @@ const CreateDestination = forwardRef<
 			if (!destinations.length) {
 				fetchDestinations()
 			}
-		}, [destinations.length, fetchDestinations])
+		}, [destinations.length])
 
 		useEffect(() => {
 			if (setupType === SETUP_TYPES.EXISTING) {
 				fetchDestinations()
 			}
-		}, [setupType, fetchDestinations])
+		}, [setupType])
 
 		useEffect(() => {
 			if (initialConfig) {
@@ -225,10 +232,12 @@ const CreateDestination = forwardRef<
 				setLoadingVersions(true)
 				try {
 					const response = await destinationService.getDestinationVersions(
-						connector.toLowerCase(),
+						connector === CONNECTOR_TYPES.APACHE_ICEBERG
+							? DESTINATION_INTERNAL_TYPES.ICEBERG
+							: DESTINATION_INTERNAL_TYPES.S3,
 					)
-					if (response.data?.version) {
-						const receivedVersions = response.data.version
+					if (response?.version) {
+						const receivedVersions = response?.version
 						setVersions(receivedVersions)
 						if (receivedVersions.length > 0) {
 							let defaultVersion = receivedVersions[0]
@@ -257,7 +266,7 @@ const CreateDestination = forwardRef<
 			fetchVersions()
 		}, [connector, onVersionChange, setupType])
 
-		useEffect(() => {
+		const handleFetchSpec = () => {
 			if (!version) {
 				setSchema(null)
 				setUiSchema(null)
@@ -267,6 +276,7 @@ const CreateDestination = forwardRef<
 			if (setupType === SETUP_TYPES.EXISTING) return
 
 			setLoading(true)
+			// cancels old requests when new one is made
 			return withAbortController(
 				signal =>
 					destinationService.getDestinationSpec(
@@ -284,9 +294,19 @@ const CreateDestination = forwardRef<
 					setSchema({})
 					setUiSchema({})
 					console.error("Error fetching destination spec:", error)
+					if (error instanceof AxiosError) {
+						setSpecError(error.response?.data.message)
+					} else {
+						setSpecError("Failed to fetch spec, Please try again.")
+					}
+					setShowSpecFailedModal(true)
 				},
 				() => setLoading(false),
 			)
+		}
+
+		useEffect(() => {
+			return handleFetchSpec()
 		}, [
 			connector,
 			version,
@@ -306,6 +326,7 @@ const CreateDestination = forwardRef<
 			setShowSourceCancelModal(true)
 		}
 
+		//makes sure user enters destination name and version and fills all the required fields in the form
 		const validateDestination = async (): Promise<boolean> => {
 			try {
 				if (setupType === SETUP_TYPES.NEW) {
@@ -368,11 +389,15 @@ const CreateDestination = forwardRef<
 
 			try {
 				setShowTestingModal(true)
+				//test the connection and show either success or failure modal based on the result
 				const testResult =
 					await destinationService.testDestinationConnection(newDestinationData)
 				setShowTestingModal(false)
 
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
@@ -381,7 +406,11 @@ const CreateDestination = forwardRef<
 							.catch(error => console.error("Error adding destination:", error))
 					}, 1000)
 				} else {
-					setDestinationTestConnectionError(testResult.data?.message || "")
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
+					setDestinationTestConnectionError(testConnectionError)
 					setShowFailureModal(true)
 				}
 			} catch (error) {
@@ -394,7 +423,7 @@ const CreateDestination = forwardRef<
 		const handleDestinationNameChange = (
 			e: React.ChangeEvent<HTMLInputElement>,
 		) => {
-			const newName = e.target.value
+			const newName = e.target.value.trim()
 			if (newName.length >= 1) {
 				setDestinationNameError(null)
 			}
@@ -408,6 +437,7 @@ const CreateDestination = forwardRef<
 			setConnector(value as ConnectorType)
 			if (setupType === SETUP_TYPES.EXISTING) {
 				setExistingDestination(null)
+				onExistingDestinationIdChange?.(null)
 				setDestinationName("")
 				onDestinationNameChange?.("")
 			}
@@ -424,6 +454,7 @@ const CreateDestination = forwardRef<
 		const handleSetupTypeChange = (type: SetupType) => {
 			setSetupType(type)
 			setDestinationName("")
+			onExistingDestinationIdChange?.(null)
 			onDestinationNameChange?.("")
 
 			if (onDocsMinimizedChange) {
@@ -439,6 +470,7 @@ const CreateDestination = forwardRef<
 				setSchema(null)
 				setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
 				setExistingDestination(null)
+				onExistingDestinationIdChange?.(null)
 				// Schema will be automatically fetched due to useEffect when connector changes
 				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
 				if (onFormDataChange) onFormDataChange({})
@@ -467,6 +499,7 @@ const CreateDestination = forwardRef<
 			setDestinationName(selectedDestination.name)
 			setFormData(configObj)
 			setExistingDestination(value)
+			onExistingDestinationIdChange?.(selectedDestination.id)
 		}
 
 		const handleVersionChange = (value: string) => {
@@ -493,6 +526,7 @@ const CreateDestination = forwardRef<
 						<div className="flex-start flex w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="w-full"
@@ -522,6 +556,7 @@ const CreateDestination = forwardRef<
 								) : versions && versions.length > 0 ? (
 									<Select
 										value={version}
+										data-testid="destination-version-select"
 										onChange={handleVersionChange}
 										className="w-full"
 										placeholder="Select version"
@@ -561,6 +596,7 @@ const CreateDestination = forwardRef<
 						<div className="w-1/2">
 							<FormField label="Connector:">
 								<Select
+									data-testid="destination-connector-select"
 									value={connector}
 									onChange={handleConnectorChange}
 									className="h-8 w-full"
@@ -576,6 +612,7 @@ const CreateDestination = forwardRef<
 							<Select
 								placeholder="Select a destination"
 								className="w-full"
+								data-testid="existing-destination"
 								onChange={handleExistingDestinationSelect}
 								value={existingDestination}
 								options={filteredDestinations.map(d => ({
@@ -616,9 +653,10 @@ const CreateDestination = forwardRef<
 									widgets={widgets}
 									formData={formData}
 									onChange={e => {
-										setFormData(e.formData)
-										if (onFormDataChange) onFormDataChange(e.formData)
-										const catalogValue = e.formData?.writer?.catalog_type
+										const trimmedData = trimFormDataStrings(e.formData)
+										setFormData(trimmedData)
+										if (onFormDataChange) onFormDataChange(trimmedData)
+										const catalogValue = trimmedData?.writer?.catalog_type
 										if (catalogValue) setCatalog(catalogValue)
 									}}
 									onSubmit={handleCreate}
@@ -725,6 +763,13 @@ const CreateDestination = forwardRef<
 					type="destination"
 					navigateTo={fromJobFlow ? "jobs/new" : "destinations"}
 				/>
+				{specError && (
+					<SpecFailedModal
+						fromSource={false}
+						error={specError}
+						onTryAgain={handleFetchSpec}
+					/>
+				)}
 			</div>
 		)
 	},

@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react"
-import { CaretDown, CaretRight } from "@phosphor-icons/react"
+import { useEffect, useRef, useState } from "react"
+import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
+import clsx from "clsx"
 
-import { GroupedStreamsCollapsibleListProps } from "../../../../types"
+import {
+	GroupedStreamsCollapsibleListProps,
+	StreamData,
+} from "../../../../types"
 import StreamPanel from "./StreamPanel"
+import { useAppStore } from "../../../../store"
+import { IngestionMode } from "../../../../types/commonTypes"
+import IngestionModeChangeModal from "../../../common/Modals/IngestionModeChangeModal"
+import { getIngestionMode } from "../../../../utils/utils"
 
 const StreamsCollapsibleList = ({
 	groupedStreams,
@@ -11,7 +19,10 @@ const StreamsCollapsibleList = ({
 	setActiveStreamData,
 	activeStreamData,
 	onStreamSelect,
+	onIngestionModeChange,
 }: GroupedStreamsCollapsibleListProps) => {
+	const { setShowIngestionModeChangeModal, ingestionMode, setIngestionMode } =
+		useAppStore()
 	const [openNamespaces, setOpenNamespaces] = useState<{
 		[ns: string]: boolean
 	}>({})
@@ -24,6 +35,18 @@ const StreamsCollapsibleList = ({
 		namespaces: {},
 		streams: {},
 	})
+	const [targetIngestionMode, setTargetIngestionMode] = useState<IngestionMode>(
+		IngestionMode.APPEND,
+	)
+	const [sortedGroupedNamespaces, setSortedGroupedNamespaces] = useState<
+		[string, StreamData[]][]
+	>([])
+
+	const prevGroupedStreams = useRef(groupedStreams)
+
+	useEffect(() => {
+		setIngestionMode(getIngestionMode(selectedStreams))
+	}, [selectedStreams])
 
 	useEffect(() => {
 		if (Object.keys(openNamespaces).length === 0) {
@@ -44,6 +67,23 @@ const StreamsCollapsibleList = ({
 			})
 		}
 	}, [groupedStreams])
+
+	const dataHasChanged = () => {
+		const prev = prevGroupedStreams.current
+		const current = groupedStreams
+
+		const prevKeys = Object.keys(prev)
+		const currentKeys = Object.keys(current)
+
+		if (prevKeys.length !== currentKeys.length) return true
+
+		for (const key of currentKeys) {
+			if (!prev[key]) return true
+			if (prev[key].length !== current[key].length) return true
+		}
+
+		return false
+	}
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -97,6 +137,69 @@ const StreamsCollapsibleList = ({
 		newCheckedStatus.global = allNamespacesSelected
 
 		setCheckedStatus(newCheckedStatus)
+
+		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status
+		if (sortedGroupedNamespaces.length === 0 || dataHasChanged()) {
+			const sortStreamsByCheckedStatus = (
+				streams: StreamData[],
+				namespace: string,
+			): StreamData[] => {
+				const checked: StreamData[] = []
+				const unchecked: StreamData[] = []
+
+				streams.forEach(stream => {
+					const isChecked =
+						newCheckedStatus.streams[namespace]?.[stream.stream.name]
+					if (isChecked) checked.push(stream)
+					else unchecked.push(stream)
+				})
+
+				const sortByStreamName = (a: StreamData, b: StreamData) =>
+					a.stream.name.localeCompare(b.stream.name)
+
+				checked.sort(sortByStreamName)
+				unchecked.sort(sortByStreamName)
+
+				return [...checked, ...unchecked]
+			}
+
+			const namespacesWithCheckedStreams: [string, StreamData[]][] = []
+			const namespacesWithoutCheckedStreams: [string, StreamData[]][] = []
+
+			Object.entries(groupedStreams).forEach(([namespace, streams]) => {
+				const hasAnySelectedStream = streams.some(
+					stream => newCheckedStatus.streams[namespace]?.[stream.stream.name],
+				)
+
+				const sortedStreams = sortStreamsByCheckedStatus(streams, namespace)
+
+				if (hasAnySelectedStream)
+					namespacesWithCheckedStreams.push([namespace, sortedStreams])
+				else namespacesWithoutCheckedStreams.push([namespace, sortedStreams])
+			})
+
+			const sortByNamespaceName = (
+				a: [string, StreamData[]],
+				b: [string, StreamData[]],
+			) => a[0].localeCompare(b[0])
+
+			namespacesWithCheckedStreams.sort(sortByNamespaceName)
+			namespacesWithoutCheckedStreams.sort(sortByNamespaceName)
+
+			const sorted = [
+				...namespacesWithCheckedStreams,
+				...namespacesWithoutCheckedStreams,
+			]
+
+			setSortedGroupedNamespaces(sorted)
+
+			// Select first stream if no stream is currently active
+			if (!activeStreamData && sorted.length > 0 && sorted[0][1].length > 0) {
+				setActiveStreamData(sorted[0][1][0])
+			}
+
+			prevGroupedStreams.current = groupedStreams
+		}
 	}, [selectedStreams, groupedStreams])
 
 	const handleToggleNamespace = (ns: string) => {
@@ -223,75 +326,132 @@ const StreamsCollapsibleList = ({
 	}
 
 	return (
-		<div className="flex h-full flex-col">
-			{Object.keys(groupedStreams).length === 0 ? (
-				<Empty className="pt-10" />
-			) : (
-				<>
-					<div className="mb-4 flex items-center">
-						<Checkbox
-							checked={checkedStatus.global}
-							onChange={e => handleGlobalSyncAll(e.target.checked)}
-						>
-							Sync all
-						</Checkbox>
-					</div>
-					{Object.entries(groupedStreams).map(([ns, streams]) => {
-						return (
-							<div
-								key={ns}
-								className="mb-2 border border-solid border-[#e5e7eb]"
+		<>
+			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
+				{Object.keys(sortedGroupedNamespaces).length === 0 ? (
+					<Empty className="pt-10" />
+				) : (
+					<>
+						<div className="flex items-center justify-between rounded-t-[4px] bg-white px-2 py-4">
+							<Checkbox
+								checked={checkedStatus.global}
+								onChange={e => handleGlobalSyncAll(e.target.checked)}
 							>
+								Sync all
+							</Checkbox>
+
+							<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
+								{/* Sliding background */}
 								<div
-									className="flex cursor-pointer items-center border-b border-solid border-gray-200 bg-background-primary p-3"
-									onClick={() => handleToggleNamespace(ns)}
+									className={clsx(
+										"absolute inset-y-0.5 w-[calc(34%)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out",
+										{
+											"translate-x-0.5": ingestionMode === IngestionMode.UPSERT,
+											"translate-x-[calc(100%+0px)]":
+												ingestionMode === IngestionMode.APPEND,
+											"translate-x-[calc(200%-2px)]":
+												ingestionMode === IngestionMode.CUSTOM,
+										},
+									)}
+								/>
+								<div
+									onClick={() => {
+										if (ingestionMode !== IngestionMode.UPSERT) {
+											setTargetIngestionMode(IngestionMode.UPSERT)
+											setShowIngestionModeChangeModal(true)
+										}
+									}}
+									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`}
 								>
-									<Checkbox
-										checked={checkedStatus.namespaces[ns]}
-										onChange={e => handleNamespaceSyncAll(ns, e.target.checked)}
-										onClick={e => e.stopPropagation()}
-										className="mr-2"
-									/>
-									<span className="font-semibold">{ns}</span>
-									<span className="ml-auto">
-										{openNamespaces[ns] ? (
-											<CaretDown
-												className="size-4"
-												weight="fill"
-											/>
-										) : (
-											<CaretRight
-												className="size-4"
-												weight="fill"
-											/>
-										)}
-									</span>
+									All Upsert
 								</div>
-								{openNamespaces[ns] && (
-									<div className="w-full">
-										{streams.map(streamData => (
-											<StreamPanel
-												stream={streamData}
-												key={streamData?.stream?.name}
-												activeStreamData={activeStreamData}
-												setActiveStreamData={setActiveStreamData}
-												onStreamSelect={(streamName, checked) =>
-													handleStreamSelect(streamName, checked, ns)
-												}
-												isSelected={
-													checkedStatus.streams[ns]?.[streamData.stream.name] ||
-													false
-												}
-											/>
-										))}
-									</div>
-								)}
+								<div
+									onClick={() => {
+										if (ingestionMode !== IngestionMode.APPEND) {
+											setTargetIngestionMode(IngestionMode.APPEND)
+											setShowIngestionModeChangeModal(true)
+										}
+									}}
+									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`}
+								>
+									All Append
+								</div>
+								<div
+									className={clsx(
+										"relative z-10 flex items-center justify-center rounded-sm p-1 px-5 text-center transition-colors duration-300",
+										ingestionMode === IngestionMode.CUSTOM
+											? "cursor-default"
+											: "cursor-not-allowed opacity-40",
+									)}
+								>
+									Custom
+								</div>
 							</div>
-						)
-					})}
-				</>
-			)}
-		</div>
+						</div>
+						{sortedGroupedNamespaces.map(([ns, streams]) => {
+							return (
+								<div
+									key={ns}
+									className="border-gray-200"
+								>
+									<div
+										className="flex cursor-pointer items-center border bg-background-primary p-3"
+										onClick={() => handleToggleNamespace(ns)}
+									>
+										<Checkbox
+											checked={checkedStatus.namespaces[ns]}
+											onChange={e =>
+												handleNamespaceSyncAll(ns, e.target.checked)
+											}
+											onClick={e => e.stopPropagation()}
+											className="mr-2"
+										/>
+										<span className="font-semibold">{ns}</span>
+										<span className="ml-auto">
+											{openNamespaces[ns] ? (
+												<CaretDownIcon
+													className="size-4"
+													weight="fill"
+												/>
+											) : (
+												<CaretRightIcon
+													className="size-4"
+													weight="fill"
+												/>
+											)}
+										</span>
+									</div>
+									{openNamespaces[ns] && (
+										<div className="w-full">
+											{streams.map(streamData => (
+												<StreamPanel
+													stream={streamData}
+													key={streamData?.stream?.name}
+													activeStreamData={activeStreamData}
+													setActiveStreamData={setActiveStreamData}
+													onStreamSelect={(streamName, checked) =>
+														handleStreamSelect(streamName, checked, ns)
+													}
+													isSelected={
+														checkedStatus.streams[ns]?.[
+															streamData.stream.name
+														] || false
+													}
+												/>
+											))}
+										</div>
+									)}
+								</div>
+							)
+						})}
+					</>
+				)}
+			</div>
+			<IngestionModeChangeModal
+				ingestionMode={targetIngestionMode}
+				onConfirm={onIngestionModeChange}
+			/>
+		</>
 	)
 }
 
