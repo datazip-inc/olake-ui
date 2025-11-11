@@ -24,6 +24,7 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -640,7 +641,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													}}
 													widgets={widgets}
 													formData={formData}
-													onChange={e => setFormData(e.formData)}
+													onChange={e => {
+														const trimmedData = trimFormDataStrings(e.formData)
+														setFormData(trimmedData)
+													}}
 													transformErrors={transformErrors}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchema}

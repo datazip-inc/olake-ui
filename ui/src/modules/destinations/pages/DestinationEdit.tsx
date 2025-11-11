@@ -29,6 +29,7 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import {
@@ -586,8 +587,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						widgets={widgets}
 						formData={formData}
 						onChange={e => {
-							setFormData(e.formData)
-							const catalogValue = e.formData?.writer?.catalog_type
+							const trimmedData = trimFormDataStrings(e.formData)
+							setFormData(trimmedData)
+							if (onFormDataChange) onFormDataChange(trimmedData)
+							const catalogValue = trimmedData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
 						}}
 						transformErrors={transformErrors}

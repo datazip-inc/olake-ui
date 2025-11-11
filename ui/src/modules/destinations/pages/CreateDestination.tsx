@@ -29,6 +29,7 @@ import {
 	getConnectorDocumentationPath,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -422,7 +423,7 @@ const CreateDestination = forwardRef<
 		const handleDestinationNameChange = (
 			e: React.ChangeEvent<HTMLInputElement>,
 		) => {
-			const newName = e.target.value
+			const newName = e.target.value.trim()
 			if (newName.length >= 1) {
 				setDestinationNameError(null)
 			}
@@ -652,9 +653,10 @@ const CreateDestination = forwardRef<
 									widgets={widgets}
 									formData={formData}
 									onChange={e => {
-										setFormData(e.formData)
-										if (onFormDataChange) onFormDataChange(e.formData)
-										const catalogValue = e.formData?.writer?.catalog_type
+										const trimmedData = trimFormDataStrings(e.formData)
+										setFormData(trimmedData)
+										if (onFormDataChange) onFormDataChange(trimmedData)
+										const catalogValue = trimmedData?.writer?.catalog_type
 										if (catalogValue) setCatalog(catalogValue)
 									}}
 									onSubmit={handleCreate}

@@ -564,3 +564,30 @@ export const getIngestionMode = (selectedStreams: {
 	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
 	return IngestionMode.CUSTOM
 }
+
+// recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
+export const trimFormDataStrings = (data: any): any => {
+	if (data === null || data === undefined) {
+		return data
+	}
+
+	if (typeof data === "string") {
+		return data.trim()
+	}
+
+	if (Array.isArray(data)) {
+		return data.map(item => trimFormDataStrings(item))
+	}
+
+	if (typeof data === "object") {
+		const trimmedObject: Record<string, any> = {}
+		for (const key in data) {
+			if (Object.prototype.hasOwnProperty.call(data, key)) {
+				trimmedObject[key] = trimFormDataStrings(data[key])
+			}
+		}
+		return trimmedObject
+	}
+
+	return data
+}
