@@ -3,6 +3,7 @@ export enum SourceConnector {
 	Postgres = "Postgres",
 	MySQL = "MySQL",
 	Oracle = "Oracle",
+	Kafka = "Kafka",
 }
 
 export enum DestinationConnector {
