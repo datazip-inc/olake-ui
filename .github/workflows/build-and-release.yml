@@ -1,34 +1,52 @@
 name: Olake UI Build And Release
-
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to release"
-        required: true
   workflow_call:
     inputs:
+      environment:
+        description: "Environment to build (master, staging, dev)"
+        required: true
+        default: ""
+        type: string
       version:
         description: "Version to release"
         required: true
-        type: string
         default: ""
+        type: string
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to build (master, staging, dev)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - master
+          - staging
+          - dev
+      version:
+        description: "Version to release"
+        required: true
+        default: "v0.0.0.dev"
+        type: string
 
 jobs:
   build_and_publish_frontend:
-    name: Build and publish frontend image
+    name: Build and publish frontend image for ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    environment: Build UI
-
     env:
       DOCKER_LOGIN: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       DOCKER_REPO: ${{ secrets.DOCKER_REPO || 'olakego' }}
-      VERSION: ${{ inputs.version || github.event.inputs.version || 'v0.0.0.dev' }}
+      DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      VERSION: ${{ inputs.version }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || inputs.environment == 'dev' && 'ci/workerReleaseIssues' || 'develop') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -48,8 +66,9 @@ jobs:
 
       - name: Setup environment variables
         run: |
+          echo "ENVIRONMENT=${{ env.ENVIRONMENT }}" >> $GITHUB_ENV
           echo "VERSION=${{ env.VERSION }}" >> $GITHUB_ENV
-          echo "Building frontend for branch $GITHUB_REF_NAME with version $VERSION"
+          echo "Building frontend application for $ENVIRONMENT with version $VERSION"
 
       - name: Run Release tool
         run: |
