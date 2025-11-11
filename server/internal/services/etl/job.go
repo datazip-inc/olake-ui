@@ -117,7 +117,6 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 			return fmt.Errorf("invalid difference_streams JSON: %s", err)
 		}
 		if len(diffCatalog) > 0 {
-			logger.Infof("stream difference detected for job %d, running clear destination workflow.\n%s", existingJob.ID, string(req.DifferenceStreams))
 			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
@@ -268,6 +267,8 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 		}
 		return fmt.Errorf("failed to wait for sync to stop: %s", err)
 	}
+
+	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
 
 	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
