@@ -28,7 +28,7 @@ const Jobs: React.FC = () => {
 
 	useEffect(() => {
 		fetchJobs()
-	}, [fetchJobs])
+	}, [])
 
 	const handleCreateJob = () => {
 		analyticsService.trackEvent("create_job_clicked")

@@ -10,7 +10,6 @@ const ClearDestinationModal = () => {
 		showClearDestinationModal,
 		setShowClearDestinationModal,
 		selectedJobId,
-		fetchJobs,
 	} = useAppStore()
 	const navigate = useNavigate()
 
@@ -26,7 +25,6 @@ const ClearDestinationModal = () => {
 			await jobService.clearDestination(selectedJobId)
 			// wait for 1 second before refreshing jobs to avoid fetching old state
 			await new Promise(resolve => setTimeout(resolve, 1000))
-			await fetchJobs()
 			navigate(`/jobs/${selectedJobId}/history`)
 		} catch (error) {
 			console.error("Failed to clear destination", error)

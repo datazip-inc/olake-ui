@@ -25,7 +25,7 @@ const Sources: React.FC = () => {
 
 	useEffect(() => {
 		fetchSources()
-	}, [fetchSources])
+	}, [])
 
 	const handleCreateSource = () => {
 		analyticsService.trackEvent("create_source_clicked")

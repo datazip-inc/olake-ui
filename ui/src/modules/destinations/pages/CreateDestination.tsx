@@ -165,13 +165,13 @@ const CreateDestination = forwardRef<
 			if (!destinations.length) {
 				fetchDestinations()
 			}
-		}, [destinations.length, fetchDestinations])
+		}, [destinations.length])
 
 		useEffect(() => {
 			if (setupType === SETUP_TYPES.EXISTING) {
 				fetchDestinations()
 			}
-		}, [setupType, fetchDestinations])
+		}, [setupType])
 
 		useEffect(() => {
 			if (initialConfig) {
