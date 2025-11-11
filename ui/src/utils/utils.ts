@@ -14,6 +14,7 @@ import MySQL from "../assets/MySQL.svg"
 import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
+import Kafka from "../assets/Kafka.svg"
 
 // These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
@@ -32,6 +33,8 @@ export const getConnectorImage = (connector: string) => {
 			return AWSS3
 		case DESTINATION_INTERNAL_TYPES.ICEBERG:
 			return ApacheIceBerg
+		case "kafka":
+			return Kafka
 		default:
 			// Default placeholder
 			return MongoDB
@@ -138,6 +141,8 @@ export const getConnectorLabel = (type: string): string => {
 		case "oracle":
 		case "Oracle":
 			return "Oracle"
+		case "kafka":
+			return "Kafka"
 		default:
 			return "MongoDB"
 	}

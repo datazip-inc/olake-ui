@@ -31,6 +31,7 @@ export const CONNECTOR_TYPES = {
 	POSTGRES: "Postgres",
 	MYSQL: "MySQL",
 	ORACLE: "Oracle",
+	KAFKA: "Kafka",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
@@ -178,6 +179,7 @@ export const connectorTypeMap: Record<string, string> = {
 	postgres: "Postgres",
 	mysql: "MySQL",
 	oracle: "Oracle",
+	kafka: "Kafka",
 }
 
 export const DAYS_MAP = {

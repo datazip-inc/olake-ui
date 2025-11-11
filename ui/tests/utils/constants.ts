@@ -62,4 +62,5 @@ export const SOURCE_CONNECTOR_TEST_ID_MAP: Record<string, string> = {
 	Postgres: "connector-option-postgres",
 	MySQL: "connector-option-mysql",
 	Oracle: "connector-option-oracle",
+	Kafka: "connector-option-kafka",
 }
