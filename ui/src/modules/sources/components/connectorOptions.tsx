@@ -54,6 +54,19 @@ const connectorOptions: ConnectorOption[] = [
 			</div>
 		),
 	},
+	{
+		value: "Kafka",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={getConnectorImage("Kafka")}
+					alt="Kafka"
+					className="mr-2 size-5"
+				/>
+				<span data-testid="connector-option-kafka">Kafka</span>
+			</div>
+		),
+	},
 ]
 
 export default connectorOptions
