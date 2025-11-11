@@ -83,17 +83,30 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 	return err
 }
 
-// updateSchedule updates an existing schedule
-func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID string, jobID int) error {
-	cronExpression := utils.ToCron(frequency)
+// UpdateScheduleSpec updates an existing schedule's spec
+func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID string, jobID int, args *ExecutionRequest) error {
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 
 	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
 	return handle.Update(ctx, client.ScheduleUpdateOptions{
 		DoUpdate: func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
-			input.Description.Schedule.Spec = &client.ScheduleSpec{
-				CronExpressions: []string{cronExpression},
+			if frequency != "" {
+				cronExpression := utils.ToCron(frequency)
+				input.Description.Schedule.Spec = &client.ScheduleSpec{
+					CronExpressions: []string{cronExpression},
+				}
 			}
+
+			// update schedule action
+			if args != nil {
+				input.Description.Schedule.Action = &client.ScheduleWorkflowAction{
+					ID:        args.WorkflowID,
+					Workflow:  RunSyncWorkflow,
+					Args:      []any{*args},
+					TaskQueue: t.taskQueue,
+				}
+			}
+
 			return &client.ScheduleUpdate{
 				Schedule: &input.Description.Schedule,
 			}, nil
@@ -141,4 +154,11 @@ func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.Li
 	}
 
 	return resp, nil
+}
+
+// RestoreSyncSchedule restores schedule back to sync workflow from clear-destination
+func (t *Temporal) RestoreSyncSchedule(ctx context.Context, job *models.Job) error {
+	workflowID, _ := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
+	syncReq := buildExecutionReqForSync(job, workflowID)
+	return t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq)
 }

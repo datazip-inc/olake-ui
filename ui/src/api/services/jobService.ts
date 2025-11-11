@@ -1,6 +1,13 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
-import { Job, JobBase, JobTask, TaskLog } from "../../types"
+import {
+	Job,
+	JobBase,
+	JobTask,
+	StreamsDataStructure,
+	TaskLog,
+} from "../../types"
+import { AxiosError } from "axios"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
@@ -34,7 +41,7 @@ export const jobService = {
 			const response = await api.put<Job>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				job,
-				{ showNotification: true },
+				{ timeout: 30000, showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -78,7 +85,9 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error syncing job:", error)
-			throw error
+			throw error instanceof AxiosError && error.response?.data.message
+				? error.response?.data.message
+				: "Failed to sync job"
 		}
 	},
 
@@ -137,6 +146,51 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error checking job name uniqueness:", error)
+			throw error
+		}
+	},
+
+	clearDestination: async (jobId: string): Promise<{ message: string }> => {
+		try {
+			const response = await api.post<{ message: string }>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
+			)
+
+			return response.data
+		} catch (error) {
+			console.error("Error clearing destination:", error)
+			throw error
+		}
+	},
+	getClearDestinationStatus: async (
+		jobId: string,
+	): Promise<{ running: boolean }> => {
+		try {
+			const response = await api.get<{ running: boolean }>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
+			)
+
+			return response.data
+		} catch (error) {
+			console.error("Error fetching clear destination status:", error)
+			throw error
+		}
+	},
+	getStreamDifference: async (
+		jobId: string,
+		streamsConfig: string,
+	): Promise<{ difference_streams: StreamsDataStructure }> => {
+		try {
+			const response = await api.post<{
+				difference_streams: StreamsDataStructure
+			}>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
+				{ updated_streams_config: streamsConfig },
+				{ timeout: 30000 },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error getting stream difference:", error)
 			throw error
 		}
 	},

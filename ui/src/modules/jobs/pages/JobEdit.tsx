@@ -35,6 +35,8 @@ import {
 	JOB_STEP_NUMBERS,
 } from "../../../utils/constants"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
+import StreamDifferenceModal from "../../common/Modals/StreamDifferenceModal"
+import StreamEditDisabledModal from "../../common/Modals/StreamEditDisabledModal"
 
 // Custom wrapper component for SourceEdit to use in job flow
 const JobSourceEdit = ({
@@ -128,10 +130,13 @@ const JobEdit: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const {
 		jobs,
+		selectedJobId,
 		fetchJobs,
 		fetchSources,
 		fetchDestinations,
+		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
+		setShowStreamDifferenceModal,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -144,7 +149,8 @@ const JobEdit: React.FC = () => {
 	const [destinationData, setDestinationData] =
 		useState<DestinationData | null>(null)
 	const [nextStep, setNextStep] = useState<JobCreationSteps | null>(null)
-
+	const [streamDifference, setStreamDifference] =
+		useState<StreamsDataStructure | null>(null)
 	// Streams step states
 	const [selectedStreams, setSelectedStreams] = useState<StreamsDataStructure>({
 		selected_streams: {},
@@ -165,6 +171,10 @@ const JobEdit: React.FC = () => {
 		fetchSources()
 		fetchDestinations()
 	}, [])
+
+	useEffect(() => {
+		fetchSelectedClearDestinationStatus()
+	}, [selectedJobId])
 
 	const initializeFromExistingJob = (job: Job) => {
 		setJobName(job.name)
@@ -303,7 +313,7 @@ const JobEdit: React.FC = () => {
 		return null
 	}
 
-	const getjobUpdatePayLoad = () => {
+	const getjobUpdatePayLoad = (diff: StreamsDataStructure | null) => {
 		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
@@ -326,23 +336,18 @@ const JobEdit: React.FC = () => {
 						: JSON.stringify(destinationData?.config),
 				version: destinationData?.version || "",
 			},
-			streams_config:
-				typeof selectedStreams === "string"
-					? selectedStreams
-					: JSON.stringify({
-							...selectedStreams,
-							selected_streams: getSelectedStreams(
-								selectedStreams.selected_streams,
-							),
-						}),
+			streams_config: JSON.stringify({
+				...selectedStreams,
+				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
+			}),
 			frequency: cronExpression,
 			activate: job?.activate,
+			...(diff && { difference_streams: JSON.stringify(diff) }),
 		}
 		return jobUpdateRequestPayload
 	}
 
-	// Handle job submission
-	const handleJobSubmit = async () => {
+	const handleStreamDifference = async () => {
 		if (!sourceData || !destinationData || !jobId) {
 			message.error("Source and destination data are required")
 			return
@@ -355,16 +360,57 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		setIsSubmitting(true)
+		const streamDifferenceResponse = (
+			await jobService.getStreamDifference(
+				jobId,
+				JSON.stringify({
+					...selectedStreams,
+					selected_streams: getSelectedStreams(
+						selectedStreams.selected_streams,
+					),
+				}),
+			)
+		)?.difference_streams
 
+		const diff =
+			typeof streamDifferenceResponse === "string"
+				? JSON.parse(streamDifferenceResponse || "{}")
+				: streamDifferenceResponse || {}
+		const hasDiff = Object.keys(diff?.selected_streams ?? diff).length > 0
+		// if there is a stream difference, show the stream difference modal
+		if (hasDiff) {
+			setStreamDifference(streamDifferenceResponse)
+			setShowStreamDifferenceModal(true)
+			return
+		}
+
+		// No difference - clear state and submit with null stream difference
+		setStreamDifference(null)
+		handleJobSubmit(null)
+	}
+
+	// Handle job submission
+	const handleJobSubmit = async (diff: StreamsDataStructure | null) => {
+		if (!sourceData || !destinationData || !jobId) {
+			message.error("Source and destination data are required")
+			return
+		}
+
+		if (
+			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
+		) {
+			message.error("Filter Value cannot be empty")
+			return
+		}
+		setIsSubmitting(true)
 		try {
 			// Create the job update payload
-			const jobUpdatePayload = getjobUpdatePayLoad()
+			const jobUpdatePayload = getjobUpdatePayLoad(diff)
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
 
-			// Refresh jobs and navigate back to jobs list
-			fetchJobs()
+			// wait for 1 second before refreshing jobs to avoid fetching old state
+			await new Promise(resolve => setTimeout(resolve, 1000))
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
@@ -385,7 +431,7 @@ const JobEdit: React.FC = () => {
 				setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 			}
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
-			handleJobSubmit()
+			handleStreamDifference()
 		} else if (currentStep === JOB_CREATION_STEPS.CONFIG) {
 			if (!jobName.trim()) {
 				message.error("Job name is required")
@@ -409,6 +455,7 @@ const JobEdit: React.FC = () => {
 	}
 
 	const handleStepClick = async (step: string) => {
+		if (step === currentStep) return
 		if (currentStep === JOB_CREATION_STEPS.STREAMS) {
 			setNextStep(step as JobCreationSteps)
 			setShowResetStreamsModal(true)
@@ -556,7 +603,7 @@ const JobEdit: React.FC = () => {
 					{currentStep === JOB_CREATION_STEPS.CONFIG && jobId && (
 						<button
 							className="flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-1 font-light text-primary hover:bg-primary-50"
-							onClick={handleJobSubmit}
+							onClick={() => handleJobSubmit(null)}
 							disabled={isSubmitting}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
@@ -582,6 +629,13 @@ const JobEdit: React.FC = () => {
 			<TestConnectionSuccessModal />
 			<TestConnectionFailureModal fromSources={isFromSources} />
 			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />
+			{streamDifference && (
+				<StreamDifferenceModal
+					streamDifference={streamDifference}
+					onConfirm={() => handleJobSubmit(streamDifference)}
+				/>
+			)}
+			<StreamEditDisabledModal from="jobEdit" />
 		</div>
 	)
 }

@@ -7,42 +7,45 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 	"golang.org/x/mod/semver"
 )
 
-const (
-	RunSyncWorkflow = "RunSyncWorkflow"
-	ExecuteWorkflow = "ExecuteWorkflow"
-)
-
-type Command string
-
-type JobConfig struct {
-	Name string `json:"name"`
-	Data string `json:"data"`
-}
-
 type ExecutionRequest struct {
-	Type          string        `json:"type"`
 	Command       Command       `json:"command"`
 	ConnectorType string        `json:"connector_type"`
 	Version       string        `json:"version"`
 	Args          []string      `json:"args"`
 	Configs       []JobConfig   `json:"configs"`
 	WorkflowID    string        `json:"workflow_id"`
+	ProjectID     string        `json:"project_id"`
 	JobID         int           `json:"job_id"`
 	Timeout       time.Duration `json:"timeout"`
 	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 }
 
+type JobConfig struct {
+	Name string `json:"name"`
+	Data string `json:"data"`
+}
+
+type Command string
+
 const (
-	Discover Command = "discover"
-	Check    Command = "check"
-	Sync     Command = "sync"
-	Spec     Command = "spec"
+	Discover         Command = "discover"
+	Check            Command = "check"
+	Sync             Command = "sync"
+	Spec             Command = "spec"
+	ClearDestination Command = "clear-destination"
+
+	RunSyncWorkflow = "RunSyncWorkflow"
+	ExecuteWorkflow = "ExecuteWorkflow"
 )
+
+// TODO: check if we can add command args as constants for all the methods
 
 // DiscoverStreams runs a workflow to discover catalog data
 func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
@@ -51,6 +54,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	configs := []JobConfig{
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
+		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
 	}
 
 	cmdArgs := []string{
@@ -72,7 +76,6 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Discover,
 		ConnectorType: sourceType,
 		Version:       version,
@@ -119,7 +122,6 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Spec,
 		ConnectorType: sourceType,
 		Version:       version,
@@ -167,7 +169,6 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 	}
 
 	req := &ExecutionRequest{
-		Type:          "docker",
 		Command:       Check,
 		ConnectorType: sourceType,
 		Version:       version,
@@ -207,4 +208,79 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		"message": message,
 		"status":  status,
 	}, nil
+}
+
+func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
+	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
+
+	// update the sync schedule to use clear-destination request
+	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
+	if _, err := handle.Describe(ctx); err != nil {
+		return fmt.Errorf("schedule does not exist: %s", err)
+	}
+
+	// update schedule to use clear-destination request
+	clearReq := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	err := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &clearReq)
+	if err != nil {
+		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
+	}
+
+	if err := t.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
+		// revert back to sync
+		syncReq := buildExecutionReqForSync(job, workflowID)
+		if uerr := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq); uerr != nil {
+			return fmt.Errorf("trigger clear destination workflow failed: %s, revert to sync failed: %s", err, uerr)
+		}
+		return fmt.Errorf("failed to trigger clear destination workflow: %s", err)
+	}
+	return nil
+}
+
+// GetStreamDifference compares old and new stream configs and returns the difference
+func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, oldConfig, newConfig string) (map[string]interface{}, error) {
+	workflowID := fmt.Sprintf("difference-%s-%d-%d", job.ProjectID, job.ID, time.Now().Unix())
+
+	configs := []JobConfig{
+		{Name: "old_streams.json", Data: oldConfig},
+		{Name: "new_streams.json", Data: newConfig},
+	}
+
+	cmdArgs := []string{
+		"discover",
+		"--streams", "/mnt/config/old_streams.json",
+		"--difference", "/mnt/config/new_streams.json",
+	}
+	if encryptionKey, _ := web.AppConfig.String(constants.ConfEncryptionKey); encryptionKey != "" {
+		cmdArgs = append(cmdArgs, "--encryption-key", encryptionKey)
+	}
+
+	req := &ExecutionRequest{
+		Command:       Discover,
+		ConnectorType: job.SourceID.Type,
+		Version:       job.SourceID.Version,
+		Args:          cmdArgs,
+		Configs:       configs,
+		WorkflowID:    workflowID,
+		JobID:         job.ID,
+		Timeout:       GetWorkflowTimeout(Discover),
+		OutputFile:    "difference_streams.json",
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		ID:        workflowID,
+		TaskQueue: t.taskQueue,
+	}
+
+	run, err := t.Client.ExecuteWorkflow(ctx, workflowOptions, ExecuteWorkflow, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute stream difference workflow: %s", err)
+	}
+
+	result, err := ExtractWorkflowResponse(ctx, run)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract workflow response: %v", err)
+	}
+
+	return result, nil
 }

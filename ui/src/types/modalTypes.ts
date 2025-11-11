@@ -18,6 +18,15 @@ export interface ResetStreamsModalProps {
 	onConfirm: () => void
 }
 
+export interface StreamDifferenceModalProps {
+	streamDifference: StreamsDataStructure
+	onConfirm: () => void
+}
+
+export interface StreamEditDisabledModalProps {
+	from: "jobSettings" | "jobEdit"
+}
+
 export interface IngestionModeChangeModalProps {
 	onConfirm: (ingestionMode: IngestionMode) => void
 	ingestionMode: IngestionMode

@@ -6,15 +6,15 @@ import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
 import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
 import analyticsService from "../../../api/services/analyticsService"
-import { JobType } from "../../../types/jobTypes"
-import { JOB_TYPES } from "../../../utils/constants"
+import { JobStatus } from "../../../types/jobTypes"
+import { JOB_STATUS } from "../../../utils/constants"
 import JobTable from "../components/JobTable"
 import JobEmptyState from "../components/JobEmptyState"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 
 const Jobs: React.FC = () => {
-	const [activeTab, setActiveTab] = useState<JobType>(
-		JOB_TYPES.ACTIVE as JobType,
+	const [activeTab, setActiveTab] = useState<JobStatus>(
+		JOB_STATUS.ACTIVE as JobStatus,
 	)
 	const navigate = useNavigate()
 	const {
@@ -28,7 +28,7 @@ const Jobs: React.FC = () => {
 
 	useEffect(() => {
 		fetchJobs()
-	}, [fetchJobs])
+	}, [])
 
 	const handleCreateJob = () => {
 		analyticsService.trackEvent("create_job_clicked")
@@ -41,13 +41,13 @@ const Jobs: React.FC = () => {
 			await jobService.syncJob(id)
 			await fetchJobs()
 		} catch (error) {
-			message.error("Failed to sync job")
-			console.error(error)
+			message.error(error as string)
+			console.error("Error syncing job:", error)
 		}
 	}
 
 	const handleEditJob = (id: string) => {
-		if (activeTab === JOB_TYPES.SAVED) {
+		if (activeTab === JOB_STATUS.SAVED) {
 			const savedJob = savedJobs.find(job => job.id.toString() === id)
 			if (savedJob) {
 				const initialData = {
@@ -91,7 +91,7 @@ const Jobs: React.FC = () => {
 	}
 
 	const handleDeleteJob = (id: string) => {
-		if (activeTab === JOB_TYPES.SAVED) {
+		if (activeTab === JOB_STATUS.SAVED) {
 			const savedJobsFromStorage = JSON.parse(
 				localStorage.getItem("savedJobs") || "[]",
 			)
@@ -122,16 +122,16 @@ const Jobs: React.FC = () => {
 
 	const updateJobsList = () => {
 		switch (activeTab) {
-			case JOB_TYPES.ACTIVE:
+			case JOB_STATUS.ACTIVE:
 				setFilteredJobs(jobs.filter(job => job?.activate === true))
 				break
-			case JOB_TYPES.INACTIVE:
+			case JOB_STATUS.INACTIVE:
 				setFilteredJobs(jobs.filter(job => job?.activate === false))
 				break
-			case JOB_TYPES.SAVED:
+			case JOB_STATUS.SAVED:
 				setFilteredJobs(savedJobs)
 				break
-			case JOB_TYPES.FAILED:
+			case JOB_STATUS.FAILED:
 				setFilteredJobs(
 					jobs.filter(
 						job => (job?.last_run_state ?? "").toLowerCase() === "failed",
@@ -147,10 +147,10 @@ const Jobs: React.FC = () => {
 	const showEmpty = !isLoadingJobs && jobs.length === 0
 
 	const tabItems = [
-		{ key: JOB_TYPES.ACTIVE, label: "Active jobs" },
-		{ key: JOB_TYPES.INACTIVE, label: "Inactive jobs" },
-		{ key: JOB_TYPES.SAVED, label: "Saved jobs" },
-		{ key: JOB_TYPES.FAILED, label: "Failed jobs" },
+		{ key: JOB_STATUS.ACTIVE, label: "Active jobs" },
+		{ key: JOB_STATUS.INACTIVE, label: "Inactive jobs" },
+		{ key: JOB_STATUS.SAVED, label: "Saved jobs" },
+		{ key: JOB_STATUS.FAILED, label: "Failed jobs" },
 	]
 
 	if (jobsError) {
@@ -189,7 +189,7 @@ const Jobs: React.FC = () => {
 
 			<Tabs
 				activeKey={activeTab}
-				onChange={key => setActiveTab(key as JobType)}
+				onChange={key => setActiveTab(key as JobStatus)}
 				items={tabItems.map(tab => ({
 					key: tab.key,
 					label: tab.label,
@@ -200,7 +200,7 @@ const Jobs: React.FC = () => {
 								tip="Loading sources..."
 							/>
 						</div>
-					) : tab.key === JOB_TYPES.ACTIVE && showEmpty ? (
+					) : tab.key === JOB_STATUS.ACTIVE && showEmpty ? (
 						<JobEmptyState handleCreateJob={handleCreateJob} />
 					) : filteredJobs.length === 0 ? (
 						<Empty

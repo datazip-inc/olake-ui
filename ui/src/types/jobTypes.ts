@@ -19,6 +19,7 @@ export interface Job {
 	}
 	streams_config: string
 	frequency: string
+	last_run_type: JobType
 	last_run_state: string
 	last_run_time: string
 	created_at: string
@@ -45,6 +46,7 @@ export interface JobBase {
 	}
 	frequency: string
 	streams_config: string
+	difference_streams?: string
 	activate?: boolean
 }
 export interface JobTask {
@@ -52,6 +54,7 @@ export interface JobTask {
 	start_time: string
 	status: string
 	file_path: string
+	job_type: JobType
 }
 export interface TaskLog {
 	level: string
@@ -60,12 +63,12 @@ export interface TaskLog {
 }
 export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 
-export type JobType = "active" | "inactive" | "saved" | "failed"
+export type JobStatus = "active" | "inactive" | "saved" | "failed"
 
 export interface JobTableProps {
 	jobs: Job[]
 	loading: boolean
-	jobType: JobType
+	jobType: JobStatus
 	onSync: (id: string) => void
 	onEdit: (id: string) => void
 	onPause: (id: string, checked: boolean) => void
@@ -89,4 +92,9 @@ export interface JobConnectionProps {
 	jobName: string
 	remainingJobs?: number
 	jobs: EntityJob[]
+}
+
+export enum JobType {
+	Sync = "sync",
+	ClearDestination = "clear",
 }

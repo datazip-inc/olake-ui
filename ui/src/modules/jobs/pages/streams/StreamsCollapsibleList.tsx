@@ -186,10 +186,17 @@ const StreamsCollapsibleList = ({
 			namespacesWithCheckedStreams.sort(sortByNamespaceName)
 			namespacesWithoutCheckedStreams.sort(sortByNamespaceName)
 
-			setSortedGroupedNamespaces([
+			const sorted = [
 				...namespacesWithCheckedStreams,
 				...namespacesWithoutCheckedStreams,
-			])
+			]
+
+			setSortedGroupedNamespaces(sorted)
+
+			// Select first stream if no stream is currently active
+			if (!activeStreamData && sorted.length > 0 && sorted[0][1].length > 0) {
+				setActiveStreamData(sorted[0][1][0])
+			}
 
 			prevGroupedStreams.current = groupedStreams
 		}

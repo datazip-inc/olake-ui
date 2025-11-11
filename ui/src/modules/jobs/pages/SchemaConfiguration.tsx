@@ -47,8 +47,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
-	const { setShowDestinationDatabaseModal, ingestionMode, setIngestionMode } =
-		useAppStore()
+	const {
+		isClearDestinationStatusLoading,
+		setShowDestinationDatabaseModal,
+		ingestionMode,
+		setIngestionMode,
+	} = useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -63,7 +67,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
-	const [loading, setLoading] = useState(!initialStreamsData)
+	const [isStreamsLoading, setIsStreamsLoading] = useState(!initialStreamsData)
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
 		useState(initialStreamsData)
@@ -82,6 +86,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 		return !stream?.disabled
 	}
+
+	const isLoading = isStreamsLoading || isClearDestinationStatusLoading
 
 	// Check if first stream has destination_database and compute values
 	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
@@ -126,14 +132,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		) {
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
-			setLoading(false)
+			setIsStreamsLoading(false)
 			onLoadingChange?.(false)
 			initialized.current = true
 
-			// Select first stream if no stream is currently active
-			if (!activeStreamData && initialStreamsData.streams.length > 0) {
-				setActiveStreamData(initialStreamsData.streams[0])
-			}
 			return
 		}
 
@@ -141,7 +143,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			if (initialized.current) return
 
 			onLoadingChange?.(true)
-			setLoading(true)
+			setIsStreamsLoading(true)
 			try {
 				const response = await sourceService.getSourceStreams(
 					sourceName,
@@ -193,16 +195,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				setSelectedStreams(processedResponseData)
 				setInitialStreamsState(processedResponseData)
 
-				// Always select first stream if no stream is currently active
-				if (processedResponseData.streams.length > 0 && !activeStreamData) {
-					setActiveStreamData(processedResponseData.streams[0])
-				}
-
 				initialized.current = true
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
 			} finally {
-				setLoading(false)
+				setIsStreamsLoading(false)
 				onLoadingChange?.(false)
 			}
 		}
@@ -685,17 +682,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									<div className="text-gray-600">{destinationDatabase}</div>
 
 									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
-										{!fromJobEditFlow && (
-											<Tooltip
-												title="Edit"
-												placement="top"
-											>
-												<PencilSimpleIcon
-													className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
-													onClick={() => setShowDestinationDatabaseModal(true)}
-												/>
-											</Tooltip>
-										)}
+										<Tooltip
+											title="Edit"
+											placement="top"
+										>
+											<PencilSimpleIcon
+												className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
+												onClick={() => setShowDestinationDatabaseModal(true)}
+											/>
+										</Tooltip>
 										<Tooltip title="View Documentation">
 											<a
 												href="https://olake.io/docs/understanding/terminologies/olake#7-tablecolumn-normalization--destination-database-creation"
@@ -729,14 +724,14 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 			</div>
 
-			<div className={clsx("flex", !loading && "rounded-[4px] border")}>
+			<div className={clsx("flex", !isLoading && "rounded-[4px] border")}>
 				<div
 					className={clsx(
 						activeStreamData ? "w-1/2" : "w-full",
 						"max-h-[calc(100vh-250px)] overflow-y-auto",
 					)}
 				>
-					{!loading && apiResponse?.streams ? (
+					{!isLoading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
 							selectedStreams={apiResponse.selected_streams}
@@ -757,7 +752,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}}
 							onIngestionModeChange={handleAllIngestionModeChange}
 						/>
-					) : loading ? (
+					) : isLoading ? (
 						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
 							<Spin size="large"></Spin>
 						</div>
@@ -769,7 +764,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				<div
 					className={clsx(
 						"sticky top-0 flex w-1/2 flex-col rounded-[4px] bg-white p-4 transition-all duration-150 ease-linear",
-						!loading && "border-l",
+						!isLoading && "border-l",
 					)}
 				>
 					{activeStreamData ? (

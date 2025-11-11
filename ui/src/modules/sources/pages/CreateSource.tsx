@@ -112,7 +112,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			if (!sources.length) {
 				fetchSources()
 			}
-		}, [sources.length, fetchSources])
+		}, [sources.length])
 
 		useEffect(() => {
 			if (initialName) {

@@ -12,10 +12,13 @@ import {
 import { useAppStore } from "../../../store"
 import {
 	getConnectorImage,
+	getJobTypeClass,
+	getJobTypeLabel,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
+import { JobType } from "../../../types"
 
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -118,6 +121,21 @@ const JobHistory: React.FC = () => {
 				>
 					{getStatusIcon(status.toLowerCase())}
 					<span>{getStatusLabel(status.toLowerCase())}</span>
+				</div>
+			),
+		},
+		{
+			title: "Job Type",
+			dataIndex: "job_type",
+			key: "job_type",
+			render: (job_type: JobType) => (
+				<div
+					className={clsx(
+						"flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1",
+						getJobTypeClass(job_type),
+					)}
+				>
+					<span>{getJobTypeLabel(job_type)}</span>
 				</div>
 			),
 		},

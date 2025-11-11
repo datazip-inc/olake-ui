@@ -53,7 +53,7 @@ http://localhost:8080
     "message": "string",
     "data": {
       "email":"string",
-      "username": "string",
+      "username": "string"
     }
   }
   ```
@@ -65,7 +65,7 @@ http://localhost:8080
 - **Headers**: `Authorization: Bearer <token>` // we are using cookie currently so frontend take care accordingly
 - **Response**:
   ```json
-   {
+  {
     "success": "boolean",
     "message": "string",
     "data": {
@@ -106,6 +106,8 @@ http://localhost:8080
 - **Request Body**:
   ```json
   {
+    "type":"string",
+    "version": "string",
     "type":"string",
     "version": "string",
   }
@@ -271,6 +273,7 @@ http://localhost:8080
 ```
 
 
+
 ## Destinations
 ### Get All Version Of Destinations 
 - **Endpoint**: `/api/v1/project/:projectid/destinations/versions`
@@ -303,7 +306,7 @@ http://localhost:8080
   ```json
   {
     "type":"string",
-    "version": "string",
+    "version": "string"
   }
   ```
 - **Response**:
@@ -367,7 +370,7 @@ http://localhost:8080
     "name": "string",
     "type": "string",
     "config": "json",
-    "version":"string",
+    "version":"string"
   }
   ```
 - **Response**:
@@ -380,7 +383,7 @@ http://localhost:8080
       "name": "string",
       "type": "string",
       "config": "json",
-      "version":"string", // to create a job same version of destination and same version of source required
+      "version":"string" // to create a job same version of destination and same version of source required
     }
   }
   ```
@@ -434,7 +437,7 @@ http://localhost:8080
     "name": "string",
     "type": "string",
     "config": "json",
-    "version":"string",
+    "version":"string"
   }
   ```
 - **Response**:
@@ -460,12 +463,11 @@ http://localhost:8080
 - **Response**:
 
 ```json
-
   { // NOTE: this is only soft delete not hard
     "success": "boolean",
     "message": "string",
     "data": {
-      "name": "string",
+      "name": "string"
     }
   }
 ```
@@ -493,10 +495,10 @@ http://localhost:8080
       "name": "string",
       "type": "string",
       "config": "string",
-      "version": "string",
+      "version": "string"
     },
     "frequency": "string",
-    "streams_config": "json",
+    "streams_config": "json"
   }
   ```
 
@@ -530,23 +532,24 @@ http://localhost:8080
           "name": "string",
           "type": "string",
           "config": "json",
-          "version": "string",
+          "version": "string"
         },
         "destination": {
           "name": "string",
           "type": "string",
           "config": "json",
-          "version": "string",
+          "version": "string"
         },
         "streams_config":"json",
         "frequency": "string",
         "last_run_time": "timestamp",
         "last_run_state": "string",
+        "last_run_type": "string",
         "created_at": "timestamp",
         "updated_at": "timestamp",
         "activate": "boolean",
         "created_by":  "string", // username 
-        "updated_by":  "string", // username
+        "updated_by":  "string" // username
       // can also send state but if it is required
       }
     ]
@@ -568,17 +571,18 @@ http://localhost:8080
       "name": "string",
       "type": "string",
       "config": "json",
-      "version": "string",
+      "version": "string"
     },
     "destination": {
       "name": "string",
       "type": "string",
       "config": "json",
-      "version": "string",
+      "version": "string"
     },
     "frequency": "string",
     "streams_config": "json",
-    "activate": "boolean", // send this to activate or deactivate job
+    "difference_streams": "string",
+    "activate": "boolean" // send this to activate or deactivate job
   }
   ```
 
@@ -593,20 +597,22 @@ http://localhost:8080
         "name": "string",
         "type": "string",
         "config": "json",
-        "version": "string",
+        "version": "string"
       },
       "destination": {
         "name": "string",
         "type": "string",
         "config": "json",
-        "version": "string",
+        "version": "string"
       },
       "frequency": "string",
       "streams_config": "json",
-      "activate": "boolean",
+      "activate": "boolean"
     }
   }
   ```
+
+
 
 
 
@@ -715,11 +721,12 @@ http://localhost:8080
     "message": "string",
     "data": [
       {
-        "id":"string",
+        "file_path": "string",
         "start_time": "timestamp",
         "runtime": "integer",
-        "status": "string"
-      },
+        "status": "string",
+        "job_type": "string"
+      }
     ]
   }
   ```
@@ -770,6 +777,7 @@ http://localhost:8080
   ```
 
 
+
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/task/:id/logs`
 - **Method**: GET
 - **Description**: Give the Logs of that particular Job
@@ -810,6 +818,69 @@ http://localhost:8080
     "message": "string",
     "data": {
      "unique": "boolean"
+    }
+  }
+  ```
+
+
+### Clear destination for a Job
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
+- **Method**: POST
+- **Description**: clears the destination data
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string"
+  }
+  ```
+
+### Get Clear Destination Status
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/clear-destination`
+- **Method**: GET
+- **Description**: Get the status of clear destination operation for a job
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "running": "boolean"
+    }
+  }
+  ```
+  
+  ### Difference Streams
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/difference-streams`
+- **Method**: POST
+- **Description**: returns the stream difference bewtween the saved and the updated streams
+- **Headers**: `Authorization: Bearer <token>`
+- - **Request Body**:
+
+  ```json
+  {
+    "updated_streams_config": "json"
+  }
+  ```
+
+- **Response**: 
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "difference_streams": "json"
     }
   }
   ```
