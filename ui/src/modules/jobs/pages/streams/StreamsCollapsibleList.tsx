@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
 
-import { GroupedStreamsCollapsibleListProps } from "../../../../types"
+import {
+	GroupedStreamsCollapsibleListProps,
+	StreamData,
+} from "../../../../types"
 import StreamPanel from "./StreamPanel"
 import { useAppStore } from "../../../../store"
 import { IngestionMode } from "../../../../types/commonTypes"
@@ -35,6 +38,11 @@ const StreamsCollapsibleList = ({
 	const [targetIngestionMode, setTargetIngestionMode] = useState<IngestionMode>(
 		IngestionMode.APPEND,
 	)
+	const [sortedGroupedNamespaces, setSortedGroupedNamespaces] = useState<
+		[string, StreamData[]][]
+	>([])
+
+	const prevGroupedStreams = useRef(groupedStreams)
 
 	useEffect(() => {
 		setIngestionMode(getIngestionMode(selectedStreams))
@@ -59,6 +67,23 @@ const StreamsCollapsibleList = ({
 			})
 		}
 	}, [groupedStreams])
+
+	const dataHasChanged = () => {
+		const prev = prevGroupedStreams.current
+		const current = groupedStreams
+
+		const prevKeys = Object.keys(prev)
+		const currentKeys = Object.keys(current)
+
+		if (prevKeys.length !== currentKeys.length) return true
+
+		for (const key of currentKeys) {
+			if (!prev[key]) return true
+			if (prev[key].length !== current[key].length) return true
+		}
+
+		return false
+	}
 
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
@@ -112,6 +137,62 @@ const StreamsCollapsibleList = ({
 		newCheckedStatus.global = allNamespacesSelected
 
 		setCheckedStatus(newCheckedStatus)
+
+		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status
+		if (sortedGroupedNamespaces.length === 0 || dataHasChanged()) {
+			const sortStreamsByCheckedStatus = (
+				streams: StreamData[],
+				namespace: string,
+			): StreamData[] => {
+				const checked: StreamData[] = []
+				const unchecked: StreamData[] = []
+
+				streams.forEach(stream => {
+					const isChecked =
+						newCheckedStatus.streams[namespace]?.[stream.stream.name]
+					if (isChecked) checked.push(stream)
+					else unchecked.push(stream)
+				})
+
+				const sortByStreamName = (a: StreamData, b: StreamData) =>
+					a.stream.name.localeCompare(b.stream.name)
+
+				checked.sort(sortByStreamName)
+				unchecked.sort(sortByStreamName)
+
+				return [...checked, ...unchecked]
+			}
+
+			const namespacesWithCheckedStreams: [string, StreamData[]][] = []
+			const namespacesWithoutCheckedStreams: [string, StreamData[]][] = []
+
+			Object.entries(groupedStreams).forEach(([namespace, streams]) => {
+				const hasAnySelectedStream = streams.some(
+					stream => newCheckedStatus.streams[namespace]?.[stream.stream.name],
+				)
+
+				const sortedStreams = sortStreamsByCheckedStatus(streams, namespace)
+
+				if (hasAnySelectedStream)
+					namespacesWithCheckedStreams.push([namespace, sortedStreams])
+				else namespacesWithoutCheckedStreams.push([namespace, sortedStreams])
+			})
+
+			const sortByNamespaceName = (
+				a: [string, StreamData[]],
+				b: [string, StreamData[]],
+			) => a[0].localeCompare(b[0])
+
+			namespacesWithCheckedStreams.sort(sortByNamespaceName)
+			namespacesWithoutCheckedStreams.sort(sortByNamespaceName)
+
+			setSortedGroupedNamespaces([
+				...namespacesWithCheckedStreams,
+				...namespacesWithoutCheckedStreams,
+			])
+
+			prevGroupedStreams.current = groupedStreams
+		}
 	}, [selectedStreams, groupedStreams])
 
 	const handleToggleNamespace = (ns: string) => {
@@ -240,11 +321,11 @@ const StreamsCollapsibleList = ({
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
-				{Object.keys(groupedStreams).length === 0 ? (
+				{Object.keys(sortedGroupedNamespaces).length === 0 ? (
 					<Empty className="pt-10" />
 				) : (
 					<>
-						<div className="flex items-center justify-between rounded-t-[4px] border border-b-0 bg-white px-2 py-4">
+						<div className="flex items-center justify-between rounded-t-[4px] bg-white px-2 py-4">
 							<Checkbox
 								checked={checkedStatus.global}
 								onChange={e => handleGlobalSyncAll(e.target.checked)}
@@ -300,11 +381,11 @@ const StreamsCollapsibleList = ({
 								</div>
 							</div>
 						</div>
-						{Object.entries(groupedStreams).map(([ns, streams]) => {
+						{sortedGroupedNamespaces.map(([ns, streams]) => {
 							return (
 								<div
 									key={ns}
-									className="border-solid border-gray-200"
+									className="border-gray-200"
 								>
 									<div
 										className="flex cursor-pointer items-center border bg-background-primary p-3"

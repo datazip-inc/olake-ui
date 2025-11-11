@@ -110,7 +110,7 @@ func (h *Handler) Signup() {
 
 // @router /telemetry-id [get]
 func (h *Handler) GetTelemetryID() {
-	logger.Infof("Get telemetry ID initiated")
+	logger.Info("Get telemetry ID initiated")
 
 	telemetryID := telemetry.GetTelemetryUserID()
 	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", map[string]interface{}{
