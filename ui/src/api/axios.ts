@@ -86,7 +86,6 @@ api.interceptors.response.use(
 			payload?.message || "Something went wrong! Please try again.",
 		)
 
-
 		// Handle specific HTTP status codes
 		if (error.response) {
 			const { status } = error.response

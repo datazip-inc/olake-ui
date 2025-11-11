@@ -251,7 +251,7 @@ const StreamsCollapsibleList = ({
 	const handleGlobalSyncAll = (checked: boolean) => {
 		try {
 			localStorage.setItem("__globalSync", String(checked))
-		} catch { }
+		} catch {}
 
 		setCheckedStatus(prev => {
 			const updatedNamespaces = { ...prev.namespaces }
@@ -434,7 +434,7 @@ const StreamsCollapsibleList = ({
 													}
 													isSelected={
 														checkedStatus.streams[ns]?.[
-														streamData.stream.name
+															streamData.stream.name
 														] || false
 													}
 												/>

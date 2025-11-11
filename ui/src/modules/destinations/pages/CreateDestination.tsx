@@ -491,7 +491,7 @@ const CreateDestination = forwardRef<
 
 			const configObj =
 				selectedDestination.config &&
-					typeof selectedDestination.config === "object"
+				typeof selectedDestination.config === "object"
 					? selectedDestination.config
 					: {}
 
