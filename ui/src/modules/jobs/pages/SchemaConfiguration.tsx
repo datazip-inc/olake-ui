@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react"
 import { Input, Empty, Spin, Tooltip } from "antd"
+import clsx from "clsx"
 
 import { sourceService } from "../../../api"
 import { useAppStore } from "../../../store"
@@ -657,11 +658,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					{destinationDatabase && (
 						<div className="flex w-1/2 items-center justify-start gap-1">
 							<div
-								className={`group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 ${
+								className={clsx(
+									"group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200",
 									fromJobEditFlow
 										? "cursor-not-allowed bg-gray-50"
-										: "hover:border-blue-200 hover:shadow-md"
-								}`}
+										: "hover:border-blue-200 hover:shadow-md",
+								)}
 							>
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
@@ -710,7 +712,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						</div>
 					)}
 					<div
-						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+						className={clsx(
+							"flex w-1/2 flex-wrap gap-2",
+							destinationDatabase ? "justify-end" : "justify-start",
+						)}
 					>
 						{STREAM_FILTERS.map(filter => (
 							<FilterButton
@@ -724,9 +729,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 			</div>
 
-			<div className="flex">
+			<div className={clsx("flex", !loading && "rounded-[4px] border")}>
 				<div
-					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
+					className={clsx(
+						activeStreamData ? "w-1/2" : "w-full",
+						"max-h-[calc(100vh-250px)] overflow-y-auto",
+					)}
 				>
 					{!loading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
@@ -759,7 +767,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
+					className={clsx(
+						"sticky top-0 flex w-1/2 flex-col rounded-[4px] bg-white p-4 transition-all duration-150 ease-linear",
+						!loading && "border-l",
+					)}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
