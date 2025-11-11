@@ -42,6 +42,7 @@ export interface CreateDestinationProps {
 	onFormDataChange?: (formData: DestinationConfig) => void
 	onVersionChange?: (version: string) => void
 	onCatalogTypeChange?: (catalog: string | null) => void
+	onExistingDestinationIdChange?: (id: number | null) => void
 	docsMinimized?: boolean
 	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 	sourceConnector?: string
@@ -65,7 +66,7 @@ export interface DestinationJob extends Omit<EntityJob, "last_runtime"> {
 }
 
 export interface DestinationData {
-	id?: string
+	id?: number
 	name: string
 	type: string
 	config: Record<string, any>

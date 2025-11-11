@@ -13,7 +13,7 @@ Olake Server is a RESTful API service built with the Beego framework that manage
 ### 1. Clone the Repository
 
     ```bash
-    git clone https://github.com/datazip-inc/olake-frontend.git
+    git clone https://github.com/datazip-inc/olake-ui.git
     ```
 
 ### 2. Configure Application Settings (Auth only works when session enabled)

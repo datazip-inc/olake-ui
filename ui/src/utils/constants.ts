@@ -1,5 +1,9 @@
-import { GitCommit, LinktreeLogo, Path } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem } from "../types"
+import {
+	GitCommitIcon,
+	LinktreeLogoIcon,
+	PathIcon,
+} from "@phosphor-icons/react"
+import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -27,6 +31,7 @@ export const CONNECTOR_TYPES = {
 	POSTGRES: "Postgres",
 	MYSQL: "MySQL",
 	ORACLE: "Oracle",
+	KAFKA: "Kafka",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
@@ -79,7 +84,7 @@ export const ENTITY_TYPES = {
 
 export const DESTINATION_INTERNAL_TYPES = {
 	ICEBERG: "iceberg",
-	S3: "s3",
+	S3: "parquet",
 }
 
 export const DESTINATION_LABELS = {
@@ -87,7 +92,7 @@ export const DESTINATION_LABELS = {
 	APACHE_ICEBERG: "apache iceberg",
 }
 
-export const JOB_TYPES = {
+export const JOB_STATUS = {
 	ACTIVE: "active",
 	INACTIVE: "inactive",
 	SAVED: "saved",
@@ -121,9 +126,9 @@ export const LOCALSTORAGE_TOKEN_KEY = "token"
 export const LOCALSTORAGE_USERNAME_KEY = "username"
 
 export const NAV_ITEMS: NavItem[] = [
-	{ path: "/jobs", label: "Jobs", icon: GitCommit },
-	{ path: "/sources", label: "Sources", icon: LinktreeLogo },
-	{ path: "/destinations", label: "Destinations", icon: Path },
+	{ path: "/jobs", label: "Jobs", icon: GitCommitIcon },
+	{ path: "/sources", label: "Sources", icon: LinktreeLogoIcon },
+	{ path: "/destinations", label: "Destinations", icon: PathIcon },
 ]
 
 export const sourceTabs = [
@@ -174,6 +179,7 @@ export const connectorTypeMap: Record<string, string> = {
 	postgres: "Postgres",
 	mysql: "MySQL",
 	oracle: "Oracle",
+	kafka: "Kafka",
 }
 
 export const DAYS_MAP = {
@@ -229,6 +235,7 @@ export const JOB_STEP_NUMBERS = {
 	STREAMS: 4,
 } as const
 
+// not showing oneof and const errors
 export const transformErrors = (errors: any[]) => {
 	return errors.filter(err => err.name !== "oneOf" && err.name !== "const")
 }
@@ -272,3 +279,8 @@ export const FILTER_REGEX =
 	/^(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+)\s*(?:(and|or)\s*(\w+)\s*(>=|<=|!=|>|<|=)\s*("[^"]+"|\d*\.?\d+|\w+))?\s*$/
 
 export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
+
+export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
+	SUCCEEDED: "SUCCEEDED",
+	FAILED: "FAILED",
+} as const

@@ -13,7 +13,7 @@ export const connectorOptions: ConnectorOption[] = [
 					alt={CONNECTOR_TYPES.AMAZON_S3}
 					className="mr-2 size-5"
 				/>
-				<span>Amazon S3</span>
+				<span data-testid="connector-option-s3">Amazon S3</span>
 			</div>
 		),
 	},
@@ -26,7 +26,7 @@ export const connectorOptions: ConnectorOption[] = [
 					alt="Apache Iceberg"
 					className="mr-2 size-5"
 				/>
-				<span>Apache Iceberg</span>
+				<span data-testid="connector-option-iceberg">Apache Iceberg</span>
 			</div>
 		),
 	},

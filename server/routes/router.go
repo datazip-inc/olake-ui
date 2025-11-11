@@ -5,7 +5,9 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
-	"github.com/datazip/olake-frontend/server/internal/handlers"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/middleware"
 )
 
 // writeDefaultCorsHeaders sets common CORS headers
@@ -31,59 +33,66 @@ func CustomCorsFilter(ctx *context.Context) {
 	}
 }
 
-func Init() {
-	if runmode, err := web.AppConfig.String("runmode"); err == nil && runmode == "localdev" {
+func Init(h *handlers.Handler) {
+	if runmode, err := web.AppConfig.String(constants.ConfRunMode); err == nil && runmode == "localdev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
 		// Serve static frontend files
 		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
 
 		// Serve index.html for React frontend
-		web.Router("/*", &handlers.FrontendHandler{}) // any other frontend route
+		web.Router("/*", h, "get:ServeFrontend") // any other frontend route
 	}
 
 	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, handlers.AuthMiddleware)
+	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
-	web.Router("/login", &handlers.AuthHandler{}, "post:Login")
-	web.Router("/signup", &handlers.AuthHandler{}, "post:Signup")
-	web.Router("/auth/check", &handlers.AuthHandler{}, "get:CheckAuth")
-	web.Router("/telemetry-id", &handlers.AuthHandler{}, "get:GetTelemetryID")
+	web.Router("/login", h, "post:Login")
+	web.Router("/signup", h, "post:Signup")
+	web.Router("/auth/check", h, "get:CheckAuth")
+	web.Router("/telemetry-id", h, "get:GetTelemetryID")
 
 	// User routes
-	web.Router("/api/v1/users", &handlers.UserHandler{}, "post:CreateUser")
-	web.Router("/api/v1/users", &handlers.UserHandler{}, "get:GetAllUsers")
-	web.Router("/api/v1/users/:id", &handlers.UserHandler{}, "put:UpdateUser")
-	web.Router("/api/v1/users/:id", &handlers.UserHandler{}, "delete:DeleteUser")
+	web.Router("/api/v1/users", h, "post:CreateUser")
+	web.Router("/api/v1/users", h, "get:GetAllUsers")
+	web.Router("/api/v1/users/:id", h, "put:UpdateUser")
+	web.Router("/api/v1/users/:id", h, "delete:DeleteUser")
 
 	// Source routes
-	web.Router("/api/v1/project/:projectid/sources", &handlers.SourceHandler{}, "get:GetAllSources")
-	web.Router("/api/v1/project/:projectid/sources", &handlers.SourceHandler{}, "post:CreateSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", &handlers.SourceHandler{}, "put:UpdateSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", &handlers.SourceHandler{}, "delete:DeleteSource")
-	web.Router("/api/v1/project/:projectid/sources/test", &handlers.SourceHandler{}, "post:TestConnection")
-	web.Router("/api/v1/project/:projectid/sources/streams", &handlers.SourceHandler{}, "post:GetSourceCatalog")
-	web.Router("/api/v1/project/:projectid/sources/versions", &handlers.SourceHandler{}, "get:GetSourceVersions")
-	web.Router("/api/v1/project/:projectid/sources/spec", &handlers.SourceHandler{}, "post:GetProjectSourceSpec")
+	web.Router("/api/v1/project/:projectid/sources", h, "get:ListSources")
+	web.Router("/api/v1/project/:projectid/sources", h, "post:CreateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", h, "put:UpdateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", h, "delete:DeleteSource")
+	web.Router("/api/v1/project/:projectid/sources/test", h, "post:TestSourceConnection")
+	web.Router("/api/v1/project/:projectid/sources/streams", h, "post:GetSourceCatalog")
+	web.Router("/api/v1/project/:projectid/sources/versions", h, "get:GetSourceVersions")
+	web.Router("/api/v1/project/:projectid/sources/spec", h, "post:GetSourceSpec")
 
 	// Destination routes
-	web.Router("/api/v1/project/:projectid/destinations", &handlers.DestHandler{}, "get:GetAllDestinations")
-	web.Router("/api/v1/project/:projectid/destinations", &handlers.DestHandler{}, "post:CreateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", &handlers.DestHandler{}, "put:UpdateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", &handlers.DestHandler{}, "delete:DeleteDestination")
-	web.Router("/api/v1/project/:projectid/destinations/test", &handlers.DestHandler{}, "post:TestConnection")
-	web.Router("/api/v1/project/:projectid/destinations/versions", &handlers.DestHandler{}, "get:GetDestinationVersions")
-	web.Router("/api/v1/project/:projectid/destinations/spec", &handlers.DestHandler{}, "post:GetDestinationSpec")
+	web.Router("/api/v1/project/:projectid/destinations", h, "get:ListDestinations")
+	web.Router("/api/v1/project/:projectid/destinations", h, "post:CreateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", h, "put:UpdateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", h, "delete:DeleteDestination")
+	web.Router("/api/v1/project/:projectid/destinations/test", h, "post:TestDestinationConnection")
+	web.Router("/api/v1/project/:projectid/destinations/versions", h, "get:GetDestinationVersions")
+	web.Router("/api/v1/project/:projectid/destinations/spec", h, "post:GetDestinationSpec")
 
 	// Job routes
-	web.Router("/api/v1/project/:projectid/jobs", &handlers.JobHandler{}, "get:GetAllJobs")
-	web.Router("/api/v1/project/:projectid/jobs", &handlers.JobHandler{}, "post:CreateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", &handlers.JobHandler{}, "put:UpdateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", &handlers.JobHandler{}, "delete:DeleteJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/sync", &handlers.JobHandler{}, "post:SyncJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/activate", &handlers.JobHandler{}, "post:ActivateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", &handlers.JobHandler{}, "get:GetJobTasks")
-	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", &handlers.JobHandler{}, "get:CancelJobRun")
-	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", &handlers.JobHandler{}, "post:GetTaskLogs")
-	web.Router("/api/v1/project/:projectid/jobs/check-unique", &handlers.JobHandler{}, "post:CheckUniqueJobName")
+	web.Router("/api/v1/project/:projectid/jobs", h, "get:ListJobs")
+	web.Router("/api/v1/project/:projectid/jobs", h, "post:CreateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", h, "put:UpdateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", h, "delete:DeleteJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/sync", h, "post:SyncJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/activate", h, "post:ActivateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", h, "get:GetJobTasks")
+	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", h, "get:CancelJobRun")
+	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", h, "post:GetTaskLogs")
+	web.Router("/api/v1/project/:projectid/jobs/check-unique", h, "post:CheckUniqueJobName")
+	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "post:ClearDestination")
+	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "get:GetClearDestinationStatus")
+	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", h, "post:GetStreamDifference")
+
+	// internal routes
+	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
+	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", h, "post:RecoverClearDestination")
 }

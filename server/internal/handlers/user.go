@@ -1,103 +1,90 @@
 package handlers
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
-	"github.com/beego/beego/v2/server/web"
-
-	"github.com/datazip/olake-frontend/server/internal/database"
-	"github.com/datazip/olake-frontend/server/internal/models"
-	"github.com/datazip/olake-frontend/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-type UserHandler struct {
-	web.Controller
-	userORM *database.UserORM
-}
-
-func (c *UserHandler) Prepare() {
-	c.userORM = database.NewUserORM()
-}
-
 // @router /users [post]
-func (c *UserHandler) CreateUser() {
+func (h *Handler) CreateUser() {
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	if err := c.userORM.Create(&req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to create user: %s", err))
+	if req.Username == "" || req.Email == "" || req.Password == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", errors.New("missing required user fields")), errors.New("missing required user fields"))
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, req)
+	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
+
+	if err := h.etl.CreateUser(h.Ctx.Request.Context(), &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, "user created successfully", req)
 }
 
 // @router /users [get]
-func (c *UserHandler) GetAllUsers() {
-	users, err := c.userORM.GetAll()
+func (h *Handler) GetAllUsers() {
+	logger.Info("Get all users initiated")
+
+	users, err := h.etl.GetAllUsers(h.Ctx.Request.Context())
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to retrieve users")
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
 		return
 	}
 
-	utils.SuccessResponse(&c.Controller, users)
+	utils.SuccessResponse(&h.Controller, "users listed successfully", users)
 }
 
 // @router /users/:id [put]
-func (c *UserHandler) UpdateUser() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
+func (h *Handler) UpdateUser() {
+	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid user ID")
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req models.User
-	if err := json.Unmarshal(c.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid request format")
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	// Get existing user
-	existingUser, err := c.userORM.GetByID(id)
+	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)
+
+	updatedUser, err := h.etl.UpdateUser(h.Ctx.Request.Context(), id, &req)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusNotFound, "User not found")
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
 		return
 	}
 
-	// Update fields
-	existingUser.Username = req.Username
-	existingUser.Email = req.Email
-	existingUser.UpdatedAt = time.Now()
-
-	if err := c.userORM.Update(existingUser); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to update user")
-		return
-	}
-
-	utils.SuccessResponse(&c.Controller, existingUser)
+	utils.SuccessResponse(&h.Controller, "user updated successfully", updatedUser)
 }
 
 // @router /users/:id [delete]
-func (c *UserHandler) DeleteUser() {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
+func (h *Handler) DeleteUser() {
+	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusBadRequest, "Invalid user ID")
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	if err := c.userORM.Delete(id); err != nil {
-		utils.ErrorResponse(&c.Controller, http.StatusInternalServerError, "Failed to delete user")
+	logger.Infof("Delete user initiated user_id[%d]", id)
+
+	if err := h.etl.DeleteUser(h.Ctx.Request.Context(), id); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)
 		return
 	}
 
-	c.Ctx.ResponseWriter.WriteHeader(http.StatusNoContent)
+	utils.SuccessResponse(&h.Controller, "user deleted successfully", nil)
 }

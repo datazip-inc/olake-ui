@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef } from "react"
 import { Input, Empty, Spin, Tooltip } from "antd"
+import clsx from "clsx"
 
 import { sourceService } from "../../../api"
 import { useAppStore } from "../../../store"
 import {
 	CombinedStreamsData,
+	IngestionMode,
 	SchemaConfigurationProps,
 	SelectedStream,
 	StreamData,
@@ -14,7 +16,11 @@ import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
 import StreamConfiguration from "./streams/StreamConfiguration"
-import { ArrowSquareOut, Info, PencilSimple } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	PencilSimpleIcon,
+} from "@phosphor-icons/react"
 import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
@@ -41,7 +47,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
-	const { setShowDestinationDatabaseModal } = useAppStore()
+	const {
+		isClearDestinationStatusLoading,
+		setShowDestinationDatabaseModal,
+		ingestionMode,
+		setIngestionMode,
+	} = useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -56,7 +67,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
-	const [loading, setLoading] = useState(!initialStreamsData)
+	const [isStreamsLoading, setIsStreamsLoading] = useState(!initialStreamsData)
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
 		useState(initialStreamsData)
@@ -75,6 +86,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 		return !stream?.disabled
 	}
+
+	const isLoading = isStreamsLoading || isClearDestinationStatusLoading
 
 	// Check if first stream has destination_database and compute values
 	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
@@ -119,14 +132,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		) {
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
-			setLoading(false)
+			setIsStreamsLoading(false)
 			onLoadingChange?.(false)
 			initialized.current = true
 
-			// Select first stream if no stream is currently active
-			if (!activeStreamData && initialStreamsData.streams.length > 0) {
-				setActiveStreamData(initialStreamsData.streams[0])
-			}
 			return
 		}
 
@@ -134,7 +143,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			if (initialized.current) return
 
 			onLoadingChange?.(true)
-			setLoading(true)
+			setIsStreamsLoading(true)
 			try {
 				const response = await sourceService.getSourceStreams(
 					sourceName,
@@ -145,7 +154,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					fromJobEditFlow ? jobId : -1,
 				)
 
-				const rawApiResponse = response.data as any
+				const rawApiResponse = response as any
 				const processedResponseData: CombinedStreamsData = {
 					streams: [],
 					selected_streams: {},
@@ -186,16 +195,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				setSelectedStreams(processedResponseData)
 				setInitialStreamsState(processedResponseData)
 
-				// Always select first stream if no stream is currently active
-				if (processedResponseData.streams.length > 0 && !activeStreamData) {
-					setActiveStreamData(processedResponseData.streams[0])
-				}
-
 				initialized.current = true
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
 			} finally {
-				setLoading(false)
+				setIsStreamsLoading(false)
 				onLoadingChange?.(false)
 			}
 		}
@@ -354,6 +358,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							normalization: false,
 							filter: "",
 							disabled: false,
+							append_mode: ingestionMode === IngestionMode.APPEND,
 						},
 					]
 					changed = true
@@ -426,6 +431,63 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				selected_streams: updatedSelectedStreams,
 			}
 
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handleIngestionModeChange = (
+		streamName: string,
+		namespace: string,
+		appendMode: boolean,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s =>
+					s.stream_name === streamName ? { ...s, append_mode: appendMode } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
+	const handleAllIngestionModeChange = (ingestionMode: IngestionMode) => {
+		const appendMode = ingestionMode === IngestionMode.APPEND
+		setIngestionMode(ingestionMode)
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			// Update all streams with the same append mode
+			const updateSelectedStreams = Object.fromEntries(
+				Object.entries(prev.selected_streams).map(([namespace, streams]) => [
+					namespace,
+					streams.map(stream => ({
+						...stream,
+						append_mode: appendMode,
+					})),
+				]),
+			)
+
+			const updated = {
+				...prev,
+				selected_streams: updateSelectedStreams,
+			}
 			setSelectedStreams(updated)
 			return updated
 		})
@@ -593,16 +655,17 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					{destinationDatabase && (
 						<div className="flex w-1/2 items-center justify-start gap-1">
 							<div
-								className={`group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 ${
+								className={clsx(
+									"group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200",
 									fromJobEditFlow
 										? "cursor-not-allowed bg-gray-50"
-										: "hover:border-blue-200 hover:shadow-md"
-								}`}
+										: "hover:border-blue-200 hover:shadow-md",
+								)}
 							>
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
-											<Info className="size-4 cursor-help text-primary" />
+											<InfoIcon className="size-4 cursor-help text-primary" />
 										</div>
 									</Tooltip>
 								</div>
@@ -619,17 +682,15 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									<div className="text-gray-600">{destinationDatabase}</div>
 
 									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
-										{!fromJobEditFlow && (
-											<Tooltip
-												title="Edit"
-												placement="top"
-											>
-												<PencilSimple
-													className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
-													onClick={() => setShowDestinationDatabaseModal(true)}
-												/>
-											</Tooltip>
-										)}
+										<Tooltip
+											title="Edit"
+											placement="top"
+										>
+											<PencilSimpleIcon
+												className="size-4 cursor-pointer text-gray-600 transition-colors hover:text-primary"
+												onClick={() => setShowDestinationDatabaseModal(true)}
+											/>
+										</Tooltip>
 										<Tooltip title="View Documentation">
 											<a
 												href="https://olake.io/docs/understanding/terminologies/olake#7-tablecolumn-normalization--destination-database-creation"
@@ -637,7 +698,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 												rel="noopener noreferrer"
 												className="flex items-center text-gray-600 transition-colors hover:text-primary"
 											>
-												<ArrowSquareOut className="size-4" />
+												<ArrowSquareOutIcon className="size-4" />
 											</a>
 										</Tooltip>
 									</div>
@@ -646,7 +707,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						</div>
 					)}
 					<div
-						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+						className={clsx(
+							"flex w-1/2 flex-wrap gap-2",
+							destinationDatabase ? "justify-end" : "justify-start",
+						)}
 					>
 						{STREAM_FILTERS.map(filter => (
 							<FilterButton
@@ -660,11 +724,14 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 			</div>
 
-			<div className="flex">
+			<div className={clsx("flex", !isLoading && "rounded-[4px] border")}>
 				<div
-					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
+					className={clsx(
+						activeStreamData ? "w-1/2" : "w-full",
+						"max-h-[calc(100vh-250px)] overflow-y-auto",
+					)}
 				>
-					{!loading && apiResponse?.streams ? (
+					{!isLoading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
 							selectedStreams={apiResponse.selected_streams}
@@ -683,8 +750,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								// Pass it to the parent component
 								setSelectedStreams(fullData as CombinedStreamsData)
 							}}
+							onIngestionModeChange={handleAllIngestionModeChange}
 						/>
-					) : loading ? (
+					) : isLoading ? (
 						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
 							<Spin size="large"></Spin>
 						</div>
@@ -694,7 +762,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
+					className={clsx(
+						"sticky top-0 flex w-1/2 flex-col rounded-[4px] bg-white p-4 transition-all duration-150 ease-linear",
+						!isLoading && "border-l",
+					)}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration
@@ -736,6 +807,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
 							destinationType={destinationType}
+							onIngestionModeChange={handleIngestionModeChange}
 						/>
 					) : null}
 				</div>

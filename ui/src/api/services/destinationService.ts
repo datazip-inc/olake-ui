@@ -1,7 +1,6 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
 import {
-	APIResponse,
 	Entity,
 	EntityBase,
 	EntityTestRequest,
@@ -11,8 +10,9 @@ import { getConnectorInLowerCase } from "../../utils/utils"
 
 // TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {
+	//destination connector typemap
 	const typeMap: Record<string, string> = {
-		"amazon s3": "s3",
+		"amazon s3": "parquet",
 		"apache iceberg": "iceberg",
 	}
 	return typeMap[type.toLowerCase()] || type.toLowerCase()
@@ -21,10 +21,10 @@ const normalizeDestinationType = (type: string): string => {
 export const destinationService = {
 	getDestinations: async () => {
 		try {
-			const response = await api.get<APIResponse<Entity[]>>(
+			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID),
 			)
-			const destinations: Entity[] = response.data.data.map(item => {
+			const destinations: Entity[] = response.data.map(item => {
 				const config = JSON.parse(item.config)
 				return {
 					...item,
@@ -52,7 +52,7 @@ export const destinationService = {
 
 	updateDestination: async (id: string, destination: EntityBase) => {
 		try {
-			const response = await api.put<APIResponse<EntityBase>>(
+			const response = await api.put<EntityBase>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
 				{
 					name: destination.name,
@@ -63,6 +63,7 @@ export const destinationService = {
 							? destination.config
 							: JSON.stringify(destination.config),
 				},
+				{ showNotification: true },
 			)
 			return response.data
 		} catch (error) {
@@ -74,6 +75,7 @@ export const destinationService = {
 	deleteDestination: async (id: number) => {
 		await api.delete(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
+			{ showNotification: true },
 		)
 		return
 	},
@@ -84,7 +86,7 @@ export const destinationService = {
 		source_version: string = "",
 	) => {
 		try {
-			const response = await api.post<APIResponse<EntityTestResponse>>(
+			const response = await api.post<EntityTestResponse>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: getConnectorInLowerCase(destination.type),
@@ -93,12 +95,13 @@ export const destinationService = {
 					source_type: source_type,
 					source_version: source_version,
 				},
-				{ timeout: 0 },
+				//timeout is 0 as test connection takes more time as it needs to connect to the destination
+				{ timeout: 0, disableErrorNotification: true },
 			)
 			return {
-				success: response.data.success,
-				message: response.data.message,
-				data: response.data.data,
+				success: true,
+				message: "success",
+				data: response.data,
 			}
 		} catch (error) {
 			console.error("Error testing destination connection:", error)
@@ -111,7 +114,7 @@ export const destinationService = {
 	},
 
 	getDestinationVersions: async (type: string) => {
-		const response = await api.get<APIResponse<{ version: string[] }>>(
+		const response = await api.get<{ version: string[] }>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
 			{
 				timeout: 0,
@@ -128,7 +131,7 @@ export const destinationService = {
 		signal?: AbortSignal,
 	) => {
 		const normalizedType = normalizeDestinationType(type)
-		const response = await api.post<APIResponse<any>>(
+		const response = await api.post<any>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
 				type: normalizedType,
@@ -136,7 +139,8 @@ export const destinationService = {
 				source_type: source_type,
 				source_version: source_version,
 			},
-			{ timeout: 300000, signal },
+			//timeout is 300000 as spec takes more time as it needs to fetch the spec from the destination
+			{ timeout: 300000, signal, disableErrorNotification: true },
 		)
 		return response.data
 	},

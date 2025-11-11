@@ -1,11 +1,15 @@
 import { useState, useRef } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
-import { ArrowLeft, ArrowRight, DownloadSimple } from "@phosphor-icons/react"
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	DownloadSimpleIcon,
+} from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
-import { destinationService, sourceService, jobService } from "../../../api"
+import { destinationService, jobService, sourceService } from "../../../api"
 
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
@@ -18,6 +22,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 
 // Internal imports from components
@@ -42,6 +47,7 @@ const JobCreation: React.FC = () => {
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
+	// state to toggle documentation panel
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [sourceName, setSourceName] = useState(initialData.sourceName || "")
 	const [sourceConnector, setSourceConnector] = useState(
@@ -56,6 +62,9 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
+	const [existingSourceId, setExistingSourceId] = useState<number | null>(null)
+
+	//state to hold catalog value to open documentation panel
 	const [destinationCatalogType, setDestinationCatalogType] = useState<
 		string | null
 	>(null)
@@ -69,6 +78,10 @@ const JobCreation: React.FC = () => {
 	const [destinationVersion, setDestinationVersion] = useState(
 		initialData.destinationVersion || "",
 	)
+	const [existingDestinationId, setExistingDestinationId] = useState<
+		number | null
+	>(null)
+
 	const [selectedStreams, setSelectedStreams] = useState<any>(
 		initialData.selectedStreams || [],
 	)
@@ -76,9 +89,12 @@ const JobCreation: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState(
 		initialData.cronExpression || "* * * * *",
 	)
+
+	//once the job name is filled we will set this to true so the job name will be disabled
 	const [jobNameFilled, setJobNameFilled] = useState(
 		initialData.isJobNameFilled || false,
 	)
+	//when streams are loading we will disable back button
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 	const [isFromSources, setIsFromSources] = useState(true)
 
@@ -139,7 +155,6 @@ const JobCreation: React.FC = () => {
 			const response = await jobService.checkJobNameUnique(jobName)
 			return response.unique
 		} catch {
-			message.error("Failed to check job name uniqueness. Please try again.")
 			return null
 		}
 	}
@@ -162,18 +177,25 @@ const JobCreation: React.FC = () => {
 
 			setTimeout(() => {
 				setShowTestingModal(false)
-				if (testResult.data?.status === "SUCCEEDED") {
+				if (
+					testResult.data?.connection_result.status ===
+					TEST_CONNECTION_STATUS.SUCCEEDED
+				) {
 					setShowSuccessModal(true)
 					setTimeout(() => {
 						setShowSuccessModal(false)
 						setCurrentStep(nextStep)
 					}, 1000)
 				} else {
+					const testConnectionError = {
+						message: testResult.data?.connection_result.message || "",
+						logs: testResult.data?.logs || [],
+					}
 					setIsFromSources(isSource)
 					if (isSource) {
-						setSourceTestConnectionError(testResult.data?.message || "")
+						setSourceTestConnectionError(testConnectionError)
 					} else {
-						setDestinationTestConnectionError(testResult.data?.message || "")
+						setDestinationTestConnectionError(testConnectionError)
 					}
 					setShowFailureModal(true)
 				}
@@ -193,12 +215,14 @@ const JobCreation: React.FC = () => {
 		const newJobData: JobBase = {
 			name: jobName,
 			source: {
+				...(existingSourceId && { id: existingSourceId }),
 				name: sourceName,
 				type: getConnectorInLowerCase(sourceConnector),
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
 			destination: {
+				...(existingDestinationId && { id: existingDestinationId }),
 				name: destinationName,
 				type: getConnectorInLowerCase(destinationConnector),
 				version: destinationVersion,
@@ -223,7 +247,6 @@ const JobCreation: React.FC = () => {
 			setShowEntitySavedModal(true)
 		} catch (error) {
 			console.error("Error adding job:", error)
-			message.error("Failed to create job")
 		}
 	}
 
@@ -318,6 +341,7 @@ const JobCreation: React.FC = () => {
 		if (currentStep === JOB_CREATION_STEPS.DESTINATION) {
 			setCurrentStep(JOB_CREATION_STEPS.SOURCE)
 		} else if (currentStep === JOB_CREATION_STEPS.STREAMS) {
+			// when we go back from streams we need to show configured streams will be lost modal
 			setShowResetStreamsModal(true)
 		} else if (currentStep === JOB_CREATION_STEPS.SOURCE) {
 			setCurrentStep(JOB_CREATION_STEPS.CONFIG)
@@ -361,12 +385,10 @@ const JobCreation: React.FC = () => {
 				job.id === savedJobId ? jobData : job,
 			)
 			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
-			message.success("Job saved successfully!")
 		} else {
 			// Create new saved job
 			savedJobs.push(jobData)
 			localStorage.setItem("savedJobs", JSON.stringify(savedJobs))
-			message.success("Job saved successfully!")
 		}
 
 		navigate("/jobs")
@@ -382,7 +404,7 @@ const JobCreation: React.FC = () => {
 							to="/jobs"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="mr-1 size-5" />
+							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 
 						<div className="text-2xl font-bold"> Create Job</div>
@@ -404,6 +426,7 @@ const JobCreation: React.FC = () => {
 								stepTitle="Set up your source"
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
+								onExistingSourceIdChange={setExistingSourceId}
 								initialConnector={sourceConnector}
 								onFormDataChange={data => {
 									setSourceFormData(data)
@@ -428,6 +451,7 @@ const JobCreation: React.FC = () => {
 								fromJobFlow={true}
 								stepNumber={JOB_STEP_NUMBERS.DESTINATION}
 								stepTitle="Set up your destination"
+								onExistingDestinationIdChange={setExistingDestinationId}
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}
 								initialConnector={getConnectorInLowerCase(destinationConnector)}
@@ -509,7 +533,7 @@ const JobCreation: React.FC = () => {
 						onClick={handleSaveJob}
 						className="flex items-center justify-center gap-2 rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
 					>
-						<DownloadSimple className="size-4" />
+						<DownloadSimpleIcon className="size-4" />
 						Save Job
 					</button>
 				</div>
@@ -532,7 +556,7 @@ const JobCreation: React.FC = () => {
 						onClick={handleNext}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRight className="size-4 text-white" />
+						<ArrowRightIcon className="size-4 text-white" />
 					</button>
 					<TestConnectionModal />
 					<TestConnectionSuccessModal />

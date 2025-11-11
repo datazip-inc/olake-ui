@@ -1,24 +1,15 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
-import {
-	Input,
-	Button,
-	Select,
-	Switch,
-	message,
-	Table,
-	Spin,
-	Tooltip,
-} from "antd"
+import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
 import type { ColumnsType } from "antd/es/table"
 import {
-	GenderNeuter,
-	Notebook,
-	ArrowLeft,
-	PencilSimple,
-	Info,
-	ArrowSquareOut,
+	GenderNeuterIcon,
+	NotebookIcon,
+	ArrowLeftIcon,
+	PencilSimpleIcon,
+	InfoIcon,
+	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
@@ -33,6 +24,7 @@ import {
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
+	trimFormDataStrings,
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -48,11 +40,14 @@ import {
 	DISPLAYED_JOBS_COUNT,
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
+	TEST_CONNECTION_STATUS,
 } from "../../../utils/constants"
 import ObjectFieldTemplate from "../../common/components/Form/ObjectFieldTemplate"
 import CustomFieldTemplate from "../../common/components/Form/CustomFieldTemplate"
 import ArrayFieldTemplate from "../../common/components/Form/ArrayFieldTemplate"
 import { widgets } from "../../common/components/Form/widgets"
+import { AxiosError } from "axios"
+import SpecFailedModal from "../../common/Modals/SpecFailedModal"
 
 const SourceEdit: React.FC<SourceEditProps> = ({
 	fromJobFlow = false,
@@ -83,6 +78,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
+	const [specError, setSpecError] = useState<string | null>(null)
 
 	const {
 		sources,
@@ -93,6 +89,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		setShowSuccessModal,
 		setShowFailureModal,
 		setSourceTestConnectionError,
+		setShowSpecFailedModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -128,6 +125,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				postgres: "Postgres",
 				mysql: "MySQL",
 				oracle: "Oracle",
+				kafka: "Kafka",
 			}
 			let normalizedType =
 				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
@@ -155,7 +153,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		}
 	}, [initialData])
 
-	useEffect(() => {
+	const handleFetchSpec = () => {
 		if (!selectedVersion || !connector) {
 			setSchema(null)
 			return
@@ -175,9 +173,19 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				setSchema({})
 				setUiSchema({})
 				console.error("Error fetching source spec:", error)
+				if (error instanceof AxiosError) {
+					setSpecError(error.response?.data.message)
+				} else {
+					setSpecError("Failed to fetch spec, Please try again.")
+				}
+				setShowSpecFailedModal(true)
 			},
 			() => setLoading(false),
 		)
+	}
+
+	useEffect(() => {
+		return handleFetchSpec()
 	}, [connector, selectedVersion])
 
 	const resetVersionState = () => {
@@ -197,8 +205,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				const response = await sourceService.getSourceVersions(
 					getConnectorInLowerCase(connector),
 				)
-				if (response.success && response.data?.version) {
-					const versions = response.data.version.map((version: string) => ({
+				if (response?.version) {
+					const versions = response.version.map((version: string) => ({
 						label: version,
 						value: version,
 					}))
@@ -284,7 +292,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 		setShowTestingModal(true)
 		const testResult = await sourceService.testSourceConnection(getSourceData())
-		if (testResult.data?.status === "SUCCEEDED") {
+		if (
+			testResult.data?.connection_result.status ===
+			TEST_CONNECTION_STATUS.SUCCEEDED
+		) {
 			setTimeout(() => {
 				setShowTestingModal(false)
 			}, 1000)
@@ -298,8 +309,12 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				saveSource()
 			}, 2200)
 		} else {
+			const testConnectionError = {
+				message: testResult.data?.connection_result.message || "",
+				logs: testResult.data?.logs || [],
+			}
 			setShowTestingModal(false)
-			setSourceTestConnectionError(testResult.data?.message || "")
+			setSourceTestConnectionError(testConnectionError)
 			setShowFailureModal(true)
 		}
 	}
@@ -308,11 +323,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		if (sourceId) {
 			updateSource(sourceId, getSourceData())
 				.then(() => {
-					message.success("Source updated successfully")
 					navigate("/sources")
 				})
 				.catch(error => {
-					message.error("Failed to update source")
 					console.error(error)
 				})
 		}
@@ -338,14 +351,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
 			await jobService.activateJob(jobId, !checked)
-			message.success(
-				`Successfully ${checked ? "paused" : "resumed"} job ${jobId}`,
-			)
 			// Refetch sources to update the UI with the latest source details
 			await fetchSources()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
-			message.error(`Failed to ${checked ? "pause" : "resume"} job ${jobId}`)
 		}
 	}
 
@@ -452,7 +461,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 							to="/sources"
 							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
 						>
-							<ArrowLeft className="size-5" />
+							<ArrowLeftIcon className="size-5" />
 						</Link>
 						<div className="text-lg font-bold">{sourceName}</div>
 					</div>
@@ -476,7 +485,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											}
 											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
-											<PencilSimple className="size-4" />
+											<PencilSimpleIcon className="size-4" />
 											Edit Source
 										</Link>
 									</div>
@@ -515,7 +524,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 								<div className="bg-white">
 									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 										<div className="mb-4 flex items-center gap-1 text-lg font-medium">
-											<Notebook className="size-5" />
+											<NotebookIcon className="size-5" />
 											Capture information
 										</div>
 
@@ -526,6 +535,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 												</label>
 												<div className="flex items-center">
 													<Select
+														data-testid="source-connector-select"
 														value={connector}
 														onChange={value => {
 															setConnector(value)
@@ -566,7 +576,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													OLake Version:
 													<span className="text-red-500">*</span>
 													<Tooltip title="Choose the OLake version for the source">
-														<Info
+														<InfoIcon
 															size={16}
 															className="cursor-help text-slate-900"
 														/>
@@ -577,7 +587,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														rel="noopener noreferrer"
 														className="flex items-center text-primary hover:text-primary/80"
 													>
-														<ArrowSquareOut className="size-4" />
+														<ArrowSquareOutIcon className="size-4" />
 													</a>
 												</label>
 												{loadingVersions ? (
@@ -586,6 +596,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													</div>
 												) : availableVersions.length > 0 ? (
 													<Select
+														data-testid="source-version-select"
 														value={selectedVersion}
 														onChange={value => {
 															setSelectedVersion(value)
@@ -599,7 +610,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													/>
 												) : (
 													<div className="flex items-center gap-1 text-sm text-red-500">
-														<Info />
+														<InfoIcon />
 														No versions available
 													</div>
 												)}
@@ -609,7 +620,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 
 									<div className="mb-6 rounded-xl border border-[#D9D9D9] p-6">
 										<div className="mb-2 flex items-center gap-1">
-											<GenderNeuter className="size-6" />
+											<GenderNeuterIcon className="size-6" />
 											<div className="text-lg font-medium">Endpoint config</div>
 										</div>
 										{loading ? (
@@ -631,7 +642,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													}}
 													widgets={widgets}
 													formData={formData}
-													onChange={e => setFormData(e.formData)}
+													onChange={e => {
+														const trimmedData = trimFormDataStrings(e.formData)
+														setFormData(trimmedData)
+													}}
 													transformErrors={transformErrors}
 													onSubmit={() => handleSave()}
 													uiSchema={uiSchema}
@@ -716,6 +730,13 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			<TestConnectionFailureModal fromSources={true} />
 			<DeleteModal fromSource={true} />
 			<EntityEditModal entityType="source" />
+			{specError && (
+				<SpecFailedModal
+					fromSource
+					error={specError}
+					onTryAgain={handleFetchSpec}
+				/>
+			)}
 		</div>
 	)
 }

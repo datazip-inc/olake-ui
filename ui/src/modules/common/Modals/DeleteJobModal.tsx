@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
-import { Button, message, Modal } from "antd"
-import { Warning } from "@phosphor-icons/react"
+import { Button, Modal } from "antd"
+import { WarningIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 
@@ -25,7 +25,7 @@ const DeleteJobModal = ({
 			centered
 		>
 			<div className="flex w-full flex-col items-center justify-center gap-8">
-				<Warning
+				<WarningIcon
 					className="size-16 text-danger"
 					weight="fill"
 				/>
@@ -41,10 +41,7 @@ const DeleteJobModal = ({
 						onClick={() => {
 							setShowDeleteJobModal(false)
 							if (selectedJobId) {
-								deleteJob(selectedJobId).catch(error => {
-									message.error("Failed to delete job")
-									console.error(error)
-								})
+								deleteJob(selectedJobId)
 							}
 							if (fromJobSettings) {
 								setTimeout(() => {

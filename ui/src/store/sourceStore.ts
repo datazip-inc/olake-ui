@@ -1,15 +1,15 @@
 import { StateCreator } from "zustand"
-import type { APIResponse, Entity, EntityBase } from "../types"
+import type { Entity, EntityBase, TestConnectionError } from "../types"
 import { sourceService } from "../api"
 export interface SourceSlice {
 	sources: Entity[]
 	sourcesError: string | null
 	isLoadingSources: boolean
-	sourceTestConnectionError: string | null
-	setSourceTestConnectionError: (error: string | null) => void
+	sourceTestConnectionError: TestConnectionError | null
+	setSourceTestConnectionError: (error: TestConnectionError | null) => void
 	fetchSources: () => Promise<Entity[]>
-	addSource: (source: EntityBase) => Promise<APIResponse<EntityBase>>
-	updateSource: (id: string, source: EntityBase) => Promise<APIResponse<Entity>>
+	addSource: (source: EntityBase) => Promise<EntityBase>
+	updateSource: (id: string, source: EntityBase) => Promise<Entity>
 	deleteSource: (id: string) => Promise<void>
 }
 
@@ -41,7 +41,7 @@ export const createSourceSlice: StateCreator<SourceSlice> = set => ({
 	addSource: async sourceData => {
 		try {
 			const newSource = await sourceService.createSource(sourceData)
-			set(state => ({ sources: [...state.sources, newSource.data as Entity] }))
+			set(state => ({ sources: [...state.sources, newSource as Entity] }))
 			return newSource
 		} catch (error) {
 			set({
@@ -55,7 +55,7 @@ export const createSourceSlice: StateCreator<SourceSlice> = set => ({
 	updateSource: async (id, sourceData) => {
 		try {
 			const updatedSource = await sourceService.updateSource(id, sourceData)
-			const updatedSourceData = updatedSource.data as Entity
+			const updatedSourceData = updatedSource as Entity
 
 			set(state => ({
 				sources: state.sources.map(source =>

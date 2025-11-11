@@ -25,6 +25,7 @@ const RootHandler = () => {
 	}
 }
 
+//lazy load components
 const lazyComponents = {
 	Login: lazy(() => import("../modules/auth/pages/Login")),
 	Jobs: lazy(() => import("../modules/jobs/pages/Jobs")),
@@ -68,6 +69,7 @@ const publicRoutes = [
 	},
 ]
 
+//these are the protected routes which are only accessible after login
 const protectedRoutes = [
 	{
 		path: "/",

@@ -15,8 +15,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
-	"github.com/beego/beego/v2/core/logs"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"golang.org/x/mod/semver"
 )
 
@@ -33,7 +34,7 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
-var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb"}
+var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb", "olakego/source-kafka"}
 
 // ignoredWorkerEnv is a map of environment variables that are ignored from the worker container.
 var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) lookup time for key existence.
@@ -67,9 +68,9 @@ func GetWorkerEnvVars() map[string]string {
 // GetDriverImageTags returns image tags from ECR or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
 	// TODO: make constants file and validate all env vars in start of server
-	repositoryBase, err := web.AppConfig.String("CONTAINER_REGISTRY_BASE")
+	repositoryBase, err := web.AppConfig.String(constants.ConfContainerRegistryBase)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %v", err)
+		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %s", err)
 	}
 	var tags []string
 	images := []string{imageName}
@@ -87,7 +88,7 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
-			logs.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
+			logger.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to fetch cached image tags for %s: %s", imageName, err)

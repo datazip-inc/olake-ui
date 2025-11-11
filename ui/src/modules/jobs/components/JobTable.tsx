@@ -3,25 +3,28 @@ import { useNavigate } from "react-router-dom"
 import { formatDistanceToNow } from "date-fns"
 import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
-	ArrowsClockwise,
-	ClockCounterClockwise,
-	DotsThree,
-	Gear,
-	Pause,
-	PencilSimple,
-	Play,
-	Trash,
+	ArrowsClockwiseIcon,
+	ClockCounterClockwiseIcon,
+	DotsThreeIcon,
+	GearIcon,
+	PauseIcon,
+	PencilSimpleIcon,
+	PlayIcon,
+	TrashIcon,
 	XIcon,
 } from "@phosphor-icons/react"
 
-import { EntityBase, Job, JobTableProps } from "../../../types"
+import { EntityBase, Job, JobTableProps, JobType } from "../../../types"
 import {
 	getConnectorImage,
+	getJobTypeClass,
+	getJobTypeLabel,
 	getStatusClass,
 	getStatusLabel,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { PAGE_SIZE } from "../../../utils/constants"
+import { useAppStore } from "../../../store"
 
 const formatLastSyncTime = (text?: string) => {
 	if (!text) return <div className="pl-4">-</div>
@@ -47,12 +50,14 @@ const JobTable: React.FC<JobTableProps> = ({
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
 	const navigate = useNavigate()
+	const { setSelectedJobId } = useAppStore()
 
 	const handleViewHistory = (jobId: string) => {
 		navigate(`/jobs/${jobId}/history`)
 	}
 
 	const handleViewSettings = (jobId: string) => {
+		setSelectedJobId(jobId)
 		navigate(`/jobs/${jobId}/settings`)
 	}
 
@@ -67,13 +72,13 @@ const JobTable: React.FC<JobTableProps> = ({
 						? [
 								{
 									key: "edit",
-									icon: <PencilSimple className="size-4" />,
+									icon: <PencilSimpleIcon className="size-4" />,
 									label: "Edit",
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
 									key: "delete",
-									icon: <Trash className="size-4" />,
+									icon: <TrashIcon className="size-4" />,
 									label: "Delete",
 									danger: true,
 									onClick: () => onDelete(record.id.toString()),
@@ -82,48 +87,59 @@ const JobTable: React.FC<JobTableProps> = ({
 						: [
 								{
 									key: "sync",
-									icon: <ArrowsClockwise className="size-4" />,
+									icon: <ArrowsClockwiseIcon className="size-4" />,
 									label: "Sync now",
+									disabled:
+										record.last_run_state?.toLowerCase() === "running" ||
+										!record.activate,
 									onClick: () => onSync(record.id.toString()),
 								},
 								{
 									key: "edit",
-									icon: <PencilSimple className="size-4" />,
+									icon: <PencilSimpleIcon className="size-4" />,
 									label: "Edit Streams",
+									disabled: !record.activate,
 									onClick: () => onEdit(record.id.toString()),
 								},
 								{
 									key: "pause",
 									icon: record.activate ? (
-										<Pause className="size-4" />
+										<PauseIcon className="size-4" />
 									) : (
-										<Play className="size-4" />
+										<PlayIcon className="size-4" />
 									),
 									label: record.activate ? "Pause job" : "Resume job",
+									disabled: record.last_run_state?.toLowerCase() === "running",
 									onClick: () => onPause(record.id.toString(), record.activate),
 								},
 								{
 									key: "cancel",
 									icon: <XIcon className="size-4" />,
 									label: "Cancel Run",
-									disabled: record.last_run_state?.toLowerCase() !== "running",
+									disabled:
+										!record.activate ||
+										record.last_run_state?.toLowerCase() !== "running" ||
+										(record.last_run_type === JobType.ClearDestination &&
+											record.last_run_state?.toLowerCase() === "running"),
 									onClick: () => onCancelJob(record.id.toString()),
 								},
 								{
 									key: "history",
-									icon: <ClockCounterClockwise className="size-4" />,
+									icon: <ClockCounterClockwiseIcon className="size-4" />,
 									label: "Job Logs & History",
+									disabled: !record.activate,
 									onClick: () => handleViewHistory(record.id.toString()),
 								},
 								{
 									key: "settings",
-									icon: <Gear className="size-4" />,
+									icon: <GearIcon className="size-4" />,
 									label: "Job settings",
+									disabled: !record.activate,
 									onClick: () => handleViewSettings(record.id.toString()),
 								},
 								{
 									key: "delete",
-									icon: <Trash className="size-4" />,
+									icon: <TrashIcon className="size-4" />,
 									label: "Delete",
 									danger: true,
 									onClick: () => onDelete(record.id.toString()),
@@ -138,7 +154,8 @@ const JobTable: React.FC<JobTableProps> = ({
 					>
 						<Button
 							type="text"
-							icon={<DotsThree className="size-5" />}
+							data-testid={`job-${record.name}`}
+							icon={<DotsThreeIcon className="size-5" />}
 						/>
 					</Dropdown>
 				)
@@ -189,13 +206,13 @@ const JobTable: React.FC<JobTableProps> = ({
 			),
 		},
 		{
-			title: "Last sync",
+			title: "Last Run",
 			dataIndex: "last_run_time",
 			key: "last_run_time",
 			render: formatLastSyncTime,
 		},
 		{
-			title: "Last sync status",
+			title: "Last Run status",
 			dataIndex: "last_run_state",
 			key: "last_run_state",
 			render: (status: string) => {
@@ -206,6 +223,21 @@ const JobTable: React.FC<JobTableProps> = ({
 					>
 						{getStatusIcon(status.toLowerCase())}
 						<span>{getStatusLabel(status.toLowerCase())}</span>
+					</div>
+				)
+			},
+		},
+		{
+			title: "Job Type",
+			dataIndex: "last_run_type",
+			key: "last_run_type",
+			render: (lastRunType: JobType) => {
+				if (!lastRunType) return <div className="pl-4">-</div>
+				return (
+					<div
+						className={`flex w-fit items-center justify-center gap-1 rounded-md px-4 py-1 ${getJobTypeClass(lastRunType)}`}
+					>
+						<span>{getJobTypeLabel(lastRunType)}</span>
 					</div>
 				)
 			},
@@ -236,15 +268,17 @@ const JobTable: React.FC<JobTableProps> = ({
 					/>
 				</div>
 
-				<Table
-					dataSource={currentPageData}
-					columns={getTableColumns()}
-					rowKey="id"
-					loading={loading}
-					pagination={false}
-					className="overflow-hidden rounded-xl"
-					rowClassName="no-hover"
-				/>
+				<div className="overflow-x-auto">
+					<Table
+						dataSource={currentPageData}
+						columns={getTableColumns()}
+						rowKey="id"
+						loading={loading}
+						pagination={false}
+						className="min-w-[1200px]"
+						rowClassName="no-hover"
+					/>
+				</div>
 			</div>
 
 			<div className="z-100 fixed bottom-[60px] right-[40px] flex justify-end bg-white p-2">
