@@ -313,7 +313,7 @@ const JobEdit: React.FC = () => {
 		return null
 	}
 
-	const getjobUpdatePayLoad = () => {
+	const getjobUpdatePayLoad = (diff: StreamsDataStructure | null) => {
 		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
@@ -342,7 +342,7 @@ const JobEdit: React.FC = () => {
 			}),
 			frequency: cronExpression,
 			activate: job?.activate,
-			difference_streams: JSON.stringify(streamDifference),
+			...(diff && { difference_streams: JSON.stringify(diff) }),
 		}
 		return jobUpdateRequestPayload
 	}
@@ -383,11 +383,14 @@ const JobEdit: React.FC = () => {
 			setShowStreamDifferenceModal(true)
 			return
 		}
-		handleJobSubmit()
+
+		// No difference - clear state and submit with null stream difference
+		setStreamDifference(null)
+		handleJobSubmit(null)
 	}
 
 	// Handle job submission
-	const handleJobSubmit = async () => {
+	const handleJobSubmit = async (diff: StreamsDataStructure | null) => {
 		if (!sourceData || !destinationData || !jobId) {
 			message.error("Source and destination data are required")
 			return
@@ -402,13 +405,12 @@ const JobEdit: React.FC = () => {
 		setIsSubmitting(true)
 		try {
 			// Create the job update payload
-			const jobUpdatePayload = getjobUpdatePayLoad()
+			const jobUpdatePayload = getjobUpdatePayLoad(diff)
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
 
 			// wait for 1 second before refreshing jobs to avoid fetching old state
 			await new Promise(resolve => setTimeout(resolve, 1000))
-			await fetchJobs()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)
@@ -601,7 +603,7 @@ const JobEdit: React.FC = () => {
 					{currentStep === JOB_CREATION_STEPS.CONFIG && jobId && (
 						<button
 							className="flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-1 font-light text-primary hover:bg-primary-50"
-							onClick={handleJobSubmit}
+							onClick={() => handleJobSubmit(null)}
 							disabled={isSubmitting}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
@@ -630,7 +632,7 @@ const JobEdit: React.FC = () => {
 			{streamDifference && (
 				<StreamDifferenceModal
 					streamDifference={streamDifference}
-					onConfirm={handleJobSubmit}
+					onConfirm={() => handleJobSubmit(streamDifference)}
 				/>
 			)}
 			<StreamEditDisabledModal from="jobEdit" />

@@ -136,10 +136,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			onLoadingChange?.(false)
 			initialized.current = true
 
-			// Select first stream if no stream is currently active
-			if (!activeStreamData && initialStreamsData.streams.length > 0) {
-				setActiveStreamData(initialStreamsData.streams[0])
-			}
 			return
 		}
 
@@ -198,11 +194,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				setApiResponse(processedResponseData)
 				setSelectedStreams(processedResponseData)
 				setInitialStreamsState(processedResponseData)
-
-				// Always select first stream if no stream is currently active
-				if (processedResponseData.streams.length > 0 && !activeStreamData) {
-					setActiveStreamData(processedResponseData.streams[0])
-				}
 
 				initialized.current = true
 			} catch (error) {

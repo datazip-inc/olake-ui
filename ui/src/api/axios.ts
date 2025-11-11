@@ -81,11 +81,11 @@ api.interceptors.response.use(
 		}
 
 		// Always show error toasts
-		if (payload.message) {
-			notificationService.error(
-				payload.message || "An error occurred! Please try again.",
-			)
-		}
+
+		notificationService.error(
+			payload?.message || "Something went wrong! Please try again.",
+		)
+
 
 		// Handle specific HTTP status codes
 		if (error.response) {

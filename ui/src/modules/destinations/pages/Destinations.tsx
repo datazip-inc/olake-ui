@@ -25,7 +25,7 @@ const Destinations: React.FC = () => {
 
 	useEffect(() => {
 		fetchDestinations()
-	}, [fetchDestinations])
+	}, [])
 
 	const handleCreateDestination = () => {
 		analyticsService.trackEvent("create_destination_clicked")
