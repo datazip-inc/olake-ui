@@ -125,6 +125,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				postgres: "Postgres",
 				mysql: "MySQL",
 				oracle: "Oracle",
+				kafka: "Kafka",
 			}
 			let normalizedType =
 				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
