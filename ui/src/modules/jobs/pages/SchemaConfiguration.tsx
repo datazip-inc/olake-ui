@@ -26,6 +26,7 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+import clsx from "clsx"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -46,8 +47,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	onLoadingChange,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
-	const { setShowDestinationDatabaseModal, ingestionMode, setIngestionMode } =
-		useAppStore()
+	const {
+		isClearDestinationStatusLoading,
+		setShowDestinationDatabaseModal,
+		ingestionMode,
+		setIngestionMode,
+	} = useAppStore()
 	const [searchText, setSearchText] = useState("")
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
@@ -62,7 +67,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
-	const [loading, setLoading] = useState(!initialStreamsData)
+	const [isStreamsLoading, setIsStreamsLoading] = useState(!initialStreamsData)
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
 		useState(initialStreamsData)
@@ -81,6 +86,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 		return !stream?.disabled
 	}
+
+	const isLoading = isStreamsLoading || isClearDestinationStatusLoading
 
 	// Check if first stream has destination_database and compute values
 	const { destinationDatabase, destinationDatabaseForModal } = useMemo(() => {
@@ -125,7 +132,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		) {
 			setApiResponse(initialStreamsData)
 			setSelectedStreams(initialStreamsData)
-			setLoading(false)
+			setIsStreamsLoading(false)
 			onLoadingChange?.(false)
 			initialized.current = true
 
@@ -140,7 +147,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			if (initialized.current) return
 
 			onLoadingChange?.(true)
-			setLoading(true)
+			setIsStreamsLoading(true)
 			try {
 				const response = await sourceService.getSourceStreams(
 					sourceName,
@@ -201,7 +208,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			} catch (error) {
 				console.error("Error fetching source streams:", error)
 			} finally {
-				setLoading(false)
+				setIsStreamsLoading(false)
 				onLoadingChange?.(false)
 			}
 		}
@@ -656,13 +663,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				<div className="flex w-4/5 justify-between gap-2">
 					{destinationDatabase && (
 						<div className="flex w-1/2 items-center justify-start gap-1">
-							<div
-								className={`group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 ${
-									fromJobEditFlow
-										? "cursor-not-allowed bg-gray-50"
-										: "hover:border-blue-200 hover:shadow-md"
-								}`}
-							>
+							<div className="group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200 hover:border-blue-200 hover:shadow-md">
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
@@ -708,7 +709,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						</div>
 					)}
 					<div
-						className={`flex w-1/2 flex-wrap ${destinationDatabase ? "justify-end" : "justify-start"} gap-2`}
+						className={clsx(
+							"flex w-1/2 flex-wrap gap-2",
+							destinationDatabase ? "justify-end" : "justify-start"
+						)}
 					>
 						{STREAM_FILTERS.map(filter => (
 							<FilterButton
@@ -724,9 +728,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			<div className="flex">
 				<div
-					className={`${activeStreamData ? "w-1/2" : "w-full"} max-h-[calc(100vh-250px)] overflow-y-auto`}
+					className={clsx(
+						"max-h-[calc(100vh-250px)] overflow-y-auto",
+						activeStreamData ? "w-1/2" : "w-full"
+					)}
 				>
-					{!loading && apiResponse?.streams ? (
+					{!isLoading && apiResponse?.streams ? (
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
 							selectedStreams={apiResponse.selected_streams}
@@ -747,7 +754,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							}}
 							onIngestionModeChange={handleAllIngestionModeChange}
 						/>
-					) : loading ? (
+					) : isLoading ? (
 						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
 							<Spin size="large"></Spin>
 						</div>
@@ -757,7 +764,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 
 				<div
-					className={`sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl ${!loading ? "border" : ""} bg-white p-4 transition-all duration-150 ease-linear`}
+					className={clsx(
+						"sticky top-0 mx-4 flex w-1/2 flex-col rounded-xl bg-white p-4 transition-all duration-150 ease-linear",
+						{ border: !isLoading }
+					)}
 				>
 					{activeStreamData ? (
 						<StreamConfiguration

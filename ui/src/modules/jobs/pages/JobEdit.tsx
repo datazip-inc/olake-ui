@@ -14,7 +14,6 @@ import {
 	SourceData,
 	DestinationData,
 	StreamsDataStructure,
-	JobType,
 } from "../../../types"
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
@@ -131,12 +130,13 @@ const JobEdit: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const {
 		jobs,
+		selectedJobId,
 		fetchJobs,
 		fetchSources,
 		fetchDestinations,
+		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
 		setShowStreamDifferenceModal,
-		setShowStreamEditDisabledModal,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -172,15 +172,9 @@ const JobEdit: React.FC = () => {
 		fetchDestinations()
 	}, [])
 
-	// Disable stream editing if clear destination is running
 	useEffect(() => {
-		if (
-			job?.last_run_type === JobType.ClearDestination &&
-			job?.last_run_state.toLowerCase() === "running"
-		) {
-			setShowStreamEditDisabledModal(true)
-		}
-	}, [job])
+		fetchSelectedClearDestinationStatus()
+	}, [selectedJobId])
 
 	const initializeFromExistingJob = (job: Job) => {
 		setJobName(job.name)

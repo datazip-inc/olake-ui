@@ -2,11 +2,14 @@ import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
 import { useAppStore } from "../../../store"
 import { StreamDifferenceModalProps } from "../../../types/modalTypes"
+import { useState } from "react"
 
 const StreamDifferenceModal = ({
 	streamDifference,
 	onConfirm,
 }: StreamDifferenceModalProps) => {
+	const [isLoading, setIsLoading] = useState(false)
+
 	const { showStreamDifferenceModal, setShowStreamDifferenceModal } =
 		useAppStore()
 
@@ -14,8 +17,11 @@ const StreamDifferenceModal = ({
 		setShowStreamDifferenceModal(false)
 	}
 
-	const handleFinish = () => {
-		onConfirm()
+	const handleFinish = async () => {
+		setIsLoading(true)
+		await onConfirm()
+		setIsLoading(false)
+
 		setShowStreamDifferenceModal(false)
 	}
 
@@ -74,6 +80,7 @@ const StreamDifferenceModal = ({
 						key="edit"
 						type="primary"
 						onClick={handleFinish}
+						loading={isLoading}
 						className="bg-primary hover:bg-primary-600"
 					>
 						Confirm and Finish

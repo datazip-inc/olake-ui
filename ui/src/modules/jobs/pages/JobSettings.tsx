@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Input, Button, Switch, message, Select, Radio, Tooltip } from "antd"
+import {
+	Input,
+	Button,
+	Switch,
+	message,
+	Select,
+	Radio,
+	Tooltip,
+	Spin,
+} from "antd"
 import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
@@ -17,7 +26,6 @@ import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationModal from "../../common/Modals/ClearDestinationModal"
-import { JobType } from "../../../types/jobTypes"
 import StreamEditDisabledModal from "../../common/Modals/StreamEditDisabledModal"
 
 const JobSettings: React.FC = () => {
@@ -45,12 +53,15 @@ const JobSettings: React.FC = () => {
 	}
 
 	const {
+		selectedJobId,
 		jobs,
+		isClearDestinationStatusLoading,
 		fetchJobs,
+		fetchSelectedClearDestinationStatus,
+		selectedClearDestinationRunning,
 		setShowDeleteJobModal,
 		setSelectedJobId,
 		setShowClearDestinationModal,
-		setShowStreamEditDisabledModal,
 	} = useAppStore()
 
 	useEffect(() => {
@@ -70,9 +81,9 @@ const JobSettings: React.FC = () => {
 		}
 	}, [job])
 
-	const isClearDestinationRunning =
-		job?.last_run_type === JobType.ClearDestination &&
-		job?.last_run_state.toLowerCase() === "running"
+	useEffect(() => {
+		fetchSelectedClearDestinationStatus()
+	}, [selectedJobId])
 
 	const getParsedDate = (value: Date) => value.toUTCString()
 
@@ -219,12 +230,6 @@ const JobSettings: React.FC = () => {
 		setShowClearDestinationModal(true)
 	}
 
-	useEffect(() => {
-		if (isClearDestinationRunning) {
-			setShowStreamEditDisabledModal(true)
-		}
-	}, [isClearDestinationRunning])
-
 	// Helper to determine if time selection should be shown
 	const isTimeSelectionFrequency = (freq: string): boolean => {
 		return freq === "days" || freq === "weeks"
@@ -280,6 +285,17 @@ const JobSettings: React.FC = () => {
 		} catch (error) {
 			console.error("Error saving job settings:", error)
 		}
+	}
+
+	if (isClearDestinationStatusLoading) {
+		return (
+			<div className="flex h-screen w-full items-center justify-center">
+				<Spin
+					size="large"
+					tip="Loading Settings..."
+				/>
+			</div>
+		)
 	}
 
 	return (
@@ -467,7 +483,9 @@ const JobSettings: React.FC = () => {
 										<button
 											onClick={handleClearDestination}
 											className="rounded-md border px-4 py-1 font-light disabled:cursor-not-allowed disabled:opacity-50"
-											disabled={isClearDestinationRunning || !job?.activate}
+											disabled={
+												selectedClearDestinationRunning || !job?.activate
+											}
 										>
 											Clear Destination
 										</button>

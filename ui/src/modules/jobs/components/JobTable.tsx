@@ -24,6 +24,7 @@ import {
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { PAGE_SIZE } from "../../../utils/constants"
+import { useAppStore } from "../../../store"
 
 const formatLastSyncTime = (text?: string) => {
 	if (!text) return <div className="pl-4">-</div>
@@ -49,12 +50,14 @@ const JobTable: React.FC<JobTableProps> = ({
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
 	const navigate = useNavigate()
+	const { setSelectedJobId } = useAppStore()
 
 	const handleViewHistory = (jobId: string) => {
 		navigate(`/jobs/${jobId}/history`)
 	}
 
 	const handleViewSettings = (jobId: string) => {
+		setSelectedJobId(jobId)
 		navigate(`/jobs/${jobId}/settings`)
 	}
 
@@ -265,15 +268,17 @@ const JobTable: React.FC<JobTableProps> = ({
 					/>
 				</div>
 
-				<Table
-					dataSource={currentPageData}
-					columns={getTableColumns()}
-					rowKey="id"
-					loading={loading}
-					pagination={false}
-					className="overflow-hidden rounded-xl"
-					rowClassName="no-hover"
-				/>
+				<div className="overflow-x-auto">
+					<Table
+						dataSource={currentPageData}
+						columns={getTableColumns()}
+						rowKey="id"
+						loading={loading}
+						pagination={false}
+						className="min-w-[1200px]"
+						rowClassName="no-hover"
+					/>
+				</div>
 			</div>
 
 			<div className="z-100 fixed bottom-[60px] right-[40px] flex justify-end bg-white p-2">
