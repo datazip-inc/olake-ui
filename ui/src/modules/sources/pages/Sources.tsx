@@ -9,6 +9,7 @@ import { Entity } from "../../../types"
 import { sourceTabs } from "../../../utils/constants"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
+import { EVENT_CREATE_SOURCE_CLICKED } from "../../../api/constants"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -28,7 +29,7 @@ const Sources: React.FC = () => {
 	}, [])
 
 	const handleCreateSource = () => {
-		analyticsService.trackEvent("create_source_clicked")
+		analyticsService.trackEvent(EVENT_CREATE_SOURCE_CLICKED)
 		navigate("/sources/new")
 	}
 

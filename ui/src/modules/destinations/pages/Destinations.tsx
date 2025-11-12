@@ -9,6 +9,7 @@ import { Entity } from "../../../types"
 import { destinationTabs } from "../../../utils/constants"
 import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"
+import { EVENT_CREATE_DESTINATION_CLICKED } from "../../../api/constants"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
@@ -28,7 +29,7 @@ const Destinations: React.FC = () => {
 	}, [])
 
 	const handleCreateDestination = () => {
-		analyticsService.trackEvent("create_destination_clicked")
+		analyticsService.trackEvent(EVENT_CREATE_DESTINATION_CLICKED)
 		navigate("/destinations/new")
 	}
 

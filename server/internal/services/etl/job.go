@@ -86,7 +86,7 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		return fmt.Errorf("failed to create temporal workflow: %s", err)
 	}
 
-	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
+	telemetry.TrackJobCreation(ctx, job)
 	return nil
 }
 
@@ -158,7 +158,6 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to update temporal workflow: %s", err)
 	}
 
-	telemetry.TrackJobEntity(ctx)
 	return nil
 }
 
@@ -176,7 +175,6 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 		return "", fmt.Errorf("failed to delete job: %s", err)
 	}
 
-	telemetry.TrackJobEntity(ctx)
 	return job.Name, nil
 }
 

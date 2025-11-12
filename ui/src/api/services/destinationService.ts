@@ -7,6 +7,7 @@ import {
 	EntityTestResponse,
 } from "../../types"
 import { getConnectorInLowerCase } from "../../utils/utils"
+import { trackTestConnection } from "../utils"
 
 // TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {
@@ -82,6 +83,7 @@ export const destinationService = {
 
 	testDestinationConnection: async (
 		destination: EntityTestRequest,
+		existing: boolean = false,
 		source_type: string = "",
 		source_version: string = "",
 	) => {
@@ -98,17 +100,29 @@ export const destinationService = {
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0, disableErrorNotification: true },
 			)
-			return {
+			const result = {
 				success: true,
 				message: "success",
 				data: response.data,
 			}
+
+			trackTestConnection(false, destination, response.data, existing)
+
+			return result
 		} catch (error) {
 			console.error("Error testing destination connection:", error)
 			return {
 				success: false,
 				message:
 					error instanceof Error ? error.message : "Unknown error occurred",
+				data: {
+					connection_result: {
+						message:
+							error instanceof Error ? error.message : "Unknown error occurred",
+						status: "FAILED",
+					},
+					logs: [],
+				},
 			}
 		}
 	},

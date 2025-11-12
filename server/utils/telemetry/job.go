@@ -27,12 +27,18 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 		if job.SourceID != nil {
 			properties["source_type"] = job.SourceID.Type
 			properties["source_name"] = job.SourceID.Name
+			if job.SourceID.Version != "" {
+				properties["Source OLake Version"] = job.SourceID.Version
+			}
 		}
 
 		// Safely add destination properties
 		if job.DestID != nil {
 			properties["destination_type"] = job.DestID.DestType
 			properties["destination_name"] = job.DestID.Name
+			if job.DestID.Version != "" {
+				properties["Destination OLake Version"] = job.DestID.Version
+			}
 		}
 
 		if !job.CreatedAt.IsZero() {
@@ -43,11 +49,5 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 			logger.Debug("Failed to track job creation event: %s", err)
 			return
 		}
-		TrackJobEntity(ctx)
 	}()
-}
-
-func TrackJobEntity(ctx context.Context) {
-	TrackSourcesStatus(ctx)
-	TrackDestinationsStatus(ctx)
 }

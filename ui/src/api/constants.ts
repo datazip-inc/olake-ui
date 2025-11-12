@@ -1,0 +1,5 @@
+export const EVENT_TEST_CONNECTION_SOURCE = "test_connection_source"
+export const EVENT_TEST_CONNECTION_DESTINATION = "test_connection_destination"
+export const EVENT_CREATE_JOB_CLICKED = "create_job_clicked"
+export const EVENT_CREATE_SOURCE_CLICKED = "create_source_clicked"
+export const EVENT_CREATE_DESTINATION_CLICKED = "create_destination_clicked"
