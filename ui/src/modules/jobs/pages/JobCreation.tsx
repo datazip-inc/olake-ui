@@ -168,9 +168,10 @@ const JobCreation: React.FC = () => {
 		setShowTestingModal(true)
 		try {
 			const testResult = isSource
-				? await sourceService.testSourceConnection(data)
+				? await sourceService.testSourceConnection(data, !!existingSourceId)
 				: await destinationService.testDestinationConnection(
 						data,
+						!!existingDestinationId,
 						getConnectorInLowerCase(sourceConnector),
 						sourceVersion,
 					)
