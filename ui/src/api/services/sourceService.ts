@@ -87,15 +87,12 @@ export const sourceService = {
 				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
 
-			const result = {
+			trackTestConnection(true, source, response.data, existing)
+			return {
 				success: true,
 				message: "success",
 				data: response.data,
 			}
-
-			trackTestConnection(true, source, response.data, existing)
-
-			return result
 		} catch (error) {
 			console.error("Error testing source connection:", error)
 			return {

@@ -100,15 +100,13 @@ export const destinationService = {
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0, disableErrorNotification: true },
 			)
-			const result = {
+			trackTestConnection(false, destination, response.data, existing)
+
+			return {
 				success: true,
 				message: "success",
 				data: response.data,
 			}
-
-			trackTestConnection(false, destination, response.data, existing)
-
-			return result
 		} catch (error) {
 			console.error("Error testing destination connection:", error)
 			return {

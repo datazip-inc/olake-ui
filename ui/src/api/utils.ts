@@ -1,9 +1,6 @@
 import { EntityTestRequest, EntityTestResponse } from "../types"
 import { TEST_CONNECTION_STATUS } from "../utils/constants"
-import {
-	EVENT_TEST_CONNECTION_DESTINATION,
-	EVENT_TEST_CONNECTION_SOURCE,
-} from "./constants"
+import { AnalyticsEvent } from "./enums"
 import analyticsService from "./services/analyticsService"
 
 export const trackTestConnection = async (
@@ -29,7 +26,9 @@ export const trackTestConnection = async (
 	}
 
 	analyticsService.trackEvent(
-		isSource ? EVENT_TEST_CONNECTION_SOURCE : EVENT_TEST_CONNECTION_DESTINATION,
+		isSource
+			? AnalyticsEvent.TestConnectionSource
+			: AnalyticsEvent.TestConnectionDestination,
 		properties,
 	)
 }

@@ -11,7 +11,7 @@ import { JOB_STATUS } from "../../../utils/constants"
 import JobTable from "../components/JobTable"
 import JobEmptyState from "../components/JobEmptyState"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
-import { EVENT_CREATE_JOB_CLICKED } from "../../../api/constants"
+import { AnalyticsEvent } from "../../../api/enums"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobStatus>(
@@ -32,7 +32,7 @@ const Jobs: React.FC = () => {
 	}, [])
 
 	const handleCreateJob = () => {
-		analyticsService.trackEvent(EVENT_CREATE_JOB_CLICKED)
+		analyticsService.trackEvent(AnalyticsEvent.CreateJobClicked)
 		navigate("/jobs/new")
 	}
 

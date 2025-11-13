@@ -28,7 +28,7 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 			properties["source_type"] = job.SourceID.Type
 			properties["source_name"] = job.SourceID.Name
 			if job.SourceID.Version != "" {
-				properties["Source OLake Version"] = job.SourceID.Version
+				properties["source_olake_version"] = job.SourceID.Version
 			}
 		}
 
@@ -37,7 +37,7 @@ func TrackJobCreation(ctx context.Context, job *models.Job) {
 			properties["destination_type"] = job.DestID.DestType
 			properties["destination_name"] = job.DestID.Name
 			if job.DestID.Version != "" {
-				properties["Destination OLake Version"] = job.DestID.Version
+				properties["destination_olake_version"] = job.DestID.Version
 			}
 		}
 
