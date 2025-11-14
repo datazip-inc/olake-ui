@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
@@ -56,7 +57,7 @@ func getJobDetails(jobID int) (*jobDetails, error) {
 	return details, nil
 }
 
-func prepareCommonProperties(jobID int, workflowID string, details *jobDetails, eventTime time.Time) map[string]interface{} {
+func prepareCommonProperties(jobID int, workflowID, environment string, details *jobDetails, eventTime time.Time) map[string]interface{} {
 	props := map[string]interface{}{
 		"job_id":           jobID,
 		"workflow_id":      workflowID,
@@ -67,6 +68,7 @@ func prepareCommonProperties(jobID int, workflowID string, details *jobDetails, 
 		"source_name":      details.SourceName,
 		"destination_type": details.DestinationType,
 		"destination_name": details.DestinationName,
+		"environment":      utils.Ternary(environment == "", "N/A", environment).(string),
 	}
 
 	if eventTime.IsZero() {
@@ -81,13 +83,13 @@ func prepareCommonProperties(jobID int, workflowID string, details *jobDetails, 
 	return props
 }
 
-func trackSyncEvent(ctx context.Context, jobID int, workflowID, eventType string) error {
+func trackSyncEvent(ctx context.Context, jobID int, workflowID, environment, eventType string) error {
 	details, err := getJobDetails(jobID)
 	if err != nil {
 		return err
 	}
 
-	properties := prepareCommonProperties(jobID, workflowID, details, time.Time{})
+	properties := prepareCommonProperties(jobID, workflowID, environment, details, time.Time{})
 	if eventType == EventSyncCompleted {
 		if err := enrichWithSyncStats(properties, workflowID); err != nil {
 			return err
@@ -167,39 +169,39 @@ func addStreamsProperties(properties map[string]interface{}, mainSyncDir string)
 	return nil
 }
 
-func TrackSyncStart(ctx context.Context, jobID int, workflowID string) {
+func TrackSyncStart(ctx context.Context, jobID int, workflowID, environment string) {
 	go func() {
 		if instance == nil {
 			return
 		}
 
-		err := trackSyncEvent(ctx, jobID, workflowID, EventSyncStarted)
+		err := trackSyncEvent(ctx, jobID, workflowID, environment, EventSyncStarted)
 		if err != nil {
 			logger.Debug("failed to track sync start event: %s", err)
 		}
 	}()
 }
 
-func TrackSyncFailed(jobID int, workflowID string) {
+func TrackSyncFailed(jobID int, workflowID, environment string) {
 	go func() {
 		if instance == nil {
 			return
 		}
 
-		err := trackSyncEvent(context.Background(), jobID, workflowID, EventSyncFailed)
+		err := trackSyncEvent(context.Background(), jobID, workflowID, environment, EventSyncFailed)
 		if err != nil {
 			logger.Debug("failed to track sync failed event: %s", err)
 		}
 	}()
 }
 
-func TrackSyncCompleted(jobID int, workflowID string) {
+func TrackSyncCompleted(jobID int, workflowID, environment string) {
 	go func() {
 		if instance == nil {
 			return
 		}
 
-		err := trackSyncEvent(context.Background(), jobID, workflowID, EventSyncCompleted)
+		err := trackSyncEvent(context.Background(), jobID, workflowID, environment, EventSyncCompleted)
 		if err != nil {
 			logger.Debug("failed to track sync completed event: %s", err)
 		}

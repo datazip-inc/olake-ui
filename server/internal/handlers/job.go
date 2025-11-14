@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -380,14 +379,9 @@ func (h *Handler) GetTaskLogs() {
 
 // @router /internal/worker/callback/sync-telemetry [post]
 func (h *Handler) UpdateSyncTelemetry() {
-	var req struct {
-		JobID      int    `json:"job_id"`
-		WorkflowID string `json:"workflow_id"`
-		Event      string `json:"event"`
-	}
-
-	if err := json.Unmarshal(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request format", err)
+	var req dto.UpdateSyncTelemetryRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -396,7 +390,7 @@ func (h *Handler) UpdateSyncTelemetry() {
 		return
 	}
 
-	if err := h.etl.UpdateSyncTelemetry(h.Ctx.Request.Context(), req.JobID, req.WorkflowID, req.Event); err != nil {
+	if err := h.etl.UpdateSyncTelemetry(h.Ctx.Request.Context(), req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update sync telemetry", err)
 		return
 	}

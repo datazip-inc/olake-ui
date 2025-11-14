@@ -494,14 +494,14 @@ func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID strin
 }
 
 // worker service
-func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID, event string) error {
-	switch strings.ToLower(event) {
+func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+	switch strings.ToLower(req.Event) {
 	case "started":
-		telemetry.TrackSyncStart(ctx, jobID, workflowID)
+		telemetry.TrackSyncStart(ctx, req.JobID, req.WorkflowID, req.Environment)
 	case "completed":
-		telemetry.TrackSyncCompleted(jobID, workflowID)
+		telemetry.TrackSyncCompleted(req.JobID, req.WorkflowID, req.Environment)
 	case "failed":
-		telemetry.TrackSyncFailed(jobID, workflowID)
+		telemetry.TrackSyncFailed(req.JobID, req.WorkflowID, req.Environment)
 	}
 
 	return nil
