@@ -362,10 +362,10 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	return tasks, nil
 }
 
-func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
+func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int) ([]map[string]interface{}, int64, bool, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find job: %s", err)
+		return nil, 0, false, fmt.Errorf("failed to find job: %s", err)
 	}
 
 	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
@@ -373,12 +373,12 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	// Get home directory
 	homeDir := constants.DefaultConfigDir
 	mainSyncDir := filepath.Join(homeDir, syncFolderName)
-	logs, err := utils.ReadLogs(mainSyncDir)
+	logs, newCursor, hasMore, err := utils.ReadLogs(mainSyncDir, cursor, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read logs: %s", err)
+		return nil, 0, false, fmt.Errorf("failed to read logs: %s", err)
 	}
 	// TODO: need to add activity logs as well with sync logs
-	return logs, nil
+	return logs, newCursor, hasMore, nil
 }
 
 // TODO: frontend needs to send source id and destination id

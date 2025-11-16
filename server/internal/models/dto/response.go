@@ -109,3 +109,9 @@ type JobDataItem struct {
 	LastRunTime     string `json:"last_run_time,omitempty"`
 	LastRunState    string `json:"last_run_state,omitempty"`
 }
+
+type TaskLogsResponse struct {
+	Logs    []map[string]interface{} `json:"logs"`
+	Cursor  int64                    `json:"cursor"`
+	HasMore bool                     `json:"has_more"`
+}

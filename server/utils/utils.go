@@ -1,13 +1,16 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -225,72 +228,226 @@ type LogEntry struct {
 	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
+const readChunkSize = 128 * 1024 // read files in chunks of 128KB
+
+// ReadLinesBackward reads up to `limit` complete lines from file backwards starting at startOffset.
+// Returns: lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
+func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int64, bool, error) {
+	if limit <= 0 {
+		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	fileSize := fi.Size()
+
+	// startOffset beyond file size, clamp it to file size
+	startOffset = min(startOffset, fileSize)
+
+	// startOffset at beginning or negative, return empty result
+	if startOffset <= 0 {
+		return nil, 0, false, nil
+	}
+
+	offset := startOffset
+
+	// accumulator to store the lines we read backwards
+	var accum []byte
+
+	// lines we read backwards
+	newestFirst := make([]string, 0, limit)
+
+	// read lines backwards until we have enough lines or reach the beginning of the file
+	for offset > 0 && len(newestFirst) < limit {
+		toRead := min(offset, int64(readChunkSize))
+		readPos := offset - toRead
+
+		chunk := make([]byte, toRead)
+		n, rerr := f.ReadAt(chunk, readPos)
+
+		// io.EOF is expected when reading near file boundaries
+		if rerr != nil && rerr != io.EOF {
+			return nil, 0, false, rerr
+		}
+
+		if int64(n) != toRead {
+			chunk = chunk[:n]
+		}
+
+		// prepend this chunk to accum
+		tmp := make([]byte, 0, len(chunk)+len(accum))
+		tmp = append(tmp, chunk...)
+		tmp = append(tmp, accum...)
+		accum = tmp
+
+		parts := bytes.Split(accum, []byte{'\n'})
+
+		// last part may be incomplete line (no trailing \n) unless at file start
+		fullCount := len(parts) - 1
+		if readPos == 0 {
+			// at file start, all parts are complete (even without trailing \n)
+			fullCount = len(parts)
+		}
+
+		// Collect complete lines from newest to oldest
+		added := 0
+		for i := len(parts) - 1; i >= 0 && added < fullCount && len(newestFirst) < limit; i-- {
+			newestFirst = append(newestFirst, string(parts[i]))
+			added++
+		}
+
+		offset = readPos
+		if offset == 0 {
+			break
+		}
+	}
+
+	// no complete lines found in accumulator
+	if len(newestFirst) == 0 {
+		return []string{}, offset, offset > 0, nil
+	}
+
+	// find where oldest returned line starts
+	parts := bytes.Split(accum, []byte{'\n'})
+	returnedCount := len(newestFirst)
+	lastIdx := len(parts) - 1
+	firstReturnedIdx := lastIdx - (returnedCount - 1)
+
+	// count bytes before the first returned line
+	bytesBefore := 0
+	for i := 0; i < firstReturnedIdx; i++ {
+		bytesBefore += len(parts[i]) + 1 // +1 for '\n'
+	}
+	newOffset := offset + int64(bytesBefore)
+
+	// Reverse to return oldest->newest order
+	slices.Reverse(newestFirst)
+
+	hasMore := newOffset > 0
+	return newestFirst, newOffset, hasMore, nil
+
+}
+
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
-func ReadLogs(mainLogDir string) ([]map[string]interface{}, error) {
+// Returns: lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
+func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interface{}, int64, bool, error) {
 	// Check if mainLogDir exists
 	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
+		return nil, 0, false, fmt.Errorf("logs directory not found: %s", mainLogDir)
 	}
 
 	// Logs directory
 	logsDir := filepath.Join(mainLogDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
+		return nil, 0, false, fmt.Errorf("logs directory not found: %s", logsDir)
 	}
 
 	files, err := os.ReadDir(logsDir)
 	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
+		return nil, 0, false, fmt.Errorf("logs directory empty in: %s", logsDir)
 	}
 
 	logDir := filepath.Join(logsDir, files[0].Name())
 	logPath := filepath.Join(logDir, "olake.log")
-	logContent, err := os.ReadFile(logPath)
+
+	f, err := os.Open(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read log file: %s", logPath)
+		return nil, 0, false, fmt.Errorf("failed to read log file: %s", logPath)
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("failed to stat log file: %w", err)
+	}
+	fileSize := stat.Size()
+
+	// Normalize limit
+	if limit <= 0 {
+		limit = 1000
+	}
+
+	// Normalize cursor: negative means from the EOF
+	if cursor < 0 {
+		cursor = fileSize
+	}
+
+	// Clamp cursor to file size
+	if cursor > fileSize {
+		cursor = fileSize
+	}
+
+	// If cursor is 0, we've read everything
+	if cursor == 0 {
+		return []map[string]interface{}{}, 0, false, nil
 	}
 
 	var parsedLogs []map[string]interface{}
-	lines := strings.Split(string(logContent), "\n")
-
-	for _, line := range lines {
-		if line == "" {
-			continue
+	currentOffset := cursor
+	hasMore := false
+	for len(parsedLogs) < limit {
+		// fetch a chunk: we request a bit more lines (multiplier) to account for filtered lines
+		fetchLines := max((limit-len(parsedLogs))*2, 1)
+		lines, newOffset, more, rerr := ReadLinesBackward(f, currentOffset, fetchLines)
+		if rerr != nil {
+			return nil, 0, false, rerr
+		}
+		if len(lines) == 0 {
+			// no more lines to read
+			hasMore = false
+			currentOffset = newOffset
+			break
 		}
 
-		var logEntry LogEntry
-		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-			continue
-		}
-
-		if logEntry.Level == "debug" {
-			continue
-		}
-
-		// Convert Message to string safely
-		var messageStr string
-		var tmp interface{}
-		if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
-			switch v := tmp.(type) {
-			case string:
-				messageStr = v // plain string
-			default:
-				msgBytes, _ := json.Marshal(v) // object/array
-				messageStr = string(msgBytes)
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "" {
+				continue
 			}
-		} else {
-			// fallback: raw bytes as string
-			messageStr = string(logEntry.Message)
-		}
 
-		parsedLogs = append(parsedLogs, map[string]interface{}{
-			"level":   logEntry.Level,
-			"time":    logEntry.Time.UTC().Format(time.RFC3339),
-			"message": messageStr,
-		})
+			var logEntry LogEntry
+			if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+				continue
+			}
+
+			if logEntry.Level == "debug" {
+				continue
+			}
+
+			var messageStr string
+			var tmp interface{}
+			if err := json.Unmarshal(logEntry.Message, &tmp); err == nil {
+				switch v := tmp.(type) {
+				case string:
+					messageStr = v
+				default:
+					msgBytes, _ := json.Marshal(v)
+					messageStr = string(msgBytes)
+				}
+			} else {
+				messageStr = string(logEntry.Message)
+			}
+
+			parsedLogs = append(parsedLogs, map[string]interface{}{
+				"level":   logEntry.Level,
+				"time":    logEntry.Time.UTC().Format(time.RFC3339),
+				"message": messageStr,
+			})
+			if len(parsedLogs) >= limit {
+				break
+			}
+		}
+		currentOffset = newOffset
+		hasMore = more
+
+		if !more || currentOffset == 0 {
+			break
+		}
 	}
 
-	return parsedLogs, nil
+	return parsedLogs, currentOffset, hasMore, nil
 }
 
 // RetryWithBackoff retries a function with exponential backoff

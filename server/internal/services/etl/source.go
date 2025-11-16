@@ -172,7 +172,7 @@ func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTe
 	}
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
-	logs, err := utils.ReadLogs(mainLogDir)
+	logs, _, _, err := utils.ReadLogs(mainLogDir, -1, -1)
 	if err != nil {
 		return result, nil, fmt.Errorf("failed to read logs source_type[%s] source_version[%s]: %s",
 			req.Type, req.Version, err)
