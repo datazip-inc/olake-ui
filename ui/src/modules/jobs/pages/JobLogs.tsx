@@ -7,6 +7,7 @@ import {
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
 } from "@phosphor-icons/react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 
 import { useAppStore } from "../../../store"
 import {
@@ -34,6 +35,7 @@ const JobLogs: React.FC = () => {
 	const previousScrollSnapshot = useRef<{ height: number; top: number } | null>(
 		null,
 	)
+	const shouldScrollToBottomRef = useRef(false)
 	const { Search } = Input
 
 	const {
@@ -56,19 +58,13 @@ const JobLogs: React.FC = () => {
 		if (jobId) {
 			if (isTaskLog && filePath) {
 				fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+				shouldScrollToBottomRef.current = true
 			}
 		}
 	}, [jobId, historyId, filePath, isTaskLog, fetchInitialTaskLogs, fetchJobs])
 
 	// Scroll to bottom on initial load
-	useEffect(() => {
-		if (!isLoadingTaskLogs && scrollContainerRef.current) {
-			const container = scrollContainerRef.current
-			container.scrollTo({
-				top: container.scrollHeight,
-			})
-		}
-	}, [isLoadingTaskLogs])
+	// (Initial scroll-to-bottom behavior is now handled via shouldScrollToBottomRef and the virtualizer)
 
 	const handleScroll = useCallback(() => {
 		if (!scrollContainerRef.current) return
@@ -177,6 +173,40 @@ const JobLogs: React.FC = () => {
 		return matchesSearch
 	})
 
+	const virtualizer = useVirtualizer({
+		count: filteredLogs?.length ?? 0,
+		getScrollElement: () => scrollContainerRef.current,
+		// This is just an initial guess; actual height is measured via measureElement
+		estimateSize: () => 40,
+		overscan: 20,
+	})
+
+	const virtualItems = virtualizer.getVirtualItems()
+	const totalSize = virtualizer.getTotalSize()
+
+	useEffect(() => {
+		if (!shouldScrollToBottomRef.current) {
+			return
+		}
+
+		if (!filteredLogs || !filteredLogs.length) {
+			return
+		}
+
+		shouldScrollToBottomRef.current = false
+
+		const container = scrollContainerRef.current
+		if (container) {
+			container.scrollTo({
+				top: container.scrollHeight,
+			})
+		}
+
+		virtualizer.scrollToIndex(filteredLogs.length - 1, {
+			align: "end",
+		})
+	}, [filteredLogs?.length, virtualizer])
+
 	if (taskLogsError) {
 		return (
 			<div className="p-6">
@@ -198,6 +228,7 @@ const JobLogs: React.FC = () => {
 
 	const handleRefresh = () => {
 		if (isTaskLog && filePath && jobId) {
+			shouldScrollToBottomRef.current = true
 			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 		}
 	}
@@ -289,29 +320,56 @@ const JobLogs: React.FC = () => {
 								<span>Loading older logs...</span>
 							</div>
 						)}
-						<table className="min-w-full">
-							<tbody>
-								{filteredLogs?.map((log, index) => {
+						{!filteredLogs || filteredLogs.length === 0 ? (
+							<div className="flex items-center justify-center p-4 text-sm text-gray-500">
+								No logs found
+							</div>
+						) : (
+							<div
+								className="min-w-full"
+								style={{
+									height: totalSize,
+									position: "relative",
+								}}
+							>
+								{virtualItems.map(virtualRow => {
+									const index = virtualRow.index
+									const log = filteredLogs[index]
+
+									if (!log) {
+										return null
+									}
+
 									if (isTaskLog) {
 										const taskLog = log as any
 										return (
-											<tr key={index}>
-												<td className="w-32 px-4 py-3 text-sm text-gray-500">
-													{/* Extract date from ISO timestamp if possible */}
+											<div
+												key={virtualRow.key}
+												ref={virtualizer.measureElement}
+												data-index={virtualRow.index}
+												style={{
+													position: "absolute",
+													top: 0,
+													left: 0,
+													right: 0,
+													transform: `translateY(${virtualRow.start}px)`,
+												}}
+												className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100"
+											>
+												<div className="px-4 py-3 text-sm text-gray-500">
 													{taskLog.time
 														? new Date(taskLog.time).toLocaleDateString()
 														: ""}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm text-gray-500">
-													{/* Extract time from ISO timestamp if possible */}
+												</div>
+												<div className="px-4 py-3 text-sm text-gray-500">
 													{taskLog.time
 														? new Date(taskLog.time).toLocaleTimeString(
 																"en-US",
 																{ timeZone: "UTC", hour12: false },
 															)
 														: ""}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm">
+												</div>
+												<div className="px-4 py-3 text-sm">
 													<span
 														className={clsx(
 															"rounded-md px-2 py-[5px] text-xs capitalize",
@@ -320,51 +378,63 @@ const JobLogs: React.FC = () => {
 													>
 														{taskLog.level}
 													</span>
-												</td>
-												<td
+												</div>
+												<div
 													className={clsx(
 														"px-4 py-3 text-sm",
 														getLogTextColor(taskLog.level),
 													)}
 												>
 													{taskLog.message}
-												</td>
-											</tr>
-										)
-									} else {
-										const jobLog = log as any
-										return (
-											<tr key={index}>
-												<td className="w-32 px-4 py-3 text-sm text-gray-500">
-													{jobLog.date}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm text-gray-500">
-													{jobLog.time}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm">
-													<span
-														className={clsx(
-															"rounded-xl px-2 py-[5px] text-xs capitalize",
-															getLogLevelClass(jobLog.level),
-														)}
-													>
-														{jobLog.level}
-													</span>
-												</td>
-												<td
-													className={clsx(
-														"px-4 py-3 text-sm text-gray-700",
-														getLogTextColor(jobLog.level),
-													)}
-												>
-													{jobLog.message}
-												</td>
-											</tr>
+												</div>
+											</div>
 										)
 									}
+
+									const jobLog = log as any
+									return (
+										<div
+											key={virtualRow.key}
+											ref={virtualizer.measureElement}
+											data-index={virtualRow.index}
+											style={{
+												position: "absolute",
+												top: 0,
+												left: 0,
+												right: 0,
+												transform: `translateY(${virtualRow.start}px)`,
+											}}
+											className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100"
+										>
+											<div className="px-4 py-3 text-sm text-gray-500">
+												{jobLog.date}
+											</div>
+											<div className="px-4 py-3 text-sm text-gray-500">
+												{jobLog.time}
+											</div>
+											<div className="px-4 py-3 text-sm">
+												<span
+													className={clsx(
+														"rounded-xl px-2 py-[5px] text-xs capitalize",
+														getLogLevelClass(jobLog.level),
+													)}
+												>
+													{jobLog.level}
+												</span>
+											</div>
+											<div
+												className={clsx(
+													"px-4 py-3 text-sm text-gray-700",
+													getLogTextColor(jobLog.level),
+												)}
+											>
+												{jobLog.message}
+											</div>
+										</div>
+									)
 								})}
-							</tbody>
-						</table>
+							</div>
+						)}
 					</div>
 				)}
 			</div>
