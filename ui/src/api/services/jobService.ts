@@ -6,6 +6,7 @@ import {
 	JobTask,
 	StreamsDataStructure,
 	TaskLog,
+	TaskLogResponse,
 } from "../../types"
 import { AxiosError } from "axios"
 
@@ -108,14 +109,21 @@ export const jobService = {
 		jobId: string,
 		taskId: string,
 		filePath: string,
-	): Promise<TaskLog[]> => {
+		cursor: number = -1,
+		limit: number = 1000,
+	): Promise<TaskLog> => {
 		try {
-			const response = await api.post<TaskLog[]>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs`,
+			const response = await api.post<TaskLogResponse>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs?cursor=${cursor}&limit=${limit}`,
 				{ file_path: filePath },
-				{ timeout: 0, showNotification: true }, // Disable timeout for this request since it can take longer, no toast for logs
+				{ timeout: 0, showNotification: false }, // Disable timeout for this request since it can take longer, no toast for logs
 			)
-			return response.data
+
+			return {
+				logs: response.data.logs,
+				cursor: response.data.cursor,
+				hasMore: response.data.has_more,
+			}
 		} catch (error) {
 			console.error("Error fetching task logs:", error)
 			throw error

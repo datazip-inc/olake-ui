@@ -1,4 +1,4 @@
-import { EntityJob } from "./entityTypes"
+import { EntityJob, LogEntry } from "./entityTypes"
 
 export interface Job {
 	id: number
@@ -57,9 +57,15 @@ export interface JobTask {
 	job_type: JobType
 }
 export interface TaskLog {
-	level: string
-	message: string
-	time: string
+	logs: LogEntry[]
+	cursor: number
+	hasMore: boolean
+}
+
+export interface TaskLogResponse {
+	logs: LogEntry[]
+	cursor: number
+	has_more: boolean
 }
 export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 

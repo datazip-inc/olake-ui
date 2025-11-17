@@ -284,3 +284,12 @@ export const TEST_CONNECTION_STATUS: Record<TestConnectionStatus, string> = {
 	SUCCEEDED: "SUCCEEDED",
 	FAILED: "FAILED",
 } as const
+
+// Logs pagination configuration
+export const LOGS_CONFIG = {
+	DEFAULT_CURSOR: -1, // -1 means start from end of file
+	INITIAL_BATCH_SIZE: 1000, // First load
+	SUBSEQUENT_BATCH_SIZE: 500, // Subsequent loads
+	MAX_LOGS_IN_MEMORY: 10000, // Maximum logs to keep in memory
+	SCROLL_THRESHOLD_PERCENTAGE: 0.5, // Trigger load when scrolled to 50% of total content
+} as const

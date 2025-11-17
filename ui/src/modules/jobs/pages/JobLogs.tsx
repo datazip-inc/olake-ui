@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, Button, Tooltip } from "antd"
@@ -14,6 +14,7 @@ import {
 	getLogLevelClass,
 	getLogTextColor,
 } from "../../../utils/utils"
+import { LOGS_CONFIG } from "../../../utils/constants"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -29,14 +30,21 @@ const JobLogs: React.FC = () => {
 	const [searchText, setSearchText] = useState("")
 	const [showOnlyErrors, setShowOnlyErrors] = useState(false)
 
+	const scrollContainerRef = useRef<HTMLDivElement>(null)
+	const previousScrollSnapshot = useRef<{ height: number; top: number } | null>(
+		null,
+	)
 	const { Search } = Input
 
 	const {
 		jobs,
 		taskLogs,
 		isLoadingTaskLogs,
+		isLoadingMoreLogs,
+		taskLogsHasMore,
 		taskLogsError,
-		fetchTaskLogs,
+		fetchInitialTaskLogs,
+		fetchMoreTaskLogs,
 		fetchJobs,
 	} = useAppStore()
 
@@ -47,22 +55,101 @@ const JobLogs: React.FC = () => {
 
 		if (jobId) {
 			if (isTaskLog && filePath) {
-				fetchTaskLogs(jobId, historyId || "1", filePath)
+				fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 			}
 		}
+	}, [jobId, historyId, filePath, isTaskLog, fetchInitialTaskLogs, fetchJobs])
+
+	// Scroll to bottom on initial load
+	useEffect(() => {
+		if (!isLoadingTaskLogs && scrollContainerRef.current) {
+			const container = scrollContainerRef.current
+			container.scrollTo({
+				top: container.scrollHeight,
+			})
+		}
+	}, [isLoadingTaskLogs])
+
+	const handleScroll = useCallback(() => {
+		if (!scrollContainerRef.current) return
+
+		if (!isTaskLog || !jobId || !filePath || !historyId) {
+			return
+		}
+
+		const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current
+
+		// Calculate how much we've scrolled as a percentage of total scrollable content
+		const scrollableHeight = scrollHeight - clientHeight
+		if (scrollableHeight <= 0) {
+			return
+		}
+
+		const scrolledPercentage = scrollTop / scrollableHeight
+
+		// Trigger when we've scrolled up to 50% of total content (or less)
+		const isNearTop =
+			scrolledPercentage <= LOGS_CONFIG.SCROLL_THRESHOLD_PERCENTAGE
+
+		if (isNearTop && !isLoadingMoreLogs && taskLogsHasMore) {
+			previousScrollSnapshot.current = {
+				height: scrollHeight,
+				top: scrollTop,
+			}
+			fetchMoreTaskLogs(jobId, historyId, filePath)
+		}
 	}, [
+		isTaskLog,
 		jobId,
 		historyId,
 		filePath,
-		isTaskLog,
-		fetchTaskLogs,
-		jobs.length,
-		fetchJobs,
+		isLoadingMoreLogs,
+		taskLogsHasMore,
+		fetchMoreTaskLogs,
 	])
+
+	// Scroll to the previous position when loading more logs
+	useEffect(() => {
+		if (isLoadingMoreLogs) {
+			return
+		}
+
+		if (!previousScrollSnapshot.current) {
+			return
+		}
+
+		const container = scrollContainerRef.current
+		if (!container) {
+			previousScrollSnapshot.current = null
+			return
+		}
+
+		const { height, top } = previousScrollSnapshot.current
+		const heightDiff = container.scrollHeight - height
+
+		container.scrollTop = top + heightDiff
+		previousScrollSnapshot.current = null
+	}, [isLoadingMoreLogs, taskLogs.length])
+
+	// Add event listener to the scroll container
+	useEffect(() => {
+		const container = scrollContainerRef.current
+		if (container) {
+			container.addEventListener("scroll", handleScroll)
+			return () => container.removeEventListener("scroll", handleScroll)
+		}
+
+		return () => {
+			const cleanupContainer = scrollContainerRef.current
+			if (cleanupContainer) {
+				cleanupContainer.removeEventListener("scroll", handleScroll)
+			}
+		}
+	}, [handleScroll])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 
-	const filteredLogs = taskLogs.filter(function (log) {
+	const filteredLogs = taskLogs?.filter(function (log) {
 		if (typeof log !== "object" || log === null) {
 			return false
 		}
@@ -97,10 +184,7 @@ const JobLogs: React.FC = () => {
 					onClick={() => {
 						if (isTaskLog && filePath) {
 							if (jobId) {
-								fetchTaskLogs(jobId, historyId || "1", filePath)
-							}
-						} else {
-							if (jobId && historyId) {
+								fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 							}
 						}
 					}}
@@ -110,6 +194,12 @@ const JobLogs: React.FC = () => {
 				</Button>
 			</div>
 		)
+	}
+
+	const handleRefresh = () => {
+		if (isTaskLog && filePath && jobId) {
+			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+		}
 	}
 
 	return (
@@ -168,11 +258,7 @@ const JobLogs: React.FC = () => {
 					<Tooltip title="Click to refetch the logs">
 						<Button
 							icon={<ArrowsClockwiseIcon size={16} />}
-							onClick={() => {
-								if (isTaskLog && filePath) {
-									fetchTaskLogs(jobId!, historyId || "1", filePath)
-								}
-							}}
+							onClick={handleRefresh}
 							className="flex items-center"
 						></Button>
 					</Tooltip>
@@ -185,23 +271,28 @@ const JobLogs: React.FC = () => {
 					</Button>
 				</div>
 
-				{isLoadingTaskLogs ? (
+				{isLoadingTaskLogs && !taskLogs.length ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
 				) : (
 					<div
+						ref={scrollContainerRef}
 						className={clsx(
 							"overflow-scroll rounded-xl bg-white",
-							filteredLogs.length > 0 && "border",
+							filteredLogs?.length && filteredLogs.length > 0 && "border",
 						)}
 					>
+						{isLoadingMoreLogs && (
+							<div className="sticky top-0 z-10 flex items-center justify-center gap-2 border-b border-gray-100 bg-white/90 p-2 text-xs text-gray-500">
+								<Spin size="default" />
+								<span>Loading older logs...</span>
+							</div>
+						)}
 						<table className="min-w-full">
 							<tbody>
-								{filteredLogs.map((log, index) => {
-									// Handle rendering differently based on the log type
+								{filteredLogs?.map((log, index) => {
 									if (isTaskLog) {
-										// TaskLog structure
 										const taskLog = log as any
 										return (
 											<tr key={index}>
@@ -291,5 +382,4 @@ const JobLogs: React.FC = () => {
 		</div>
 	)
 }
-
 export default JobLogs

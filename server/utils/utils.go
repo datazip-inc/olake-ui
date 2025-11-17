@@ -370,13 +370,13 @@ func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interfac
 		limit = 1000
 	}
 
-	// Normalize cursor: negative means from the EOF
-	if cursor < 0 {
+	// Clamp cursor to file size
+	if cursor > fileSize {
 		cursor = fileSize
 	}
 
-	// Clamp cursor to file size
-	if cursor > fileSize {
+	// Normalize cursor: negative means from the EOF
+	if cursor < 0 {
 		cursor = fileSize
 	}
 
@@ -402,6 +402,8 @@ func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interfac
 			break
 		}
 
+		// Collect logs from this batch
+		batchLogs := make([]map[string]interface{}, 0)
 		for _, line := range lines {
 			if strings.TrimSpace(line) == "" {
 				continue
@@ -430,19 +432,25 @@ func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interfac
 				messageStr = string(logEntry.Message)
 			}
 
-			parsedLogs = append(parsedLogs, map[string]interface{}{
+			batchLogs = append(batchLogs, map[string]interface{}{
 				"level":   logEntry.Level,
 				"time":    logEntry.Time.UTC().Format(time.RFC3339),
 				"message": messageStr,
 			})
-			if len(parsedLogs) >= limit {
-				break
-			}
 		}
+
+		// Prepend batch logs (they're older than or same age as existing logs)
+		parsedLogs = append(batchLogs, parsedLogs...)
+
+		// Trim from the beginning if we've exceeded the limit (keep the newest logs)
+		if len(parsedLogs) > limit {
+			parsedLogs = parsedLogs[len(parsedLogs)-limit:]
+		}
+
 		currentOffset = newOffset
 		hasMore = more
 
-		if !more || currentOffset == 0 {
+		if !more || currentOffset == 0 || len(parsedLogs) >= limit {
 			break
 		}
 	}
