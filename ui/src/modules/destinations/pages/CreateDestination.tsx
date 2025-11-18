@@ -136,6 +136,7 @@ const CreateDestination = forwardRef<
 
 		const {
 			destinations,
+			isLoadingDestinations,
 			fetchDestinations,
 			setShowEntitySavedModal,
 			setShowTestingModal,
@@ -609,17 +610,23 @@ const CreateDestination = forwardRef<
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Select existing destination:
 							</label>
-							<Select
-								placeholder="Select a destination"
-								className="w-full"
-								data-testid="existing-destination"
-								onChange={handleExistingDestinationSelect}
-								value={existingDestination}
-								options={filteredDestinations.map(d => ({
-									value: d.id,
-									label: d.name,
-								}))}
-							/>
+							{isLoadingDestinations ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : (
+								<Select
+									placeholder="Select a destination"
+									className="w-full"
+									data-testid="existing-destination"
+									onChange={handleExistingDestinationSelect}
+									value={existingDestination}
+									options={filteredDestinations.map(d => ({
+										value: d.id,
+										label: d.name,
+									}))}
+								/>
+							)}
 						</div>
 					</div>
 				</div>

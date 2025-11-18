@@ -654,14 +654,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				<div className="flex w-4/5 justify-between gap-2">
 					{destinationDatabase && (
 						<div className="flex w-1/2 items-center justify-start gap-1">
-							<div
-								className={clsx(
-									"group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200",
-									fromJobEditFlow
-										? "cursor-not-allowed bg-gray-50"
-										: "hover:border-blue-200 hover:shadow-md",
-								)}
-							>
+							<div className="group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200">
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">

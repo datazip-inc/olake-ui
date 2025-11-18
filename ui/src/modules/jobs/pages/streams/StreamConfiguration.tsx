@@ -62,6 +62,9 @@ const StreamConfiguration = ({
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
+	const [cursorField, setCursorField] = useState<string | undefined>(
+		stream.stream.cursor_field,
+	)
 	const [appendMode, setAppendMode] = useState(false)
 	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
@@ -111,14 +114,12 @@ const StreamConfiguration = ({
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
+		const initialCursorField = stream.stream.cursor_field
 
 		// Parse cursor field for default value
 		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
-		if (
-			stream.stream.cursor_field &&
-			stream.stream.cursor_field.includes(":")
-		) {
-			const [, defaultField] = stream.stream.cursor_field.split(":")
+		if (initialCursorField && initialCursorField.includes(":")) {
+			const [, defaultField] = initialCursorField.split(":")
 			setFallBackCursorField(defaultField)
 			setShowFallbackSelector(true)
 		} else {
@@ -127,6 +128,7 @@ const StreamConfiguration = ({
 		}
 
 		setSyncMode(initialApiSyncMode ?? "full_refresh")
+		setCursorField(initialCursorField)
 		setNormalization(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
@@ -233,7 +235,8 @@ const StreamConfiguration = ({
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
 			const availableCursorFields = stream.stream.available_cursor_fields || []
-			if (!stream.stream.cursor_field && availableCursorFields.length > 0) {
+			if (!cursorField && availableCursorFields.length > 0) {
+				setCursorField(availableCursorFields[0])
 				stream.stream.cursor_field = availableCursorFields[0]
 			}
 		}
@@ -537,7 +540,7 @@ const StreamConfiguration = ({
 		isFallback: boolean = false,
 	): { label: React.ReactNode; value: string }[] => {
 		const availableCursorFields = stream.stream.available_cursor_fields || []
-		const selectedField = stream.stream.cursor_field?.split(":")[0]
+		const selectedField = cursorField?.split(":")[0]
 
 		return [...availableCursorFields]
 			.filter(field => !isFallback || field !== selectedField)
@@ -646,11 +649,12 @@ const StreamConfiguration = ({
 											</label>
 											<Select
 												placeholder="Select cursor field"
-												value={stream.stream.cursor_field?.split(":")[0]}
+												value={cursorField?.split(":")[0]}
 												onChange={(value: string) => {
 													const newCursorField = fallBackCursorField
 														? `${value}:${fallBackCursorField}`
 														: value
+													setCursorField(newCursorField)
 													stream.stream.cursor_field = newCursorField
 													setFallBackCursorField("")
 													onSyncModeChange?.(
@@ -672,7 +676,7 @@ const StreamConfiguration = ({
 												))}
 											</Select>
 										</div>
-										{stream.stream.cursor_field &&
+										{cursorField &&
 											!showFallbackSelector &&
 											!fallBackCursorField && (
 												<div className="flex w-1/2 items-end">
@@ -689,7 +693,7 @@ const StreamConfiguration = ({
 												</div>
 											)}
 
-										{stream.stream.cursor_field &&
+										{cursorField &&
 											(showFallbackSelector || fallBackCursorField) && (
 												<div className="flex w-1/2 flex-col">
 													<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
@@ -702,13 +706,13 @@ const StreamConfiguration = ({
 														placeholder="Select default"
 														value={fallBackCursorField}
 														onChange={(value: string) => {
-															const [field] = (
-																stream.stream.cursor_field ?? ""
-															).split(":")
+															const [field] = (cursorField ?? "").split(":")
 
-															stream.stream.cursor_field = value
+															const newCursorField = value
 																? `${field}:${value}`
 																: field
+															setCursorField(newCursorField)
+															stream.stream.cursor_field = newCursorField
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,
@@ -720,8 +724,9 @@ const StreamConfiguration = ({
 														onClear={() => {
 															setShowFallbackSelector(false)
 															setFallBackCursorField("")
-															stream.stream.cursor_field =
-																stream.stream.cursor_field?.split(":")[0]
+															const newCursorField = cursorField?.split(":")[0]
+															setCursorField(newCursorField)
+															stream.stream.cursor_field = newCursorField
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
