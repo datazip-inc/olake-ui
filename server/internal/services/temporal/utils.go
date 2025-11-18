@@ -36,7 +36,10 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) (*ExecutionReq
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
 func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
-	configs := []JobConfig{}
+	configs := []JobConfig{
+		{Name: "state.json", Data: job.State},
+		{Name: "destination.json", Data: job.DestID.Config},
+	}
 
 	// Handle custom streams config for clear-destination:
 	// - If streamsConfig is provided: This is from job-edit flow where difference-streams
