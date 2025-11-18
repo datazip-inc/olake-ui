@@ -47,6 +47,21 @@ const (
 
 // TODO: check if we can add command args as constants for all the methods
 
+// Scheduled Process (sync, clear-destination):
+// For scheduled/triggered workflows, configs are written in the worker-side.
+// This is because the BFF doesn't know the actual execution workflowID that
+// Temporal will use (the worker gets it from workflow.GetInfo), and the worker
+// needs to write configs using the correct execution workflowID for directory
+// computation. The worker reads configs from DB and merges with any configs
+// provided in the request payload.
+//
+// Direct Execution (discover, spec, check, stream-difference):
+// For direct execution, configs are written in the client-side (BFF) before
+// sending to Temporal. The BFF knows the workflowID upfront and can write
+// files to the correct directory, avoiding large payloads in Temporal.
+//
+// ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
+
 // DiscoverStreams runs a workflow to discover catalog data
 func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
@@ -55,6 +70,10 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		{Name: "config.json", Data: config},
 		{Name: "streams.json", Data: streamsConfig},
 		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
+	}
+
+	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+		return nil, fmt.Errorf("failed to setup config files: %s", err)
 	}
 
 	cmdArgs := []string{
@@ -80,7 +99,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		ConnectorType: sourceType,
 		Version:       version,
 		Args:          cmdArgs,
-		Configs:       configs,
+		Configs:       nil,
 		WorkflowID:    workflowID,
 		JobID:         0,
 		Timeout:       GetWorkflowTimeout(Discover),
@@ -159,6 +178,10 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		{Name: "config.json", Data: config},
 	}
 
+	if err := SetupConfigFiles(Check, workflowID, configs); err != nil {
+		return nil, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
 	cmdArgs := []string{
 		"check",
 		fmt.Sprintf("--%s", flag),
@@ -173,7 +196,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 		ConnectorType: sourceType,
 		Version:       version,
 		Args:          cmdArgs,
-		Configs:       configs,
+		Configs:       nil,
 		WorkflowID:    workflowID,
 		Timeout:       GetWorkflowTimeout(Check),
 	}
@@ -220,16 +243,23 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
-	err := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &clearReq)
+	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	if err != nil {
+		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
+	}
+
+	err = t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, clearReq)
 	if err != nil {
 		return fmt.Errorf("failed to update schedule for clear-destination: %s", err)
 	}
 
 	if err := t.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
 		// revert back to sync
-		syncReq := buildExecutionReqForSync(job, workflowID)
-		if uerr := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq); uerr != nil {
+		syncReq, err := buildExecutionReqForSync(job, workflowID)
+		if err != nil {
+			return fmt.Errorf("failed to build execution request for sync: %s", err)
+		}
+		if uerr := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, syncReq); uerr != nil {
 			return fmt.Errorf("trigger clear destination workflow failed: %s, revert to sync failed: %s", err, uerr)
 		}
 		return fmt.Errorf("failed to trigger clear destination workflow: %s", err)
@@ -246,6 +276,10 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		{Name: "new_streams.json", Data: newConfig},
 	}
 
+	if err := SetupConfigFiles(Discover, workflowID, configs); err != nil {
+		return nil, fmt.Errorf("failed to setup config files: %s", err)
+	}
+
 	cmdArgs := []string{
 		"discover",
 		"--streams", "/mnt/config/old_streams.json",
@@ -260,7 +294,7 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
 		Args:          cmdArgs,
-		Configs:       configs,
+		Configs:       nil,
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(Discover),

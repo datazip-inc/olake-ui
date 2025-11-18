@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"go.temporal.io/sdk/client"
 )
 
 // buildExecutionReqForSync builds the ExecutionRequest for a sync job
-func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionRequest {
+func buildExecutionReqForSync(job *models.Job, workflowID string) (*ExecutionRequest, error) {
 	args := []string{
 		"sync",
 		"--config", "/mnt/config/source.json",
@@ -22,38 +21,30 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 		"--state", "/mnt/config/state.json",
 	}
 
-	configs := []JobConfig{
-		{Name: "source.json", Data: job.SourceID.Config},
-		{Name: "destination.json", Data: job.DestID.Config},
-		{Name: "streams.json", Data: job.StreamsConfig},
-		{Name: "state.json", Data: job.State},
-		{Name: "user_id.txt", Data: telemetry.GetTelemetryUserID()},
-	}
-
-	return ExecutionRequest{
+	return &ExecutionRequest{
 		Command:       Sync,
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
 		Args:          args,
-		Configs:       configs,
+		Configs:       nil,
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(Sync),
 		OutputFile:    "state.json",
-	}
+	}, nil
 }
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
-func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) ExecutionRequest {
-	catalog := streamsConfig
-	if catalog == "" {
-		catalog = job.StreamsConfig
-	}
+func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
+	configs := []JobConfig{}
 
-	configs := []JobConfig{
-		{Name: "streams.json", Data: catalog},
-		{Name: "state.json", Data: job.State},
-		{Name: "destination.json", Data: job.DestID.Config},
+	// Handle custom streams config for clear-destination:
+	// - If streamsConfig is provided: This is from job-edit flow where difference-streams
+	//   are provided. Send it in request configs so worker uses it instead of DB value.
+	// - If streamsConfig is empty: This is from direct clear-destination trigger.
+	//   Worker will use streams.json from the database.
+	if streamsConfig != "" {
+		configs = append(configs, JobConfig{Name: "streams.json", Data: streamsConfig})
 	}
 
 	args := []string{
@@ -63,7 +54,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		"--destination", "/mnt/config/destination.json",
 	}
 
-	return ExecutionRequest{
+	return &ExecutionRequest{
 		Command:       ClearDestination,
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
@@ -74,7 +65,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(ClearDestination),
 		OutputFile:    "state.json",
-	}
+	}, nil
 }
 
 // extractWorkflowResponse extracts and parses the JSON response from a workflow execution result
