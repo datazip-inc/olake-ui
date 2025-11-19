@@ -69,7 +69,6 @@ export const createIcebergJdbcConfig = (data: {
 	jdbc_url: string
 	jdbc_username: string
 	jdbc_password: string
-	iceberg_db: string
 	iceberg_s3_path: string
 	aws_region: string
 	s3_endpoint?: string
@@ -87,7 +86,6 @@ export const createIcebergJdbcConfig = (data: {
 		jdbc_url: data.jdbc_url,
 		jdbc_username: data.jdbc_username,
 		jdbc_password: data.jdbc_password,
-		iceberg_db: data.iceberg_db,
 		iceberg_s3_path: data.iceberg_s3_path,
 		aws_region: data.aws_region,
 		...(data.s3_endpoint && { s3_endpoint: data.s3_endpoint }),
@@ -206,7 +204,6 @@ export const S3_DESTINATION_CONFIG = {
 // 1. Iceberg with AWS Glue Catalog
 export const ICEBERG_GLUE_CONFIG = {
 	aws_region: "us-east-1",
-	iceberg_db: "olake_iceberg",
 	iceberg_s3_path: "s3a://warehouse",
 	aws_access_key: "admin",
 	aws_secret_key: "password",
@@ -218,7 +215,6 @@ export const ICEBERG_JDBC_CONFIG = {
 	jdbc_url: "jdbc:postgresql://172.17.0.2:5432/iceberg",
 	jdbc_username: "iceberg",
 	jdbc_password: "password",
-	iceberg_db: "olake_iceberg",
 	iceberg_s3_path: "s3a://warehouse",
 	aws_region: "us-east-1",
 	s3_endpoint: "http://172.17.0.2:9000",
