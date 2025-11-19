@@ -6,9 +6,11 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
-import { getConnectorInLowerCase } from "../../utils/utils"
+import {
+	getConnectorInLowerCase,
+	normalizeConnectorType,
+} from "../../utils/utils"
 
-// TODO: Make it parquet on all places
 const normalizeDestinationType = (type: string): string => {
 	//destination connector typemap
 	const typeMap: Record<string, string> = {
@@ -28,6 +30,7 @@ export const destinationService = {
 				const config = JSON.parse(item.config)
 				return {
 					...item,
+					type: normalizeConnectorType(item.type),
 					config,
 					status: "active",
 				}
