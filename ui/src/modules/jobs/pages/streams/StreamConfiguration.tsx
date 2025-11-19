@@ -236,16 +236,23 @@ const StreamConfiguration = ({
 		if (selectedRadioValue === "incremental") {
 			const availableCursorFields = stream.stream.available_cursor_fields || []
 			if (!cursorField && availableCursorFields.length > 0) {
-				setCursorField(availableCursorFields[0])
-				stream.stream.cursor_field = availableCursorFields[0]
+				const defaultCursorField = availableCursorFields[0]
+				setCursorField(defaultCursorField)
+				setFallBackCursorField("")
+				onSyncModeChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "",
+					SyncMode.INCREMENTAL,
+					defaultCursorField,
+				)
 			}
 		}
 
-		stream.stream.sync_mode = newApiSyncMode
 		onSyncModeChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			newApiSyncMode,
+			cursorField,
 		)
 
 		setFormData({
@@ -655,12 +662,12 @@ const StreamConfiguration = ({
 														? `${value}:${fallBackCursorField}`
 														: value
 													setCursorField(newCursorField)
-													stream.stream.cursor_field = newCursorField
 													setFallBackCursorField("")
 													onSyncModeChange?.(
 														stream.stream.name,
 														stream.stream.namespace || "",
 														SyncMode.INCREMENTAL,
+														newCursorField,
 													)
 												}}
 												optionLabelProp="label"
@@ -712,12 +719,12 @@ const StreamConfiguration = ({
 																? `${field}:${value}`
 																: field
 															setCursorField(newCursorField)
-															stream.stream.cursor_field = newCursorField
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
 																SyncMode.INCREMENTAL,
+																newCursorField,
 															)
 														}}
 														allowClear
@@ -726,11 +733,11 @@ const StreamConfiguration = ({
 															setFallBackCursorField("")
 															const newCursorField = cursorField?.split(":")[0]
 															setCursorField(newCursorField)
-															stream.stream.cursor_field = newCursorField
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
 																SyncMode.INCREMENTAL,
+																newCursorField,
 															)
 														}}
 														optionLabelProp="label"

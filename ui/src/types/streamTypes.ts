@@ -84,6 +84,7 @@ export type StreamConfigurationProps = {
 		streamName: string,
 		namespace: string,
 		mode: SyncMode,
+		cursorField?: string,
 	) => void
 	useDirectForms?: boolean
 }
