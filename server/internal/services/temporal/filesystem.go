@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,6 +42,19 @@ func writeConfigFiles(workDir string, configs []JobConfig) error {
 		}
 	}
 	return nil
+}
+
+func ReadJSONFile(filePath string) (map[string]interface{}, error) {
+	fileOutput, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %v", err)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(fileOutput, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal file: %v", err)
+	}
+
+	return result, nil
 }
 
 // SetupConfigFiles creates the work directory and writes the config files to it

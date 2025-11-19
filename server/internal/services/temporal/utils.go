@@ -2,9 +2,7 @@ package temporal
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -43,8 +41,10 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 	if catalog == "" {
 		catalog = job.StreamsConfig
 	}
-	configFile := fmt.Sprintf("clear-destination-%s-%d", job.ProjectID, job.ID)
-	configPath := filepath.Join(constants.DefaultConfigDir, configFile, "streams.json")
+
+	configDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
+	relativePath := filepath.Join(configDir, "streams.json")
+	configPath := filepath.Join(constants.DefaultConfigDir, relativePath)
 
 	if err := utils.WriteFile(configPath, []byte(catalog), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write streams config to file: %v", err)
@@ -68,6 +68,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(ClearDestination),
 		OutputFile:    "state.json",
+		TempPath:      relativePath,
 	}, nil
 }
 
@@ -83,15 +84,10 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	filePath := filepath.Join(constants.DefaultConfigDir, response)
-	fileOutput, err := os.ReadFile(filePath)
+	// response is the path to the file that contains the workflow response
+	workflowResponse, err := ReadJSONFile(response)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %v", err)
-	}
-
-	var workflowResponse map[string]interface{}
-	if err := json.Unmarshal(fileOutput, &workflowResponse); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal file: %v", err)
+		return nil, fmt.Errorf("failed to read workflow response: %v", err)
 	}
 
 	return workflowResponse, nil
