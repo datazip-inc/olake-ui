@@ -15,7 +15,7 @@ import (
 )
 
 // buildExecutionReqForSync builds the ExecutionRequest for a sync job
-func buildExecutionReqForSync(job *models.Job, workflowID string) (*ExecutionRequest, error) {
+func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequest {
 	args := []string{
 		"sync",
 		"--config", "/mnt/config/source.json",
@@ -34,7 +34,7 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) (*ExecutionReq
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(Sync),
 		OutputFile:    "state.json",
-	}, nil
+	}
 }
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job

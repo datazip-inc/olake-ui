@@ -255,10 +255,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 
 	if err := t.TriggerSchedule(ctx, job.ProjectID, job.ID); err != nil {
 		// revert back to sync
-		syncReq, err := buildExecutionReqForSync(job, workflowID)
-		if err != nil {
-			return fmt.Errorf("failed to build execution request for sync: %s", err)
-		}
+		syncReq := buildExecutionReqForSync(job, workflowID)
 		if uerr := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, syncReq); uerr != nil {
 			return fmt.Errorf("trigger clear destination workflow failed: %s, revert to sync failed: %s", err, uerr)
 		}

@@ -65,12 +65,9 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
 	cronExpression := utils.ToCron(job.Frequency)
 
-	req, err := buildExecutionReqForSync(job, workflowID)
-	if err != nil {
-		return fmt.Errorf("failed to build execution request for sync: %s", err)
-	}
+	req := buildExecutionReqForSync(job, workflowID)
 
-	_, err = t.Client.ScheduleClient().Create(ctx, client.ScheduleOptions{
+	_, err := t.Client.ScheduleClient().Create(ctx, client.ScheduleOptions{
 		ID: scheduleID,
 		Spec: client.ScheduleSpec{
 			CronExpressions: []string{cronExpression},
@@ -83,6 +80,7 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 		},
 		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 	})
+
 	return err
 }
 
@@ -162,9 +160,9 @@ func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.Li
 // RestoreSyncSchedule restores schedule back to sync workflow from clear-destination
 func (t *Temporal) RestoreSyncSchedule(ctx context.Context, job *models.Job) error {
 	workflowID, _ := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
-	syncReq, err := buildExecutionReqForSync(job, workflowID)
-	if err != nil {
-		return fmt.Errorf("failed to build execution request for sync: %s", err)
+	syncReq := buildExecutionReqForSync(job, workflowID)
+	if err := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, syncReq); err != nil {
+		return fmt.Errorf("failed to update schedule: %s", err)
 	}
-	return t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, syncReq)
+	return nil
 }
