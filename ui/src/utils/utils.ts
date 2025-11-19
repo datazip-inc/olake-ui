@@ -21,11 +21,24 @@ import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 import Kafka from "../assets/Kafka.svg"
 
+// Normalizes old connector types to their current internal types
+export const normalizeConnectorType = (connectorType: string): string => {
+	const lowerType = connectorType.toLowerCase()
+
+	switch (lowerType) {
+		case "s3":
+		case "amazon s3":
+			return "parquet"
+		default:
+			return connectorType
+	}
+}
+
 // These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
-	const lowerConnector = connector.toLowerCase()
+	const normalizedConnector = normalizeConnectorType(connector).toLowerCase()
 
-	switch (lowerConnector) {
+	switch (normalizedConnector) {
 		case "mongodb":
 			return MongoDB
 		case "postgres":
@@ -102,7 +115,8 @@ export const getJobTypeClass = (jobType: JobType) => {
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	const lowerConnector = connector.toLowerCase()
+	const normalizedConnector = normalizeConnectorType(connector)
+	const lowerConnector = normalizedConnector.toLowerCase()
 
 	switch (lowerConnector) {
 		case DESTINATION_INTERNAL_TYPES.S3:
