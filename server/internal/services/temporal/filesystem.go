@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
 var (
@@ -45,7 +47,7 @@ func writeConfigFiles(workDir string, configs []JobConfig) error {
 // It writes to the mounted path and can be accessed by the worker.
 func SetupConfigFiles(cmd Command, workflowID string, configs []JobConfig) error {
 	subDir := getWorkflowDirectory(cmd, workflowID)
-	workDir := filepath.Join("/tmp/olake-config", subDir)
+	workDir := filepath.Join(constants.DefaultConfigDir, subDir)
 
 	if err := createDirectory(workDir, 0755); err != nil {
 		return fmt.Errorf("failed to create work directory %s: %s", workDir, err)
