@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/utils"
 	"go.temporal.io/sdk/client"
 )
 
@@ -36,14 +39,15 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) (*ExecutionReq
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
 func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string) (*ExecutionRequest, error) {
-	// Handle custom streams config for clear-destination:
-	// - If streamsConfig is provided: This is from job-edit flow where difference-streams are provided
-	// 	 Worker uses the difference-streams to clear the destination.
-	// - If streamsConfig is empty: This is from direct clear-destination trigger.
-	//   Worker will use streams.json from the database to clear the destination.
-	configs := []JobConfig{}
-	if streamsConfig != "" {
-		configs = append(configs, JobConfig{Name: "streams.json", Data: streamsConfig})
+	catalog := streamsConfig
+	if catalog == "" {
+		catalog = job.StreamsConfig
+	}
+	configFile := fmt.Sprintf("clear-destination-%s-%d", job.ProjectID, job.ID)
+	configPath := filepath.Join(constants.DefaultConfigDir, configFile, "streams.json")
+
+	if err := utils.WriteFile(configPath, []byte(catalog), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write streams config to file: %v", err)
 	}
 
 	args := []string{
@@ -58,7 +62,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		ConnectorType: job.SourceID.Type,
 		Version:       job.SourceID.Version,
 		Args:          args,
-		Configs:       configs,
+		Configs:       nil,
 		WorkflowID:    workflowID,
 		ProjectID:     job.ProjectID,
 		JobID:         job.ID,
@@ -79,12 +83,18 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	jsonResponse, err := ExtractJSON(response)
+	filePath := filepath.Join(constants.DefaultConfigDir, response)
+	fileOutput, err := os.ReadFile(filePath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
 
-	return jsonResponse, nil
+	var workflowResponse map[string]interface{}
+	if err := json.Unmarshal(fileOutput, &workflowResponse); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal file: %v", err)
+	}
+
+	return workflowResponse, nil
 }
 
 func GetWorkflowTimeout(op Command) time.Duration {
@@ -103,35 +113,4 @@ func GetWorkflowTimeout(op Command) time.Duration {
 	default:
 		return time.Minute * 5
 	}
-}
-
-// ExtractJSON extracts and returns the last valid JSON block from output
-func ExtractJSON(output string) (map[string]interface{}, error) {
-	outputStr := strings.TrimSpace(output)
-	if outputStr == "" {
-		return nil, fmt.Errorf("empty output")
-	}
-
-	lines := strings.Split(outputStr, "\n")
-
-	// Find the last non-empty line with valid JSON
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-
-		start := strings.Index(line, "{")
-		end := strings.LastIndex(line, "}")
-		if start != -1 && end != -1 && end > start {
-			jsonPart := line[start : end+1]
-			var result map[string]interface{}
-			if err := json.Unmarshal([]byte(jsonPart), &result); err != nil {
-				continue // Skip invalid JSON
-			}
-			return result, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no valid JSON block found in output")
 }
