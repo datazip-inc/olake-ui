@@ -42,11 +42,11 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		catalog = job.StreamsConfig
 	}
 
-	configDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
-	relativePath := filepath.Join(configDir, "streams.json")
-	configPath := filepath.Join(constants.DefaultConfigDir, relativePath)
+	streamsDir := fmt.Sprintf("%s-%d", workflowID, time.Now().Unix())
+	relativePath := filepath.Join(streamsDir, "streams.json")
+	streamsPath := filepath.Join(constants.DefaultConfigDir, relativePath)
 
-	if err := utils.WriteFile(configPath, []byte(catalog), 0644); err != nil {
+	if err := utils.WriteFile(streamsPath, []byte(catalog), 0644); err != nil {
 		return nil, fmt.Errorf("failed to write streams config to file: %v", err)
 	}
 
@@ -79,13 +79,14 @@ func ExtractWorkflowResponse(ctx context.Context, run client.WorkflowRun) (map[s
 		return nil, fmt.Errorf("workflow execution failed: %v", err)
 	}
 
+	// response is the relative path to the file that contains the workflow response
 	response, ok := result["response"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid response format from worker")
 	}
 
-	// response is the path to the file that contains the workflow response
-	workflowResponse, err := ReadJSONFile(response)
+	responsePath := filepath.Join(constants.DefaultConfigDir, response)
+	workflowResponse, err := ReadJSONFile(responsePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read workflow response: %v", err)
 	}
