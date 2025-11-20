@@ -266,7 +266,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					nextStream.stream.cursor_field = cursorField
 				}
 				if (newSyncMode !== SyncMode.INCREMENTAL) {
-					console.log("deleting cursor field")
 					delete nextStream.stream.cursor_field
 				}
 

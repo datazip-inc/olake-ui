@@ -209,3 +209,8 @@ export interface StreamSchemaProps {
 	onColumnsChange?: (columns: string[]) => void
 	onSyncModeChange?: (mode: SyncMode.FULL_REFRESH | SyncMode.CDC) => void
 }
+
+export type CursorFieldValues = {
+	primary: string
+	fallback: string
+}

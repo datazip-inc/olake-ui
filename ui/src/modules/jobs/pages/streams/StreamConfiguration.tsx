@@ -41,7 +41,7 @@ import {
 	SYNC_MODE_MAP,
 	TAB_STYLES,
 } from "../../../../utils/constants"
-import { operatorOptions } from "../../../../utils/utils"
+import { getCursorFieldValues, operatorOptions } from "../../../../utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
 
@@ -118,9 +118,11 @@ const StreamConfiguration = ({
 
 		// Parse cursor field for default value
 		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
-		if (initialCursorField && initialCursorField.includes(":")) {
-			const [, defaultField] = initialCursorField.split(":")
-			setFallBackCursorField(defaultField)
+		const { fallback: initialFallbackCursor } =
+			getCursorFieldValues(initialCursorField)
+
+		if (initialFallbackCursor) {
+			setFallBackCursorField(initialFallbackCursor)
 			setShowFallbackSelector(true)
 		} else {
 			setFallBackCursorField("")
@@ -235,25 +237,24 @@ const StreamConfiguration = ({
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
 			const availableCursorFields = stream.stream.available_cursor_fields || []
-			if (!cursorField && availableCursorFields.length > 0) {
-				const defaultCursorField = availableCursorFields[0]
-				setCursorField(defaultCursorField)
-				setFallBackCursorField("")
+			const cursor = cursorField || availableCursorFields[0]
+			if (cursor) {
+				setCursorField(getCursorFieldValues(cursor).primary)
+				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
 				onSyncModeChange?.(
 					stream.stream.name,
 					stream.stream.namespace || "",
 					SyncMode.INCREMENTAL,
-					defaultCursorField,
+					cursor,
 				)
 			}
+		} else {
+			onSyncModeChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				newApiSyncMode,
+			)
 		}
-
-		onSyncModeChange?.(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			newApiSyncMode,
-			cursorField,
-		)
 
 		setFormData({
 			...formData,
@@ -547,7 +548,7 @@ const StreamConfiguration = ({
 		isFallback: boolean = false,
 	): { label: React.ReactNode; value: string }[] => {
 		const availableCursorFields = stream.stream.available_cursor_fields || []
-		const selectedField = cursorField?.split(":")[0]
+		const selectedField = getCursorFieldValues(cursorField).primary
 
 		return [...availableCursorFields]
 			.filter(field => !isFallback || field !== selectedField)
@@ -606,6 +607,8 @@ const StreamConfiguration = ({
 
 	// Content rendering components
 	const renderConfigContent = () => {
+		const cursorFieldValues = getCursorFieldValues(cursorField)
+
 		return (
 			<div className="flex flex-col gap-4">
 				<div className={CARD_STYLE}>
@@ -656,7 +659,7 @@ const StreamConfiguration = ({
 											</label>
 											<Select
 												placeholder="Select cursor field"
-												value={cursorField?.split(":")[0]}
+												value={cursorFieldValues.primary || undefined}
 												onChange={(value: string) => {
 													const newCursorField = fallBackCursorField
 														? `${value}:${fallBackCursorField}`
@@ -713,11 +716,9 @@ const StreamConfiguration = ({
 														placeholder="Select default"
 														value={fallBackCursorField}
 														onChange={(value: string) => {
-															const [field] = (cursorField ?? "").split(":")
-
 															const newCursorField = value
-																? `${field}:${value}`
-																: field
+																? `${cursorFieldValues.primary}:${value}`
+																: cursorFieldValues.primary
 															setCursorField(newCursorField)
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
@@ -731,7 +732,7 @@ const StreamConfiguration = ({
 														onClear={() => {
 															setShowFallbackSelector(false)
 															setFallBackCursorField("")
-															const newCursorField = cursorField?.split(":")[0]
+															const newCursorField = cursorFieldValues.primary
 															setCursorField(newCursorField)
 															onSyncModeChange?.(
 																stream.stream.name,

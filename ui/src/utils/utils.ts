@@ -6,6 +6,7 @@ import {
 	JobType,
 	IngestionMode,
 	SelectedStream,
+	CursorFieldValues,
 } from "../types"
 import {
 	DAYS_MAP,
@@ -622,4 +623,22 @@ export const trimFormDataStrings = (data: any): any => {
 	}
 
 	return data
+}
+
+export const getCursorFieldValues = (
+	cursorValue?: string,
+): CursorFieldValues => {
+	if (!cursorValue) {
+		return {
+			primary: "",
+			fallback: "",
+		}
+	}
+
+	const [primary, fallback] = cursorValue.split(":")
+
+	return {
+		primary,
+		fallback: fallback || "",
+	}
 }
