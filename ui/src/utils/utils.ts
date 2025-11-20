@@ -29,6 +29,9 @@ export const normalizeConnectorType = (connectorType: string): string => {
 		case "s3":
 		case "amazon s3":
 			return "parquet"
+		case "iceberg":
+		case "apache iceberg":
+			return "iceberg"
 		default:
 			return connectorType
 	}
