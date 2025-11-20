@@ -121,13 +121,8 @@ const StreamConfiguration = ({
 		const { fallback: initialFallbackCursor } =
 			getCursorFieldValues(initialCursorField)
 
-		if (initialFallbackCursor) {
-			setFallBackCursorField(initialFallbackCursor)
-			setShowFallbackSelector(true)
-		} else {
-			setFallBackCursorField("")
-			setShowFallbackSelector(false)
-		}
+		setFallBackCursorField(initialFallbackCursor)
+		setShowFallbackSelector(!!initialFallbackCursor)
 
 		setSyncMode(initialApiSyncMode ?? "full_refresh")
 		setCursorField(initialCursorField)
