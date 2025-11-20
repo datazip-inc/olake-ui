@@ -16,6 +16,7 @@ export const destinationService = {
 		try {
 			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			const destinations: Entity[] = response.data.map(item => {
 				const config = JSON.parse(item.config)
