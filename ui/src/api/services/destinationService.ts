@@ -6,17 +6,10 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
-import { getConnectorInLowerCase } from "../../utils/utils"
-
-// TODO: Make it parquet on all places
-const normalizeDestinationType = (type: string): string => {
-	//destination connector typemap
-	const typeMap: Record<string, string> = {
-		"amazon s3": "parquet",
-		"apache iceberg": "iceberg",
-	}
-	return typeMap[type.toLowerCase()] || type.toLowerCase()
-}
+import {
+	getConnectorInLowerCase,
+	normalizeConnectorType,
+} from "../../utils/utils"
 
 export const destinationService = {
 	getDestinations: async () => {
@@ -29,6 +22,7 @@ export const destinationService = {
 				const config = JSON.parse(item.config)
 				return {
 					...item,
+					type: normalizeConnectorType(item.type),
 					config,
 					status: "active",
 				}
@@ -131,7 +125,7 @@ export const destinationService = {
 		source_version: string = "",
 		signal?: AbortSignal,
 	) => {
-		const normalizedType = normalizeDestinationType(type)
+		const normalizedType = normalizeConnectorType(type)
 		const response = await api.post<any>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
