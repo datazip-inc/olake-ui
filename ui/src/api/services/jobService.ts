@@ -15,6 +15,7 @@ export const jobService = {
 		try {
 			const response = await api.get<Job[]>(
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 },
 			)
 
 			const jobs = response.data.map(job => ({
