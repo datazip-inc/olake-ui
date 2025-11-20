@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
@@ -230,8 +231,29 @@ type LogEntry struct {
 
 const readChunkSize = 128 * 1024 // read files in chunks of 128KB
 
-// ReadLinesBackward reads up to `limit` complete lines from file backwards starting at startOffset.
-// Returns: lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
+// isValidLogLine checks if a line is a valid, non-debug log entry
+func isValidLogLine(line string) bool {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return false
+	}
+
+	var logEntry LogEntry
+	if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+		return false
+	}
+
+	if logEntry.Level == "debug" {
+		return false
+	}
+
+	return true
+}
+
+// ReadLinesBackward reads up to `limit` complete VALID log lines from file backwards starting at startOffset.
+// Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
+// startOffset is treated as exclusive - we read lines that END BEFORE startOffset.
+// Returns: valid lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
 func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int64, bool, error) {
 	if limit <= 0 {
 		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
@@ -257,10 +279,11 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 	// accumulator to store the lines we read backwards
 	var accum []byte
 
-	// lines we read backwards
+	// valid lines we collected (newest first)
 	newestFirst := make([]string, 0, limit)
+	firstReturnedIdx := -1 // Track the index of the oldest valid line we return
 
-	// read lines backwards until we have enough lines or reach the beginning of the file
+	// read lines backwards until we have enough VALID lines or reach the beginning of the file
 	for offset > 0 && len(newestFirst) < limit {
 		toRead := min(offset, int64(readChunkSize))
 		readPos := offset - toRead
@@ -292,11 +315,14 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 			fullCount = len(parts)
 		}
 
-		// Collect complete lines from newest to oldest
-		added := 0
-		for i := len(parts) - 1; i >= 0 && added < fullCount && len(newestFirst) < limit; i-- {
-			newestFirst = append(newestFirst, string(parts[i]))
-			added++
+		// Collect complete VALID lines from newest to oldest, filtering as we go
+		// Track the index of each valid line we collect
+		for i := len(parts) - 1; i >= len(parts)-fullCount && i >= 0 && len(newestFirst) < limit; i-- {
+			line := string(parts[i])
+			if isValidLogLine(line) {
+				newestFirst = append(newestFirst, line)
+				firstReturnedIdx = i // Update to track the oldest valid line
+			}
 		}
 
 		offset = readPos
@@ -305,18 +331,13 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 		}
 	}
 
-	// no complete lines found in accumulator
+	// no valid lines found
 	if len(newestFirst) == 0 {
 		return []string{}, offset, offset > 0, nil
 	}
 
-	// find where oldest returned line starts
-	parts := bytes.Split(accum, []byte{'\n'})
-	returnedCount := len(newestFirst)
-	lastIdx := len(parts) - 1
-	firstReturnedIdx := lastIdx - (returnedCount - 1)
-
 	// count bytes before the first returned line
+	parts := bytes.Split(accum, []byte{'\n'})
 	bytesBefore := 0
 	for i := 0; i < firstReturnedIdx; i++ {
 		bytesBefore += len(parts[i]) + 1 // +1 for '\n'
@@ -331,23 +352,89 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 }
 
+// ReadLinesForward reads up to `limit` complete VALID log lines from file forwards starting at startOffset.
+// Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
+// startOffset is treated as inclusive - we start reading from exactly that position.
+// Returns: valid lines (oldest->newest), newOffset (byte position after last returned line), hasMore, error.
+func ReadLinesForward(f *os.File, startOffset int64, limit int) ([]string, int64, bool, error) {
+	if limit <= 0 {
+		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
+	}
+
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, 0, false, err
+	}
+
+	fileSize := fi.Size()
+
+	// Clamp startOffset to [0, fileSize]
+	if startOffset < 0 {
+		startOffset = 0
+	}
+	if startOffset > fileSize {
+		startOffset = fileSize
+	}
+
+	// If already at or past EOF, nothing to read
+	if startOffset >= fileSize {
+		return []string{}, fileSize, false, nil
+	}
+
+	// Seek to the startOffset position in the file before beginning to read lines
+	if _, err := f.Seek(startOffset, io.SeekStart); err != nil {
+		return nil, 0, false, err
+	}
+
+	reader := bufio.NewReader(f)
+
+	lines := make([]string, 0, limit)
+	currentOffset := startOffset
+
+	for len(lines) < limit {
+		lineBytes, rerr := reader.ReadBytes('\n')
+
+		if len(lineBytes) > 0 {
+			// Update offset by bytes read
+			currentOffset += int64(len(lineBytes))
+
+			// Remove trailing newline and check if valid
+			line := strings.TrimRight(string(lineBytes), "\r\n")
+			if isValidLogLine(line) {
+				lines = append(lines, line)
+			}
+		}
+
+		if rerr != nil {
+			if rerr == io.EOF {
+				break
+			}
+			return nil, 0, false, rerr
+		}
+	}
+
+	hasMore := currentOffset < fileSize
+	return lines, currentOffset, hasMore, nil
+}
+
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
-// Returns: lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
-func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interface{}, int64, bool, error) {
+// Direction can be "older" or "newer". If cursor <= 0, it tails from the end of the file.
+// Returns a TaskLogsResponse-like struct: oldest->newest logs plus cursors and hasMore flags.
+func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	// Check if mainLogDir exists
 	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
-		return nil, 0, false, fmt.Errorf("logs directory not found: %s", mainLogDir)
+		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
 	}
 
 	// Logs directory
 	logsDir := filepath.Join(mainLogDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, 0, false, fmt.Errorf("logs directory not found: %s", logsDir)
+		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
 	}
 
 	files, err := os.ReadDir(logsDir)
 	if err != nil || len(files) == 0 {
-		return nil, 0, false, fmt.Errorf("logs directory empty in: %s", logsDir)
+		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
 	}
 
 	logDir := filepath.Join(logsDir, files[0].Name())
@@ -355,13 +442,13 @@ func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interfac
 
 	f, err := os.Open(logPath)
 	if err != nil {
-		return nil, 0, false, fmt.Errorf("failed to read log file: %s", logPath)
+		return nil, fmt.Errorf("failed to read log file: %s", logPath)
 	}
 	defer f.Close()
 
 	stat, err := f.Stat()
 	if err != nil {
-		return nil, 0, false, fmt.Errorf("failed to stat log file: %w", err)
+		return nil, fmt.Errorf("failed to stat log file: %w", err)
 	}
 	fileSize := stat.Size()
 
@@ -375,47 +462,30 @@ func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interfac
 		cursor = fileSize
 	}
 
-	// Normalize cursor: negative means from the EOF
-	if cursor < 0 {
-		cursor = fileSize
+	// Normalize direction
+	dir := strings.ToLower(strings.TrimSpace(direction))
+	if dir != "newer" {
+		dir = "older"
 	}
 
-	// If cursor is 0, we've read everything
-	if cursor == 0 {
-		return []map[string]interface{}{}, 0, false, nil
-	}
+	// Initial tail: cursor <= 0 means "from end of file"
+	isTail := cursor < 0
 
-	var parsedLogs []map[string]interface{}
-	currentOffset := cursor
-	hasMore := false
-	for len(parsedLogs) < limit {
-		// fetch a chunk: we request a bit more lines (multiplier) to account for filtered lines
-		fetchLines := max((limit-len(parsedLogs))*2, 1)
-		lines, newOffset, more, rerr := ReadLinesBackward(f, currentOffset, fetchLines)
-		if rerr != nil {
-			return nil, 0, false, rerr
-		}
-		if len(lines) == 0 {
-			// no more lines to read
-			hasMore = false
-			currentOffset = newOffset
-			break
-		}
+	logs := make([]map[string]interface{}, 0, limit)
+	var olderCursor int64
+	var newerCursor int64
+	var hasMoreOlder bool
+	var hasMoreNewer bool
 
-		// Collect logs from this batch
-		batchLogs := make([]map[string]interface{}, 0)
+	// Parse validated lines into response format
+	// Lines are already filtered (no empty, no invalid JSON, no debug) by ReadLines functions
+	parseLines := func(lines []string) []map[string]interface{} {
+		batch := make([]map[string]interface{}, 0, len(lines))
 		for _, line := range lines {
-			if strings.TrimSpace(line) == "" {
-				continue
-			}
-
 			var logEntry LogEntry
+			// Safe to unmarshal since ReadLines* already validated
 			if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-				continue
-			}
-
-			if logEntry.Level == "debug" {
-				continue
+				continue // Shouldn't happen but handle gracefully
 			}
 
 			var messageStr string
@@ -432,30 +502,57 @@ func ReadLogs(mainLogDir string, cursor int64, limit int) ([]map[string]interfac
 				messageStr = string(logEntry.Message)
 			}
 
-			batchLogs = append(batchLogs, map[string]interface{}{
+			batch = append(batch, map[string]interface{}{
 				"level":   logEntry.Level,
 				"time":    logEntry.Time.UTC().Format(time.RFC3339),
 				"message": messageStr,
 			})
 		}
 
-		// Prepend batch logs (they're older than or same age as existing logs)
-		parsedLogs = append(batchLogs, parsedLogs...)
-
-		// Trim from the beginning if we've exceeded the limit (keep the newest logs)
-		if len(parsedLogs) > limit {
-			parsedLogs = parsedLogs[len(parsedLogs)-limit:]
-		}
-
-		currentOffset = newOffset
-		hasMore = more
-
-		if !more || currentOffset == 0 || len(parsedLogs) >= limit {
-			break
-		}
+		return batch
 	}
 
-	return parsedLogs, currentOffset, hasMore, nil
+	// Tail or "older" from a cursor: walk backwards
+	if isTail || dir == "older" {
+		if isTail {
+			cursor = fileSize
+		}
+
+		lines, newOffset, more, rerr := ReadLinesBackward(f, cursor, limit)
+		if rerr != nil {
+			return nil, rerr
+		}
+
+		logs = parseLines(lines)
+
+		// olderCursor points to the position BEFORE the oldest log we're returning
+		olderCursor = newOffset
+		newerCursor = cursor
+		hasMoreOlder = more && newOffset > 0
+		hasMoreNewer = newerCursor < fileSize
+	} else {
+		// dir == "newer": walk forwards
+		lines, newOffset, more, rerr := ReadLinesForward(f, cursor, limit)
+		if rerr != nil {
+			return nil, rerr
+		}
+
+		logs = parseLines(lines)
+
+		// newerCursor points to the position AFTER the newest log we have
+		newerCursor = newOffset
+		olderCursor = cursor
+		hasMoreNewer = more && newOffset < fileSize
+		hasMoreOlder = olderCursor > 0
+	}
+
+	return &dto.TaskLogsResponse{
+		Logs:         logs,
+		OlderCursor:  olderCursor,
+		NewerCursor:  newerCursor,
+		HasMoreOlder: hasMoreOlder,
+		HasMoreNewer: hasMoreNewer,
+	}, nil
 }
 
 // RetryWithBackoff retries a function with exponential backoff
