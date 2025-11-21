@@ -40,7 +40,7 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 }
 
 func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
-	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.Name)
+	unique, err := s.db.IsJobNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check job name uniqueness: %s", err)
 	}
@@ -335,7 +335,7 @@ func (s *ETLService) CheckUniqueName(ctx context.Context, projectID string, req 
 		return false, fmt.Errorf("invalid entity type: %s", req.EntityType)
 	}
 
-	unique, err := s.db.IsNameUniqueInProject(projectID, req.Name, tableType)
+	unique, err := s.db.IsNameUniqueInProject(ctx, projectID, req.Name, tableType)
 	if err != nil {
 		return false, fmt.Errorf("failed to check name uniqueness: %s", err)
 	}
