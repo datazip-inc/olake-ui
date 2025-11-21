@@ -818,7 +818,7 @@ http://localhost:8080
     "success": "boolean",
     "message": "string",
     "data": {
-      "unique": "boolean"
+     "unique": "boolean"
     }
   }
   ```
