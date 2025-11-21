@@ -111,7 +111,9 @@ type JobDataItem struct {
 }
 
 type TaskLogsResponse struct {
-	Logs    []map[string]interface{} `json:"logs"`
-	Cursor  int64                    `json:"cursor"`
-	HasMore bool                     `json:"has_more"`
+	Logs         []map[string]interface{} `json:"logs"`
+	OlderCursor  int64                    `json:"older_cursor"`
+	NewerCursor  int64                    `json:"newer_cursor"`
+	HasMoreOlder bool                     `json:"has_more_older"`
+	HasMoreNewer bool                     `json:"has_more_newer"`
 }

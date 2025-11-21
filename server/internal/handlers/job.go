@@ -370,19 +370,16 @@ func (h *Handler) GetTaskLogs() {
 
 	cursor, _ := h.GetInt64("cursor", -1)
 	limit, _ := h.GetInt("limit", 1000)
+	direction := h.GetString("direction", "older")
 
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s] cursor[%d] limit[%d]", id, req.FilePath, cursor, limit)
 
-	logs, newCursor, hasMore, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath, cursor, limit)
+	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath, cursor, limit, direction)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), dto.TaskLogsResponse{
-		Logs:    logs,
-		Cursor:  newCursor,
-		HasMore: hasMore,
-	})
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
 }
 
 // @router /internal/worker/callback/sync-telemetry [post]

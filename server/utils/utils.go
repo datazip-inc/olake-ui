@@ -271,7 +271,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 	// startOffset at beginning or negative, return empty result
 	if startOffset <= 0 {
-		return nil, 0, false, nil
+		return []string{}, 0, false, nil
 	}
 
 	offset := startOffset
@@ -281,7 +281,6 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 	// valid lines we collected (newest first)
 	newestFirst := make([]string, 0, limit)
-	firstReturnedIdx := -1 // Track the index of the oldest valid line we return
 
 	// read lines backwards until we have enough VALID lines or reach the beginning of the file
 	for offset > 0 && len(newestFirst) < limit {
@@ -321,7 +320,6 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 			line := string(parts[i])
 			if isValidLogLine(line) {
 				newestFirst = append(newestFirst, line)
-				firstReturnedIdx = i // Update to track the oldest valid line
 			}
 		}
 
@@ -338,6 +336,24 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 	// count bytes before the first returned line
 	parts := bytes.Split(accum, []byte{'\n'})
+
+	// find the index in final parts that corresponds to the oldest returned line
+	need := len(newestFirst) // number of valid lines we returned (newest->oldest)
+	found := 0
+	firstReturnedIdx := -1
+	for i := len(parts) - 1; i >= 0; i-- {
+		if isValidLogLine(string(parts[i])) {
+			found++
+			if found == need {
+				firstReturnedIdx = i
+				break
+			}
+		}
+	}
+	if firstReturnedIdx < 0 {
+		firstReturnedIdx = 0
+	}
+
 	bytesBefore := 0
 	for i := 0; i < firstReturnedIdx; i++ {
 		bytesBefore += len(parts[i]) + 1 // +1 for '\n'
@@ -418,7 +434,7 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int) ([]string, int64
 }
 
 // ReadLogs reads logs from the given mainLogDir and returns structured log entries.
-// Direction can be "older" or "newer". If cursor <= 0, it tails from the end of the file.
+// Direction can be "older" or "newer". If cursor < 0, it tails from the end of the file.
 // Returns a TaskLogsResponse-like struct: oldest->newest logs plus cursors and hasMore flags.
 func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	// Check if mainLogDir exists
@@ -468,7 +484,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 		dir = "older"
 	}
 
-	// Initial tail: cursor <= 0 means "from end of file"
+	// Initial tail: cursor < 0 means "from end of file"
 	isTail := cursor < 0
 
 	logs := make([]map[string]interface{}, 0, limit)

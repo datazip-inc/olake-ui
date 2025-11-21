@@ -176,13 +176,13 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 
 	homeDir := constants.DefaultConfigDir
 	mainLogDir := filepath.Join(homeDir, workflowID)
-	logs, _, _, err := utils.ReadLogs(mainLogDir, -1, -1)
+	logs, err := utils.ReadLogs(mainLogDir, -1, -1, "older")
 	if err != nil {
 		return result, nil, fmt.Errorf("failed to read logs destination_type[%s] destination_version[%s] error[%s]",
 			req.Type, req.Version, err)
 	}
 
-	return result, logs, nil
+	return result, logs.Logs, nil
 }
 
 func (s *ETLService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
