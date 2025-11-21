@@ -139,4 +139,17 @@ export const destinationService = {
 		)
 		return response.data
 	},
+
+	checkDestinationNameUnique: async (destinationName: string): Promise<{ unique: boolean }> => {
+		try {
+			const response = await api.post<{ unique: boolean }>(
+				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name: destinationName, entity_type: "destination" },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error checking destination name uniqueness:", error)
+			throw error
+		}
+	},
 }

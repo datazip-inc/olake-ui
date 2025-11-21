@@ -173,14 +173,34 @@ func (db *Database) DeleteJob(id int) error {
 	return err
 }
 
-// IsJobNameUnique checks if a job name is unique within a project in the jobs table.
-func (db *Database) IsJobNameUniqueInProject(projectID, jobName string) (bool, error) {
-	count, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
-		Filter("name", jobName).
+// IsNameUniqueInProject checks if a name is unique within a project for a given table.
+func (db *Database) IsNameUniqueInProject(projectID, name string, tableType constants.TableType) (bool, error) {
+	tableName, ok := constants.TableNameMap[tableType]
+	if !ok {
+		return false, fmt.Errorf("invalid table type: %v", tableType)
+	}
+
+	count, err := db.ormer.QueryTable(tableName).
+		Filter("name", name).
 		Filter("project_id", projectID).
 		Count()
 	if err != nil {
-		return false, fmt.Errorf("failed to check job name uniqueness project_id[%s] job_name[%s]: %s", projectID, jobName, err)
+		return false, fmt.Errorf("failed to check name uniqueness project_id[%s] name[%s] table[%s]: %s", projectID, name, tableName, err)
 	}
 	return count == 0, nil
+}
+
+// IsJobNameUniqueInProject checks if a job name is unique within a project.
+func (db *Database) IsJobNameUniqueInProject(projectID, jobName string) (bool, error) {
+	return db.IsNameUniqueInProject(projectID, jobName, constants.JobTable)
+}
+
+// IsSourceNameUniqueInProject checks if a source name is unique within a project.
+func (db *Database) IsSourceNameUniqueInProject(projectID, name string) (bool, error) {
+	return db.IsNameUniqueInProject(projectID, name, constants.SourceTable)
+}
+
+// IsDestinationNameUniqueInProject checks if a destination name is unique within a project.
+func (db *Database) IsDestinationNameUniqueInProject(projectID, name string) (bool, error) {
+	return db.IsNameUniqueInProject(projectID, name, constants.DestinationTable)
 }

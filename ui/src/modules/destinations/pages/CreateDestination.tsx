@@ -18,6 +18,7 @@ import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
+import { validationService } from "../../../api/services/validationService"
 import {
 	CreateDestinationProps,
 	DestinationConfig,
@@ -34,6 +35,7 @@ import {
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
 	TEST_CONNECTION_STATUS,
@@ -371,22 +373,32 @@ const CreateDestination = forwardRef<
 			validateDestination,
 		}))
 
-		const handleCreate = async () => {
-			if (fromJobFlow) {
-				return
-			}
-			const isValid = await validateDestination()
-			if (!isValid) return
+	const handleCreate = async () => {
+		if (fromJobFlow) {
+			return
+		}
+		const isValid = await validateDestination()
+		if (!isValid) return
 
-			const newDestinationData = {
-				name: destinationName,
-				type:
-					connector === CONNECTOR_TYPES.AMAZON_S3
-						? DESTINATION_INTERNAL_TYPES.S3
-						: DESTINATION_INTERNAL_TYPES.ICEBERG,
-				version,
-				config: JSON.stringify({ ...formData }),
-			}
+		const isUnique = await validationService.checkUniqueName(destinationName, ENTITY_TYPES.DESTINATION)
+		if (isUnique === null) {
+			message.error("Failed to verify destination name uniqueness")
+			return
+		}
+		if (!isUnique) {
+			message.error("Destination name already exists. Please choose a different name.")
+			return
+		}
+
+		const newDestinationData = {
+			name: destinationName,
+			type:
+				connector === CONNECTOR_TYPES.AMAZON_S3
+					? DESTINATION_INTERNAL_TYPES.S3
+					: DESTINATION_INTERNAL_TYPES.ICEBERG,
+			version,
+			config: JSON.stringify({ ...formData }),
+		}
 
 			try {
 				setShowTestingModal(true)

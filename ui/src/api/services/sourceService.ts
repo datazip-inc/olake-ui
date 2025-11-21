@@ -6,6 +6,7 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
+import { ENTITY_TYPES } from "../../utils/constants"
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
@@ -159,6 +160,19 @@ export const sourceService = {
 			return response.data
 		} catch (error) {
 			console.error("Error getting source streams:", error)
+			throw error
+		}
+	},
+
+	checkSourceNameUnique: async (sourceName: string): Promise<{ unique: boolean }> => {
+		try {
+			const response = await api.post<{ unique: boolean }>(
+				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name: sourceName, entity_type: ENTITY_TYPES.SOURCE },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error checking source name uniqueness:", error)
 			throw error
 		}
 	},

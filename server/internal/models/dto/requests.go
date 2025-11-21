@@ -22,8 +22,9 @@ type SpecRequest struct {
 }
 
 // check unique job name request
-type CheckUniqueJobNameRequest struct {
-	JobName string `json:"job_name"`
+type CheckUniqueNameRequest struct {
+	Name       string `json:"name" validate:"required"`
+	EntityType string `json:"entity_type" validate:"required,oneof=job source destination"`
 }
 
 // Test connection requests
