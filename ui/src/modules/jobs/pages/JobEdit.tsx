@@ -312,7 +312,7 @@ const JobEdit: React.FC = () => {
 		return null
 	}
 
-	const getjobUpdatePayLoad = (
+	const getJobUpdatePayLoad = (
 		streamsConfig: StreamsDataStructure,
 		diff: StreamsDataStructure | null,
 	) => {
@@ -416,7 +416,7 @@ const JobEdit: React.FC = () => {
 		setIsSubmitting(true)
 		try {
 			// Create the job update payload
-			const jobUpdatePayload = getjobUpdatePayLoad(streamsConfig, diff)
+			const jobUpdatePayload = getJobUpdatePayLoad(streamsConfig, diff)
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
 
