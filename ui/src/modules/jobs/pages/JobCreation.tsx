@@ -9,7 +9,8 @@ import {
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
-import { destinationService, jobService, sourceService } from "../../../api"
+import { destinationService, sourceService } from "../../../api"
+import { validationService } from "../../../api/services/validationService"
 
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
@@ -20,6 +21,7 @@ import {
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
 	TEST_CONNECTION_STATUS,
@@ -125,6 +127,20 @@ const JobCreation: React.FC = () => {
 			message.error("Source name is required")
 			return false
 		}
+		
+		// Check uniqueness only if creating a new source (not using existing)
+		if (!existingSourceId && sourceName.trim()) {
+			const isUnique = await validationService.checkUniqueName(sourceName, ENTITY_TYPES.SOURCE)
+			if (isUnique === null) {
+				message.error("Failed to verify source name uniqueness")
+				return false
+			}
+			if (!isUnique) {
+				message.error("Source name already exists. Please choose a different name.")
+				return false
+			}
+		}
+		
 		return true
 	}
 
@@ -139,6 +155,20 @@ const JobCreation: React.FC = () => {
 			message.error("Destination name is required")
 			return false
 		}
+		
+		// Check uniqueness only if creating a new destination (not using existing)
+		if (!existingDestinationId && destinationName.trim()) {
+			const isUnique = await validationService.checkUniqueName(destinationName, ENTITY_TYPES.DESTINATION)
+			if (isUnique === null) {
+				message.error("Failed to verify destination name uniqueness")
+				return false
+			}
+			if (!isUnique) {
+				message.error("Destination name already exists. Please choose a different name.")
+				return false
+			}
+		}
+		
 		return true
 	}
 
@@ -150,14 +180,6 @@ const JobCreation: React.FC = () => {
 		return validateCronExpression(cronExpression)
 	}
 
-	const checkJobNameUnique = async (): Promise<boolean | null> => {
-		try {
-			const response = await jobService.checkJobNameUnique(jobName)
-			return response.unique
-		} catch {
-			return null
-		}
-	}
 
 	// Connection test handler
 	const handleConnectionTest = async (
@@ -301,7 +323,7 @@ const JobCreation: React.FC = () => {
 			case JOB_CREATION_STEPS.CONFIG:
 				if (!validateConfig()) return
 
-				const isUnique = await checkJobNameUnique()
+				const isUnique = await validationService.checkUniqueName(jobName, ENTITY_TYPES.JOB)
 				if (isUnique === null) {
 					return
 				}

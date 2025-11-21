@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
@@ -14,6 +15,7 @@ import (
 	"go.temporal.io/api/workflow/v1"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/converter"
+	"golang.org/x/mod/semver"
 )
 
 func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, jobs []*models.Job, projectID string) error {
@@ -188,5 +190,14 @@ func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, proje
 		return fmt.Errorf("timeout waiting for sync to stop after %v", maxWaitTime)
 	}
 
+	return nil
+}
+
+// checks the version compatibitlity for clear-destination and stream difference operation
+// supported in versions >= v0.3.0
+func CheckClearDestinationCompatibility(sourceVersion string) error {
+	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 {
+		return fmt.Errorf("source version %s is not supported for clear destination. please update the source version to %s or higher", sourceVersion, constants.DefaultClearDestinationVersion)
+	}
 	return nil
 }

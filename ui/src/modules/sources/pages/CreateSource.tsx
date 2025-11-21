@@ -19,6 +19,7 @@ import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
+import { validationService } from "../../../api/services/validationService"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
 import {
 	getConnectorLabel,
@@ -31,6 +32,7 @@ import {
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 	TEST_CONNECTION_STATUS,
+	ENTITY_TYPES,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
@@ -283,19 +285,29 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			validateSource,
 		}))
 
-		const handleCreate = async () => {
-			if (fromJobFlow) {
-				return
-			}
-			const isValid = await validateSource()
-			if (!isValid) return
+	const handleCreate = async () => {
+		if (fromJobFlow) {
+			return
+		}
+		const isValid = await validateSource()
+		if (!isValid) return
 
-			const newSourceData = {
-				name: sourceName,
-				type: connector.toLowerCase(),
-				version: selectedVersion,
-				config: JSON.stringify(formData),
-			}
+		const isUnique = await validationService.checkUniqueName(sourceName, ENTITY_TYPES.SOURCE)
+		if (isUnique === null) {
+			message.error("Failed to verify source name uniqueness")
+			return
+		}
+		if (!isUnique) {
+			message.error("Source name already exists. Please choose a different name.")
+			return
+		}
+
+		const newSourceData = {
+			name: sourceName,
+			type: connector.toLowerCase(),
+			version: selectedVersion,
+			config: JSON.stringify(formData),
+		}
 
 			try {
 				setShowTestingModal(true)

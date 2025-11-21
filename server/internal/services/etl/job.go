@@ -249,6 +249,10 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 		return fmt.Errorf("job not found: %s", err)
 	}
 
+	if err := CheckClearDestinationCompatibility(job.SourceID.Version); err != nil {
+		return err
+	}
+
 	if !job.Active {
 		return fmt.Errorf("job is paused, please unpause to run clear destination")
 	}
@@ -286,6 +290,10 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, _ string, jobID in
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
+	if err := CheckClearDestinationCompatibility(job.SourceID.Version); err != nil {
+		return nil, err
+	}
+
 	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stream difference: %s", err)
@@ -314,10 +322,22 @@ func (s *ETLService) GetClearDestinationStatus(ctx context.Context, projectID st
 	return isClearRunning, nil
 }
 
-func (s *ETLService) CheckUniqueJobName(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
-	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
+func (s *ETLService) CheckUniqueName(ctx context.Context, projectID string, req dto.CheckUniqueNameRequest) (bool, error) {
+	var tableType constants.TableType
+	switch req.EntityType {
+	case "job":
+		tableType = constants.JobTable
+	case "source":
+		tableType = constants.SourceTable
+	case "destination":
+		tableType = constants.DestinationTable
+	default:
+		return false, fmt.Errorf("invalid entity type: %s", req.EntityType)
+	}
+
+	unique, err := s.db.IsNameUniqueInProject(projectID, req.Name, tableType)
 	if err != nil {
-		return false, fmt.Errorf("failed to check job name uniqueness: %s", err)
+		return false, fmt.Errorf("failed to check name uniqueness: %s", err)
 	}
 
 	return unique, nil

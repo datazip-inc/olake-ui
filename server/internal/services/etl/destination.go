@@ -64,6 +64,14 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 }
 
 func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
+	unique, err := s.db.IsDestinationNameUniqueInProject(projectID, req.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check destination name uniqueness: %s", err)
+	}
+	if !unique {
+		return fmt.Errorf("destination name '%s' is not unique", req.Name)
+	}
+
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
