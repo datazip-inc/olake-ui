@@ -67,6 +67,14 @@ func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataI
 }
 
 func (s *ETLService) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
+	unique, err := s.db.IsSourceNameUniqueInProject(ctx, projectID, req.Name)
+	if err != nil {
+		return fmt.Errorf("failed to check source name uniqueness: %s", err)
+	}
+	if !unique {
+		return fmt.Errorf("source name '%s' is not unique", req.Name)
+	}
+
 	src := &models.Source{
 		Name:      req.Name,
 		Type:      req.Type,

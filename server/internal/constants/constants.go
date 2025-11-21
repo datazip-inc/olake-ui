@@ -11,21 +11,24 @@ import (
 )
 
 var (
-	defaultPort               = 8000
-	version                   = "Not Set"
-	commitsha                 = "Not Set"
-	releasechannel            = "Not Set"
-	defaultBaseHost           = "localhost"
-	DefaultTimeZone           = "Asia/Kolkata"
-	DefaultUsername           = "olake"
-	DefaultPassword           = "password"
-	EncryptionKey             = "OLAKE_SECRET_KEY"
-	TableNameMap              = map[TableType]string{}
-	DefaultConfigDir          = "/tmp/olake-config"
-	DefaultLogRetentionPeriod = 30
-	DefaultSpecVersion        = "v0.2.0"
+	defaultPort      = 8000
+	version          = "Not Set"
+	commitsha        = "Not Set"
+	releasechannel   = "Not Set"
+	defaultBaseHost  = "localhost"
+	DefaultTimeZone  = "Asia/Kolkata"
+	DefaultUsername  = "olake"
+	DefaultPassword  = "password"
+	EncryptionKey    = "OLAKE_SECRET_KEY"
+	TableNameMap     = map[TableType]string{}
+	DefaultConfigDir = "/tmp/olake-config"
 
+	DefaultLogRetentionPeriod = 30
 	DefaultCancelSyncWaitTime = 30 * time.Second
+
+	// versions
+	DefaultSpecVersion             = "v0.2.0"
+	DefaultClearDestinationVersion = "v0.3.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
