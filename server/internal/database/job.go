@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/beego/beego/v2/client/orm"
@@ -174,13 +175,13 @@ func (db *Database) DeleteJob(id int) error {
 }
 
 // IsNameUniqueInProject checks if a name is unique within a project for a given table.
-func (db *Database) IsNameUniqueInProject(projectID, name string, tableType constants.TableType) (bool, error) {
+func (db *Database) IsNameUniqueInProject(ctx context.Context, projectID, name string, tableType constants.TableType) (bool, error) {
 	tableName, ok := constants.TableNameMap[tableType]
 	if !ok {
 		return false, fmt.Errorf("invalid table type: %v", tableType)
 	}
 
-	count, err := db.ormer.QueryTable(tableName).
+	count, err := db.ormer.QueryTableWithCtx(ctx, tableName).
 		Filter("name", name).
 		Filter("project_id", projectID).
 		Count()
@@ -191,16 +192,16 @@ func (db *Database) IsNameUniqueInProject(projectID, name string, tableType cons
 }
 
 // IsJobNameUniqueInProject checks if a job name is unique within a project.
-func (db *Database) IsJobNameUniqueInProject(projectID, jobName string) (bool, error) {
-	return db.IsNameUniqueInProject(projectID, jobName, constants.JobTable)
+func (db *Database) IsJobNameUniqueInProject(ctx context.Context, projectID, jobName string) (bool, error) {
+	return db.IsNameUniqueInProject(ctx, projectID, jobName, constants.JobTable)
 }
 
 // IsSourceNameUniqueInProject checks if a source name is unique within a project.
-func (db *Database) IsSourceNameUniqueInProject(projectID, name string) (bool, error) {
-	return db.IsNameUniqueInProject(projectID, name, constants.SourceTable)
+func (db *Database) IsSourceNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
+	return db.IsNameUniqueInProject(ctx, projectID, name, constants.SourceTable)
 }
 
 // IsDestinationNameUniqueInProject checks if a destination name is unique within a project.
-func (db *Database) IsDestinationNameUniqueInProject(projectID, name string) (bool, error) {
-	return db.IsNameUniqueInProject(projectID, name, constants.DestinationTable)
+func (db *Database) IsDestinationNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
+	return db.IsNameUniqueInProject(ctx, projectID, name, constants.DestinationTable)
 }
