@@ -6,29 +6,24 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
-import { getConnectorInLowerCase } from "../../utils/utils"
+import {
+	getConnectorInLowerCase,
+	normalizeConnectorType,
+} from "../../utils/utils"
 import { trackTestConnection } from "../utils"
-
-// TODO: Make it parquet on all places
-const normalizeDestinationType = (type: string): string => {
-	//destination connector typemap
-	const typeMap: Record<string, string> = {
-		"amazon s3": "parquet",
-		"apache iceberg": "iceberg",
-	}
-	return typeMap[type.toLowerCase()] || type.toLowerCase()
-}
 
 export const destinationService = {
 	getDestinations: async () => {
 		try {
 			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			const destinations: Entity[] = response.data.map(item => {
 				const config = JSON.parse(item.config)
 				return {
 					...item,
+					type: normalizeConnectorType(item.type),
 					config,
 					status: "active",
 				}
@@ -142,7 +137,7 @@ export const destinationService = {
 		source_version: string = "",
 		signal?: AbortSignal,
 	) => {
-		const normalizedType = normalizeDestinationType(type)
+		const normalizedType = normalizeConnectorType(type)
 		const response = await api.post<any>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{

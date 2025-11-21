@@ -13,6 +13,7 @@ export const sourceService = {
 		try {
 			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 
 			return response.data.map(item => ({
