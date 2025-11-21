@@ -19,7 +19,8 @@ export const validationService = {
 					return response.unique
 				}
 				case ENTITY_TYPES.DESTINATION: {
-					const response = await destinationService.checkDestinationNameUnique(name)
+					const response =
+						await destinationService.checkDestinationNameUnique(name)
 					return response.unique
 				}
 				default:
@@ -27,8 +28,7 @@ export const validationService = {
 			}
 		} catch (error) {
 			console.error(`Error checking ${entityType} name uniqueness:`, error)
-			return null 
+			return null
 		}
 	},
 }
-

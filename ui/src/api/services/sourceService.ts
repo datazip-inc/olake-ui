@@ -164,7 +164,9 @@ export const sourceService = {
 		}
 	},
 
-	checkSourceNameUnique: async (sourceName: string): Promise<{ unique: boolean }> => {
+	checkSourceNameUnique: async (
+		sourceName: string,
+	): Promise<{ unique: boolean }> => {
 		try {
 			const response = await api.post<{ unique: boolean }>(
 				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
