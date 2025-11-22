@@ -137,6 +137,7 @@ const JobEdit: React.FC = () => {
 		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
 		setShowStreamDifferenceModal,
+		setSelectedJobId,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -265,6 +266,7 @@ const JobEdit: React.FC = () => {
 		let job = jobs.find(j => j.id.toString() === jobId)
 		if (job) {
 			setJob(job)
+			setSelectedJobId(job.id.toString())
 			initializeFromExistingJob(job)
 		} else if (jobId) {
 			navigate("/jobs")
