@@ -165,7 +165,6 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		properties["username"] = instance.username
 	}
 	props := map[string]interface{}{
-		"olake_version":       instance.platform.OlakeVersion,
 		"os":                  instance.platform.OS,
 		"arch":                instance.platform.Arch,
 		"device_cpu":          instance.platform.DeviceCPU,

@@ -41,7 +41,7 @@ import {
 	SYNC_MODE_MAP,
 	TAB_STYLES,
 } from "../../../../utils/constants"
-import { operatorOptions } from "../../../../utils/utils"
+import { getCursorFieldValues, operatorOptions } from "../../../../utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
 
@@ -62,6 +62,9 @@ const StreamConfiguration = ({
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
+	const [cursorField, setCursorField] = useState<string | undefined>(
+		stream.stream.cursor_field,
+	)
 	const [appendMode, setAppendMode] = useState(false)
 	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
@@ -111,22 +114,18 @@ const StreamConfiguration = ({
 	useEffect(() => {
 		setActiveTab("config")
 		const initialApiSyncMode = stream.stream.sync_mode
+		const initialCursorField = stream.stream.cursor_field
 
 		// Parse cursor field for default value
 		// cursor field and default will be in a:b form where a is the cursor field and b is the default field
-		if (
-			stream.stream.cursor_field &&
-			stream.stream.cursor_field.includes(":")
-		) {
-			const [, defaultField] = stream.stream.cursor_field.split(":")
-			setFallBackCursorField(defaultField)
-			setShowFallbackSelector(true)
-		} else {
-			setFallBackCursorField("")
-			setShowFallbackSelector(false)
-		}
+		const { fallback: initialFallbackCursor } =
+			getCursorFieldValues(initialCursorField)
+
+		setFallBackCursorField(initialFallbackCursor)
+		setShowFallbackSelector(!!initialFallbackCursor)
 
 		setSyncMode(initialApiSyncMode ?? "full_refresh")
+		setCursorField(initialCursorField)
 		setNormalization(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
@@ -233,17 +232,24 @@ const StreamConfiguration = ({
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
 			const availableCursorFields = stream.stream.available_cursor_fields || []
-			if (!stream.stream.cursor_field && availableCursorFields.length > 0) {
-				stream.stream.cursor_field = availableCursorFields[0]
+			const cursor = cursorField || availableCursorFields[0]
+			if (cursor) {
+				setCursorField(getCursorFieldValues(cursor).primary)
+				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
+				onSyncModeChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "",
+					SyncMode.INCREMENTAL,
+					cursor,
+				)
 			}
+		} else {
+			onSyncModeChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				newApiSyncMode,
+			)
 		}
-
-		stream.stream.sync_mode = newApiSyncMode
-		onSyncModeChange?.(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			newApiSyncMode,
-		)
 
 		setFormData({
 			...formData,
@@ -537,7 +543,7 @@ const StreamConfiguration = ({
 		isFallback: boolean = false,
 	): { label: React.ReactNode; value: string }[] => {
 		const availableCursorFields = stream.stream.available_cursor_fields || []
-		const selectedField = stream.stream.cursor_field?.split(":")[0]
+		const selectedField = getCursorFieldValues(cursorField).primary
 
 		return [...availableCursorFields]
 			.filter(field => !isFallback || field !== selectedField)
@@ -596,6 +602,8 @@ const StreamConfiguration = ({
 
 	// Content rendering components
 	const renderConfigContent = () => {
+		const cursorFieldValues = getCursorFieldValues(cursorField)
+
 		return (
 			<div className="flex flex-col gap-4">
 				<div className={CARD_STYLE}>
@@ -646,17 +654,18 @@ const StreamConfiguration = ({
 											</label>
 											<Select
 												placeholder="Select cursor field"
-												value={stream.stream.cursor_field?.split(":")[0]}
+												value={cursorFieldValues.primary || undefined}
 												onChange={(value: string) => {
 													const newCursorField = fallBackCursorField
 														? `${value}:${fallBackCursorField}`
 														: value
-													stream.stream.cursor_field = newCursorField
+													setCursorField(newCursorField)
 													setFallBackCursorField("")
 													onSyncModeChange?.(
 														stream.stream.name,
 														stream.stream.namespace || "",
 														SyncMode.INCREMENTAL,
+														newCursorField,
 													)
 												}}
 												optionLabelProp="label"
@@ -672,7 +681,7 @@ const StreamConfiguration = ({
 												))}
 											</Select>
 										</div>
-										{stream.stream.cursor_field &&
+										{cursorField &&
 											!showFallbackSelector &&
 											!fallBackCursorField && (
 												<div className="flex w-1/2 items-end">
@@ -689,7 +698,7 @@ const StreamConfiguration = ({
 												</div>
 											)}
 
-										{stream.stream.cursor_field &&
+										{cursorField &&
 											(showFallbackSelector || fallBackCursorField) && (
 												<div className="flex w-1/2 flex-col">
 													<label className="mb-1 flex items-center gap-1 font-medium text-neutral-text">
@@ -702,30 +711,29 @@ const StreamConfiguration = ({
 														placeholder="Select default"
 														value={fallBackCursorField}
 														onChange={(value: string) => {
-															const [field] = (
-																stream.stream.cursor_field ?? ""
-															).split(":")
-
-															stream.stream.cursor_field = value
-																? `${field}:${value}`
-																: field
+															const newCursorField = value
+																? `${cursorFieldValues.primary}:${value}`
+																: cursorFieldValues.primary
+															setCursorField(newCursorField)
 															setFallBackCursorField(value)
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
 																SyncMode.INCREMENTAL,
+																newCursorField,
 															)
 														}}
 														allowClear
 														onClear={() => {
 															setShowFallbackSelector(false)
 															setFallBackCursorField("")
-															stream.stream.cursor_field =
-																stream.stream.cursor_field?.split(":")[0]
+															const newCursorField = cursorFieldValues.primary
+															setCursorField(newCursorField)
 															onSyncModeChange?.(
 																stream.stream.name,
 																stream.stream.namespace || "",
 																SyncMode.INCREMENTAL,
+																newCursorField,
 															)
 														}}
 														optionLabelProp="label"
