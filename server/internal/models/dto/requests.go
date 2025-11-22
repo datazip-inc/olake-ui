@@ -108,3 +108,10 @@ type JobTaskRequest struct {
 type JobStatusRequest struct {
 	Activate bool `json:"activate"`
 }
+
+type UpdateSyncTelemetryRequest struct {
+	JobID       int    `json:"job_id"`
+	WorkflowID  string `json:"workflow_id"`
+	Event       string `json:"event"`
+	Environment string `json:"environment"`
+}
