@@ -84,6 +84,7 @@ export type StreamConfigurationProps = {
 		streamName: string,
 		namespace: string,
 		mode: SyncMode,
+		cursorField?: string,
 	) => void
 	useDirectForms?: boolean
 }
@@ -207,4 +208,9 @@ export interface StreamSchemaProps {
 	initialData: StreamData
 	onColumnsChange?: (columns: string[]) => void
 	onSyncModeChange?: (mode: SyncMode.FULL_REFRESH | SyncMode.CDC) => void
+}
+
+export type CursorFieldValues = {
+	primary: string
+	fallback: string
 }

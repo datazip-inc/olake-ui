@@ -6,6 +6,7 @@ import {
 	JobType,
 	IngestionMode,
 	SelectedStream,
+	CursorFieldValues,
 } from "../types"
 import {
 	DAYS_MAP,
@@ -21,11 +22,27 @@ import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 import Kafka from "../assets/Kafka.svg"
 
+// Normalizes old connector types to their current internal types
+export const normalizeConnectorType = (connectorType: string): string => {
+	const lowerType = connectorType.toLowerCase()
+
+	switch (lowerType) {
+		case "s3":
+		case "amazon s3":
+			return "parquet"
+		case "iceberg":
+		case "apache iceberg":
+			return "iceberg"
+		default:
+			return connectorType
+	}
+}
+
 // These are used to show in connector dropdowns
 export const getConnectorImage = (connector: string) => {
-	const lowerConnector = connector.toLowerCase()
+	const normalizedConnector = normalizeConnectorType(connector).toLowerCase()
 
-	switch (lowerConnector) {
+	switch (normalizedConnector) {
 		case "mongodb":
 			return MongoDB
 		case "postgres":
@@ -102,7 +119,8 @@ export const getJobTypeClass = (jobType: JobType) => {
 }
 
 export const getConnectorInLowerCase = (connector: string) => {
-	const lowerConnector = connector.toLowerCase()
+	const normalizedConnector = normalizeConnectorType(connector)
+	const lowerConnector = normalizedConnector.toLowerCase()
 
 	switch (lowerConnector) {
 		case DESTINATION_INTERNAL_TYPES.S3:
@@ -622,4 +640,22 @@ export const trimFormDataStrings = (data: any): any => {
 	}
 
 	return data
+}
+
+export const getCursorFieldValues = (
+	cursorValue?: string,
+): CursorFieldValues => {
+	if (!cursorValue) {
+		return {
+			primary: "",
+			fallback: "",
+		}
+	}
+
+	const [primary, fallback] = cursorValue.split(":")
+
+	return {
+		primary,
+		fallback: fallback || "",
+	}
 }
