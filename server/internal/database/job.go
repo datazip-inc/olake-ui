@@ -195,13 +195,3 @@ func (db *Database) IsNameUniqueInProject(ctx context.Context, projectID, name s
 func (db *Database) IsJobNameUniqueInProject(ctx context.Context, projectID, jobName string) (bool, error) {
 	return db.IsNameUniqueInProject(ctx, projectID, jobName, constants.JobTable)
 }
-
-// IsSourceNameUniqueInProject checks if a source name is unique within a project.
-func (db *Database) IsSourceNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
-	return db.IsNameUniqueInProject(ctx, projectID, name, constants.SourceTable)
-}
-
-// IsDestinationNameUniqueInProject checks if a destination name is unique within a project.
-func (db *Database) IsDestinationNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
-	return db.IsNameUniqueInProject(ctx, projectID, name, constants.DestinationTable)
-}
