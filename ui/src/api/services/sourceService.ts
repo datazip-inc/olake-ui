@@ -6,7 +6,10 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
+
 import { ENTITY_TYPES } from "../../utils/constants"
+import { trackTestConnection } from "../utils"
+
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
@@ -73,7 +76,10 @@ export const sourceService = {
 		}
 	},
 
-	testSourceConnection: async (source: EntityTestRequest) => {
+	testSourceConnection: async (
+		source: EntityTestRequest,
+		existing: boolean = false,
+	) => {
 		try {
 			const response = await api.post<EntityTestResponse>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
@@ -84,6 +90,8 @@ export const sourceService = {
 				},
 				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
+
+			trackTestConnection(true, source, response.data, existing)
 			return {
 				success: true,
 				message: "success",
@@ -95,6 +103,14 @@ export const sourceService = {
 				success: false,
 				message:
 					error instanceof Error ? error.message : "Unknown error occurred",
+				data: {
+					connection_result: {
+						message:
+							error instanceof Error ? error.message : "Unknown error occurred",
+						status: "FAILED",
+					},
+					logs: [],
+				},
 			}
 		}
 	},

@@ -86,7 +86,7 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		return fmt.Errorf("failed to create temporal workflow: %s", err)
 	}
 
-	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
+	telemetry.TrackJobCreation(ctx, job)
 	return nil
 }
 
@@ -158,7 +158,6 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to update temporal workflow: %s", err)
 	}
 
-	telemetry.TrackJobEntity(ctx)
 	return nil
 }
 
@@ -176,7 +175,6 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 		return "", fmt.Errorf("failed to delete job: %s", err)
 	}
 
-	telemetry.TrackJobEntity(ctx)
 	return job.Name, nil
 }
 
@@ -516,14 +514,14 @@ func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID strin
 }
 
 // worker service
-func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID, event string) error {
-	switch strings.ToLower(event) {
+func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+	switch strings.ToLower(req.Event) {
 	case "started":
-		telemetry.TrackSyncStart(ctx, jobID, workflowID)
+		telemetry.TrackSyncStart(ctx, req.JobID, req.WorkflowID, req.Environment)
 	case "completed":
-		telemetry.TrackSyncCompleted(jobID, workflowID)
+		telemetry.TrackSyncCompleted(req.JobID, req.WorkflowID, req.Environment)
 	case "failed":
-		telemetry.TrackSyncFailed(jobID, workflowID)
+		telemetry.TrackSyncFailed(req.JobID, req.WorkflowID, req.Environment)
 	}
 
 	return nil
