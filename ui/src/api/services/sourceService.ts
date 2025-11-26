@@ -10,7 +10,6 @@ import {
 import { ENTITY_TYPES } from "../../utils/constants"
 import { trackTestConnection } from "../utils"
 
-
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
 		try {
