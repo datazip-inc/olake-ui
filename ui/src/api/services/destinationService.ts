@@ -10,6 +10,7 @@ import {
 	getConnectorInLowerCase,
 	normalizeConnectorType,
 } from "../../utils/utils"
+import { trackTestConnection } from "../utils"
 
 export const destinationService = {
 	getDestinations: async () => {
@@ -77,6 +78,7 @@ export const destinationService = {
 
 	testDestinationConnection: async (
 		destination: EntityTestRequest,
+		existing: boolean = false,
 		source_type: string = "",
 		source_version: string = "",
 	) => {
@@ -93,6 +95,8 @@ export const destinationService = {
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0, disableErrorNotification: true },
 			)
+			trackTestConnection(false, destination, response.data, existing)
+
 			return {
 				success: true,
 				message: "success",
@@ -104,6 +108,14 @@ export const destinationService = {
 				success: false,
 				message:
 					error instanceof Error ? error.message : "Unknown error occurred",
+				data: {
+					connection_result: {
+						message:
+							error instanceof Error ? error.message : "Unknown error occurred",
+						status: "FAILED",
+					},
+					logs: [],
+				},
 			}
 		}
 	},

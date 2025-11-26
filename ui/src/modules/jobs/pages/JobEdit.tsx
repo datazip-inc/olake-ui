@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import clsx from "clsx"
 import { useNavigate, Link, useParams } from "react-router-dom"
 import { message } from "antd"
@@ -131,9 +131,6 @@ const JobEdit: React.FC = () => {
 	const {
 		jobs,
 		selectedJobId,
-		fetchJobs,
-		fetchSources,
-		fetchDestinations,
 		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
 		setShowStreamDifferenceModal,
@@ -166,12 +163,7 @@ const JobEdit: React.FC = () => {
 	const [streamsModified, setStreamsModified] = useState(false)
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 
-	// Load job data on component mount
-	useEffect(() => {
-		fetchJobs()
-		fetchSources()
-		fetchDestinations()
-	}, [])
+	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
 
 	useEffect(() => {
 		fetchSelectedClearDestinationStatus()
@@ -216,12 +208,17 @@ const JobEdit: React.FC = () => {
 						selected_streams: {},
 						streams: [],
 					})
+					initialStreamsData.current = {
+						selected_streams: {},
+						streams: [],
+					}
 				} else {
 					const parsedStreamsConfig = JSON.parse(job.streams_config)
 					const streamsData = processStreamsConfig(parsedStreamsConfig)
 
 					if (streamsData) {
 						setSelectedStreams(streamsData)
+						initialStreamsData.current = streamsData
 					}
 				}
 			} catch (e) {
@@ -315,7 +312,10 @@ const JobEdit: React.FC = () => {
 		return null
 	}
 
-	const getjobUpdatePayLoad = (diff: StreamsDataStructure | null) => {
+	const getJobUpdatePayLoad = (
+		streamsConfig: StreamsDataStructure,
+		diff: StreamsDataStructure | null,
+	) => {
 		const jobUpdateRequestPayload: JobBase = {
 			name: jobName,
 			source: {
@@ -339,8 +339,8 @@ const JobEdit: React.FC = () => {
 				version: destinationData?.version || "",
 			},
 			streams_config: JSON.stringify({
-				...selectedStreams,
-				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
+				...streamsConfig,
+				selected_streams: getSelectedStreams(streamsConfig.selected_streams),
 			}),
 			frequency: cronExpression,
 			activate: job?.activate,
@@ -398,16 +398,25 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		if (
-			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
-		) {
+		// If streams have been reset, use the initial streams data
+		const streamsConfig =
+			selectedStreams.streams.length > 0
+				? selectedStreams
+				: initialStreamsData.current
+
+		if (!streamsConfig) {
+			message.error("No valid streams configuration found")
+			return
+		}
+
+		if (!validateStreams(getSelectedStreams(streamsConfig.selected_streams))) {
 			message.error("Filter Value cannot be empty")
 			return
 		}
 		setIsSubmitting(true)
 		try {
 			// Create the job update payload
-			const jobUpdatePayload = getjobUpdatePayLoad(diff)
+			const jobUpdatePayload = getJobUpdatePayLoad(streamsConfig, diff)
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
 
@@ -606,7 +615,7 @@ const JobEdit: React.FC = () => {
 						<button
 							className="flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-1 font-light text-primary hover:bg-primary-50"
 							onClick={() => handleJobSubmit(null)}
-							disabled={isSubmitting}
+							disabled={isSubmitting || isStreamsLoading}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
 						</button>
@@ -614,7 +623,7 @@ const JobEdit: React.FC = () => {
 					<button
 						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
-						disabled={isSubmitting}
+						disabled={isSubmitting || isStreamsLoading}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS
 							? isSubmitting
