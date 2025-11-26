@@ -47,12 +47,13 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	if !unique {
 		return fmt.Errorf("job name '%s' is not unique", req.Name)
 	}
-	source, err := s.upsertSource(req.Source, projectID, userID)
+
+	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
 	}
 
-	dest, err := s.upsertDestination(req.Destination, projectID, userID)
+	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination: %s", err)
 	}
@@ -127,12 +128,12 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	// Snapshot previous job state for compensation on schedule update failure
 	prevJob := *existingJob
 
-	source, err := s.upsertSource(req.Source, projectID, userID)
+	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update: %s", err)
 	}
 
-	dest, err := s.upsertDestination(req.Destination, projectID, userID)
+	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update: %s", err)
 	}
@@ -456,7 +457,7 @@ func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, proj
 	return jobResp, nil
 }
 
-func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
+func (s *ETLService) upsertSource(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
 	if config == nil {
 		return nil, fmt.Errorf("source config is required")
 	}
@@ -466,8 +467,18 @@ func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, us
 		return s.db.GetSourceByID(*config.ID)
 	}
 
-	user := &models.User{ID: *userID}
 	// Otherwise, create a new source.
+	// check source name uniqueness in the project
+	unique, err := s.db.IsNameUniqueInProject(ctx, projectID, config.Name, constants.SourceTable)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check source name uniqueness: %s", err)
+	}
+	if !unique {
+		return nil, fmt.Errorf("source name '%s' is not unique", config.Name)
+	}
+
+	user := &models.User{ID: *userID}
+
 	newSource := &models.Source{
 		Name:      config.Name,
 		Type:      config.Type,
@@ -484,7 +495,7 @@ func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, us
 	return newSource, nil
 }
 
-func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s *ETLService) upsertDestination(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
 	if config == nil {
 		return nil, fmt.Errorf("destination config is required")
 	}
@@ -494,8 +505,18 @@ func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID strin
 		return s.db.GetDestinationByID(*config.ID)
 	}
 
-	user := &models.User{ID: *userID}
 	// Otherwise, create a new destination.
+	// check destination name uniqueness in the project
+	unique, err := s.db.IsNameUniqueInProject(ctx, projectID, config.Name, constants.DestinationTable)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check destination name uniqueness: %s", err)
+	}
+	if !unique {
+		return nil, fmt.Errorf("destination name '%s' is not unique", config.Name)
+	}
+
+	user := &models.User{ID: *userID}
+
 	newDest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -77,4 +78,9 @@ func (db *Database) DeleteSource(id int) error {
 	source := &models.Source{ID: id}
 	_, err := db.ormer.Delete(source)
 	return err
+}
+
+// IsSourceNameUniqueInProject checks if a source name is unique within a project.
+func (db *Database) IsSourceNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
+	return db.IsNameUniqueInProject(ctx, projectID, name, constants.SourceTable)
 }

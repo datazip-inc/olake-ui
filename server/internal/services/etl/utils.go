@@ -193,7 +193,7 @@ func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, proje
 	return nil
 }
 
-// checks the version compatibitlity for clear-destination and stream difference operation
+// checks the version compatibility for clear-destination and stream difference operation
 // supported in versions >= v0.3.0
 func CheckClearDestinationCompatibility(sourceVersion string) error {
 	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 {
