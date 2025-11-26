@@ -40,6 +40,8 @@ import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 
+// TODO: Preserve "use existing" mode for source and destination when navigating between steps.
+
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
 	const location = useLocation()
