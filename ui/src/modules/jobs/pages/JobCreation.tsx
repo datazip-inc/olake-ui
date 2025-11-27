@@ -322,7 +322,7 @@ const JobCreation: React.FC = () => {
 					ENTITY_TYPES.JOB,
 				)
 				if (!isUnique) return
-				
+
 				//TODO : Job name is disabled once filled and moved to next step , need to be handled later
 				setJobNameFilled(true)
 				setCurrentStep(JOB_CREATION_STEPS.SOURCE)
