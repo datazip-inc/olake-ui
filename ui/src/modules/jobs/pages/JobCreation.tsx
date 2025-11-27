@@ -136,16 +136,7 @@ const JobCreation: React.FC = () => {
 				sourceName,
 				ENTITY_TYPES.SOURCE,
 			)
-			if (isUnique === null) {
-				message.error("Failed to verify source name uniqueness")
-				return false
-			}
-			if (!isUnique) {
-				message.error(
-					"Source name already exists. Please choose a different name.",
-				)
-				return false
-			}
+			if (!isUnique) return false
 		}
 
 		return true
@@ -169,16 +160,7 @@ const JobCreation: React.FC = () => {
 				destinationName,
 				ENTITY_TYPES.DESTINATION,
 			)
-			if (isUnique === null) {
-				message.error("Failed to verify destination name uniqueness")
-				return false
-			}
-			if (!isUnique) {
-				message.error(
-					"Destination name already exists. Please choose a different name.",
-				)
-				return false
-			}
+			if (!isUnique) return false
 		}
 
 		return true
@@ -339,15 +321,8 @@ const JobCreation: React.FC = () => {
 					jobName,
 					ENTITY_TYPES.JOB,
 				)
-				if (isUnique === null) {
-					return
-				}
-				if (!isUnique) {
-					message.error(
-						"Job name already exists. Please choose a different name.",
-					)
-					return
-				}
+				if (!isUnique) return
+				
 				//TODO : Job name is disabled once filled and moved to next step , need to be handled later
 				setJobNameFilled(true)
 				setCurrentStep(JOB_CREATION_STEPS.SOURCE)
