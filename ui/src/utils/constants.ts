@@ -291,5 +291,4 @@ export const LOGS_CONFIG = {
 	INITIAL_BATCH_SIZE: 1000, // First load
 	SUBSEQUENT_BATCH_SIZE: 500, // Subsequent loads
 	MAX_LOGS_IN_MEMORY: 10000, // Maximum logs to keep in memory
-	SCROLL_THRESHOLD_PERCENTAGE: 0.5, // Trigger load when scrolled to 50% of total content
 } as const

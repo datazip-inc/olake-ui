@@ -56,16 +56,13 @@ export interface JobTask {
 	file_path: string
 	job_type: JobType
 }
-export interface TaskLog {
-	logs: LogEntry[]
-	cursor: number
-	hasMore: boolean
-}
 
-export interface TaskLogResponse {
+export interface TaskLogsResponse {
 	logs: LogEntry[]
-	cursor: number
-	has_more: boolean
+	older_cursor: number
+	newer_cursor: number
+	has_more_older: boolean
+	has_more_newer: boolean
 }
 export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 

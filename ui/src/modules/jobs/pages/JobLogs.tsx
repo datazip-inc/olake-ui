@@ -1,4 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from "react"
+import {
+	useEffect,
+	useState,
+	useRef,
+	useCallback,
+	useMemo,
+	useLayoutEffect,
+} from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
 import { Input, Spin, Button, Tooltip } from "antd"
@@ -7,7 +14,7 @@ import {
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
 } from "@phosphor-icons/react"
-import { useVirtualizer } from "@tanstack/react-virtual"
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import { useAppStore } from "../../../store"
 import {
@@ -15,13 +22,11 @@ import {
 	getLogLevelClass,
 	getLogTextColor,
 } from "../../../utils/utils"
-import { LOGS_CONFIG } from "../../../utils/constants"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
 		jobId: string
 		historyId: string
-		taskId?: string
 	}>()
 	const [searchParams] = useSearchParams()
 	const filePath = searchParams.get("file")
@@ -30,207 +35,189 @@ const JobLogs: React.FC = () => {
 	const navigate = useNavigate()
 	const [searchText, setSearchText] = useState("")
 	const [showOnlyErrors, setShowOnlyErrors] = useState(false)
-
-	const scrollContainerRef = useRef<HTMLDivElement>(null)
-	const previousScrollSnapshot = useRef<{ height: number; top: number } | null>(
-		null,
-	)
-	const shouldScrollToBottomRef = useRef(false)
 	const { Search } = Input
+
+	const START_INDEX = 1000000 // High starting index to allow space for prepending older log entries without disrupting Virtuoso's list virtualization
+	const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX)
+	const virtuosoRef = useRef<VirtuosoHandle | null>(null)
+
+	const hasPerformedInitialScroll = useRef(false)
+	const isFetchingOlderRef = useRef(false)
+	const previousLogCountRef = useRef(0)
 
 	const {
 		jobs,
 		taskLogs,
 		isLoadingTaskLogs,
-		isLoadingMoreLogs,
-		taskLogsHasMore,
+		isLoadingOlderLogs,
+		isLoadingNewerLogs,
+		taskLogsHasMoreOlder,
+		taskLogsHasMoreNewer,
 		taskLogsError,
 		fetchInitialTaskLogs,
-		fetchMoreTaskLogs,
+		fetchOlderTaskLogs,
+		fetchNewerTaskLogs,
 		fetchJobs,
 	} = useAppStore()
 
+	const filteredLogs = useMemo(() => {
+		return taskLogs?.filter(log => {
+			if (typeof log !== "object" || log === null) return false
+
+			const message = (log as any).message || ""
+			const level = (log as any).level || ""
+			const search = searchText.toLowerCase()
+
+			const matchesSearch =
+				message.toLowerCase().includes(search) ||
+				level.toLowerCase().includes(search)
+
+			if (showOnlyErrors) {
+				return (
+					matchesSearch &&
+					(message.toLowerCase().includes("error") ||
+						level.toLowerCase().includes("error") ||
+						level.toLowerCase().includes("fatal"))
+				)
+			}
+			return matchesSearch
+		})
+	}, [taskLogs, searchText, showOnlyErrors])
+
 	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
+		if (!jobs.length) fetchJobs()
 
-		if (jobId) {
-			if (isTaskLog && filePath) {
-				fetchInitialTaskLogs(jobId, historyId || "1", filePath)
-				shouldScrollToBottomRef.current = true
-			}
-		}
-	}, [jobId, historyId, filePath, isTaskLog, fetchInitialTaskLogs, fetchJobs])
+		if (jobId && isTaskLog && filePath) {
+			setFirstItemIndex(START_INDEX)
+			hasPerformedInitialScroll.current = false
+			isFetchingOlderRef.current = false
+			previousLogCountRef.current = 0
 
-	// Scroll to bottom on initial load
-	// (Initial scroll-to-bottom behavior is now handled via shouldScrollToBottomRef and the virtualizer)
-
-	const handleScroll = useCallback(() => {
-		if (!scrollContainerRef.current) return
-
-		if (!isTaskLog || !jobId || !filePath || !historyId) {
-			return
-		}
-
-		const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current
-
-		// Calculate how much we've scrolled as a percentage of total scrollable content
-		const scrollableHeight = scrollHeight - clientHeight
-		if (scrollableHeight <= 0) {
-			return
-		}
-
-		const scrolledPercentage = scrollTop / scrollableHeight
-
-		// Trigger when we've scrolled up to 50% of total content (or less)
-		const isNearTop =
-			scrolledPercentage <= LOGS_CONFIG.SCROLL_THRESHOLD_PERCENTAGE
-
-		if (isNearTop && !isLoadingMoreLogs && taskLogsHasMore) {
-			previousScrollSnapshot.current = {
-				height: scrollHeight,
-				top: scrollTop,
-			}
-			fetchMoreTaskLogs(jobId, historyId, filePath)
+			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 		}
 	}, [
-		isTaskLog,
+		jobs.length,
+		fetchJobs,
 		jobId,
-		historyId,
+		isTaskLog,
 		filePath,
-		isLoadingMoreLogs,
-		taskLogsHasMore,
-		fetchMoreTaskLogs,
+		historyId,
+		fetchInitialTaskLogs,
 	])
-
-	// Scroll to the previous position when loading more logs
-	useEffect(() => {
-		if (isLoadingMoreLogs) {
-			return
-		}
-
-		if (!previousScrollSnapshot.current) {
-			return
-		}
-
-		const container = scrollContainerRef.current
-		if (!container) {
-			previousScrollSnapshot.current = null
-			return
-		}
-
-		const { height, top } = previousScrollSnapshot.current
-		const heightDiff = container.scrollHeight - height
-
-		container.scrollTop = top + heightDiff
-		previousScrollSnapshot.current = null
-	}, [isLoadingMoreLogs, taskLogs.length])
-
-	// Add event listener to the scroll container
-	useEffect(() => {
-		const container = scrollContainerRef.current
-		if (container) {
-			container.addEventListener("scroll", handleScroll)
-			return () => container.removeEventListener("scroll", handleScroll)
-		}
-
-		return () => {
-			const cleanupContainer = scrollContainerRef.current
-			if (cleanupContainer) {
-				cleanupContainer.removeEventListener("scroll", handleScroll)
-			}
-		}
-	}, [handleScroll])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 
-	const filteredLogs = taskLogs?.filter(function (log) {
-		if (typeof log !== "object" || log === null) {
-			return false
-		}
+	// Handle Scroll Position & Index Shifting synchronously to prevent visual jumping
+	useLayoutEffect(() => {
+		const currentCount = filteredLogs?.length || 0
+		const prevCount = previousLogCountRef.current
 
-		const message = (log as any).message || ""
-		const level = (log as any).level || ""
-
-		const searchLowerCase = searchText.toLowerCase()
-		const messageLowerCase = message.toString().toLowerCase()
-		const levelLowerCase = level.toString().toLowerCase()
-
-		const matchesSearch =
-			messageLowerCase.includes(searchLowerCase) ||
-			levelLowerCase.includes(searchLowerCase)
-
-		if (showOnlyErrors) {
-			return (
-				matchesSearch &&
-				(messageLowerCase.includes("error") ||
-					levelLowerCase.includes("error") ||
-					levelLowerCase.includes("fatal"))
-			)
-		}
-
-		return matchesSearch
-	})
-
-	const virtualizer = useVirtualizer({
-		count: filteredLogs?.length ?? 0,
-		getScrollElement: () => scrollContainerRef.current,
-		// This is just an initial guess; actual height is measured via measureElement
-		estimateSize: () => 40,
-		overscan: 20,
-	})
-
-	const virtualItems = virtualizer.getVirtualItems()
-	const totalSize = virtualizer.getTotalSize()
-
-	useEffect(() => {
-		if (!shouldScrollToBottomRef.current) {
+		if (currentCount === 0 || prevCount === 0) {
+			previousLogCountRef.current = currentCount
 			return
 		}
 
-		if (!filteredLogs || !filteredLogs.length) {
-			return
+		const diff = currentCount - prevCount
+
+		// CASE 1: PREPEND (Standard Scroll Up)
+		// We added items to the top. Shift the virtual index backward
+		// to anchor the user's view to the same specific log line.
+		if (diff > 0 && isFetchingOlderRef.current) {
+			setFirstItemIndex(prev => prev - diff)
+			isFetchingOlderRef.current = false
 		}
-
-		shouldScrollToBottomRef.current = false
-
-		const container = scrollContainerRef.current
-		if (container) {
-			container.scrollTo({
-				top: container.scrollHeight,
+		// CASE 2: MEMORY RESET (Limit Reached)
+		// The list shrank because we dropped newer logs to save memory.
+		// Jump to the last item of this new batch.
+		else if (diff < 0 && isFetchingOlderRef.current) {
+			requestAnimationFrame(() => {
+				virtuosoRef.current?.scrollToIndex({
+					index: currentCount - 1,
+				})
 			})
+
+			setFirstItemIndex(START_INDEX - currentCount)
+			isFetchingOlderRef.current = false
 		}
 
-		virtualizer.scrollToIndex(filteredLogs.length - 1, {
-			align: "end",
-		})
-	}, [filteredLogs?.length, virtualizer])
+		previousLogCountRef.current = currentCount
+	}, [filteredLogs?.length])
+
+	// Initial Scroll to Bottom
+	useEffect(() => {
+		if (
+			!isLoadingTaskLogs &&
+			filteredLogs?.length > 0 &&
+			!hasPerformedInitialScroll.current
+		) {
+			setTimeout(() => {
+				virtuosoRef.current?.scrollToIndex({
+					index: filteredLogs.length - 1,
+					align: "end",
+				})
+				hasPerformedInitialScroll.current = true
+			}, 100)
+		}
+	}, [isLoadingTaskLogs, filteredLogs?.length])
+
+	const handleStartReached = useCallback(() => {
+		if (
+			isLoadingOlderLogs ||
+			!taskLogsHasMoreOlder ||
+			!filteredLogs ||
+			filteredLogs.length === 0
+		)
+			return
+
+		isFetchingOlderRef.current = true
+
+		if (jobId && filePath) {
+			fetchOlderTaskLogs(jobId, historyId || "1", filePath)
+		}
+	}, [
+		isLoadingOlderLogs,
+		taskLogsHasMoreOlder,
+		filteredLogs?.length,
+		jobId,
+		filePath,
+		historyId,
+		fetchOlderTaskLogs,
+	])
+
+	const handleEndReached = useCallback(() => {
+		if (isLoadingNewerLogs || !taskLogsHasMoreNewer) return
+
+		if (jobId && filePath) {
+			fetchNewerTaskLogs(jobId, historyId || "1", filePath)
+		}
+	}, [
+		isLoadingNewerLogs,
+		taskLogsHasMoreNewer,
+		jobId,
+		filePath,
+		historyId,
+		fetchNewerTaskLogs,
+	])
+
+	const handleRefresh = () => {
+		if (isTaskLog && filePath && jobId) {
+			hasPerformedInitialScroll.current = false
+			setFirstItemIndex(START_INDEX)
+			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+		}
+	}
 
 	if (taskLogsError) {
 		return (
 			<div className="p-6">
 				<Button
-					onClick={() => {
-						if (isTaskLog && filePath) {
-							if (jobId) {
-								fetchInitialTaskLogs(jobId, historyId || "1", filePath)
-							}
-						}
-					}}
+					onClick={handleRefresh}
 					className="mt-4"
 				>
 					Retry
 				</Button>
 			</div>
 		)
-	}
-
-	const handleRefresh = () => {
-		if (isTaskLog && filePath && jobId) {
-			shouldScrollToBottomRef.current = true
-			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
-		}
 	}
 
 	return (
@@ -308,132 +295,74 @@ const JobLogs: React.FC = () => {
 					</div>
 				) : (
 					<div
-						ref={scrollContainerRef}
 						className={clsx(
-							"overflow-scroll rounded-xl bg-white",
-							filteredLogs?.length && filteredLogs.length > 0 && "border",
+							"h-full rounded-xl bg-white",
+							filteredLogs?.length && "border",
 						)}
 					>
-						{isLoadingMoreLogs && (
-							<div className="sticky top-0 z-10 flex items-center justify-center gap-2 border-b border-gray-100 bg-white/90 p-2 text-xs text-gray-500">
-								<Spin size="default" />
-								<span>Loading older logs...</span>
-							</div>
-						)}
 						{!filteredLogs || filteredLogs.length === 0 ? (
-							<div className="flex items-center justify-center p-4 text-sm text-gray-500">
+							<div className="flex h-full items-center justify-center p-4 text-sm text-gray-500">
 								No logs found
 							</div>
 						) : (
-							<div
-								className="min-w-full"
-								style={{
-									height: totalSize,
-									position: "relative",
+							<Virtuoso
+								ref={virtuosoRef}
+								data={filteredLogs}
+								startReached={handleStartReached}
+								endReached={handleEndReached}
+								firstItemIndex={firstItemIndex}
+								overscan={1000}
+								followOutput={false}
+								components={{
+									Header: () =>
+										isLoadingOlderLogs || isLoadingNewerLogs ? (
+											<div className="flex justify-center bg-white/90 p-2 text-xs text-gray-500">
+												<Spin size="small" />
+												<span className="ml-2">Loading logs...</span>
+											</div>
+										) : null,
 								}}
-							>
-								{virtualItems.map(virtualRow => {
-									const index = virtualRow.index
-									const log = filteredLogs[index]
-
-									if (!log) {
-										return null
-									}
-
-									if (isTaskLog) {
-										const taskLog = log as any
-										return (
-											<div
-												key={virtualRow.key}
-												ref={virtualizer.measureElement}
-												data-index={virtualRow.index}
-												style={{
-													position: "absolute",
-													top: 0,
-													left: 0,
-													right: 0,
-													transform: `translateY(${virtualRow.start}px)`,
-												}}
-												className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100"
-											>
-												<div className="px-4 py-3 text-sm text-gray-500">
-													{taskLog.time
-														? new Date(taskLog.time).toLocaleDateString()
-														: ""}
-												</div>
-												<div className="px-4 py-3 text-sm text-gray-500">
-													{taskLog.time
-														? new Date(taskLog.time).toLocaleTimeString(
-																"en-US",
-																{ timeZone: "UTC", hour12: false },
-															)
-														: ""}
-												</div>
-												<div className="px-4 py-3 text-sm">
-													<span
-														className={clsx(
-															"rounded-md px-2 py-[5px] text-xs capitalize",
-															getLogLevelClass(taskLog.level),
-														)}
-													>
-														{taskLog.level}
-													</span>
-												</div>
-												<div
-													className={clsx(
-														"px-4 py-3 text-sm",
-														getLogTextColor(taskLog.level),
-													)}
-												>
-													{taskLog.message}
-												</div>
-											</div>
-										)
-									}
-
-									const jobLog = log as any
+								itemContent={(_, log) => {
+									if (!log) return null
+									const item = log as any
+									const hasTimeField = Boolean(item.time)
 									return (
-										<div
-											key={virtualRow.key}
-											ref={virtualizer.measureElement}
-											data-index={virtualRow.index}
-											style={{
-												position: "absolute",
-												top: 0,
-												left: 0,
-												right: 0,
-												transform: `translateY(${virtualRow.start}px)`,
-											}}
-											className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100"
-										>
+										<div className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100">
 											<div className="px-4 py-3 text-sm text-gray-500">
-												{jobLog.date}
+												{hasTimeField
+													? new Date(item.time).toLocaleDateString()
+													: item.date}
 											</div>
 											<div className="px-4 py-3 text-sm text-gray-500">
-												{jobLog.time}
+												{hasTimeField
+													? new Date(item.time).toLocaleTimeString("en-US", {
+															timeZone: "UTC",
+															hour12: false,
+														})
+													: item.time}
 											</div>
 											<div className="px-4 py-3 text-sm">
 												<span
 													className={clsx(
-														"rounded-xl px-2 py-[5px] text-xs capitalize",
-														getLogLevelClass(jobLog.level),
+														"rounded-md px-2 py-[5px] text-xs capitalize",
+														getLogLevelClass(item.level),
 													)}
 												>
-													{jobLog.level}
+													{item.level}
 												</span>
 											</div>
 											<div
 												className={clsx(
-													"px-4 py-3 text-sm text-gray-700",
-													getLogTextColor(jobLog.level),
+													"px-4 py-3 text-sm",
+													getLogTextColor(item.level),
 												)}
 											>
-												{jobLog.message}
+												{item.message}
 											</div>
 										</div>
 									)
-								})}
-							</div>
+								}}
+							/>
 						)}
 					</div>
 				)}

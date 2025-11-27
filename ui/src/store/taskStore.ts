@@ -8,11 +8,14 @@ export interface TaskSlice {
 	taskLogsError: string | null
 	isLoadingJobTasks: boolean
 	isLoadingTaskLogs: boolean
-	isLoadingMoreLogs: boolean
+	isLoadingOlderLogs: boolean
+	isLoadingNewerLogs: boolean
 	jobTasks: JobTask[]
 	taskLogs: LogEntry[]
-	taskLogsCursor: number
-	taskLogsHasMore: boolean
+	taskLogsOlderCursor: number
+	taskLogsNewerCursor: number
+	taskLogsHasMoreOlder: boolean
+	taskLogsHasMoreNewer: boolean
 	// Job task actions
 	fetchJobTasks: (jobId: string) => Promise<void>
 	fetchInitialTaskLogs: (
@@ -20,21 +23,28 @@ export interface TaskSlice {
 		taskId: string,
 		filePath: string,
 	) => Promise<void>
-	fetchMoreTaskLogs: (
+	fetchOlderTaskLogs: (
 		jobId: string,
 		taskId: string,
 		filePath: string,
 	) => Promise<void>
-	resetTaskLogs: () => void
+	fetchNewerTaskLogs: (
+		jobId: string,
+		taskId: string,
+		filePath: string,
+	) => Promise<void>
 }
 export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 	jobTasks: [],
 	taskLogs: [],
-	taskLogsCursor: LOGS_CONFIG.DEFAULT_CURSOR,
-	taskLogsHasMore: true,
+	taskLogsOlderCursor: LOGS_CONFIG.DEFAULT_CURSOR,
+	taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
+	taskLogsHasMoreOlder: true,
+	taskLogsHasMoreNewer: true,
 	isLoadingJobTasks: false,
 	isLoadingTaskLogs: false,
-	isLoadingMoreLogs: false,
+	isLoadingOlderLogs: false,
+	isLoadingNewerLogs: false,
 	jobTasksError: null,
 	taskLogsError: null,
 
@@ -62,8 +72,12 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 			isLoadingTaskLogs: true,
 			taskLogsError: null,
 			taskLogs: [],
-			taskLogsCursor: LOGS_CONFIG.DEFAULT_CURSOR,
-			taskLogsHasMore: true,
+			taskLogsOlderCursor: LOGS_CONFIG.DEFAULT_CURSOR,
+			taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
+			taskLogsHasMoreOlder: true,
+			taskLogsHasMoreNewer: true,
+			isLoadingOlderLogs: false,
+			isLoadingNewerLogs: false,
 		})
 		try {
 			const response = await jobService.getTaskLogs(
@@ -72,11 +86,14 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 				filePath,
 				LOGS_CONFIG.DEFAULT_CURSOR,
 				LOGS_CONFIG.INITIAL_BATCH_SIZE,
+				"older",
 			)
 			set({
 				taskLogs: response.logs,
-				taskLogsCursor: response.cursor,
-				taskLogsHasMore: response.hasMore,
+				taskLogsOlderCursor: response.older_cursor,
+				taskLogsNewerCursor: response.newer_cursor,
+				taskLogsHasMoreOlder: response.has_more_older,
+				taskLogsHasMoreNewer: response.has_more_newer,
 				isLoadingTaskLogs: false,
 			})
 		} catch (error) {
@@ -89,44 +106,54 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 		}
 	},
 
-	// Fetch more logs (infinite scroll)
-	fetchMoreTaskLogs: async (jobId, taskId, filePath) => {
+	fetchOlderTaskLogs: async (jobId, taskId, filePath) => {
 		const state = get()
-		const { taskLogsCursor, taskLogsHasMore, isLoadingMoreLogs, taskLogs } =
-			state
+		const {
+			taskLogsOlderCursor,
+			taskLogsHasMoreOlder,
+			isLoadingOlderLogs,
+			taskLogs,
+		} = state
 
-		if (isLoadingMoreLogs || !taskLogsHasMore) {
+		if (isLoadingOlderLogs || !taskLogsHasMoreOlder) {
 			return
 		}
 
-		set({ isLoadingMoreLogs: true, taskLogsError: null })
+		set({ isLoadingOlderLogs: true, taskLogsError: null })
 		try {
 			const response = await jobService.getTaskLogs(
 				jobId,
 				taskId,
 				filePath,
-				taskLogsCursor,
+				taskLogsOlderCursor,
 				LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
+				"older",
 			)
+
+			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
+				set({
+					taskLogs: response.logs, // Replace with ONLY the new batch
+					taskLogsOlderCursor: response.older_cursor,
+					taskLogsNewerCursor: response.newer_cursor,
+					taskLogsHasMoreOlder: response.has_more_older,
+					taskLogsHasMoreNewer: response.has_more_newer,
+					isLoadingOlderLogs: false,
+				})
+				return
+			}
 
 			// Prepend older logs to the top
 			const updatedLogs = [...response.logs, ...taskLogs]
 
-			// trim logs if exceeding max memory
-			const trimmedLogs =
-				updatedLogs.length > LOGS_CONFIG.MAX_LOGS_IN_MEMORY
-					? updatedLogs.slice(0, LOGS_CONFIG.MAX_LOGS_IN_MEMORY)
-					: updatedLogs
-
 			set({
-				taskLogs: trimmedLogs,
-				taskLogsCursor: response.cursor,
-				taskLogsHasMore: response.hasMore,
-				isLoadingMoreLogs: false,
+				taskLogs: updatedLogs,
+				taskLogsOlderCursor: response.older_cursor,
+				taskLogsHasMoreOlder: response.has_more_older,
+				isLoadingOlderLogs: false,
 			})
 		} catch (error) {
 			set({
-				isLoadingMoreLogs: false,
+				isLoadingOlderLogs: false,
 				taskLogsError:
 					error instanceof Error
 						? error.message
@@ -136,15 +163,61 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 		}
 	},
 
-	// Reset logs state
-	resetTaskLogs: () => {
-		set({
-			taskLogs: [],
-			taskLogsCursor: LOGS_CONFIG.DEFAULT_CURSOR,
-			taskLogsHasMore: true,
-			isLoadingTaskLogs: false,
-			isLoadingMoreLogs: false,
-			taskLogsError: null,
-		})
+	// Fetch newer logs when scrolling towards the bottom
+	fetchNewerTaskLogs: async (jobId, taskId, filePath) => {
+		const state = get()
+		const {
+			taskLogsNewerCursor,
+			taskLogsHasMoreNewer,
+			isLoadingNewerLogs,
+			taskLogs,
+		} = state
+
+		if (isLoadingNewerLogs || !taskLogsHasMoreNewer) {
+			return
+		}
+
+		set({ isLoadingNewerLogs: true, taskLogsError: null })
+		try {
+			const response = await jobService.getTaskLogs(
+				jobId,
+				taskId,
+				filePath,
+				taskLogsNewerCursor,
+				LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
+				"newer",
+			)
+
+			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
+				set({
+					taskLogs: response.logs, // Replace with ONLY the new batch
+					taskLogsOlderCursor: response.older_cursor,
+					taskLogsNewerCursor: response.newer_cursor,
+					taskLogsHasMoreOlder: response.has_more_older,
+					taskLogsHasMoreNewer: response.has_more_newer,
+					isLoadingNewerLogs: false,
+				})
+				return
+			}
+
+			// append newer logs to the bottom
+			const updatedLogs = [...taskLogs, ...response.logs]
+
+			set({
+				taskLogs: updatedLogs,
+				taskLogsNewerCursor: response.newer_cursor,
+				taskLogsHasMoreNewer: response.has_more_newer,
+				isLoadingNewerLogs: false,
+			})
+		} catch (error) {
+			set({
+				isLoadingNewerLogs: false,
+				taskLogsError:
+					error instanceof Error
+						? error.message
+						: "Failed to fetch newer task logs",
+			})
+			throw error
+		}
 	},
 })

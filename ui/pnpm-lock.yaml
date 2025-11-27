@@ -30,9 +30,6 @@ importers:
       '@rjsf/validator-ajv8':
         specifier: ^5.24.12
         version: 5.24.13(@rjsf/utils@5.24.13(react@18.3.1))
-      '@tanstack/react-virtual':
-        specifier: ^3.10.8
-        version: 3.13.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       antd:
         specifier: ^5.24.3
         version: 5.27.3(date-fns@4.1.0)(luxon@3.7.2)(moment@2.30.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -57,6 +54,9 @@ importers:
       react-router-dom:
         specifier: ^6.20.0
         version: 6.30.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      react-virtuoso:
+        specifier: ^4.15.0
+        version: 4.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -728,15 +728,6 @@ packages:
     resolution: {integrity: sha512-APwKy6YUhvZaEoHyM+9xqmTpviEI+9eL7LoCH+aLcvWYHJ663qG5zx7WzWZY+a9qkg5JtzcMyJ9z0WtQBMDmgA==}
     cpu: [x64]
     os: [win32]
-
-  '@tanstack/react-virtual@3.13.12':
-    resolution: {integrity: sha512-Gd13QdxPSukP8ZrkbgS2RwoZseTTbQPLnQEn7HY/rqtM+8Zt95f7xKC7N0EsKs7aoz0WzZ+fditZux+F8EzYxA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  '@tanstack/virtual-core@3.13.12':
-    resolution: {integrity: sha512-1YBOJfRHV4sXUmWsFSf5rQor4Ss82G8dQWLRbnk3GA4jeP8hQt1hxXh0tmflpC0dz3VgEv/1+qwPyLeWkQuPFA==}
 
   '@types/babel__core@7.20.5':
     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
@@ -2228,6 +2219,12 @@ packages:
     peerDependencies:
       react: '>=16.8'
 
+  react-virtuoso@4.15.0:
+    resolution: {integrity: sha512-yDVJqOXf3N1GlSoXj/hMhslA6EyUmgCUVzS9u8MpdZs/KIwdTtbQnttZ0yzx8ZKdKeVdd0NPJG4pTINHbAyhyw==}
+    peerDependencies:
+      react: '>=16 || >=17 || >= 18 || >= 19'
+      react-dom: '>=16 || >=17 || >= 18 || >=19'
+
   react@18.3.1:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
     engines: {node: '>=0.10.0'}
@@ -3167,14 +3164,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.50.2':
     optional: true
-
-  '@tanstack/react-virtual@3.13.12(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@tanstack/virtual-core': 3.13.12
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
-  '@tanstack/virtual-core@3.13.12': {}
 
   '@types/babel__core@7.20.5':
     dependencies:
@@ -4920,6 +4909,11 @@ snapshots:
     dependencies:
       '@remix-run/router': 1.23.0
       react: 18.3.1
+
+  react-virtuoso@4.15.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   react@18.3.1:
     dependencies:
