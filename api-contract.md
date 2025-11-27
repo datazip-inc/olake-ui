@@ -799,11 +799,13 @@ http://localhost:8080
   {
     "success": "boolean",
     "message": "string",
-    "logs": "json",
-    "older_cursor": "number", // byte offset before the first returned line
-    "newer_cursor": "number", // byte offset after the last returned line
-    "has_more_older": "boolean",
-    "has_more_newer": "boolean"
+    "data": {
+      "logs": "json",
+      "older_cursor": "number", // byte offset before the first returned line
+      "newer_cursor": "number", // byte offset after the last returned line
+      "has_more_older": "boolean",
+      "has_more_newer": "boolean"
+    }
   }
 
   ```
