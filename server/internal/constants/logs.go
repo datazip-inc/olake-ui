@@ -10,4 +10,3 @@ const (
 	// DefaultLogsCursor represents tail-from-end behavior
 	DefaultLogsCursor int64 = -1
 )
-
