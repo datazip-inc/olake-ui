@@ -296,16 +296,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				sourceName,
 				ENTITY_TYPES.SOURCE,
 			)
-			if (isUnique === null) {
-				message.error("Failed to verify source name uniqueness")
-				return
-			}
-			if (!isUnique) {
-				message.error(
-					"Source name already exists. Please choose a different name.",
-				)
-				return
-			}
+			if (!isUnique) return
 
 			const newSourceData = {
 				name: sourceName,

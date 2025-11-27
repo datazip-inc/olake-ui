@@ -384,16 +384,7 @@ const CreateDestination = forwardRef<
 				destinationName,
 				ENTITY_TYPES.DESTINATION,
 			)
-			if (isUnique === null) {
-				message.error("Failed to verify destination name uniqueness")
-				return
-			}
-			if (!isUnique) {
-				message.error(
-					"Destination name already exists. Please choose a different name.",
-				)
-				return
-			}
+			if (!isUnique) return
 
 			const newDestinationData = {
 				name: destinationName,

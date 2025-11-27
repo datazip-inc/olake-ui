@@ -174,6 +174,12 @@ func (h *Handler) CheckUniqueName() {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check name uniqueness: %s", err), err)
 		return
 	}
+
+	if !unique {
+		utils.ErrorResponse(&h.Controller, http.StatusConflict, fmt.Sprintf("%s name '%s' is not unique", req.EntityType, req.Name), nil)
+		return
+	}
+
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("%s name '%s' uniqueness checked successfully", req.EntityType, req.Name), dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
