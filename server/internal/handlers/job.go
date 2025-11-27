@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -367,8 +368,8 @@ func (h *Handler) GetTaskLogs() {
 		return
 	}
 
-	cursor, _ := h.GetInt64("cursor", -1)
-	limit, _ := h.GetInt("limit", 1000)
+	cursor, _ := h.GetInt64("cursor", constants.DefaultLogsCursor)
+	limit, _ := h.GetInt("limit", constants.DefaultLogsLimit)
 	direction := h.GetString("direction", "older")
 
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s] cursor[%d] limit[%d]", id, req.FilePath, cursor, limit)

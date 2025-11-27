@@ -19,6 +19,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
@@ -229,8 +230,6 @@ type LogEntry struct {
 	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
-const readChunkSize = 64 * 1024 // read files in chunks of 64KB
-
 // isValidLogLine checks if a line is a valid, non-debug log entry
 func isValidLogLine(line string) bool {
 	line = strings.TrimSpace(line)
@@ -284,7 +283,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 	// read lines backwards until we have enough VALID lines or reach the beginning of the file
 	for offset > 0 && len(newestFirst) < limit {
-		toRead := min(offset, int64(readChunkSize))
+		toRead := min(offset, int64(constants.LogReadChunkSize))
 		readPos := offset - toRead
 
 		chunk := make([]byte, toRead)
@@ -364,7 +363,6 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 	hasMore := newOffset > 0
 	return newestFirst, newOffset, hasMore, nil
-
 }
 
 // ReadLinesForward reads up to `limit` complete VALID log lines from file forwards starting at startOffset.
@@ -469,7 +467,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 
 	// Normalize limit
 	if limit <= 0 {
-		limit = 1000
+		limit = constants.DefaultLogsLimit
 	}
 
 	// Clamp cursor to file size
@@ -486,7 +484,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	// Initial tail: cursor < 0 means "from end of file"
 	isTail := cursor < 0
 
-	logs := make([]map[string]interface{}, 0, limit)
+	var logs []map[string]interface{}
 	var olderCursor int64
 	var newerCursor int64
 	var hasMoreOlder bool

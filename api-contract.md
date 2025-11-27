@@ -778,21 +778,34 @@ http://localhost:8080
 
 
 
-- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/task/:id/logs`
-- **Method**: GET
-- **Description**: Give the Logs of that particular Job
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/tasks/:taskid/logs`
+- **Method**: POST
+- **Description**: Fetch logs for a specific job task with cursor-based pagination supporting both older and newer directions.
 - **Headers**: `Authorization: Bearer <token>`
+- **Query Params**:
+  - `cursor` _(optional, number)_: byte offset cursor. Use `-1` or omit for tailing from the end of the file.
+  - `limit` _(optional, number)_: number of log entries to return. Defaults to `1000`.
+  - `direction` _(optional, string)_: `"older"` (default) to read towards the start of the file, or `"newer"` to read towards the end.
+- **Request Body**:
 
+  ```json
+  {
+    "file_path": "string"
+  }
+  
 - **Response**:
 
   ```json
   {
     "success": "boolean",
     "message": "string",
-    "data": {
-      "task_logs":"json"
-    }
+    "logs": "json",
+    "older_cursor": "number", // byte offset before the first returned line
+    "newer_cursor": "number", // byte offset after the last returned line
+    "has_more_older": "boolean",
+    "has_more_newer": "boolean"
   }
+
   ```
 
 ### job name unique check
