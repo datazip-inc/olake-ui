@@ -229,7 +229,7 @@ type LogEntry struct {
 	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
-const readChunkSize = 128 * 1024 // read files in chunks of 128KB
+const readChunkSize = 64 * 1024 // read files in chunks of 64KB
 
 // isValidLogLine checks if a line is a valid, non-debug log entry
 func isValidLogLine(line string) bool {
@@ -314,8 +314,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 			fullCount = len(parts)
 		}
 
-		// Collect complete VALID lines from newest to oldest, filtering as we go
-		// Track the index of each valid line we collect
+		// Collect complete VALID lines from newest to oldest
 		for i := len(parts) - 1; i >= len(parts)-fullCount && i >= 0 && len(newestFirst) < limit; i-- {
 			line := string(parts[i])
 			if isValidLogLine(line) {
@@ -499,9 +498,9 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 		batch := make([]map[string]interface{}, 0, len(lines))
 		for _, line := range lines {
 			var logEntry LogEntry
-			// Safe to unmarshal since ReadLines* already validated
+
 			if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
-				continue // Shouldn't happen but handle gracefully
+				continue
 			}
 
 			var messageStr string
