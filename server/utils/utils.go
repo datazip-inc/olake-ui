@@ -478,7 +478,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	// Normalize direction
 	dir := strings.ToLower(strings.TrimSpace(direction))
 	if dir != "newer" {
-		dir = "older"
+		dir = constants.DefaultLogsDirection
 	}
 
 	// Initial tail: cursor < 0 means "from end of file"

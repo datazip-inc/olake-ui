@@ -1,12 +1,15 @@
 package constants
 
 const (
-	// LogReadChunkSize controls log file read chunks (64KB)
-	LogReadChunkSize = 64 * 1024
+	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
+	LogReadChunkSize = 64 * 1024 // 64KB
 
-	// DefaultLogsLimit is the fallback log count per request
+	// DefaultLogsLimit is the number of log entries returned if no limit is provided.
 	DefaultLogsLimit = 1000
 
-	// DefaultLogsCursor represents tail-from-end behavior
+	// DefaultLogsCursor indicates tailing from the end of the file (cursor < 0).
 	DefaultLogsCursor int64 = -1
+
+	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
+	DefaultLogsDirection = "older"
 )

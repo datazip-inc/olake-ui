@@ -370,9 +370,9 @@ func (h *Handler) GetTaskLogs() {
 
 	cursor, _ := h.GetInt64("cursor", constants.DefaultLogsCursor)
 	limit, _ := h.GetInt("limit", constants.DefaultLogsLimit)
-	direction := h.GetString("direction", "older")
+	direction := h.GetString("direction", constants.DefaultLogsDirection)
 
-	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s] cursor[%d] limit[%d]", id, req.FilePath, cursor, limit)
+	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s] cursor[%d] limit[%d] direction[%s]", id, req.FilePath, cursor, limit, direction)
 
 	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath, cursor, limit, direction)
 	if err != nil {
