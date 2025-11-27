@@ -8,15 +8,25 @@ import {
 	TaskLogsResponse,
 } from "../../types"
 import { AxiosError } from "axios"
+import { normalizeConnectorType } from "../../utils/utils"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
 		try {
 			const response = await api.get<Job[]>(
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 },
 			)
 
-			return response.data
+			const jobs = response.data.map(job => ({
+				...job,
+				destination: {
+					...job.destination,
+					type: normalizeConnectorType(job.destination.type),
+				},
+			}))
+
+			return jobs
 		} catch (error) {
 			console.error("Error fetching jobs from API:", error)
 			throw error

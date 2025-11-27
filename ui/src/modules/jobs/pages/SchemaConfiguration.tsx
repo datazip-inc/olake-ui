@@ -57,9 +57,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
 	])
-	const [activeStreamData, setActiveStreamData] = useState<StreamData | null>(
-		null,
-	)
+	const [activeStreamKey, setActiveStreamKey] = useState<{
+		name: string
+		namespace: string
+	} | null>(null)
 
 	const [apiResponse, setApiResponse] = useState<{
 		selected_streams: {
@@ -67,6 +68,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}
 		streams: StreamData[]
 	} | null>(initialStreamsData || null)
+
+	// Derive activeStreamData from apiResponse to always get fresh data
+	const activeStreamData = useMemo(() => {
+		if (!activeStreamKey || !apiResponse?.streams) return null
+		return (
+			apiResponse.streams.find(
+				s =>
+					s.stream.name === activeStreamKey.name &&
+					s.stream.namespace === activeStreamKey.namespace,
+			) || null
+		)
+	}, [activeStreamKey, apiResponse?.streams])
 	const [isStreamsLoading, setIsStreamsLoading] = useState(!initialStreamsData)
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
@@ -219,6 +232,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		streamName: string,
 		namespace: string,
 		newSyncMode: SyncMode,
+		cursorField?: string,
 	) => {
 		setApiResponse(prev => {
 			if (!prev) return prev
@@ -229,7 +243,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			if (
 				streamIndex !== -1 &&
-				prev.streams[streamIndex].stream.sync_mode === newSyncMode
+				prev.streams[streamIndex].stream.sync_mode === newSyncMode &&
+				(prev.streams[streamIndex].stream.cursor_field || "") ===
+					(cursorField || "")
 			) {
 				return prev
 			}
@@ -238,13 +254,22 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 			if (streamIndex !== -1) {
 				updated.streams = [...prev.streams]
-				updated.streams[streamIndex] = {
+				const nextStream = {
 					...updated.streams[streamIndex],
 					stream: {
 						...updated.streams[streamIndex].stream,
 						sync_mode: newSyncMode,
 					},
 				}
+
+				if (cursorField !== undefined && newSyncMode === SyncMode.INCREMENTAL) {
+					nextStream.stream.cursor_field = cursorField
+				}
+				if (newSyncMode !== SyncMode.INCREMENTAL) {
+					delete nextStream.stream.cursor_field
+				}
+
+				updated.streams[streamIndex] = nextStream
 			}
 
 			return updated
@@ -612,20 +637,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			// Update parent component
 			setSelectedStreams(updated)
 
-			// Update activeStreamData with the updated stream data
-			setActiveStreamData(currentActiveStream => {
-				if (!currentActiveStream) return currentActiveStream
-
-				// Find the updated version of the current active stream from updatedStreams
-				const updatedActiveStream = updatedStreams.find(
-					stream =>
-						stream.stream.name === currentActiveStream.stream.name &&
-						stream.stream.namespace === currentActiveStream.stream.namespace,
-				)
-
-				return updatedActiveStream || currentActiveStream
-			})
-
 			return updated
 		})
 	}
@@ -728,7 +739,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
 							selectedStreams={apiResponse.selected_streams}
-							setActiveStreamData={setActiveStreamData}
+							setActiveStreamData={(stream: StreamData) => {
+								setActiveStreamKey({
+									name: stream.stream.name,
+									namespace: stream.stream.namespace || "",
+								})
+							}}
 							activeStreamData={activeStreamData}
 							onStreamSelect={handleStreamSelect}
 							setSelectedStreams={(updatedSelectedStreams: any) => {
@@ -771,8 +787,14 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								streamName: string,
 								namespace: string,
 								syncMode: SyncMode,
+								cursorField?: string,
 							) => {
-								handleStreamSyncModeChange(streamName, namespace, syncMode)
+								handleStreamSyncModeChange(
+									streamName,
+									namespace,
+									syncMode,
+									cursorField,
+								)
 							}}
 							useDirectForms={useDirectForms}
 							isSelected={isStreamEnabled(activeStreamData)}

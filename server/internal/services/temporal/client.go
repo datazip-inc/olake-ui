@@ -75,11 +75,12 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
 			Workflow:  RunSyncWorkflow,
-			Args:      []any{req},
+			Args:      []any{*req},
 			TaskQueue: t.taskQueue,
 		},
 		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
 	})
+
 	return err
 }
 
@@ -160,5 +161,8 @@ func (t *Temporal) ListWorkflow(ctx context.Context, request *workflowservice.Li
 func (t *Temporal) RestoreSyncSchedule(ctx context.Context, job *models.Job) error {
 	workflowID, _ := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
 	syncReq := buildExecutionReqForSync(job, workflowID)
-	return t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, &syncReq)
+	if err := t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, syncReq); err != nil {
+		return fmt.Errorf("failed to update schedule: %s", err)
+	}
+	return nil
 }
