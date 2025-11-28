@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -94,4 +95,9 @@ func (db *Database) DeleteDestination(id int) error {
 	// by setting the DeletedAt field due to the ORM tags in BaseModel
 	_, err := db.ormer.Delete(destination)
 	return err
+}
+
+// IsDestinationNameUniqueInProject checks if a destination name is unique within a project.
+func (db *Database) IsDestinationNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
+	return db.IsNameUniqueInProject(ctx, projectID, name, constants.DestinationTable)
 }
