@@ -38,6 +38,7 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 		Configs:       configs,
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
+		JobName:       job.Name,
 		Timeout:       GetWorkflowTimeout(Sync),
 		OutputFile:    "state.json",
 	}
@@ -72,6 +73,7 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		WorkflowID:    workflowID,
 		ProjectID:     job.ProjectID,
 		JobID:         job.ID,
+		JobName:       job.Name,
 		Timeout:       GetWorkflowTimeout(ClearDestination),
 		OutputFile:    "state.json",
 	}

@@ -108,3 +108,9 @@ type JobTaskRequest struct {
 type JobStatusRequest struct {
 	Activate bool `json:"activate"`
 }
+
+type PatchProjectSettingsPayload struct {
+	ID              int    `json:"id"`
+	ProjectID       string `json:"project_id" validate:"required"`
+	WebhookAlertURL string `json:"webhook_alert_url" validate:"required"`
+}

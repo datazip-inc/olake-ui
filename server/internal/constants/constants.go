@@ -92,12 +92,13 @@ func Init() {
 
 	// init table names
 	TableNameMap = map[TableType]string{
-		UserTable:        "olake-$$-user",
-		SourceTable:      "olake-$$-source",
-		DestinationTable: "olake-$$-destination",
-		JobTable:         "olake-$$-job",
-		CatalogTable:     "olake-$$-catalog",
-		SessionTable:     "session",
+		UserTable:            "olake-$$-user",
+		SourceTable:          "olake-$$-source",
+		DestinationTable:     "olake-$$-destination",
+		JobTable:             "olake-$$-job",
+		CatalogTable:         "olake-$$-catalog",
+		SessionTable:         "session",
+		ProjectSettingsTable: "olake-$$-project-settings",
 	}
 
 	// replace $$ with the environment
