@@ -18,6 +18,7 @@ import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
+import { validationService } from "../../../api/services/validationService"
 import {
 	CreateDestinationProps,
 	DestinationConfig,
@@ -34,6 +35,7 @@ import {
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
 	TEST_CONNECTION_STATUS,
@@ -377,6 +379,12 @@ const CreateDestination = forwardRef<
 			}
 			const isValid = await validateDestination()
 			if (!isValid) return
+
+			const isUnique = await validationService.checkUniqueName(
+				destinationName,
+				ENTITY_TYPES.DESTINATION,
+			)
+			if (!isUnique) return
 
 			const newDestinationData = {
 				name: destinationName,
