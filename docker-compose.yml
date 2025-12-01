@@ -20,13 +20,13 @@ x-envs:
     PERSISTENT_DIR: *hostPersistencePath
 
 x-db-envs:
-  OLAKE_DB_HOST: &dbHost postgresql
-  OLAKE_DB_PORT: &dbPort 5432
-  OLAKE_DB_USER: &dbUser temporal
-  OLAKE_DB_PASSWORD: &dbPassword temporal
-  OLAKE_DB_NAME: &dbName postgres
-  OLAKE_DB_SSLMODE: &dbSSLMode disable
-  TEMPORAL_DB_NAME: &temporalDbName temporal
+  OLAKE_DB_HOST: &olakeDBHost postgresql
+  OLAKE_DB_PORT: &olakeDBPort 5432
+  OLAKE_DB_USER: &olakeDBUser temporal
+  OLAKE_DB_PASSWORD: &olakeDBPassword temporal
+  OLAKE_DB_NAME: &olakeDBName postgres
+  OLAKE_DB_SSLMODE: &olakeDBSSLMode disable
+  TEMPORAL_DB_NAME: &temporalDBName temporal
 
 services:
   olake-ui:
@@ -35,12 +35,12 @@ services:
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
-      OLAKE_POSTGRES_USER: *dbUser
-      OLAKE_POSTGRES_PASSWORD: *dbPassword
-      OLAKE_POSTGRES_HOST: *dbHost
-      OLAKE_POSTGRES_PORT: *dbPort
-      OLAKE_POSTGRES_DBNAME: *dbName
-      OLAKE_POSTGRES_SSLMODE: *dbSSLMode
+      OLAKE_POSTGRES_USER: *olakeDBUser
+      OLAKE_POSTGRES_PASSWORD: *olakeDBPassword
+      OLAKE_POSTGRES_HOST: *olakeDBHost
+      OLAKE_POSTGRES_PORT: *olakeDBPort
+      OLAKE_POSTGRES_DBNAME: *olakeDBName
+      OLAKE_POSTGRES_SSLMODE: *olakeDBSSLMode
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
@@ -116,12 +116,12 @@ services:
     environment:
       <<: *sharedEnvs
       OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
-      DB_HOST: *dbHost
-      DB_PORT: *dbPort
-      DB_USER: *dbUser
-      DB_PASSWORD: *dbPassword
-      DB_NAME: *dbName
-      DB_SSLMODE: *dbSSLMode
+      DB_HOST: *olakeDBHost
+      DB_PORT: *olakeDBPort
+      DB_USER: *olakeDBUser
+      DB_PASSWORD: *olakeDBPassword
+      DB_NAME: *olakeDBName
+      DB_SSLMODE: *olakeDBSSLMode
 
     depends_on:
       temporal:
@@ -157,11 +157,11 @@ services:
         condition: service_healthy # Wait for elasticsearch to be healthy
     environment:
       DB: postgres12
-      POSTGRES_SEEDS: *dbHost
-      DB_PORT: *dbPort
-      POSTGRES_USER: *dbUser
-      POSTGRES_PWD: *dbPassword
-      DBNAME: *temporalDbName
+      POSTGRES_SEEDS: *olakeDBHost
+      DB_PORT: *olakeDBPort
+      POSTGRES_USER: *olakeDBUser
+      POSTGRES_PWD: *olakeDBPassword
+      DBNAME: *temporalDBName
 
       ENABLE_ES: true
       ES_SEEDS: elasticsearch
