@@ -7,11 +7,15 @@ import {
 	EntityTestResponse,
 } from "../../types"
 
+import { ENTITY_TYPES } from "../../utils/constants"
+import { trackTestConnection } from "../utils"
+
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
 		try {
 			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 
 			return response.data.map(item => ({
@@ -71,7 +75,10 @@ export const sourceService = {
 		}
 	},
 
-	testSourceConnection: async (source: EntityTestRequest) => {
+	testSourceConnection: async (
+		source: EntityTestRequest,
+		existing: boolean = false,
+	) => {
 		try {
 			const response = await api.post<EntityTestResponse>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
@@ -82,6 +89,8 @@ export const sourceService = {
 				},
 				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
+
+			trackTestConnection(true, source, response.data, existing)
 			return {
 				success: true,
 				message: "success",
@@ -93,6 +102,14 @@ export const sourceService = {
 				success: false,
 				message:
 					error instanceof Error ? error.message : "Unknown error occurred",
+				data: {
+					connection_result: {
+						message:
+							error instanceof Error ? error.message : "Unknown error occurred",
+						status: "FAILED",
+					},
+					logs: [],
+				},
 			}
 		}
 	},
@@ -158,6 +175,21 @@ export const sourceService = {
 			return response.data
 		} catch (error) {
 			console.error("Error getting source streams:", error)
+			throw error
+		}
+	},
+
+	checkSourceNameUnique: async (
+		sourceName: string,
+	): Promise<{ unique: boolean }> => {
+		try {
+			const response = await api.post<{ unique: boolean }>(
+				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name: sourceName, entity_type: ENTITY_TYPES.SOURCE },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error checking source name uniqueness:", error)
 			throw error
 		}
 	},

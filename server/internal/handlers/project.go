@@ -36,7 +36,7 @@ func (h *Handler) UpdateProjectSettings() {
 		return
 	}
 
-	var req dto.PatchProjectSettingsPayload
+	var req dto.UpdateProjectSettingsRequest
 
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

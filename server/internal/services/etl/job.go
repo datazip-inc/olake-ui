@@ -40,19 +40,20 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 }
 
 func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
-	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.Name)
+	unique, err := s.db.IsJobNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check job name uniqueness: %s", err)
 	}
 	if !unique {
 		return fmt.Errorf("job name '%s' is not unique", req.Name)
 	}
-	source, err := s.upsertSource(req.Source, projectID, userID)
+
+	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source: %s", err)
 	}
 
-	dest, err := s.upsertDestination(req.Destination, projectID, userID)
+	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination: %s", err)
 	}
@@ -86,7 +87,7 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 		return fmt.Errorf("failed to create temporal workflow: %s", err)
 	}
 
-	telemetry.TrackJobCreation(ctx, &models.Job{Name: req.Name})
+	telemetry.TrackJobCreation(ctx, job)
 	return nil
 }
 
@@ -127,12 +128,12 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	// Snapshot previous job state for compensation on schedule update failure
 	prevJob := *existingJob
 
-	source, err := s.upsertSource(req.Source, projectID, userID)
+	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update: %s", err)
 	}
 
-	dest, err := s.upsertDestination(req.Destination, projectID, userID)
+	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update: %s", err)
 	}
@@ -158,7 +159,6 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to update temporal workflow: %s", err)
 	}
 
-	telemetry.TrackJobEntity(ctx)
 	return nil
 }
 
@@ -176,7 +176,6 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 		return "", fmt.Errorf("failed to delete job: %s", err)
 	}
 
-	telemetry.TrackJobEntity(ctx)
 	return job.Name, nil
 }
 
@@ -249,6 +248,10 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 		return fmt.Errorf("job not found: %s", err)
 	}
 
+	if err := CheckClearDestinationCompatibility(job.SourceID.Version); err != nil {
+		return err
+	}
+
 	if !job.Active {
 		return fmt.Errorf("job is paused, please unpause to run clear destination")
 	}
@@ -286,6 +289,10 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, _ string, jobID in
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
+	if err := CheckClearDestinationCompatibility(job.SourceID.Version); err != nil {
+		return nil, err
+	}
+
 	diffCatalog, err := s.temporal.GetStreamDifference(ctx, job, job.StreamsConfig, req.UpdatedStreamsConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stream difference: %s", err)
@@ -314,10 +321,22 @@ func (s *ETLService) GetClearDestinationStatus(ctx context.Context, projectID st
 	return isClearRunning, nil
 }
 
-func (s *ETLService) CheckUniqueJobName(_ context.Context, projectID string, req dto.CheckUniqueJobNameRequest) (bool, error) {
-	unique, err := s.db.IsJobNameUniqueInProject(projectID, req.JobName)
+func (s *ETLService) CheckUniqueName(ctx context.Context, projectID string, req dto.CheckUniqueNameRequest) (bool, error) {
+	var tableType constants.TableType
+	switch req.EntityType {
+	case "job":
+		tableType = constants.JobTable
+	case "source":
+		tableType = constants.SourceTable
+	case "destination":
+		tableType = constants.DestinationTable
+	default:
+		return false, fmt.Errorf("invalid entity type: %s", req.EntityType)
+	}
+
+	unique, err := s.db.IsNameUniqueInProject(ctx, projectID, req.Name, tableType)
 	if err != nil {
-		return false, fmt.Errorf("failed to check job name uniqueness: %s", err)
+		return false, fmt.Errorf("failed to check name uniqueness: %s", err)
 	}
 
 	return unique, nil
@@ -438,7 +457,7 @@ func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, proj
 	return jobResp, nil
 }
 
-func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
+func (s *ETLService) upsertSource(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Source, error) {
 	if config == nil {
 		return nil, fmt.Errorf("source config is required")
 	}
@@ -448,8 +467,18 @@ func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, us
 		return s.db.GetSourceByID(*config.ID)
 	}
 
-	user := &models.User{ID: *userID}
 	// Otherwise, create a new source.
+	// check source name uniqueness in the project
+	unique, err := s.db.IsNameUniqueInProject(ctx, projectID, config.Name, constants.SourceTable)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check source name uniqueness: %s", err)
+	}
+	if !unique {
+		return nil, fmt.Errorf("source name '%s' is not unique", config.Name)
+	}
+
+	user := &models.User{ID: *userID}
+
 	newSource := &models.Source{
 		Name:      config.Name,
 		Type:      config.Type,
@@ -466,7 +495,7 @@ func (s *ETLService) upsertSource(config *dto.DriverConfig, projectID string, us
 	return newSource, nil
 }
 
-func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
+func (s *ETLService) upsertDestination(ctx context.Context, config *dto.DriverConfig, projectID string, userID *int) (*models.Destination, error) {
 	if config == nil {
 		return nil, fmt.Errorf("destination config is required")
 	}
@@ -476,8 +505,18 @@ func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID strin
 		return s.db.GetDestinationByID(*config.ID)
 	}
 
-	user := &models.User{ID: *userID}
 	// Otherwise, create a new destination.
+	// check destination name uniqueness in the project
+	unique, err := s.db.IsNameUniqueInProject(ctx, projectID, config.Name, constants.DestinationTable)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check destination name uniqueness: %s", err)
+	}
+	if !unique {
+		return nil, fmt.Errorf("destination name '%s' is not unique", config.Name)
+	}
+
+	user := &models.User{ID: *userID}
+
 	newDest := &models.Destination{
 		Name:      config.Name,
 		DestType:  config.Type,
@@ -496,14 +535,14 @@ func (s *ETLService) upsertDestination(config *dto.DriverConfig, projectID strin
 }
 
 // worker service
-func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, jobID int, workflowID, event string) error {
-	switch strings.ToLower(event) {
+func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSyncTelemetryRequest) error {
+	switch strings.ToLower(req.Event) {
 	case "started":
-		telemetry.TrackSyncStart(ctx, jobID, workflowID)
+		telemetry.TrackSyncStart(ctx, req.JobID, req.WorkflowID, req.Environment)
 	case "completed":
-		telemetry.TrackSyncCompleted(jobID, workflowID)
+		telemetry.TrackSyncCompleted(req.JobID, req.WorkflowID, req.Environment)
 	case "failed":
-		telemetry.TrackSyncFailed(jobID, workflowID)
+		telemetry.TrackSyncFailed(req.JobID, req.WorkflowID, req.Environment)
 	}
 
 	return nil

@@ -18,6 +18,7 @@ import Form from "@rjsf/antd"
 
 import { useAppStore } from "../../../store"
 import { destinationService } from "../../../api/services/destinationService"
+import { validationService } from "../../../api/services/validationService"
 import {
 	CreateDestinationProps,
 	DestinationConfig,
@@ -34,6 +35,7 @@ import {
 import {
 	CONNECTOR_TYPES,
 	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
 	OLAKE_LATEST_VERSION_URL,
 	SETUP_TYPES,
 	TEST_CONNECTION_STATUS,
@@ -136,6 +138,7 @@ const CreateDestination = forwardRef<
 
 		const {
 			destinations,
+			isLoadingDestinations,
 			fetchDestinations,
 			setShowEntitySavedModal,
 			setShowTestingModal,
@@ -377,6 +380,12 @@ const CreateDestination = forwardRef<
 			const isValid = await validateDestination()
 			if (!isValid) return
 
+			const isUnique = await validationService.checkUniqueName(
+				destinationName,
+				ENTITY_TYPES.DESTINATION,
+			)
+			if (!isUnique) return
+
 			const newDestinationData = {
 				name: destinationName,
 				type:
@@ -609,17 +618,23 @@ const CreateDestination = forwardRef<
 							<label className="mb-2 block text-sm font-medium text-gray-700">
 								Select existing destination:
 							</label>
-							<Select
-								placeholder="Select a destination"
-								className="w-full"
-								data-testid="existing-destination"
-								onChange={handleExistingDestinationSelect}
-								value={existingDestination}
-								options={filteredDestinations.map(d => ({
-									value: d.id,
-									label: d.name,
-								}))}
-							/>
+							{isLoadingDestinations ? (
+								<div className="flex h-8 items-center justify-center">
+									<Spin size="small" />
+								</div>
+							) : (
+								<Select
+									placeholder="Select a destination"
+									className="w-full"
+									data-testid="existing-destination"
+									onChange={handleExistingDestinationSelect}
+									value={existingDestination}
+									options={filteredDestinations.map(d => ({
+										value: d.id,
+										label: d.name,
+									}))}
+								/>
+							)}
 						</div>
 					</div>
 				</div>

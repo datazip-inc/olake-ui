@@ -9,7 +9,8 @@ import {
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppStore } from "../../../store"
-import { destinationService, jobService, sourceService } from "../../../api"
+import { destinationService, sourceService } from "../../../api"
+import { validationService } from "../../../api/services/validationService"
 
 import { JobBase, JobCreationSteps } from "../../../types"
 import {
@@ -20,6 +21,7 @@ import {
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
 	TEST_CONNECTION_STATUS,
@@ -37,6 +39,8 @@ import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailur
 import EntitySavedModal from "../../common/Modals/EntitySavedModal"
 import EntityCancelModal from "../../common/Modals/EntityCancelModal"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
+
+// TODO: Preserve "use existing" mode for source and destination when navigating between steps.
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()
@@ -125,6 +129,16 @@ const JobCreation: React.FC = () => {
 			message.error("Source name is required")
 			return false
 		}
+
+		// Check uniqueness only if creating a new source (not using existing)
+		if (!existingSourceId && sourceName.trim()) {
+			const isUnique = await validationService.checkUniqueName(
+				sourceName,
+				ENTITY_TYPES.SOURCE,
+			)
+			if (!isUnique) return false
+		}
+
 		return true
 	}
 
@@ -139,6 +153,16 @@ const JobCreation: React.FC = () => {
 			message.error("Destination name is required")
 			return false
 		}
+
+		// Check uniqueness only if creating a new destination (not using existing)
+		if (!existingDestinationId && destinationName.trim()) {
+			const isUnique = await validationService.checkUniqueName(
+				destinationName,
+				ENTITY_TYPES.DESTINATION,
+			)
+			if (!isUnique) return false
+		}
+
 		return true
 	}
 
@@ -150,15 +174,6 @@ const JobCreation: React.FC = () => {
 		return validateCronExpression(cronExpression)
 	}
 
-	const checkJobNameUnique = async (): Promise<boolean | null> => {
-		try {
-			const response = await jobService.checkJobNameUnique(jobName)
-			return response.unique
-		} catch {
-			return null
-		}
-	}
-
 	// Connection test handler
 	const handleConnectionTest = async (
 		isSource: boolean,
@@ -168,9 +183,10 @@ const JobCreation: React.FC = () => {
 		setShowTestingModal(true)
 		try {
 			const testResult = isSource
-				? await sourceService.testSourceConnection(data)
+				? await sourceService.testSourceConnection(data, !!existingSourceId)
 				: await destinationService.testDestinationConnection(
 						data,
+						!!existingDestinationId,
 						getConnectorInLowerCase(sourceConnector),
 						sourceVersion,
 					)
@@ -301,16 +317,12 @@ const JobCreation: React.FC = () => {
 			case JOB_CREATION_STEPS.CONFIG:
 				if (!validateConfig()) return
 
-				const isUnique = await checkJobNameUnique()
-				if (isUnique === null) {
-					return
-				}
-				if (!isUnique) {
-					message.error(
-						"Job name already exists. Please choose a different name.",
-					)
-					return
-				}
+				const isUnique = await validationService.checkUniqueName(
+					jobName,
+					ENTITY_TYPES.JOB,
+				)
+				if (!isUnique) return
+
 				//TODO : Job name is disabled once filled and moved to next step , need to be handled later
 				setJobNameFilled(true)
 				setCurrentStep(JOB_CREATION_STEPS.SOURCE)

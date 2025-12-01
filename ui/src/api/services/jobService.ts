@@ -8,15 +8,26 @@ import {
 	TaskLog,
 } from "../../types"
 import { AxiosError } from "axios"
+import { normalizeConnectorType } from "../../utils/utils"
+import { ENTITY_TYPES } from "../../utils/constants"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
 		try {
 			const response = await api.get<Job[]>(
 				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 },
 			)
 
-			return response.data
+			const jobs = response.data.map(job => ({
+				...job,
+				destination: {
+					...job.destination,
+					type: normalizeConnectorType(job.destination.type),
+				},
+			}))
+
+			return jobs
 		} catch (error) {
 			console.error("Error fetching jobs from API:", error)
 			throw error
@@ -140,8 +151,8 @@ export const jobService = {
 	checkJobNameUnique: async (jobName: string): Promise<{ unique: boolean }> => {
 		try {
 			const response = await api.post<{ unique: boolean }>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/check-unique`,
-				{ job_name: jobName },
+				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name: jobName, entity_type: ENTITY_TYPES.JOB },
 			)
 			return response.data
 		} catch (error) {

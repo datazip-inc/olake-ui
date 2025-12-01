@@ -22,8 +22,9 @@ type SpecRequest struct {
 }
 
 // check unique job name request
-type CheckUniqueJobNameRequest struct {
-	JobName string `json:"job_name"`
+type CheckUniqueNameRequest struct {
+	Name       string `json:"name" validate:"required"`
+	EntityType string `json:"entity_type" validate:"required,oneof=job source destination"`
 }
 
 // Test connection requests
@@ -109,8 +110,15 @@ type JobStatusRequest struct {
 	Activate bool `json:"activate"`
 }
 
-type PatchProjectSettingsPayload struct {
+type UpdateProjectSettingsRequest struct {
 	ID              int    `json:"id"`
 	ProjectID       string `json:"project_id" validate:"required"`
 	WebhookAlertURL string `json:"webhook_alert_url"`
+}
+
+type UpdateSyncTelemetryRequest struct {
+	JobID       int    `json:"job_id"`
+	WorkflowID  string `json:"workflow_id"`
+	Event       string `json:"event"`
+	Environment string `json:"environment"`
 }

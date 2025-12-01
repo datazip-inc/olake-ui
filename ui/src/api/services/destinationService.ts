@@ -6,28 +6,25 @@ import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "../../types"
-import { getConnectorInLowerCase } from "../../utils/utils"
-
-// TODO: Make it parquet on all places
-const normalizeDestinationType = (type: string): string => {
-	//destination connector typemap
-	const typeMap: Record<string, string> = {
-		"amazon s3": "parquet",
-		"apache iceberg": "iceberg",
-	}
-	return typeMap[type.toLowerCase()] || type.toLowerCase()
-}
+import {
+	getConnectorInLowerCase,
+	normalizeConnectorType,
+} from "../../utils/utils"
+import { trackTestConnection } from "../utils"
+import { ENTITY_TYPES } from "../../utils/constants"
 
 export const destinationService = {
 	getDestinations: async () => {
 		try {
 			const response = await api.get<Entity[]>(
 				API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			const destinations: Entity[] = response.data.map(item => {
 				const config = JSON.parse(item.config)
 				return {
 					...item,
+					type: normalizeConnectorType(item.type),
 					config,
 					status: "active",
 				}
@@ -82,6 +79,7 @@ export const destinationService = {
 
 	testDestinationConnection: async (
 		destination: EntityTestRequest,
+		existing: boolean = false,
 		source_type: string = "",
 		source_version: string = "",
 	) => {
@@ -98,6 +96,8 @@ export const destinationService = {
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0, disableErrorNotification: true },
 			)
+			trackTestConnection(false, destination, response.data, existing)
+
 			return {
 				success: true,
 				message: "success",
@@ -109,6 +109,14 @@ export const destinationService = {
 				success: false,
 				message:
 					error instanceof Error ? error.message : "Unknown error occurred",
+				data: {
+					connection_result: {
+						message:
+							error instanceof Error ? error.message : "Unknown error occurred",
+						status: "FAILED",
+					},
+					logs: [],
+				},
 			}
 		}
 	},
@@ -130,7 +138,7 @@ export const destinationService = {
 		source_version: string = "",
 		signal?: AbortSignal,
 	) => {
-		const normalizedType = normalizeDestinationType(type)
+		const normalizedType = normalizeConnectorType(type)
 		const response = await api.post<any>(
 			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 			{
@@ -143,5 +151,20 @@ export const destinationService = {
 			{ timeout: 300000, signal, disableErrorNotification: true },
 		)
 		return response.data
+	},
+
+	checkDestinationNameUnique: async (
+		destinationName: string,
+	): Promise<{ unique: boolean }> => {
+		try {
+			const response = await api.post<{ unique: boolean }>(
+				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name: destinationName, entity_type: ENTITY_TYPES.DESTINATION },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error checking destination name uniqueness:", error)
+			throw error
+		}
 	},
 }

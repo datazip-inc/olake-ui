@@ -19,6 +19,7 @@ import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
+import { validationService } from "../../../api/services/validationService"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
 import {
 	getConnectorLabel,
@@ -31,6 +32,7 @@ import {
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 	TEST_CONNECTION_STATUS,
+	ENTITY_TYPES,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
@@ -97,6 +99,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const {
 			sources,
+			isLoadingSources,
 			fetchSources,
 			setShowEntitySavedModal,
 			setShowTestingModal,
@@ -288,6 +291,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 			const isValid = await validateSource()
 			if (!isValid) return
+
+			const isUnique = await validationService.checkUniqueName(
+				sourceName,
+				ENTITY_TYPES.SOURCE,
+			)
+			if (!isUnique) return
 
 			const newSourceData = {
 				name: sourceName,
@@ -522,17 +531,23 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 					<label className="mb-2 block text-sm font-medium text-gray-700">
 						Select existing source:
 					</label>
-					<Select
-						placeholder="Select a source"
-						className="w-full"
-						data-testid="existing-source"
-						onChange={handleExistingSourceSelect}
-						value={existingSource}
-						options={filteredSources.map(s => ({
-							value: s.id,
-							label: s.name,
-						}))}
-					/>
+					{isLoadingSources ? (
+						<div className="flex h-8 items-center justify-center">
+							<Spin size="small" />
+						</div>
+					) : (
+						<Select
+							placeholder="Select a source"
+							className="w-full"
+							data-testid="existing-source"
+							onChange={handleExistingSourceSelect}
+							value={existingSource}
+							options={filteredSources.map(s => ({
+								value: s.id,
+								label: s.name,
+							}))}
+						/>
+					)}
 				</div>
 			</div>
 		)
