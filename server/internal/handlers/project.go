@@ -45,7 +45,7 @@ func (h *Handler) UpdateProjectSettings() {
 
 	logger.Debugf("Update project settings initiated project_id[%s]", projectID)
 
-	if err := h.etl.UpdateProjectSettings(projectID, req); err != nil {
+	if err := h.etl.UpdateProjectSettings(req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
 		return
 	}

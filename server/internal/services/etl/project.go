@@ -24,7 +24,7 @@ func (s *ETLService) GetProjectSettings(projectID string) (dto.ProjectSettingsRe
 	}, nil
 }
 
-func (s *ETLService) UpdateProjectSettings(projectID string, req dto.UpdateProjectSettingsRequest) error {
+func (s *ETLService) UpdateProjectSettings(req dto.UpdateProjectSettingsRequest) error {
 	projectSettings := &models.ProjectSettings{
 		ID:              req.ID,
 		ProjectID:       req.ProjectID,
