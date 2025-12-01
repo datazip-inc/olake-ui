@@ -19,7 +19,7 @@ func (h *Handler) GetProjectSettings() {
 
 	logger.Debugf("Get project settings initiated project_id[%s]", projectID)
 
-	settings, err := h.etl.GetProjectSettings(h.Ctx.Request.Context(), projectID)
+	settings, err := h.etl.GetProjectSettings(projectID)
 	if err != nil {
 		status := http.StatusInternalServerError
 		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
@@ -45,7 +45,7 @@ func (h *Handler) UpdateProjectSettings() {
 
 	logger.Debugf("Update project settings initiated project_id[%s]", projectID)
 
-	if err := h.etl.UpdateProjectSettings(h.Ctx.Request.Context(), projectID, req); err != nil {
+	if err := h.etl.UpdateProjectSettings(projectID, req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
 		return
 	}

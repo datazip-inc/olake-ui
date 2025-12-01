@@ -1,14 +1,13 @@
 package services
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
 
-func (s *ETLService) GetProjectSettings(ctx context.Context, projectID string) (dto.ProjectSettingsResponse, error) {
+func (s *ETLService) GetProjectSettings(projectID string) (dto.ProjectSettingsResponse, error) {
 	settings, err := s.db.GetProjectSettingsByProjectID(projectID)
 	if err != nil {
 		return dto.ProjectSettingsResponse{}, fmt.Errorf("failed to get project settings: %s", err)
@@ -25,7 +24,7 @@ func (s *ETLService) GetProjectSettings(ctx context.Context, projectID string) (
 	}, nil
 }
 
-func (s *ETLService) UpdateProjectSettings(ctx context.Context, projectID string, req dto.UpdateProjectSettingsRequest) error {
+func (s *ETLService) UpdateProjectSettings(projectID string, req dto.UpdateProjectSettingsRequest) error {
 	projectSettings := &models.ProjectSettings{
 		ID:              req.ID,
 		ProjectID:       req.ProjectID,
