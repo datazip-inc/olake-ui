@@ -11,7 +11,6 @@ import (
 
 // GetProjectSettingsByProjectID fetches the settings row for a project ID.
 func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.ProjectSettings, error) {
-
 	settings := &models.ProjectSettings{}
 	err := db.ormer.QueryTable(constants.TableNameMap[constants.ProjectSettingsTable]).
 		Filter("project_id", projectID).
