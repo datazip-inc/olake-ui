@@ -1,10 +1,13 @@
 import { GearSixIcon } from "@phosphor-icons/react"
-import { Tabs } from "antd"
-import { useState } from "react"
+import { Spin, Tabs } from "antd"
+import { useEffect, useState } from "react"
 import AlertsAndNotifications from "../components/AlertsAndNotifications"
+import { useAppStore } from "../../../../store"
 
 const SystemSettings = () => {
 	const [activeTab, setActiveTab] = useState("alerts")
+
+	const { isLoadingSystemSettings, fetchSystemSettings } = useAppStore()
 
 	const tabItems = [
 		{
@@ -13,6 +16,10 @@ const SystemSettings = () => {
 			children: <AlertsAndNotifications />,
 		},
 	]
+
+	useEffect(() => {
+		fetchSystemSettings()
+	}, [])
 
 	return (
 		<div className="p-6">
@@ -28,11 +35,17 @@ const SystemSettings = () => {
 				backups, job defaults, and experimental feature flags
 			</p>
 
-			<Tabs
-				activeKey={activeTab}
-				onChange={key => setActiveTab(key)}
-				items={tabItems}
-			/>
+			{isLoadingSystemSettings ? (
+				<div className="flex items-center justify-center py-16">
+					<Spin size="large" />
+				</div>
+			) : (
+				<Tabs
+					activeKey={activeTab}
+					onChange={key => setActiveTab(key)}
+					items={tabItems}
+				/>
+			)}
 		</div>
 	)
 }

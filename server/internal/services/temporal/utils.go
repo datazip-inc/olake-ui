@@ -39,6 +39,7 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) ExecutionReque
 		WorkflowID:    workflowID,
 		JobID:         job.ID,
 		JobName:       job.Name,
+		ProjectID:     job.ProjectID,
 		Timeout:       GetWorkflowTimeout(Sync),
 		OutputFile:    "state.json",
 	}

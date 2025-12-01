@@ -1,7 +1,34 @@
 import { Button } from "antd"
 import { Input } from "antd/lib"
+import { useAppStore } from "../../../../store"
+import { useEffect, useState } from "react"
 
 const AlertsAndNotifications = () => {
+	const { systemSettings, updateWebhookAlertUrl, isUpdatingSystemSettings } =
+		useAppStore()
+
+	const [webhookAlertUrl, setWebhookAlertUrl] = useState<string>("")
+
+	useEffect(() => {
+		if (systemSettings) {
+			setWebhookAlertUrl(systemSettings.webhook_alert_url)
+		}
+	}, [systemSettings])
+
+	const handleWebhookAlertUrlChange = (
+		e: React.ChangeEvent<HTMLInputElement>,
+	) => {
+		setWebhookAlertUrl(e.target.value)
+	}
+
+	const handleSaveWebhookAlertUrl = () => {
+		updateWebhookAlertUrl(webhookAlertUrl)
+	}
+
+	const handleClearWebhookAlertUrl = () => {
+		setWebhookAlertUrl("")
+		updateWebhookAlertUrl("")
+	}
 	return (
 		<div className="mt-6">
 			<div className="mb-1 flex flex-col gap-2">
@@ -16,21 +43,36 @@ const AlertsAndNotifications = () => {
 				<div className="border-gray-200 pt-4">
 					<div className="mb-2 flex flex-col gap-4">
 						<div className="space-y-1">
-							<div className="text-sm font-medium">Slack Alerts</div>
+							<div className="text-sm font-medium">Webhook Alerts</div>
 							<div className="text-sm text-text-tertiary">
-								Configure Slack alerts for your system
+								Configure outgoing webhook alerts for your system (Slack, Teams,
+								custom endpoints, etc.)
 							</div>
 						</div>
 						<div className="flex gap-2">
 							<Input
-								placeholder="Enter your Slack webhook URL"
-								className="h-10 w-96"
+								placeholder="Enter your webhook URL"
+								className="h-10 w-96 text-text-secondary"
+								value={webhookAlertUrl}
+								onChange={handleWebhookAlertUrlChange}
 							/>
 							<Button
 								type="default"
 								className="h-10"
+								onClick={handleSaveWebhookAlertUrl}
+								disabled={!webhookAlertUrl || isUpdatingSystemSettings}
 							>
-								Save and Update
+								Save
+							</Button>
+							<Button
+								type="default"
+								className="h-10"
+								onClick={handleClearWebhookAlertUrl}
+								disabled={isUpdatingSystemSettings || !webhookAlertUrl}
+								aria-label="Clear webhook URL"
+								title="Clear webhook URL"
+							>
+								Clear
 							</Button>
 						</div>
 					</div>

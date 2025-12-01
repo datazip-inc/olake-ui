@@ -2,48 +2,12 @@ package database
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/beego/beego/v2/client/orm"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
 )
-
-// encryptProjectSettings encrypts secrets before persistence.
-func (db *Database) encryptProjectSettings(settings *models.ProjectSettings) error {
-	if settings == nil {
-		return fmt.Errorf("project settings payload is nil")
-	}
-
-	if strings.TrimSpace(settings.WebhookAlertURL) == "" {
-		return nil
-	}
-
-	encryptedURL, err := utils.Encrypt(settings.WebhookAlertURL)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt webhook url project_id[%s]: %s", settings.ProjectID, err)
-	}
-
-	settings.WebhookAlertURL = encryptedURL
-	return nil
-}
-
-// decryptProjectSettings decrypts sensitive fields after fetch.
-func (db *Database) decryptProjectSettings(settings *models.ProjectSettings) error {
-	if settings == nil || strings.TrimSpace(settings.WebhookAlertURL) == "" {
-		return nil
-	}
-
-	decryptedURL, err := utils.Decrypt(settings.WebhookAlertURL)
-	if err != nil {
-		return fmt.Errorf("failed to decrypt webhook url project_id[%s]: %s", settings.ProjectID, err)
-	}
-
-	settings.WebhookAlertURL = decryptedURL
-	return nil
-}
 
 // GetProjectSettingsByProjectID fetches the settings row for a project ID.
 func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.ProjectSettings, error) {
@@ -62,10 +26,6 @@ func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.Pro
 		return nil, fmt.Errorf("failed to get project settings project_id[%s]: %s", projectID, err)
 	}
 
-	if err := db.decryptProjectSettings(settings); err != nil {
-		return nil, err
-	}
-
 	return settings, nil
 }
 
@@ -76,11 +36,6 @@ func (db *Database) UpsertProjectSettingsModel(settings *models.ProjectSettings)
 	}
 	if settings.ProjectID == "" {
 		return fmt.Errorf("project_id is required")
-	}
-
-	// 1. Encrypt the data before saving
-	if err := db.encryptProjectSettings(settings); err != nil {
-		return err
 	}
 
 	existing := &models.ProjectSettings{ProjectID: settings.ProjectID}
