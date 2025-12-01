@@ -36,12 +36,12 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
 		}
 	},
 	updateWebhookAlertUrl: async (webhookAlertUrl: string) => {
-		set({ isUpdatingSystemSettings: true, systemSettingsError: null })
 		const systemSettings = get().systemSettings
-
 		if (!systemSettings) {
 			return
 		}
+
+		set({ isUpdatingSystemSettings: true, systemSettingsError: null })
 
 		try {
 			await settingsService.updateSystemSettings({
@@ -50,18 +50,16 @@ export const createSettingsSlice: StateCreator<SettingsSlice> = (set, get) => ({
 			})
 			// fetch updated system settings
 			await get().fetchSystemSettings()
-			set({
-				isUpdatingSystemSettings: false,
-			})
 		} catch (error) {
 			set({
 				systemSettingsError:
 					error instanceof Error
 						? error.message
 						: "Failed to update system settings",
-				isUpdatingSystemSettings: false,
 			})
 			throw error
+		} finally {
+			set({ isUpdatingSystemSettings: false })
 		}
 	},
 })

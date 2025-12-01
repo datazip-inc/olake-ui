@@ -21,22 +21,21 @@ func (h *Handler) GetProjectSettings() {
 
 	settings, err := h.etl.GetProjectSettings(projectID)
 	if err != nil {
-		status := http.StatusInternalServerError
-		utils.ErrorResponse(&h.Controller, status, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(&h.Controller, "Project Settings fetched successfully", settings)
 }
 
 // @router /project/:projectid/settings [put]
-func (h *Handler) UpdateProjectSettings() {
+func (h *Handler) UpsertProjectSettings() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	var req dto.UpdateProjectSettingsRequest
+	var req dto.UpsertProjectSettingsRequest
 
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -45,7 +44,7 @@ func (h *Handler) UpdateProjectSettings() {
 
 	logger.Debugf("Update project settings initiated project_id[%s]", projectID)
 
-	if err := h.etl.UpdateProjectSettings(req); err != nil {
+	if err := h.etl.UpsertProjectSettings(req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
 		return
 	}

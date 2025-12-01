@@ -11,9 +11,6 @@ import (
 
 // GetProjectSettingsByProjectID fetches the settings row for a project ID.
 func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.ProjectSettings, error) {
-	if projectID == "" {
-		return nil, fmt.Errorf("project_id is required")
-	}
 
 	settings := &models.ProjectSettings{}
 	err := db.ormer.QueryTable(constants.TableNameMap[constants.ProjectSettingsTable]).
@@ -29,7 +26,7 @@ func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.Pro
 	return settings, nil
 }
 
-// UpdateProjectSettingsModel upserts (inserts or updates) project settings.
+// UpsertProjectSettingsModel upserts (inserts or updates) project settings.
 func (db *Database) UpsertProjectSettingsModel(settings *models.ProjectSettings) error {
 	if settings == nil {
 		return fmt.Errorf("settings cannot be nil")
@@ -41,19 +38,21 @@ func (db *Database) UpsertProjectSettingsModel(settings *models.ProjectSettings)
 	existing := &models.ProjectSettings{ProjectID: settings.ProjectID}
 	err := db.ormer.Read(existing, "ProjectID")
 
-	switch err {
-	case orm.ErrNoRows:
+	if err == orm.ErrNoRows {
 		settings.ID = 0
 		if _, err := db.ormer.Insert(settings); err != nil {
 			return fmt.Errorf("failed to insert project settings project_id[%s]: %s", settings.ProjectID, err)
 		}
-	case nil:
-		if _, err := db.ormer.Update(settings); err != nil {
-			return fmt.Errorf("failed to update project settings project_id[%s]: %s", settings.ProjectID, err)
-		}
-	default:
+		return nil
+	}
+	if err != nil {
 		return fmt.Errorf("failed to lookup project settings project_id[%s]: %s", settings.ProjectID, err)
 	}
 
+	// Record exists, update it
+	settings.ID = existing.ID
+	if _, err := db.ormer.Update(settings); err != nil {
+		return fmt.Errorf("failed to update project settings project_id[%s]: %s", settings.ProjectID, err)
+	}
 	return nil
 }
