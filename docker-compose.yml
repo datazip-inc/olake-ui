@@ -162,7 +162,6 @@ services:
       POSTGRES_USER: *olakeDBUser
       POSTGRES_PWD: *olakeDBPassword
       DBNAME: *temporalDBName
-
       ENABLE_ES: true
       ES_SEEDS: elasticsearch
       ES_VERSION: v7
