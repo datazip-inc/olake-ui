@@ -810,18 +810,19 @@ http://localhost:8080
 
   ```
 
-### job name unique check
+### Check Unique Name
 ---
 
-- **Endpoint**: `api/v1/project/:projectid/jobs/check-unique`
+- **Endpoint**: `/api/v1/project/:projectid/check-unique`
 - **Method**: POST
-- **Description**: check if job name is unique
+- **Description**: Check if a name is unique for a given entity type (job, source, or destination)
 - **Headers**: `Authorization: Bearer <token>`
 - **Request Body**:
 
   ```json
   {
-    "job_name": "string"
+    "name": "string",
+    "entity_type": "job" | "source" | "destination"
   }
   ```
 

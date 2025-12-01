@@ -19,6 +19,7 @@ import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService } from "../../../api/services/sourceService"
+import { validationService } from "../../../api/services/validationService"
 import { SetupType, Source, CreateSourceProps } from "../../../types"
 import {
 	getConnectorLabel,
@@ -31,6 +32,7 @@ import {
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
 	TEST_CONNECTION_STATUS,
+	ENTITY_TYPES,
 } from "../../../utils/constants"
 import EndpointTitle from "../../../utils/EndpointTitle"
 import FormField from "../../../utils/FormField"
@@ -289,6 +291,12 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 			const isValid = await validateSource()
 			if (!isValid) return
+
+			const isUnique = await validationService.checkUniqueName(
+				sourceName,
+				ENTITY_TYPES.SOURCE,
+			)
+			if (!isUnique) return
 
 			const newSourceData = {
 				name: sourceName,
