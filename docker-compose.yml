@@ -26,6 +26,7 @@ x-db-envs:
   OLAKE_DB_PASSWORD: &dbPassword temporal
   OLAKE_DB_NAME: &dbName postgres
   OLAKE_DB_SSLMODE: &dbSSLMode disable
+  TEMPORAL_DB_NAME: &temporalDbName temporal
 
 services:
   olake-ui:
@@ -160,6 +161,7 @@ services:
       DB_PORT: *dbPort
       POSTGRES_USER: *dbUser
       POSTGRES_PWD: *dbPassword
+      DBNAME: *temporalDbName
 
       ENABLE_ES: true
       ES_SEEDS: elasticsearch
