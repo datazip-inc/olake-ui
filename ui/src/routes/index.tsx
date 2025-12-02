@@ -46,6 +46,9 @@ const lazyComponents = {
 	CreateDestination: lazy(
 		() => import("../modules/destinations/pages/CreateDestination"),
 	),
+	SystemSettings: lazy(
+		() => import("../modules/common/settings/pages/SystemSettings"),
+	),
 }
 
 const publicRoutes = [
@@ -140,6 +143,10 @@ const protectedRoutes = [
 			{
 				path: "destinations/:destinationId",
 				element: <lazyComponents.DestinationEdit />,
+			},
+			{
+				path: "settings",
+				element: <lazyComponents.SystemSettings />,
 			},
 			{
 				path: "*",
