@@ -110,6 +110,12 @@ type JobStatusRequest struct {
 	Activate bool `json:"activate"`
 }
 
+type UpsertProjectSettingsRequest struct {
+	ID              int    `json:"id"`
+	ProjectID       string `json:"project_id" validate:"required"`
+	WebhookAlertURL string `json:"webhook_alert_url"`
+}
+
 type UpdateSyncTelemetryRequest struct {
 	JobID       int    `json:"job_id"`
 	WorkflowID  string `json:"workflow_id"`

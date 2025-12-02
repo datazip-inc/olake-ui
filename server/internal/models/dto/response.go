@@ -109,3 +109,9 @@ type JobDataItem struct {
 	LastRunTime     string `json:"last_run_time,omitempty"`
 	LastRunState    string `json:"last_run_state,omitempty"`
 }
+
+type ProjectSettingsResponse struct {
+	ID              int    `json:"id"`
+	ProjectID       string `json:"project_id"`
+	WebhookAlertURL string `json:"webhook_alert_url"`
+}
