@@ -1,13 +1,18 @@
-import { Button } from "antd"
+import { Button, message } from "antd"
 import { Input } from "antd/lib"
 import { useAppStore } from "../../../../store"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 const AlertsAndNotifications = () => {
 	const { systemSettings, updateWebhookAlertUrl, isUpdatingSystemSettings } =
 		useAppStore()
 
 	const [webhookAlertUrl, setWebhookAlertUrl] = useState<string>("")
+
+	const trimmedWebhookUrl = useMemo(
+		() => webhookAlertUrl.trim(),
+		[webhookAlertUrl],
+	)
 
 	useEffect(() => {
 		if (systemSettings) {
@@ -22,7 +27,16 @@ const AlertsAndNotifications = () => {
 	}
 
 	const handleSaveWebhookAlertUrl = () => {
-		updateWebhookAlertUrl(webhookAlertUrl)
+		if (!trimmedWebhookUrl) {
+			message.error("Please enter a webhook URL")
+			return
+		}
+		try {
+			new URL(trimmedWebhookUrl)
+			updateWebhookAlertUrl(trimmedWebhookUrl)
+		} catch {
+			message.error("Please enter a valid webhook URL")
+		}
 	}
 
 	const handleClearWebhookAlertUrl = () => {
@@ -39,6 +53,7 @@ const AlertsAndNotifications = () => {
 			<p className="mb-6 text-gray-600">
 				Configure alerts and notifications for your system
 			</p>
+			{/* TODO: After saving, lock these settings and show an "Edit" button to re-enable changes */}
 			<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
 				<div className="border-gray-200 pt-4">
 					<div className="mb-2 flex flex-col gap-4">
@@ -60,7 +75,7 @@ const AlertsAndNotifications = () => {
 								type="default"
 								className="h-10"
 								onClick={handleSaveWebhookAlertUrl}
-								disabled={!webhookAlertUrl || isUpdatingSystemSettings}
+								disabled={!trimmedWebhookUrl || isUpdatingSystemSettings}
 							>
 								Save
 							</Button>
@@ -68,7 +83,7 @@ const AlertsAndNotifications = () => {
 								type="default"
 								className="h-10"
 								onClick={handleClearWebhookAlertUrl}
-								disabled={isUpdatingSystemSettings || !webhookAlertUrl}
+								disabled={isUpdatingSystemSettings || !trimmedWebhookUrl}
 								aria-label="Clear webhook URL"
 								title="Clear webhook URL"
 							>

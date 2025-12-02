@@ -23,7 +23,6 @@ type ExecutionRequest struct {
 	WorkflowID    string        `json:"workflow_id"`
 	ProjectID     string        `json:"project_id"`
 	JobID         int           `json:"job_id"`
-	JobName       string        `json:"job_name"`
 	Timeout       time.Duration `json:"timeout"`
 	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 
