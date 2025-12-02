@@ -2,12 +2,15 @@ import { Button, message } from "antd"
 import { Input } from "antd/lib"
 import { useAppStore } from "../../../../store"
 import { useEffect, useMemo, useState } from "react"
+import { PencilSimpleIcon } from "@phosphor-icons/react"
 
 const AlertsAndNotifications = () => {
 	const { systemSettings, updateWebhookAlertUrl, isUpdatingSystemSettings } =
 		useAppStore()
 
 	const [webhookAlertUrl, setWebhookAlertUrl] = useState<string>("")
+	const [isEditingWebhookAlertUrl, setIsEditingWebhookAlertUrl] =
+		useState<boolean>(false)
 
 	const trimmedWebhookUrl = useMemo(
 		() => webhookAlertUrl.trim(),
@@ -17,12 +20,17 @@ const AlertsAndNotifications = () => {
 	useEffect(() => {
 		if (systemSettings) {
 			setWebhookAlertUrl(systemSettings.webhook_alert_url)
+			// If the webhook alert URL is not set, allow editing
+			setIsEditingWebhookAlertUrl(!systemSettings.webhook_alert_url)
 		}
 	}, [systemSettings])
 
 	const handleWebhookAlertUrlChange = (
 		e: React.ChangeEvent<HTMLInputElement>,
 	) => {
+		if (!isEditingWebhookAlertUrl) {
+			return
+		}
 		setWebhookAlertUrl(e.target.value)
 	}
 
@@ -34,9 +42,21 @@ const AlertsAndNotifications = () => {
 		try {
 			new URL(trimmedWebhookUrl)
 			updateWebhookAlertUrl(trimmedWebhookUrl)
+			setIsEditingWebhookAlertUrl(false)
 		} catch {
 			message.error("Please enter a valid webhook URL")
 		}
+	}
+
+	const handleEnterEditWebhookAlertUrl = () => {
+		setIsEditingWebhookAlertUrl(true)
+	}
+
+	const handleCancelEditWebhookAlertUrl = () => {
+		if (systemSettings) {
+			setWebhookAlertUrl(systemSettings.webhook_alert_url)
+		}
+		setIsEditingWebhookAlertUrl(false)
 	}
 
 	const handleClearWebhookAlertUrl = () => {
@@ -69,26 +89,53 @@ const AlertsAndNotifications = () => {
 								placeholder="Enter your webhook URL"
 								className="h-10 w-96 text-text-secondary"
 								value={webhookAlertUrl}
+								disabled={!isEditingWebhookAlertUrl || isUpdatingSystemSettings}
 								onChange={handleWebhookAlertUrlChange}
 							/>
-							<Button
-								type="default"
-								className="h-10"
-								onClick={handleSaveWebhookAlertUrl}
-								disabled={!trimmedWebhookUrl || isUpdatingSystemSettings}
-							>
-								Save
-							</Button>
-							<Button
-								type="default"
-								className="h-10"
-								onClick={handleClearWebhookAlertUrl}
-								disabled={isUpdatingSystemSettings || !trimmedWebhookUrl}
-								aria-label="Clear webhook URL"
-								title="Clear webhook URL"
-							>
-								Clear
-							</Button>
+							{isEditingWebhookAlertUrl ? (
+								<>
+									<Button
+										type="primary"
+										className="h-10"
+										onClick={handleSaveWebhookAlertUrl}
+										disabled={!trimmedWebhookUrl || isUpdatingSystemSettings}
+									>
+										Save changes
+									</Button>
+									<Button
+										type="default"
+										className="h-10"
+										onClick={handleCancelEditWebhookAlertUrl}
+										disabled={isUpdatingSystemSettings}
+									>
+										Cancel
+									</Button>
+								</>
+							) : (
+								<>
+									<Button
+										type="default"
+										className="h-10"
+										onClick={handleEnterEditWebhookAlertUrl}
+										disabled={isUpdatingSystemSettings}
+									>
+										<span className="flex items-center gap-1">
+											<PencilSimpleIcon className="size-4" />
+											<span>Edit</span>
+										</span>
+									</Button>
+									<Button
+										type="default"
+										className="h-10"
+										onClick={handleClearWebhookAlertUrl}
+										disabled={isUpdatingSystemSettings || !trimmedWebhookUrl}
+										aria-label="Clear webhook URL"
+										title="Clear webhook URL"
+									>
+										Clear
+									</Button>
+								</>
+							)}
 						</div>
 					</div>
 				</div>
