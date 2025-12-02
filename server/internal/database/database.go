@@ -49,6 +49,7 @@ func Init() (*Database, error) {
 	gob.Register(constants.SessionUserID)
 	// register models in order of dependency or foreign key constraints
 	orm.RegisterModel(
+		new(models.ProjectSettings),
 		new(models.Source),
 		new(models.Destination),
 		new(models.Job),

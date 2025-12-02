@@ -153,28 +153,34 @@ func (h *Handler) DeleteJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
 }
 
-// @router /project/:projectid/jobs/check-unique [post]
-func (h *Handler) CheckUniqueJobName() {
+// @router /project/:projectid/check-unique [post]
+func (h *Handler) CheckUniqueName() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	var req dto.CheckUniqueJobNameRequest
+	var req dto.CheckUniqueNameRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	logger.Infof("Check unique job name initiated project_id[%s] job_name[%s]", projectID, req.JobName)
+	logger.Infof("Check unique name initiated project_id[%s] entity_type[%s] name[%s]", projectID, req.EntityType, req.Name)
 
-	unique, err := h.etl.CheckUniqueJobName(h.Ctx.Request.Context(), projectID, req)
+	unique, err := h.etl.CheckUniqueName(h.Ctx.Request.Context(), projectID, req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check job name uniqueness: %s", err), err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to check name uniqueness: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job name '%s' uniqueness checked successfully", req.JobName), dto.CheckUniqueJobNameResponse{Unique: unique})
+
+	if !unique {
+		utils.ErrorResponse(&h.Controller, http.StatusConflict, fmt.Sprintf("%s name '%s' is not unique", req.EntityType, req.Name), nil)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("%s name '%s' uniqueness checked successfully", req.EntityType, req.Name), dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
 // @router /project/:projectid/jobs/:id/sync [post]

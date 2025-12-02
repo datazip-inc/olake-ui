@@ -11,21 +11,24 @@ import (
 )
 
 var (
-	defaultPort               = 8000
-	version                   = "Not Set"
-	commitsha                 = "Not Set"
-	releasechannel            = "Not Set"
-	defaultBaseHost           = "localhost"
-	DefaultTimeZone           = "Asia/Kolkata"
-	DefaultUsername           = "olake"
-	DefaultPassword           = "password"
-	EncryptionKey             = "OLAKE_SECRET_KEY"
-	TableNameMap              = map[TableType]string{}
-	DefaultConfigDir          = "/tmp/olake-config"
-	DefaultLogRetentionPeriod = 30
-	DefaultSpecVersion        = "v0.2.0"
+	defaultPort      = 8000
+	version          = "Not Set"
+	commitsha        = "Not Set"
+	releasechannel   = "Not Set"
+	defaultBaseHost  = "localhost"
+	DefaultTimeZone  = "Asia/Kolkata"
+	DefaultUsername  = "olake"
+	DefaultPassword  = "password"
+	EncryptionKey    = "OLAKE_SECRET_KEY"
+	TableNameMap     = map[TableType]string{}
+	DefaultConfigDir = "/tmp/olake-config"
 
+	DefaultLogRetentionPeriod = 30
 	DefaultCancelSyncWaitTime = 30 * time.Second
+
+	// versions
+	DefaultSpecVersion             = "v0.2.0"
+	DefaultClearDestinationVersion = "v0.3.0"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
@@ -92,12 +95,13 @@ func Init() {
 
 	// init table names
 	TableNameMap = map[TableType]string{
-		UserTable:        "olake-$$-user",
-		SourceTable:      "olake-$$-source",
-		DestinationTable: "olake-$$-destination",
-		JobTable:         "olake-$$-job",
-		CatalogTable:     "olake-$$-catalog",
-		SessionTable:     "session",
+		UserTable:            "olake-$$-user",
+		SourceTable:          "olake-$$-source",
+		DestinationTable:     "olake-$$-destination",
+		JobTable:             "olake-$$-job",
+		CatalogTable:         "olake-$$-catalog",
+		SessionTable:         "session",
+		ProjectSettingsTable: "olake-$$-project-settings",
 	}
 
 	// replace $$ with the environment

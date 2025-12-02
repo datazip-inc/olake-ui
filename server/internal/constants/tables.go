@@ -10,4 +10,5 @@ const (
 	JobTable
 	CatalogTable
 	SessionTable
+	ProjectSettingsTable
 )

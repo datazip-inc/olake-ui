@@ -13,5 +13,6 @@ export const API_CONFIG = {
 			`/api/v1/project/${projectId}/destinations`,
 		SOURCES: (projectId: string) => `/api/v1/project/${projectId}/sources`,
 		JOBS: (projectId: string) => `/api/v1/project/${projectId}/jobs`,
+		SETTINGS: (projectId: string) => `/api/v1/project/${projectId}/settings`,
 	},
 }

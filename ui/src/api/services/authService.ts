@@ -21,6 +21,7 @@ export const authService = {
 					headers: {
 						"Content-Type": "application/json",
 					},
+					disableErrorNotification: true,
 				},
 			)
 

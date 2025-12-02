@@ -11,6 +11,7 @@ import {
 	normalizeConnectorType,
 } from "../../utils/utils"
 import { trackTestConnection } from "../utils"
+import { ENTITY_TYPES } from "../../utils/constants"
 
 export const destinationService = {
 	getDestinations: async () => {
@@ -150,5 +151,20 @@ export const destinationService = {
 			{ timeout: 300000, signal, disableErrorNotification: true },
 		)
 		return response.data
+	},
+
+	checkDestinationNameUnique: async (
+		destinationName: string,
+	): Promise<{ unique: boolean }> => {
+		try {
+			const response = await api.post<{ unique: boolean }>(
+				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name: destinationName, entity_type: ENTITY_TYPES.DESTINATION },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error checking destination name uniqueness:", error)
+			throw error
+		}
 	},
 }
