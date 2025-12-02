@@ -886,6 +886,57 @@ http://localhost:8080
   }
   ```
 
+### Get System Settings
+
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/settings`
+- **Method**: GET
+- **Description**: Get system-level settings for a project (including webhook alert URL).
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "id": "number",
+      "project_id": "string",
+      "webhook_alert_url": "string"
+    }
+  }
+  ```
+
+### Update System Settings
+
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/settings`
+- **Method**: PUT
+- **Description**: Update system-level settings for a project.
+- **Headers**: `Authorization: Bearer <token>`
+
+- **Request Body**:
+
+  ```json
+  {
+    "id": "number (optional)",
+    "project_id": "string",
+    "webhook_alert_url": "string"
+  }
+  ```
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string"
+  }
+  ```
+
 ## Error Responses
 
 All endpoints may return the following error responses:

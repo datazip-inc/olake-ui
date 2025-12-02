@@ -6,6 +6,7 @@ import { DestinationSlice, createDestinationSlice } from "./destinationStore"
 import { TaskSlice, createTaskSlice } from "./taskStore"
 import { ModalSlice, createModalSlice } from "./modalStore"
 import { SelectionSlice, createSelectionSlice } from "./selectionStore"
+import { createSettingsSlice, SettingsSlice } from "./settingsStore"
 
 export type AppState = AuthSlice &
 	JobSlice &
@@ -13,7 +14,8 @@ export type AppState = AuthSlice &
 	DestinationSlice &
 	TaskSlice &
 	ModalSlice &
-	SelectionSlice
+	SelectionSlice &
+	SettingsSlice
 
 export const useAppStore = create<AppState>()((...a) => ({
 	...createAuthSlice(...a),
@@ -23,4 +25,5 @@ export const useAppStore = create<AppState>()((...a) => ({
 	...createTaskSlice(...a),
 	...createModalSlice(...a),
 	...createSelectionSlice(...a),
+	...createSettingsSlice(...a),
 }))
