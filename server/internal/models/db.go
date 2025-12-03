@@ -26,6 +26,18 @@ func (u *User) TableName() string {
 	return constants.TableNameMap[constants.UserTable]
 }
 
+// ProjectSettings stores configuration scoped per project.
+type ProjectSettings struct {
+	BaseModel       `orm:"embedded"`
+	ID              int    `json:"id" orm:"column(id);pk;auto"`
+	ProjectID       string `json:"project_id" orm:"column(project_id);unique"`
+	WebhookAlertURL string `json:"webhook_alert_url" orm:"column(webhook_alert_url);size(512)"`
+}
+
+func (s *ProjectSettings) TableName() string {
+	return constants.TableNameMap[constants.ProjectSettingsTable]
+}
+
 // Source entity referencing User for auditing fields
 type Source struct {
 	BaseModel `orm:"embedded"`

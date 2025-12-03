@@ -117,3 +117,9 @@ type TaskLogsResponse struct {
 	HasMoreOlder bool                     `json:"has_more_older"`
 	HasMoreNewer bool                     `json:"has_more_newer"`
 }
+
+type ProjectSettingsResponse struct {
+	ID              int    `json:"id"`
+	ProjectID       string `json:"project_id"`
+	WebhookAlertURL string `json:"webhook_alert_url"`
+}

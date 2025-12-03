@@ -91,6 +91,10 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "get:GetClearDestinationStatus")
 	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", h, "post:GetStreamDifference")
 
+	// Project settings routes
+	web.Router("/api/v1/project/:projectid/settings", h, "put:UpsertProjectSettings")
+	web.Router("/api/v1/project/:projectid/settings", h, "get:GetProjectSettings")
+
 	// validation routes
 	web.Router("/api/v1/project/:projectid/check-unique", h, "post:CheckUniqueName")
 
