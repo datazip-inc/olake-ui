@@ -16,7 +16,7 @@ export const getStreamsDataFromGetSourceStreamsResponse = (
 		!!response.default_streams &&
 		Object.keys(response.default_streams).length > 0
 
-	// Backward compatibility for older servers without default_streams
+	// Backward compatibility for older OLake versions without default_streams
 	if (!hasDefaultStreams) {
 		const mergedSelectedStreams: SelectedStreamsByNamespace =
 			response.selected_streams || {}
@@ -56,7 +56,7 @@ export const getStreamsDataFromGetSourceStreamsResponse = (
 						}
 					}
 
-					// Otherwise fall back to disabled default
+					// Otherwise fall back to default
 					return {
 						...defaultStream,
 						disabled: true,

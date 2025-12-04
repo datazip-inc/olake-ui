@@ -48,7 +48,7 @@ const StreamsCollapsibleList = ({
 		setIngestionMode(getIngestionMode(selectedStreams))
 	}, [selectedStreams])
 
-	// Initialize all namespaces as open and auto-open any new ones while preserving existing state.
+	// Keep all namespaces expanded by default and automatically open any newly added namespaces.
 	useEffect(() => {
 		if (Object.keys(openNamespaces).length === 0) {
 			const allOpen: { [ns: string]: boolean } = {}

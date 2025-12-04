@@ -113,11 +113,9 @@ export interface StreamsDataStructure {
 }
 
 export interface SchemaConfigurationProps {
-	selectedStreams: string[] | SelectedStreamsByNamespace | StreamsDataStructure
+	selectedStreams: string[] | StreamsDataStructure
 	setSelectedStreams: React.Dispatch<
-		React.SetStateAction<
-			string[] | SelectedStreamsByNamespace | StreamsDataStructure
-		>
+		React.SetStateAction<string[] | StreamsDataStructure>
 	>
 	stepNumber?: number
 	stepTitle?: string
