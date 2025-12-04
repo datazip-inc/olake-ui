@@ -303,7 +303,9 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 			chunk = chunk[:n]
 		}
 
-		data := append(chunk, tail...)
+		data := make([]byte, 0, len(chunk)+len(tail))
+		data = append(data, chunk...)
+		data = append(data, tail...)
 
 		// Extract lines from Right to Left
 		for len(foundLines) < limit {
