@@ -64,6 +64,25 @@ export interface TaskLogsResponse {
 	has_more_older: boolean
 	has_more_newer: boolean
 }
+
+export enum TaskLogsDirection {
+	Older = "older",
+	Newer = "newer",
+}
+
+export interface TaskLogsPaginationParams {
+	cursor: number
+	limit: number
+	direction: TaskLogsDirection
+}
+
+export interface TaskLogEntry {
+	level: string
+	date: string
+	time: string
+	message: string
+}
+
 export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 
 export type JobStatus = "active" | "inactive" | "saved" | "failed"

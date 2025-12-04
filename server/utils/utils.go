@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -230,6 +229,11 @@ type LogEntry struct {
 	Message json.RawMessage `json:"message"` // store raw JSON
 }
 
+type LineWithPos struct {
+	content  string
+	startPos int64 // byte position where this line starts
+}
+
 // isValidLogLine checks if a line is a valid, non-debug log entry
 func isValidLogLine(line string) bool {
 	line = strings.TrimSpace(line)
@@ -258,12 +262,12 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
 	}
 
-	fi, err := f.Stat()
+	file, err := f.Stat()
 	if err != nil {
 		return nil, 0, false, err
 	}
 
-	fileSize := fi.Size()
+	fileSize := file.Size()
 
 	// startOffset beyond file size, clamp it to file size
 	startOffset = min(startOffset, fileSize)
@@ -275,14 +279,15 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 
 	offset := startOffset
 
-	// accumulator to store the lines we read backwards
-	var accum []byte
+	// 'tail' holds the partial line fragment at the start of a chunk.
+	// This will be prepended to the NEXT chunk (which comes chronologically BEFORE this one).
+	var tail []byte
 
 	// valid lines we collected (newest first)
-	newestFirst := make([]string, 0, limit)
+	foundLines := make([]LineWithPos, 0, limit)
 
 	// read lines backwards until we have enough VALID lines or reach the beginning of the file
-	for offset > 0 && len(newestFirst) < limit {
+	for offset > 0 && len(foundLines) < limit {
 		toRead := min(offset, int64(constants.LogReadChunkSize))
 		readPos := offset - toRead
 
@@ -298,27 +303,37 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 			chunk = chunk[:n]
 		}
 
-		// prepend this chunk to accum
-		tmp := make([]byte, 0, len(chunk)+len(accum))
-		tmp = append(tmp, chunk...)
-		tmp = append(tmp, accum...)
-		accum = tmp
+		data := append(chunk, tail...)
 
-		parts := bytes.Split(accum, []byte{'\n'})
+		// Extract lines from Right to Left
+		for len(foundLines) < limit {
+			// Find the last newline in the buffer
+			lastNL := bytes.LastIndexByte(data, '\n')
 
-		// last part may be incomplete line (no trailing \n) unless at file start
-		fullCount := len(parts) - 1
-		if readPos == 0 {
-			// at file start, all parts are complete (even without trailing \n)
-			fullCount = len(parts)
-		}
-
-		// Collect complete VALID lines from newest to oldest
-		for i := len(parts) - 1; i >= len(parts)-fullCount && i >= 0 && len(newestFirst) < limit; i-- {
-			line := string(parts[i])
-			if isValidLogLine(line) {
-				newestFirst = append(newestFirst, line)
+			if lastNL == -1 {
+				// No more newlines. The whole buffer is a partial line.
+				// Save it as 'tail' for the next iteration.
+				tail = data
+				break
 			}
+
+			// The text AFTER the newline is a complete log line
+			lineBytes := data[lastNL+1:]
+			lineContent := string(lineBytes)
+
+			// Calculate absolute file position of this line
+			// readPos (start of chunk) + lastNL (relative index) + 1 (char after \n)
+			linePos := readPos + int64(lastNL) + 1
+
+			if isValidLogLine(lineContent) {
+				foundLines = append(foundLines, LineWithPos{
+					content:  lineContent,
+					startPos: linePos,
+				})
+			}
+
+			// CROP the buffer: remove the line we just processed
+			data = data[:lastNL]
 		}
 
 		offset = readPos
@@ -328,41 +343,21 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 	}
 
 	// no valid lines found
-	if len(newestFirst) == 0 {
+	if len(foundLines) == 0 {
 		return []string{}, offset, offset > 0, nil
 	}
 
-	// count bytes before the first returned line
-	parts := bytes.Split(accum, []byte{'\n'})
-
-	// find the index in final parts that corresponds to the oldest returned line
-	need := len(newestFirst) // number of valid lines we returned (newest->oldest)
-	found := 0
-	firstReturnedIdx := -1
-	for i := len(parts) - 1; i >= 0; i-- {
-		if isValidLogLine(string(parts[i])) {
-			found++
-			if found == need {
-				firstReturnedIdx = i
-				break
-			}
-		}
-	}
-	if firstReturnedIdx < 0 {
-		firstReturnedIdx = 0
+	// Extract just the line content for return
+	lines := make([]string, len(foundLines))
+	for i, line := range foundLines {
+		lines[len(foundLines)-1-i] = line.content // Reverse order
 	}
 
-	bytesBefore := 0
-	for i := 0; i < firstReturnedIdx; i++ {
-		bytesBefore += len(parts[i]) + 1 // +1 for '\n'
-	}
-	newOffset := offset + int64(bytesBefore)
-
-	// Reverse to return oldest->newest order
-	slices.Reverse(newestFirst)
+	// The oldest line we returned is the last element in newestFirst
+	newOffset := foundLines[len(foundLines)-1].startPos
 
 	hasMore := newOffset > 0
-	return newestFirst, newOffset, hasMore, nil
+	return lines, newOffset, hasMore, nil
 }
 
 // ReadLinesForward reads up to `limit` complete VALID log lines from file forwards starting at startOffset.
@@ -382,12 +377,7 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int) ([]string, int64
 	fileSize := fi.Size()
 
 	// Clamp startOffset to [0, fileSize]
-	if startOffset < 0 {
-		startOffset = 0
-	}
-	if startOffset > fileSize {
-		startOffset = fileSize
-	}
+	startOffset = max(startOffset, 0)
 
 	// If already at or past EOF, nothing to read
 	if startOffset >= fileSize {
@@ -419,6 +409,8 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int) ([]string, int64
 		}
 
 		if rerr != nil {
+			// ReadBytes may return data and io.EOF together
+			// so treat EOF as normal end-of-file and stop reading, return other errors
 			if rerr == io.EOF {
 				break
 			}

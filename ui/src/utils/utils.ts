@@ -7,6 +7,8 @@ import {
 	IngestionMode,
 	SelectedStream,
 	CursorFieldValues,
+	LogEntry,
+	TaskLogEntry,
 } from "../types"
 import {
 	DAYS_MAP,
@@ -308,6 +310,33 @@ export const getLogTextColor = (level: string) => {
 		default:
 			return "text-[#000000"
 	}
+}
+
+export const mapTaskLogsToEntries = (logs: LogEntry[]): TaskLogEntry[] => {
+	return logs.map(log => {
+		const level = log.level ?? ""
+		const message = log.message ?? ""
+		const timeRaw = log.time ?? ""
+
+		let date = ""
+		let time = ""
+
+		if (timeRaw) {
+			const dateObj = new Date(timeRaw)
+			date = dateObj.toLocaleDateString()
+			time = dateObj.toLocaleTimeString("en-US", {
+				timeZone: "UTC",
+				hour12: false,
+			})
+		}
+
+		return {
+			level,
+			message,
+			time,
+			date,
+		}
+	})
 }
 
 export const getDayNumber = (day: string): number => {

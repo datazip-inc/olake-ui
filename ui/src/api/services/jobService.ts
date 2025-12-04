@@ -5,6 +5,8 @@ import {
 	JobBase,
 	JobTask,
 	StreamsDataStructure,
+	TaskLogsDirection,
+	TaskLogsPaginationParams,
 	TaskLogsResponse,
 } from "../../types"
 import { AxiosError } from "axios"
@@ -119,11 +121,14 @@ export const jobService = {
 		jobId: string,
 		taskId: string,
 		filePath: string,
-		cursor: number = -1,
-		limit: number = 1000,
-		direction: "older" | "newer" = "older",
+		params: TaskLogsPaginationParams = {
+			cursor: -1,
+			limit: 1000,
+			direction: TaskLogsDirection.Older,
+		},
 	): Promise<TaskLogsResponse> => {
 		try {
+			const { cursor, limit, direction } = params
 			const query = new URLSearchParams({
 				cursor: String(cursor),
 				limit: String(limit),
@@ -133,7 +138,7 @@ export const jobService = {
 			const response = await api.post<TaskLogsResponse>(
 				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs?${query.toString()}`,
 				{ file_path: filePath },
-				{ timeout: 0, showNotification: false }, // Disable timeout for this request since it can take longer, no toast for logs
+				{ showNotification: false }, // no toast for logs
 			)
 
 			return response.data

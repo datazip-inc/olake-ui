@@ -22,6 +22,8 @@ import {
 	getLogLevelClass,
 	getLogTextColor,
 } from "../../../utils/utils"
+import { LOGS_CONFIG } from "../../../utils/constants"
+import { TaskLogEntry } from "../../../types"
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
@@ -37,8 +39,9 @@ const JobLogs: React.FC = () => {
 	const [showOnlyErrors, setShowOnlyErrors] = useState(false)
 	const { Search } = Input
 
-	const START_INDEX = 1000000 // High starting index to allow space for prepending older log entries without disrupting Virtuoso's list virtualization
-	const [firstItemIndex, setFirstItemIndex] = useState(START_INDEX)
+	const [firstItemIndex, setFirstItemIndex] = useState<number>(
+		LOGS_CONFIG.VIRTUAL_LIST_START_INDEX,
+	)
 	const virtuosoRef = useRef<VirtuosoHandle | null>(null)
 
 	const hasPerformedInitialScroll = useRef(false)
@@ -61,49 +64,56 @@ const JobLogs: React.FC = () => {
 	} = useAppStore()
 
 	const filteredLogs = useMemo(() => {
-		return taskLogs?.filter(log => {
-			if (typeof log !== "object" || log === null) return false
+		const search = searchText.toLowerCase()
 
-			const message = (log as any).message || ""
-			const level = (log as any).level || ""
-			const search = searchText.toLowerCase()
+		return taskLogs?.filter(log => {
+			if (!log) {
+				return false
+			}
+
+			const lowerMessage = log.message.toLowerCase()
+			const lowerLevel = log.level.toLowerCase()
 
 			const matchesSearch =
-				message.toLowerCase().includes(search) ||
-				level.toLowerCase().includes(search)
+				lowerMessage.includes(search) || lowerLevel.includes(search)
 
 			if (showOnlyErrors) {
 				return (
 					matchesSearch &&
-					(message.toLowerCase().includes("error") ||
-						level.toLowerCase().includes("error") ||
-						level.toLowerCase().includes("fatal"))
+					(lowerMessage.includes("error") ||
+						lowerLevel.includes("error") ||
+						lowerLevel.includes("fatal"))
 				)
 			}
+
 			return matchesSearch
 		})
 	}, [taskLogs, searchText, showOnlyErrors])
 
+	const isFiltering = useMemo(
+		() => Boolean(searchText.trim().length) || showOnlyErrors,
+		[searchText, showOnlyErrors],
+	)
+
 	useEffect(() => {
-		if (!jobs.length) fetchJobs()
-
-		if (jobId && isTaskLog && filePath) {
-			setFirstItemIndex(START_INDEX)
-			hasPerformedInitialScroll.current = false
-			isFetchingOlderRef.current = false
-			previousLogCountRef.current = 0
-
-			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+		if (!jobs.length) {
+			fetchJobs()
 		}
-	}, [
-		jobs.length,
-		fetchJobs,
-		jobId,
-		isTaskLog,
-		filePath,
-		historyId,
-		fetchInitialTaskLogs,
-	])
+	}, [fetchJobs])
+
+	// Fetch initial batch of task logs (or refetch after filters are cleared),
+	useEffect(() => {
+		if (!jobId || !isTaskLog || !filePath || isFiltering) {
+			return
+		}
+
+		setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX)
+		hasPerformedInitialScroll.current = false
+		isFetchingOlderRef.current = false
+		previousLogCountRef.current = 0
+
+		fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+	}, [jobId, isTaskLog, filePath, historyId, isFiltering, fetchInitialTaskLogs])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 
@@ -136,7 +146,7 @@ const JobLogs: React.FC = () => {
 				})
 			})
 
-			setFirstItemIndex(START_INDEX - currentCount)
+			setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX - currentCount)
 			isFetchingOlderRef.current = false
 		}
 
@@ -162,6 +172,7 @@ const JobLogs: React.FC = () => {
 
 	const handleStartReached = useCallback(() => {
 		if (
+			isFiltering ||
 			isLoadingOlderLogs ||
 			!taskLogsHasMoreOlder ||
 			!filteredLogs ||
@@ -175,6 +186,7 @@ const JobLogs: React.FC = () => {
 			fetchOlderTaskLogs(jobId, historyId || "1", filePath)
 		}
 	}, [
+		isFiltering,
 		isLoadingOlderLogs,
 		taskLogsHasMoreOlder,
 		filteredLogs?.length,
@@ -185,12 +197,13 @@ const JobLogs: React.FC = () => {
 	])
 
 	const handleEndReached = useCallback(() => {
-		if (isLoadingNewerLogs || !taskLogsHasMoreNewer) return
+		if (isFiltering || isLoadingNewerLogs || !taskLogsHasMoreNewer) return
 
 		if (jobId && filePath) {
 			fetchNewerTaskLogs(jobId, historyId || "1", filePath)
 		}
 	}, [
+		isFiltering,
 		isLoadingNewerLogs,
 		taskLogsHasMoreNewer,
 		jobId,
@@ -202,7 +215,7 @@ const JobLogs: React.FC = () => {
 	const handleRefresh = () => {
 		if (isTaskLog && filePath && jobId) {
 			hasPerformedInitialScroll.current = false
-			setFirstItemIndex(START_INDEX)
+			setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX)
 			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 		}
 	}
@@ -305,7 +318,7 @@ const JobLogs: React.FC = () => {
 								No logs found
 							</div>
 						) : (
-							<Virtuoso
+							<Virtuoso<TaskLogEntry>
 								ref={virtuosoRef}
 								data={filteredLogs}
 								startReached={handleStartReached}
@@ -322,46 +335,7 @@ const JobLogs: React.FC = () => {
 											</div>
 										) : null,
 								}}
-								itemContent={(_, log) => {
-									if (!log) return null
-									const item = log as any
-									const hasTimeField = Boolean(item.time)
-									return (
-										<div className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100">
-											<div className="px-4 py-3 text-sm text-gray-500">
-												{hasTimeField
-													? new Date(item.time).toLocaleDateString()
-													: item.date}
-											</div>
-											<div className="px-4 py-3 text-sm text-gray-500">
-												{hasTimeField
-													? new Date(item.time).toLocaleTimeString("en-US", {
-															timeZone: "UTC",
-															hour12: false,
-														})
-													: item.time}
-											</div>
-											<div className="px-4 py-3 text-sm">
-												<span
-													className={clsx(
-														"rounded-md px-2 py-[5px] text-xs capitalize",
-														getLogLevelClass(item.level),
-													)}
-												>
-													{item.level}
-												</span>
-											</div>
-											<div
-												className={clsx(
-													"px-4 py-3 text-sm",
-													getLogTextColor(item.level),
-												)}
-											>
-												{item.message}
-											</div>
-										</div>
-									)
-								}}
+								itemContent={(_, log) => (log ? <JobLogRow log={log} /> : null)}
 							/>
 						)}
 					</div>
@@ -381,4 +355,25 @@ const JobLogs: React.FC = () => {
 		</div>
 	)
 }
+
+const JobLogRow: React.FC<{ log: TaskLogEntry }> = ({ log }) => (
+	<div className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100">
+		<div className="px-4 py-3 text-sm text-gray-500">{log.date}</div>
+		<div className="px-4 py-3 text-sm text-gray-500">{log.time}</div>
+		<div className="px-4 py-3 text-sm">
+			<span
+				className={clsx(
+					"rounded-md px-2 py-[5px] text-xs capitalize",
+					getLogLevelClass(log.level),
+				)}
+			>
+				{log.level}
+			</span>
+		</div>
+		<div className={clsx("px-4 py-3 text-sm", getLogTextColor(log.level))}>
+			{log.message}
+		</div>
+	</div>
+)
+
 export default JobLogs

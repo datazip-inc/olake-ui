@@ -1,7 +1,9 @@
 import { StateCreator } from "zustand"
-import type { JobTask, LogEntry } from "../types"
+import type { JobTask, TaskLogEntry, TaskLogsPaginationParams } from "../types"
+import { TaskLogsDirection } from "../types"
 import { jobService } from "../api"
 import { LOGS_CONFIG } from "../utils/constants"
+import { mapTaskLogsToEntries } from "../utils/utils"
 
 export interface TaskSlice {
 	jobTasksError: string | null
@@ -11,7 +13,7 @@ export interface TaskSlice {
 	isLoadingOlderLogs: boolean
 	isLoadingNewerLogs: boolean
 	jobTasks: JobTask[]
-	taskLogs: LogEntry[]
+	taskLogs: TaskLogEntry[]
 	taskLogsOlderCursor: number
 	taskLogsNewerCursor: number
 	taskLogsHasMoreOlder: boolean
@@ -40,7 +42,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 	taskLogsOlderCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 	taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 	taskLogsHasMoreOlder: true,
-	taskLogsHasMoreNewer: true,
+	taskLogsHasMoreNewer: false,
 	isLoadingJobTasks: false,
 	isLoadingTaskLogs: false,
 	isLoadingOlderLogs: false,
@@ -75,21 +77,25 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 			taskLogsOlderCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 			taskLogsNewerCursor: LOGS_CONFIG.DEFAULT_CURSOR,
 			taskLogsHasMoreOlder: true,
-			taskLogsHasMoreNewer: true,
+			taskLogsHasMoreNewer: false,
 			isLoadingOlderLogs: false,
 			isLoadingNewerLogs: false,
 		})
 		try {
+			const paginationParams: TaskLogsPaginationParams = {
+				cursor: LOGS_CONFIG.DEFAULT_CURSOR,
+				limit: LOGS_CONFIG.INITIAL_BATCH_SIZE,
+				direction: TaskLogsDirection.Older,
+			}
+
 			const response = await jobService.getTaskLogs(
 				jobId,
 				taskId,
 				filePath,
-				LOGS_CONFIG.DEFAULT_CURSOR,
-				LOGS_CONFIG.INITIAL_BATCH_SIZE,
-				"older",
+				paginationParams,
 			)
 			set({
-				taskLogs: response.logs,
+				taskLogs: mapTaskLogsToEntries(response.logs),
 				taskLogsOlderCursor: response.older_cursor,
 				taskLogsNewerCursor: response.newer_cursor,
 				taskLogsHasMoreOlder: response.has_more_older,
@@ -121,18 +127,22 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 
 		set({ isLoadingOlderLogs: true, taskLogsError: null })
 		try {
+			const paginationParams: TaskLogsPaginationParams = {
+				cursor: taskLogsOlderCursor,
+				limit: LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
+				direction: TaskLogsDirection.Older,
+			}
+
 			const response = await jobService.getTaskLogs(
 				jobId,
 				taskId,
 				filePath,
-				taskLogsOlderCursor,
-				LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
-				"older",
+				paginationParams,
 			)
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
-					taskLogs: response.logs, // Replace with ONLY the new batch
+					taskLogs: mapTaskLogsToEntries(response.logs), // Replace with ONLY the new batch
 					taskLogsOlderCursor: response.older_cursor,
 					taskLogsNewerCursor: response.newer_cursor,
 					taskLogsHasMoreOlder: response.has_more_older,
@@ -143,7 +153,8 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 			}
 
 			// Prepend older logs to the top
-			const updatedLogs = [...response.logs, ...taskLogs]
+			const normalizedLogs = mapTaskLogsToEntries(response.logs)
+			const updatedLogs = [...normalizedLogs, ...taskLogs]
 
 			set({
 				taskLogs: updatedLogs,
@@ -179,18 +190,22 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 
 		set({ isLoadingNewerLogs: true, taskLogsError: null })
 		try {
+			const paginationParams: TaskLogsPaginationParams = {
+				cursor: taskLogsNewerCursor,
+				limit: LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
+				direction: TaskLogsDirection.Newer,
+			}
+
 			const response = await jobService.getTaskLogs(
 				jobId,
 				taskId,
 				filePath,
-				taskLogsNewerCursor,
-				LOGS_CONFIG.SUBSEQUENT_BATCH_SIZE,
-				"newer",
+				paginationParams,
 			)
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
-					taskLogs: response.logs, // Replace with ONLY the new batch
+					taskLogs: mapTaskLogsToEntries(response.logs), // Replace with ONLY the new batch
 					taskLogsOlderCursor: response.older_cursor,
 					taskLogsNewerCursor: response.newer_cursor,
 					taskLogsHasMoreOlder: response.has_more_older,
@@ -201,7 +216,8 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 			}
 
 			// append newer logs to the bottom
-			const updatedLogs = [...taskLogs, ...response.logs]
+			const normalizedLogs = mapTaskLogsToEntries(response.logs)
+			const updatedLogs = [...taskLogs, ...normalizedLogs]
 
 			set({
 				taskLogs: updatedLogs,
