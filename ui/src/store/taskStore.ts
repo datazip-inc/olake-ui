@@ -3,7 +3,7 @@ import type { JobTask, TaskLogEntry, TaskLogsPaginationParams } from "../types"
 import { TaskLogsDirection } from "../types"
 import { jobService } from "../api"
 import { LOGS_CONFIG } from "../utils/constants"
-import { mapTaskLogsToEntries } from "../utils/utils"
+import { mapLogEntriesToTaskLogEntries } from "../utils/utils"
 
 export interface TaskSlice {
 	jobTasksError: string | null
@@ -95,7 +95,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 				paginationParams,
 			)
 			set({
-				taskLogs: mapTaskLogsToEntries(response.logs),
+				taskLogs: mapLogEntriesToTaskLogEntries(response.logs),
 				taskLogsOlderCursor: response.older_cursor,
 				taskLogsNewerCursor: response.newer_cursor,
 				taskLogsHasMoreOlder: response.has_more_older,
@@ -142,7 +142,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
-					taskLogs: mapTaskLogsToEntries(response.logs), // Replace with ONLY the new batch
+					taskLogs: mapLogEntriesToTaskLogEntries(response.logs), // Replace with ONLY the new batch
 					taskLogsOlderCursor: response.older_cursor,
 					taskLogsNewerCursor: response.newer_cursor,
 					taskLogsHasMoreOlder: response.has_more_older,
@@ -153,7 +153,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 			}
 
 			// Prepend older logs to the top
-			const normalizedLogs = mapTaskLogsToEntries(response.logs)
+			const normalizedLogs = mapLogEntriesToTaskLogEntries(response.logs)
 			const updatedLogs = [...normalizedLogs, ...taskLogs]
 
 			set({
@@ -205,7 +205,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 
 			if (state.taskLogs.length >= LOGS_CONFIG.MAX_LOGS_IN_MEMORY) {
 				set({
-					taskLogs: mapTaskLogsToEntries(response.logs), // Replace with ONLY the new batch
+					taskLogs: mapLogEntriesToTaskLogEntries(response.logs), // Replace with ONLY the new batch
 					taskLogsOlderCursor: response.older_cursor,
 					taskLogsNewerCursor: response.newer_cursor,
 					taskLogsHasMoreOlder: response.has_more_older,
@@ -216,7 +216,7 @@ export const createTaskSlice: StateCreator<TaskSlice> = (set, get) => ({
 			}
 
 			// append newer logs to the bottom
-			const normalizedLogs = mapTaskLogsToEntries(response.logs)
+			const normalizedLogs = mapLogEntriesToTaskLogEntries(response.logs)
 			const updatedLogs = [...taskLogs, ...normalizedLogs]
 
 			set({

@@ -447,13 +447,13 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	logDir := filepath.Join(logsDir, files[0].Name())
 	logPath := filepath.Join(logDir, "olake.log")
 
-	f, err := os.Open(logPath)
+	logFile, err := os.Open(logPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read log file: %s", logPath)
 	}
-	defer f.Close()
+	defer logFile.Close()
 
-	stat, err := f.Stat()
+	stat, err := logFile.Stat()
 	if err != nil {
 		return nil, fmt.Errorf("failed to stat log file: %w", err)
 	}
@@ -525,7 +525,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 			cursor = fileSize
 		}
 
-		lines, newOffset, more, rerr := ReadLinesBackward(f, cursor, limit)
+		lines, newOffset, more, rerr := ReadLinesBackward(logFile, cursor, limit)
 		if rerr != nil {
 			return nil, rerr
 		}
@@ -539,7 +539,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 		hasMoreNewer = newerCursor < fileSize
 	} else {
 		// dir == "newer": walk forwards
-		lines, newOffset, more, rerr := ReadLinesForward(f, cursor, limit)
+		lines, newOffset, more, rerr := ReadLinesForward(logFile, cursor, limit)
 		if rerr != nil {
 			return nil, rerr
 		}

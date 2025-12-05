@@ -312,7 +312,9 @@ export const getLogTextColor = (level: string) => {
 	}
 }
 
-export const mapTaskLogsToEntries = (logs: LogEntry[]): TaskLogEntry[] => {
+export const mapLogEntriesToTaskLogEntries = (
+	logs: LogEntry[],
+): TaskLogEntry[] => {
 	return logs.map(log => {
 		const level = log.level ?? ""
 		const message = log.message ?? ""
