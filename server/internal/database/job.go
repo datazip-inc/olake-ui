@@ -150,7 +150,16 @@ func (db *Database) GetJobsByDestinationID(destIDs []int) ([]*models.Job, error)
 
 // Update a job
 func (db *Database) UpdateJob(job *models.Job) error {
-	_, err := db.ormer.Update(job)
+	_, err := db.ormer.Update(job,
+		"name",
+		"source_id",
+		"dest_id",
+		"active",
+		"frequency",
+		"streams_config",
+		"project_id",
+		"updated_by_id",
+	)
 	return err
 }
 
