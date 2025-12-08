@@ -131,7 +131,11 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %s", err)
 	}
-	defer tx.Rollback() // Will be no-op if already committed
+	defer func() {
+		if err := tx.RollbackUnlessCommit(); err != nil {
+			logger.Errorf("failed to rollback transaction for job[%d]: %s", existingJob.ID, err)
+		}
+	}()
 
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
