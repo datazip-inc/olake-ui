@@ -148,19 +148,29 @@ func (db *Database) GetJobsByDestinationID(destIDs []int) ([]*models.Job, error)
 	return jobs, nil
 }
 
-// Update a job
-func (db *Database) UpdateJob(job *models.Job) error {
-	_, err := db.ormer.Update(job,
-		"name",
-		"source_id",
-		"dest_id",
-		"active",
-		"frequency",
-		"streams_config",
-		"project_id",
-		"updated_by_id",
-	)
+// UpdateJob updates a job with the given params (non-transactional)
+func (db *Database) UpdateJob(jobID int, params orm.Params) error {
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
+		Filter("id", jobID).
+		Update(params)
 	return err
+}
+
+// UpdateJobWithTx updates a job within a transaction with the given params
+func (db *Database) UpdateJobWithTx(tx orm.TxOrmer, jobID int, params orm.Params) error {
+	_, err := tx.QueryTable(constants.TableNameMap[constants.JobTable]).
+		Filter("id", jobID).
+		Update(params)
+	return err
+}
+
+// BeginTx starts a new transaction
+func (db *Database) BeginTx() (orm.TxOrmer, error) {
+	tx, err := db.ormer.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %s", err)
+	}
+	return tx, nil
 }
 
 // BulkDeactivate deactivates multiple jobs by their IDs in a single query

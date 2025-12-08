@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -125,8 +126,12 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		}
 	}
 
-	// Snapshot previous job state for compensation on schedule update failure
-	prevJob := *existingJob
+	// Start transaction
+	tx, err := s.db.BeginTx()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %s", err)
+	}
+	defer tx.Rollback() // Will be no-op if already committed
 
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
@@ -138,24 +143,31 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to process destination for job update: %s", err)
 	}
 
-	existingJob.Name = req.Name // TODO: job name cant be changed
-	existingJob.SourceID = source
-	existingJob.DestID = dest
-	existingJob.Active = req.Activate
-	existingJob.Frequency = req.Frequency
-	existingJob.StreamsConfig = req.StreamsConfig
-	existingJob.ProjectID = projectID
-	existingJob.UpdatedBy = &models.User{ID: *userID}
-	if err := s.db.UpdateJob(existingJob); err != nil {
+	updateParams := orm.Params{
+		"name":           req.Name,
+		"source_id":      source.ID,
+		"dest_id":        dest.ID,
+		"active":         req.Activate,
+		"frequency":      req.Frequency,
+		"streams_config": req.StreamsConfig,
+		"project_id":     projectID,
+		"updated_by_id":  *userID,
+	}
+
+	// Update job within transaction
+	if err := s.db.UpdateJobWithTx(tx, existingJob.ID, updateParams); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
-	err = s.temporal.UpdateSchedule(ctx, existingJob.Frequency, existingJob.ProjectID, existingJob.ID, nil)
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %s", err)
+	}
+
+	// Update temporal schedule
+	err = s.temporal.UpdateSchedule(ctx, req.Frequency, projectID, existingJob.ID, nil)
 	if err != nil {
-		// Compensation: restore previous DB state if schedule update fails
-		if rerr := s.db.UpdateJob(&prevJob); rerr != nil {
-			logger.Errorf("failed to restore job after schedule update error: %s", rerr)
-		}
+		logger.Errorf("job updated in database but failed to update temporal schedule: %s", err)
 		return fmt.Errorf("failed to update temporal workflow: %s", err)
 	}
 
@@ -231,11 +243,12 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 		}
 	}
 
-	job.Active = req.Activate
-	user := &models.User{ID: *userID}
-	job.UpdatedBy = user
+	updateParams := orm.Params{
+		"active":        req.Activate,
+		"updated_by_id": *userID,
+	}
 
-	if err := s.db.UpdateJob(job); err != nil {
+	if err := s.db.UpdateJob(job.ID, updateParams); err != nil {
 		return fmt.Errorf("failed to update job activation status: %s", err)
 	}
 
