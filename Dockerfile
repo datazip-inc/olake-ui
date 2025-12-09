@@ -1,5 +1,5 @@
 # Stage 1: Go Builder (Backend)
-FROM golang:1.24.2-alpine AS go-builder
+FROM golang:1.24.11-alpine AS go-builder
 
 
 # Install git, as it might be needed by go mod download or go build
