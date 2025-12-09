@@ -168,11 +168,13 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to commit transaction: %s", err)
 	}
 
-	// Update temporal schedule
-	err = s.temporal.UpdateSchedule(ctx, req.Frequency, projectID, existingJob.ID, nil)
-	if err != nil {
-		logger.Errorf("job updated in database but failed to update temporal schedule: %s", err)
-		return fmt.Errorf("failed to update temporal workflow: %s", err)
+	// Update temporal schedule only if frequency has changed
+	if req.Frequency != existingJob.Frequency {
+		err = s.temporal.UpdateSchedule(ctx, req.Frequency, projectID, existingJob.ID, nil)
+		if err != nil {
+			logger.Errorf("job updated in database but failed to update temporal schedule: %s", err)
+			return fmt.Errorf("failed to update temporal workflow: %s", err)
+		}
 	}
 
 	return nil
