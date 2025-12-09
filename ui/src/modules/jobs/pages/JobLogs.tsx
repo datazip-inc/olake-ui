@@ -25,6 +25,8 @@ import {
 import { LOGS_CONFIG } from "../../../utils/constants"
 import { TaskLogEntry } from "../../../types"
 
+const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
+
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
 		jobId: string
@@ -160,13 +162,17 @@ const JobLogs: React.FC = () => {
 			filteredLogs?.length > 0 &&
 			!hasPerformedInitialScroll.current
 		) {
-			setTimeout(() => {
+			const timeoutId = setTimeout(() => {
 				virtuosoRef.current?.scrollToIndex({
 					index: filteredLogs.length - 1,
 					align: "end",
 				})
 				hasPerformedInitialScroll.current = true
-			}, 100)
+			}, INITIAL_SCROLL_TIMEOUT)
+
+			return () => {
+				clearTimeout(timeoutId)
+			}
 		}
 	}, [isLoadingTaskLogs, filteredLogs?.length])
 
@@ -324,7 +330,7 @@ const JobLogs: React.FC = () => {
 								startReached={handleStartReached}
 								endReached={handleEndReached}
 								firstItemIndex={firstItemIndex}
-								overscan={1000}
+								overscan={LOGS_CONFIG.OVERSCAN}
 								followOutput={false}
 								components={{
 									Header: () =>

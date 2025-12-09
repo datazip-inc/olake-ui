@@ -292,4 +292,5 @@ export const LOGS_CONFIG = {
 	SUBSEQUENT_BATCH_SIZE: 500, // Subsequent loads
 	MAX_LOGS_IN_MEMORY: 10000, // Maximum logs to keep in memory
 	VIRTUAL_LIST_START_INDEX: 1000000, // High starting index for virtualized log list
+	OVERSCAN: 1000, // Number of items to render outside visible area
 } as const

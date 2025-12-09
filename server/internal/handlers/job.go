@@ -360,7 +360,7 @@ func (h *Handler) GetJobTasks() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
-// @router /project/:projectid/jobs/:id/logs [get]
+// @router /project/:projectid/jobs/:id/logs [post]
 func (h *Handler) GetTaskLogs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {

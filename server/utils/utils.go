@@ -257,17 +257,10 @@ func isValidLogLine(line string) bool {
 // Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
 // startOffset is treated as exclusive - we read lines that END BEFORE startOffset.
 // Returns: valid lines (oldest->newest), newOffset (byte position before first returned line), hasMore, error.
-func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int64, bool, error) {
+func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
 	if limit <= 0 {
 		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
 	}
-
-	file, err := f.Stat()
-	if err != nil {
-		return nil, 0, false, err
-	}
-
-	fileSize := file.Size()
 
 	// startOffset beyond file size, clamp it to file size
 	startOffset = min(startOffset, fileSize)
@@ -366,19 +359,12 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int) ([]string, int6
 // Filters out empty lines, invalid JSON, and debug-level logs DURING reading.
 // startOffset is treated as inclusive - we start reading from exactly that position.
 // Returns: valid lines (oldest->newest), newOffset (byte position after last returned line), hasMore, error.
-func ReadLinesForward(f *os.File, startOffset int64, limit int) ([]string, int64, bool, error) {
+func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) ([]string, int64, bool, error) {
 	if limit <= 0 {
 		return nil, 0, false, fmt.Errorf("limit must be greater than 0")
 	}
 
-	fi, err := f.Stat()
-	if err != nil {
-		return nil, 0, false, err
-	}
-
-	fileSize := fi.Size()
-
-	// Clamp startOffset to [0, fileSize]
+	// Ensure startOffset is at least 0
 	startOffset = max(startOffset, 0)
 
 	// If already at or past EOF, nothing to read
@@ -430,17 +416,20 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int) ([]string, int64
 func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	// Check if mainLogDir exists
 	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s", mainLogDir)
+		return nil, fmt.Errorf("logs directory not found: %s: %w", mainLogDir, err)
 	}
 
 	// Logs directory
 	logsDir := filepath.Join(mainLogDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s", logsDir)
+		return nil, fmt.Errorf("logs directory not found: %s: %w", logsDir, err)
 	}
 
 	files, err := os.ReadDir(logsDir)
-	if err != nil || len(files) == 0 {
+	if err != nil {
+		return nil, fmt.Errorf("failed to read logs directory %s: %w", logsDir, err)
+	}
+	if len(files) == 0 {
 		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
 	}
 
@@ -449,7 +438,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 
 	logFile, err := os.Open(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read log file: %s", logPath)
+		return nil, fmt.Errorf("failed to read log file: %s: %w", logPath, err)
 	}
 	defer logFile.Close()
 
@@ -478,11 +467,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	// Initial tail: cursor < 0 means "from end of file"
 	isTail := cursor < 0
 
-	var logs []map[string]interface{}
-	var olderCursor int64
-	var newerCursor int64
-	var hasMoreOlder bool
-	var hasMoreNewer bool
+	response := &dto.TaskLogsResponse{}
 
 	// Parse validated lines into response format
 	// Lines are already filtered (no empty, no invalid JSON, no debug) by ReadLines functions
@@ -502,8 +487,12 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 				case string:
 					messageStr = v
 				default:
-					msgBytes, _ := json.Marshal(v)
-					messageStr = string(msgBytes)
+					msgBytes, err := json.Marshal(v)
+					if err != nil {
+						messageStr = string(logEntry.Message)
+					} else {
+						messageStr = string(msgBytes)
+					}
 				}
 			} else {
 				messageStr = string(logEntry.Message)
@@ -525,41 +514,35 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 			cursor = fileSize
 		}
 
-		lines, newOffset, more, rerr := ReadLinesBackward(logFile, cursor, limit)
+		lines, newOffset, more, rerr := ReadLinesBackward(logFile, cursor, limit, fileSize)
 		if rerr != nil {
 			return nil, rerr
 		}
 
-		logs = parseLines(lines)
+		response.Logs = parseLines(lines)
 
 		// olderCursor points to the position BEFORE the oldest log we're returning
-		olderCursor = newOffset
-		newerCursor = cursor
-		hasMoreOlder = more && newOffset > 0
-		hasMoreNewer = newerCursor < fileSize
+		response.OlderCursor = newOffset
+		response.NewerCursor = cursor
+		response.HasMoreOlder = more && newOffset > 0
+		response.HasMoreNewer = response.NewerCursor < fileSize
 	} else {
 		// dir == "newer": walk forwards
-		lines, newOffset, more, rerr := ReadLinesForward(logFile, cursor, limit)
+		lines, newOffset, more, rerr := ReadLinesForward(logFile, cursor, limit, fileSize)
 		if rerr != nil {
 			return nil, rerr
 		}
 
-		logs = parseLines(lines)
+		response.Logs = parseLines(lines)
 
 		// newerCursor points to the position AFTER the newest log we have
-		newerCursor = newOffset
-		olderCursor = cursor
-		hasMoreNewer = more && newOffset < fileSize
-		hasMoreOlder = olderCursor > 0
+		response.NewerCursor = newOffset
+		response.OlderCursor = cursor
+		response.HasMoreNewer = more && newOffset < fileSize
+		response.HasMoreOlder = response.OlderCursor > 0
 	}
 
-	return &dto.TaskLogsResponse{
-		Logs:         logs,
-		OlderCursor:  olderCursor,
-		NewerCursor:  newerCursor,
-		HasMoreOlder: hasMoreOlder,
-		HasMoreNewer: hasMoreNewer,
-	}, nil
+	return response, nil
 }
 
 // RetryWithBackoff retries a function with exponential backoff
