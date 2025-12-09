@@ -11,7 +11,7 @@ x-signup-defaults:
   email: &defaultEmail "admin@example.com"
 
 x-encryption:
-  key: &encryptionKey "" 
+  key: &encryptionKey ""
 
 x-envs:
   shared: &sharedEnvs
@@ -21,11 +21,14 @@ x-envs:
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest    
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
+      # Request body size limits (512 MB in bytes) for large JSON/multipart payloads
+      MAX_MEMORY: 536870912
+      MAX_UPLOAD_SIZE: 536870912
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
@@ -40,7 +43,7 @@ services:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
     restart: unless-stopped
-    healthcheck: # Updated healthcheck for olake-ui  
+    healthcheck: # Updated healthcheck for olake-ui
       test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
       interval: 15s
       timeout: 5s
