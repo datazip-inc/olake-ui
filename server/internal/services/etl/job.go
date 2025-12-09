@@ -93,6 +93,7 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 }
 
 func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, projectID string, jobID int, userID *int) error {
+	// TODO: remove fetching existing job from database to verify it's existence, fetch only if the details aren't already available in the params/request. If job not exists it will fail during query execution.
 	existingJob, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("failed to get job: %s", err)
