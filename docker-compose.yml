@@ -26,9 +26,9 @@ services:
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
-      # Request body size limits (512 MB in bytes) for large JSON/multipart payloads
-      MAX_MEMORY: 536870912
-      MAX_UPLOAD_SIZE: 536870912
+      # Request body size limits (64 MB in bytes)
+      MAX_MEMORY: 67108864
+      MAX_UPLOAD_SIZE: 67108864
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
