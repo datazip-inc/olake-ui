@@ -8,7 +8,7 @@ import {
 } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, Button, Tooltip } from "antd"
+import { Input, Spin, Button, Tooltip, message } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
@@ -26,7 +26,6 @@ import {
 import { LOGS_CONFIG } from "../../../utils/constants"
 import { TaskLogEntry } from "../../../types"
 import { jobService } from "../../../api/services/jobService"
-import { message } from "antd"
 
 const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
 
@@ -107,18 +106,9 @@ const JobLogs: React.FC = () => {
 	}, [fetchJobs])
 
 	const handleDownloadLogs = () => {
-		if (!jobId || !filePath) {
-			message.error("Missing job ID or file path")
-			return
-		}
-
-		try {
-			jobService.downloadTaskLogs(jobId, filePath)
-			message.success("Downloading logs...")
-		} catch (error) {
-			console.error("Failed to download logs:", error)
-			message.error("Failed to start download")
-		}
+		if (!jobId || !filePath) return
+		message.success("Downloading logs...")
+		jobService.downloadTaskLogs(jobId, filePath)
 	}
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),

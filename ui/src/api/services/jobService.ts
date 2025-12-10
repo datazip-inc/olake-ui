@@ -12,7 +12,6 @@ import {
 import { AxiosError } from "axios"
 import { normalizeConnectorType } from "../../utils/utils"
 import { ENTITY_TYPES } from "../../utils/constants"
-import { downloadBlob } from "../../utils/download"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
@@ -222,27 +221,19 @@ export const jobService = {
 		}
 	},
 
-	downloadTaskLogs: async (jobId: string, filePath: string): Promise<void> => {
-		try {
-			const params = new URLSearchParams({
-				file_path: filePath,
-			})
+	downloadTaskLogs: (jobId: string, filePath: string): void => {
+		const params = new URLSearchParams({
+			file_path: filePath,
+		})
 
-			const response = await api.get(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`,
-				{
-					responseType: "blob",
-				},
-			)
+		const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`
 
-			downloadBlob(
-				response.data,
-				response.headers["content-disposition"],
-				`job-${jobId}-logs.tar.gz`,
-			)
-		} catch (error) {
-			console.error("Error downloading task logs:", error)
-			throw error
-		}
+		// Create temporary anchor tag to trigger download
+		const link = document.createElement("a")
+		link.href = url
+		link.style.display = "none"
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
 	},
 }
