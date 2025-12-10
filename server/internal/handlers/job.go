@@ -431,3 +431,38 @@ func (h *Handler) RecoverClearDestination() {
 
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
 }
+
+// @router /project/:projectid/jobs/:id/logs/download [get]
+func (h *Handler) DownloadTaskLogs() {
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	filePath := h.GetString("file_path")
+	if filePath == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "file_path query parameter is required", nil)
+		return
+	}
+
+	logger.Debugf("Download task logs initiated job_id[%d] file_path[%s]", id, filePath)
+
+	filename, err := h.etl.GetLogArchiveFilename(id, filePath)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
+		return
+	}
+
+	h.Ctx.Output.Header("Content-Type", "application/gzip")
+	h.Ctx.Output.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	h.Ctx.Output.Header("Cache-Control", "no-cache")
+	h.Ctx.Output.Header("X-Content-Type-Options", "nosniff")
+
+	if err := h.etl.StreamLogArchive(id, filePath, h.Ctx.ResponseWriter); err != nil {
+		logger.Errorf("failed to stream log archive job_id[%d]: %s", id, err)
+		return
+	}
+
+	logger.Infof("successfully streamed log archive job_id[%d] filename[%s]", id, filename)
+}

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -565,4 +566,23 @@ func RetryWithBackoff(fn func() error, maxRetries int, initialDelay time.Duratio
 	}
 
 	return fmt.Errorf("failed after %d retries: %s", maxRetries, errMsg)
+}
+
+// GetAndValidateLogBaseDir returns the base directory path for log files
+// based on the SHA256 hash of the filePath (workflow ID) and validates it exists
+func GetAndValidateLogBaseDir(filePath string) (string, error) {
+	if filePath == "" {
+		return "", fmt.Errorf("file path cannot be empty")
+	}
+
+	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
+	homeDir := constants.DefaultConfigDir
+	baseDir := filepath.Join(homeDir, syncFolderName)
+
+	// Verify directory exists
+	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
+		return "", fmt.Errorf("logs directory not found: %s", baseDir)
+	}
+
+	return baseDir, nil
 }

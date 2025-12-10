@@ -1,10 +1,13 @@
 package services
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -387,11 +390,12 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, 
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
+	// Get and validate base directory from file path
+	mainSyncDir, err := utils.GetAndValidateLogBaseDir(filePath)
+	if err != nil {
+		return nil, err
+	}
 
-	// Get home directory
-	homeDir := constants.DefaultConfigDir
-	mainSyncDir := filepath.Join(homeDir, syncFolderName)
 	logs, err := utils.ReadLogs(mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
@@ -400,7 +404,6 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, 
 	return logs, nil
 }
 
-// TODO: frontend needs to send source id and destination id
 func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, projectID string) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:            job.ID,
@@ -586,6 +589,134 @@ func (s *ETLService) RecoverFromClearDestination(ctx context.Context, projectID 
 		return fmt.Errorf("failed to resume schedule: %s", err)
 	}
 	logger.Infof("resumed schedule for job %d", jobID)
+
+	return nil
+}
+
+// GetLogArchiveFilename generates the filename for the log archive download
+func (s *ETLService) GetLogArchiveFilename(jobID int, filePath string) (string, error) {
+	_, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return "", fmt.Errorf("failed to find job: %s", err)
+	}
+
+	baseDir, err := utils.GetAndValidateLogBaseDir(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	logsDir := filepath.Join(baseDir, "logs")
+
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read logs directory: %w", err)
+	}
+	if len(entries) == 0 {
+		return "", fmt.Errorf("no sync log folders found in: %s", logsDir)
+	}
+
+	syncFolderName := entries[0].Name()
+	if !strings.HasPrefix(syncFolderName, "sync_") {
+		return "", fmt.Errorf("invalid sync folder name: %s", syncFolderName)
+	}
+
+	syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolderName, "sync_"), "_", "-")
+	filename := fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp)
+
+	return filename, nil
+}
+
+// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
+func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
+	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("Starting log archive creation for job_id[%d]", jobID)
+
+	// Create streaming pipeline: tarWriter → gzipWriter → writer
+	gzipWriter := gzip.NewWriter(writer)
+	defer gzipWriter.Close()
+
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+
+	stateFile := filepath.Join(baseDir, "state.json")
+	if err := addFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
+		logger.Warnf("failed to add state.json to archive: %s", err)
+		// Continue anyway - state.json might not exist
+	}
+
+	// Add all files from logs/sync_timestamp/ directory to logs/ folder in archive
+	logsDir := filepath.Join(baseDir, "logs")
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read logs directory: %s", err)
+	}
+	if len(entries) == 0 {
+		return fmt.Errorf("no sync folders found in logs directory")
+	}
+
+	syncLogDir := filepath.Join(logsDir, entries[0].Name())
+	logger.Debugf("Adding files from %s to archive", syncLogDir)
+
+	err = filepath.Walk(syncLogDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories, only add files
+		if info.IsDir() {
+			return nil
+		}
+
+		filename := filepath.Base(path)
+		archivePath := filepath.Join("logs", filename)
+
+		return addFileToArchive(tarWriter, path, archivePath)
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to add log files to archive: %s", err)
+	}
+
+	logger.Infof("Successfully created log archive for job_id[%d]", jobID)
+
+	return nil
+}
+
+// addFileToArchive streams a file into the tar archive
+func addFileToArchive(tarWriter *tar.Writer, filePath string, nameInArchive string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file %s: %w", filePath, err)
+	}
+
+	// tar header with file metadata
+	header := &tar.Header{
+		Name:    nameInArchive,
+		Size:    fileInfo.Size(),
+		Mode:    int64(fileInfo.Mode()),
+		ModTime: fileInfo.ModTime(),
+	}
+
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return fmt.Errorf("failed to write tar header for %s: %w", nameInArchive, err)
+	}
+
+	bytesWritten, err := io.Copy(tarWriter, file)
+	if err != nil {
+		return fmt.Errorf("failed to write file content for %s: %w", nameInArchive, err)
+	}
+
+	logger.Debugf("Added %s to archive (%d bytes)", nameInArchive, bytesWritten)
 
 	return nil
 }
