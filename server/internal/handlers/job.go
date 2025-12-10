@@ -455,7 +455,7 @@ func (h *Handler) DownloadTaskLogs() {
 	}
 
 	h.Ctx.Output.Header("Content-Type", "application/gzip")
-	h.Ctx.Output.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	h.Ctx.Output.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
 	h.Ctx.Output.Header("Cache-Control", "no-cache")
 	h.Ctx.Output.Header("X-Content-Type-Options", "nosniff")
 	// Expose Content-Disposition header so browser JS can access filename for download

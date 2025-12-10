@@ -687,7 +687,7 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 }
 
 // addFileToArchive streams a file into the tar archive
-func addFileToArchive(tarWriter *tar.Writer, filePath string, nameInArchive string) error {
+func addFileToArchive(tarWriter *tar.Writer, filePath, nameInArchive string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
