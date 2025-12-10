@@ -5,6 +5,7 @@ import {
 	EntityBase,
 	EntityTestRequest,
 	EntityTestResponse,
+	GetSourceStreamsResponse,
 } from "../../types"
 
 import { ENTITY_TYPES } from "../../utils/constants"
@@ -160,7 +161,7 @@ export const sourceService = {
 		job_id?: number,
 	) => {
 		try {
-			const response = await api.post<Record<string, unknown>>(
+			const response = await api.post<GetSourceStreamsResponse>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 				{
 					name,

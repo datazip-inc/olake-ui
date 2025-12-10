@@ -5,12 +5,11 @@ import clsx from "clsx"
 import { sourceService } from "../../../api"
 import { useAppStore } from "../../../store"
 import {
-	CombinedStreamsData,
 	IngestionMode,
 	SchemaConfigurationProps,
-	SelectedStream,
 	StreamData,
 	SyncMode,
+	StreamsDataStructure,
 } from "../../../types"
 import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
@@ -27,6 +26,7 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
+import { getStreamsDataFromGetSourceStreamsResponse } from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -62,12 +62,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		namespace: string
 	} | null>(null)
 
-	const [apiResponse, setApiResponse] = useState<{
-		selected_streams: {
-			[namespace: string]: SelectedStream[]
-		}
-		streams: StreamData[]
-	} | null>(initialStreamsData || null)
+	const [apiResponse, setApiResponse] = useState<StreamsDataStructure | null>(
+		initialStreamsData || null,
+	)
 
 	// Derive activeStreamData from apiResponse to always get fresh data
 	const activeStreamData = useMemo(() => {
@@ -167,46 +164,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					fromJobEditFlow ? jobId : -1,
 				)
 
-				const rawApiResponse = response as any
-				const processedResponseData: CombinedStreamsData = {
-					streams: [],
-					selected_streams: {},
-				}
+				const streamsData: StreamsDataStructure =
+					getStreamsDataFromGetSourceStreamsResponse(response)
 
-				if (rawApiResponse && Array.isArray(rawApiResponse.streams)) {
-					processedResponseData.streams = rawApiResponse.streams
-				}
-
-				if (
-					rawApiResponse &&
-					typeof rawApiResponse.selected_streams === "object" &&
-					rawApiResponse.selected_streams !== null &&
-					!Array.isArray(rawApiResponse.selected_streams)
-				) {
-					for (const ns in rawApiResponse.selected_streams) {
-						if (
-							Object.prototype.hasOwnProperty.call(
-								rawApiResponse.selected_streams,
-								ns,
-							) &&
-							Array.isArray(rawApiResponse.selected_streams[ns])
-						) {
-							processedResponseData.selected_streams[ns] =
-								rawApiResponse.selected_streams[ns]
-						}
-					}
-				}
-
-				processedResponseData.streams.forEach((stream: StreamData) => {
-					const namespace = stream.stream.namespace || ""
-					if (!processedResponseData.selected_streams[namespace]) {
-						processedResponseData.selected_streams[namespace] = []
-					}
-				})
-
-				setApiResponse(processedResponseData)
-				setSelectedStreams(processedResponseData)
-				setInitialStreamsState(processedResponseData)
+				setApiResponse(streamsData)
+				setSelectedStreams(streamsData)
+				setInitialStreamsState(streamsData)
 
 				initialized.current = true
 			} catch (error) {
@@ -757,7 +720,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								}
 
 								// Pass it to the parent component
-								setSelectedStreams(fullData as CombinedStreamsData)
+								setSelectedStreams(fullData as StreamsDataStructure)
 							}}
 							onIngestionModeChange={handleAllIngestionModeChange}
 						/>

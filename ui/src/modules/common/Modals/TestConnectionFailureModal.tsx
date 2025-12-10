@@ -51,7 +51,8 @@ const TestConnectionFailureModal = ({
 				),
 			)
 			message.success("Logs copied to clipboard!")
-		} catch {
+		} catch (error) {
+			console.error("Failed to copy logs", error)
 			message.error("Failed to copy logs")
 		}
 	}
