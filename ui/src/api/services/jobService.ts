@@ -12,6 +12,7 @@ import {
 import { AxiosError } from "axios"
 import { normalizeConnectorType } from "../../utils/utils"
 import { ENTITY_TYPES } from "../../utils/constants"
+import { downloadBlob } from "../../utils/download"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {
@@ -217,6 +218,30 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error getting stream difference:", error)
+			throw error
+		}
+	},
+
+	downloadTaskLogs: async (jobId: string, filePath: string): Promise<void> => {
+		try {
+			const params = new URLSearchParams({
+				file_path: filePath,
+			})
+
+			const response = await api.get(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`,
+				{
+					responseType: "blob",
+				},
+			)
+
+			downloadBlob(
+				response.data,
+				response.headers["content-disposition"],
+				`job-${jobId}-logs.tar.gz`,
+			)
+		} catch (error) {
+			console.error("Error downloading task logs:", error)
 			throw error
 		}
 	},

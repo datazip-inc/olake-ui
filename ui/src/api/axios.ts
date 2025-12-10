@@ -55,6 +55,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
 	(response: AxiosResponse) => {
 		const config = response.config
+
+		// Don't unwrap blob responses (file downloads)
+		if (config.responseType === "blob") {
+			return response
+		}
+
 		const payload = response.data
 
 		// Show toast only if explicitly enabled for this request
