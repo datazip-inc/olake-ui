@@ -107,8 +107,8 @@ const JobLogs: React.FC = () => {
 
 	const handleDownloadLogs = () => {
 		if (!jobId || !filePath) return
-		message.success("Downloading logs...")
 		jobService.downloadTaskLogs(jobId, filePath)
+		message.success("Downloading logs...")
 	}
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),
