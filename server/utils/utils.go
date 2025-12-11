@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
 	"crypto/rand"
@@ -434,32 +435,24 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 		return nil, fmt.Errorf("logs directory not found: %s: %w", mainLogDir, err)
 	}
 
-	// Logs directory
-	logsDir := filepath.Join(mainLogDir, "logs")
-	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s: %s", logsDir, err)
-	}
-
-	files, err := os.ReadDir(logsDir)
+	// Resolve and validate logs/sync_* directory
+	logsDir, syncFolderName, err := GetAndValidateSyncDir(mainLogDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read logs directory %s: %w", logsDir, err)
-	}
-	if len(files) == 0 {
-		return nil, fmt.Errorf("logs directory empty in: %s", logsDir)
+		return nil, err
 	}
 
-	logDir := filepath.Join(logsDir, files[0].Name())
+	logDir := filepath.Join(logsDir, syncFolderName)
 	logPath := filepath.Join(logDir, "olake.log")
 
 	logFile, err := os.Open(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read log file: %s: %w", logPath, err)
+		return nil, fmt.Errorf("failed to read log file: %s: %s", logPath, err)
 	}
 	defer logFile.Close()
 
 	stat, err := logFile.Stat()
 	if err != nil {
-		return nil, fmt.Errorf("failed to stat log file: %w", err)
+		return nil, fmt.Errorf("failed to stat log file: %s", err)
 	}
 	fileSize := stat.Size()
 
@@ -595,8 +588,81 @@ func GetAndValidateLogBaseDir(filePath string) (string, error) {
 
 	// Verify directory exists
 	if _, err := os.Stat(baseDir); os.IsNotExist(err) {
-		return "", fmt.Errorf("logs directory not found: %s", baseDir)
+		return "", fmt.Errorf("logs directory not found: %s: %s", baseDir, err)
 	}
 
 	return baseDir, nil
+}
+
+// GetAndValidateSyncDir returns the logs directory and sync_* folder name under it
+func GetAndValidateSyncDir(baseDir string) (string, string, error) {
+	logsDir := filepath.Join(baseDir, "logs")
+
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read logs directory: %s", err)
+	}
+	if len(entries) == 0 {
+		return "", "", fmt.Errorf("no sync log folders found in: %s", logsDir)
+	}
+
+	syncFolderName := entries[0].Name()
+	if !strings.HasPrefix(syncFolderName, "sync_") {
+		return "", "", fmt.Errorf("invalid sync folder name: %s", syncFolderName)
+	}
+
+	return logsDir, syncFolderName, nil
+}
+
+// addFileToArchive streams a file into the tar archive
+func AddFileToArchive(tarWriter *tar.Writer, filePath, nameInArchive string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %s", filePath, err)
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file %s: %s", filePath, err)
+	}
+
+	// tar header with file metadata
+	header := &tar.Header{
+		Name:    nameInArchive,
+		Size:    fileInfo.Size(),
+		Mode:    int64(fileInfo.Mode()),
+		ModTime: fileInfo.ModTime(),
+	}
+
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return fmt.Errorf("failed to write tar header for %s: %s", nameInArchive, err)
+	}
+
+	bytesWritten, err := io.Copy(tarWriter, file)
+	if err != nil {
+		return fmt.Errorf("failed to write file content for %s: %s", nameInArchive, err)
+	}
+
+	logger.Debugf("Added %s to archive (%d bytes)", nameInArchive, bytesWritten)
+
+	return nil
+}
+
+// GetLogArchiveFilename generates the filename for the log archive download
+func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
+	baseDir, err := GetAndValidateLogBaseDir(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	_, syncFolderName, err := GetAndValidateSyncDir(baseDir)
+	if err != nil {
+		return "", err
+	}
+
+	syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolderName, "sync_"), "_", "-")
+	filename := fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp)
+
+	return filename, nil
 }

@@ -448,7 +448,7 @@ func (h *Handler) DownloadTaskLogs() {
 
 	logger.Debugf("Download task logs initiated job_id[%d] file_path[%s]", id, filePath)
 
-	filename, err := h.etl.GetLogArchiveFilename(id, filePath)
+	filename, err := utils.GetLogArchiveFilename(id, filePath)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
 		return

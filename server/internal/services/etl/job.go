@@ -613,45 +613,19 @@ func (s *ETLService) RecoverFromClearDestination(ctx context.Context, projectID 
 	return nil
 }
 
-// GetLogArchiveFilename generates the filename for the log archive download
-func (s *ETLService) GetLogArchiveFilename(jobID int, filePath string) (string, error) {
-	_, err := s.db.GetJobByID(jobID, true)
-	if err != nil {
-		return "", fmt.Errorf("failed to find job: %s", err)
-	}
-
-	baseDir, err := utils.GetAndValidateLogBaseDir(filePath)
-	if err != nil {
-		return "", err
-	}
-
-	logsDir := filepath.Join(baseDir, "logs")
-
-	entries, err := os.ReadDir(logsDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to read logs directory: %w", err)
-	}
-	if len(entries) == 0 {
-		return "", fmt.Errorf("no sync log folders found in: %s", logsDir)
-	}
-
-	syncFolderName := entries[0].Name()
-	if !strings.HasPrefix(syncFolderName, "sync_") {
-		return "", fmt.Errorf("invalid sync folder name: %s", syncFolderName)
-	}
-
-	syncTimestamp := strings.ReplaceAll(strings.TrimPrefix(syncFolderName, "sync_"), "_", "-")
-	filename := fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp)
-
-	return filename, nil
-}
-
 // StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
 func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
 	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
 	if err != nil {
 		return err
 	}
+
+	logsDir, syncFolderName, err := utils.GetAndValidateSyncDir(baseDir)
+	if err != nil {
+		return err
+	}
+
+	syncLogDir := filepath.Join(logsDir, syncFolderName)
 
 	logger.Infof("Starting log archive creation for job_id[%d]", jobID)
 
@@ -663,22 +637,11 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 	defer tarWriter.Close()
 
 	stateFile := filepath.Join(baseDir, "state.json")
-	if err := addFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
+	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
 		logger.Warnf("failed to add state.json to archive: %s", err)
 		// Continue anyway - state.json might not exist
 	}
 
-	// Add all files from logs/sync_timestamp/ directory to logs/ folder in archive
-	logsDir := filepath.Join(baseDir, "logs")
-	entries, err := os.ReadDir(logsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read logs directory: %s", err)
-	}
-	if len(entries) == 0 {
-		return fmt.Errorf("no sync folders found in logs directory")
-	}
-
-	syncLogDir := filepath.Join(logsDir, entries[0].Name())
 	logger.Debugf("Adding files from %s to archive", syncLogDir)
 
 	err = filepath.Walk(syncLogDir, func(path string, info os.FileInfo, err error) error {
@@ -694,7 +657,7 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 		filename := filepath.Base(path)
 		archivePath := filepath.Join("logs", filename)
 
-		return addFileToArchive(tarWriter, path, archivePath)
+		return utils.AddFileToArchive(tarWriter, path, archivePath)
 	})
 
 	if err != nil {
@@ -702,41 +665,6 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 	}
 
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)
-
-	return nil
-}
-
-// addFileToArchive streams a file into the tar archive
-func addFileToArchive(tarWriter *tar.Writer, filePath, nameInArchive string) error {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s: %w", filePath, err)
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to stat file %s: %w", filePath, err)
-	}
-
-	// tar header with file metadata
-	header := &tar.Header{
-		Name:    nameInArchive,
-		Size:    fileInfo.Size(),
-		Mode:    int64(fileInfo.Mode()),
-		ModTime: fileInfo.ModTime(),
-	}
-
-	if err := tarWriter.WriteHeader(header); err != nil {
-		return fmt.Errorf("failed to write tar header for %s: %w", nameInArchive, err)
-	}
-
-	bytesWritten, err := io.Copy(tarWriter, file)
-	if err != nil {
-		return fmt.Errorf("failed to write file content for %s: %w", nameInArchive, err)
-	}
-
-	logger.Debugf("Added %s to archive (%d bytes)", nameInArchive, bytesWritten)
 
 	return nil
 }
