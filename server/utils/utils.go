@@ -339,7 +339,7 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 
 	// no valid lines found
 	if len(foundLines) == 0 {
-		return []string{}, offset, offset > 0, nil
+		return []string{}, 0, false, nil
 	}
 
 	// Extract just the line content for return
@@ -351,7 +351,14 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 	// The oldest line we returned is the last element in newestFirst
 	newOffset := foundLines[len(foundLines)-1].startPos
 
-	hasMore := newOffset > 0
+	// hasMore is true only if we hit the limit with more file content remaining
+	hasMore := newOffset > 0 && len(foundLines) == limit
+
+	// If no more logs exist, return cursor at beginning (0)
+	if !hasMore {
+		newOffset = 0
+	}
+
 	return lines, newOffset, hasMore, nil
 }
 
@@ -406,7 +413,14 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 		}
 	}
 
-	hasMore := currentOffset < fileSize
+	// hasMore is true only if we hit the limit with more file content remaining
+	hasMore := currentOffset < fileSize && len(lines) == limit
+
+	// If no more logs exist, return cursor at end (fileSize)
+	if !hasMore {
+		currentOffset = fileSize
+	}
+
 	return lines, currentOffset, hasMore, nil
 }
 
@@ -422,7 +436,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 	// Logs directory
 	logsDir := filepath.Join(mainLogDir, "logs")
 	if _, err := os.Stat(logsDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s: %w", logsDir, err)
+		return nil, fmt.Errorf("logs directory not found: %s: %s", logsDir, err)
 	}
 
 	files, err := os.ReadDir(logsDir)
@@ -524,7 +538,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 		// olderCursor points to the position BEFORE the oldest log we're returning
 		response.OlderCursor = newOffset
 		response.NewerCursor = cursor
-		response.HasMoreOlder = more && newOffset > 0
+		response.HasMoreOlder = more
 		response.HasMoreNewer = response.NewerCursor < fileSize
 	} else {
 		// dir == "newer": walk forwards
@@ -538,7 +552,7 @@ func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dt
 		// newerCursor points to the position AFTER the newest log we have
 		response.NewerCursor = newOffset
 		response.OlderCursor = cursor
-		response.HasMoreNewer = more && newOffset < fileSize
+		response.HasMoreNewer = more
 		response.HasMoreOlder = response.OlderCursor > 0
 	}
 
