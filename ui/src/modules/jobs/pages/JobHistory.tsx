@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import clsx from "clsx"
-import { useParams, useNavigate, Link } from "react-router-dom"
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
 import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
@@ -16,20 +16,31 @@ import {
 	getJobTypeLabel,
 	getStatusClass,
 	getStatusLabel,
+	parseStartTime,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { JobType } from "../../../types"
 
+interface JobHistoryNavState {
+	waitForNewSync?: boolean
+	syncStartTime?: number
+}
+
 const JobHistory: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const navigate = useNavigate()
+	const location = useLocation()
 	const [searchText, setSearchText] = useState("")
 	const [currentPage, setCurrentPage] = useState(1)
 	const pageSize = 8
 	const [isDelayingCall, setIsDelayingCall] = useState(false)
 	const retryCountRef = useRef(0)
 	const THROTTLE_DELAY = 500
-	const MAX_RETRIES = 2
+	const MAX_RETRIES = 4
+
+	// Get navigation state to check if we should wait for new sync
+	const { waitForNewSync, syncStartTime } =
+		(location.state as JobHistoryNavState) || {}
 
 	const {
 		jobs,
@@ -51,14 +62,34 @@ const JobHistory: React.FC = () => {
 
 		let timeoutId: NodeJS.Timeout
 
+		const hasRecentSyncTask = (): boolean => {
+			if (!waitForNewSync || !syncStartTime) return false
+			// Get fresh tasks from store
+			const currentTasks = useAppStore.getState().jobTasks
+			if (!currentTasks?.length) return false
+
+			return currentTasks.some(task => {
+				const taskTimestamp = parseStartTime(task.start_time)
+				return (
+					task.job_type === JobType.Sync &&
+					taskTimestamp !== null &&
+					taskTimestamp >= syncStartTime
+				)
+			})
+		}
+
 		const fetchWithRetry = async () => {
 			try {
 				setIsDelayingCall(true)
 				await new Promise(resolve => setTimeout(resolve, THROTTLE_DELAY))
 				await fetchJobTasks(jobId)
 
-				// retry MAX_RETRIES times with a delay of THROTTLE_DELAY
-				if (retryCountRef.current < MAX_RETRIES) {
+				// Only retry if waiting for new sync and haven't found it yet
+				if (
+					waitForNewSync &&
+					!hasRecentSyncTask() &&
+					retryCountRef.current < MAX_RETRIES
+				) {
 					retryCountRef.current++
 					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
 				} else {
@@ -66,7 +97,8 @@ const JobHistory: React.FC = () => {
 				}
 			} catch (err) {
 				console.error(err)
-				if (retryCountRef.current < MAX_RETRIES) {
+				// Retry on error up to MAX_RETRIES times if waiting for new sync
+				if (waitForNewSync && retryCountRef.current < MAX_RETRIES) {
 					retryCountRef.current++
 					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
 				} else {
@@ -81,7 +113,7 @@ const JobHistory: React.FC = () => {
 			clearTimeout(timeoutId)
 			retryCountRef.current = 0
 		}
-	}, [jobId])
+	}, [jobId, waitForNewSync, syncStartTime, fetchJobs, fetchJobTasks])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 	const handleViewLogs = (filePath: string) => {
