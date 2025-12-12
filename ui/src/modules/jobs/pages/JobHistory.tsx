@@ -79,6 +79,7 @@ const JobHistory: React.FC = () => {
 		}
 
 		const fetchWithRetry = async () => {
+			let shouldRetry = false
 			try {
 				setIsDelayingCall(true)
 				await new Promise(resolve => setTimeout(resolve, THROTTLE_DELAY))
@@ -90,18 +91,20 @@ const JobHistory: React.FC = () => {
 					!hasRecentSyncTask() &&
 					retryCountRef.current < MAX_RETRIES
 				) {
+					shouldRetry = true
 					retryCountRef.current++
 					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
-				} else {
-					setIsDelayingCall(false)
 				}
 			} catch (err) {
 				console.error(err)
 				// Retry on error up to MAX_RETRIES times if waiting for new sync
 				if (waitForNewSync && retryCountRef.current < MAX_RETRIES) {
+					shouldRetry = true
 					retryCountRef.current++
 					timeoutId = setTimeout(fetchWithRetry, THROTTLE_DELAY)
-				} else {
+				}
+			} finally {
+				if (!shouldRetry) {
 					setIsDelayingCall(false)
 				}
 			}
@@ -112,6 +115,7 @@ const JobHistory: React.FC = () => {
 		return () => {
 			clearTimeout(timeoutId)
 			retryCountRef.current = 0
+			setIsDelayingCall(false)
 		}
 	}, [jobId, waitForNewSync, syncStartTime, fetchJobs, fetchJobTasks])
 
