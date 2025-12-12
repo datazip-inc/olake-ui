@@ -69,15 +69,30 @@ func (db *Database) ListJobs() ([]*models.Job, error) {
 
 // GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
 // including related Source and Destination, sorted by latest update time.
+// Only fetches columns needed for JobResponse: id, name, frequency, active,
+// created_at, updated_at, source_id, dest_id, created_by, updated_by.
+// Excludes: streams_config, state (not needed for JobResponse).
 func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
-	// Directly query jobs filtered by project_id — since each job already stores project_id
+	// Use All() with field selection to fetch only specific columns from Job table
+	// Field names must match struct field names (not database column names)
 	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
 		Filter("project_id", projectID).
 		RelatedSel().
 		OrderBy(constants.OrderByUpdatedAtDesc).
-		All(&jobs)
+		All(&jobs,
+			"ID",        // id
+			"Name",      // name
+			"Frequency", // frequency
+			"Active",    // active (maps to activate in response)
+			"CreatedAt", // created_at (from BaseModel)
+			"UpdatedAt", // updated_at (from BaseModel)
+			"SourceID",  // source_id (relation - needed to load Source)
+			"DestID",    // dest_id (relation - needed to load Destination)
+			"CreatedBy", // created_by (relation - needed to load User)
+			"UpdatedBy", // updated_by (relation - needed to load User)
+		)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs project_id[%s]: %s", projectID, err)
 	}
@@ -87,9 +102,14 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 		return []*models.Job{}, nil
 	}
 
-	// Decrypt related Source and Destination configs
-	if err := db.decryptJobSliceConfig(jobs); err != nil {
-		return nil, err
+	// Clear config fields from Source and Destination as they're not needed in JobResponse
+	for _, job := range jobs {
+		if job.SourceID != nil {
+			job.SourceID.Config = ""
+		}
+		if job.DestID != nil {
+			job.DestID.Config = ""
+		}
 	}
 
 	return jobs, nil
