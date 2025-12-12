@@ -620,12 +620,10 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 		return err
 	}
 
-	logsDir, syncFolderName, err := utils.GetAndValidateSyncDir(baseDir)
+	logsDir, _, err := utils.GetAndValidateSyncDir(baseDir)
 	if err != nil {
 		return err
 	}
-
-	syncLogDir := filepath.Join(logsDir, syncFolderName)
 
 	logger.Infof("Starting log archive creation for job_id[%d]", jobID)
 
@@ -636,25 +634,6 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer tarWriter.Close()
 
-	addFilesFromDirToArchive := func(root string) error {
-		return filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-
-			if info.IsDir() {
-				// Only include files directly under root; stop walking into deeper directories.
-				if path != root {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-
-			archivePath := filepath.Join("logs", filepath.Base(path))
-			return utils.AddFileToArchive(tarWriter, path, archivePath)
-		})
-	}
-
 	stateFile := filepath.Join(baseDir, "state.json")
 	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
 		logger.Warnf("failed to add state.json to archive: %s", err)
@@ -662,13 +641,22 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 	}
 
 	logger.Debugf("Adding files from %s to archive", logsDir)
-	if err := addFilesFromDirToArchive(logsDir); err != nil {
-		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
-	}
+	err = filepath.Walk(logsDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
 
-	logger.Debugf("Adding files from %s to archive", syncLogDir)
-	if err := addFilesFromDirToArchive(syncLogDir); err != nil {
-		return fmt.Errorf("failed to add log files to archive: %s", err)
+		// Only include files, skip directories
+		if info.IsDir() {
+			return nil
+		}
+
+		archivePath := filepath.Join("logs", filepath.Base(path))
+		return utils.AddFileToArchive(tarWriter, path, archivePath)
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
 	}
 
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)

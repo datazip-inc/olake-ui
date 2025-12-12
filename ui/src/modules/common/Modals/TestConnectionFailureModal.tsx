@@ -40,19 +40,34 @@ const TestConnectionFailureModal = ({
 	const handleReadMore = () => setIsExpanded(!isExpanded)
 
 	const handleCopyLogs = async () => {
+		const logs = JSON.stringify(
+			fromSources
+				? sourceTestConnectionError?.logs || []
+				: destinationTestConnectionError?.logs || [],
+			null,
+			4,
+		)
+
 		try {
-			await navigator.clipboard.writeText(
-				JSON.stringify(
-					fromSources
-						? sourceTestConnectionError?.logs || []
-						: destinationTestConnectionError?.logs || [],
-					null,
-					4,
-				),
-			)
+			// Try the modern secure API first
+			if (navigator?.clipboard?.writeText) {
+				await navigator.clipboard.writeText(logs)
+			} else {
+				throw new Error("Clipboard API not available")
+			}
+
 			message.success("Logs copied to clipboard!")
-		} catch {
-			message.error("Failed to copy logs")
+		} catch (error) {
+			console.error(`Failed to copy logs ${error} trying fallback method`)
+			// Simple fallback for HTTP deployments
+			const textarea = document.createElement("textarea")
+			textarea.value = logs
+			document.body.appendChild(textarea)
+			textarea.select()
+			document.execCommand("copy")
+			document.body.removeChild(textarea)
+
+			message.success("Logs copied to clipboard!")
 		}
 	}
 

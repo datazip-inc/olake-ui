@@ -442,7 +442,7 @@ func ReadLinesForward(f *os.File, startOffset int64, limit int, fileSize int64) 
 func ReadLogs(mainLogDir string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	// Check if mainLogDir exists
 	if _, err := os.Stat(mainLogDir); os.IsNotExist(err) {
-		return nil, fmt.Errorf("logs directory not found: %s: %w", mainLogDir, err)
+		return nil, fmt.Errorf("logs directory not found: %s: %s", mainLogDir, err)
 	}
 
 	// Resolve and validate logs/sync_* directory
