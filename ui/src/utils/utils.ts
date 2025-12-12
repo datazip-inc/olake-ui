@@ -694,15 +694,7 @@ export const getCursorFieldValues = (
 // Parses a start_time string into a timestamp (ms since epoch); handles ISO and legacy formats; returns null if parsing fails
 export const parseStartTime = (startTimeStr: string): number | null => {
 	try {
-		if (startTimeStr.includes("T") && startTimeStr.includes("Z")) {
-			return new Date(startTimeStr).getTime()
-		} else {
-			// Old format - convert to ISO
-			const normalized = startTimeStr
-				.replace("_", "T")
-				.replace(/-(\d+)-(\d+)$/, ":$1:$2")
-			return new Date(normalized).getTime()
-		}
+		return new Date(startTimeStr).getTime()
 	} catch (error) {
 		console.error("Failed to parse start_time:", startTimeStr, error)
 		return null

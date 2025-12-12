@@ -333,18 +333,18 @@ func ReadLinesBackward(f *os.File, startOffset int64, limit int, fileSize int64)
 
 		offset = readPos
 		if offset == 0 {
-			break
-		}
-	}
 
-	// Process the first line of the file if it's in the tail
-	if offset == 0 && len(tail) > 0 && len(foundLines) < limit {
-		lineContent := string(tail)
-		if isValidLogLine(lineContent) {
-			foundLines = append(foundLines, LineWithPos{
-				content:  lineContent,
-				startPos: 0, // First line starts at position 0
-			})
+			// Process the first line of the file if it's in the tail
+			if len(tail) > 0 && len(foundLines) < limit {
+				lineContent := string(tail)
+				if isValidLogLine(lineContent) {
+					foundLines = append(foundLines, LineWithPos{
+						content:  lineContent,
+						startPos: 0, // First line starts at position 0
+					})
+				}
+			}
+			break
 		}
 	}
 
