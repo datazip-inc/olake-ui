@@ -832,6 +832,7 @@ http://localhost:8080
     job-{id}-logs-{timestamp}.tar.gz
     ├── logs/
     │   ├── olake.log
+    │   ├── worker.log
     │   └── [other log files]
     └── state.json  
     ```
