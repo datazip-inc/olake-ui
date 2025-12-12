@@ -636,31 +636,38 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer tarWriter.Close()
 
+	addFilesFromDirToArchive := func(root string) error {
+		return filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+
+			if info.IsDir() {
+				// Only include files directly under root; stop walking into deeper directories.
+				if path != root {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			archivePath := filepath.Join("logs", filepath.Base(path))
+			return utils.AddFileToArchive(tarWriter, path, archivePath)
+		})
+	}
+
 	stateFile := filepath.Join(baseDir, "state.json")
 	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
 		logger.Warnf("failed to add state.json to archive: %s", err)
 		// Continue anyway - state.json might not exist
 	}
 
+	logger.Debugf("Adding files from %s to archive", logsDir)
+	if err := addFilesFromDirToArchive(logsDir); err != nil {
+		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
+	}
+
 	logger.Debugf("Adding files from %s to archive", syncLogDir)
-
-	err = filepath.Walk(syncLogDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Skip directories, only add files
-		if info.IsDir() {
-			return nil
-		}
-
-		filename := filepath.Base(path)
-		archivePath := filepath.Join("logs", filename)
-
-		return utils.AddFileToArchive(tarWriter, path, archivePath)
-	})
-
-	if err != nil {
+	if err := addFilesFromDirToArchive(syncLogDir); err != nil {
 		return fmt.Errorf("failed to add log files to archive: %s", err)
 	}
 

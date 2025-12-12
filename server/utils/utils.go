@@ -616,12 +616,14 @@ func GetAndValidateSyncDir(baseDir string) (string, string, error) {
 		return "", "", fmt.Errorf("no sync log folders found in: %s", logsDir)
 	}
 
-	syncFolderName := entries[0].Name()
-	if !strings.HasPrefix(syncFolderName, "sync_") {
-		return "", "", fmt.Errorf("invalid sync folder name: %s", syncFolderName)
+	for _, entry := range entries {
+		// get the first directory that starts with "sync_"
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "sync_") {
+			return logsDir, entry.Name(), nil
+		}
 	}
 
-	return logsDir, syncFolderName, nil
+	return "", "", fmt.Errorf("no sync folder found in: %s", logsDir)
 }
 
 // addFileToArchive streams a file into the tar archive
