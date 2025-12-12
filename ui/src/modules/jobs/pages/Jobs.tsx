@@ -45,7 +45,6 @@ const Jobs: React.FC = () => {
 					syncStartTime: Date.now(),
 				},
 			}) // navigate to job history so that user can see the tasks running
-			await fetchJobs()
 		} catch (error) {
 			message.error(error as string)
 			console.error("Error syncing job:", error)
