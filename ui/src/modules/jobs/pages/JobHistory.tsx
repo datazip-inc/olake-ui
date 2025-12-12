@@ -55,7 +55,8 @@ const JobHistory: React.FC = () => {
 		if (!jobs.length) {
 			fetchJobs()
 		}
-
+	}, [])
+	useEffect(() => {
 		if (!jobId) {
 			return
 		}
@@ -115,9 +116,8 @@ const JobHistory: React.FC = () => {
 		return () => {
 			clearTimeout(timeoutId)
 			retryCountRef.current = 0
-			setIsDelayingCall(false)
 		}
-	}, [jobId, waitForNewSync, syncStartTime, fetchJobs, fetchJobTasks])
+	}, [jobId, waitForNewSync, syncStartTime, fetchJobTasks])
 
 	const job = jobs.find(j => j.id === Number(jobId))
 	const handleViewLogs = (filePath: string) => {
