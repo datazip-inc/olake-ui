@@ -401,7 +401,7 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	return tasks, nil
 }
 
-func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
+func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
@@ -412,7 +412,7 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	// Get home directory
 	homeDir := constants.DefaultConfigDir
 	mainSyncDir := filepath.Join(homeDir, syncFolderName)
-	logs, err := utils.ReadLogs(mainSyncDir)
+	logs, err := utils.ReadLogs(mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}

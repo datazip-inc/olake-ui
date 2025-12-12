@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -359,7 +360,7 @@ func (h *Handler) GetJobTasks() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
-// @router /project/:projectid/jobs/:id/logs [get]
+// @router /project/:projectid/jobs/:id/logs [post]
 func (h *Handler) GetTaskLogs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -373,9 +374,13 @@ func (h *Handler) GetTaskLogs() {
 		return
 	}
 
-	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
+	cursor, _ := h.GetInt64("cursor", constants.DefaultLogsCursor)
+	limit, _ := h.GetInt("limit", constants.DefaultLogsLimit)
+	direction := h.GetString("direction", constants.DefaultLogsDirection)
 
-	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
+	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s] cursor[%d] limit[%d] direction[%s]", id, req.FilePath, cursor, limit, direction)
+
+	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath, cursor, limit, direction)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return

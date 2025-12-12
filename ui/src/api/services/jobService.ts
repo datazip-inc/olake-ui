@@ -5,7 +5,9 @@ import {
 	JobBase,
 	JobTask,
 	StreamsDataStructure,
-	TaskLog,
+	TaskLogsDirection,
+	TaskLogsPaginationParams,
+	TaskLogsResponse,
 } from "../../types"
 import { AxiosError } from "axios"
 import { normalizeConnectorType } from "../../utils/utils"
@@ -119,13 +121,26 @@ export const jobService = {
 		jobId: string,
 		taskId: string,
 		filePath: string,
-	): Promise<TaskLog[]> => {
+		params: TaskLogsPaginationParams = {
+			cursor: -1,
+			limit: 1000,
+			direction: TaskLogsDirection.Older,
+		},
+	): Promise<TaskLogsResponse> => {
 		try {
-			const response = await api.post<TaskLog[]>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs`,
+			const { cursor, limit, direction } = params
+			const query = new URLSearchParams({
+				cursor: String(cursor),
+				limit: String(limit),
+				direction,
+			})
+
+			const response = await api.post<TaskLogsResponse>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs?${query.toString()}`,
 				{ file_path: filePath },
-				{ timeout: 0, showNotification: true }, // Disable timeout for this request since it can take longer, no toast for logs
+				{ showNotification: false }, // no toast for logs
 			)
+
 			return response.data
 		} catch (error) {
 			console.error("Error fetching task logs:", error)

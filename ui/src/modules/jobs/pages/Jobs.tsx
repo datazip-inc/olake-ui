@@ -38,8 +38,13 @@ const Jobs: React.FC = () => {
 
 	const handleSyncJob = async (id: string) => {
 		try {
-			navigate(`/jobs/${id}/history`) // navigate to job history so that user can see the tasks running
 			await jobService.syncJob(id)
+			navigate(`/jobs/${id}/history`, {
+				state: {
+					waitForNewSync: true,
+					syncStartTime: Date.now(),
+				},
+			}) // navigate to job history so that user can see the tasks running
 			await fetchJobs()
 		} catch (error) {
 			message.error(error as string)
