@@ -69,7 +69,7 @@ const JobHistory: React.FC = () => {
 			const currentTasks = useAppStore.getState().jobTasks
 			if (!currentTasks?.length) return false
 
-			const recentSyncFound = currentTasks.some(task => {
+			return currentTasks.some(task => {
 				const taskTimestamp = parseDateToTimestamp(task.start_time)
 				const isMatch =
 					task.job_type === JobType.Sync &&
@@ -79,8 +79,6 @@ const JobHistory: React.FC = () => {
 
 				return isMatch
 			})
-
-			return recentSyncFound
 		}
 
 		const fetchWithRetry = async () => {
