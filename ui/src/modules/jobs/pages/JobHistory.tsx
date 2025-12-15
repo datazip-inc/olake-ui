@@ -16,7 +16,7 @@ import {
 	getJobTypeLabel,
 	getStatusClass,
 	getStatusLabel,
-	parseStartTime,
+	parseDateToTimestamp,
 } from "../../../utils/utils"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import { JobType } from "../../../types"
@@ -37,6 +37,7 @@ const JobHistory: React.FC = () => {
 	const retryCountRef = useRef(0)
 	const THROTTLE_DELAY = 500
 	const MAX_RETRIES = 4
+	const TOLERANCE_MS = 2000
 
 	// Get navigation state to check if we should wait for new sync
 	const { waitForNewSync, syncStartTime } =
@@ -68,14 +69,18 @@ const JobHistory: React.FC = () => {
 			const currentTasks = useAppStore.getState().jobTasks
 			if (!currentTasks?.length) return false
 
-			return currentTasks.some(task => {
-				const taskTimestamp = parseStartTime(task.start_time)
-				return (
+			const recentSyncFound = currentTasks.some(task => {
+				const taskTimestamp = parseDateToTimestamp(task.start_time)
+				const isMatch =
 					task.job_type === JobType.Sync &&
 					taskTimestamp !== null &&
-					taskTimestamp >= syncStartTime
-				)
+					// Add 2-second tolerance to account for race conditions
+					Math.abs(taskTimestamp - syncStartTime) <= TOLERANCE_MS
+
+				return isMatch
 			})
+
+			return recentSyncFound
 		}
 
 		const fetchWithRetry = async () => {
