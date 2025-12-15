@@ -1,12 +1,16 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { message, Modal } from "antd"
+import { Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
 import clsx from "clsx"
 
 import { useAppStore } from "../../../store"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
-import { getLogTextColor, getLogLevelClass } from "../../../utils/utils"
+import {
+	getLogTextColor,
+	getLogLevelClass,
+	copyToClipboard,
+} from "../../../utils/utils"
 
 const TestConnectionFailureModal = ({
 	fromSources,
@@ -48,27 +52,7 @@ const TestConnectionFailureModal = ({
 			4,
 		)
 
-		try {
-			// Try the modern secure API first
-			if (navigator?.clipboard?.writeText) {
-				await navigator.clipboard.writeText(logs)
-			} else {
-				throw new Error("Clipboard API not available")
-			}
-
-			message.success("Logs copied to clipboard!")
-		} catch (error) {
-			console.error(`Failed to copy logs ${error} trying fallback method`)
-			// Simple fallback for HTTP deployments
-			const textarea = document.createElement("textarea")
-			textarea.value = logs
-			document.body.appendChild(textarea)
-			textarea.select()
-			document.execCommand("copy")
-			document.body.removeChild(textarea)
-
-			message.success("Logs copied to clipboard!")
-		}
+		await copyToClipboard(logs)
 	}
 
 	return (

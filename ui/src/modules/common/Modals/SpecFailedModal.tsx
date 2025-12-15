@@ -1,8 +1,9 @@
-import { message, Modal } from "antd"
+import { Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
+import { copyToClipboard } from "../../../utils/utils"
 
 const SpecFailedModal = ({
 	fromSource,
@@ -21,32 +22,7 @@ const SpecFailedModal = ({
 	}
 
 	const handleCopyLogs = async () => {
-		const textToCopy = error
-		try {
-			if (navigator?.clipboard?.writeText) {
-				// Modern API (works only on HTTPS / localhost)
-				await navigator.clipboard.writeText(textToCopy)
-			} else {
-				throw new Error("Clipboard API not available")
-			}
-
-			message.success("Logs copied to clipboard!")
-		} catch (err) {
-			console.error(`Failed to copy using Clipboard API:`, err)
-
-			// Fallback for non-HTTPS (your deployed site)
-			const textarea = document.createElement("textarea")
-			textarea.value = textToCopy
-			textarea.style.position = "fixed"
-			textarea.style.opacity = "0"
-			document.body.appendChild(textarea)
-
-			textarea.select()
-			document.execCommand("copy")
-			document.body.removeChild(textarea)
-
-			message.success("Logs copied to clipboard!")
-		}
+		await copyToClipboard(error)
 	}
 
 	const handleClose = () => {
