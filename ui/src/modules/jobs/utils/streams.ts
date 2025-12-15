@@ -12,59 +12,50 @@ import {
 export const getStreamsDataFromGetSourceStreamsResponse = (
 	response: GetSourceStreamsResponse,
 ): StreamsDataStructure => {
-	const hasDefaultStreams =
-		!!response.default_streams &&
-		Object.keys(response.default_streams).length > 0
-
-	// Backward compatibility for older OLake versions without default_streams
-	if (!hasDefaultStreams) {
-		const mergedSelectedStreams: SelectedStreamsByNamespace =
-			response.selected_streams || {}
-
-		response.streams.forEach((stream: StreamData) => {
-			const namespace = stream.stream.namespace || ""
-			if (!mergedSelectedStreams[namespace]) {
-				mergedSelectedStreams[namespace] = []
-			}
-		})
-
-		return {
-			streams: response.streams,
-			selected_streams: mergedSelectedStreams,
-		}
-	}
-
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
+	const streamDefaults = response.stream_defaults
 
-	Object.entries(response.default_streams || {}).forEach(
-		([namespace, defaultNamespaceStreams]) => {
-			const selectedNamespaceStreams =
-				response.selected_streams?.[namespace] || []
+	// Iterate through all streams
+	response.streams.forEach((stream: StreamData) => {
+		const namespace = stream.stream.namespace || ""
+		const streamName = stream.stream.name
 
-			mergedSelectedStreams[namespace] = defaultNamespaceStreams.map(
-				defaultStream => {
-					const matchingSelectedStream = selectedNamespaceStreams.find(
-						s => s.stream_name === defaultStream.stream_name,
-					)
+		// Initialize namespace array if it doesn't exist
+		if (!mergedSelectedStreams[namespace]) {
+			mergedSelectedStreams[namespace] = []
+		}
 
-					// Use selected stream when it exists
-					if (matchingSelectedStream) {
-						return {
-							...defaultStream,
-							...matchingSelectedStream,
-							disabled: false,
-						}
-					}
+		// Check if this stream is in selected_streams
+		const selectedNamespaceStreams =
+			response.selected_streams?.[namespace] || []
+		const matchingSelectedStream = selectedNamespaceStreams.find(
+			s => s.stream_name === streamName,
+		)
 
-					// Otherwise fall back to default
-					return {
-						...defaultStream,
-						disabled: true,
-					}
-				},
-			)
-		},
-	)
+		if (matchingSelectedStream) {
+			// Stream is selected, use the selected stream configuration
+			mergedSelectedStreams[namespace].push({
+				...matchingSelectedStream,
+				disabled: false,
+			})
+		} else {
+			// Stream is not selected, use defaults from stream_defaults
+			// Missing properties in stream_defaults are treated as false/empty
+			// Backward compatibility: fall back to hardcoded defaults if stream_defaults is not present (older olake versions)
+			const defaults = {
+				append_mode: false,
+				normalization: false,
+				partition_regex: "",
+				...streamDefaults,
+			}
+
+			mergedSelectedStreams[namespace].push({
+				...defaults,
+				stream_name: streamName,
+				disabled: true,
+			})
+		}
+	})
 
 	return {
 		streams: response.streams,
