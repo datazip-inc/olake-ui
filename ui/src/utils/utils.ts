@@ -691,14 +691,14 @@ export const getCursorFieldValues = (
 	}
 }
 
-// Parses a start_time string into a timestamp (ms since epoch); handles ISO and legacy formats; returns null if parsing fails
-export const parseStartTime = (startTimeStr: string): number | null => {
-	try {
-		return new Date(startTimeStr).getTime()
-	} catch (error) {
-		console.error("Failed to parse start_time:", startTimeStr, error)
+// Parses a date string into a timestamp (ms since epoch); handles ISO and legacy formats; returns null if parsing fails
+export const parseDateToTimestamp = (timeStr: string): number | null => {
+	if (!timeStr) {
 		return null
 	}
+
+	const timestamp = new Date(timeStr).getTime()
+	return isNaN(timestamp) ? null : timestamp
 }
 
 // Copies text to clipboard with modern API and fallback support
