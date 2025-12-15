@@ -8,11 +8,12 @@ import {
 } from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, Button, Tooltip } from "antd"
+import { Input, Spin, Button, Tooltip, message } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
+	DownloadIcon,
 } from "@phosphor-icons/react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
@@ -24,6 +25,7 @@ import {
 } from "../../../utils/utils"
 import { LOGS_CONFIG } from "../../../utils/constants"
 import { TaskLogEntry } from "../../../types"
+import { jobService } from "../../../api/services/jobService"
 
 const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
 
@@ -102,6 +104,12 @@ const JobLogs: React.FC = () => {
 			fetchJobs()
 		}
 	}, [fetchJobs])
+
+	const handleDownloadLogs = () => {
+		if (!jobId || !filePath) return
+		jobService.downloadTaskLogs(jobId, filePath)
+		message.success("Downloading logs...")
+	}
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),
 	useEffect(() => {
@@ -348,7 +356,16 @@ const JobLogs: React.FC = () => {
 				)}
 			</div>
 
-			<div className="flex justify-end border-t border-gray-200 bg-white p-4">
+			<div className="flex justify-end gap-x-2 border-t border-gray-200 bg-white p-4">
+				<Button
+					type="default"
+					className="font-extralight"
+					onClick={handleDownloadLogs}
+					disabled={!jobId || !filePath}
+				>
+					<DownloadIcon size={16} />
+					Download Logs
+				</Button>
 				<Button
 					type="primary"
 					className="bg-primary font-extralight text-white"

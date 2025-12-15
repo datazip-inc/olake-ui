@@ -220,4 +220,31 @@ export const jobService = {
 			throw error
 		}
 	},
+
+	downloadTaskLogs: async (jobId: string, filePath: string): Promise<void> => {
+		const params = new URLSearchParams({
+			file_path: filePath,
+		})
+
+		const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`
+
+		try {
+			// Pre-flight check to verify endpoint is accessible
+			// Check endpoint with minimal data transfer
+			await api.get(url, {
+				headers: { Range: "bytes=0-0" },
+				responseType: "blob",
+			})
+
+			// if successful, trigger download
+			const link = document.createElement("a")
+			link.href = url
+			link.style.display = "none"
+			document.body.appendChild(link)
+			link.click()
+			document.body.removeChild(link)
+		} catch (error) {
+			throw error
+		}
+	},
 }
