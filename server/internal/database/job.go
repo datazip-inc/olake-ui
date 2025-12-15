@@ -75,24 +75,27 @@ func (db *Database) ListJobs() ([]*models.Job, error) {
 func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
+	var JobListFields = []string{
+		"ID",
+		"Name",
+		"Frequency",
+		"Active",
+		"CreatedAt",
+		"UpdatedAt",
+		"SourceID",
+		"DestID",
+		"CreatedBy",
+		"UpdatedBy",
+	}
+
 	// Use All() with field selection to fetch only specific columns from Job table
 	// Field names must match struct field names (not database column names)
 	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
 		Filter("project_id", projectID).
 		RelatedSel().
 		OrderBy(constants.OrderByUpdatedAtDesc).
-		All(&jobs,
-			"ID",        // id
-			"Name",      // name
-			"Frequency", // frequency
-			"Active",    // active (maps to activate in response)
-			"CreatedAt", // created_at (from BaseModel)
-			"UpdatedAt", // updated_at (from BaseModel)
-			"SourceID",  // source_id (relation - needed to load Source)
-			"DestID",    // dest_id (relation - needed to load Destination)
-			"CreatedBy", // created_by (relation - needed to load User)
-			"UpdatedBy", // updated_by (relation - needed to load User)
-		)
+		All(&jobs, JobListFields...)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs project_id[%s]: %s", projectID, err)
 	}
