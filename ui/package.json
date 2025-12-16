@@ -25,8 +25,8 @@
 		"@rjsf/antd": "^5.24.12",
 		"@rjsf/core": "^5.24.12",
 		"@rjsf/utils": "^5.24.8",
-		"antd": "^5.24.3",
 		"@rjsf/validator-ajv8": "^5.24.12",
+		"antd": "^5.24.3",
 		"axios": "^1.8.2",
 		"clsx": "^2.1.1",
 		"cron-parser": "^5.3.0",
@@ -34,6 +34,7 @@
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
 		"react-router-dom": "^6.20.0",
+		"react-virtuoso": "^4.15.0",
 		"uuid": "^11.1.0",
 		"zustand": "^5.0.3"
 	},
