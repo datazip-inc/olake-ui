@@ -110,6 +110,14 @@ type JobDataItem struct {
 	LastRunState    string `json:"last_run_state,omitempty"`
 }
 
+type TaskLogsResponse struct {
+	Logs         []map[string]interface{} `json:"logs"`
+	OlderCursor  int64                    `json:"older_cursor"`
+	NewerCursor  int64                    `json:"newer_cursor"`
+	HasMoreOlder bool                     `json:"has_more_older"`
+	HasMoreNewer bool                     `json:"has_more_newer"`
+}
+
 type ProjectSettingsResponse struct {
 	ID              int    `json:"id"`
 	ProjectID       string `json:"project_id"`

@@ -7,6 +7,8 @@ import {
 	IngestionMode,
 	SelectedStream,
 	CursorFieldValues,
+	LogEntry,
+	TaskLogEntry,
 } from "../types"
 import {
 	DAYS_MAP,
@@ -308,6 +310,35 @@ export const getLogTextColor = (level: string) => {
 		default:
 			return "text-[#000000"
 	}
+}
+
+export const mapLogEntriesToTaskLogEntries = (
+	logs: LogEntry[],
+): TaskLogEntry[] => {
+	return logs.map(log => {
+		const level = log.level ?? ""
+		const message = log.message ?? ""
+		const timeRaw = log.time ?? ""
+
+		let date = ""
+		let time = ""
+
+		if (timeRaw) {
+			const dateObj = new Date(timeRaw)
+			date = dateObj.toLocaleDateString()
+			time = dateObj.toLocaleTimeString("en-US", {
+				timeZone: "UTC",
+				hour12: false,
+			})
+		}
+
+		return {
+			level,
+			message,
+			time,
+			date,
+		}
+	})
 }
 
 export const getDayNumber = (day: string): number => {
@@ -657,5 +688,64 @@ export const getCursorFieldValues = (
 	return {
 		primary,
 		fallback: fallback || "",
+	}
+}
+
+// Parses a date string into a timestamp (ms since epoch); handles ISO and legacy formats; returns null if parsing fails
+export const parseDateToTimestamp = (timeStr: string): number | null => {
+	if (!timeStr) {
+		return null
+	}
+
+	const timestamp = new Date(timeStr).getTime()
+	return isNaN(timestamp) ? null : timestamp
+}
+
+// Copies text to clipboard with modern API and fallback support
+export async function copyToClipboard(textToCopy: string): Promise<void> {
+	// Check if there's content to copy
+	if (!textToCopy) {
+		message.error("No content provided to copy.")
+		console.error("Attempted to copy empty or null text.")
+		return
+	}
+
+	// Try modern Clipboard API first
+	try {
+		if (navigator?.clipboard?.writeText) {
+			await navigator.clipboard.writeText(textToCopy)
+			message.success("Logs copied to clipboard!")
+			return
+		}
+
+		// Throw to use fallback for HTTP/non-secure contexts
+		throw new Error("Clipboard API not available or permitted")
+	} catch (err) {
+		console.warn(
+			"Clipboard API failed, falling back to document.execCommand:",
+			err,
+		)
+
+		// Fallback: use execCommand with temporary textarea
+		try {
+			const textarea = document.createElement("textarea")
+			textarea.value = textToCopy
+			textarea.setAttribute("readonly", "")
+			textarea.style.position = "fixed"
+			textarea.style.left = "-9999px"
+			document.body.appendChild(textarea)
+			textarea.select()
+			const success = document.execCommand("copy")
+			document.body.removeChild(textarea)
+
+			if (!success) {
+				throw new Error("Fallback copy failed.")
+			}
+
+			message.success("Logs copied to clipboard!")
+		} catch (fallbackErr) {
+			console.error("Failed to copy logs with both methods", fallbackErr)
+			message.error("Failed to copy logs")
+		}
 	}
 }
