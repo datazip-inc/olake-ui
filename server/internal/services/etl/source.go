@@ -10,13 +10,55 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
 // Source-related methods on AppService
 
+// GetSource returns a single source by ID with its associated jobs.
+func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID int) (*dto.SourceDataItem, error) {
+	source, err := s.db.GetSourceByID(sourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source: %s", err)
+	}
+
+	// Get jobs for this source
+	jobs, err := s.db.GetJobsBySourceID([]int{sourceID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs for source: %s", err)
+	}
+
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
+	if err != nil {
+		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s] source_id[%d]: %s", projectID, sourceID, err)
+		lastRunByJobID = map[int]JobLastRunInfo{}
+	}
+
+	// Build job data items
+	jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "source")
+	if err != nil {
+		return nil, fmt.Errorf("failed to build job data items: %s", err)
+	}
+
+	item := &dto.SourceDataItem{
+		ID:        source.ID,
+		Name:      source.Name,
+		Type:      source.Type,
+		Version:   source.Version,
+		Config:    source.Config,
+		CreatedAt: source.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
+		Jobs:      jobItems,
+	}
+	setUsernames(&item.CreatedBy, &item.UpdatedBy, source.CreatedBy, source.UpdatedBy)
+
+	return item, nil
+}
+
 // GetAllSources returns all sources for a project with lightweight job summaries.
-func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataItem, error) {
+func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSources()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
@@ -40,6 +82,13 @@ func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataI
 		}
 	}
 
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, allJobs)
+	if err != nil {
+		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
+		lastRunByJobID = map[int]JobLastRunInfo{}
+	}
+
 	items := make([]dto.SourceDataItem, 0, len(sources))
 	for _, src := range sources {
 		item := dto.SourceDataItem{
@@ -47,14 +96,13 @@ func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataI
 			Name:      src.Name,
 			Type:      src.Type,
 			Version:   src.Version,
-			Config:    src.Config,
 			CreatedAt: src.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: src.UpdatedAt.Format(time.RFC3339),
 		}
 		setUsernames(&item.CreatedBy, &item.UpdatedBy, src.CreatedBy, src.UpdatedBy)
 
 		jobs := jobsBySourceID[src.ID]
-		jobItems, err := buildJobDataItems(jobs, s.temporal, "source")
+		jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "source")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}

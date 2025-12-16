@@ -105,16 +105,6 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 		return []*models.Job{}, nil
 	}
 
-	// Clear config fields from Source and Destination as they're not needed in JobResponse
-	for _, job := range jobs {
-		if job.SourceID != nil {
-			job.SourceID.Config = ""
-		}
-		if job.DestID != nil {
-			job.DestID.Config = ""
-		}
-	}
-
 	return jobs, nil
 }
 

@@ -76,7 +76,7 @@ type SourceDataItem struct {
 	Name      string        `json:"name"`
 	Type      string        `json:"type"`
 	Version   string        `json:"version"`
-	Config    string        `json:"config"`
+	Config    string        `json:"config,omitempty"`
 	CreatedAt string        `json:"created_at"`
 	UpdatedAt string        `json:"updated_at"`
 	CreatedBy string        `json:"created_by"`
@@ -89,7 +89,7 @@ type DestinationDataItem struct {
 	Name      string        `json:"name"`
 	Type      string        `json:"type"`
 	Version   string        `json:"version"`
-	Config    string        `json:"config"`
+	Config    string        `json:"config,omitempty"`
 	CreatedAt string        `json:"created_at"`
 	UpdatedAt string        `json:"updated_at"`
 	CreatedBy string        `json:"created_by"`

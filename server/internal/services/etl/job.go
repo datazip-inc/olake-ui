@@ -32,7 +32,7 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 		return []dto.JobResponse{}, nil
 	}
 
-	lastRunByJobID, err := s.fetchLatestJobRunsByJobIDs(ctx, projectID, jobs)
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
 	if err != nil {
 		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
 		lastRunByJobID = map[int]JobLastRunInfo{}
@@ -56,78 +56,33 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 	return jobResponses, nil
 }
 
-type JobLastRunInfo struct {
-	LastRunTime  string
-	LastRunState string
-	LastRunType  string
-}
-
-const DefaultListWorkflowPageSize = 500
-
-func (s *ETLService) fetchLatestJobRunsByJobIDs(ctx context.Context, projectID string, jobs []*models.Job) (map[int]JobLastRunInfo, error) {
-	if len(jobs) == 0 {
-		return map[int]JobLastRunInfo{}, nil
+func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*dto.JobResponse, error) {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %s", err)
 	}
 
-	jobIDSet := make(map[int]struct{}, len(jobs))
-	for _, job := range jobs {
-		jobIDSet[job.ID] = struct{}{}
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, []*models.Job{job})
+	if err != nil {
+		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
-	// Query latest workflow execution per job ID for this project.
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-' and 'sync-%s-~'", projectID, projectID)
+	logger.Infof("last run by job ID: %v", lastRunByJobID)
 
-	result := make(map[int]JobLastRunInfo, len(jobs))
-	var nextPageToken []byte
-
-	// Paginate through visibility results until we have the latest run for each job (or pages end).
-	for {
-		resp, err := s.temporal.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
-			Query:         query,
-			PageSize:      DefaultListWorkflowPageSize,
-			NextPageToken: nextPageToken,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to list workflows: %s", err)
-		}
-
-		// Walk each execution returned in this page.
-		for _, execution := range resp.Executions {
-			jobID, ok := utils.ExtractJobIDFromWorkflowID(execution.Execution.WorkflowId, projectID)
-			if !ok {
-				continue
-			}
-			// skip if id not found in jobIDSet
-			if _, inSet := jobIDSet[jobID]; !inSet {
-				continue
-			}
-			// skip if already exists
-			if _, exists := result[jobID]; exists {
-				continue
-			}
-
-			// add the latest run for this job
-			opType := syncWorkflowOperationType(execution)
-			result[jobID] = JobLastRunInfo{
-				LastRunTime:  execution.StartTime.AsTime().Format(time.RFC3339),
-				LastRunState: execution.Status.String(),
-				LastRunType:  utils.Ternary(opType == temporal.Sync, "sync", "clear").(string),
-			}
-
-			// break if all jobs are populated.
-			if len(result) == len(jobIDSet) {
-				return result, nil
-			}
-		}
-
-		// break if no more executions are available.
-		if len(resp.NextPageToken) == 0 {
-			break
-		}
-		nextPageToken = resp.NextPageToken
+	// It is valid for a job to have no previous runs; in that case we build the
+	// response without last run information (same behavior as in ListJobs).
+	var lastRun *JobLastRunInfo
+	if lr, ok := lastRunByJobID[job.ID]; ok {
+		lastRun = &lr
 	}
 
-	return result, nil
+	jobResponse, err := s.buildJobResponse(ctx, job, lastRun)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build job response: %s", err)
+	}
+
+	return &jobResponse, nil
 }
 
 func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
@@ -526,7 +481,6 @@ func (s *ETLService) buildJobResponse(_ context.Context, job *models.Job, lastRu
 			ID:      &job.SourceID.ID,
 			Name:    job.SourceID.Name,
 			Type:    job.SourceID.Type,
-			Config:  job.SourceID.Config,
 			Version: job.SourceID.Version,
 		}
 	}
@@ -536,7 +490,6 @@ func (s *ETLService) buildJobResponse(_ context.Context, job *models.Job, lastRu
 			ID:      &job.DestID.ID,
 			Name:    job.DestID.Name,
 			Type:    job.DestID.DestType,
-			Config:  job.DestID.Config,
 			Version: job.DestID.Version,
 		}
 	}
