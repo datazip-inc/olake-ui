@@ -5,6 +5,13 @@ import {
 	StreamData,
 } from "../../../types"
 
+// fallback defaults for streams
+const STREAM_DEFAULTS = {
+	append_mode: false,
+	normalization: false,
+	partition_regex: "",
+}
+
 /**
  * Processes the raw GetSourceStreamsResponse into the
  * StreamsDataStructure expected by the UI.
@@ -41,11 +48,9 @@ export const getStreamsDataFromGetSourceStreamsResponse = (
 		} else {
 			// Stream is not selected, use defaults from stream_defaults
 			// Missing properties in stream_defaults are treated as false/empty
-			// Backward compatibility: fall back to hardcoded defaults if stream_defaults is not present (older olake versions)
+			// Backward compatibility: fall back to hardcoded defaults if STREAM_DEFAULTS is not present (older olake versions)
 			const defaults = {
-				append_mode: false,
-				normalization: false,
-				partition_regex: "",
+				...STREAM_DEFAULTS,
 				...streamDefaults,
 			}
 

@@ -102,17 +102,12 @@ export interface SelectedStreamsByNamespace {
 	[namespace: string]: SelectedStream[]
 }
 
-export interface StreamDefaults {
-	append_mode: boolean
-	normalization: boolean
-	partition_regex: string
-}
-
 export interface GetSourceStreamsResponse {
 	selected_streams: SelectedStreamsByNamespace
-	stream_defaults?: StreamDefaults
+	stream_defaults?: SelectedStream
 	streams: StreamData[]
 }
+
 export interface StreamsDataStructure {
 	selected_streams: SelectedStreamsByNamespace
 	streams: StreamData[]
