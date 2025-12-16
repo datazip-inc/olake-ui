@@ -1,12 +1,16 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { message, Modal } from "antd"
+import { Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
 import clsx from "clsx"
 
 import { useAppStore } from "../../../store"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
-import { getLogTextColor, getLogLevelClass } from "../../../utils/utils"
+import {
+	getLogTextColor,
+	getLogLevelClass,
+	copyToClipboard,
+} from "../../../utils/utils"
 
 const TestConnectionFailureModal = ({
 	fromSources,
@@ -40,21 +44,15 @@ const TestConnectionFailureModal = ({
 	const handleReadMore = () => setIsExpanded(!isExpanded)
 
 	const handleCopyLogs = async () => {
-		try {
-			await navigator.clipboard.writeText(
-				JSON.stringify(
-					fromSources
-						? sourceTestConnectionError?.logs || []
-						: destinationTestConnectionError?.logs || [],
-					null,
-					4,
-				),
-			)
-			message.success("Logs copied to clipboard!")
-		} catch (error) {
-			console.error("Failed to copy logs", error)
-			message.error("Failed to copy logs")
-		}
+		const logs = JSON.stringify(
+			fromSources
+				? sourceTestConnectionError?.logs || []
+				: destinationTestConnectionError?.logs || [],
+			null,
+			4,
+		)
+
+		await copyToClipboard(logs)
 	}
 
 	return (
