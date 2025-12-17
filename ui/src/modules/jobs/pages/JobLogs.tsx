@@ -32,35 +32,29 @@ const JobLogs: React.FC = () => {
 	const { Search } = Input
 
 	const {
-		jobs,
+		selectedJob: job,
 		taskLogs,
 		isLoadingTaskLogs,
 		taskLogsError,
 		fetchTaskLogs,
-		fetchJobs,
+		fetchSelectedJob,
 	} = useAppStore()
 
 	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-
 		if (jobId) {
 			if (isTaskLog && filePath) {
 				fetchTaskLogs(jobId, historyId || "1", filePath)
 			}
 		}
-	}, [
-		jobId,
-		historyId,
-		filePath,
-		isTaskLog,
-		fetchTaskLogs,
-		jobs.length,
-		fetchJobs,
-	])
+	}, [jobId, historyId, filePath, isTaskLog, fetchTaskLogs])
 
-	const job = jobs.find(j => j.id === Number(jobId))
+	useEffect(() => {
+		if (!jobId) {
+			navigate("/jobs")
+			return
+		}
+		fetchSelectedJob(jobId)
+	}, [jobId])
 
 	const filteredLogs = taskLogs.filter(function (log) {
 		if (typeof log !== "object" || log === null) {

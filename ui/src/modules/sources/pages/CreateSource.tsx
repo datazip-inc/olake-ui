@@ -69,6 +69,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			initialName,
 			initialConnector,
 			initialVersion,
+			initialExistingSourceId,
 			onSourceNameChange,
 			onConnectorChange,
 			onFormDataChange,
@@ -80,7 +81,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		ref,
 	) => {
 		const formRef = useRef<any>(null)
-		const [setupType, setSetupType] = useState<SetupType>("new")
+		const [setupType, setSetupType] = useState<SetupType>(
+			initialExistingSourceId ? "existing" : "new",
+		)
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
 		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
@@ -116,6 +119,21 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				fetchSources()
 			}
 		}, [sources.length])
+
+		// Set existingSource when sources are loaded and we have an initialExistingSourceId
+		useEffect(() => {
+			if (
+				initialExistingSourceId &&
+				sources.length > 0 &&
+				setupType === SETUP_TYPES.EXISTING
+			) {
+				// Find source in the filtered list (filtered by connector type)
+				const source = sources.find(s => s.id === initialExistingSourceId)
+				if (source && source.type === connector.toLowerCase()) {
+					setExistingSource(source.name)
+				}
+			}
+		}, [initialExistingSourceId, sources, existingSource, setupType, connector])
 
 		useEffect(() => {
 			if (initialName) {

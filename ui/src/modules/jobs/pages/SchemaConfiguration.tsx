@@ -39,6 +39,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	sourceConnector,
 	sourceVersion,
 	sourceConfig,
+	sourceId,
 	initialStreamsData,
 	fromJobEditFlow = false,
 	jobId = -1,
@@ -165,6 +166,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConfig,
 					jobName,
 					fromJobEditFlow ? jobId : -1,
+					sourceId,
 				)
 
 				const rawApiResponse = response as any

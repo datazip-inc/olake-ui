@@ -45,7 +45,7 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 			lastRun = &lr
 		}
 
-		jobResp, err := s.buildJobResponse(ctx, job, lastRun)
+		jobResp, err := s.buildJobResponse(ctx, job, lastRun, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job response: %s", err)
 		}
@@ -65,10 +65,8 @@ func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, []*models.Job{job})
 	if err != nil {
 		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
-		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+		lastRunByJobID = map[int]JobLastRunInfo{}
 	}
-
-	logger.Infof("last run by job ID: %v", lastRunByJobID)
 
 	// It is valid for a job to have no previous runs; in that case we build the
 	// response without last run information (same behavior as in ListJobs).
@@ -77,7 +75,7 @@ func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*
 		lastRun = &lr
 	}
 
-	jobResponse, err := s.buildJobResponse(ctx, job, lastRun)
+	jobResponse, err := s.buildJobResponse(ctx, job, lastRun, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build job response: %s", err)
 	}
@@ -466,7 +464,7 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 }
 
 // TODO: frontend needs to send source id and destination id
-func (s *ETLService) buildJobResponse(_ context.Context, job *models.Job, lastRun *JobLastRunInfo) (dto.JobResponse, error) {
+func (s *ETLService) buildJobResponse(_ context.Context, job *models.Job, lastRun *JobLastRunInfo, includeConfig bool) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:        job.ID,
 		Name:      job.Name,
@@ -476,12 +474,19 @@ func (s *ETLService) buildJobResponse(_ context.Context, job *models.Job, lastRu
 		Activate:  job.Active,
 	}
 
+	if includeConfig {
+		jobResp.StreamsConfig = job.StreamsConfig
+	}
+
 	if job.SourceID != nil {
 		jobResp.Source = dto.DriverConfig{
 			ID:      &job.SourceID.ID,
 			Name:    job.SourceID.Name,
 			Type:    job.SourceID.Type,
 			Version: job.SourceID.Version,
+		}
+		if includeConfig {
+			jobResp.Source.Config = job.SourceID.Config
 		}
 	}
 
@@ -491,6 +496,9 @@ func (s *ETLService) buildJobResponse(_ context.Context, job *models.Job, lastRu
 			Name:    job.DestID.Name,
 			Type:    job.DestID.DestType,
 			Version: job.DestID.Version,
+		}
+		if includeConfig {
+			jobResp.Destination.Config = job.DestID.Config
 		}
 	}
 

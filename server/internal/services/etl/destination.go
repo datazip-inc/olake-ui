@@ -212,7 +212,22 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 		}
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	// Determine which config to use
+	config := req.Config
+
+	// If DestinationID is provided, fetch config from database
+	if req.DestinationID > 0 {
+		destination, err := s.db.GetDestinationByID(req.DestinationID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get destination config destination_id[%d]: %s", req.DestinationID, err)
+		}
+		config = destination.Config
+		logger.Debugf("Using config from destination_id[%d] for test connection", req.DestinationID)
+	} else if config == "" {
+		return nil, nil, fmt.Errorf("either destination_id or config must be provided")
+	}
+
+	encryptedConfig, err := utils.Encrypt(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}

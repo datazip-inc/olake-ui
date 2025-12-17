@@ -209,7 +209,22 @@ func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTe
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	// Determine which config to use
+	config := req.Config
+
+	// If SourceID is provided, fetch config from database
+	if req.SourceID > 0 {
+		source, err := s.db.GetSourceByID(req.SourceID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get source config source_id[%d]: %s", req.SourceID, err)
+		}
+		config = source.Config
+		logger.Debugf("Using config from source_id[%d] for test connection", req.SourceID)
+	} else if config == "" {
+		return nil, nil, fmt.Errorf("either source_id or config must be provided")
+	}
+
+	encryptedConfig, err := utils.Encrypt(config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
@@ -247,7 +262,22 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 		oldStreams = job.StreamsConfig
 	}
 
-	encryptedConfig, err := utils.Encrypt(req.Config)
+	// Determine which config to use
+	config := req.Config
+
+	// If SourceID is provided, fetch config from database
+	if req.SourceID > 0 {
+		source, err := s.db.GetSourceByID(req.SourceID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get source config source_id[%d]: %s", req.SourceID, err)
+		}
+		config = source.Config
+		logger.Debugf("Using config from source_id[%d] for catalog discovery", req.SourceID)
+	} else if config == "" {
+		return nil, fmt.Errorf("either source_id or config must be provided")
+	}
+
+	encryptedConfig, err := utils.Encrypt(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}

@@ -28,26 +28,29 @@ type CheckUniqueNameRequest struct {
 
 // Test connection requests
 type SourceTestConnectionRequest struct {
-	Type    string `json:"type" validate:"required"`
-	Version string `json:"version" validate:"required"`
-	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
+	Type     string `json:"type" validate:"required"`
+	Version  string `json:"version" validate:"required"`
+	Config   string `json:"config" orm:"type(jsonb)"` // Optional: either Config or SourceID must be provided
+	SourceID int    `json:"id"`                       // Optional: if provided, Config will be fetched from database
 }
 type StreamsRequest struct {
-	Name    string `json:"name" validate:"required"`
-	Type    string `json:"type" validate:"required"`
-	Version string `json:"version" validate:"required"`
-	Config  string `json:"config" orm:"type(jsonb)" validate:"required"`
-	JobID   int    `json:"job_id" validate:"required"`
-	JobName string `json:"job_name" validate:"required"`
+	Name     string `json:"name" validate:"required"`
+	Type     string `json:"type" validate:"required"`
+	Version  string `json:"version" validate:"required"`
+	Config   string `json:"config" orm:"type(jsonb)"` // Optional: either Config or SourceID must be provided
+	JobID    int    `json:"job_id" validate:"required"`
+	JobName  string `json:"job_name" validate:"required"`
+	SourceID int    `json:"source_id"` // Optional: if provided, Config will be fetched from database
 }
 
 // TODO: frontend needs to send only version no need for source version
 type DestinationTestConnectionRequest struct {
 	Type          string `json:"type" validate:"required"`
 	Version       string `json:"version" validate:"required"`
-	Config        string `json:"config" validate:"required"`
+	Config        string `json:"config"` // Optional: either Config or DestinationID must be provided
 	SourceType    string `json:"source_type"`
 	SourceVersion string `json:"source_version"`
+	DestinationID int    `json:"id"` // Optional: if provided, Config will be fetched from database
 }
 
 type CreateSourceRequest struct {

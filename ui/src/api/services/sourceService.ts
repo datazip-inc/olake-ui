@@ -20,10 +20,28 @@ export const sourceService = {
 
 			return response.data.map(item => ({
 				...item,
-				config: JSON.parse(item.config),
+				config: item.config ? JSON.parse(item.config) : {},
 			}))
 		} catch (error) {
 			console.error("Error fetching sources from API:", error)
+			throw error
+		}
+	},
+
+	getSource: async (id: string): Promise<Entity> => {
+		try {
+			const response = await api.get<Entity>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+
+			const source = {
+				...response.data,
+				config: response.data.config ? JSON.parse(response.data.config) : {},
+			}
+
+			return source
+		} catch (error) {
+			console.error("Error fetching source from API:", error)
 			throw error
 		}
 	},
@@ -86,6 +104,7 @@ export const sourceService = {
 					type: source.type.toLowerCase(),
 					version: source.version,
 					config: source.config,
+					...(source.id && { id: source.id }),
 				},
 				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
@@ -158,6 +177,7 @@ export const sourceService = {
 		config: string,
 		job_name: string,
 		job_id?: number,
+		source_id?: number,
 	) => {
 		try {
 			const response = await api.post<Record<string, unknown>>(
@@ -169,6 +189,7 @@ export const sourceService = {
 					job_id: job_id ? job_id : -1,
 					version,
 					config,
+					...(source_id && { source_id }),
 				},
 				{ timeout: 0 },
 			)

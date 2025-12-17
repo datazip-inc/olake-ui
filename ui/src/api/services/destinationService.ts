@@ -21,7 +21,7 @@ export const destinationService = {
 				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			const destinations: Entity[] = response.data.map(item => {
-				const config = JSON.parse(item.config)
+				const config = item.config ? JSON.parse(item.config) : {}
 				return {
 					...item,
 					type: normalizeConnectorType(item.type),
@@ -33,6 +33,27 @@ export const destinationService = {
 			return destinations
 		} catch (error) {
 			console.error("Error fetching sources from API:", error)
+			throw error
+		}
+	},
+
+	getDestination: async (id: string) => {
+		try {
+			const response = await api.get<Entity>(
+				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
+				{ timeout: 0 },
+			)
+			const config = response.data.config
+				? JSON.parse(response.data.config)
+				: {}
+			return {
+				...response.data,
+				type: normalizeConnectorType(response.data.type),
+				config,
+				status: "active" as const,
+			}
+		} catch (error) {
+			console.error("Error fetching destination from API:", error)
 			throw error
 		}
 	},
@@ -92,6 +113,7 @@ export const destinationService = {
 					config: destination.config,
 					source_type: source_type,
 					source_version: source_version,
+					...(destination.id && { id: destination.id }),
 				},
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0, disableErrorNotification: true },

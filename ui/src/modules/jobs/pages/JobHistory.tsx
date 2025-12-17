@@ -32,19 +32,15 @@ const JobHistory: React.FC = () => {
 	const MAX_RETRIES = 2
 
 	const {
-		jobs,
 		jobTasks,
 		isLoadingJobTasks,
 		jobTasksError,
 		fetchJobTasks,
-		fetchJobs,
+		fetchSelectedJob,
+		selectedJob: job,
 	} = useAppStore()
 
 	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-
 		if (!jobId) {
 			return
 		}
@@ -83,7 +79,14 @@ const JobHistory: React.FC = () => {
 		}
 	}, [jobId])
 
-	const job = jobs.find(j => j.id === Number(jobId))
+	useEffect(() => {
+		if (!jobId) {
+			navigate("/jobs")
+			return
+		}
+		fetchSelectedJob(jobId)
+	}, [jobId])
+
 	const handleViewLogs = (filePath: string) => {
 		if (jobId) {
 			navigate(

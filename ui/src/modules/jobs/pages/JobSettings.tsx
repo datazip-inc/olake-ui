@@ -53,24 +53,29 @@ const JobSettings: React.FC = () => {
 	}
 
 	const {
+		selectedJob: job,
 		selectedJobId,
-		jobs,
 		isClearDestinationStatusLoading,
-		fetchJobs,
 		fetchSelectedClearDestinationStatus,
 		selectedClearDestinationRunning,
 		setShowDeleteJobModal,
 		setSelectedJobId,
 		setShowClearDestinationModal,
+		fetchSelectedJob,
 	} = useAppStore()
 
-	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
+	const fetchJobDetails = async () => {
+		if (!jobId) {
+			navigate("/jobs")
+			return
 		}
-	}, [jobs.length])
+		fetchSelectedJob(jobId)
+	}
 
-	const job = jobs.find(j => j.id.toString() === jobId)
+	useEffect(() => {
+		fetchJobDetails()
+	}, [jobId])
+
 	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
 	const [isPauseLoading, setIsPauseLoading] = useState(false)
 
@@ -147,7 +152,7 @@ const JobSettings: React.FC = () => {
 
 		try {
 			await jobService.activateJob(jobId, !checked)
-			await fetchJobs()
+			await fetchJobDetails()
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 			// Revert optimistic update on error
@@ -280,7 +285,7 @@ const JobSettings: React.FC = () => {
 			}
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
-			await fetchJobs()
+			await fetchJobDetails()
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job settings:", error)
