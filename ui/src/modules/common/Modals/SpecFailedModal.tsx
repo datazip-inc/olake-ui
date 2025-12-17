@@ -1,8 +1,9 @@
-import { message, Modal } from "antd"
+import { Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import ErrorIcon from "../../../assets/ErrorIcon.svg"
+import { copyToClipboard } from "../../../utils/utils"
 
 const SpecFailedModal = ({
 	fromSource,
@@ -21,12 +22,7 @@ const SpecFailedModal = ({
 	}
 
 	const handleCopyLogs = async () => {
-		try {
-			await navigator.clipboard.writeText(error)
-			message.success("Logs copied to clipboard!")
-		} catch {
-			message.error("Failed to copy logs")
-		}
+		await copyToClipboard(error)
 	}
 
 	const handleClose = () => {

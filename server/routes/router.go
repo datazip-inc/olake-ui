@@ -90,6 +90,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", h, "get:GetJobTasks")
 	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", h, "get:CancelJobRun")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", h, "post:GetTaskLogs")
+	web.Router("/api/v1/project/:projectid/jobs/:id/logs/download", h, "get:DownloadTaskLogs")
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "post:ClearDestination")
 	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "get:GetClearDestinationStatus")
 	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", h, "post:GetStreamDifference")

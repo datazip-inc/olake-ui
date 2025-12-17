@@ -1,12 +1,21 @@
-import { useEffect, useState } from "react"
+import {
+	useEffect,
+	useState,
+	useRef,
+	useCallback,
+	useMemo,
+	useLayoutEffect,
+} from "react"
 import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, Button, Tooltip } from "antd"
+import { Input, Spin, Button, Tooltip, message } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
+	DownloadIcon,
 } from "@phosphor-icons/react"
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import { useAppStore } from "../../../store"
 import {
@@ -14,12 +23,16 @@ import {
 	getLogLevelClass,
 	getLogTextColor,
 } from "../../../utils/utils"
+import { LOGS_CONFIG } from "../../../utils/constants"
+import { TaskLogEntry } from "../../../types"
+import { jobService } from "../../../api/services/jobService"
+
+const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
 
 const JobLogs: React.FC = () => {
 	const { jobId, historyId } = useParams<{
 		jobId: string
 		historyId: string
-		taskId?: string
 	}>()
 	const [searchParams] = useSearchParams()
 	const filePath = searchParams.get("file")
@@ -28,25 +41,69 @@ const JobLogs: React.FC = () => {
 	const navigate = useNavigate()
 	const [searchText, setSearchText] = useState("")
 	const [showOnlyErrors, setShowOnlyErrors] = useState(false)
-
 	const { Search } = Input
+
+	const [firstItemIndex, setFirstItemIndex] = useState<number>(
+		LOGS_CONFIG.VIRTUAL_LIST_START_INDEX,
+	)
+	const virtuosoRef = useRef<VirtuosoHandle | null>(null)
+
+	const hasPerformedInitialScroll = useRef(false)
+	const isFetchingOlderRef = useRef(false)
+	const previousLogCountRef = useRef(0)
 
 	const {
 		selectedJob: job,
 		taskLogs,
 		isLoadingTaskLogs,
+		isLoadingOlderLogs,
+		isLoadingNewerLogs,
+		taskLogsHasMoreOlder,
+		taskLogsHasMoreNewer,
 		taskLogsError,
-		fetchTaskLogs,
+		fetchInitialTaskLogs,
+		fetchOlderTaskLogs,
+		fetchNewerTaskLogs,
 		fetchSelectedJob,
 	} = useAppStore()
 
-	useEffect(() => {
-		if (jobId) {
-			if (isTaskLog && filePath) {
-				fetchTaskLogs(jobId, historyId || "1", filePath)
+	const filteredLogs = useMemo(() => {
+		const search = searchText.toLowerCase()
+
+		return taskLogs?.filter(log => {
+			if (!log) {
+				return false
 			}
-		}
-	}, [jobId, historyId, filePath, isTaskLog, fetchTaskLogs])
+
+			const lowerMessage = log.message.toLowerCase()
+			const lowerLevel = log.level.toLowerCase()
+
+			const matchesSearch =
+				lowerMessage.includes(search) || lowerLevel.includes(search)
+
+			if (showOnlyErrors) {
+				return (
+					matchesSearch &&
+					(lowerMessage.includes("error") ||
+						lowerLevel.includes("error") ||
+						lowerLevel.includes("fatal"))
+				)
+			}
+
+			return matchesSearch
+		})
+	}, [taskLogs, searchText, showOnlyErrors])
+
+	const isFiltering = useMemo(
+		() => Boolean(searchText.trim().length) || showOnlyErrors,
+		[searchText, showOnlyErrors],
+	)
+
+	const handleDownloadLogs = () => {
+		if (!jobId || !filePath) return
+		jobService.downloadTaskLogs(jobId, filePath)
+		message.success("Downloading logs...")
+	}
 
 	useEffect(() => {
 		if (!jobId) {
@@ -56,48 +113,132 @@ const JobLogs: React.FC = () => {
 		fetchSelectedJob(jobId)
 	}, [jobId])
 
-	const filteredLogs = taskLogs.filter(function (log) {
-		if (typeof log !== "object" || log === null) {
-			return false
+	// Fetch initial batch of task logs (or refetch after filters are cleared),
+	useEffect(() => {
+		if (!jobId || !isTaskLog || !filePath || isFiltering) {
+			return
 		}
 
-		const message = (log as any).message || ""
-		const level = (log as any).level || ""
+		setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX)
+		hasPerformedInitialScroll.current = false
+		isFetchingOlderRef.current = false
+		previousLogCountRef.current = 0
 
-		const searchLowerCase = searchText.toLowerCase()
-		const messageLowerCase = message.toString().toLowerCase()
-		const levelLowerCase = level.toString().toLowerCase()
+		fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+	}, [jobId, isTaskLog, filePath, historyId, isFiltering, fetchInitialTaskLogs])
 
-		const matchesSearch =
-			messageLowerCase.includes(searchLowerCase) ||
-			levelLowerCase.includes(searchLowerCase)
+	// Handle Scroll Position & Index Shifting synchronously to prevent visual jumping
+	useLayoutEffect(() => {
+		const currentCount = filteredLogs?.length || 0
+		const prevCount = previousLogCountRef.current
 
-		if (showOnlyErrors) {
-			return (
-				matchesSearch &&
-				(messageLowerCase.includes("error") ||
-					levelLowerCase.includes("error") ||
-					levelLowerCase.includes("fatal"))
-			)
+		if (currentCount === 0 || prevCount === 0) {
+			previousLogCountRef.current = currentCount
+			return
 		}
 
-		return matchesSearch
-	})
+		const diff = currentCount - prevCount
+
+		// CASE 1: PREPEND (Standard Scroll Up)
+		// We added items to the top. Shift the virtual index backward
+		// to anchor the user's view to the same specific log line.
+		if (diff > 0 && isFetchingOlderRef.current) {
+			setFirstItemIndex(prev => prev - diff)
+			isFetchingOlderRef.current = false
+		}
+		// CASE 2: MEMORY RESET (Limit Reached)
+		// The list shrank because we dropped newer logs to save memory.
+		// Jump to the last item of this new batch.
+		else if (diff < 0 && isFetchingOlderRef.current) {
+			requestAnimationFrame(() => {
+				virtuosoRef.current?.scrollToIndex({
+					index: currentCount - 1,
+				})
+			})
+
+			setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX - currentCount)
+			isFetchingOlderRef.current = false
+		}
+
+		previousLogCountRef.current = currentCount
+	}, [filteredLogs?.length])
+
+	// Initial Scroll to Bottom
+	useEffect(() => {
+		if (
+			!isLoadingTaskLogs &&
+			filteredLogs?.length > 0 &&
+			!hasPerformedInitialScroll.current
+		) {
+			const timeoutId = setTimeout(() => {
+				virtuosoRef.current?.scrollToIndex({
+					index: filteredLogs.length - 1,
+					align: "end",
+				})
+				hasPerformedInitialScroll.current = true
+			}, INITIAL_SCROLL_TIMEOUT)
+
+			return () => {
+				clearTimeout(timeoutId)
+			}
+		}
+	}, [isLoadingTaskLogs, filteredLogs?.length])
+
+	const handleStartReached = useCallback(() => {
+		if (
+			isFiltering ||
+			isLoadingOlderLogs ||
+			!taskLogsHasMoreOlder ||
+			!filteredLogs ||
+			filteredLogs.length === 0
+		)
+			return
+
+		isFetchingOlderRef.current = true
+
+		if (jobId && filePath) {
+			fetchOlderTaskLogs(jobId, historyId || "1", filePath)
+		}
+	}, [
+		isFiltering,
+		isLoadingOlderLogs,
+		taskLogsHasMoreOlder,
+		filteredLogs?.length,
+		jobId,
+		filePath,
+		historyId,
+		fetchOlderTaskLogs,
+	])
+
+	const handleEndReached = useCallback(() => {
+		if (isFiltering || isLoadingNewerLogs || !taskLogsHasMoreNewer) return
+
+		if (jobId && filePath) {
+			fetchNewerTaskLogs(jobId, historyId || "1", filePath)
+		}
+	}, [
+		isFiltering,
+		isLoadingNewerLogs,
+		taskLogsHasMoreNewer,
+		jobId,
+		filePath,
+		historyId,
+		fetchNewerTaskLogs,
+	])
+
+	const handleRefresh = () => {
+		if (isTaskLog && filePath && jobId) {
+			hasPerformedInitialScroll.current = false
+			setFirstItemIndex(LOGS_CONFIG.VIRTUAL_LIST_START_INDEX)
+			fetchInitialTaskLogs(jobId, historyId || "1", filePath)
+		}
+	}
 
 	if (taskLogsError) {
 		return (
 			<div className="p-6">
 				<Button
-					onClick={() => {
-						if (isTaskLog && filePath) {
-							if (jobId) {
-								fetchTaskLogs(jobId, historyId || "1", filePath)
-							}
-						} else {
-							if (jobId && historyId) {
-							}
-						}
-					}}
+					onClick={handleRefresh}
 					className="mt-4"
 				>
 					Retry
@@ -162,11 +303,7 @@ const JobLogs: React.FC = () => {
 					<Tooltip title="Click to refetch the logs">
 						<Button
 							icon={<ArrowsClockwiseIcon size={16} />}
-							onClick={() => {
-								if (isTaskLog && filePath) {
-									fetchTaskLogs(jobId!, historyId || "1", filePath)
-								}
-							}}
+							onClick={handleRefresh}
 							className="flex items-center"
 						></Button>
 					</Tooltip>
@@ -179,100 +316,56 @@ const JobLogs: React.FC = () => {
 					</Button>
 				</div>
 
-				{isLoadingTaskLogs ? (
+				{isLoadingTaskLogs && !taskLogs.length ? (
 					<div className="flex items-center justify-center p-12">
 						<Spin size="large" />
 					</div>
 				) : (
 					<div
 						className={clsx(
-							"overflow-scroll rounded-xl bg-white",
-							filteredLogs.length > 0 && "border",
+							"h-full rounded-xl bg-white",
+							filteredLogs?.length && "border",
 						)}
 					>
-						<table className="min-w-full">
-							<tbody>
-								{filteredLogs.map((log, index) => {
-									// Handle rendering differently based on the log type
-									if (isTaskLog) {
-										// TaskLog structure
-										const taskLog = log as any
-										return (
-											<tr key={index}>
-												<td className="w-32 px-4 py-3 text-sm text-gray-500">
-													{/* Extract date from ISO timestamp if possible */}
-													{taskLog.time
-														? new Date(taskLog.time).toLocaleDateString()
-														: ""}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm text-gray-500">
-													{/* Extract time from ISO timestamp if possible */}
-													{taskLog.time
-														? new Date(taskLog.time).toLocaleTimeString(
-																"en-US",
-																{ timeZone: "UTC", hour12: false },
-															)
-														: ""}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm">
-													<span
-														className={clsx(
-															"rounded-md px-2 py-[5px] text-xs capitalize",
-															getLogLevelClass(taskLog.level),
-														)}
-													>
-														{taskLog.level}
-													</span>
-												</td>
-												<td
-													className={clsx(
-														"px-4 py-3 text-sm",
-														getLogTextColor(taskLog.level),
-													)}
-												>
-													{taskLog.message}
-												</td>
-											</tr>
-										)
-									} else {
-										const jobLog = log as any
-										return (
-											<tr key={index}>
-												<td className="w-32 px-4 py-3 text-sm text-gray-500">
-													{jobLog.date}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm text-gray-500">
-													{jobLog.time}
-												</td>
-												<td className="w-24 px-4 py-3 text-sm">
-													<span
-														className={clsx(
-															"rounded-xl px-2 py-[5px] text-xs capitalize",
-															getLogLevelClass(jobLog.level),
-														)}
-													>
-														{jobLog.level}
-													</span>
-												</td>
-												<td
-													className={clsx(
-														"px-4 py-3 text-sm text-gray-700",
-														getLogTextColor(jobLog.level),
-													)}
-												>
-													{jobLog.message}
-												</td>
-											</tr>
-										)
-									}
-								})}
-							</tbody>
-						</table>
+						{!filteredLogs || filteredLogs.length === 0 ? (
+							<div className="flex h-full items-center justify-center p-4 text-sm text-gray-500">
+								No logs found
+							</div>
+						) : (
+							<Virtuoso<TaskLogEntry>
+								ref={virtuosoRef}
+								data={filteredLogs}
+								startReached={handleStartReached}
+								endReached={handleEndReached}
+								firstItemIndex={firstItemIndex}
+								overscan={LOGS_CONFIG.OVERSCAN}
+								followOutput={false}
+								components={{
+									Header: () =>
+										isLoadingOlderLogs || isLoadingNewerLogs ? (
+											<div className="flex justify-center bg-white/90 p-2 text-xs text-gray-500">
+												<Spin size="small" />
+												<span className="ml-2">Loading logs...</span>
+											</div>
+										) : null,
+								}}
+								itemContent={(_, log) => (log ? <JobLogRow log={log} /> : null)}
+							/>
+						)}
 					</div>
 				)}
 			</div>
 
-			<div className="flex justify-end border-t border-gray-200 bg-white p-4">
+			<div className="flex justify-end gap-x-2 border-t border-gray-200 bg-white p-4">
+				<Button
+					type="default"
+					className="font-extralight"
+					onClick={handleDownloadLogs}
+					disabled={!jobId || !filePath}
+				>
+					<DownloadIcon size={16} />
+					Download Logs
+				</Button>
 				<Button
 					type="primary"
 					className="bg-primary font-extralight text-white"
@@ -285,5 +378,25 @@ const JobLogs: React.FC = () => {
 		</div>
 	)
 }
+
+const JobLogRow: React.FC<{ log: TaskLogEntry }> = ({ log }) => (
+	<div className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100">
+		<div className="px-4 py-3 text-sm text-gray-500">{log.date}</div>
+		<div className="px-4 py-3 text-sm text-gray-500">{log.time}</div>
+		<div className="px-4 py-3 text-sm">
+			<span
+				className={clsx(
+					"rounded-md px-2 py-[5px] text-xs capitalize",
+					getLogLevelClass(log.level),
+				)}
+			>
+				{log.level}
+			</span>
+		</div>
+		<div className={clsx("px-4 py-3 text-sm", getLogTextColor(log.level))}>
+			{log.message}
+		</div>
+	</div>
+)
 
 export default JobLogs
