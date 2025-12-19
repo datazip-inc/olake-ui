@@ -135,7 +135,6 @@ export interface SchemaConfigurationProps {
 	sourceConnector: string
 	sourceVersion: string
 	sourceConfig: string
-	sourceId?: number
 	initialStreamsData?: CombinedStreamsData
 	fromJobEditFlow?: boolean
 	jobId?: number

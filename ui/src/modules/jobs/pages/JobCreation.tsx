@@ -274,7 +274,6 @@ const JobCreation: React.FC = () => {
 			case JOB_CREATION_STEPS.SOURCE: {
 				if (!(await validateSource())) return
 				const sourceData = {
-					...(existingSourceId && { id: existingSourceId }),
 					name: sourceName,
 					type: getConnectorInLowerCase(sourceConnector),
 					version: sourceVersion,
@@ -293,7 +292,6 @@ const JobCreation: React.FC = () => {
 			case JOB_CREATION_STEPS.DESTINATION: {
 				if (!(await validateDestination())) return
 				const destinationData = {
-					...(existingDestinationId && { id: existingDestinationId }),
 					name: destinationName,
 					type: getConnectorInLowerCase(destinationConnector),
 					config:
@@ -512,7 +510,6 @@ const JobCreation: React.FC = () => {
 										? sourceFormData
 										: JSON.stringify(sourceFormData)
 								}
-								sourceId={existingSourceId || undefined}
 								initialStreamsData={
 									selectedStreams &&
 									selectedStreams.selected_streams &&

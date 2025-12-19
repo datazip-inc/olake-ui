@@ -10,7 +10,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -32,8 +31,7 @@ func (s *ETLService) GetDestination(ctx context.Context, projectID string, desti
 	// Batch fetch workflow info for all jobs
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
 	if err != nil {
-		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s] destination_id[%d]: %s", projectID, destinationID, err)
-		lastRunByJobID = map[int]JobLastRunInfo{}
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
 	// Build job data items
@@ -83,8 +81,7 @@ func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]
 	// Batch fetch workflow info for all jobs
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, allJobs)
 	if err != nil {
-		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
-		lastRunByJobID = map[int]JobLastRunInfo{}
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
 	destItems := make([]dto.DestinationDataItem, 0, len(destinations))
@@ -94,6 +91,7 @@ func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]
 			Name:      dest.Name,
 			Type:      dest.DestType,
 			Version:   dest.Version,
+			Config:    dest.Config,
 			CreatedAt: dest.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: dest.UpdatedAt.Format(time.RFC3339),
 		}
@@ -212,22 +210,7 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 		}
 	}
 
-	// Determine which config to use
-	config := req.Config
-
-	// If DestinationID is provided, fetch config from database
-	if req.DestinationID > 0 {
-		destination, err := s.db.GetDestinationByID(req.DestinationID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get destination config destination_id[%d]: %s", req.DestinationID, err)
-		}
-		config = destination.Config
-		logger.Debugf("Using config from destination_id[%d] for test connection", req.DestinationID)
-	} else if config == "" {
-		return nil, nil, fmt.Errorf("either destination_id or config must be provided")
-	}
-
-	encryptedConfig, err := utils.Encrypt(config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}

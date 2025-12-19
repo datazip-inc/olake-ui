@@ -37,8 +37,7 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
 	if err != nil {
-		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
-		lastRunByJobID = map[int]JobLastRunInfo{}
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
 	jobResponses := make([]dto.JobResponse, 0, len(jobs))
@@ -67,8 +66,7 @@ func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*
 
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, []*models.Job{job})
 	if err != nil {
-		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
-		lastRunByJobID = map[int]JobLastRunInfo{}
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
 	// It is valid for a job to have no previous runs; in that case we build the

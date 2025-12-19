@@ -11,6 +11,20 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
+// JobListFields defines the subset of Job fields fetched for list views
+var JobListFields = []string{
+	"ID",
+	"Name",
+	"Frequency",
+	"Active",
+	"CreatedAt",
+	"UpdatedAt",
+	"SourceID",
+	"DestID",
+	"CreatedBy",
+	"UpdatedBy",
+}
+
 // decryptJobConfig decrypts Config fields in related Source and Destination
 func (db *Database) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
@@ -74,19 +88,6 @@ func (db *Database) ListJobs() ([]*models.Job, error) {
 // Excludes: streams_config, state (not needed for JobResponse).
 func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
-
-	var JobListFields = []string{
-		"ID",
-		"Name",
-		"Frequency",
-		"Active",
-		"CreatedAt",
-		"UpdatedAt",
-		"SourceID",
-		"DestID",
-		"CreatedBy",
-		"UpdatedBy",
-	}
 
 	// Use All() with field selection to fetch only specific columns from Job table
 	// Field names must match struct field names (not database column names)

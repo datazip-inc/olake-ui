@@ -10,7 +10,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -32,8 +31,7 @@ func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID i
 	// Batch fetch workflow info for all jobs
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
 	if err != nil {
-		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s] source_id[%d]: %s", projectID, sourceID, err)
-		lastRunByJobID = map[int]JobLastRunInfo{}
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
 	// Build job data items
@@ -85,8 +83,7 @@ func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.S
 	// Batch fetch workflow info for all jobs
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, allJobs)
 	if err != nil {
-		logger.Errorf("failed to fetch latest job runs from temporal project_id[%s]: %s", projectID, err)
-		lastRunByJobID = map[int]JobLastRunInfo{}
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
 	}
 
 	items := make([]dto.SourceDataItem, 0, len(sources))
@@ -96,6 +93,7 @@ func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.S
 			Name:      src.Name,
 			Type:      src.Type,
 			Version:   src.Version,
+			Config:    src.Config,
 			CreatedAt: src.CreatedAt.Format(time.RFC3339),
 			UpdatedAt: src.UpdatedAt.Format(time.RFC3339),
 		}
@@ -209,22 +207,7 @@ func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTe
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
 
-	// Determine which config to use
-	config := req.Config
-
-	// If SourceID is provided, fetch config from database
-	if req.SourceID > 0 {
-		source, err := s.db.GetSourceByID(req.SourceID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get source config source_id[%d]: %s", req.SourceID, err)
-		}
-		config = source.Config
-		logger.Debugf("Using config from source_id[%d] for test connection", req.SourceID)
-	} else if config == "" {
-		return nil, nil, fmt.Errorf("either source_id or config must be provided")
-	}
-
-	encryptedConfig, err := utils.Encrypt(config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encrypt config for test connection: %s", err)
 	}
@@ -263,22 +246,7 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 		oldStreams = job.StreamsConfig
 	}
 
-	// Determine which config to use
-	config := req.Config
-
-	// If SourceID is provided, fetch config from database
-	if req.SourceID > 0 {
-		source, err := s.db.GetSourceByID(req.SourceID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get source config source_id[%d]: %s", req.SourceID, err)
-		}
-		config = source.Config
-		logger.Debugf("Using config from source_id[%d] for catalog discovery", req.SourceID)
-	} else if config == "" {
-		return nil, fmt.Errorf("either source_id or config must be provided")
-	}
-
-	encryptedConfig, err := utils.Encrypt(config)
+	encryptedConfig, err := utils.Encrypt(req.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encrypt config for catalog: %s", err)
 	}

@@ -113,7 +113,6 @@ export const destinationService = {
 					config: destination.config,
 					source_type: source_type,
 					source_version: source_version,
-					...(destination.id && { id: destination.id }),
 				},
 				//timeout is 0 as test connection takes more time as it needs to connect to the destination
 				{ timeout: 0, disableErrorNotification: true },

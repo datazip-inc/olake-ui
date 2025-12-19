@@ -34,7 +34,6 @@ export interface EntityTestRequest {
 	type: string
 	version: string
 	config: string
-	id?: number
 }
 export interface EntityTestResponse {
 	connection_result: {

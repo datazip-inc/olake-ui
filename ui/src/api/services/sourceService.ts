@@ -104,7 +104,6 @@ export const sourceService = {
 					type: source.type.toLowerCase(),
 					version: source.version,
 					config: source.config,
-					...(source.id && { id: source.id }),
 				},
 				{ timeout: 0, disableErrorNotification: true }, // Disable timeout for this request since it can take longer
 			)
@@ -177,7 +176,6 @@ export const sourceService = {
 		config: string,
 		job_name: string,
 		job_id?: number,
-		source_id?: number,
 	) => {
 		try {
 			const response = await api.post<Record<string, unknown>>(
@@ -189,7 +187,6 @@ export const sourceService = {
 					job_id: job_id ? job_id : -1,
 					version,
 					config,
-					...(source_id && { source_id }),
 				},
 				{ timeout: 0 },
 			)
