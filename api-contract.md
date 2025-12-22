@@ -750,7 +750,7 @@ http://localhost:8080
   ```
 
 
-  ###Activate/Inactivate Job
+### Activate/Inactivate Job
 
 - **Endpoint**: `/api/v1/project/:projectid/jobs/:id/activate`
 - **Method**: POST
@@ -776,13 +776,23 @@ http://localhost:8080
   }
   ```
 
+### Fetch Job Task Logs
 
-
-- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/task/:id/logs`
-- **Method**: GET
-- **Description**: Give the Logs of that particular Job
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:jobid/tasks/:taskid/logs`
+- **Method**: POST
+- **Description**: Fetch logs for a specific job task with cursor-based pagination supporting both older and newer directions.
 - **Headers**: `Authorization: Bearer <token>`
+- **Query Params**:
+  - `cursor` _(optional, number)_: byte offset cursor. Use `-1` or omit for tailing from the end of the file.
+  - `limit` _(optional, number)_: number of log entries to return. Defaults to `1000`.
+  - `direction` _(optional, string)_: `"older"` (default) to read towards the start of the file, or `"newer"` to read towards the end.
+- **Request Body**:
 
+  ```json
+  {
+    "file_path": "string"
+  }
+  
 - **Response**:
 
   ```json
@@ -790,10 +800,42 @@ http://localhost:8080
     "success": "boolean",
     "message": "string",
     "data": {
-      "task_logs":"json"
+      "logs": "json",
+      "older_cursor": "number", // byte offset before the first returned line
+      "newer_cursor": "number", // byte offset after the last returned line
+      "has_more_older": "boolean",
+      "has_more_newer": "boolean"
     }
   }
+
   ```
+
+### Download Job Logs
+
+---
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/logs/download`
+- **Method**: GET
+- **Description**: Download all log files and state.json for a specific job task as a compressed tar.gz archive. The archive includes all files from the sync logs directory and the state.json file.
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Parameters**:
+  - `file_path` _(required, string)_: file path of the task
+
+- **Response**:  
+  When requested, the browser will start downloading a file named `job-{id}-logs-{timestamp}.tar.gz`, which is a compressed archive containing all logs and the state file.  
+  - **Content-Type**: `application/gzip`  
+  - **Content-Disposition**: `attachment; filename="job-{id}-logs-{timestamp}.tar.gz"`  
+  - **Cache-Control**: `no-cache`  
+  - **Body**: Binary stream (tar.gz archive)  
+  - **Archive Structure**:
+    ```
+    job-{id}-logs-{timestamp}.tar.gz
+    ├── logs/
+    │   ├── olake.log
+    │   ├── worker.log
+    │   └── [other log files]
+    └── state.json  
+    ```
 
 ### Check Unique Name
 ---
