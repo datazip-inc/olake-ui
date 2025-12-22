@@ -162,6 +162,7 @@ export interface ExtendedStreamConfigurationProps extends StreamConfigurationPro
 		namespace: string,
 		appendMode: boolean,
 	) => void
+	sourceType?: string
 }
 
 export interface GroupedStreamsCollapsibleListProps {
@@ -185,6 +186,8 @@ export interface GroupedStreamsCollapsibleListProps {
 		>
 	>
 	onIngestionModeChange: (ingestionMode: IngestionMode) => void
+	sourceType?: string
+	destinationType?: string
 }
 
 export interface StreamSchemaProps {
