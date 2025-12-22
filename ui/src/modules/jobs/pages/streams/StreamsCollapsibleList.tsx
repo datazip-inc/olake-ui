@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
@@ -11,7 +11,11 @@ import StreamPanel from "./StreamPanel"
 import { useAppStore } from "../../../../store"
 import { IngestionMode } from "../../../../types/commonTypes"
 import IngestionModeChangeModal from "../../../common/Modals/IngestionModeChangeModal"
-import { getIngestionMode } from "../../../../utils/utils"
+import {
+	getIngestionMode,
+	isDestinationIngestionModeSupported,
+	isSourceIngestionModeSupported,
+} from "../../../../utils/utils"
 
 const StreamsCollapsibleList = ({
 	groupedStreams,
@@ -20,6 +24,8 @@ const StreamsCollapsibleList = ({
 	activeStreamData,
 	onStreamSelect,
 	onIngestionModeChange,
+	sourceType,
+	destinationType,
 }: GroupedStreamsCollapsibleListProps) => {
 	const { setShowIngestionModeChangeModal, ingestionMode, setIngestionMode } =
 		useAppStore()
@@ -45,8 +51,10 @@ const StreamsCollapsibleList = ({
 	const prevGroupedStreams = useRef(groupedStreams)
 
 	useEffect(() => {
-		setIngestionMode(getIngestionMode(selectedStreams))
-	}, [selectedStreams])
+		setIngestionMode(
+			getIngestionMode(selectedStreams, sourceType, destinationType),
+		)
+	}, [selectedStreams, sourceType, destinationType])
 
 	// Keep all namespaces expanded by default and automatically open any newly added namespaces.
 	useEffect(() => {
@@ -327,6 +335,18 @@ const StreamsCollapsibleList = ({
 		onStreamSelect(streamName, checked, ns)
 	}
 
+	const isUpsertSupported = useMemo(() => {
+		return sourceType && destinationType
+			? isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)
+			: true
+	}, [sourceType])
+
+	const isAppendSupported = useMemo(() => {
+		return sourceType && destinationType
+			? isSourceIngestionModeSupported(IngestionMode.APPEND, sourceType)
+			: true
+	}, [sourceType])
+
 	return (
 		<>
 			<div className="flex h-full flex-col rounded-[4px] border-gray-200">
@@ -342,53 +362,75 @@ const StreamsCollapsibleList = ({
 								Sync all
 							</Checkbox>
 
-							<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
-								{/* Sliding background */}
-								<div
-									className={clsx(
-										"absolute inset-y-0.5 w-[calc(34%)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out",
-										{
-											"translate-x-0.5": ingestionMode === IngestionMode.UPSERT,
-											"translate-x-[calc(100%+0px)]":
-												ingestionMode === IngestionMode.APPEND,
-											"translate-x-[calc(200%-2px)]":
-												ingestionMode === IngestionMode.CUSTOM,
-										},
-									)}
-								/>
-								<div
-									onClick={() => {
-										if (ingestionMode !== IngestionMode.UPSERT) {
-											setTargetIngestionMode(IngestionMode.UPSERT)
-											setShowIngestionModeChangeModal(true)
-										}
-									}}
-									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`}
-								>
-									All Upsert
+							{isDestinationIngestionModeSupported(
+								IngestionMode.UPSERT,
+								destinationType,
+							) && (
+								<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
+									{/* Sliding background */}
+									<div
+										className={clsx(
+											"absolute inset-y-0.5 w-[calc(34%)] rounded-sm bg-primary-100 shadow-sm transition-transform duration-300 ease-in-out",
+											{
+												"translate-x-0.5":
+													ingestionMode === IngestionMode.UPSERT,
+												"translate-x-[calc(100%+0px)]":
+													ingestionMode === IngestionMode.APPEND,
+												"translate-x-[calc(200%-2px)]":
+													ingestionMode === IngestionMode.CUSTOM,
+											},
+										)}
+									/>
+									<div
+										onClick={() => {
+											if (
+												ingestionMode !== IngestionMode.UPSERT &&
+												isUpsertSupported
+											) {
+												setTargetIngestionMode(IngestionMode.UPSERT)
+												setShowIngestionModeChangeModal(true)
+											}
+										}}
+										className={clsx(
+											`relative z-10 flex items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`,
+											isUpsertSupported
+												? "cursor-pointer"
+												: "cursor-not-allowed opacity-40",
+										)}
+									>
+										All Upsert
+									</div>
+									<div
+										onClick={() => {
+											if (
+												ingestionMode !== IngestionMode.APPEND &&
+												isAppendSupported
+											) {
+												setTargetIngestionMode(IngestionMode.APPEND)
+												setShowIngestionModeChangeModal(true)
+											}
+										}}
+										className={clsx(
+											`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`,
+											isAppendSupported
+												? "cursor-pointer"
+												: "cursor-not-allowed opacity-40",
+										)}
+									>
+										All Append
+									</div>
+									<div
+										className={clsx(
+											"relative z-10 flex items-center justify-center rounded-sm p-1 px-5 text-center transition-colors duration-300",
+											ingestionMode === IngestionMode.CUSTOM
+												? "cursor-default"
+												: "cursor-not-allowed opacity-40",
+										)}
+									>
+										Custom
+									</div>
 								</div>
-								<div
-									onClick={() => {
-										if (ingestionMode !== IngestionMode.APPEND) {
-											setTargetIngestionMode(IngestionMode.APPEND)
-											setShowIngestionModeChangeModal(true)
-										}
-									}}
-									className={`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`}
-								>
-									All Append
-								</div>
-								<div
-									className={clsx(
-										"relative z-10 flex items-center justify-center rounded-sm p-1 px-5 text-center transition-colors duration-300",
-										ingestionMode === IngestionMode.CUSTOM
-											? "cursor-default"
-											: "cursor-not-allowed opacity-40",
-									)}
-								>
-									Custom
-								</div>
-							</div>
+							)}
 						</div>
 						{sortedGroupedNamespaces.map(([ns, streams]) => {
 							return (

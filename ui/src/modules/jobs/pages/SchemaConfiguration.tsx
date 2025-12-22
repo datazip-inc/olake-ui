@@ -165,7 +165,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				)
 
 				const streamsData: StreamsDataStructure =
-					getStreamsDataFromGetSourceStreamsResponse(response)
+					getStreamsDataFromGetSourceStreamsResponse(
+						response,
+						destinationType,
+						sourceConnector,
+					)
 
 				setApiResponse(streamsData)
 				setSelectedStreams(streamsData)
@@ -723,6 +727,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								setSelectedStreams(fullData as StreamsDataStructure)
 							}}
 							onIngestionModeChange={handleAllIngestionModeChange}
+							sourceType={sourceConnector}
+							destinationType={destinationType}
 						/>
 					) : isLoading ? (
 						<div className="flex h-[calc(100vh-250px)] items-center justify-center">
@@ -786,6 +792,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							initialSelectedStreams={apiResponse || undefined}
 							destinationType={destinationType}
 							onIngestionModeChange={handleIngestionModeChange}
+							sourceType={sourceConnector}
 						/>
 					) : null}
 				</div>

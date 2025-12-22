@@ -15,6 +15,8 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATION_LABELS,
 	FILTER_REGEX,
+	SOURCE_SUPPORTED_INGESTION_MODES,
+	DESTINATION_SUPPORTED_INGESTION_MODES,
 } from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
@@ -623,9 +625,22 @@ export const validateStreams = (selections: {
 	)
 }
 
-export const getIngestionMode = (selectedStreams: {
-	[key: string]: SelectedStream[]
-}): IngestionMode => {
+export const getIngestionMode = (
+	selectedStreams: {
+		[key: string]: SelectedStream[]
+	},
+	sourceType?: string,
+	destinationType?: string,
+): IngestionMode => {
+	// Fallback to APPEND if source doesn't support UPSERT
+	if (
+		sourceType &&
+		destinationType &&
+		!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)
+	) {
+		return IngestionMode.APPEND
+	}
+
 	const selectedStreamsObj = getSelectedStreams(selectedStreams)
 	const allSelectedStreams: SelectedStream[] = []
 
@@ -644,6 +659,32 @@ export const getIngestionMode = (selectedStreams: {
 	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
 	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
 	return IngestionMode.CUSTOM
+}
+
+// Checks if the source connector supports a specific ingestion mode
+export const isSourceIngestionModeSupported = (
+	mode: IngestionMode,
+	sourceType?: string,
+): boolean => {
+	if (!sourceType) return false
+
+	const normSourceType = normalizeConnectorType(sourceType).toLowerCase()
+	const sourceModes = SOURCE_SUPPORTED_INGESTION_MODES[normSourceType]
+
+	return sourceModes.includes(mode)
+}
+
+// Checks if the destination connector supports a specific ingestion mode
+export const isDestinationIngestionModeSupported = (
+	mode: IngestionMode,
+	destinationType?: string,
+): boolean => {
+	if (!destinationType) return false
+
+	const normDestType = normalizeConnectorType(destinationType)
+	const destModes = DESTINATION_SUPPORTED_INGESTION_MODES[normDestType]
+
+	return destModes.includes(mode)
 }
 
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
