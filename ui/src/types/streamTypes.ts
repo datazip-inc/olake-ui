@@ -98,35 +98,25 @@ export interface SelectedStream {
 	append_mode?: boolean
 }
 
-export interface StreamsDataStructure {
-	selected_streams: {
-		[namespace: string]: SelectedStream[]
-	}
+export interface SelectedStreamsByNamespace {
+	[namespace: string]: SelectedStream[]
+}
+
+export interface GetSourceStreamsResponse {
+	selected_streams: SelectedStreamsByNamespace
+	stream_defaults?: SelectedStream
 	streams: StreamData[]
 }
 
-export interface CombinedStreamsData {
-	selected_streams: {
-		[namespace: string]: SelectedStream[]
-	}
+export interface StreamsDataStructure {
+	selected_streams: SelectedStreamsByNamespace
 	streams: StreamData[]
 }
 
 export interface SchemaConfigurationProps {
-	selectedStreams:
-		| string[]
-		| {
-				[namespace: string]: SelectedStream[]
-		  }
-		| CombinedStreamsData
+	selectedStreams: string[] | StreamsDataStructure
 	setSelectedStreams: React.Dispatch<
-		React.SetStateAction<
-			| string[]
-			| {
-					[namespace: string]: SelectedStream[]
-			  }
-			| CombinedStreamsData
-		>
+		React.SetStateAction<string[] | StreamsDataStructure>
 	>
 	stepNumber?: number
 	stepTitle?: string
@@ -135,7 +125,7 @@ export interface SchemaConfigurationProps {
 	sourceConnector: string
 	sourceVersion: string
 	sourceConfig: string
-	initialStreamsData?: CombinedStreamsData
+	initialStreamsData?: StreamsDataStructure
 	fromJobEditFlow?: boolean
 	jobId?: number
 	destinationType?: string
@@ -150,7 +140,7 @@ export interface ExtendedStreamConfigurationProps extends StreamConfigurationPro
 	initialPartitionRegex: string
 	initialFullLoadFilter?: string
 	fromJobEditFlow?: boolean
-	initialSelectedStreams?: CombinedStreamsData
+	initialSelectedStreams?: StreamsDataStructure
 	destinationType?: string
 	onNormalizationChange: (
 		streamName: string,
@@ -176,9 +166,7 @@ export interface ExtendedStreamConfigurationProps extends StreamConfigurationPro
 
 export interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
-	selectedStreams: {
-		[namespace: string]: SelectedStream[]
-	}
+	selectedStreams: SelectedStreamsByNamespace
 	setActiveStreamData: (stream: StreamData) => void
 	activeStreamData: StreamData | null
 	onStreamSelect: (
@@ -189,13 +177,9 @@ export interface GroupedStreamsCollapsibleListProps {
 	setSelectedStreams: React.Dispatch<
 		React.SetStateAction<
 			| string[]
+			| SelectedStreamsByNamespace
 			| {
-					[namespace: string]: SelectedStream[]
-			  }
-			| {
-					selected_streams: {
-						[namespace: string]: SelectedStream[]
-					}
+					selected_streams: SelectedStreamsByNamespace
 					streams: StreamData[]
 			  }
 		>

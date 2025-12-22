@@ -28,9 +28,9 @@ import {
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
-	CombinedStreamsData,
 	SyncMode,
 	IngestionMode,
+	StreamsDataStructure,
 } from "../../../../types"
 
 import {
@@ -95,7 +95,7 @@ const StreamConfiguration = ({
 	})
 
 	const [initialJobStreams, setInitialJobStreams] = useState<
-		CombinedStreamsData | undefined
+		StreamsDataStructure | undefined
 	>(undefined)
 
 	// Unique stream key to differentiate a stream with same name and different namespace
