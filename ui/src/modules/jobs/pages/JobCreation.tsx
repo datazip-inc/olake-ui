@@ -1,6 +1,6 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
-import { message } from "antd"
+import { message, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
@@ -334,6 +334,21 @@ const JobCreation: React.FC = () => {
 
 	//TODO: Handle steps properly
 
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			const isMac = navigator.platform.toUpperCase().includes("MAC")
+			const modifierPressed = isMac ? e.metaKey : e.ctrlKey
+
+			if ( modifierPressed && e.key === "Enter" && !( currentStep === JOB_CREATION_STEPS.STREAMS && isStreamsLoading )) {
+				e.preventDefault()
+				handleNext()
+			}
+		}
+
+		window.addEventListener("keydown", handler)
+		return () => window.removeEventListener("keydown", handler)
+	}, [handleNext, currentStep, isStreamsLoading])
+
 	const handleConfirmResetStreams = () => {
 		setSelectedStreams([])
 		setCurrentStep(JOB_CREATION_STEPS.DESTINATION)
@@ -563,13 +578,29 @@ const JobCreation: React.FC = () => {
 							Back
 						</button>
 					)}
-					<button
-						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
-						onClick={handleNext}
+					<Tooltip
+						title={
+							<div className="flex items-center gap-1">
+								<span className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-black shadow-sm">
+									Ctrl
+								</span>
+								<span className="text-xs">+</span>
+								<span className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-black shadow-sm">
+									Enter
+								</span>
+							</div>
+						}
+						placement="top"
 					>
-						{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
-						<ArrowRightIcon className="size-4 text-white" />
-					</button>
+						<button
+							className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
+							onClick={handleNext}
+							aria-keyshortcuts="Control+Enter"
+						>
+							{currentStep === JOB_CREATION_STEPS.STREAMS ? "Create Job" : "Next"}
+							<ArrowRightIcon className="size-4 text-white" />
+						</button>
+					</Tooltip>
 					<TestConnectionModal />
 					<TestConnectionSuccessModal />
 					<EntitySavedModal

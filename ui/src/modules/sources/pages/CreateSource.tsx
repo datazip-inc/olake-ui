@@ -80,6 +80,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		ref,
 	) => {
 		const formRef = useRef<any>(null)
+		const setupTypeRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState<SetupType>("new")
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
@@ -137,6 +138,13 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 				)
 			}
 		}, [connector, setupType, fetchSources])
+
+		useEffect(() => {
+	  		requestAnimationFrame(() => {
+    			setupTypeRef.current?.focus()
+  			})
+		}, [])
+
 
 		const resetVersionState = () => {
 			setVersions([])
@@ -554,6 +562,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 		const renderSetupTypeSelector = () => (
 			<SetupTypeSelector
+				ref={setupTypeRef}
 				value={setupType as SetupType}
 				onChange={handleSetupTypeChange}
 				newLabel="Set up a new source"
