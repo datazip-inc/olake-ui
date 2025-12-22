@@ -6,10 +6,14 @@ export interface DestinationSlice {
 	destinations: Entity[]
 	isLoadingDestinations: boolean
 	destinationsError: string | null
+	destination: Entity | null
+	isLoadingDestination: boolean
+	destinationError: string | null
 	destinationTestConnectionError: TestConnectionError | null
 	setDestinationTestConnectionError: (error: TestConnectionError | null) => void
 
 	fetchDestinations: () => Promise<Entity[]>
+	fetchDestination: (id: string) => Promise<void>
 	addDestination: (destination: EntityBase) => Promise<EntityBase>
 	updateDestination: (
 		id: string,
@@ -22,6 +26,9 @@ export const createDestinationSlice: StateCreator<DestinationSlice> = set => ({
 	destinations: [],
 	isLoadingDestinations: false,
 	destinationsError: null,
+	destination: null,
+	isLoadingDestination: false,
+	destinationError: null,
 	destinationTestConnectionError: null,
 
 	fetchDestinations: async () => {
@@ -37,6 +44,26 @@ export const createDestinationSlice: StateCreator<DestinationSlice> = set => ({
 					error instanceof Error
 						? error.message
 						: "Failed to fetch destinations",
+			})
+			throw error
+		}
+	},
+
+	fetchDestination: async (id: string) => {
+		set({ isLoadingDestination: true, destinationError: null })
+		try {
+			const destination = await destinationService.getDestination(id)
+			set({
+				destination: destination,
+				isLoadingDestination: false,
+			})
+		} catch (error) {
+			set({
+				isLoadingDestination: false,
+				destinationError:
+					error instanceof Error
+						? error.message
+						: "Failed to fetch destination",
 			})
 			throw error
 		}

@@ -52,11 +52,11 @@ type JobResponse struct {
 	Name          string       `json:"name"`
 	Source        DriverConfig `json:"source"`
 	Destination   DriverConfig `json:"destination"`
-	StreamsConfig string       `json:"streams_config"`
 	Frequency     string       `json:"frequency"`
 	LastRunTime   string       `json:"last_run_time,omitempty"`
 	LastRunState  string       `json:"last_run_state,omitempty"`
 	LastRunType   string       `json:"last_run_type,omitempty"` // "sync" | "clear-destination"
+	StreamsConfig string       `json:"streams_config"`
 	CreatedAt     string       `json:"created_at"`
 	UpdatedAt     string       `json:"updated_at"`
 	Activate      bool         `json:"activate"`
@@ -77,7 +77,7 @@ type SourceDataItem struct {
 	Name      string        `json:"name"`
 	Type      string        `json:"type"`
 	Version   string        `json:"version"`
-	Config    string        `json:"config"`
+	Config    string        `json:"config,omitempty"`
 	CreatedAt string        `json:"created_at"`
 	UpdatedAt string        `json:"updated_at"`
 	CreatedBy string        `json:"created_by"`
@@ -90,7 +90,7 @@ type DestinationDataItem struct {
 	Name      string        `json:"name"`
 	Type      string        `json:"type"`
 	Version   string        `json:"version"`
-	Config    string        `json:"config"`
+	Config    string        `json:"config,omitempty"`
 	CreatedAt string        `json:"created_at"`
 	UpdatedAt string        `json:"updated_at"`
 	CreatedBy string        `json:"created_by"`

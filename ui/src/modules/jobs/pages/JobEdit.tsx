@@ -129,12 +129,12 @@ const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
 	const {
-		jobs,
 		selectedJobId,
 		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
 		setShowStreamDifferenceModal,
 		setSelectedJobId,
+		fetchSelectedJob,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -259,18 +259,25 @@ const JobEdit: React.FC = () => {
 	}
 
 	useEffect(() => {
-		// TODO: when user refreshes specifc data should be retained
-		let job = jobs.find(j => j.id.toString() === jobId)
-		if (job) {
-			setJob(job)
-			setSelectedJobId(job.id.toString())
-			initializeFromExistingJob(job)
-		} else if (jobId) {
-			navigate("/jobs")
-		} else {
-			initializeForNewJob()
+		const fetchJobDetails = async () => {
+			if (!jobId) {
+				initializeForNewJob()
+				return
+			}
+
+			try {
+				const job = await fetchSelectedJob(jobId)
+				setJob(job)
+				setSelectedJobId(job.id.toString())
+				initializeFromExistingJob(job)
+			} catch (error) {
+				console.error("Error fetching job:", error)
+				navigate("/jobs")
+			}
 		}
-	}, [jobs, jobId])
+
+		fetchJobDetails()
+	}, [jobId])
 
 	// Process streams configuration into a consistent format
 	const processStreamsConfig = (

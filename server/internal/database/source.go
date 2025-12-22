@@ -48,11 +48,20 @@ func (db *Database) ListSources() ([]*models.Source, error) {
 }
 
 func (db *Database) GetSourceByID(id int) (*models.Source, error) {
-	source := &models.Source{ID: id}
-	err := db.ormer.Read(source)
+	var sources []*models.Source
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Filter("id", id).
+		RelatedSel().
+		All(&sources)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)
 	}
+
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("source not found id[%d]", id)
+	}
+
+	source := sources[0]
 
 	// Decrypt config after reading
 	dConfig, err := utils.Decrypt(source.Config)

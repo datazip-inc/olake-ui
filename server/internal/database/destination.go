@@ -63,11 +63,20 @@ func (db *Database) ListDestinationsByProjectID(projectID string) ([]*models.Des
 }
 
 func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
-	destination := &models.Destination{ID: id}
-	err := db.ormer.Read(destination)
+	var destinations []*models.Destination
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).
+		Filter("id", id).
+		RelatedSel().
+		All(&destinations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get destination id[%d]: %s", id, err)
 	}
+
+	if len(destinations) == 0 {
+		return nil, fmt.Errorf("destination not found id[%d]", id)
+	}
+
+	destination := destinations[0]
 
 	// Decrypt config after reading
 	dConfig, err := utils.Decrypt(destination.Config)
