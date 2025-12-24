@@ -126,6 +126,11 @@ else
     echo "✅ Flexible versioning allowed for development: $VERSION"
 fi
 
+# Validate description and tags are present
+if [[ -z "$DESCRIPTION" ]]; then
+    fail "❌ Description not set. Release description is required."
+fi
+
 # Setup buildx and QEMU
 setup_buildx
 

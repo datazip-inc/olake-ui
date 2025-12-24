@@ -3,53 +3,65 @@ import clsx from "clsx"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import { LayoutProps } from "antd"
 import {
+	ArrowsOutSimpleIcon,
+	BellIcon,
 	CaretLeftIcon,
 	GearSixIcon,
-	InfoIcon,
 	SignOutIcon,
-	XIcon,
 } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
 import OlakeLogo from "../../../assets/OlakeLogo.svg"
 import Olake from "../../../assets/OLake.svg"
+import UpdatesModal from "../Modals/UpdatesModal"
 
 // will be shown in the later period when we have new updates
-const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-	<div className="p-4">
-		<div className="relative rounded-xl border border-gray-300 bg-gray-100 p-3">
-			<button
-				onClick={onClose}
-				className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200"
-			>
-				<XIcon
-					size={12}
-					color="#383838"
-				/>
-			</button>
-			<div className="flex items-center gap-2">
-				<InfoIcon
-					weight="fill"
-					size={17}
-					color="#203FDD"
-				/>
-				<span className="text-sm font-medium text-brand-blue">New Update</span>
+const UpdateNotification: React.FC = () => {
+	const { setShowUpdatesModal } = useAppStore()
+
+	return (
+		<>
+			<div className="p-4">
+				<div className="relative rounded-xl border border-[#efefef] bg-neutral-100 p-3">
+					<button className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200">
+						<ArrowsOutSimpleIcon
+							onClick={() => {
+								setShowUpdatesModal(true)
+							}}
+							size={14}
+							color="#383838"
+						/>
+					</button>
+					<div className="flex w-[90%] flex-col gap-2">
+						<div className="relative w-fit">
+							{/* Red Dot */}
+							<div className="absolute right-0 top-0 h-2 w-2 animate-ping rounded-full bg-red-500"></div>
+							<BellIcon
+								className=""
+								size={17}
+								color="#203FDD"
+							/>
+						</div>
+						<div className="text-xs font-medium text-brand-blue">
+							You have 4 new updates
+						</div>
+						<div className="text-xs font-normal text-[#383838]">
+							Checkout the new fixes & updates
+						</div>
+					</div>
+				</div>
 			</div>
-			<p className="mt-2 text-xs text-gray-900">
-				We have made fixes to our ingestion flow & new UI is implemented
-			</p>
-		</div>
-	</div>
-)
+			<UpdatesModal />
+		</>
+	)
+}
 
 const Sidebar: React.FC<{
 	collapsed: boolean
 	onToggle: () => void
 	onLogout: () => void
-	showUpdate: boolean
-	onCloseUpdate: () => void
-}> = ({ collapsed, onToggle, onLogout, showUpdate, onCloseUpdate }) => {
+}> = ({ collapsed, onToggle, onLogout }) => {
 	return (
 		<div
 			className={clsx(
@@ -103,9 +115,7 @@ const Sidebar: React.FC<{
 				))}
 			</nav>
 
-			{!collapsed && showUpdate && (
-				<UpdateNotification onClose={onCloseUpdate} />
-			)}
+			{!collapsed && <UpdateNotification />}
 			<div className="space-y-2 px-2 py-4">
 				<div className="mt-auto px-4">
 					<button
@@ -158,7 +168,6 @@ const Sidebar: React.FC<{
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const [collapsed, setCollapsed] = useState(false)
-	const [showUpdate, setShowUpdate] = useState(false)
 	const { logout } = useAppStore()
 	const navigate = useNavigate()
 
@@ -173,8 +182,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 				collapsed={collapsed}
 				onToggle={() => setCollapsed(!collapsed)}
 				onLogout={handleLogout}
-				showUpdate={showUpdate}
-				onCloseUpdate={() => setShowUpdate(false)}
 			/>
 			<div className="flex-1 overflow-auto bg-white">{children}</div>
 		</div>
