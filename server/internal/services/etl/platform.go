@@ -20,7 +20,6 @@ func (s *ETLService) GetAllReleasesResponse(
 	ctx context.Context,
 	limit int,
 ) (*dto.ReleasesResponse, error) {
-
 	currentVersion := viper.GetString("APP_VERSION")
 	if currentVersion == "" {
 		currentVersion = "v0.0.0"

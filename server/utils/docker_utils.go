@@ -324,7 +324,6 @@ func GetReleaseDataForType(
 	limit int,
 	onlyNewerVersions bool,
 ) (*dto.ReleaseTypeData, error) {
-
 	// Fetch token once and reuse for all registry API calls
 	token, err := getDockerHubToken(ctx, repo)
 	if err != nil {
@@ -363,7 +362,7 @@ func GetReleaseDataForType(
 	}
 
 	if len(releases) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("no releases found")
 	}
 
 	releaseData := &dto.ReleaseTypeData{
@@ -387,7 +386,6 @@ func fetchDockerHubReleaseMetadata(
 	currentVersion string,
 	token string,
 ) (*dto.ReleaseMetadataResponse, error) {
-
 	configDigest, err := getConfigDigestFromManifest(ctx, repo, tag, token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config digest: %w", err)
@@ -425,7 +423,7 @@ func fetchDockerHubReleaseMetadata(
 // getDockerHubToken fetches an authentication token from Docker Hub for a repository
 func getDockerHubToken(ctx context.Context, repo string) (string, error) {
 	authURL := fmt.Sprintf(dockerHubAuthURLTemplate, repo)
-	req, err := http.NewRequestWithContext(ctx, "GET", authURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", authURL, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("create auth request: %s", err)
 	}
@@ -459,7 +457,7 @@ func getDockerHubToken(ctx context.Context, repo string) (string, error) {
 func getConfigDigestFromManifest(ctx context.Context, repo, tag, token string) (string, error) {
 	// Fetch manifest list
 	manifestListURL := fmt.Sprintf(dockerHubManifestURLTemplate, repo, tag)
-	req, err := http.NewRequestWithContext(ctx, "GET", manifestListURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", manifestListURL, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("create manifest list request: %s", err)
 	}
@@ -494,7 +492,7 @@ func getConfigDigestFromManifest(ctx context.Context, repo, tag, token string) (
 
 	// Fetch platform-specific manifest
 	platformManifestURL := fmt.Sprintf(dockerHubManifestURLTemplate, repo, firstManifestDigest)
-	platformReq, err := http.NewRequestWithContext(ctx, "GET", platformManifestURL, nil)
+	platformReq, err := http.NewRequestWithContext(ctx, "GET", platformManifestURL, http.NoBody)
 	if err != nil {
 		return "", fmt.Errorf("create platform manifest request: %s", err)
 	}
@@ -541,7 +539,7 @@ type configBlobConfig struct {
 func fetchConfigBlob(ctx context.Context, repo, digest, token string) (*configBlob, error) {
 	url := fmt.Sprintf(dockerHubBlobURLTemplate, repo, digest)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %s", err)
 	}

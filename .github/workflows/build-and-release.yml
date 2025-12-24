@@ -30,6 +30,8 @@ on:
           - master
           - staging
           - dev
+          # TODO: Remove this branch before merging
+          - feat/update-ui-popup
       version:
         description: "Version to release"
         required: true
@@ -53,7 +55,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || inputs.environment == 'dev' && 'ci/workerReleaseIssues' || 'develop') }}
+          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || (inputs.environment == 'dev' && 'ci/workerReleaseIssues' || (inputs.environment == 'feat/update-ui-pop' && 'feat/update-ui-pop' || inputs.environment))) }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
