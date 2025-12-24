@@ -401,10 +401,7 @@ func fetchDockerHubReleaseMetadata(
 		return nil, fmt.Errorf("failed to extract description: %s", err)
 	}
 
-	tags := []string{}
-	if releaseType == "olake_ui_worker" && semver.Compare(tag, currentVersion) > 0 {
-		tags = append(tags, "new-release")
-	}
+	tags := extractReleaseTags(configBlob.Config.Labels, releaseType, tag, currentVersion)
 
 	repoName := repo
 	if idx := strings.LastIndex(repo, "/"); idx >= 0 {
@@ -571,7 +568,7 @@ func extractDescription(labels map[string]string) (string, error) {
 		return "No description available", nil
 	}
 
-	desc := labels["org.opencontainers.image.description"]
+	desc := labels["description"]
 	if desc == "" {
 		return "No description available", nil
 	}
@@ -583,4 +580,41 @@ func extractDescription(labels map[string]string) (string, error) {
 	}
 
 	return string(decoded), nil
+}
+
+// extractReleaseTags extracts release tags from image labels and merges with computed tags.
+// Reads comma-separated tags from release-tags label
+// and adds "new-release" tag for olake_ui_worker versions greater than current.
+func extractReleaseTags(labels map[string]string, releaseType, tag, currentVersion string) []string {
+	tags := []string{}
+
+	// Extract tags from Docker label (comma-separated)
+	if labels != nil {
+		if releaseTagsStr := labels["release-tags"]; releaseTagsStr != "" {
+			releaseTags := strings.Split(releaseTagsStr, ",")
+			for _, t := range releaseTags {
+				trimmed := strings.TrimSpace(t)
+				if trimmed != "" {
+					tags = append(tags, trimmed)
+				}
+			}
+		}
+	}
+
+	// Add "new-release" tag for olake_ui_worker versions greater than current
+	if releaseType == "olake_ui_worker" && semver.Compare(tag, currentVersion) > 0 {
+		// Check if "new-release" already exists to avoid duplicates
+		hasNewRelease := false
+		for _, t := range tags {
+			if t == "new-release" {
+				hasNewRelease = true
+				break
+			}
+		}
+		if !hasNewRelease {
+			tags = append(tags, "new-release")
+		}
+	}
+
+	return tags
 }

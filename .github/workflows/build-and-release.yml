@@ -37,6 +37,15 @@ on:
         required: true
         default: "v0.0.0.dev"
         type: string
+      description:
+        description: "Release Description (Markdown supported)"
+        required: true
+        default: ""
+        type: string
+      release_tags:
+        description: "Release Tags (comma separated, e.g. new-release,feature)"
+        default: ""
+        type: string
 
 jobs:
   build_and_publish_frontend:
@@ -50,6 +59,8 @@ jobs:
       DOCKER_REPO_WORKER: ${{ secrets.DOCKER_REPO_WORKER || 'olakego' }}
       ENVIRONMENT: ${{ inputs.environment }}
       VERSION: ${{ inputs.version }}
+      DESCRIPTION: ${{ inputs.description }}
+      RELEASE_TAGS: ${{ inputs.release_tags }}
 
     steps:
       - name: Checkout code
