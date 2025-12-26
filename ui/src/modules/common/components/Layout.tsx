@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import clsx from "clsx"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import { LayoutProps } from "antd"
@@ -12,31 +12,52 @@ import {
 
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
+import {
+	hasFetchedReleasesThisSession,
+	markReleasesFetchedThisSession,
+} from "../../../utils/sessionUtils"
+import { ReleaseType } from "../../../types/platformTypes"
 import OlakeLogo from "../../../assets/OlakeLogo.svg"
 import Olake from "../../../assets/OLake.svg"
 import UpdatesModal from "../Modals/UpdatesModal"
 
 // will be shown in the later period when we have new updates
 const UpdateNotification: React.FC = () => {
-	const { setShowUpdatesModal } = useAppStore()
+	const { setShowUpdatesModal, releases, isLoadingReleases } = useAppStore()
+
+	// Count new releases from olake_ui_worker that have "new-release" tag
+	const newUpdatesCount =
+		releases?.[ReleaseType.OLAKE_UI_WORKER]?.releases.filter(release =>
+			release.tags.includes("New Release"),
+		).length || 0
+
+	const hasNewUpdates = newUpdatesCount > 0
+
+	if (isLoadingReleases) {
+		return null
+	}
 
 	return (
 		<>
 			<div className="p-4">
 				<div className="relative rounded-xl border border-[#efefef] bg-neutral-100 p-3">
 					<button className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200">
-						<ArrowsOutSimpleIcon
-							onClick={() => {
-								setShowUpdatesModal(true)
-							}}
-							size={14}
-							color="#383838"
-						/>
+						{hasNewUpdates && (
+							<ArrowsOutSimpleIcon
+								onClick={() => {
+									setShowUpdatesModal(true)
+								}}
+								size={14}
+								color="#383838"
+							/>
+						)}
 					</button>
 					<div className="flex w-[90%] flex-col gap-2">
 						<div className="relative w-fit">
-							{/* Red Dot */}
-							<div className="absolute right-0 top-0 h-2 w-2 animate-ping rounded-full bg-red-500"></div>
+							{/* Red Dot - only show if there are new updates */}
+							{hasNewUpdates && (
+								<div className="absolute right-0 top-0 h-2 w-2 animate-ping rounded-full bg-red-500"></div>
+							)}
 							<BellIcon
 								className=""
 								size={17}
@@ -44,10 +65,19 @@ const UpdateNotification: React.FC = () => {
 							/>
 						</div>
 						<div className="text-xs font-medium text-brand-blue">
-							You have 4 new updates
+							{hasNewUpdates ? (
+								<>
+									You have {newUpdatesCount} new update
+									{newUpdatesCount !== 1 ? "s" : ""}
+								</>
+							) : (
+								"You're all up to date!"
+							)}
 						</div>
 						<div className="text-xs font-normal text-[#383838]">
-							Checkout the new fixes & updates
+							{hasNewUpdates
+								? "Checkout the new fixes & updates"
+								: "No new updates available at this time"}
 						</div>
 					</div>
 				</div>
@@ -168,8 +198,20 @@ const Sidebar: React.FC<{
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const [collapsed, setCollapsed] = useState(false)
-	const { logout } = useAppStore()
+	const { logout, fetchReleases, releases } = useAppStore()
 	const navigate = useNavigate()
+
+	// Fetch releases once per session, or if store is empty (e.g., after page reload)
+	useEffect(() => {
+		const hasFetchedThisSession = hasFetchedReleasesThisSession()
+		const hasReleasesInStore = releases !== null
+
+		if (!hasFetchedThisSession || !hasReleasesInStore) {
+			fetchReleases().then(() => {
+				markReleasesFetchedThisSession()
+			})
+		}
+	}, [fetchReleases, releases])
 
 	const handleLogout = () => {
 		logout()

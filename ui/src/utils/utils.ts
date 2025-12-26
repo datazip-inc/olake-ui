@@ -10,6 +10,7 @@ import {
 	LogEntry,
 	TaskLogEntry,
 } from "../types"
+import { ReleasesResponse, ReleaseType } from "../types/platformTypes"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -747,5 +748,69 @@ export async function copyToClipboard(textToCopy: string): Promise<void> {
 			console.error("Failed to copy logs with both methods", fallbackErr)
 			message.error("Failed to copy logs")
 		}
+	}
+}
+
+// Format date from ISO string to readable format
+const formatReleaseDate = (dateString: string): string => {
+	try {
+		const date = new Date(dateString)
+		const options: Intl.DateTimeFormatOptions = {
+			day: "numeric",
+			month: "short",
+			year: "numeric",
+		}
+		return `Released on ${date.toLocaleDateString("en-US", options)}`
+	} catch {
+		return dateString
+	}
+}
+
+// Processes release data for UI consumption (formats dates and tags)
+export const processReleasesData = (
+	releases: ReleasesResponse | null,
+): ReleasesResponse | null => {
+	if (!releases) {
+		return null
+	}
+
+	const formatReleaseData = (releaseTypeData?: {
+		current_version?: string
+		releases: Array<{
+			version: string
+			description: string
+			tags: string[]
+			date: string
+			link: string
+		}>
+	}) => {
+		if (!releaseTypeData) {
+			return undefined
+		}
+		return {
+			...releaseTypeData,
+			releases: releaseTypeData.releases.map(release => ({
+				...release,
+				date: formatReleaseDate(release.date),
+				tags: release.tags.map(tag =>
+					tag
+						.replace(/-/g, " ")
+						.split(" ")
+						.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+						.join(" "),
+				),
+			})),
+		}
+	}
+
+	return {
+		[ReleaseType.OLAKE_UI_WORKER]: formatReleaseData(
+			releases[ReleaseType.OLAKE_UI_WORKER],
+		),
+		[ReleaseType.OLAKE_HELM]: formatReleaseData(
+			releases[ReleaseType.OLAKE_HELM],
+		),
+		[ReleaseType.OLAKE]: formatReleaseData(releases[ReleaseType.OLAKE]),
+		[ReleaseType.FEATURES]: formatReleaseData(releases[ReleaseType.FEATURES]),
 	}
 }
