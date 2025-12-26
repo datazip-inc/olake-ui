@@ -26,7 +26,14 @@ type ExecutionRequest struct {
 	Timeout       time.Duration `json:"timeout"`
 	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 
-	TempPath string `json:"temp_path"`
+	Options ExecutionOptions `json:"options,omitempty"`
+}
+
+// ExecutionOptions are optional parameters for the execution request
+// used to customize the execution behavior
+type ExecutionOptions struct {
+	TempPath      string `json:"temp_path,omitempty"`
+	UseEmptyState bool   `json:"use_empty_state,omitempty"`
 }
 
 type JobConfig struct {

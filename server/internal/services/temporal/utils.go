@@ -69,7 +69,9 @@ func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsCo
 		JobID:         job.ID,
 		Timeout:       GetWorkflowTimeout(ClearDestination),
 		OutputFile:    "state.json",
-		TempPath:      relativePath,
+		Options: ExecutionOptions{
+			TempPath: relativePath,
+		},
 	}, nil
 }
 
