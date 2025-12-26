@@ -44,9 +44,6 @@ func Init(h *handlers.Handler) {
 		web.Router("/*", h, "get:ServeFrontend") // any other frontend route
 	}
 
-	// System routes (public, no auth required)
-	web.Router("/api/v1/platform/releases", h, "get:GetReleaseUpdates")
-
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
@@ -101,6 +98,9 @@ func Init(h *handlers.Handler) {
 
 	// validation routes
 	web.Router("/api/v1/project/:projectid/check-unique", h, "post:CheckUniqueName")
+
+	// platform routes
+	web.Router("/api/v1/platform/releases", h, "get:GetReleaseUpdates")
 
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")

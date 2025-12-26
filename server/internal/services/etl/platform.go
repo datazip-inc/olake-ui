@@ -37,7 +37,6 @@ func (s *ETLService) GetAllReleasesResponse(
 	ctx context.Context,
 	limit int,
 ) (*dto.ReleasesResponse, error) {
-
 	resp := &dto.ReleasesResponse{}
 	currentVersion := constants.AppVersion
 
@@ -47,7 +46,6 @@ func (s *ETLService) GetAllReleasesResponse(
 	)
 
 	for _, src := range releaseSources {
-
 		rawReleases, err := utils.FetchGitHubReleases(ctx, src.Repo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch github releases for %s: %s", src.Type, err)
@@ -65,7 +63,8 @@ func (s *ETLService) GetAllReleasesResponse(
 				continue
 			}
 
-			var tags []string
+			tags := []string{}
+			// add new-release tag if the release is newer than the current version
 			if src.OnlyNewer && cmp > 0 {
 				tags = append(tags, "new-release")
 			}

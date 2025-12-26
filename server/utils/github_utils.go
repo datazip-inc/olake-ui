@@ -37,7 +37,6 @@ func FetchGitHubReleases(
 	ctx context.Context,
 	repo string,
 ) ([]GitHubRelease, error) {
-
 	url := fmt.Sprintf(githubReleasesURLTemplate, repo)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
@@ -64,7 +63,7 @@ func FetchGitHubReleases(
 }
 
 // NormalizeVersion converts GitHub tag names into semver-compatible versions.
-func NormalizeVersion(releaseType string, tag string) string {
+func NormalizeVersion(releaseType, tag string) string {
 	switch releaseType {
 	// olake-helm has tag format like olake-X.X.X
 	case "olake_helm":
@@ -87,7 +86,6 @@ func BuildReleaseMetadata(
 	releaseType string,
 	limit int,
 ) []*ReleaseMetadata {
-
 	out := make([]*ReleaseMetadata, 0)
 
 	for _, r := range releases {
@@ -122,7 +120,6 @@ func BuildReleaseMetadata(
 
 // MergeReleaseDescriptions merges secondary release notes into primary by version.
 func MergeReleaseDescriptions(primary *dto.ReleaseTypeData, primaryTitle string, secondary *dto.ReleaseTypeData, secondaryTitle string) *dto.ReleaseTypeData {
-
 	if primary == nil || secondary == nil {
 		return primary
 	}

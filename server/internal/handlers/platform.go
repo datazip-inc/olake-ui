@@ -9,7 +9,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// GetReleaseMetadata fetches release metadata for all release types
 // @router /api/v1/platform/releases [get]
 func (h *Handler) GetReleaseUpdates() {
 	limitStr := h.Ctx.Input.Query("limit")
