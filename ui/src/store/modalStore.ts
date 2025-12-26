@@ -20,6 +20,7 @@ export interface ModalSlice {
 	showIngestionModeChangeModal: boolean
 	ingestionMode: IngestionMode
 	showSpecFailedModal: boolean
+	showUpdatesModal: boolean
 	setShowTestingModal: (show: boolean) => void
 	setShowSuccessModal: (show: boolean) => void
 	setShowFailureModal: (show: boolean) => void
@@ -38,6 +39,7 @@ export interface ModalSlice {
 	setShowIngestionModeChangeModal: (show: boolean) => void
 	setIngestionMode: (mode: IngestionMode) => void
 	setShowSpecFailedModal: (show: boolean) => void
+	setShowUpdatesModal: (show: boolean) => void
 }
 
 export const createModalSlice: StateCreator<ModalSlice> = set => ({
@@ -59,6 +61,7 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 	showIngestionModeChangeModal: false,
 	ingestionMode: IngestionMode.UPSERT,
 	showSpecFailedModal: false,
+	showUpdatesModal: false,
 	setShowTestingModal: show => set({ showTestingModal: show }),
 	setShowSuccessModal: show => set({ showSuccessModal: show }),
 	setShowFailureModal: show => set({ showFailureModal: show }),
@@ -82,4 +85,5 @@ export const createModalSlice: StateCreator<ModalSlice> = set => ({
 		set({ showIngestionModeChangeModal: show }),
 	setIngestionMode: mode => set({ ingestionMode: mode }),
 	setShowSpecFailedModal: show => set({ showSpecFailedModal: show }),
+	setShowUpdatesModal: show => set({ showUpdatesModal: show }),
 })

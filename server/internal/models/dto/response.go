@@ -123,3 +123,25 @@ type ProjectSettingsResponse struct {
 	ProjectID       string `json:"project_id"`
 	WebhookAlertURL string `json:"webhook_alert_url"`
 }
+
+// ReleaseMetadataResponse represents a single release
+type ReleaseMetadataResponse struct {
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
+	Date        string   `json:"date"`
+	Link        string   `json:"link"`
+}
+
+// ReleaseTypeData represents releases for a specific type
+type ReleaseTypeData struct {
+	CurrentVersion string                     `json:"current_version,omitempty"`
+	Releases       []*ReleaseMetadataResponse `json:"releases"`
+}
+
+// AllReleasesResponse represents the complete response
+type ReleasesResponse struct {
+	OlakeUIWorker *ReleaseTypeData `json:"olake_ui_worker"`
+	OlakeHelm     *ReleaseTypeData `json:"olake_helm"`
+	Olake         *ReleaseTypeData `json:"olake"`
+}
