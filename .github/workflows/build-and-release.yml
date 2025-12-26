@@ -5,10 +5,12 @@ on:
       environment:
         description: "Environment to build (master, staging, dev)"
         required: true
+        default: ""
         type: string
       version:
         description: "Version to release"
         required: true
+        default: ""
         type: string
   workflow_dispatch:
     inputs:
@@ -21,8 +23,6 @@ on:
           - master
           - staging
           - dev
-          # TODO: Remove this branch before merging
-          - feat/update-ui-popup
       version:
         description: "Version to release"
         required: true
@@ -46,7 +46,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || (inputs.environment == 'dev' && 'ci/workerReleaseIssues' || (inputs.environment == 'feat/update-ui-pop' && 'feat/update-ui-pop' || inputs.environment))) }}
+          ref: ${{ inputs.environment == 'master' && 'master' || (inputs.environment == 'staging' && 'staging' || inputs.environment == 'dev' && 'ci/workerReleaseIssues' || 'develop') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
