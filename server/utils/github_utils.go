@@ -1,0 +1,155 @@
+package utils
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"golang.org/x/mod/semver"
+)
+
+const githubReleasesURLTemplate = "https://api.github.com/repos/datazip-inc/%s/releases?per_page=100"
+
+type GitHubRelease struct {
+	TagName     string    `json:"tag_name"`
+	Name        string    `json:"name"`
+	Body        string    `json:"body"`
+	PublishedAt time.Time `json:"published_at"`
+	HTMLURL     string    `json:"html_url"`
+	Prerelease  bool      `json:"prerelease"`
+	Draft       bool      `json:"draft"`
+}
+
+type ReleaseMetadata struct {
+	Version     string
+	Description string
+	Date        string
+	Link        string
+}
+
+// FetchGitHubReleases fetches raw releases from GitHub Releases API
+func FetchGitHubReleases(
+	ctx context.Context,
+	repo string,
+) ([]GitHubRelease, error) {
+
+	url := fmt.Sprintf(githubReleasesURLTemplate, repo)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("github api returned status %d", resp.StatusCode)
+	}
+
+	var releases []GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, err
+	}
+
+	return releases, nil
+}
+
+// NormalizeVersion converts GitHub tag names into semver-compatible versions.
+func NormalizeVersion(releaseType string, tag string) string {
+	switch releaseType {
+	// olake-helm has tag format like olake-X.X.X
+	case "olake_helm":
+		if !strings.HasPrefix(tag, "olake-") {
+			return ""
+		}
+		return "v" + strings.TrimPrefix(tag, "olake-")
+
+	default:
+		if !strings.HasPrefix(tag, "v") {
+			return ""
+		}
+		return tag
+	}
+}
+
+// BuildReleaseMetadata converts GitHub releases into normalized, sorted release metadata
+func BuildReleaseMetadata(
+	releases []GitHubRelease,
+	releaseType string,
+	limit int,
+) []*ReleaseMetadata {
+
+	out := make([]*ReleaseMetadata, 0)
+
+	for _, r := range releases {
+		if r.Draft || r.Prerelease {
+			continue
+		}
+
+		version := NormalizeVersion(releaseType, r.TagName)
+		if version == "" {
+			continue
+		}
+
+		out = append(out, &ReleaseMetadata{
+			Version:     version,
+			Description: r.Body,
+			Date:        r.PublishedAt.Format(time.RFC3339),
+			Link:        r.HTMLURL,
+		})
+	}
+
+	// Sort by version (descending)
+	sort.Slice(out, func(i, j int) bool {
+		return semver.Compare(out[i].Version, out[j].Version) > 0
+	})
+
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+
+	return out
+}
+
+// MergeReleaseDescriptions merges secondary release notes into primary by version.
+func MergeReleaseDescriptions(primary *dto.ReleaseTypeData, primaryTitle string, secondary *dto.ReleaseTypeData, secondaryTitle string) *dto.ReleaseTypeData {
+
+	if primary == nil || secondary == nil {
+		return primary
+	}
+
+	secondaryByVersion := make(map[string]*dto.ReleaseMetadataResponse)
+	for _, r := range secondary.Releases {
+		secondaryByVersion[r.Version] = r
+	}
+
+	for _, p := range primary.Releases {
+		s, ok := secondaryByVersion[p.Version]
+		if !ok {
+			continue
+		}
+
+		if strings.TrimSpace(s.Description) == "" {
+			continue
+		}
+
+		p.Description = fmt.Sprintf(
+			"## %s\n%s\n\n## %s\n%s",
+			primaryTitle,
+			strings.TrimSpace(p.Description),
+			secondaryTitle,
+			strings.TrimSpace(s.Description),
+		)
+	}
+
+	return primary
+}

@@ -2,54 +2,104 @@ package services
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/spf13/viper"
+	"golang.org/x/mod/semver"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-var dockerRepos = map[string]string{
-	"olake_ui_worker": "olakego/ui", // UI + worker
-	"olake_helm":      "olakego/olake-helm",
-	"olake":           "olakego/olake",
-	"worker":          "olakego/worker",
+type ReleaseType string
+
+const (
+	ReleaseOlakeUI   ReleaseType = "olake_ui"
+	ReleaseWorker    ReleaseType = "worker"
+	ReleaseOlakeHelm ReleaseType = "olake_helm"
+	ReleaseOlake     ReleaseType = "olake"
+)
+
+type GithubReleaseSource struct {
+	Type      ReleaseType
+	Repo      string
+	OnlyNewer bool
+}
+
+var releaseSources = []GithubReleaseSource{
+	{Type: ReleaseOlakeUI, Repo: "olake-ui", OnlyNewer: true},
+	{Type: ReleaseWorker, Repo: "olake-helm", OnlyNewer: true},
+	{Type: ReleaseOlakeHelm, Repo: "olake-helm"},
+	{Type: ReleaseOlake, Repo: "olake"},
 }
 
 func (s *ETLService) GetAllReleasesResponse(
 	ctx context.Context,
 	limit int,
 ) (*dto.ReleasesResponse, error) {
-	currentVersion := viper.GetString("APP_VERSION")
-	if currentVersion == "" {
-		currentVersion = "v0.0.0"
-	}
 
 	resp := &dto.ReleasesResponse{}
+	currentVersion := constants.AppVersion
 
-	for releaseType, repo := range dockerRepos {
-		// Skip "worker" as it's not part of the response structure
-		if releaseType == "worker" {
-			continue
+	var (
+		uiData     *dto.ReleaseTypeData
+		workerData *dto.ReleaseTypeData
+	)
+
+	for _, src := range releaseSources {
+
+		rawReleases, err := utils.FetchGitHubReleases(ctx, src.Repo)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch github releases for %s: %s", src.Type, err)
 		}
 
-		onlyNewerVersions := releaseType == "olake_ui_worker"
+		metadata := utils.BuildReleaseMetadata(rawReleases, string(src.Type), limit)
 
-		releaseData, err := utils.GetReleaseDataForType(ctx, repo, releaseType, currentVersion, limit, onlyNewerVersions)
-		if err != nil || releaseData == nil {
-			continue
+		releases := make([]*dto.ReleaseMetadataResponse, 0)
+
+		for _, m := range metadata {
+			cmp := semver.Compare(m.Version, currentVersion)
+
+			// Skip older releases
+			if src.OnlyNewer && cmp <= 0 {
+				continue
+			}
+
+			var tags []string
+			if src.OnlyNewer && cmp > 0 {
+				tags = append(tags, "new-release")
+			}
+
+			releases = append(releases, &dto.ReleaseMetadataResponse{
+				Version:     m.Version,
+				Description: m.Description,
+				Tags:        tags,
+				Date:        m.Date,
+				Link:        m.Link,
+			})
 		}
 
-		// Map release type to response field
-		switch releaseType {
-		case "olake_ui_worker":
-			resp.OlakeUIWorker = releaseData
-		case "olake_helm":
-			resp.OlakeHelm = releaseData
-		case "olake":
-			resp.Olake = releaseData
+		data := &dto.ReleaseTypeData{
+			Releases: releases,
+		}
+
+		if src.OnlyNewer {
+			data.CurrentVersion = currentVersion
+		}
+
+		switch src.Type {
+		case ReleaseOlakeUI:
+			uiData = data
+		case ReleaseWorker:
+			workerData = data
+		case ReleaseOlakeHelm:
+			resp.OlakeHelm = data
+		case ReleaseOlake:
+			resp.Olake = data
 		}
 	}
+
+	resp.OlakeUIWorker = utils.MergeReleaseDescriptions(uiData, "OLake UI", workerData, "Worker")
 
 	return resp, nil
 }

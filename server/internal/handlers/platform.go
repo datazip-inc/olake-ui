@@ -12,9 +12,8 @@ import (
 // GetReleaseMetadata fetches release metadata for all release types
 // @router /api/v1/platform/releases [get]
 func (h *Handler) GetReleaseUpdates() {
-	// Get limit from query params (default: 10)
 	limitStr := h.Ctx.Input.Query("limit")
-	limit := 10
+	limit := 0
 	if limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
 			limit = parsedLimit

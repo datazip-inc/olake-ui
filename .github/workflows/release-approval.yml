@@ -11,11 +11,6 @@ on:
       environment:
         description: "Environment to build (master, staging, dev)"
         required: true
-      description:
-        description: "Release Description (Markdown supported)"
-        required: true
-      release_tags:
-        description: "Release Tags (comma separated, e.g. new-release,feature)"
 
 jobs:
   build_and_release:
@@ -25,6 +20,4 @@ jobs:
     with:
       environment: master
       version: ${{ github.event.inputs.version || github.event.release.tag_name }}
-      description: ${{ github.event.inputs.description || github.event.release.body }}
-      release_tags: ${{ github.event.inputs.release_tags || '' }}
     secrets: inherit
