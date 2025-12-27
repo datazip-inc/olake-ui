@@ -37,7 +37,7 @@ func buildExecutionReqForSync(job *models.Job, workflowID string) *ExecutionRequ
 }
 
 // buildExecutionReqForClearDestination builds the ExecutionRequest for a clear-destination job
-func buildExecutionReqForClearDestination(job *models.Job, workflowID string, streamsConfig string, isFullClear bool) (*ExecutionRequest, error) {
+func buildExecutionReqForClearDestination(job *models.Job, workflowID, streamsConfig string, isFullClear bool) (*ExecutionRequest, error) {
 	catalog := streamsConfig
 	if catalog == "" {
 		catalog = job.StreamsConfig
