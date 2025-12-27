@@ -296,7 +296,11 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 
 	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
 
-	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
+	// isFullClear should be true when streamsConfig is empty (user-initiated full clear),
+	// false when streamsConfig contains specific streams (partial clear from stream difference)
+	isFullClear := streamsConfig == ""
+
+	if err := s.temporal.ClearDestination(ctx, job, streamsConfig, isFullClear); err != nil {
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
 			return fmt.Errorf("clear destination error: %s, resume error: %s", err, rerr)
 		}

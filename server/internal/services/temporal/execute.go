@@ -26,7 +26,7 @@ type ExecutionRequest struct {
 	Timeout       time.Duration `json:"timeout"`
 	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 
-	Options ExecutionOptions `json:"options,omitempty"`
+	Options *ExecutionOptions `json:"options,omitempty"`
 }
 
 // ExecutionOptions are optional parameters for the execution request
@@ -242,7 +242,7 @@ func (t *Temporal) VerifyDriverCredentials(ctx context.Context, workflowID, flag
 	}, nil
 }
 
-func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string) error {
+func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, streamsConfig string, isFullClear bool) error {
 	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
 
 	// update the sync schedule to use clear-destination request
@@ -252,7 +252,7 @@ func (t *Temporal) ClearDestination(ctx context.Context, job *models.Job, stream
 	}
 
 	// update schedule to use clear-destination request
-	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig)
+	clearReq, err := buildExecutionReqForClearDestination(job, workflowID, streamsConfig, isFullClear)
 	if err != nil {
 		return fmt.Errorf("failed to build execution request for clear-destination: %s", err)
 	}
