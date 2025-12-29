@@ -4,6 +4,7 @@ import { NavLink, Link, useNavigate } from "react-router-dom"
 import { LayoutProps } from "antd"
 import {
 	CaretLeftIcon,
+	GearSixIcon,
 	InfoIcon,
 	SignOutIcon,
 	XIcon,
@@ -105,20 +106,39 @@ const Sidebar: React.FC<{
 			{!collapsed && showUpdate && (
 				<UpdateNotification onClose={onCloseUpdate} />
 			)}
-
-			<div className="mt-auto p-4">
-				<button
-					onClick={onLogout}
-					className="flex w-full items-center rounded-xl p-3 text-gray-700 hover:bg-gray-100 hover:text-black"
-				>
-					<SignOutIcon
-						className="mr-3 flex-shrink-0"
-						size={20}
-					/>
-					{!collapsed && <span>Logout</span>}
-				</button>
+			<div className="space-y-2 px-2 py-4">
+				<div className="mt-auto px-4">
+					<button
+						onClick={onLogout}
+						className="flex w-full items-center rounded-xl p-3 text-gray-700 hover:bg-gray-100 hover:text-black"
+					>
+						<SignOutIcon
+							className="mr-3 flex-shrink-0"
+							size={20}
+						/>
+						{!collapsed && <span>Logout</span>}
+					</button>
+				</div>
+				<div className="px-4">
+					<NavLink
+						to="/settings"
+						className={({ isActive }) =>
+							clsx(
+								"flex w-full items-center rounded-xl p-3",
+								isActive
+									? "bg-primary-100 text-primary hover:text-black"
+									: "text-gray-700 hover:bg-gray-100 hover:text-black",
+							)
+						}
+					>
+						<GearSixIcon
+							className="mr-3 flex-shrink-0"
+							size={20}
+						/>
+						{!collapsed && <span>System Settings</span>}
+					</NavLink>
+				</div>
 			</div>
-
 			<button
 				onClick={onToggle}
 				className="absolute bottom-10 right-0 z-10 translate-x-1/2 rounded-xl border border-gray-200 bg-white p-2.5 text-gray-900 shadow-[0_6px_16px_0_rgba(0,0,0,0.08)] hover:text-gray-700 focus:outline-none"
