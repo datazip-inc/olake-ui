@@ -31,10 +31,6 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
 	}
 
-	if len(jobs) == 0 {
-		return []dto.JobResponse{}, nil
-	}
-
 	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
