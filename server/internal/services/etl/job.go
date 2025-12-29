@@ -300,10 +300,10 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 	// streamsConfig == "" : means the user has initiated a full clear-destination
 	// streamsConfig != "" : means the user has initiated a partial clear-destination (from updateJob flow)
 	if strings.TrimSpace(streamsConfig) == "" {
-		logger.Infof("updating state file to {} for manual clear-destination for job_id[%d]", jobID)
 		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
 			return fmt.Errorf("failed to update state file: %s", err)
 		}
+		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
 	}
 
 	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
