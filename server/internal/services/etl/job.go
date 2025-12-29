@@ -123,7 +123,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 			return fmt.Errorf("invalid difference_streams JSON: %s", err)
 		}
 		if len(diffCatalog) > 0 {
-			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime); err != nil {
+			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime, false); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -265,7 +265,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration) error {
+func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, fullClear bool) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -277,6 +277,14 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 
 	if !job.Active {
 		return fmt.Errorf("job is paused, please unpause to run clear destination")
+	}
+
+	// for manual clear-destination, update the state file to empty object
+	if fullClear {
+		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
+			return fmt.Errorf("failed to update state file: %s", err)
+		}
+		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
 	}
 
 	// Pause the schedule to prevent a race condition where a new sync could start
