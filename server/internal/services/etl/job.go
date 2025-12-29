@@ -265,7 +265,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, fullClear bool) error {
+func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, resetState bool) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -295,7 +295,7 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 	}
 
 	// for manual clear-destination, update the state file to empty object
-	if fullClear {
+	if resetState {
 		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
 			return fmt.Errorf("failed to update state file: %s", err)
 		}
