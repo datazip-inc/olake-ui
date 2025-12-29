@@ -279,14 +279,6 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 		return fmt.Errorf("job is paused, please unpause to run clear destination")
 	}
 
-	// for manual clear-destination, update the state file to empty object
-	if fullClear {
-		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
-			return fmt.Errorf("failed to update state file: %s", err)
-		}
-		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
-	}
-
 	// Pause the schedule to prevent a race condition where a new sync could start
 	// after the current sync stops but before clear-destination executes.
 	// The schedule will be automatically resumed by the worker after clear-destination completes successfully.
@@ -302,17 +294,15 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 		return fmt.Errorf("failed to wait for sync to stop: %s", err)
 	}
 
-	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
-
 	// for manual clear-destination, update the state file to empty object
-	// streamsConfig == "" : means the user has initiated a full clear-destination
-	// streamsConfig != "" : means the user has initiated a partial clear-destination (from updateJob flow)
-	if strings.TrimSpace(streamsConfig) == "" {
+	if fullClear {
 		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
 			return fmt.Errorf("failed to update state file: %s", err)
 		}
 		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
 	}
+
+	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
 
 	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
