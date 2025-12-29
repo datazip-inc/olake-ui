@@ -32,6 +32,7 @@ export const CONNECTOR_TYPES = {
 	MYSQL: "MySQL",
 	ORACLE: "Oracle",
 	KAFKA: "Kafka",
+	S3: "S3",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }

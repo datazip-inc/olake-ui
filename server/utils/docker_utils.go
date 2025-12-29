@@ -34,7 +34,7 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
-var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb", "olakego/source-kafka"}
+var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb", "olakego/source-kafka", "olakego/source-s3"}
 
 // ignoredWorkerEnv is a map of environment variables that are ignored from the worker container.
 var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) lookup time for key existence.
@@ -245,12 +245,8 @@ func ParseECRDetails(fullImageName string) (accountID, region, repoName string, 
 }
 
 // isValidTag centralizes tag filtering logic
-func isValidTag(tag string) bool {
-	return tag != "<none>" &&
-		!strings.Contains(tag, "stag") &&
-		!strings.Contains(tag, "latest") &&
-		!strings.Contains(tag, "dev") &&
-		tag >= "v0.1.0"
+func isValidTag(_ string) bool {
+	return true
 }
 
 // DockerLoginECR logs in to an AWS ECR repository using the AWS SDK

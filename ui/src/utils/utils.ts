@@ -59,6 +59,8 @@ export const getConnectorImage = (connector: string) => {
 			return ApacheIceBerg
 		case "kafka":
 			return Kafka
+		case "s3":
+			return AWSS3
 		default:
 			// Default placeholder
 			return MongoDB

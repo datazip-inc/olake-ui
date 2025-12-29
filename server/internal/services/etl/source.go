@@ -240,6 +240,8 @@ func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (
 		return nil, fmt.Errorf("failed to get Docker versions: %s", err)
 	}
 
+	versions = append(versions, "local")
+
 	return map[string]interface{}{"version": versions}, nil
 }
 
