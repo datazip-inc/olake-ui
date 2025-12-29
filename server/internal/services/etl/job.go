@@ -296,11 +296,17 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 
 	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
 
-	// isFullClear should be true when streamsConfig is empty (user-initiated full clear),
-	// false when streamsConfig contains specific streams (partial clear from stream difference)
-	isFullClear := streamsConfig == ""
+	// for manual clear-destination, update the state file to empty object
+	// streamsConfig == "" : means the user has initiated a full clear-destination
+	// streamsConfig != "" : means the user has initiated a partial clear-destination (from updateJob flow)
+	if strings.TrimSpace(streamsConfig) == "" {
+		logger.Infof("updating state file to {} for manual clear-destination for job_id[%d]", jobID)
+		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
+			return fmt.Errorf("failed to update state file: %s", err)
+		}
+	}
 
-	if err := s.temporal.ClearDestination(ctx, job, streamsConfig, isFullClear); err != nil {
+	if err := s.temporal.ClearDestination(ctx, job, streamsConfig); err != nil {
 		if rerr := s.temporal.ResumeSchedule(ctx, projectID, jobID); rerr != nil {
 			return fmt.Errorf("clear destination error: %s, resume error: %s", err, rerr)
 		}
@@ -665,5 +671,22 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 
 	logger.Infof("Successfully created log archive for job_id[%d]", jobID)
 
+	return nil
+}
+
+func (s *ETLService) UpdateStateFile(jobID int, stateFile string) error {
+	_, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return fmt.Errorf("job not found: %s", err)
+	}
+
+	err = s.db.UpdateJob(jobID, orm.Params{
+		"state": stateFile,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to update job: %s", err)
+	}
+
+	logger.Infof("state file updated successfully for job_id[%d] with state: %s", jobID, stateFile)
 	return nil
 }

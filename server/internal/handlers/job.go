@@ -468,3 +468,25 @@ func (h *Handler) DownloadTaskLogs() {
 
 	logger.Infof("successfully streamed log archive job_id[%d] filename[%s]", id, filename)
 }
+
+// @router /internal/project/:projectid/jobs/:id/statefile [put]
+func (h *Handler) UpdateStateFile() {
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	var req dto.UpdateStateFileRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := h.etl.UpdateStateFile(jobID, req.StateFile); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update state file: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("state file updated successfully for job_id[%d]", jobID), nil)
+}
