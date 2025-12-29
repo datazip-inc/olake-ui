@@ -26,7 +26,7 @@ type ExecutionRequest struct {
 	Timeout       time.Duration `json:"timeout"`
 	OutputFile    string        `json:"output_file"` // to get the output file from the workflow
 
-	TempPath string `json:"temp_path,omitempty"`
+	TempPath string `json:"temp_path"`
 }
 
 type JobConfig struct {

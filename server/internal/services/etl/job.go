@@ -680,10 +680,7 @@ func (s *ETLService) UpdateStateFile(jobID int, stateFile string) error {
 		return fmt.Errorf("job not found: %s", err)
 	}
 
-	err = s.db.UpdateJob(jobID, orm.Params{
-		"state": stateFile,
-	})
-	if err != nil {
+	if err := s.db.UpdateJob(jobID, orm.Params{"state": stateFile}); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
