@@ -102,4 +102,5 @@ func Init(h *handlers.Handler) {
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", h, "post:RecoverClearDestination")
+	web.Router("/internal/project/:projectid/jobs/:id/statefile", h, "put:UpdateStateFile")
 }
