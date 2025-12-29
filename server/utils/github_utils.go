@@ -157,7 +157,6 @@ func MergeReleaseDescriptions(primary *dto.ReleaseTypeData, primaryTitle string,
 func FetchFeaturesJSON(
 	ctx context.Context,
 ) (*dto.ReleaseTypeData, error) {
-
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
