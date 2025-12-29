@@ -126,7 +126,8 @@ type ProjectSettingsResponse struct {
 
 // ReleaseMetadataResponse represents a single release
 type ReleaseMetadataResponse struct {
-	Version     string   `json:"version"`
+	Title       string   `json:"title,omitempty"`
+	Version     string   `json:"version,omitempty"`
 	Description string   `json:"description"`
 	Tags        []string `json:"tags"`
 	Date        string   `json:"date"`
@@ -144,4 +145,5 @@ type ReleasesResponse struct {
 	OlakeUIWorker *ReleaseTypeData `json:"olake_ui_worker"`
 	OlakeHelm     *ReleaseTypeData `json:"olake_helm"`
 	Olake         *ReleaseTypeData `json:"olake"`
+	Features      *ReleaseTypeData `json:"features"`
 }

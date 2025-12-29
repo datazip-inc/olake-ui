@@ -8,7 +8,8 @@ export enum ReleaseType {
 
 // API Response Types (matching backend response)
 export interface ReleaseMetadataResponse {
-	version: string
+	title?: string
+	version?: string
 	description: string
 	tags: string[]
 	date: string

@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"golang.org/x/mod/semver"
 )
 
 const githubReleasesURLTemplate = "https://api.github.com/repos/datazip-inc/%s/releases?per_page=100"
+const githubFeaturesJSONURL = "https://raw.githubusercontent.com/datazip-inc/olake-docs/master/features.json"
 
 type GitHubRelease struct {
 	TagName     string    `json:"tag_name"`
@@ -149,4 +151,60 @@ func MergeReleaseDescriptions(primary *dto.ReleaseTypeData, primaryTitle string,
 	}
 
 	return primary
+}
+
+// FetchFeaturesJSON fetches the features.json file from GitHub.
+func FetchFeaturesJSON(
+	ctx context.Context,
+) (*dto.ReleaseTypeData, error) {
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		githubFeaturesJSONURL,
+		http.NoBody,
+	)
+	if err != nil {
+		logger.Warnf("failed to create request for features.json: %s", err)
+		return &dto.ReleaseTypeData{
+			Releases: []*dto.ReleaseMetadataResponse{},
+		}, nil
+	}
+
+	// GitHub API requires User-Agent header
+	req.Header.Set("User-Agent", "olake-ui-server")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		logger.Warnf("failed to fetch features.json: %s", err)
+		return &dto.ReleaseTypeData{
+			Releases: []*dto.ReleaseMetadataResponse{},
+		}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		logger.Warnf("features.json returned status %d", resp.StatusCode)
+		return &dto.ReleaseTypeData{
+			Releases: []*dto.ReleaseMetadataResponse{},
+		}, nil
+	}
+
+	// features.json contains an array directly, not wrapped in an object
+	var releasesArray []*dto.ReleaseMetadataResponse
+	if err := json.NewDecoder(resp.Body).Decode(&releasesArray); err != nil {
+		// don't fail the request if the features.json is not found
+		logger.Warnf("failed to decode features.json: %s", err)
+		return &dto.ReleaseTypeData{
+			Releases: []*dto.ReleaseMetadataResponse{},
+		}, nil
+	}
+
+	if releasesArray == nil {
+		releasesArray = []*dto.ReleaseMetadataResponse{}
+	}
+
+	return &dto.ReleaseTypeData{
+		Releases: releasesArray,
+	}, nil
 }

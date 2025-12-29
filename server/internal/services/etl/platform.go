@@ -18,6 +18,7 @@ const (
 	ReleaseWorker    ReleaseType = "worker"
 	ReleaseOlakeHelm ReleaseType = "olake_helm"
 	ReleaseOlake     ReleaseType = "olake"
+	ReleaseFeatures  ReleaseType = "features"
 )
 
 type GithubReleaseSource struct {
@@ -39,6 +40,12 @@ func (s *ETLService) GetAllReleasesResponse(
 ) (*dto.ReleasesResponse, error) {
 	resp := &dto.ReleasesResponse{}
 	currentVersion := constants.AppVersion
+
+	features, err := utils.FetchFeaturesJSON(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch features.json: %s", err)
+	}
+	resp.Features = features
 
 	var (
 		uiData     *dto.ReleaseTypeData

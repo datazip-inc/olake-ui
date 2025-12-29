@@ -181,7 +181,7 @@ const UpdatesModal = () => {
 																		onClick={e => e.stopPropagation()}
 																		className="max-w-[60%] text-base font-semibold text-primary-500 underline hover:underline"
 																	>
-																		{update.version}
+																		{update.version || update.title}
 																	</a>
 																	<div className="flex items-center gap-2">
 																		{update.tags.length > 0 && (

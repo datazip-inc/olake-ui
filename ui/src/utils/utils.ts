@@ -10,7 +10,11 @@ import {
 	LogEntry,
 	TaskLogEntry,
 } from "../types"
-import { ReleasesResponse, ReleaseType } from "../types/platformTypes"
+import {
+	ReleasesResponse,
+	ReleaseType,
+	ReleaseTypeData,
+} from "../types/platformTypes"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
@@ -774,16 +778,7 @@ export const processReleasesData = (
 		return null
 	}
 
-	const formatReleaseData = (releaseTypeData?: {
-		current_version?: string
-		releases: Array<{
-			version: string
-			description: string
-			tags: string[]
-			date: string
-			link: string
-		}>
-	}) => {
+	const formatReleaseData = (releaseTypeData?: ReleaseTypeData) => {
 		if (!releaseTypeData) {
 			return undefined
 		}
