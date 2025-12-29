@@ -27,18 +27,9 @@ type GitHubRelease struct {
 	Draft       bool      `json:"draft"`
 }
 
-type ReleaseMetadata struct {
-	Version     string
-	Description string
-	Date        string
-	Link        string
-}
-
-// FetchGitHubReleases fetches raw releases from GitHub Releases API
-func FetchGitHubReleases(
-	ctx context.Context,
-	repo string,
-) ([]GitHubRelease, error) {
+// FetchAndBuildReleaseMetadata fetches GitHub releases and converts them into
+// normalized, sorted ReleaseMetadataResponse objects.
+func FetchAndBuildReleaseMetadata(ctx context.Context, repo, releaseType string, limit int) ([]*dto.ReleaseMetadataResponse, error) {
 	url := fmt.Sprintf(githubReleasesURLTemplate, repo)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
@@ -56,51 +47,24 @@ func FetchGitHubReleases(
 		return nil, fmt.Errorf("github api returned status %d", resp.StatusCode)
 	}
 
-	var releases []GitHubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+	var rawReleases []GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&rawReleases); err != nil {
 		return nil, err
 	}
 
-	return releases, nil
-}
+	out := make([]*dto.ReleaseMetadataResponse, 0)
 
-// NormalizeVersion converts GitHub tag names into semver-compatible versions.
-func NormalizeVersion(releaseType, tag string) string {
-	switch releaseType {
-	// olake-helm has tag format like olake-X.X.X
-	case "olake_helm":
-		if !strings.HasPrefix(tag, "olake-") {
-			return ""
-		}
-		return "v" + strings.TrimPrefix(tag, "olake-")
-
-	default:
-		if !strings.HasPrefix(tag, "v") {
-			return ""
-		}
-		return tag
-	}
-}
-
-// BuildReleaseMetadata converts GitHub releases into normalized, sorted release metadata
-func BuildReleaseMetadata(
-	releases []GitHubRelease,
-	releaseType string,
-	limit int,
-) []*ReleaseMetadata {
-	out := make([]*ReleaseMetadata, 0)
-
-	for _, r := range releases {
+	for _, r := range rawReleases {
 		if r.Draft || r.Prerelease {
 			continue
 		}
 
-		version := NormalizeVersion(releaseType, r.TagName)
+		version := normalizeVersion(releaseType, r.TagName)
 		if version == "" {
 			continue
 		}
 
-		out = append(out, &ReleaseMetadata{
+		out = append(out, &dto.ReleaseMetadataResponse{
 			Version:     version,
 			Description: r.Body,
 			Date:        r.PublishedAt.Format(time.RFC3339),
@@ -117,7 +81,25 @@ func BuildReleaseMetadata(
 		out = out[:limit]
 	}
 
-	return out
+	return out, nil
+}
+
+// normalizeVersion converts GitHub tag names into semver-compatible versions.
+func normalizeVersion(releaseType, tag string) string {
+	switch releaseType {
+	// olake-helm has tag format like olake-X.X.X
+	case "olake_helm":
+		if !strings.HasPrefix(tag, "olake-") {
+			return ""
+		}
+		return "v" + strings.TrimPrefix(tag, "olake-")
+
+	default:
+		if !strings.HasPrefix(tag, "v") {
+			return ""
+		}
+		return tag
+	}
 }
 
 // MergeReleaseDescriptions merges secondary release notes into primary by version.
@@ -156,7 +138,7 @@ func MergeReleaseDescriptions(primary *dto.ReleaseTypeData, primaryTitle string,
 // FetchFeaturesJSON fetches the features.json file from GitHub.
 func FetchFeaturesJSON(
 	ctx context.Context,
-) (*dto.ReleaseTypeData, error) {
+) ([]*dto.ReleaseMetadataResponse, error) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -165,9 +147,7 @@ func FetchFeaturesJSON(
 	)
 	if err != nil {
 		logger.Warnf("failed to create request for features.json: %s", err)
-		return &dto.ReleaseTypeData{
-			Releases: []*dto.ReleaseMetadataResponse{},
-		}, nil
+		return []*dto.ReleaseMetadataResponse{}, nil
 	}
 
 	// GitHub API requires User-Agent header
@@ -176,34 +156,25 @@ func FetchFeaturesJSON(
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		logger.Warnf("failed to fetch features.json: %s", err)
-		return &dto.ReleaseTypeData{
-			Releases: []*dto.ReleaseMetadataResponse{},
-		}, nil
+		return []*dto.ReleaseMetadataResponse{}, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Warnf("features.json returned status %d", resp.StatusCode)
-		return &dto.ReleaseTypeData{
-			Releases: []*dto.ReleaseMetadataResponse{},
-		}, nil
+		return []*dto.ReleaseMetadataResponse{}, nil
 	}
 
-	// features.json contains an array directly, not wrapped in an object
 	var releasesArray []*dto.ReleaseMetadataResponse
 	if err := json.NewDecoder(resp.Body).Decode(&releasesArray); err != nil {
 		// don't fail the request if the features.json is not found
 		logger.Warnf("failed to decode features.json: %s", err)
-		return &dto.ReleaseTypeData{
-			Releases: []*dto.ReleaseMetadataResponse{},
-		}, nil
+		return []*dto.ReleaseMetadataResponse{}, nil
 	}
 
 	if releasesArray == nil {
 		releasesArray = []*dto.ReleaseMetadataResponse{}
 	}
 
-	return &dto.ReleaseTypeData{
-		Releases: releasesArray,
-	}, nil
+	return releasesArray, nil
 }

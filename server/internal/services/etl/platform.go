@@ -38,50 +38,72 @@ func (s *ETLService) GetAllReleasesResponse(
 	ctx context.Context,
 	limit int,
 ) (*dto.ReleasesResponse, error) {
-	resp := &dto.ReleasesResponse{}
 	currentVersion := constants.AppVersion
+	fetchedReleases := make(map[ReleaseType][]*dto.ReleaseMetadataResponse)
 
+	// fetch features
 	features, err := utils.FetchFeaturesJSON(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch features.json: %s", err)
 	}
-	resp.Features = features
+	fetchedReleases[ReleaseFeatures] = features
+
+	// fetch releases
+	for _, src := range releaseSources {
+		data, err := utils.FetchAndBuildReleaseMetadata(ctx, src.Repo, string(src.Type), limit)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch github releases for %s: %s", src.Type, err)
+		}
+		fetchedReleases[src.Type] = data
+	}
+
+	return buildReleasesResponse(currentVersion, fetchedReleases)
+}
+
+// build releases response from fetched data
+func buildReleasesResponse(currentVersion string, fetched map[ReleaseType][]*dto.ReleaseMetadataResponse) (*dto.ReleasesResponse, error) {
+	resp := &dto.ReleasesResponse{}
 
 	var (
 		uiData     *dto.ReleaseTypeData
 		workerData *dto.ReleaseTypeData
 	)
 
-	for _, src := range releaseSources {
-		rawReleases, err := utils.FetchGitHubReleases(ctx, src.Repo)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch github releases for %s: %s", src.Type, err)
-		}
+	features, ok := fetched[ReleaseFeatures]
+	if !ok || features == nil {
+		return nil, fmt.Errorf("features data is missing")
+	}
+	resp.Features = &dto.ReleaseTypeData{
+		Releases: features,
+	}
 
-		metadata := utils.BuildReleaseMetadata(rawReleases, string(src.Type), limit)
+	for _, src := range releaseSources {
+		raw, ok := fetched[src.Type]
+		if !ok || raw == nil {
+			return nil, fmt.Errorf("release data missing for %s", src.Type)
+		}
 
 		releases := make([]*dto.ReleaseMetadataResponse, 0)
 
-		for _, m := range metadata {
-			cmp := semver.Compare(m.Version, currentVersion)
+		for _, r := range raw {
+			cmp := semver.Compare(r.Version, currentVersion)
 
-			// Skip older releases
+			// Skip older releases if required
 			if src.OnlyNewer && cmp <= 0 {
 				continue
 			}
 
 			tags := []string{}
-			// add new-release tag if the release is newer than the current version
 			if src.OnlyNewer && cmp > 0 {
 				tags = append(tags, "new-release")
 			}
 
 			releases = append(releases, &dto.ReleaseMetadataResponse{
-				Version:     m.Version,
-				Description: m.Description,
+				Version:     r.Version,
+				Description: r.Description,
 				Tags:        tags,
-				Date:        m.Date,
-				Link:        m.Link,
+				Date:        r.Date,
+				Link:        r.Link,
 			})
 		}
 
@@ -105,7 +127,7 @@ func (s *ETLService) GetAllReleasesResponse(
 		}
 	}
 
-	resp.OlakeUIWorker = utils.MergeReleaseDescriptions(uiData, "OLake UI", workerData, "Worker")
+	resp.OlakeUIWorker = utils.MergeReleaseDescriptions(uiData, "OLake UI", workerData, "OLake Worker")
 
 	return resp, nil
 }
