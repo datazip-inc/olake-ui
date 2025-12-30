@@ -668,10 +668,12 @@ export const isSourceIngestionModeSupported = (
 ): boolean => {
 	if (!sourceType) return false
 
-	const normSourceType = normalizeConnectorType(sourceType).toLowerCase()
+	const normSourceType = normalizeConnectorType(
+		sourceType,
+	).toLowerCase() as keyof typeof SOURCE_SUPPORTED_INGESTION_MODES
 	const sourceModes = SOURCE_SUPPORTED_INGESTION_MODES[normSourceType]
 
-	return sourceModes.includes(mode)
+	return sourceModes?.some(m => m === mode) ?? false
 }
 
 // Checks if the destination connector supports a specific ingestion mode
@@ -681,10 +683,13 @@ export const isDestinationIngestionModeSupported = (
 ): boolean => {
 	if (!destinationType) return false
 
-	const normDestType = normalizeConnectorType(destinationType)
-	const destModes = DESTINATION_SUPPORTED_INGESTION_MODES[normDestType]
+	const normDestType = normalizeConnectorType(destinationType).toLowerCase()
+	const destModes =
+		DESTINATION_SUPPORTED_INGESTION_MODES[
+			normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
+		]
 
-	return destModes.includes(mode)
+	return destModes?.some(m => m === mode) ?? false
 }
 
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields

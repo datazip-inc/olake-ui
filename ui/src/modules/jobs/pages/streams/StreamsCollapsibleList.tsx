@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
@@ -335,17 +335,19 @@ const StreamsCollapsibleList = ({
 		onStreamSelect(streamName, checked, ns)
 	}
 
-	const isUpsertSupported = useMemo(() => {
-		return sourceType && destinationType
+	const isSourceUpsertModeSupported =
+		sourceType && destinationType
 			? isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)
 			: true
-	}, [sourceType])
 
-	const isAppendSupported = useMemo(() => {
-		return sourceType && destinationType
+	const isSourceAppendModeSupported =
+		sourceType && destinationType
 			? isSourceIngestionModeSupported(IngestionMode.APPEND, sourceType)
 			: true
-	}, [sourceType])
+
+	const isDestUpsertModeSupported =
+		destinationType &&
+		isDestinationIngestionModeSupported(IngestionMode.UPSERT, destinationType)
 
 	return (
 		<>
@@ -362,10 +364,7 @@ const StreamsCollapsibleList = ({
 								Sync all
 							</Checkbox>
 
-							{isDestinationIngestionModeSupported(
-								IngestionMode.UPSERT,
-								destinationType,
-							) && (
+							{isDestUpsertModeSupported && (
 								<div className="relative flex rounded-[4px] bg-[#F5F5F5] text-sm text-black">
 									{/* Sliding background */}
 									<div
@@ -385,7 +384,7 @@ const StreamsCollapsibleList = ({
 										onClick={() => {
 											if (
 												ingestionMode !== IngestionMode.UPSERT &&
-												isUpsertSupported
+												isSourceUpsertModeSupported
 											) {
 												setTargetIngestionMode(IngestionMode.UPSERT)
 												setShowIngestionModeChangeModal(true)
@@ -393,7 +392,7 @@ const StreamsCollapsibleList = ({
 										}}
 										className={clsx(
 											`relative z-10 flex items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`,
-											isUpsertSupported
+											isSourceUpsertModeSupported
 												? "cursor-pointer"
 												: "cursor-not-allowed opacity-40",
 										)}
@@ -404,7 +403,7 @@ const StreamsCollapsibleList = ({
 										onClick={() => {
 											if (
 												ingestionMode !== IngestionMode.APPEND &&
-												isAppendSupported
+												isSourceAppendModeSupported
 											) {
 												setTargetIngestionMode(IngestionMode.APPEND)
 												setShowIngestionModeChangeModal(true)
@@ -412,7 +411,7 @@ const StreamsCollapsibleList = ({
 										}}
 										className={clsx(
 											`relative z-10 flex cursor-pointer items-center justify-center rounded-sm p-1 px-4 text-center transition-colors duration-300`,
-											isAppendSupported
+											isSourceAppendModeSupported
 												? "cursor-pointer"
 												: "cursor-not-allowed opacity-40",
 										)}

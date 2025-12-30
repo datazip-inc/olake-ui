@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { formatDestinationPath } from "../../../../utils/destination-database"
 import clsx from "clsx"
 import {
@@ -272,13 +272,15 @@ const StreamConfiguration = ({
 		)
 	}
 
-	const isAppendSupported = useMemo(() => {
-		return isSourceIngestionModeSupported(IngestionMode.APPEND, sourceType)
-	}, [sourceType])
+	const isAppendSupported = isSourceIngestionModeSupported(
+		IngestionMode.APPEND,
+		sourceType,
+	)
 
-	const isUpsertSupported = useMemo(() => {
-		return isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)
-	}, [sourceType])
+	const isUpsertSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
 
 	const handleNormalizationChange = (checked: boolean) => {
 		setNormalization(checked)

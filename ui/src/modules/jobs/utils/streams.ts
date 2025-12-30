@@ -29,12 +29,12 @@ export const getStreamsDataFromGetSourceStreamsResponse = (
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
 	const streamDefaults = response.stream_defaults
 
-	const isDestUpsertSupported = isDestinationIngestionModeSupported(
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
 		IngestionMode.UPSERT,
 		destinationType,
 	)
 
-	const isSourceUpsertSupported = isSourceIngestionModeSupported(
+	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
 	)
@@ -75,7 +75,7 @@ export const getStreamsDataFromGetSourceStreamsResponse = (
 				...defaults,
 				stream_name: streamName,
 				disabled: true,
-				append_mode: !isDestUpsertSupported || !isSourceUpsertSupported, // Default to append if either source or destination does not support upsert
+				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
 			})
 		}
 	})
