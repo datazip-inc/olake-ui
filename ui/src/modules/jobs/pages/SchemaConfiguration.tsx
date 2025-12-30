@@ -23,6 +23,7 @@ import {
 import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
+	STREAM_DEFAULTS,
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
@@ -341,10 +342,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					updated.selected_streams[namespace] = [
 						...updated.selected_streams[namespace],
 						{
+							...STREAM_DEFAULTS,
 							stream_name: streamName,
-							partition_regex: "",
-							normalization: false,
-							filter: "",
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
 						},

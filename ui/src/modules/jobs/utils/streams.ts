@@ -3,13 +3,7 @@ import {
 	StreamsDataStructure,
 	StreamData,
 } from "../../../types"
-
-// fallback defaults for streams
-const STREAM_DEFAULTS = {
-	append_mode: false,
-	normalization: false,
-	partition_regex: "",
-}
+import { STREAM_DEFAULTS } from "../../../utils/constants"
 
 /**
  * Processes the raw SourceStreamsResponse into the
