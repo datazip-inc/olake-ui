@@ -92,6 +92,8 @@ var RequiredConfigVariable = []string{
 	"copyrequestbody",
 	"logsdir"}
 
+var AppVersion string
+
 func Init() {
 	viper.AutomaticEnv()
 	viper.SetDefault(EnvLogFormat, "console")
@@ -105,6 +107,8 @@ func Init() {
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
 
 	checkForRequiredVariables(RequiredConfigVariable)
+
+	AppVersion = viper.GetString("APP_VERSION")
 
 	// init table names
 	TableNameMap = map[TableType]string{

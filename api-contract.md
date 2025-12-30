@@ -979,6 +979,41 @@ http://localhost:8080
   }
   ```
 
+
+## Platform
+
+### Get Release Updates
+
+---
+
+- **Endpoint**: `/api/v1/platform/releases`
+- **Method**: GET
+- **Description**: Fetch release metadata for Olake UI and Worker, Helm, and Olake.
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Parameters**:
+  - `limit` _(optional, number)_: Max number of releases to fetch for each component.
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "olake_ui_worker": {
+        "current_version": "string",
+        "releases": ["json"]
+      },
+      "olake_helm": {
+        "releases": ["json"]
+      },
+      "olake": {
+        "releases": ["json"]
+      }
+    }
+  }
+  ```
+
 ## Error Responses
 
 All endpoints may return the following error responses:
