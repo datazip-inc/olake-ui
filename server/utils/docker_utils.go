@@ -245,8 +245,12 @@ func ParseECRDetails(fullImageName string) (accountID, region, repoName string, 
 }
 
 // isValidTag centralizes tag filtering logic
-func isValidTag(_ string) bool {
-	return true
+func isValidTag(tag string) bool {
+	return tag != "<none>" &&
+		!strings.Contains(tag, "stag") &&
+		!strings.Contains(tag, "latest") &&
+		!strings.Contains(tag, "dev") &&
+		tag >= "v0.1.0"
 }
 
 // DockerLoginECR logs in to an AWS ECR repository using the AWS SDK
