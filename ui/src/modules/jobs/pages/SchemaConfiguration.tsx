@@ -338,6 +338,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
 				}
+				// TODO: remove this as this case will never get executed as we are already setting defaults in streams.ts
 				if (!existingStream) {
 					updated.selected_streams[namespace] = [
 						...updated.selected_streams[namespace],
