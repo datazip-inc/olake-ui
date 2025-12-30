@@ -1,5 +1,4 @@
 import {
-	GetSourceStreamsResponse,
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
 	StreamData,
@@ -13,14 +12,13 @@ const STREAM_DEFAULTS = {
 }
 
 /**
- * Processes the raw GetSourceStreamsResponse into the
+ * Processes the raw SourceStreamsResponse into the
  * StreamsDataStructure expected by the UI.
  */
-export const getStreamsDataFromGetSourceStreamsResponse = (
-	response: GetSourceStreamsResponse,
+export const getStreamsDataFromSourceStreamsResponse = (
+	response: StreamsDataStructure,
 ): StreamsDataStructure => {
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
-	const streamDefaults = response.stream_defaults
 
 	// Iterate through all streams
 	response.streams.forEach((stream: StreamData) => {
@@ -46,9 +44,10 @@ export const getStreamsDataFromGetSourceStreamsResponse = (
 				disabled: false,
 			})
 		} else {
-			// Stream is not selected, use defaults from stream_defaults
-			// Missing properties in stream_defaults are treated as false/empty
-			// Backward compatibility: fall back to hardcoded defaults if STREAM_DEFAULTS is not present (older olake versions)
+			// Stream is not selected, use defaults from default_stream_properties
+			// Missing properties in default_stream_properties are treated as false/empty
+			// Backward compatibility: fall back to hardcoded defaults if default_stream_properties is not present (older olake versions)
+			const streamDefaults = stream.stream.default_stream_properties
 			const defaults = {
 				...STREAM_DEFAULTS,
 				...streamDefaults,

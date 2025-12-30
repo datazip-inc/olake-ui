@@ -26,7 +26,7 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
-import { getStreamsDataFromGetSourceStreamsResponse } from "../utils/streams"
+import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -165,7 +165,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				)
 
 				const streamsData: StreamsDataStructure =
-					getStreamsDataFromGetSourceStreamsResponse(response)
+					getStreamsDataFromSourceStreamsResponse(response)
 
 				setApiResponse(streamsData)
 				setSelectedStreams(streamsData)

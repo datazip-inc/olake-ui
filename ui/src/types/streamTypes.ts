@@ -58,6 +58,7 @@ export type StreamData = {
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]
+		default_stream_properties: SelectedStream
 		[key: string]: unknown
 	}
 }
@@ -101,13 +102,6 @@ export interface SelectedStream {
 export interface SelectedStreamsByNamespace {
 	[namespace: string]: SelectedStream[]
 }
-
-export interface GetSourceStreamsResponse {
-	selected_streams: SelectedStreamsByNamespace
-	stream_defaults?: SelectedStream
-	streams: StreamData[]
-}
-
 export interface StreamsDataStructure {
 	selected_streams: SelectedStreamsByNamespace
 	streams: StreamData[]
