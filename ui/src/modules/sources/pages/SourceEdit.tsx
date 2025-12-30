@@ -126,6 +126,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 				mysql: "MySQL",
 				oracle: "Oracle",
 				kafka: "Kafka",
+				s3: "Amazon S3",
 			}
 			let normalizedType =
 				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type

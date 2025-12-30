@@ -76,7 +76,7 @@ const connectorOptions: ConnectorOption[] = [
 					alt="S3"
 					className="mr-2 size-5"
 				/>
-				<span data-testid="connector-option-s3">S3</span>
+				<span data-testid="connector-option-s3">Amazon S3</span>
 			</div>
 		),
 	},

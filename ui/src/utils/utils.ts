@@ -192,6 +192,8 @@ export const getConnectorLabel = (type: string): string => {
 			return "Oracle"
 		case "kafka":
 			return "Kafka"
+		case "s3":
+			return "Amazon S3"
 		default:
 			return "MongoDB"
 	}
