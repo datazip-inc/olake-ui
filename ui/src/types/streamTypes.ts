@@ -58,9 +58,14 @@ export type StreamData = {
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]
-		default_stream_properties: SelectedStream
+		default_stream_properties: DefaultStreamProperties
 		[key: string]: unknown
 	}
+}
+
+export interface DefaultStreamProperties {
+	normalization: boolean
+	append_mode: boolean
 }
 
 export type StreamPanelProps = {
