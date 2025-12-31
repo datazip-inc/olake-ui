@@ -48,6 +48,7 @@ const StreamsCollapsibleList = ({
 		setIngestionMode(getIngestionMode(selectedStreams))
 	}, [selectedStreams])
 
+	// Keep all namespaces expanded by default and automatically open any newly added namespaces.
 	useEffect(() => {
 		if (Object.keys(openNamespaces).length === 0) {
 			const allOpen: { [ns: string]: boolean } = {}
@@ -68,6 +69,7 @@ const StreamsCollapsibleList = ({
 		}
 	}, [groupedStreams])
 
+	// Detects if groupedStreams changed by comparing namespace keys and stream counts.
 	const dataHasChanged = () => {
 		const prev = prevGroupedStreams.current
 		const current = groupedStreams
