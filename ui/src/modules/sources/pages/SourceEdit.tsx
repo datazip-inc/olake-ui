@@ -80,7 +80,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 
-	const normalizedSourceConnector = normalizeSourceConnectorType(connector || "")
+	const normalizedSourceConnector = normalizeSourceConnectorType(
+		connector || "",
+	)
 
 	const {
 		sources,

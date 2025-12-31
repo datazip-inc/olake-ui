@@ -166,7 +166,9 @@ const JobEdit: React.FC = () => {
 
 	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
 
-	const normalizedSourceConnector = normalizeSourceConnectorType(sourceData?.type || "")
+	const normalizedSourceConnector = normalizeSourceConnectorType(
+		sourceData?.type || "",
+	)
 
 	useEffect(() => {
 		fetchSelectedClearDestinationStatus()

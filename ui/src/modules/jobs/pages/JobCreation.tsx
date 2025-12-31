@@ -118,7 +118,8 @@ const JobCreation: React.FC = () => {
 	const sourceRef = useRef<any>(null)
 	const destinationRef = useRef<any>(null)
 
-	const normalizedSourceConnector = normalizeSourceConnectorType(sourceConnector)
+	const normalizedSourceConnector =
+		normalizeSourceConnectorType(sourceConnector)
 
 	// Validation functions
 	const validateSource = async (): Promise<boolean> => {

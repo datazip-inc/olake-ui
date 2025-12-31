@@ -164,7 +164,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			const fetchVersions = async () => {
 				setLoadingVersions(true)
 				try {
-					const response = await sourceService.getSourceVersions(normalizedConnector)
+					const response =
+						await sourceService.getSourceVersions(normalizedConnector)
 					if (response?.version) {
 						setVersions(response.version)
 						if (
@@ -174,10 +175,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								initialVersion === "")
 						) {
 							let defaultVersion = response.version[0]
-							if (
-								normalizedConnector === initialConnector &&
-								initialVersion
-							) {
+							if (normalizedConnector === initialConnector && initialVersion) {
 								defaultVersion = initialVersion
 							}
 							setSelectedVersion(defaultVersion)
@@ -210,7 +208,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setLoading(true)
 			return withAbortController(
 				signal =>
-					sourceService.getSourceSpec(normalizedConnector, selectedVersion, signal),
+					sourceService.getSourceSpec(
+						normalizedConnector,
+						selectedVersion,
+						signal,
+					),
 				response => {
 					handleSpecResponse(response, setSchema, setUiSchema, "source")
 				},
