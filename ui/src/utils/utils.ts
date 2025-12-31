@@ -30,6 +30,7 @@ export const normalizeConnectorType = (connectorType: string): string => {
 
 	switch (lowerType) {
 		case "s3":
+			return "s3"
 		case "amazon s3":
 			return "parquet"
 		case "iceberg":
@@ -177,7 +178,8 @@ export const getJobTypeLabel = (lastRunType: JobType) => {
 }
 
 export const getConnectorLabel = (type: string): string => {
-	switch (type) {
+	const normalized = normalizeSourceConnectorType(type)
+	switch (normalized) {
 		case "mongodb":
 		case "MongoDB":
 			return "MongoDB"
@@ -196,6 +198,18 @@ export const getConnectorLabel = (type: string): string => {
 			return "Amazon S3"
 		default:
 			return "MongoDB"
+	}
+}
+
+export const normalizeSourceConnectorType = (connectorType: string): string => {
+	const lowerType = connectorType.toLowerCase()
+
+	switch (lowerType) {
+		case "s3":
+		case "amazon s3":
+			return "s3"
+		default:
+			return lowerType
 	}
 }
 

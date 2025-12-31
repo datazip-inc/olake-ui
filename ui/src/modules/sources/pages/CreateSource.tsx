@@ -26,6 +26,7 @@ import {
 	handleSpecResponse,
 	withAbortController,
 	trimFormDataStrings,
+	normalizeSourceConnectorType,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -95,6 +96,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [existingSource, setExistingSource] = useState<string | null>(null)
 		const [specError, setSpecError] = useState<string | null>(null)
 
+		const normalizedConnector = normalizeSourceConnectorType(connector)
+
 		const navigate = useNavigate()
 
 		const {
@@ -133,10 +136,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			if (setupType === SETUP_TYPES.EXISTING) {
 				fetchSources()
 				setFilteredSources(
-					sources.filter(source => source.type === connector.toLowerCase()),
+					sources.filter(source => source.type === normalizedConnector),
 				)
 			}
-		}, [connector, setupType, fetchSources])
+		}, [normalizedConnector, setupType, fetchSources])
 
 		const resetVersionState = () => {
 			setVersions([])
@@ -161,9 +164,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			const fetchVersions = async () => {
 				setLoadingVersions(true)
 				try {
-					const response = await sourceService.getSourceVersions(
-						connector.toLowerCase(),
-					)
+					const response = await sourceService.getSourceVersions(normalizedConnector)
 					if (response?.version) {
 						setVersions(response.version)
 						if (
@@ -174,7 +175,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						) {
 							let defaultVersion = response.version[0]
 							if (
-								connector.toLowerCase() === initialConnector &&
+								normalizedConnector === initialConnector &&
 								initialVersion
 							) {
 								defaultVersion = initialVersion
@@ -209,7 +210,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setLoading(true)
 			return withAbortController(
 				signal =>
-					sourceService.getSourceSpec(connector, selectedVersion, signal),
+					sourceService.getSourceSpec(normalizedConnector, selectedVersion, signal),
 				response => {
 					handleSpecResponse(response, setSchema, setUiSchema, "source")
 				},
@@ -300,7 +301,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 			const newSourceData = {
 				name: sourceName,
-				type: connector.toLowerCase(),
+				type: normalizedConnector,
 				version: selectedVersion,
 				config: JSON.stringify(formData),
 			}
@@ -672,7 +673,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						</div>
 
 						<DocumentationPanel
-							docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}`}
+							docUrl={`https://olake.io/docs/connectors/${normalizedConnector}`}
 							isMinimized={docsMinimized}
 							onToggle={handleToggleDocPanel}
 							showResizer={true}

@@ -68,11 +68,11 @@ const connectorOptions: ConnectorOption[] = [
 		),
 	},
 	{
-		value: "S3",
+		value: "Amazon S3",
 		label: (
 			<div className="flex items-center">
 				<img
-					src={getConnectorImage("s3")}
+					src={getConnectorImage("Amazon S3")}
 					alt="S3"
 					className="mr-2 size-5"
 				/>
