@@ -23,10 +23,11 @@ import {
 import {
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATATION_DATABASE_TOOLTIP_TEXT,
+	STREAM_DEFAULTS,
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
-import { getStreamsDataFromGetSourceStreamsResponse } from "../utils/streams"
+import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -165,7 +166,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				)
 
 				const streamsData: StreamsDataStructure =
-					getStreamsDataFromGetSourceStreamsResponse(
+					getStreamsDataFromSourceStreamsResponse(
 						response,
 						destinationType,
 						sourceConnector,
@@ -341,14 +342,13 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				if (!updated.selected_streams[namespace]) {
 					updated.selected_streams[namespace] = []
 				}
+				// TODO: remove this as this case will never get executed as we are already setting defaults in streams.ts
 				if (!existingStream) {
 					updated.selected_streams[namespace] = [
 						...updated.selected_streams[namespace],
 						{
+							...STREAM_DEFAULTS,
 							stream_name: streamName,
-							partition_regex: "",
-							normalization: false,
-							filter: "",
 							disabled: false,
 							append_mode: ingestionMode === IngestionMode.APPEND,
 						},
