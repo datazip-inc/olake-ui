@@ -134,6 +134,8 @@ export const getConnectorInLowerCase = (connector: string) => {
 		case DESTINATION_INTERNAL_TYPES.ICEBERG:
 		case DESTINATION_LABELS.APACHE_ICEBERG:
 			return DESTINATION_INTERNAL_TYPES.ICEBERG
+		case "s3":
+			return "s3"
 		case "mongodb":
 			return "mongodb"
 		case "postgres":
@@ -178,8 +180,7 @@ export const getJobTypeLabel = (lastRunType: JobType) => {
 }
 
 export const getConnectorLabel = (type: string): string => {
-	const normalized = normalizeSourceConnectorType(type)
-	switch (normalized) {
+	switch (type) {
 		case "mongodb":
 		case "MongoDB":
 			return "MongoDB"
@@ -195,21 +196,10 @@ export const getConnectorLabel = (type: string): string => {
 		case "kafka":
 			return "Kafka"
 		case "s3":
-			return "Amazon S3"
+		case "S3":
+			return "S3"
 		default:
 			return "MongoDB"
-	}
-}
-
-export const normalizeSourceConnectorType = (connectorType: string): string => {
-	const lowerType = connectorType.toLowerCase()
-
-	switch (lowerType) {
-		case "s3":
-		case "amazon s3":
-			return "s3"
-		default:
-			return lowerType
 	}
 }
 

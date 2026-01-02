@@ -18,7 +18,6 @@ import {
 	getSelectedStreams,
 	validateCronExpression,
 	validateStreams,
-	normalizeSourceConnectorType,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -119,7 +118,7 @@ const JobCreation: React.FC = () => {
 	const destinationRef = useRef<any>(null)
 
 	const normalizedSourceConnector =
-		normalizeSourceConnectorType(sourceConnector)
+		getConnectorInLowerCase(sourceConnector)
 
 	// Validation functions
 	const validateSource = async (): Promise<boolean> => {

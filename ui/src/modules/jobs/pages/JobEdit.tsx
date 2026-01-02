@@ -28,7 +28,6 @@ import {
 	getSelectedStreams,
 	validateCronExpression,
 	validateStreams,
-	normalizeSourceConnectorType,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -119,7 +118,7 @@ const JobDestinationEdit = ({
 				}
 				docsMinimized={docsMinimized}
 				onDocsMinimizedChange={onDocsMinimizedChange}
-				sourceConnector={normalizeSourceConnectorType(sourceData?.type || "")}
+				sourceConnector={getConnectorInLowerCase(sourceData?.type || "")}
 				sourceVersion={sourceData?.version || ""}
 			/>
 		</div>
@@ -166,7 +165,7 @@ const JobEdit: React.FC = () => {
 
 	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
 
-	const normalizedSourceConnector = normalizeSourceConnectorType(
+	const normalizedSourceConnector = getConnectorInLowerCase(
 		sourceData?.type || "",
 	)
 

@@ -26,7 +26,7 @@ import {
 	handleSpecResponse,
 	withAbortController,
 	trimFormDataStrings,
-	normalizeSourceConnectorType,
+	getConnectorInLowerCase,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -96,7 +96,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [existingSource, setExistingSource] = useState<string | null>(null)
 		const [specError, setSpecError] = useState<string | null>(null)
 
-		const normalizedConnector = normalizeSourceConnectorType(connector)
+		const normalizedConnector = getConnectorInLowerCase(connector)
 
 		const navigate = useNavigate()
 

@@ -25,7 +25,7 @@ import {
 	withAbortController,
 	trimFormDataStrings,
 	getConnectorLabel,
-	normalizeSourceConnectorType,
+	getConnectorInLowerCase,
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -80,7 +80,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 
-	const normalizedSourceConnector = normalizeSourceConnectorType(
+	const normalizedSourceConnector = getConnectorInLowerCase(
 		connector || "",
 	)
 
@@ -263,7 +263,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceData = {
 			id: source?.id || 0,
 			name: sourceName,
-			type: normalizeSourceConnectorType(connector || "MongoDB"),
+			type: getConnectorInLowerCase(connector || "MongoDB"),
 			version: selectedVersion,
 			status: "active" as const,
 			config: configStr,
@@ -332,7 +332,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceToDelete = {
 			...source,
 			name: sourceName || source.name,
-			type: normalizeSourceConnectorType(connector || source.type),
+			type: getConnectorInLowerCase(connector || source.type),
 		}
 
 		setSelectedSource(sourceToDelete)
@@ -712,7 +712,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${normalizeSourceConnectorType(connector || "")}`}
+						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector || "")}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}
