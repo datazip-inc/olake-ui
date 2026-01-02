@@ -51,10 +51,8 @@ const StreamsCollapsibleList = ({
 	const prevGroupedStreams = useRef(groupedStreams)
 
 	useEffect(() => {
-		setIngestionMode(
-			getIngestionMode(selectedStreams, sourceType, destinationType),
-		)
-	}, [selectedStreams, sourceType, destinationType])
+		setIngestionMode(getIngestionMode(selectedStreams, sourceType))
+	}, [selectedStreams, sourceType])
 
 	// Keep all namespaces expanded by default and automatically open any newly added namespaces.
 	useEffect(() => {
@@ -335,19 +333,20 @@ const StreamsCollapsibleList = ({
 		onStreamSelect(streamName, checked, ns)
 	}
 
-	const isSourceUpsertModeSupported =
-		sourceType && destinationType
-			? isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)
-			: true
+	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
 
-	const isSourceAppendModeSupported =
-		sourceType && destinationType
-			? isSourceIngestionModeSupported(IngestionMode.APPEND, sourceType)
-			: true
+	const isSourceAppendModeSupported = isSourceIngestionModeSupported(
+		IngestionMode.APPEND,
+		sourceType,
+	)
 
-	const isDestUpsertModeSupported =
-		destinationType &&
-		isDestinationIngestionModeSupported(IngestionMode.UPSERT, destinationType)
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
+	)
 
 	return (
 		<>

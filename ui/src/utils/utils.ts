@@ -9,6 +9,7 @@ import {
 	CursorFieldValues,
 	LogEntry,
 	TaskLogEntry,
+	SelectedStreamsByNamespace,
 } from "../types"
 import {
 	DAYS_MAP,
@@ -626,18 +627,11 @@ export const validateStreams = (selections: {
 }
 
 export const getIngestionMode = (
-	selectedStreams: {
-		[key: string]: SelectedStream[]
-	},
+	selectedStreams: SelectedStreamsByNamespace,
 	sourceType?: string,
-	destinationType?: string,
 ): IngestionMode => {
 	// Fallback to APPEND if source doesn't support UPSERT
-	if (
-		sourceType &&
-		destinationType &&
-		!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)
-	) {
+	if (!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)) {
 		return IngestionMode.APPEND
 	}
 

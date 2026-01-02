@@ -143,11 +143,13 @@ const StreamConfiguration = ({
 			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
 
-		setAppendMode(
+		const initialAppendMode =
 			initialSelectedStreams?.selected_streams?.[
 				stream.stream.namespace || ""
-			]?.find(s => s.stream_name === stream.stream.name)?.append_mode || false,
-		)
+			]?.find(s => s.stream_name === stream.stream.name)?.append_mode || false
+
+		// Set append mode to true if source doesn't support upsert
+		setAppendMode(!isSourceUpsertSupported ? true : initialAppendMode)
 	}, [stream, initialNormalization, initialSelectedStreams])
 
 	useEffect(() => {
@@ -272,14 +274,19 @@ const StreamConfiguration = ({
 		)
 	}
 
-	const isAppendSupported = isSourceIngestionModeSupported(
+	const isSourceAppendSupported = isSourceIngestionModeSupported(
 		IngestionMode.APPEND,
 		sourceType,
 	)
 
-	const isUpsertSupported = isSourceIngestionModeSupported(
+	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
 		sourceType,
+	)
+
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
 	)
 
 	const handleNormalizationChange = (checked: boolean) => {
@@ -772,10 +779,7 @@ const StreamConfiguration = ({
 					</div>
 
 					{/* Don't show Ingestion Mode if destination doesn't support it */}
-					{isDestinationIngestionModeSupported(
-						IngestionMode.UPSERT,
-						destinationType,
-					) && (
+					{isDestUpsertModeSupported && (
 						<div
 							className={clsx(
 								"mb-4",
@@ -798,41 +802,35 @@ const StreamConfiguration = ({
 							<Radio.Group
 								disabled={!isSelected}
 								className="mb-4 grid grid-cols-2 gap-4"
-								value={
-									!isUpsertSupported
-										? IngestionMode.APPEND
-										: appendMode
-											? IngestionMode.APPEND
-											: IngestionMode.UPSERT
-								}
+								value={appendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
 								onChange={e => handleIngestionModeChange(e.target.value)}
 							>
 								<Tooltip
 									title={
-										!isUpsertSupported
+										!isSourceUpsertSupported
 											? "Upsert is not supported for this source"
 											: undefined
 									}
 								>
 									<Radio
 										value={IngestionMode.UPSERT}
-										disabled={!isUpsertSupported}
-										className={clsx(!isUpsertSupported && "opacity-50")}
+										disabled={!isSourceUpsertSupported}
+										className={clsx(!isSourceUpsertSupported && "opacity-50")}
 									>
 										Upsert
 									</Radio>
 								</Tooltip>
 								<Tooltip
 									title={
-										!isAppendSupported
+										!isSourceAppendSupported
 											? "Append is not supported for this source"
 											: undefined
 									}
 								>
 									<Radio
 										value={IngestionMode.APPEND}
-										disabled={!isAppendSupported}
-										className={clsx(!isAppendSupported && "opacity-50")}
+										disabled={!isSourceAppendSupported}
+										className={clsx(!isSourceAppendSupported && "opacity-50")}
 									>
 										Append
 									</Radio>
