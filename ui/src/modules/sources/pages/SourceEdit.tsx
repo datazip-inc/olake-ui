@@ -19,12 +19,13 @@ import { sourceService, jobService } from "../../../api"
 import { Entity, SourceEditProps, SourceJob } from "../../../types"
 import {
 	getConnectorImage,
-	getConnectorInLowerCase,
 	getStatusClass,
 	getStatusLabel,
 	handleSpecResponse,
 	withAbortController,
 	trimFormDataStrings,
+	getConnectorLabel,
+	getConnectorInLowerCase,
 } from "../../../utils/utils"
 import DocumentationPanel from "../../common/components/DocumentationPanel"
 import StepTitle from "../../common/components/StepTitle"
@@ -36,7 +37,6 @@ import EntityEditModal from "../../common/Modals/EntityEditModal"
 import connectorOptions from "../components/connectorOptions"
 import { getStatusIcon } from "../../../utils/statusIcons"
 import {
-	connectorTypeMap,
 	DISPLAYED_JOBS_COUNT,
 	OLAKE_LATEST_VERSION_URL,
 	transformErrors,
@@ -80,6 +80,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 
+	const normalizedSourceConnector = getConnectorInLowerCase(connector || "")
+
 	const {
 		sources,
 		fetchSources,
@@ -102,8 +104,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			if (source) {
 				setSource(source)
 				setSourceName(source.name)
-				let normalizedType =
-					connectorTypeMap[source.type.toLowerCase()] || source.type
+				const normalizedType = getConnectorLabel(source.type)
 				setConnector(normalizedType)
 				setSelectedVersion(source.version)
 				setFormData(
@@ -120,15 +121,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		if (initialData) {
 			setSourceName(initialData.name || "")
-			const connectorTypeMap: Record<string, string> = {
-				mongodb: "MongoDB",
-				postgres: "Postgres",
-				mysql: "MySQL",
-				oracle: "Oracle",
-				kafka: "Kafka",
-			}
-			let normalizedType =
-				connectorTypeMap[initialData.type.toLowerCase()] || initialData.type
+			const normalizedType = getConnectorLabel(initialData.type)
 
 			// Only set connector if it's not already set or if it's the same as initialData
 			if (!connector || connector === normalizedType) {
@@ -163,7 +156,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		return withAbortController(
 			signal =>
 				sourceService.getSourceSpec(
-					connector as string,
+					normalizedSourceConnector,
 					selectedVersion,
 					signal,
 				),
@@ -203,7 +196,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			setLoadingVersions(true)
 			try {
 				const response = await sourceService.getSourceVersions(
-					getConnectorInLowerCase(connector),
+					normalizedSourceConnector,
 				)
 				if (response?.version) {
 					const versions = response.version.map((version: string) => ({
@@ -212,7 +205,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					}))
 					setAvailableVersions([...versions])
 					if (
-						source?.type !== getConnectorInLowerCase(connector) &&
+						source?.type !== normalizedSourceConnector &&
 						versions.length > 0 &&
 						!initialData
 					) {
@@ -222,7 +215,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 						}
 					} else if (initialData) {
 						if (
-							initialData?.type != getConnectorInLowerCase(connector) &&
+							initialData?.type != normalizedSourceConnector &&
 							initialData.version
 						) {
 							setSelectedVersion(initialData.version)
@@ -268,7 +261,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceData = {
 			id: source?.id || 0,
 			name: sourceName,
-			type: connector || "MongoDB",
+			type: getConnectorInLowerCase(connector || "MongoDB"),
 			version: selectedVersion,
 			status: "active" as const,
 			config: configStr,
@@ -337,7 +330,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceToDelete = {
 			...source,
 			name: sourceName || source.name,
-			type: connector || source.type,
+			type: getConnectorInLowerCase(connector || source.type),
 		}
 
 		setSelectedSource(sourceToDelete)
@@ -717,7 +710,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${connector?.toLowerCase()}`}
+						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector || "")}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

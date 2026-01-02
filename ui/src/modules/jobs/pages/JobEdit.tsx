@@ -165,6 +165,10 @@ const JobEdit: React.FC = () => {
 
 	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
 
+	const normalizedSourceConnector = getConnectorInLowerCase(
+		sourceData?.type || "",
+	)
+
 	useEffect(() => {
 		fetchSelectedClearDestinationStatus()
 	}, [selectedJobId])
@@ -321,7 +325,7 @@ const JobEdit: React.FC = () => {
 			source: {
 				...(sourceData?.id && { id: sourceData.id }),
 				name: sourceData?.name || "",
-				type: getConnectorInLowerCase(sourceData?.type || ""),
+				type: normalizedSourceConnector,
 				config:
 					typeof sourceData?.config === "string"
 						? sourceData?.config
@@ -557,7 +561,7 @@ const JobEdit: React.FC = () => {
 									stepNumber={JOB_STEP_NUMBERS.STREAMS}
 									stepTitle="Streams Selection"
 									sourceName={sourceData?.name || ""}
-									sourceConnector={sourceData?.type.toLowerCase() || ""}
+									sourceConnector={normalizedSourceConnector}
 									sourceVersion={sourceData?.version || ""}
 									sourceConfig={JSON.stringify(sourceData?.config || {})}
 									fromJobEditFlow={true}
