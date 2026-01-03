@@ -121,3 +121,7 @@ type UpdateSyncTelemetryRequest struct {
 	Event       string `json:"event"`
 	Environment string `json:"environment"`
 }
+
+type UpdateStateFileRequest struct {
+	StateFile string `json:"state_file" validate:"required"`
+}
