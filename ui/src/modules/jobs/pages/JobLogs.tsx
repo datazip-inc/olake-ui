@@ -53,7 +53,7 @@ const JobLogs: React.FC = () => {
 	const previousLogCountRef = useRef(0)
 
 	const {
-		jobs,
+		selectedJob: job,
 		taskLogs,
 		isLoadingTaskLogs,
 		isLoadingOlderLogs,
@@ -64,7 +64,7 @@ const JobLogs: React.FC = () => {
 		fetchInitialTaskLogs,
 		fetchOlderTaskLogs,
 		fetchNewerTaskLogs,
-		fetchJobs,
+		fetchSelectedJob,
 	} = useAppStore()
 
 	const filteredLogs = useMemo(() => {
@@ -99,17 +99,19 @@ const JobLogs: React.FC = () => {
 		[searchText, showOnlyErrors],
 	)
 
-	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-	}, [fetchJobs])
-
 	const handleDownloadLogs = () => {
 		if (!jobId || !filePath) return
 		jobService.downloadTaskLogs(jobId, filePath)
 		message.success("Downloading logs...")
 	}
+
+	useEffect(() => {
+		if (!jobId) {
+			navigate("/jobs")
+			return
+		}
+		fetchSelectedJob(jobId)
+	}, [jobId])
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),
 	useEffect(() => {
@@ -124,8 +126,6 @@ const JobLogs: React.FC = () => {
 
 		fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 	}, [jobId, isTaskLog, filePath, historyId, isFiltering, fetchInitialTaskLogs])
-
-	const job = jobs.find(j => j.id === Number(jobId))
 
 	// Handle Scroll Position & Index Shifting synchronously to prevent visual jumping
 	useLayoutEffect(() => {

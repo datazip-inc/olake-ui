@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -48,9 +49,15 @@ func (db *Database) ListSources() ([]*models.Source, error) {
 }
 
 func (db *Database) GetSourceByID(id int) (*models.Source, error) {
-	source := &models.Source{ID: id}
-	err := db.ormer.Read(source)
+	var source models.Source
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Filter("id", id).
+		RelatedSel().
+		One(&source)
 	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, fmt.Errorf("source not found id[%d]", id)
+		}
 		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)
 	}
 
@@ -60,7 +67,7 @@ func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 		return nil, fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = dConfig
-	return source, nil
+	return &source, nil
 }
 
 func (db *Database) UpdateSource(source *models.Source) error {

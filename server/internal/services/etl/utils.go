@@ -10,6 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
+	"github.com/datazip-inc/olake-ui/server/utils"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	"go.temporal.io/api/workflow/v1"
@@ -17,6 +18,80 @@ import (
 	"go.temporal.io/sdk/converter"
 	"golang.org/x/mod/semver"
 )
+
+// JobLastRunInfo holds the latest run information for a job
+type JobLastRunInfo struct {
+	LastRunTime  string
+	LastRunState string
+	LastRunType  string
+}
+
+// fetchLatestJobRunsByJobIDs batches workflow queries for multiple jobs into a single/few temporal API calls
+func fetchLatestJobRunsByJobIDs(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobs []*models.Job) (map[int]JobLastRunInfo, error) {
+	if len(jobs) == 0 {
+		return map[int]JobLastRunInfo{}, nil
+	}
+
+	jobIDSet := make(map[int]struct{}, len(jobs))
+	for _, job := range jobs {
+		jobIDSet[job.ID] = struct{}{}
+	}
+
+	// Query latest workflow execution per job ID for this project.
+	query := fmt.Sprintf("WorkflowId between 'sync-%s-' and 'sync-%s-~'", projectID, projectID)
+
+	result := make(map[int]JobLastRunInfo, len(jobs))
+	var nextPageToken []byte
+
+	// Paginate through visibility results until we have the latest run for each job (or pages end).
+	for {
+		resp, err := tempClient.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
+			Query:         query,
+			PageSize:      int32(constants.DefaultListWorkflowPageSize),
+			NextPageToken: nextPageToken,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to list workflows: %s", err)
+		}
+
+		// Walk each execution returned in this page.
+		for _, execution := range resp.Executions {
+			jobID, ok := utils.ExtractJobIDFromWorkflowID(execution.Execution.WorkflowId, projectID)
+			if !ok {
+				continue
+			}
+			// skip if id not found in jobIDSet
+			if _, inSet := jobIDSet[jobID]; !inSet {
+				continue
+			}
+			// skip if already exists
+			if _, exists := result[jobID]; exists {
+				continue
+			}
+
+			// add the latest run for this job
+			opType := syncWorkflowOperationType(execution)
+			result[jobID] = JobLastRunInfo{
+				LastRunTime:  execution.StartTime.AsTime().Format(time.RFC3339),
+				LastRunState: execution.Status.String(),
+				LastRunType:  utils.Ternary(opType == temporal.Sync, "sync", "clear").(string),
+			}
+
+			// break if all jobs are populated.
+			if len(result) == len(jobIDSet) {
+				return result, nil
+			}
+		}
+
+		// break if no more executions are available.
+		if len(resp.NextPageToken) == 0 {
+			break
+		}
+		nextPageToken = resp.NextPageToken
+	}
+
+	return result, nil
+}
 
 func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, jobs []*models.Job, projectID string) error {
 	if len(jobs) == 0 {
@@ -55,7 +130,7 @@ func cancelAllJobWorkflows(ctx context.Context, tempClient *temporal.Temporal, j
 	return nil
 }
 
-func buildJobDataItems(jobs []*models.Job, tempClient *temporal.Temporal, contextType string) ([]dto.JobDataItem, error) {
+func buildJobDataItems(jobs []*models.Job, lastRunByJobID map[int]JobLastRunInfo, contextType string) ([]dto.JobDataItem, error) {
 	jobItems := make([]dto.JobDataItem, 0)
 	for _, job := range jobs {
 		jobInfo := dto.JobDataItem{
@@ -73,9 +148,12 @@ func buildJobDataItems(jobs []*models.Job, tempClient *temporal.Temporal, contex
 			jobInfo.SourceType = job.SourceID.Type
 		}
 
-		if err := setJobWorkflowInfo(&jobInfo, job.ID, job.ProjectID, tempClient); err != nil {
-			return nil, fmt.Errorf("failed to set job workflow info: %s", err)
+		// Set workflow info from pre-fetched map
+		if lastRun, ok := lastRunByJobID[job.ID]; ok {
+			jobInfo.LastRunTime = lastRun.LastRunTime
+			jobInfo.LastRunState = lastRun.LastRunState
 		}
+
 		jobItems = append(jobItems, jobInfo)
 	}
 
@@ -89,30 +167,6 @@ func setUsernames(createdBy, updatedBy *string, createdByUser, updatedByUser *mo
 	if updatedByUser != nil {
 		*updatedBy = updatedByUser.Username
 	}
-}
-
-// setJobWorkflowInfo fetches and sets workflow execution information for a job
-// Returns false if an error occurred that should stop processing
-func setJobWorkflowInfo(jobInfo *dto.JobDataItem, jobID int, projectID string, tempClient *temporal.Temporal) error {
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, jobID, projectID, jobID)
-
-	resp, err := tempClient.ListWorkflow(context.Background(), &workflowservice.ListWorkflowExecutionsRequest{
-		Query:    query,
-		PageSize: 1,
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to list workflows: %s", err)
-	}
-
-	if len(resp.Executions) > 0 {
-		jobInfo.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-		jobInfo.LastRunState = resp.Executions[0].Status.String()
-	} else {
-		jobInfo.LastRunTime = ""
-		jobInfo.LastRunState = ""
-	}
-	return nil
 }
 
 // Checks if the sync worklfow run is "sync" or "clear-destination"

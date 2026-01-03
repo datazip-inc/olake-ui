@@ -20,10 +20,28 @@ export const sourceService = {
 
 			return response.data.map(item => ({
 				...item,
-				config: JSON.parse(item.config),
+				config: item.config ? JSON.parse(item.config) : {},
 			}))
 		} catch (error) {
 			console.error("Error fetching sources from API:", error)
+			throw error
+		}
+	},
+
+	getSource: async (id: string): Promise<Entity> => {
+		try {
+			const response = await api.get<Entity>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+
+			const source = {
+				...response.data,
+				config: response.data.config ? JSON.parse(response.data.config) : {},
+			}
+
+			return source
+		} catch (error) {
+			console.error("Error fetching source from API:", error)
 			throw error
 		}
 	},
