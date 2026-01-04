@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Input, Select, Radio, Tooltip } from "antd"
 import { InfoIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
@@ -24,6 +24,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobNameFilled = false,
 }) => {
 	const location = useLocation()
+    const jobNameInputRef = useRef<any>(null)
 	const isEditMode = location.pathname.includes("/edit")
 	const [selectedTime, setSelectedTime] = useState("1")
 	const [selectedAmPm, setSelectedAmPm] = useState<"AM" | "PM">("AM")
@@ -100,6 +101,18 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 			updateNextRuns(cronValue)
 		}
 	}, [cronValue])
+	
+	useEffect(() => {
+  		if (
+    		location.pathname === "/jobs/new" &&
+    		!isEditMode &&
+    		!jobNameFilled
+  		) {
+    		requestAnimationFrame(() => {
+      		jobNameInputRef.current?.focus()
+    		})
+  		}
+	}, [location.pathname, isEditMode, jobNameFilled])
 
 	// Unified handler for all cron expression updates
 	const updateCronExpression = (
@@ -181,6 +194,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 							Job name:<span className="text-red-500">*</span>
 						</label>
 						<Input
+							ref={jobNameInputRef}
 							value={jobName}
 							disabled={isEditMode || jobNameFilled}
 							onChange={e => {
