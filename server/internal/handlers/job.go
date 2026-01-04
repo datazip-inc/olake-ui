@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -272,7 +273,7 @@ func (h *Handler) ClearDestination() {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	if err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0); err != nil {
+	if err := h.etl.ClearDestination(h.Ctx.Request.Context(), projectID, id, "", 0, true); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
 		return
 	}
@@ -359,7 +360,7 @@ func (h *Handler) GetJobTasks() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
-// @router /project/:projectid/jobs/:id/logs [get]
+// @router /project/:projectid/jobs/:id/logs [post]
 func (h *Handler) GetTaskLogs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -373,9 +374,13 @@ func (h *Handler) GetTaskLogs() {
 		return
 	}
 
-	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
+	cursor, _ := h.GetInt64("cursor", constants.DefaultLogsCursor)
+	limit, _ := h.GetInt("limit", constants.DefaultLogsLimit)
+	direction := h.GetString("direction", constants.DefaultLogsDirection)
 
-	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath)
+	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s] cursor[%d] limit[%d] direction[%s]", id, req.FilePath, cursor, limit, direction)
+
+	logs, err := h.etl.GetTaskLogs(h.Ctx.Request.Context(), id, req.FilePath, cursor, limit, direction)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
@@ -425,4 +430,63 @@ func (h *Handler) RecoverClearDestination() {
 	}
 
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
+}
+
+// @router /project/:projectid/jobs/:id/logs/download [get]
+func (h *Handler) DownloadTaskLogs() {
+	id, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	filePath := h.GetString("file_path")
+	if filePath == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "file_path query parameter is required", nil)
+		return
+	}
+
+	logger.Debugf("Download task logs initiated job_id[%d] file_path[%s]", id, filePath)
+
+	filename, err := utils.GetLogArchiveFilename(id, filePath)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
+		return
+	}
+
+	h.Ctx.Output.Header("Content-Type", "application/gzip")
+	h.Ctx.Output.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	h.Ctx.Output.Header("Cache-Control", "no-cache")
+	h.Ctx.Output.Header("X-Content-Type-Options", "nosniff")
+	// Expose Content-Disposition header so browser JS can access filename for download
+	h.Ctx.Output.Header("Access-Control-Expose-Headers", "Content-Disposition")
+
+	if err := h.etl.StreamLogArchive(id, filePath, h.Ctx.ResponseWriter); err != nil {
+		logger.Errorf("failed to stream log archive job_id[%d]: %s", id, err)
+		return
+	}
+
+	logger.Infof("successfully streamed log archive job_id[%d] filename[%s]", id, filename)
+}
+
+// @router /internal/project/:projectid/jobs/:id/statefile [put]
+func (h *Handler) UpdateStateFile() {
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	var req dto.UpdateStateFileRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := h.etl.UpdateStateFile(jobID, req.StateFile); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update state file: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("state file updated successfully for job_id[%d]", jobID), nil)
 }

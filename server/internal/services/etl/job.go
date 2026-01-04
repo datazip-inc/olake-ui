@@ -1,10 +1,13 @@
 package services
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -120,7 +123,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 			return fmt.Errorf("invalid difference_streams JSON: %s", err)
 		}
 		if len(diffCatalog) > 0 {
-			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime); err != nil {
+			if err := s.ClearDestination(ctx, projectID, jobID, req.DifferenceStreams, constants.DefaultCancelSyncWaitTime, false); err != nil {
 				return fmt.Errorf("failed to run clear destination workflow: %s", err)
 			}
 			logger.Infof("successfully triggered clear destination workflow for job %d", existingJob.ID)
@@ -262,7 +265,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 	return nil
 }
 
-func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration) error {
+func (s *ETLService) ClearDestination(ctx context.Context, projectID string, jobID int, streamsConfig string, syncWaitTime time.Duration, resetState bool) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return fmt.Errorf("job not found: %s", err)
@@ -289,6 +292,14 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 			return fmt.Errorf("wait error: %s, resume error: %s", err, rerr)
 		}
 		return fmt.Errorf("failed to wait for sync to stop: %s", err)
+	}
+
+	// for manual clear-destination, update the state file to empty object
+	if resetState {
+		if err := s.UpdateStateFile(jobID, "{}"); err != nil {
+			return fmt.Errorf("failed to update state file: %s", err)
+		}
+		logger.Infof("state file updated to {} for manual clear-destination for job_id[%d]", jobID)
 	}
 
 	logger.Infof("running clear destination workflow for job %d for the following streams:\n%s", job.ID, streamsConfig)
@@ -401,18 +412,19 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	return tasks, nil
 }
 
-func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) ([]map[string]interface{}, error) {
+func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
-	syncFolderName := fmt.Sprintf("%x", sha256.Sum256([]byte(filePath)))
+	// Get and validate base directory from file path
+	mainSyncDir, err := utils.GetAndValidateLogBaseDir(filePath)
+	if err != nil {
+		return nil, err
+	}
 
-	// Get home directory
-	homeDir := constants.DefaultConfigDir
-	mainSyncDir := filepath.Join(homeDir, syncFolderName)
-	logs, err := utils.ReadLogs(mainSyncDir)
+	logs, err := utils.ReadLogs(mainSyncDir, cursor, limit, direction)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read logs: %s", err)
 	}
@@ -420,7 +432,6 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string) 
 	return logs, nil
 }
 
-// TODO: frontend needs to send source id and destination id
 func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, projectID string) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
 		ID:            job.ID,
@@ -607,5 +618,70 @@ func (s *ETLService) RecoverFromClearDestination(ctx context.Context, projectID 
 	}
 	logger.Infof("resumed schedule for job %d", jobID)
 
+	return nil
+}
+
+// StreamLogArchive creates and streams a tar.gz archive of job logs to the provided writer
+func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer io.Writer) error {
+	baseDir, err := utils.GetAndValidateLogBaseDir(taskLogFilePath)
+	if err != nil {
+		return err
+	}
+
+	logsDir, _, err := utils.GetAndValidateSyncDir(baseDir)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("Starting log archive creation for job_id[%d]", jobID)
+
+	// Create streaming pipeline: tarWriter → gzipWriter → writer
+	gzipWriter := gzip.NewWriter(writer)
+	defer gzipWriter.Close()
+
+	tarWriter := tar.NewWriter(gzipWriter)
+	defer tarWriter.Close()
+
+	stateFile := filepath.Join(baseDir, "state.json")
+	if err := utils.AddFileToArchive(tarWriter, stateFile, "state.json"); err != nil {
+		logger.Warnf("failed to add state.json to archive: %s", err)
+		// Continue anyway - state.json might not exist
+	}
+
+	logger.Debugf("Adding files from %s to archive", logsDir)
+	err = filepath.Walk(logsDir, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+
+		// Only include files, skip directories
+		if info.IsDir() {
+			return nil
+		}
+
+		archivePath := filepath.Join("logs", filepath.Base(path))
+		return utils.AddFileToArchive(tarWriter, path, archivePath)
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to add files from logs directory %s: %s", logsDir, err)
+	}
+
+	logger.Infof("Successfully created log archive for job_id[%d]", jobID)
+
+	return nil
+}
+
+func (s *ETLService) UpdateStateFile(jobID int, stateFile string) error {
+	_, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return fmt.Errorf("job not found: %s", err)
+	}
+
+	if err := s.db.UpdateJob(jobID, orm.Params{"state": stateFile}); err != nil {
+		return fmt.Errorf("failed to update job: %s", err)
+	}
+
+	logger.Infof("state file updated successfully for job_id[%d] with state: %s", jobID, stateFile)
 	return nil
 }

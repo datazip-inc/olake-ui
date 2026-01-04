@@ -1,4 +1,4 @@
-import { EntityJob } from "./entityTypes"
+import { EntityJob, LogEntry } from "./entityTypes"
 
 export interface Job {
 	id: number
@@ -56,11 +56,33 @@ export interface JobTask {
 	file_path: string
 	job_type: JobType
 }
-export interface TaskLog {
-	level: string
-	message: string
-	time: string
+
+export interface TaskLogsResponse {
+	logs: LogEntry[]
+	older_cursor: number
+	newer_cursor: number
+	has_more_older: boolean
+	has_more_newer: boolean
 }
+
+export enum TaskLogsDirection {
+	Older = "older",
+	Newer = "newer",
+}
+
+export interface TaskLogsPaginationParams {
+	cursor: number
+	limit: number
+	direction: TaskLogsDirection
+}
+
+export interface TaskLogEntry {
+	level: string
+	date: string
+	time: string
+	message: string
+}
+
 export type JobCreationSteps = "config" | "source" | "destination" | "streams"
 
 export type JobStatus = "active" | "inactive" | "saved" | "failed"
