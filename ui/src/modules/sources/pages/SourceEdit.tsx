@@ -261,7 +261,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceData = {
 			id: source?.id || 0,
 			name: sourceName,
-			type: getConnectorInLowerCase(connector),
+			type: getConnectorInLowerCase(connector || "MongoDB"),
 			version: selectedVersion,
 			status: "active" as const,
 			config: configStr,
