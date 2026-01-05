@@ -118,7 +118,7 @@ const JobDestinationEdit = ({
 				}
 				docsMinimized={docsMinimized}
 				onDocsMinimizedChange={onDocsMinimizedChange}
-				sourceConnector={getConnectorInLowerCase(sourceData?.type || "")}
+				sourceConnector={getConnectorInLowerCase(sourceData?.type)}
 				sourceVersion={sourceData?.version || ""}
 			/>
 		</div>
@@ -165,9 +165,7 @@ const JobEdit: React.FC = () => {
 
 	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
 
-	const normalizedSourceConnector = getConnectorInLowerCase(
-		sourceData?.type || "",
-	)
+	const normalizedSourceConnector = getConnectorInLowerCase(sourceData?.type)
 
 	useEffect(() => {
 		fetchSelectedClearDestinationStatus()
@@ -335,7 +333,7 @@ const JobEdit: React.FC = () => {
 			destination: {
 				...(destinationData?.id && { id: destinationData.id }),
 				name: destinationData?.name || "",
-				type: getConnectorInLowerCase(destinationData?.type || ""),
+				type: getConnectorInLowerCase(destinationData?.type),
 				config:
 					typeof destinationData?.config === "string"
 						? destinationData?.config

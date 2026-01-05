@@ -80,7 +80,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 
-	const normalizedSourceConnector = getConnectorInLowerCase(connector || "")
+	const normalizedSourceConnector = getConnectorInLowerCase(connector)
 
 	const {
 		sources,
@@ -261,7 +261,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		const sourceData = {
 			id: source?.id || 0,
 			name: sourceName,
-			type: getConnectorInLowerCase(connector || "MongoDB"),
+			type: getConnectorInLowerCase(connector),
 			version: selectedVersion,
 			status: "active" as const,
 			config: configStr,
@@ -710,7 +710,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 					</div>
 
 					<DocumentationPanel
-						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector || "")}`}
+						docUrl={`https://olake.io/docs/connectors/${getConnectorInLowerCase(connector)}`}
 						isMinimized={docsMinimized}
 						onToggle={toggleDocsPanel}
 						showResizer={true}

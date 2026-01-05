@@ -123,8 +123,8 @@ export const getJobTypeClass = (jobType: JobType) => {
 	}
 }
 
-export const getConnectorInLowerCase = (connector: string) => {
-	const normalizedConnector = normalizeConnectorType(connector)
+export const getConnectorInLowerCase = (connector?: string | null) => {
+	const normalizedConnector = normalizeConnectorType(connector || "")
 	const lowerConnector = normalizedConnector.toLowerCase()
 
 	switch (lowerConnector) {
