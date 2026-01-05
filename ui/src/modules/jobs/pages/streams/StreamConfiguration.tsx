@@ -110,6 +110,21 @@ const StreamConfiguration = ({
 	// Guard to prevent prop-driven effect from clobbering local edits
 	const isLocalFilterUpdateRef = useRef(false)
 
+	const isSourceAppendSupported = isSourceIngestionModeSupported(
+		IngestionMode.APPEND,
+		sourceType,
+	)
+
+	const isSourceUpsertSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
+
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
+	)
+
 	useEffect(() => {
 		// Set initial streams only once when component mounts
 		if (fromJobEditFlow && initialSelectedStreams && !initialJobStreams) {
@@ -273,21 +288,6 @@ const StreamConfiguration = ({
 			ingestionMode === IngestionMode.APPEND,
 		)
 	}
-
-	const isSourceAppendSupported = isSourceIngestionModeSupported(
-		IngestionMode.APPEND,
-		sourceType,
-	)
-
-	const isSourceUpsertSupported = isSourceIngestionModeSupported(
-		IngestionMode.UPSERT,
-		sourceType,
-	)
-
-	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
-		IngestionMode.UPSERT,
-		destinationType,
-	)
 
 	const handleNormalizationChange = (checked: boolean) => {
 		setNormalization(checked)
