@@ -41,16 +41,14 @@ export const destinationService = {
 		try {
 			const response = await api.get<Entity>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
-				{ timeout: 0 },
 			)
 			const config = response.data.config
 				? JSON.parse(response.data.config)
-				: {}
+				: null
 			return {
 				...response.data,
 				type: normalizeConnectorType(response.data.type),
 				config,
-				status: "active" as const,
 			}
 		} catch (error) {
 			console.error("Error fetching destination from API:", error)

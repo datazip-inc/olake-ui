@@ -480,9 +480,7 @@ func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, 
 		Activate:  job.Active,
 	}
 
-	if includeConfig {
-		jobResp.StreamsConfig = job.StreamsConfig
-	}
+	jobResp.StreamsConfig = utils.Ternary(includeConfig, job.StreamsConfig, "").(string)
 
 	if job.SourceID != nil {
 		jobResp.Source = dto.DriverConfig{
@@ -491,9 +489,7 @@ func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, 
 			Type:    job.SourceID.Type,
 			Version: job.SourceID.Version,
 		}
-		if includeConfig {
-			jobResp.Source.Config = job.SourceID.Config
-		}
+		jobResp.Source.Config = utils.Ternary(includeConfig, job.SourceID.Config, "").(string)
 	}
 
 	if job.DestID != nil {
@@ -503,9 +499,7 @@ func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, 
 			Type:    job.DestID.DestType,
 			Version: job.DestID.Version,
 		}
-		if includeConfig {
-			jobResp.Destination.Config = job.DestID.Config
-		}
+		jobResp.Destination.Config = utils.Ternary(includeConfig, job.DestID.Config, "").(string)
 	}
 
 	if job.CreatedBy != nil {

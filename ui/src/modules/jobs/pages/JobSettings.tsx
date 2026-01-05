@@ -14,6 +14,7 @@ import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
 import { useAppStore } from "../../../store"
+import { useJobDetails } from "../hooks/useJobDetails"
 import { jobService } from "../../../api"
 import {
 	getConnectorImage,
@@ -53,7 +54,6 @@ const JobSettings: React.FC = () => {
 	}
 
 	const {
-		selectedJob: job,
 		selectedJobId,
 		isClearDestinationStatusLoading,
 		fetchSelectedClearDestinationStatus,
@@ -64,6 +64,8 @@ const JobSettings: React.FC = () => {
 		fetchSelectedJob,
 	} = useAppStore()
 
+	const job = useJobDetails({ jobId })
+
 	const fetchJobDetails = async () => {
 		if (!jobId) {
 			navigate("/jobs")
@@ -71,10 +73,6 @@ const JobSettings: React.FC = () => {
 		}
 		fetchSelectedJob(jobId)
 	}
-
-	useEffect(() => {
-		fetchJobDetails()
-	}, [jobId])
 
 	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
 	const [isPauseLoading, setIsPauseLoading] = useState(false)

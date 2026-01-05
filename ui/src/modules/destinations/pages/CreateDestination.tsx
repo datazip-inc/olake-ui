@@ -183,21 +183,12 @@ const CreateDestination = forwardRef<
 				const destination = destinations.find(
 					d => d.id === initialExistingDestinationId,
 				)
-				const connectorLowerCase =
-					connector === CONNECTOR_TYPES.AMAZON_S3
-						? DESTINATION_INTERNAL_TYPES.S3
-						: DESTINATION_INTERNAL_TYPES.ICEBERG
+				const connectorLowerCase = getConnectorInLowerCase(connector)
 				if (destination && destination.type === connectorLowerCase) {
 					setExistingDestination(destination.name)
 				}
 			}
-		}, [
-			initialExistingDestinationId,
-			destinations,
-			existingDestination,
-			setupType,
-			connector,
-		])
+		}, [initialExistingDestinationId, destinations.length])
 
 		useEffect(() => {
 			if (setupType === SETUP_TYPES.EXISTING) {

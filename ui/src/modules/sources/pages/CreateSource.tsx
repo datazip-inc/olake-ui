@@ -26,6 +26,7 @@ import {
 	handleSpecResponse,
 	withAbortController,
 	trimFormDataStrings,
+	getConnectorInLowerCase,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -129,11 +130,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			) {
 				// Find source in the filtered list (filtered by connector type)
 				const source = sources.find(s => s.id === initialExistingSourceId)
-				if (source && source.type === connector.toLowerCase()) {
+				if (source && source.type === getConnectorInLowerCase(connector)) {
 					setExistingSource(source.name)
 				}
 			}
-		}, [initialExistingSourceId, sources, existingSource, setupType, connector])
+		}, [initialExistingSourceId, sources.length])
 
 		useEffect(() => {
 			if (initialName) {

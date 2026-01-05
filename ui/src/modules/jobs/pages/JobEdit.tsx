@@ -5,6 +5,7 @@ import { message } from "antd"
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
+import { useJobDetails } from "../hooks/useJobDetails"
 import { jobService } from "../../../api"
 import {
 	StreamData,
@@ -130,11 +131,10 @@ const JobEdit: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
 	const {
 		selectedJobId,
+		selectedJob: job,
 		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
 		setShowStreamDifferenceModal,
-		setSelectedJobId,
-		fetchSelectedJob,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -158,7 +158,6 @@ const JobEdit: React.FC = () => {
 	// Config step states
 	const [jobName, setJobName] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
-	const [job, setJob] = useState<Job | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
 	const [streamsModified, setStreamsModified] = useState(false)
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
@@ -258,25 +257,18 @@ const JobEdit: React.FC = () => {
 		setJobName("New Job")
 	}
 
+	useJobDetails({
+		jobId,
+		onJobFetched: fetchedJob => {
+			initializeFromExistingJob(fetchedJob)
+		},
+	})
+
+	// Initialize for new job when jobId is not present
 	useEffect(() => {
-		const fetchJobDetails = async () => {
-			if (!jobId) {
-				initializeForNewJob()
-				return
-			}
-
-			try {
-				const job = await fetchSelectedJob(jobId)
-				setJob(job)
-				setSelectedJobId(job.id.toString())
-				initializeFromExistingJob(job)
-			} catch (error) {
-				console.error("Error fetching job:", error)
-				navigate("/jobs")
-			}
+		if (!jobId) {
+			initializeForNewJob()
 		}
-
-		fetchJobDetails()
 	}, [jobId])
 
 	// Process streams configuration into a consistent format

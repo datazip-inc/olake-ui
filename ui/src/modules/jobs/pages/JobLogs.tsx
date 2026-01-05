@@ -18,6 +18,7 @@ import {
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import { useAppStore } from "../../../store"
+import { useJobDetails } from "../hooks/useJobDetails"
 import {
 	getConnectorImage,
 	getLogLevelClass,
@@ -53,7 +54,6 @@ const JobLogs: React.FC = () => {
 	const previousLogCountRef = useRef(0)
 
 	const {
-		selectedJob: job,
 		taskLogs,
 		isLoadingTaskLogs,
 		isLoadingOlderLogs,
@@ -64,8 +64,9 @@ const JobLogs: React.FC = () => {
 		fetchInitialTaskLogs,
 		fetchOlderTaskLogs,
 		fetchNewerTaskLogs,
-		fetchSelectedJob,
 	} = useAppStore()
+
+	const job = useJobDetails({ jobId })
 
 	const filteredLogs = useMemo(() => {
 		const search = searchText.toLowerCase()
@@ -104,14 +105,6 @@ const JobLogs: React.FC = () => {
 		jobService.downloadTaskLogs(jobId, filePath)
 		message.success("Downloading logs...")
 	}
-
-	useEffect(() => {
-		if (!jobId) {
-			navigate("/jobs")
-			return
-		}
-		fetchSelectedJob(jobId)
-	}, [jobId])
 
 	// Fetch initial batch of task logs (or refetch after filters are cleared),
 	useEffect(() => {

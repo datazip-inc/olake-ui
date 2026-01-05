@@ -52,11 +52,11 @@ type JobResponse struct {
 	Name          string       `json:"name"`
 	Source        DriverConfig `json:"source"`
 	Destination   DriverConfig `json:"destination"`
+	StreamsConfig string       `json:"streams_config"`
 	Frequency     string       `json:"frequency"`
 	LastRunTime   string       `json:"last_run_time,omitempty"`
 	LastRunState  string       `json:"last_run_state,omitempty"`
 	LastRunType   string       `json:"last_run_type,omitempty"` // "sync" | "clear-destination"
-	StreamsConfig string       `json:"streams_config"`
 	CreatedAt     string       `json:"created_at"`
 	UpdatedAt     string       `json:"updated_at"`
 	Activate      bool         `json:"activate"`
