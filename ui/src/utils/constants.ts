@@ -296,3 +296,11 @@ export const LOGS_CONFIG = {
 	VIRTUAL_LIST_START_INDEX: 1000000, // High starting index for virtualized log list
 	OVERSCAN: 1000, // Number of items to render outside visible area
 } as const
+
+// fallback defaults for streams
+export const STREAM_DEFAULTS = {
+	append_mode: false,
+	normalization: false,
+	partition_regex: "",
+	filter: "",
+} as const
