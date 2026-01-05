@@ -34,6 +34,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	STREAM_DEFAULTS,
 } from "../../../utils/constants"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 import StreamDifferenceModal from "../../common/Modals/StreamDifferenceModal"
@@ -284,10 +285,8 @@ const JobEdit: React.FC = () => {
 			}
 			parsedConfig.forEach((streamName: string) => {
 				streamsData.selected_streams.default.push({
+					...STREAM_DEFAULTS,
 					stream_name: streamName,
-					partition_regex: "",
-					normalization: false,
-					filter: "",
 				})
 				streamsData.streams.push({
 					stream: {
