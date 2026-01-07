@@ -57,7 +57,7 @@ func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID i
 
 // GetAllSources returns all sources for a project with lightweight job summaries.
 func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
-	sources, err := s.db.ListSources()
+	sources, err := s.db.ListSourcesByProjectId(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
 	}

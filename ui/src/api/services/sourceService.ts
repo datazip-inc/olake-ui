@@ -20,7 +20,7 @@ export const sourceService = {
 
 			return response.data.map(item => ({
 				...item,
-				config: item.config ? JSON.parse(item.config) : {},
+				config: JSON.parse(item.config),
 			}))
 		} catch (error) {
 			console.error("Error fetching sources from API:", error)
@@ -36,7 +36,7 @@ export const sourceService = {
 
 			const source = {
 				...response.data,
-				config: response.data.config ? JSON.parse(response.data.config) : {},
+				config: JSON.parse(response.data.config),
 			}
 
 			return source

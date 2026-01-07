@@ -21,7 +21,7 @@ export const destinationService = {
 				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			const destinations: Entity[] = response.data.map(item => {
-				const config = item.config ? JSON.parse(item.config) : {}
+				const config = JSON.parse(item.config)
 				return {
 					...item,
 					type: normalizeConnectorType(item.type),

@@ -48,6 +48,21 @@ func (db *Database) ListSources() ([]*models.Source, error) {
 	return sources, nil
 }
 
+func (db *Database) ListSourcesByProjectId(projectID string) ([]*models.Source, error) {
+	var sources []*models.Source
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).RelatedSel().Filter("project_id", projectID).OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list sources project_id[%s]: %s", projectID, err)
+	}
+
+	// Decrypt config after reading
+	if err := db.decryptSourceSliceConfigs(sources); err != nil {
+		return nil, err
+	}
+
+	return sources, nil
+}
+
 func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 	var source models.Source
 	err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
