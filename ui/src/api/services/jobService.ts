@@ -36,6 +36,27 @@ export const jobService = {
 		}
 	},
 
+	getJob: async (id: string): Promise<Job> => {
+		try {
+			const response = await api.get<Job>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+
+			const job = {
+				...response.data,
+				destination: {
+					...response.data.destination,
+					type: normalizeConnectorType(response.data.destination.type),
+				},
+			}
+
+			return job
+		} catch (error) {
+			console.error("Error fetching job from API:", error)
+			throw error
+		}
+	},
+
 	createJob: async (job: JobBase): Promise<Job> => {
 		try {
 			const response = await api.post<Job>(

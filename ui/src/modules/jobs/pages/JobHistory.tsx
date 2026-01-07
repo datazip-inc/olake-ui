@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
+import { useJobDetails } from "../hooks/useJobDetails"
 import {
 	getConnectorImage,
 	getJobTypeClass,
@@ -43,20 +44,11 @@ const JobHistory: React.FC = () => {
 	const { waitForNewSync, syncStartTime } =
 		(location.state as JobHistoryNavState) || {}
 
-	const {
-		jobs,
-		jobTasks,
-		isLoadingJobTasks,
-		jobTasksError,
-		fetchJobTasks,
-		fetchJobs,
-	} = useAppStore()
+	const { jobTasks, isLoadingJobTasks, jobTasksError, fetchJobTasks } =
+		useAppStore()
 
-	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-	}, [])
+	const job = useJobDetails({ jobId })
+
 	useEffect(() => {
 		if (!jobId) {
 			return
@@ -122,7 +114,6 @@ const JobHistory: React.FC = () => {
 		}
 	}, [jobId, waitForNewSync, syncStartTime, fetchJobTasks])
 
-	const job = jobs.find(j => j.id === Number(jobId))
 	const handleViewLogs = (filePath: string) => {
 		if (jobId) {
 			navigate(

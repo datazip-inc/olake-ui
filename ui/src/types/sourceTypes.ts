@@ -25,6 +25,7 @@ export interface CreateSourceProps {
 	initialName?: string
 	initialConnector?: string
 	initialVersion?: string
+	initialExistingSourceId?: number | null
 	onSourceNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: any) => void

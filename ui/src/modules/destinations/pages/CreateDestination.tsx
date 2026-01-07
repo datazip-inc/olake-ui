@@ -83,6 +83,7 @@ const CreateDestination = forwardRef<
 			initialConnector,
 			initialVersion,
 			initialCatalog,
+			initialExistingDestinationId,
 			onDestinationNameChange,
 			onConnectorChange,
 			onFormDataChange,
@@ -96,7 +97,9 @@ const CreateDestination = forwardRef<
 		ref,
 	) => {
 		const formRef = useRef<any>(null)
-		const [setupType, setSetupType] = useState(SETUP_TYPES.NEW)
+		const [setupType, setSetupType] = useState(
+			initialExistingDestinationId ? SETUP_TYPES.EXISTING : SETUP_TYPES.NEW,
+		)
 		const [connector, setConnector] = useState<ConnectorType>(
 			initialConnector === undefined
 				? CONNECTOR_TYPES.AMAZON_S3
@@ -169,6 +172,23 @@ const CreateDestination = forwardRef<
 				fetchDestinations()
 			}
 		}, [destinations.length])
+
+		// Set existingDestination when destinations are loaded and we have an initialExistingDestinationId
+		useEffect(() => {
+			if (
+				initialExistingDestinationId &&
+				destinations.length > 0 &&
+				setupType === SETUP_TYPES.EXISTING
+			) {
+				const destination = destinations.find(
+					d => d.id === initialExistingDestinationId,
+				)
+				const connectorLowerCase = getConnectorInLowerCase(connector)
+				if (destination && destination.type === connectorLowerCase) {
+					setExistingDestination(destination.name)
+				}
+			}
+		}, [initialExistingDestinationId, destinations.length])
 
 		useEffect(() => {
 			if (setupType === SETUP_TYPES.EXISTING) {

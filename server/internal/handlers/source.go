@@ -29,6 +29,30 @@ func (h *Handler) ListSources() {
 	utils.SuccessResponse(&h.Controller, "sources listed successfully", sources)
 }
 
+// @router /project/:projectid/sources/:id [get]
+func (h *Handler) GetSource() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	sourceID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get source initiated project_id[%s] source_id[%d]", projectID, sourceID)
+
+	source, err := h.etl.GetSource(h.Ctx.Request.Context(), projectID, sourceID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source '%d' retrieved successfully", sourceID), source)
+}
+
 // @router /project/:projectid/sources [post]
 func (h *Handler) CreateSource() {
 	userID := GetUserIDFromSession(&h.Controller)
