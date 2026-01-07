@@ -31,16 +31,53 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 		return nil, fmt.Errorf("failed to list jobs: %s", err)
 	}
 
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
 	jobResponses := make([]dto.JobResponse, 0, len(jobs))
 	for _, job := range jobs {
-		jobResp, err := s.buildJobResponse(ctx, job, projectID)
+		var lastRun *JobLastRunInfo
+		if lr, ok := lastRunByJobID[job.ID]; ok {
+			lastRun = &lr
+		}
+
+		jobResp, err := s.buildJobResponse(job, lastRun, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job response: %s", err)
 		}
+
 		jobResponses = append(jobResponses, jobResp)
 	}
 
 	return jobResponses, nil
+}
+
+func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*dto.JobResponse, error) {
+	job, err := s.db.GetJobByID(jobID, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %s", err)
+	}
+
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, []*models.Job{job})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
+	// It is valid for a job to have no previous runs; in that case we build the
+	// response without last run information (same behavior as in ListJobs).
+	var lastRun *JobLastRunInfo
+	if lr, ok := lastRunByJobID[job.ID]; ok {
+		lastRun = &lr
+	}
+
+	jobResponse, err := s.buildJobResponse(job, lastRun, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build job response: %s", err)
+	}
+
+	return &jobResponse, nil
 }
 
 func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, projectID string, userID *int) error {
@@ -432,25 +469,27 @@ func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, 
 	return logs, nil
 }
 
-func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, projectID string) (dto.JobResponse, error) {
+// TODO: frontend needs to send source id and destination id
+func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, includeConfig bool) (dto.JobResponse, error) {
 	jobResp := dto.JobResponse{
-		ID:            job.ID,
-		Name:          job.Name,
-		StreamsConfig: job.StreamsConfig,
-		Frequency:     job.Frequency,
-		CreatedAt:     job.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:     job.UpdatedAt.Format(time.RFC3339),
-		Activate:      job.Active,
+		ID:        job.ID,
+		Name:      job.Name,
+		Frequency: job.Frequency,
+		CreatedAt: job.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: job.UpdatedAt.Format(time.RFC3339),
+		Activate:  job.Active,
 	}
+
+	jobResp.StreamsConfig = utils.Ternary(includeConfig, job.StreamsConfig, "").(string)
 
 	if job.SourceID != nil {
 		jobResp.Source = dto.DriverConfig{
 			ID:      &job.SourceID.ID,
 			Name:    job.SourceID.Name,
 			Type:    job.SourceID.Type,
-			Config:  job.SourceID.Config,
 			Version: job.SourceID.Version,
 		}
+		jobResp.Source.Config = utils.Ternary(includeConfig, job.SourceID.Config, "").(string)
 	}
 
 	if job.DestID != nil {
@@ -458,9 +497,9 @@ func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, proj
 			ID:      &job.DestID.ID,
 			Name:    job.DestID.Name,
 			Type:    job.DestID.DestType,
-			Config:  job.DestID.Config,
 			Version: job.DestID.Version,
 		}
+		jobResp.Destination.Config = utils.Ternary(includeConfig, job.DestID.Config, "").(string)
 	}
 
 	if job.CreatedBy != nil {
@@ -470,19 +509,10 @@ func (s *ETLService) buildJobResponse(ctx context.Context, job *models.Job, proj
 		jobResp.UpdatedBy = job.UpdatedBy.Username
 	}
 
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
-	resp, err := s.temporal.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
-		Query:    query,
-		PageSize: 1,
-	})
-	if err != nil {
-		return dto.JobResponse{}, fmt.Errorf("failed to list workflows: %s", err)
-	}
-	if len(resp.Executions) > 0 {
-		opType := syncWorkflowOperationType(resp.Executions[0])
-		jobResp.LastRunTime = resp.Executions[0].StartTime.AsTime().Format(time.RFC3339)
-		jobResp.LastRunState = resp.Executions[0].Status.String()
-		jobResp.LastRunType = utils.Ternary(opType == temporal.Sync, "sync", "clear").(string)
+	if lastRun != nil {
+		jobResp.LastRunTime = lastRun.LastRunTime
+		jobResp.LastRunState = lastRun.LastRunState
+		jobResp.LastRunType = lastRun.LastRunType
 	}
 
 	return jobResp, nil

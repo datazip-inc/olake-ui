@@ -18,6 +18,7 @@ import {
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import { useAppStore } from "../../../store"
+import { useJobDetails } from "../hooks/useJobDetails"
 import {
 	getConnectorImage,
 	getLogLevelClass,
@@ -53,7 +54,6 @@ const JobLogs: React.FC = () => {
 	const previousLogCountRef = useRef(0)
 
 	const {
-		jobs,
 		taskLogs,
 		isLoadingTaskLogs,
 		isLoadingOlderLogs,
@@ -64,8 +64,9 @@ const JobLogs: React.FC = () => {
 		fetchInitialTaskLogs,
 		fetchOlderTaskLogs,
 		fetchNewerTaskLogs,
-		fetchJobs,
 	} = useAppStore()
+
+	const job = useJobDetails({ jobId })
 
 	const filteredLogs = useMemo(() => {
 		const search = searchText.toLowerCase()
@@ -99,12 +100,6 @@ const JobLogs: React.FC = () => {
 		[searchText, showOnlyErrors],
 	)
 
-	useEffect(() => {
-		if (!jobs.length) {
-			fetchJobs()
-		}
-	}, [fetchJobs])
-
 	const handleDownloadLogs = () => {
 		if (!jobId || !filePath) return
 		jobService.downloadTaskLogs(jobId, filePath)
@@ -124,8 +119,6 @@ const JobLogs: React.FC = () => {
 
 		fetchInitialTaskLogs(jobId, historyId || "1", filePath)
 	}, [jobId, isTaskLog, filePath, historyId, isFiltering, fetchInitialTaskLogs])
-
-	const job = jobs.find(j => j.id === Number(jobId))
 
 	// Handle Scroll Position & Index Shifting synchronously to prevent visual jumping
 	useLayoutEffect(() => {
