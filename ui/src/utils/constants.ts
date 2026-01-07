@@ -44,7 +44,7 @@ export const CONNECTOR_TYPES = {
 export const SETUP_TYPES = {
 	NEW: "new",
 	EXISTING: "existing",
-}
+} as const
 
 export const STATUS = {
 	ACTIVE: "active",

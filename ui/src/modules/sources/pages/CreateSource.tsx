@@ -83,7 +83,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 	) => {
 		const formRef = useRef<any>(null)
 		const [setupType, setSetupType] = useState<SetupType>(
-			initialExistingSourceId ? "existing" : "new",
+			initialExistingSourceId ? SETUP_TYPES.EXISTING : SETUP_TYPES.NEW,
 		)
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")

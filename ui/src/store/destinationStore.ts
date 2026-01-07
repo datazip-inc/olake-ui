@@ -50,7 +50,11 @@ export const createDestinationSlice: StateCreator<DestinationSlice> = set => ({
 	},
 
 	fetchDestination: async (id: string) => {
-		set({ isLoadingDestination: true, destinationError: null })
+		set({
+			isLoadingDestination: true,
+			destinationError: null,
+			destination: null,
+		})
 		try {
 			const destination = await destinationService.getDestination(id)
 			set({

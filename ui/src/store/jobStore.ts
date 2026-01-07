@@ -41,7 +41,11 @@ export const createJobSlice: StateCreator<JobSlice> = set => ({
 	},
 
 	fetchSelectedJob: async (id: string) => {
-		set({ isLoadingSelectedJob: true, selectedJobError: null })
+		set({
+			selectedJob: null,
+			isLoadingSelectedJob: true,
+			selectedJobError: null,
+		})
 		try {
 			const job = await jobService.getJob(id)
 			set({

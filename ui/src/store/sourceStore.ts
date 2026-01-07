@@ -46,7 +46,7 @@ export const createSourceSlice: StateCreator<SourceSlice> = set => ({
 	},
 
 	fetchSource: async (id: string) => {
-		set({ isLoadingSource: true, sourceError: null })
+		set({ source: null, isLoadingSource: true, sourceError: null })
 		try {
 			const source = await sourceService.getSource(id)
 			set({
