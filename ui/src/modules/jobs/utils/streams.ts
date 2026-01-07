@@ -2,7 +2,12 @@ import {
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
 	StreamData,
+	IngestionMode,
 } from "../../../types"
+import {
+	isDestinationIngestionModeSupported,
+	isSourceIngestionModeSupported,
+} from "../../../utils/utils"
 import { STREAM_DEFAULTS } from "../../../utils/constants"
 
 /**
@@ -11,8 +16,20 @@ import { STREAM_DEFAULTS } from "../../../utils/constants"
  */
 export const getStreamsDataFromSourceStreamsResponse = (
 	response: StreamsDataStructure,
+	destinationType?: string,
+	sourceType?: string,
 ): StreamsDataStructure => {
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
+
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
+	)
+
+	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
 
 	// Iterate through all streams
 	response.streams.forEach((stream: StreamData) => {
@@ -51,6 +68,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				...defaults,
 				stream_name: streamName,
 				disabled: true,
+				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
 			})
 		}
 	})
