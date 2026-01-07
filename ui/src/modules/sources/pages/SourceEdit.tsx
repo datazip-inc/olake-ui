@@ -121,7 +121,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	useEffect(() => {
 		if (source && sourceId) {
 			setSourceName(source.name)
-			let normalizedType = getConnectorInLowerCase(source.type)
+			const normalizedType = getConnectorLabel(source.type)
 			setConnector(normalizedType)
 			setSelectedVersion(source.version)
 			setFormData(
