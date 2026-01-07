@@ -204,7 +204,7 @@ const Jobs: React.FC = () => {
 						<div className="flex items-center justify-center py-16">
 							<Spin
 								size="large"
-								tip="Loading sources..."
+								tip="Loading jobs..."
 							/>
 						</div>
 					) : tab.key === JOB_STATUS.ACTIVE && showEmpty ? (
