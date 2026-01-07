@@ -3,7 +3,12 @@ import {
 	LinktreeLogoIcon,
 	PathIcon,
 } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
+import {
+	JobCreationSteps,
+	NavItem,
+	TestConnectionStatus,
+	IngestionMode,
+} from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -87,6 +92,14 @@ export const DESTINATION_INTERNAL_TYPES = {
 	ICEBERG: "iceberg",
 	S3: "parquet",
 }
+
+export const SOURCE_INTERNAL_TYPES = {
+	MONGODB: "mongodb",
+	POSTGRES: "postgres",
+	MYSQL: "mysql",
+	ORACLE: "oracle",
+	KAFKA: "kafka",
+} as const
 
 export const DESTINATION_LABELS = {
 	AMAZON_S3: "amazon s3",
@@ -229,6 +242,22 @@ export const SYNC_MODE_MAP = {
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
 }
+
+const DB_STANDARD_MODES = [IngestionMode.APPEND, IngestionMode.UPSERT] as const
+const APPEND_ONLY_MODE = [IngestionMode.APPEND] as const
+
+export const SOURCE_SUPPORTED_INGESTION_MODES = {
+	[SOURCE_INTERNAL_TYPES.MONGODB]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.POSTGRES]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.MYSQL]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.ORACLE]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.KAFKA]: APPEND_ONLY_MODE,
+} as const
+
+export const DESTINATION_SUPPORTED_INGESTION_MODES = {
+	[DESTINATION_INTERNAL_TYPES.S3]: APPEND_ONLY_MODE,
+	[DESTINATION_INTERNAL_TYPES.ICEBERG]: DB_STANDARD_MODES,
+} as const
 
 export const JOB_STEP_NUMBERS = {
 	CONFIG: 1,
