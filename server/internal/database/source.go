@@ -48,7 +48,7 @@ func (db *Database) ListSources() ([]*models.Source, error) {
 	return sources, nil
 }
 
-func (db *Database) ListSourcesByProjectId(projectID string) ([]*models.Source, error) {
+func (db *Database) ListSourcesByProjectID(projectID string) ([]*models.Source, error) {
 	var sources []*models.Source
 	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).RelatedSel().Filter("project_id", projectID).OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
 	if err != nil {
