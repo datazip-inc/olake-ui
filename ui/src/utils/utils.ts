@@ -9,12 +9,15 @@ import {
 	CursorFieldValues,
 	LogEntry,
 	TaskLogEntry,
+	SelectedStreamsByNamespace,
 } from "../types"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATION_LABELS,
 	FILTER_REGEX,
+	SOURCE_SUPPORTED_INGESTION_MODES,
+	DESTINATION_SUPPORTED_INGESTION_MODES,
 } from "./constants"
 import MongoDB from "../assets/Mongo.svg"
 import Postgres from "../assets/Postgres.svg"
@@ -623,9 +626,15 @@ export const validateStreams = (selections: {
 	)
 }
 
-export const getIngestionMode = (selectedStreams: {
-	[key: string]: SelectedStream[]
-}): IngestionMode => {
+export const getIngestionMode = (
+	selectedStreams: SelectedStreamsByNamespace,
+	sourceType?: string,
+): IngestionMode => {
+	// Fallback to APPEND if source doesn't support UPSERT
+	if (!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)) {
+		return IngestionMode.APPEND
+	}
+
 	const selectedStreamsObj = getSelectedStreams(selectedStreams)
 	const allSelectedStreams: SelectedStream[] = []
 
@@ -644,6 +653,37 @@ export const getIngestionMode = (selectedStreams: {
 	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
 	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
 	return IngestionMode.CUSTOM
+}
+
+// Checks if the source connector supports a specific ingestion mode
+export const isSourceIngestionModeSupported = (
+	mode: IngestionMode,
+	sourceType?: string,
+): boolean => {
+	if (!sourceType) return false
+
+	const normSourceType = normalizeConnectorType(
+		sourceType,
+	).toLowerCase() as keyof typeof SOURCE_SUPPORTED_INGESTION_MODES
+	const sourceModes = SOURCE_SUPPORTED_INGESTION_MODES[normSourceType]
+
+	return sourceModes?.some(m => m === mode) ?? false
+}
+
+// Checks if the destination connector supports a specific ingestion mode
+export const isDestinationIngestionModeSupported = (
+	mode: IngestionMode,
+	destinationType?: string,
+): boolean => {
+	if (!destinationType) return false
+
+	const normDestType = normalizeConnectorType(destinationType).toLowerCase()
+	const destModes =
+		DESTINATION_SUPPORTED_INGESTION_MODES[
+			normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
+		]
+
+	return destModes?.some(m => m === mode) ?? false
 }
 
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
