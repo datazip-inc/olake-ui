@@ -29,6 +29,24 @@ export const sourceService = {
 		}
 	},
 
+	getSource: async (id: string): Promise<Entity> => {
+		try {
+			const response = await api.get<Entity>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+
+			const source = {
+				...response.data,
+				config: JSON.parse(response.data.config),
+			}
+
+			return source
+		} catch (error) {
+			console.error("Error fetching source from API:", error)
+			throw error
+		}
+	},
+
 	createSource: async (source: EntityBase) => {
 		try {
 			const response = await api.post<EntityBase>(

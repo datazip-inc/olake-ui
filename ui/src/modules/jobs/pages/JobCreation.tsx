@@ -66,7 +66,9 @@ const JobCreation: React.FC = () => {
 	const [destinationName, setDestinationName] = useState(
 		initialData.destinationName || "",
 	)
-	const [existingSourceId, setExistingSourceId] = useState<number | null>(null)
+	const [existingSourceId, setExistingSourceId] = useState<number | null>(
+		initialData.sourceId ? parseInt(initialData.sourceId) : null,
+	)
 
 	//state to hold catalog value to open documentation panel
 	const [destinationCatalogType, setDestinationCatalogType] = useState<
@@ -84,7 +86,7 @@ const JobCreation: React.FC = () => {
 	)
 	const [existingDestinationId, setExistingDestinationId] = useState<
 		number | null
-	>(null)
+	>(initialData.destinationId ? parseInt(initialData.destinationId) : null)
 
 	const [selectedStreams, setSelectedStreams] = useState<any>(
 		initialData.selectedStreams || [],
@@ -380,12 +382,14 @@ const JobCreation: React.FC = () => {
 				type: normalizedSourceConnector,
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
+				...(existingSourceId && { id: existingSourceId }),
 			},
 			destination: {
 				name: destinationName,
 				type: getConnectorInLowerCase(destinationConnector),
 				version: destinationVersion,
 				config: JSON.stringify(destinationFormData),
+				...(existingDestinationId && { id: existingDestinationId }),
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
@@ -438,6 +442,7 @@ const JobCreation: React.FC = () => {
 								fromJobFlow={true}
 								stepNumber={JOB_STEP_NUMBERS.SOURCE}
 								stepTitle="Set up your source"
+								initialExistingSourceId={existingSourceId}
 								onSourceNameChange={setSourceName}
 								onConnectorChange={setSourceConnector}
 								onExistingSourceIdChange={setExistingSourceId}
@@ -465,6 +470,7 @@ const JobCreation: React.FC = () => {
 								fromJobFlow={true}
 								stepNumber={JOB_STEP_NUMBERS.DESTINATION}
 								stepTitle="Set up your destination"
+								initialExistingDestinationId={existingDestinationId}
 								onExistingDestinationIdChange={setExistingDestinationId}
 								onDestinationNameChange={setDestinationName}
 								onConnectorChange={setDestinationConnector}

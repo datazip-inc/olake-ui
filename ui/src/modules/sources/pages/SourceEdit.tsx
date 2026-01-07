@@ -16,7 +16,7 @@ import validator from "@rjsf/validator-ajv8"
 
 import { useAppStore } from "../../../store"
 import { sourceService, jobService } from "../../../api"
-import { Entity, SourceEditProps, SourceJob } from "../../../types"
+import { SourceEditProps, SourceJob } from "../../../types"
 import {
 	getConnectorImage,
 	getStatusClass,
@@ -73,7 +73,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [showAllJobs, setShowAllJobs] = useState(false)
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const { setShowDeleteModal, setSelectedSource } = useAppStore()
-	const [source, setSource] = useState<Entity | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [loadingVersions, setLoadingVersions] = useState(false)
 	const [schema, setSchema] = useState<any>(null)
@@ -83,8 +82,9 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const normalizedSourceConnector = getConnectorInLowerCase(connector)
 
 	const {
-		sources,
-		fetchSources,
+		fetchSource,
+		source,
+		isLoadingSource,
 		updateSource,
 		setShowEditSourceModal,
 		setShowTestingModal,
@@ -95,28 +95,42 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	} = useAppStore()
 
 	useEffect(() => {
-		fetchSources()
-	}, [])
+		const fetchSourceDetails = async () => {
+			// Skip fetching if in job flow mode (source data comes from initialData)
+			if (fromJobFlow) {
+				return
+			}
 
-	useEffect(() => {
-		if (sourceId) {
-			const source = sources.find(s => s.id?.toString() === sourceId)
-			if (source) {
-				setSource(source)
-				setSourceName(source.name)
-				const normalizedType = getConnectorLabel(source.type)
-				setConnector(normalizedType)
-				setSelectedVersion(source.version)
-				setFormData(
-					typeof source.config === "string"
-						? JSON.parse(source.config)
-						: source.config,
-				)
-			} else {
+			if (!sourceId) {
+				navigate("/sources")
+				return
+			}
+
+			try {
+				await fetchSource(sourceId)
+			} catch (error) {
+				console.error("Error fetching source:", error)
 				navigate("/sources")
 			}
 		}
-	}, [sourceId, sources, fetchSources])
+
+		fetchSourceDetails()
+	}, [sourceId, fromJobFlow])
+
+	// Initialize form when source is loaded from store
+	useEffect(() => {
+		if (source && sourceId) {
+			setSourceName(source.name)
+			let normalizedType = getConnectorInLowerCase(source.type)
+			setConnector(normalizedType)
+			setSelectedVersion(source.version)
+			setFormData(
+				typeof source.config === "string"
+					? JSON.parse(source.config)
+					: source.config,
+			)
+		}
+	}, [source, sourceId])
 
 	useEffect(() => {
 		if (initialData) {
@@ -344,8 +358,10 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		try {
 			await jobService.activateJob(jobId, !checked)
-			// Refetch sources to update the UI with the latest source details
-			await fetchSources()
+			// Refetch source to update the UI with the latest source details
+			if (sourceId) {
+				await fetchSource(sourceId)
+			}
 		} catch (error) {
 			console.error("Error toggling job status:", error)
 		}
@@ -445,6 +461,14 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		},
 	]
 
+	if (isLoadingSource) {
+		return (
+			<div className="flex h-screen items-center justify-center">
+				<Spin size="large" />
+			</div>
+		)
+	}
+
 	return (
 		<div className="flex h-screen">
 			<div className="flex flex-1 flex-col">
@@ -471,11 +495,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 											stepTitle={stepTitle}
 										/>
 										<Link
-											to={
-												sourceId
-													? `/sources/${sourceId}`
-													: `/sources/${sources.find(s => s.name === sourceName)?.id || ""}`
-											}
+											to={`/sources/${initialData?.id || ""}`}
 											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
 											<PencilSimpleIcon className="size-4" />
