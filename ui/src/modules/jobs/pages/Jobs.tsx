@@ -60,10 +60,12 @@ const Jobs: React.FC = () => {
 					sourceConnector: savedJob.source.type,
 					sourceVersion: savedJob.source.version,
 					sourceFormData: JSON.parse(savedJob.source.config),
+					sourceId: savedJob.source.id,
 					destinationName: savedJob.destination.name,
 					destinationConnector: savedJob.destination.type,
 					destinationVersion: savedJob.destination.version,
 					destinationFormData: JSON.parse(savedJob.destination.config),
+					destinationId: savedJob.destination.id,
 					selectedStreams: JSON.parse(savedJob.streams_config),
 					jobName: savedJob.name,
 					cronExpression: savedJob.frequency,
@@ -202,7 +204,7 @@ const Jobs: React.FC = () => {
 						<div className="flex items-center justify-center py-16">
 							<Spin
 								size="large"
-								tip="Loading sources..."
+								tip="Loading jobs..."
 							/>
 						</div>
 					) : tab.key === JOB_STATUS.ACTIVE && showEmpty ? (

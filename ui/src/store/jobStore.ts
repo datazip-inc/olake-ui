@@ -6,7 +6,11 @@ export interface JobSlice {
 	jobs: Job[]
 	jobsError: string | null
 	isLoadingJobs: boolean
+	selectedJob: Job | null
+	isLoadingSelectedJob: boolean
+	selectedJobError: string | null
 	fetchJobs: () => Promise<Job[]>
+	fetchSelectedJob: (id: string) => Promise<Job>
 	addJob: (job: JobBase) => Promise<Job>
 	updateJob: (id: string, job: Partial<Job>) => Promise<Job>
 	deleteJob: (id: string) => Promise<void>
@@ -16,6 +20,9 @@ export const createJobSlice: StateCreator<JobSlice> = set => ({
 	jobs: [],
 	jobsError: null,
 	isLoadingJobs: false,
+	selectedJob: null,
+	isLoadingSelectedJob: false,
+	selectedJobError: null,
 
 	fetchJobs: async () => {
 		set({ isLoadingJobs: true, jobsError: null })
@@ -28,6 +35,29 @@ export const createJobSlice: StateCreator<JobSlice> = set => ({
 				isLoadingJobs: false,
 				jobsError:
 					error instanceof Error ? error.message : "Failed to fetch jobs",
+			})
+			throw error
+		}
+	},
+
+	fetchSelectedJob: async (id: string) => {
+		set({
+			selectedJob: null,
+			isLoadingSelectedJob: true,
+			selectedJobError: null,
+		})
+		try {
+			const job = await jobService.getJob(id)
+			set({
+				selectedJob: job,
+				isLoadingSelectedJob: false,
+			})
+			return job
+		} catch (error) {
+			set({
+				isLoadingSelectedJob: false,
+				selectedJobError:
+					error instanceof Error ? error.message : "Failed to fetch job",
 			})
 			throw error
 		}

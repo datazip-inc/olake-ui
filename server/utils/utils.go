@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
@@ -135,6 +136,41 @@ func Ternary(cond bool, a, b any) any {
 		return a
 	}
 	return b
+}
+
+// ExtractJobIDFromWorkflowID extracts the JobID from Temporal workflow IDs created by this system.
+//
+// Expected workflow ID shapes:
+// - sync-<projectID>-<jobID>
+// - sync-<projectID>-<jobID>-<suffix>
+//
+// projectID itself can contain '-', so we match the exact prefix and then parse the leading integer.
+func ExtractJobIDFromWorkflowID(workflowID, projectID string) (int, bool) {
+	prefix := "sync-" + projectID + "-"
+
+	rest, ok := strings.CutPrefix(workflowID, prefix)
+	if !ok || rest == "" {
+		return 0, false
+	}
+
+	// Find the numeric prefix.
+	i := 0
+	for ; i < len(rest); i++ {
+		if !unicode.IsDigit(rune(rest[i])) {
+			break
+		}
+	}
+
+	if i == 0 { // No leading digits
+		return 0, false
+	}
+
+	id, err := strconv.Atoi(rest[:i])
+	if err != nil {
+		return 0, false
+	}
+
+	return id, true
 }
 
 // CreateDirectory creates a directory with the specified permissions if it doesn't exist

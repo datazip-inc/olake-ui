@@ -15,8 +15,48 @@ import (
 
 // Destination-related methods on AppService
 
+// GetDestination returns a single destination by ID with its associated jobs.
+func (s *ETLService) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
+	destination, err := s.db.GetDestinationByID(destinationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get destination: %s", err)
+	}
+
+	// Get jobs for this destination
+	jobs, err := s.db.GetJobsByDestinationID([]int{destinationID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs for destination: %s", err)
+	}
+
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
+	// Build job data items
+	jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "destination")
+	if err != nil {
+		return nil, fmt.Errorf("failed to build job data items: %s", err)
+	}
+
+	item := &dto.DestinationDataItem{
+		ID:        destination.ID,
+		Name:      destination.Name,
+		Type:      destination.DestType,
+		Version:   destination.Version,
+		Config:    destination.Config,
+		CreatedAt: destination.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: destination.UpdatedAt.Format(time.RFC3339),
+		Jobs:      jobItems,
+	}
+	setUsernames(&item.CreatedBy, &item.UpdatedBy, destination.CreatedBy, destination.UpdatedBy)
+
+	return item, nil
+}
+
 // ListDestinations returns all destinations for a project with lightweight job summaries.
-func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
+func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	destinations, err := s.db.ListDestinationsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list destinations: %s", err)
@@ -38,6 +78,12 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 		jobsByDestID[job.DestID.ID] = append(jobsByDestID[job.DestID.ID], job)
 	}
 
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, allJobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
 	destItems := make([]dto.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
 		entity := dto.DestinationDataItem{
@@ -52,7 +98,7 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 		setUsernames(&entity.CreatedBy, &entity.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
-		jobItems, err := buildJobDataItems(jobs, s.temporal, "destination")
+		jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "destination")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}

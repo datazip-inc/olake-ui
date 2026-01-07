@@ -26,6 +26,30 @@ func (h *Handler) ListDestinations() {
 	utils.SuccessResponse(&h.Controller, "Destinations listed successfully", items)
 }
 
+// @router /project/:projectid/destinations/:id [get]
+func (h *Handler) GetDestination() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	destinationID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get destination initiated project_id[%s] destination_id[%d]", projectID, destinationID)
+
+	destination, err := h.etl.GetDestination(h.Ctx.Request.Context(), projectID, destinationID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination '%d' retrieved successfully", destinationID), destination)
+}
+
 // @router /project/:projectid/destinations [post]
 func (h *Handler) CreateDestination() {
 	userID := GetUserIDFromSession(&h.Controller)

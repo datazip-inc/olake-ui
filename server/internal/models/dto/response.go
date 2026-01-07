@@ -52,7 +52,7 @@ type JobResponse struct {
 	Name          string       `json:"name"`
 	Source        DriverConfig `json:"source"`
 	Destination   DriverConfig `json:"destination"`
-	StreamsConfig string       `json:"streams_config"`
+	StreamsConfig string       `json:"streams_config,omitempty"`
 	Frequency     string       `json:"frequency"`
 	LastRunTime   string       `json:"last_run_time,omitempty"`
 	LastRunState  string       `json:"last_run_state,omitempty"`
