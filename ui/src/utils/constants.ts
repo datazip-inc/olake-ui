@@ -37,6 +37,7 @@ export const CONNECTOR_TYPES = {
 	MYSQL: "MySQL",
 	ORACLE: "Oracle",
 	KAFKA: "Kafka",
+	S3: "Amazon S3",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
@@ -98,6 +99,7 @@ export const SOURCE_INTERNAL_TYPES = {
 	MYSQL: "mysql",
 	ORACLE: "oracle",
 	KAFKA: "kafka",
+	S3: "s3",
 } as const
 
 export const DESTINATION_LABELS = {
@@ -193,6 +195,7 @@ export const connectorTypeMap: Record<string, string> = {
 	mysql: "MySQL",
 	oracle: "Oracle",
 	kafka: "Kafka",
+	s3: "Amazon S3",
 }
 
 export const DAYS_MAP = {
@@ -250,6 +253,7 @@ export const SOURCE_SUPPORTED_INGESTION_MODES = {
 	[SOURCE_INTERNAL_TYPES.MYSQL]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.ORACLE]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.KAFKA]: APPEND_ONLY_MODE,
+	[SOURCE_INTERNAL_TYPES.S3]: DB_STANDARD_MODES,
 } as const
 
 export const DESTINATION_SUPPORTED_INGESTION_MODES = {

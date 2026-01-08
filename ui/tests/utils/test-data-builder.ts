@@ -15,6 +15,7 @@ export class TestDataBuilder {
 		[SourceConnector.MySQL]: "mysql",
 		[SourceConnector.Oracle]: "oracle",
 		[SourceConnector.Kafka]: "kafka",
+		[SourceConnector.S3]: "s3",
 	}
 
 	static readonly DESTINATION_CONNECTOR_LABELS: Record<

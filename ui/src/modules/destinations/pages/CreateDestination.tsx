@@ -305,9 +305,7 @@ const CreateDestination = forwardRef<
 					destinationService.getDestinationSpec(
 						connector,
 						version,
-						fromJobFlow
-							? getConnectorInLowerCase(sourceConnector || "")
-							: undefined,
+						fromJobFlow ? getConnectorInLowerCase(sourceConnector) : undefined,
 						fromJobFlow ? sourceVersion : undefined,
 						signal,
 					),
