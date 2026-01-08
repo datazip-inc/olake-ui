@@ -4,6 +4,7 @@ export enum SourceConnector {
 	MySQL = "MySQL",
 	Oracle = "Oracle",
 	Kafka = "Kafka",
+	S3 = "S3",
 }
 
 export enum DestinationConnector {

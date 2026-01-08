@@ -119,6 +119,8 @@ const JobCreation: React.FC = () => {
 	const sourceRef = useRef<any>(null)
 	const destinationRef = useRef<any>(null)
 
+	const normalizedSourceConnector = getConnectorInLowerCase(sourceConnector)
+
 	// Validation functions
 	const validateSource = async (): Promise<boolean> => {
 		if (sourceRef.current) {
@@ -189,7 +191,7 @@ const JobCreation: React.FC = () => {
 				: await destinationService.testDestinationConnection(
 						data,
 						!!existingDestinationId,
-						getConnectorInLowerCase(sourceConnector),
+						normalizedSourceConnector,
 						sourceVersion,
 					)
 
@@ -235,7 +237,7 @@ const JobCreation: React.FC = () => {
 			source: {
 				...(existingSourceId && { id: existingSourceId }),
 				name: sourceName,
-				type: getConnectorInLowerCase(sourceConnector),
+				type: normalizedSourceConnector,
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 			},
@@ -275,7 +277,7 @@ const JobCreation: React.FC = () => {
 				if (!(await validateSource())) return
 				const sourceData = {
 					name: sourceName,
-					type: getConnectorInLowerCase(sourceConnector),
+					type: normalizedSourceConnector,
 					version: sourceVersion,
 					config:
 						typeof sourceFormData === "string"
@@ -377,7 +379,7 @@ const JobCreation: React.FC = () => {
 			name: jobName,
 			source: {
 				name: sourceName,
-				type: getConnectorInLowerCase(sourceConnector),
+				type: normalizedSourceConnector,
 				version: sourceVersion,
 				config: JSON.stringify(sourceFormData),
 				...(existingSourceId && { id: existingSourceId }),
@@ -503,7 +505,7 @@ const JobCreation: React.FC = () => {
 								stepTitle="Streams Selection"
 								useDirectForms={true}
 								sourceName={sourceName}
-								sourceConnector={getConnectorInLowerCase(sourceConnector)}
+								sourceConnector={normalizedSourceConnector}
 								sourceVersion={sourceVersion}
 								sourceConfig={
 									typeof sourceFormData === "string"
