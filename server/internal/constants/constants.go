@@ -23,8 +23,9 @@ var (
 	TableNameMap     = map[TableType]string{}
 	DefaultConfigDir = "/tmp/olake-config"
 
-	DefaultLogRetentionPeriod = 30
-	DefaultCancelSyncWaitTime = 30 * time.Second
+	DefaultLogRetentionPeriod   = 30
+	DefaultCancelSyncWaitTime   = 30 * time.Second
+	DefaultListWorkflowPageSize = 500
 
 	// versions
 	DefaultSpecVersion             = "v0.2.0"
@@ -74,6 +75,7 @@ var SupportedSourceTypes = []string{
 	"oracle",
 	"mongodb",
 	"kafka",
+	"s3",
 }
 
 // Supported database/source types

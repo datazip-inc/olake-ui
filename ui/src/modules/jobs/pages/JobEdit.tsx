@@ -5,6 +5,7 @@ import { message } from "antd"
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
+import { useJobDetails } from "../hooks/useJobDetails"
 import { jobService } from "../../../api"
 import {
 	StreamData,
@@ -33,6 +34,7 @@ import {
 	DESTINATION_INTERNAL_TYPES,
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
+	STREAM_DEFAULTS,
 } from "../../../utils/constants"
 import ResetStreamsModal from "../../common/Modals/ResetStreamsModal"
 import StreamDifferenceModal from "../../common/Modals/StreamDifferenceModal"
@@ -118,7 +120,7 @@ const JobDestinationEdit = ({
 				}
 				docsMinimized={docsMinimized}
 				onDocsMinimizedChange={onDocsMinimizedChange}
-				sourceConnector={getConnectorInLowerCase(sourceData?.type || "")}
+				sourceConnector={getConnectorInLowerCase(sourceData?.type)}
 				sourceVersion={sourceData?.version || ""}
 			/>
 		</div>
@@ -129,12 +131,11 @@ const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
 	const { jobId } = useParams<{ jobId: string }>()
 	const {
-		jobs,
 		selectedJobId,
+		selectedJob: job,
 		fetchSelectedClearDestinationStatus,
 		setShowResetStreamsModal,
 		setShowStreamDifferenceModal,
-		setSelectedJobId,
 	} = useAppStore()
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -158,12 +159,13 @@ const JobEdit: React.FC = () => {
 	// Config step states
 	const [jobName, setJobName] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
-	const [job, setJob] = useState<Job | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
 	const [streamsModified, setStreamsModified] = useState(false)
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
 
 	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
+
+	const normalizedSourceConnector = getConnectorInLowerCase(sourceData?.type)
 
 	useEffect(() => {
 		fetchSelectedClearDestinationStatus()
@@ -258,19 +260,19 @@ const JobEdit: React.FC = () => {
 		setJobName("New Job")
 	}
 
+	useJobDetails({
+		jobId,
+		onJobFetched: fetchedJob => {
+			initializeFromExistingJob(fetchedJob)
+		},
+	})
+
+	// Initialize for new job when jobId is not present
 	useEffect(() => {
-		// TODO: when user refreshes specifc data should be retained
-		let job = jobs.find(j => j.id.toString() === jobId)
-		if (job) {
-			setJob(job)
-			setSelectedJobId(job.id.toString())
-			initializeFromExistingJob(job)
-		} else if (jobId) {
-			navigate("/jobs")
-		} else {
+		if (!jobId) {
 			initializeForNewJob()
 		}
-	}, [jobs, jobId])
+	}, [jobId])
 
 	// Process streams configuration into a consistent format
 	const processStreamsConfig = (
@@ -285,10 +287,8 @@ const JobEdit: React.FC = () => {
 			}
 			parsedConfig.forEach((streamName: string) => {
 				streamsData.selected_streams.default.push({
+					...STREAM_DEFAULTS,
 					stream_name: streamName,
-					partition_regex: "",
-					normalization: false,
-					filter: "",
 				})
 				streamsData.streams.push({
 					stream: {
@@ -321,7 +321,7 @@ const JobEdit: React.FC = () => {
 			source: {
 				...(sourceData?.id && { id: sourceData.id }),
 				name: sourceData?.name || "",
-				type: getConnectorInLowerCase(sourceData?.type || ""),
+				type: normalizedSourceConnector,
 				config:
 					typeof sourceData?.config === "string"
 						? sourceData?.config
@@ -331,7 +331,7 @@ const JobEdit: React.FC = () => {
 			destination: {
 				...(destinationData?.id && { id: destinationData.id }),
 				name: destinationData?.name || "",
-				type: getConnectorInLowerCase(destinationData?.type || ""),
+				type: getConnectorInLowerCase(destinationData?.type),
 				config:
 					typeof destinationData?.config === "string"
 						? destinationData?.config
@@ -557,7 +557,7 @@ const JobEdit: React.FC = () => {
 									stepNumber={JOB_STEP_NUMBERS.STREAMS}
 									stepTitle="Streams Selection"
 									sourceName={sourceData?.name || ""}
-									sourceConnector={sourceData?.type.toLowerCase() || ""}
+									sourceConnector={normalizedSourceConnector}
 									sourceVersion={sourceData?.version || ""}
 									sourceConfig={JSON.stringify(sourceData?.config || {})}
 									fromJobEditFlow={true}

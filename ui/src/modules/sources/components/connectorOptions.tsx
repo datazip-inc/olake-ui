@@ -67,6 +67,19 @@ const connectorOptions: ConnectorOption[] = [
 			</div>
 		),
 	},
+	{
+		value: "S3",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={getConnectorImage("S3")}
+					alt="S3"
+					className="mr-2 size-5"
+				/>
+				<span data-testid="connector-option-s3">S3</span>
+			</div>
+		),
+	},
 ]
 
 export default connectorOptions

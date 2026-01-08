@@ -28,6 +28,30 @@ func (h *Handler) ListJobs() {
 	utils.SuccessResponse(&h.Controller, "jobs listed successfully", jobs)
 }
 
+// @router /project/:projectid/jobs/:id [get]
+func (h *Handler) GetJob() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Get job initiated project_id[%s] job_id[%d]", projectID, jobID)
+
+	job, err := h.etl.GetJob(h.Ctx.Request.Context(), projectID, jobID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get job: %s", err), err)
+		return
+	}
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%d' retrieved successfully", jobID), job)
+}
+
 // @router /project/:projectid/jobs [post]
 func (h *Handler) CreateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
