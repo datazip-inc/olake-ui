@@ -5,6 +5,7 @@ import {
 	EntityBase,
 	EntityTestRequest,
 	EntityTestResponse,
+	StreamsDataStructure,
 } from "../../types"
 
 import { ENTITY_TYPES } from "../../utils/constants"
@@ -24,6 +25,24 @@ export const sourceService = {
 			}))
 		} catch (error) {
 			console.error("Error fetching sources from API:", error)
+			throw error
+		}
+	},
+
+	getSource: async (id: string): Promise<Entity> => {
+		try {
+			const response = await api.get<Entity>(
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+			)
+
+			const source = {
+				...response.data,
+				config: JSON.parse(response.data.config),
+			}
+
+			return source
+		} catch (error) {
+			console.error("Error fetching source from API:", error)
 			throw error
 		}
 	},
@@ -160,7 +179,7 @@ export const sourceService = {
 		job_id?: number,
 	) => {
 		try {
-			const response = await api.post<Record<string, unknown>>(
+			const response = await api.post<StreamsDataStructure>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 				{
 					name,

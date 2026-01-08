@@ -58,8 +58,14 @@ export type StreamData = {
 		destination_database?: string
 		destination_table?: string
 		source_defined_primary_key?: string[]
+		default_stream_properties: DefaultStreamProperties
 		[key: string]: unknown
 	}
+}
+
+export interface DefaultStreamProperties {
+	normalization: boolean
+	append_mode: boolean
 }
 
 export type StreamPanelProps = {
@@ -98,35 +104,18 @@ export interface SelectedStream {
 	append_mode?: boolean
 }
 
-export interface StreamsDataStructure {
-	selected_streams: {
-		[namespace: string]: SelectedStream[]
-	}
-	streams: StreamData[]
+export interface SelectedStreamsByNamespace {
+	[namespace: string]: SelectedStream[]
 }
-
-export interface CombinedStreamsData {
-	selected_streams: {
-		[namespace: string]: SelectedStream[]
-	}
+export interface StreamsDataStructure {
+	selected_streams: SelectedStreamsByNamespace
 	streams: StreamData[]
 }
 
 export interface SchemaConfigurationProps {
-	selectedStreams:
-		| string[]
-		| {
-				[namespace: string]: SelectedStream[]
-		  }
-		| CombinedStreamsData
+	selectedStreams: string[] | StreamsDataStructure
 	setSelectedStreams: React.Dispatch<
-		React.SetStateAction<
-			| string[]
-			| {
-					[namespace: string]: SelectedStream[]
-			  }
-			| CombinedStreamsData
-		>
+		React.SetStateAction<string[] | StreamsDataStructure>
 	>
 	stepNumber?: number
 	stepTitle?: string
@@ -135,7 +124,7 @@ export interface SchemaConfigurationProps {
 	sourceConnector: string
 	sourceVersion: string
 	sourceConfig: string
-	initialStreamsData?: CombinedStreamsData
+	initialStreamsData?: StreamsDataStructure
 	fromJobEditFlow?: boolean
 	jobId?: number
 	destinationType?: string
@@ -150,7 +139,7 @@ export interface ExtendedStreamConfigurationProps extends StreamConfigurationPro
 	initialPartitionRegex: string
 	initialFullLoadFilter?: string
 	fromJobEditFlow?: boolean
-	initialSelectedStreams?: CombinedStreamsData
+	initialSelectedStreams?: StreamsDataStructure
 	destinationType?: string
 	onNormalizationChange: (
 		streamName: string,
@@ -172,13 +161,12 @@ export interface ExtendedStreamConfigurationProps extends StreamConfigurationPro
 		namespace: string,
 		appendMode: boolean,
 	) => void
+	sourceType?: string
 }
 
 export interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
-	selectedStreams: {
-		[namespace: string]: SelectedStream[]
-	}
+	selectedStreams: SelectedStreamsByNamespace
 	setActiveStreamData: (stream: StreamData) => void
 	activeStreamData: StreamData | null
 	onStreamSelect: (
@@ -189,18 +177,16 @@ export interface GroupedStreamsCollapsibleListProps {
 	setSelectedStreams: React.Dispatch<
 		React.SetStateAction<
 			| string[]
+			| SelectedStreamsByNamespace
 			| {
-					[namespace: string]: SelectedStream[]
-			  }
-			| {
-					selected_streams: {
-						[namespace: string]: SelectedStream[]
-					}
+					selected_streams: SelectedStreamsByNamespace
 					streams: StreamData[]
 			  }
 		>
 	>
 	onIngestionModeChange: (ingestionMode: IngestionMode) => void
+	sourceType?: string
+	destinationType?: string
 }
 
 export interface StreamSchemaProps {

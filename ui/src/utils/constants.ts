@@ -3,7 +3,12 @@ import {
 	LinktreeLogoIcon,
 	PathIcon,
 } from "@phosphor-icons/react"
-import { JobCreationSteps, NavItem, TestConnectionStatus } from "../types"
+import {
+	JobCreationSteps,
+	NavItem,
+	TestConnectionStatus,
+	IngestionMode,
+} from "../types"
 import { getResponsivePageSize } from "./utils"
 
 export const PARTITIONING_COLUMNS = [
@@ -32,6 +37,7 @@ export const CONNECTOR_TYPES = {
 	MYSQL: "MySQL",
 	ORACLE: "Oracle",
 	KAFKA: "Kafka",
+	S3: "Amazon S3",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
@@ -39,7 +45,7 @@ export const CONNECTOR_TYPES = {
 export const SETUP_TYPES = {
 	NEW: "new",
 	EXISTING: "existing",
-}
+} as const
 
 export const STATUS = {
 	ACTIVE: "active",
@@ -86,6 +92,15 @@ export const DESTINATION_INTERNAL_TYPES = {
 	ICEBERG: "iceberg",
 	S3: "parquet",
 }
+
+export const SOURCE_INTERNAL_TYPES = {
+	MONGODB: "mongodb",
+	POSTGRES: "postgres",
+	MYSQL: "mysql",
+	ORACLE: "oracle",
+	KAFKA: "kafka",
+	S3: "s3",
+} as const
 
 export const DESTINATION_LABELS = {
 	AMAZON_S3: "amazon s3",
@@ -180,6 +195,7 @@ export const connectorTypeMap: Record<string, string> = {
 	mysql: "MySQL",
 	oracle: "Oracle",
 	kafka: "Kafka",
+	s3: "Amazon S3",
 }
 
 export const DAYS_MAP = {
@@ -227,6 +243,23 @@ export const SYNC_MODE_MAP = {
 	CDC: "cdc",
 	STRICT_CDC: "strict_cdc",
 }
+
+const DB_STANDARD_MODES = [IngestionMode.APPEND, IngestionMode.UPSERT] as const
+const APPEND_ONLY_MODE = [IngestionMode.APPEND] as const
+
+export const SOURCE_SUPPORTED_INGESTION_MODES = {
+	[SOURCE_INTERNAL_TYPES.MONGODB]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.POSTGRES]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.MYSQL]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.ORACLE]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.KAFKA]: APPEND_ONLY_MODE,
+	[SOURCE_INTERNAL_TYPES.S3]: DB_STANDARD_MODES,
+} as const
+
+export const DESTINATION_SUPPORTED_INGESTION_MODES = {
+	[DESTINATION_INTERNAL_TYPES.S3]: APPEND_ONLY_MODE,
+	[DESTINATION_INTERNAL_TYPES.ICEBERG]: DB_STANDARD_MODES,
+} as const
 
 export const JOB_STEP_NUMBERS = {
 	CONFIG: 1,
@@ -293,4 +326,12 @@ export const LOGS_CONFIG = {
 	MAX_LOGS_IN_MEMORY: 10000, // Maximum logs to keep in memory
 	VIRTUAL_LIST_START_INDEX: 1000000, // High starting index for virtualized log list
 	OVERSCAN: 1000, // Number of items to render outside visible area
+} as const
+
+// fallback defaults for streams
+export const STREAM_DEFAULTS = {
+	append_mode: false,
+	normalization: false,
+	partition_regex: "",
+	filter: "",
 } as const

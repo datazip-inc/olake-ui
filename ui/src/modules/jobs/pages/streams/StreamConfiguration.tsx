@@ -28,9 +28,9 @@ import {
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
-	CombinedStreamsData,
 	SyncMode,
 	IngestionMode,
+	StreamsDataStructure,
 } from "../../../../types"
 
 import {
@@ -41,7 +41,12 @@ import {
 	SYNC_MODE_MAP,
 	TAB_STYLES,
 } from "../../../../utils/constants"
-import { getCursorFieldValues, operatorOptions } from "../../../../utils/utils"
+import {
+	getCursorFieldValues,
+	operatorOptions,
+	isSourceIngestionModeSupported,
+	isDestinationIngestionModeSupported,
+} from "../../../../utils/utils"
 
 import StreamsSchema from "./StreamsSchema"
 
@@ -59,6 +64,7 @@ const StreamConfiguration = ({
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	onIngestionModeChange,
+	sourceType,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
@@ -95,7 +101,7 @@ const StreamConfiguration = ({
 	})
 
 	const [initialJobStreams, setInitialJobStreams] = useState<
-		CombinedStreamsData | undefined
+		StreamsDataStructure | undefined
 	>(undefined)
 
 	// Unique stream key to differentiate a stream with same name and different namespace
@@ -103,6 +109,21 @@ const StreamConfiguration = ({
 
 	// Guard to prevent prop-driven effect from clobbering local edits
 	const isLocalFilterUpdateRef = useRef(false)
+
+	const isSourceAppendSupported = isSourceIngestionModeSupported(
+		IngestionMode.APPEND,
+		sourceType,
+	)
+
+	const isSourceUpsertSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
+
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
+	)
 
 	useEffect(() => {
 		// Set initial streams only once when component mounts
@@ -137,11 +158,13 @@ const StreamConfiguration = ({
 			fullLoadFilter: formData.fullLoadFilter || false,
 		}))
 
-		setAppendMode(
+		const initialAppendMode =
 			initialSelectedStreams?.selected_streams?.[
 				stream.stream.namespace || ""
-			]?.find(s => s.stream_name === stream.stream.name)?.append_mode || false,
-		)
+			]?.find(s => s.stream_name === stream.stream.name)?.append_mode || false
+
+		// Set append mode to true if source doesn't support upsert
+		setAppendMode(!isSourceUpsertSupported ? true : initialAppendMode)
 	}, [stream, initialNormalization, initialSelectedStreams])
 
 	useEffect(() => {
@@ -755,41 +778,72 @@ const StreamConfiguration = ({
 							)}
 					</div>
 
-					<div
-						className={clsx(
-							"mb-4",
-							isSelected
-								? "font-medium text-neutral-text"
-								: "font-normal text-gray-500",
-						)}
-					>
-						<div className="mb-3">
-							<label className="block w-full">Ingestion Mode:</label>
-							<div
-								className={clsx(
-									"text-xs",
-									!isSelected ? "text-gray-500" : "text-neutral-700",
-								)}
-							>
-								Specify how the data will be ingested in the destination
-							</div>
-						</div>
-						<Radio.Group
-							disabled={!isSelected}
-							className="mb-4 grid grid-cols-2 gap-4"
-							value={appendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
-							onChange={e => handleIngestionModeChange(e.target.value)}
+					{/* Don't show Ingestion Mode if destination doesn't support it */}
+					{isDestUpsertModeSupported && (
+						<div
+							className={clsx(
+								"mb-4",
+								isSelected
+									? "font-medium text-neutral-text"
+									: "font-normal text-gray-500",
+							)}
 						>
-							<Radio value={IngestionMode.UPSERT}>Upsert</Radio>
-							<Radio value={IngestionMode.APPEND}>Append</Radio>
-						</Radio.Group>
-						{!isSelected && (
-							<div className="flex items-center gap-1 text-sm text-[#686868]">
-								<InfoIcon className="size-4" />
-								Select the stream to configure ingestion mode
+							<div className="mb-3">
+								<label className="block w-full">Ingestion Mode:</label>
+								<div
+									className={clsx(
+										"text-xs",
+										!isSelected ? "text-gray-500" : "text-neutral-700",
+									)}
+								>
+									Specify how the data will be ingested in the destination
+								</div>
 							</div>
-						)}
-					</div>
+							<Radio.Group
+								disabled={!isSelected}
+								className="mb-4 grid grid-cols-2 gap-4"
+								value={appendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
+								onChange={e => handleIngestionModeChange(e.target.value)}
+							>
+								<Tooltip
+									title={
+										!isSourceUpsertSupported
+											? "Upsert is not supported for this source"
+											: undefined
+									}
+								>
+									<Radio
+										value={IngestionMode.UPSERT}
+										disabled={!isSourceUpsertSupported}
+										className={clsx(!isSourceUpsertSupported && "opacity-50")}
+									>
+										Upsert
+									</Radio>
+								</Tooltip>
+								<Tooltip
+									title={
+										!isSourceAppendSupported
+											? "Append is not supported for this source"
+											: undefined
+									}
+								>
+									<Radio
+										value={IngestionMode.APPEND}
+										disabled={!isSourceAppendSupported}
+										className={clsx(!isSourceAppendSupported && "opacity-50")}
+									>
+										Append
+									</Radio>
+								</Tooltip>
+							</Radio.Group>
+							{!isSelected && (
+								<div className="flex items-center gap-1 text-sm text-[#686868]">
+									<InfoIcon className="size-4" />
+									Select the stream to configure ingestion mode
+								</div>
+							)}
+						</div>
+					)}
 				</div>
 
 				<div

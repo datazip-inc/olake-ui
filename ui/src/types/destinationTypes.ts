@@ -37,6 +37,7 @@ export interface CreateDestinationProps {
 	initialConnector?: string
 	initialVersion?: string
 	initialCatalog?: string | null
+	initialExistingDestinationId?: number | null
 	onDestinationNameChange?: (name: string) => void
 	onConnectorChange?: (connector: string) => void
 	onFormDataChange?: (formData: DestinationConfig) => void

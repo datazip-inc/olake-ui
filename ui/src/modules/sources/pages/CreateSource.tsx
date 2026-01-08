@@ -26,6 +26,7 @@ import {
 	handleSpecResponse,
 	withAbortController,
 	trimFormDataStrings,
+	getConnectorInLowerCase,
 } from "../../../utils/utils"
 import {
 	CONNECTOR_TYPES,
@@ -69,6 +70,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			initialName,
 			initialConnector,
 			initialVersion,
+			initialExistingSourceId,
 			onSourceNameChange,
 			onConnectorChange,
 			onFormDataChange,
@@ -80,7 +82,9 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		ref,
 	) => {
 		const formRef = useRef<any>(null)
-		const [setupType, setSetupType] = useState<SetupType>("new")
+		const [setupType, setSetupType] = useState<SetupType>(
+			initialExistingSourceId ? SETUP_TYPES.EXISTING : SETUP_TYPES.NEW,
+		)
 		const [connector, setConnector] = useState(initialConnector || "MongoDB")
 		const [sourceName, setSourceName] = useState(initialName || "")
 		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
@@ -94,6 +98,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 		const [existingSource, setExistingSource] = useState<string | null>(null)
 		const [specError, setSpecError] = useState<string | null>(null)
+
+		const normalizedConnector = getConnectorInLowerCase(connector)
 
 		const navigate = useNavigate()
 
@@ -117,6 +123,21 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			}
 		}, [sources.length])
 
+		// Set existingSource when sources are loaded and we have an initialExistingSourceId
+		useEffect(() => {
+			if (
+				initialExistingSourceId &&
+				sources.length > 0 &&
+				setupType === SETUP_TYPES.EXISTING
+			) {
+				// Find source in the filtered list (filtered by connector type)
+				const source = sources.find(s => s.id === initialExistingSourceId)
+				if (source && source.type === getConnectorInLowerCase(connector)) {
+					setExistingSource(source.name)
+				}
+			}
+		}, [initialExistingSourceId, sources.length])
+
 		useEffect(() => {
 			if (initialName) {
 				setSourceName(initialName)
@@ -133,10 +154,10 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			if (setupType === SETUP_TYPES.EXISTING) {
 				fetchSources()
 				setFilteredSources(
-					sources.filter(source => source.type === connector.toLowerCase()),
+					sources.filter(source => source.type === normalizedConnector),
 				)
 			}
-		}, [connector, setupType, fetchSources])
+		}, [normalizedConnector, setupType, fetchSources])
 
 		const resetVersionState = () => {
 			setVersions([])
@@ -161,9 +182,8 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			const fetchVersions = async () => {
 				setLoadingVersions(true)
 				try {
-					const response = await sourceService.getSourceVersions(
-						connector.toLowerCase(),
-					)
+					const response =
+						await sourceService.getSourceVersions(normalizedConnector)
 					if (response?.version) {
 						setVersions(response.version)
 						if (
@@ -173,10 +193,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 								initialVersion === "")
 						) {
 							let defaultVersion = response.version[0]
-							if (
-								connector.toLowerCase() === initialConnector &&
-								initialVersion
-							) {
+							if (normalizedConnector === initialConnector && initialVersion) {
 								defaultVersion = initialVersion
 							}
 							setSelectedVersion(defaultVersion)
@@ -209,7 +226,11 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 			setLoading(true)
 			return withAbortController(
 				signal =>
-					sourceService.getSourceSpec(connector, selectedVersion, signal),
+					sourceService.getSourceSpec(
+						normalizedConnector,
+						selectedVersion,
+						signal,
+					),
 				response => {
 					handleSpecResponse(response, setSchema, setUiSchema, "source")
 				},
@@ -300,7 +321,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 
 			const newSourceData = {
 				name: sourceName,
-				type: connector.toLowerCase(),
+				type: normalizedConnector,
 				version: selectedVersion,
 				config: JSON.stringify(formData),
 			}
@@ -672,7 +693,7 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						</div>
 
 						<DocumentationPanel
-							docUrl={`https://olake.io/docs/connectors/${connector.toLowerCase()}`}
+							docUrl={`https://olake.io/docs/connectors/${normalizedConnector}`}
 							isMinimized={docsMinimized}
 							onToggle={handleToggleDocPanel}
 							showResizer={true}
