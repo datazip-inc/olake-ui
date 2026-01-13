@@ -19,14 +19,16 @@ import {
 	SOURCE_SUPPORTED_INGESTION_MODES,
 	DESTINATION_SUPPORTED_INGESTION_MODES,
 } from "./constants"
-import MongoDB from "../assets/Mongo.svg"
-import Postgres from "../assets/Postgres.svg"
-import MySQL from "../assets/MySQL.svg"
-import Oracle from "../assets/Oracle.svg"
-import AWSS3 from "../assets/AWSS3.svg"
-import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import Kafka from "../assets/Kafka.svg"
-import DB2 from "../assets/DB2.svg"
+import {
+	AWSS3,
+	ApacheIceBerg,
+	DB2,
+	Kafka,
+	MongoDB,
+	MySQL,
+	Oracle,
+	Postgres,
+} from "../assets"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {
