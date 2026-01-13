@@ -26,6 +26,7 @@ import Oracle from "../assets/Oracle.svg"
 import AWSS3 from "../assets/AWSS3.svg"
 import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
 import Kafka from "../assets/Kafka.svg"
+import MSSQL from "../assets/MSSQL.svg"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {
@@ -65,6 +66,8 @@ export const getConnectorImage = (connector: string) => {
 			return Kafka
 		case "s3":
 			return AWSS3
+		case "mssql":
+			return MSSQL
 		default:
 			// Default placeholder
 			return MongoDB
@@ -147,6 +150,8 @@ export const getConnectorInLowerCase = (connector?: string | null) => {
 			return "mysql"
 		case "oracle":
 			return "oracle"
+		case "mssql":
+			return "mssql"
 		default:
 			return lowerConnector
 	}
@@ -201,6 +206,8 @@ export const getConnectorLabel = (type: string): string => {
 		case "s3":
 		case "S3":
 			return "S3"
+		case "mssql":
+			return "MSSQL"
 		default:
 			return "MongoDB"
 	}

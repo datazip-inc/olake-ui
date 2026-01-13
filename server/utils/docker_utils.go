@@ -34,7 +34,7 @@ type DockerHubTagsResponse struct {
 	Results []DockerHubTag `json:"results"`
 }
 
-var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb", "olakego/source-kafka", "olakego/source-s3"}
+var defaultImages = []string{"olakego/source-mysql", "olakego/source-postgres", "olakego/source-oracle", "olakego/source-mongodb", "olakego/source-kafka", "olakego/source-s3", "olakego/source-mssql"}
 
 // ignoredWorkerEnv is a map of environment variables that are ignored from the worker container.
 var ignoredWorkerEnv = map[string]any{ // A map is chosen because it gives O(1) lookup time for key existence.
