@@ -38,6 +38,7 @@ export const normalizeConnectorType = (connectorType: string): string => {
 
 	switch (lowerType) {
 		case "s3":
+			return "s3"
 		case "amazon s3":
 			return "parquet"
 		case "iceberg":
@@ -67,6 +68,8 @@ export const getConnectorImage = (connector: string) => {
 			return ApacheIceBerg
 		case "kafka":
 			return Kafka
+		case "s3":
+			return AWSS3
 		default:
 			// Default placeholder
 			return MongoDB
@@ -128,8 +131,8 @@ export const getJobTypeClass = (jobType: JobType) => {
 	}
 }
 
-export const getConnectorInLowerCase = (connector: string) => {
-	const normalizedConnector = normalizeConnectorType(connector)
+export const getConnectorInLowerCase = (connector?: string | null) => {
+	const normalizedConnector = normalizeConnectorType(connector || "")
 	const lowerConnector = normalizedConnector.toLowerCase()
 
 	switch (lowerConnector) {
@@ -139,6 +142,8 @@ export const getConnectorInLowerCase = (connector: string) => {
 		case DESTINATION_INTERNAL_TYPES.ICEBERG:
 		case DESTINATION_LABELS.APACHE_ICEBERG:
 			return DESTINATION_INTERNAL_TYPES.ICEBERG
+		case "s3":
+			return "s3"
 		case "mongodb":
 			return "mongodb"
 		case "postgres":
@@ -198,6 +203,9 @@ export const getConnectorLabel = (type: string): string => {
 			return "Oracle"
 		case "kafka":
 			return "Kafka"
+		case "s3":
+		case "S3":
+			return "S3"
 		default:
 			return "MongoDB"
 	}
