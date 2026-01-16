@@ -38,6 +38,7 @@ export const CONNECTOR_TYPES = {
 	ORACLE: "Oracle",
 	KAFKA: "Kafka",
 	S3: "Amazon S3",
+	DB2: "DB2",
 	DESTINATION_DEFAULT_CONNECTOR: "Amazon S3",
 	SOURCE_DEFAULT_CONNECTOR: "MongoDB",
 }
@@ -100,6 +101,7 @@ export const SOURCE_INTERNAL_TYPES = {
 	ORACLE: "oracle",
 	KAFKA: "kafka",
 	S3: "s3",
+	DB2: "db2",
 } as const
 
 export const DESTINATION_LABELS = {
@@ -189,15 +191,6 @@ export const SourceTutorialYTLink =
 export const DestinationTutorialYTLink =
 	"https://youtu.be/Ub1pcLg0WsM?si=V2tEtXvx54wDoa8Y"
 
-export const connectorTypeMap: Record<string, string> = {
-	mongodb: "MongoDB",
-	postgres: "Postgres",
-	mysql: "MySQL",
-	oracle: "Oracle",
-	kafka: "Kafka",
-	s3: "Amazon S3",
-}
-
 export const DAYS_MAP = {
 	Sunday: 0,
 	Monday: 1,
@@ -252,8 +245,9 @@ export const SOURCE_SUPPORTED_INGESTION_MODES = {
 	[SOURCE_INTERNAL_TYPES.POSTGRES]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.MYSQL]: DB_STANDARD_MODES,
 	[SOURCE_INTERNAL_TYPES.ORACLE]: DB_STANDARD_MODES,
-	[SOURCE_INTERNAL_TYPES.KAFKA]: APPEND_ONLY_MODE,
 	[SOURCE_INTERNAL_TYPES.S3]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.DB2]: DB_STANDARD_MODES,
+	[SOURCE_INTERNAL_TYPES.KAFKA]: APPEND_ONLY_MODE,
 } as const
 
 export const DESTINATION_SUPPORTED_INGESTION_MODES = {
