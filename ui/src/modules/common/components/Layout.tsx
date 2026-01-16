@@ -12,8 +12,7 @@ import {
 
 import { useAppStore } from "../../../store"
 import { NAV_ITEMS } from "../../../utils/constants"
-import OlakeLogo from "../../../assets/OlakeLogo.svg"
-import Olake from "../../../assets/OLake.svg"
+import { OlakeLogo, OLake } from "../../../assets"
 
 // will be shown in the later period when we have new updates
 const UpdateNotification: React.FC<{ onClose: () => void }> = ({ onClose }) => (
@@ -72,7 +71,7 @@ const Sidebar: React.FC<{
 					/>
 					{!collapsed && (
 						<img
-							src={Olake}
+							src={OLake}
 							alt="logo"
 							className="h-[27px] w-[57px]"
 						/>
