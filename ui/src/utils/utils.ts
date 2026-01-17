@@ -28,6 +28,7 @@ import {
 	MySQL,
 	Oracle,
 	Postgres,
+	MSSQL,
 } from "../assets"
 
 // Normalizes old connector types to their current internal types

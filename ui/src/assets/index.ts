@@ -6,6 +6,7 @@ import AWSS3 from "./AWSS3.svg"
 import ApacheIceBerg from "./ApacheIceBerg.svg"
 import Kafka from "./Kafka.svg"
 import DB2 from "./DB2.svg"
+import MSSQL from "./MSSQL.svg"
 import OLake from "./OLake.svg"
 import OlakeLogo from "./OlakeLogo.svg"
 import ErrorIcon from "./ErrorIcon.svg"
@@ -27,6 +28,7 @@ export {
 	ApacheIceBerg,
 	Kafka,
 	DB2,
+	MSSQL,
 	OLake,
 	OlakeLogo,
 	ErrorIcon,
