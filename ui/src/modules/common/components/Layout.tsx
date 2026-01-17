@@ -17,8 +17,7 @@ import {
 	markReleasesFetchedThisSession,
 } from "../../../utils/sessionUtils"
 import { ReleaseType } from "../../../types/platformTypes"
-import OlakeLogo from "../../../assets/OlakeLogo.svg"
-import Olake from "../../../assets/OLake.svg"
+import { OlakeLogo, OLake } from "../../../assets"
 import UpdatesModal from "../Modals/UpdatesModal"
 
 // will be shown in the later period when we have new updates
@@ -114,7 +113,7 @@ const Sidebar: React.FC<{
 					/>
 					{!collapsed && (
 						<img
-							src={Olake}
+							src={OLake}
 							alt="logo"
 							className="h-[27px] w-[57px]"
 						/>
