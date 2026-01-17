@@ -19,14 +19,16 @@ import {
 	SOURCE_SUPPORTED_INGESTION_MODES,
 	DESTINATION_SUPPORTED_INGESTION_MODES,
 } from "./constants"
-import MongoDB from "../assets/Mongo.svg"
-import Postgres from "../assets/Postgres.svg"
-import MySQL from "../assets/MySQL.svg"
-import Oracle from "../assets/Oracle.svg"
-import AWSS3 from "../assets/AWSS3.svg"
-import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import Kafka from "../assets/Kafka.svg"
-import MSSQL from "../assets/MSSQL.svg"
+import {
+	AWSS3,
+	ApacheIceBerg,
+	DB2,
+	Kafka,
+	MongoDB,
+	MySQL,
+	Oracle,
+	Postgres,
+} from "../assets"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {
@@ -66,6 +68,8 @@ export const getConnectorImage = (connector: string) => {
 			return Kafka
 		case "s3":
 			return AWSS3
+		case "db2":
+			return DB2
 		case "mssql":
 			return MSSQL
 		default:
@@ -150,6 +154,8 @@ export const getConnectorInLowerCase = (connector?: string | null) => {
 			return "mysql"
 		case "oracle":
 			return "oracle"
+		case "db2":
+			return "db2"
 		case "mssql":
 			return "mssql"
 		default:
@@ -206,6 +212,8 @@ export const getConnectorLabel = (type: string): string => {
 		case "s3":
 		case "S3":
 			return "S3"
+		case "db2":
+			return "DB2"
 		case "mssql":
 			return "MSSQL"
 		default:
