@@ -827,15 +827,28 @@ export const formatDate = (dateString: string): string => {
 	}
 }
 
-// Processes release data for UI consumption:
-// - Converts ISO dates to readable format: "2026-01-17T10:00:00Z" -> "Released on Jan 17, 2026"
-// - Converts kebab-case tags to Title Case: "new-release" -> "New Release"
+/* Processes release data for UI consumption
+ * - Converts ISO dates to readable format: "2026-01-17T10:00:00Z" -> "Released on Jan 17, 2026"
+ * - Converts kebab-case tags to Title Case: "new-release" -> "New Release"
+ *
+ * Before: {
+ *   olake_ui_worker: { releases: [{ date: "2026-01-17T10:00:00Z", tags: ["new-release"] }] },
+ *   ...
+ * }
+ *
+ * After: {
+ *   olake_ui_worker: { releases: [{ date: "Released on Jan 17, 2026", tags: ["New Release"] }] },
+ *   ...
+ * }
+ */
 export const processReleasesData = (
 	releases: ReleasesResponse | null,
 ): ReleasesResponse | null => {
 	if (!releases) {
 		return null
 	}
+
+	console.log("input: ", releases)
 
 	const formatReleaseData = (releaseTypeData?: ReleaseTypeData) => {
 		if (!releaseTypeData) {
@@ -856,6 +869,17 @@ export const processReleasesData = (
 			})),
 		}
 	}
+
+	console.log("output: ", {
+		[ReleaseType.OLAKE_UI_WORKER]: formatReleaseData(
+			releases[ReleaseType.OLAKE_UI_WORKER],
+		),
+		[ReleaseType.OLAKE_HELM]: formatReleaseData(
+			releases[ReleaseType.OLAKE_HELM],
+		),
+		[ReleaseType.OLAKE]: formatReleaseData(releases[ReleaseType.OLAKE]),
+		[ReleaseType.FEATURES]: formatReleaseData(releases[ReleaseType.FEATURES]),
+	})
 
 	return {
 		[ReleaseType.OLAKE_UI_WORKER]: formatReleaseData(
