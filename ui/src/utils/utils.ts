@@ -812,8 +812,8 @@ export async function copyToClipboard(textToCopy: string): Promise<void> {
 	}
 }
 
-// Format date from ISO string to readable format
-const formatReleaseDate = (dateString: string): string => {
+// Format date from ISO string to readable format (e.g., "Jan 17, 2026")
+export const formatDate = (dateString: string): string => {
 	try {
 		const date = new Date(dateString)
 		const options: Intl.DateTimeFormatOptions = {
@@ -821,13 +821,15 @@ const formatReleaseDate = (dateString: string): string => {
 			month: "short",
 			year: "numeric",
 		}
-		return `Released on ${date.toLocaleDateString("en-US", options)}`
+		return date.toLocaleDateString("en-US", options)
 	} catch {
 		return dateString
 	}
 }
 
-// Processes release data for UI consumption (formats dates and tags)
+// Processes release data for UI consumption:
+// - Converts ISO dates to readable format: "2026-01-17T10:00:00Z" -> "Released on Jan 17, 2026"
+// - Converts kebab-case tags to Title Case: "new-release" -> "New Release"
 export const processReleasesData = (
 	releases: ReleasesResponse | null,
 ): ReleasesResponse | null => {
@@ -843,7 +845,7 @@ export const processReleasesData = (
 			...releaseTypeData,
 			releases: releaseTypeData.releases.map(release => ({
 				...release,
-				date: formatReleaseDate(release.date),
+				date: `Released on ${formatDate(release.date)}`,
 				tags: release.tags.map(tag =>
 					tag
 						.replace(/-/g, " ")

@@ -3,7 +3,7 @@
 const RELEASES_FETCHED_SESSION_KEY = "releases_fetched_session"
 
 // Checks if releases have been fetched in the current browser session
-// @returns true if releases were already fetched this session, false otherwise
+// returns true if releases were already fetched this session, false otherwise
 export const hasFetchedReleasesThisSession = (): boolean => {
 	return sessionStorage.getItem(RELEASES_FETCHED_SESSION_KEY) !== null
 }

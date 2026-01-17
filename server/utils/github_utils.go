@@ -14,9 +14,18 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const githubReleasesURLTemplate = "https://api.github.com/repos/datazip-inc/%s/releases?per_page=100"
-const githubFeaturesJSONURL = "https://raw.githubusercontent.com/datazip-inc/olake-docs/master/features.json"
+const (
+	githubAPITimeout = 10 * time.Second
 
+	githubReleasesURLTemplate = "https://api.github.com/repos/datazip-inc/%s/releases?per_page=100"
+	githubFeaturesJSONURL     = "https://raw.githubusercontent.com/datazip-inc/olake-docs/master/features.json"
+)
+
+var httpClient = &http.Client{
+	Timeout: githubAPITimeout,
+}
+
+// GitHubRelease represents a release from GitHub API response.
 type GitHubRelease struct {
 	TagName     string    `json:"tag_name"`
 	Name        string    `json:"name"`
@@ -37,7 +46,7 @@ func FetchAndBuildReleaseMetadata(ctx context.Context, repo, releaseType string,
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -52,36 +61,36 @@ func FetchAndBuildReleaseMetadata(ctx context.Context, repo, releaseType string,
 		return nil, err
 	}
 
-	out := make([]*dto.ReleaseMetadataResponse, 0)
+	releases := make([]*dto.ReleaseMetadataResponse, 0)
 
-	for _, r := range rawReleases {
-		if r.Draft || r.Prerelease {
+	for _, release := range rawReleases {
+		if release.Draft || release.Prerelease {
 			continue
 		}
 
-		version := normalizeVersion(releaseType, r.TagName)
+		version := normalizeVersion(releaseType, release.TagName)
 		if version == "" {
 			continue
 		}
 
-		out = append(out, &dto.ReleaseMetadataResponse{
+		releases = append(releases, &dto.ReleaseMetadataResponse{
 			Version:     version,
-			Description: r.Body,
-			Date:        r.PublishedAt.Format(time.RFC3339),
-			Link:        r.HTMLURL,
+			Description: release.Body,
+			Date:        release.PublishedAt.Format(time.RFC3339),
+			Link:        release.HTMLURL,
 		})
 	}
 
 	// Sort by version (descending)
-	sort.Slice(out, func(i, j int) bool {
-		return semver.Compare(out[i].Version, out[j].Version) > 0
+	sort.Slice(releases, func(i, j int) bool {
+		return semver.Compare(releases[i].Version, releases[j].Version) > 0
 	})
 
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
+	if limit > 0 && len(releases) > limit {
+		releases = releases[:limit]
 	}
 
-	return out, nil
+	return releases, nil
 }
 
 // normalizeVersion converts GitHub tag names into semver-compatible versions.
@@ -102,43 +111,8 @@ func normalizeVersion(releaseType, tag string) string {
 	}
 }
 
-// MergeReleaseDescriptions merges secondary release notes into primary by version.
-func MergeReleaseDescriptions(primary *dto.ReleaseTypeData, primaryTitle string, secondary *dto.ReleaseTypeData, secondaryTitle string) *dto.ReleaseTypeData {
-	if primary == nil || secondary == nil {
-		return primary
-	}
-
-	secondaryByVersion := make(map[string]*dto.ReleaseMetadataResponse)
-	for _, r := range secondary.Releases {
-		secondaryByVersion[r.Version] = r
-	}
-
-	for _, p := range primary.Releases {
-		s, ok := secondaryByVersion[p.Version]
-		if !ok {
-			continue
-		}
-
-		if strings.TrimSpace(s.Description) == "" {
-			continue
-		}
-
-		p.Description = fmt.Sprintf(
-			"## %s\n%s\n\n## %s\n%s",
-			primaryTitle,
-			strings.TrimSpace(p.Description),
-			secondaryTitle,
-			strings.TrimSpace(s.Description),
-		)
-	}
-
-	return primary
-}
-
 // FetchFeaturesJSON fetches the features.json file from GitHub.
-func FetchFeaturesJSON(
-	ctx context.Context,
-) ([]*dto.ReleaseMetadataResponse, error) {
+func FetchFeaturesJSON(ctx context.Context) ([]*dto.ReleaseMetadataResponse, error) {
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -153,7 +127,7 @@ func FetchFeaturesJSON(
 	// GitHub API requires User-Agent header
 	req.Header.Set("User-Agent", "olake-ui-server")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		logger.Warnf("failed to fetch features.json: %s", err)
 		return []*dto.ReleaseMetadataResponse{}, nil

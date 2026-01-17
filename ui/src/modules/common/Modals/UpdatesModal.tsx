@@ -162,9 +162,10 @@ const UpdatesModal = () => {
 									{currentUpdates.map(
 										(update: ReleaseMetadataResponse, index: number) => {
 											const isExpanded = expandedCards.has(index)
+											const updateKey = `${update.version || update.title}-${index}`
 											return (
 												<div
-													key={index}
+													key={updateKey}
 													className="rounded-lg border border-gray-200 bg-white shadow-sm hover:border-gray-300 hover:shadow-sm"
 												>
 													<button
@@ -193,7 +194,7 @@ const UpdatesModal = () => {
 																							const style = getTagStyle(tag)
 																							return (
 																								<span
-																									key={tagIdx}
+																									key={`${updateKey}-tag-${tagIdx}`}
 																									className={`rounded px-2.5 py-1 text-xs font-medium capitalize ${style.bg} ${style.text}`}
 																								>
 																									{tag}
@@ -213,7 +214,7 @@ const UpdatesModal = () => {
 																											idx: number,
 																										) => (
 																											<span
-																												key={idx}
+																												key={`${updateKey}-tooltip-tag-${idx}`}
 																												className="text-xs capitalize"
 																											>
 																												{tag}
