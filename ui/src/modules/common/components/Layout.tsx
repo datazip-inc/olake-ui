@@ -11,29 +11,38 @@ import {
 } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
+import { usePlatformStore } from "../../../store/platformStore"
 import { NAV_ITEMS } from "../../../utils/constants"
-import {
-	hasFetchedReleasesThisSession,
-	markReleasesFetchedThisSession,
-} from "../../../utils/sessionUtils"
-import { ReleaseType } from "../../../types/platformTypes"
+import { ReleaseMetadataResponse } from "../../../types/platformTypes"
 import { OlakeLogo, OLake } from "../../../assets"
 import UpdatesModal from "../Modals/UpdatesModal"
 
 // will be shown in the later period when we have new updates
 const UpdateNotification: React.FC = () => {
-	const { setShowUpdatesModal, releases, isLoadingReleases } = useAppStore()
+	const { setShowUpdatesModal } = useAppStore()
+	const { releases, isLoadingReleases, hasSeenUpdates, setHasSeenUpdates } =
+		usePlatformStore()
 
-	// Count new releases from olake_ui_worker that have "new-release" tag
-	const newUpdatesCount =
-		releases?.[ReleaseType.OLAKE_UI_WORKER]?.releases.filter(release =>
-			release.tags.includes("New Release"),
-		).length || 0
+	// Count new releases across all release types that have "New Release" tag
+	const newUpdatesCount = releases
+		? Object.values(releases).reduce((total, category) => {
+				const count =
+					category?.releases.filter((release: ReleaseMetadataResponse) =>
+						release.tags.includes("New Release"),
+					).length || 0
+				return total + count
+			}, 0)
+		: 0
 
 	const hasNewUpdates = newUpdatesCount > 0
 
 	if (isLoadingReleases) {
 		return null
+	}
+
+	const handleOpenModal = () => {
+		setShowUpdatesModal(true)
+		setHasSeenUpdates(true)
 	}
 
 	return (
@@ -43,9 +52,7 @@ const UpdateNotification: React.FC = () => {
 					<button className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200">
 						{hasNewUpdates && (
 							<ArrowsOutSimpleIcon
-								onClick={() => {
-									setShowUpdatesModal(true)
-								}}
+								onClick={handleOpenModal}
 								size={14}
 								color="#383838"
 							/>
@@ -53,9 +60,9 @@ const UpdateNotification: React.FC = () => {
 					</button>
 					<div className="flex w-[90%] flex-col gap-2">
 						<div className="relative w-fit">
-							{/* Red Dot - only show if there are new updates */}
-							{hasNewUpdates && (
-								<div className="absolute right-0 top-0 h-2 w-2 animate-ping rounded-full bg-red-500"></div>
+							{/* Red Dot - only show if user hasn't seen updates */}
+							{!hasSeenUpdates && (
+								<div className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500"></div>
 							)}
 							<BellIcon
 								className=""
@@ -197,20 +204,17 @@ const Sidebar: React.FC<{
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const [collapsed, setCollapsed] = useState(false)
-	const { logout, fetchReleases, releases } = useAppStore()
+	const { logout } = useAppStore()
+	const { fetchReleases, releases } = usePlatformStore()
 	const navigate = useNavigate()
 
-	// Fetch releases once per session, or if store is empty (e.g., after page reload)
+	// Fetch releases if not in store (persist middleware handles sessionStorage)
 	useEffect(() => {
-		const hasFetchedThisSession = hasFetchedReleasesThisSession()
-		const hasReleasesInStore = releases !== null
-
-		if (!hasFetchedThisSession || !hasReleasesInStore) {
-			fetchReleases().then(() => {
-				markReleasesFetchedThisSession()
-			})
+		const hasReleases = releases && Object.keys(releases).length > 0
+		if (!hasReleases) {
+			fetchReleases()
 		}
-	}, [fetchReleases, releases])
+	}, []) // Only run once on mount
 
 	const handleLogout = () => {
 		logout()

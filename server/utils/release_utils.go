@@ -32,11 +32,13 @@ var ReleaseSources = []GithubReleaseSource{
 	{Type: ReleaseOlakeUI, Repo: "olake-ui", OnlyNewerReleases: true},
 	{Type: ReleaseWorker, Repo: "olake-helm", OnlyNewerReleases: true},
 	{Type: ReleaseOlakeHelm, Repo: "olake-helm"},
-	{Type: ReleaseOlake, Repo: "olake"},
+	{Type: ReleaseOlake, Repo: "olake", OnlyNewerReleases: true},
 }
 
 // BuildReleasesResponse builds the final releases response from fetched data.
-func BuildReleasesResponse(currentVersion string, fetched map[ReleaseType][]*dto.ReleaseMetadataResponse) (*dto.ReleasesResponse, error) {
+// currentVersion is used for olake-ui and worker releases.
+// olakeSourceVersion is used for olake source releases (minimum version from database).
+func BuildReleasesResponse(currentVersion, olakeSourceVersion string, fetched map[ReleaseType][]*dto.ReleaseMetadataResponse) (*dto.ReleasesResponse, error) {
 	resp := &dto.ReleasesResponse{}
 
 	var (
@@ -60,8 +62,11 @@ func BuildReleasesResponse(currentVersion string, fetched map[ReleaseType][]*dto
 
 		releases := make([]*dto.ReleaseMetadataResponse, 0)
 
+		// Determine which version to compare against
+		compareVersion := Ternary(src.Type == ReleaseOlake, olakeSourceVersion, currentVersion).(string)
+
 		for _, release := range raw {
-			comparison := semver.Compare(release.Version, currentVersion)
+			comparison := semver.Compare(release.Version, compareVersion)
 
 			// Skip older releases if required
 			if src.OnlyNewerReleases && comparison <= 0 {
@@ -87,7 +92,7 @@ func BuildReleasesResponse(currentVersion string, fetched map[ReleaseType][]*dto
 		}
 
 		if src.OnlyNewerReleases {
-			data.CurrentVersion = currentVersion
+			data.CurrentVersion = Ternary(src.Type == ReleaseOlake, olakeSourceVersion, currentVersion).(string)
 		}
 
 		switch src.Type {

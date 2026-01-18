@@ -6,13 +6,14 @@ import {
 } from "@phosphor-icons/react"
 import { Modal, Tooltip } from "antd"
 import { useAppStore } from "../../../store"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import clsx from "clsx"
 import ReactMarkdown from "react-markdown"
 import {
 	ReleaseMetadataResponse,
 	ReleaseType,
 } from "../../../types/platformTypes"
+import { usePlatformStore } from "../../../store/platformStore"
 
 const CATEGORIES: ReleaseType[] = [
 	ReleaseType.FEATURES,
@@ -67,13 +68,20 @@ const formatGithubReferences = (text: string): string => {
 }
 
 const UpdatesModal = () => {
-	const { showUpdatesModal, setShowUpdatesModal, releases } = useAppStore()
+	const { showUpdatesModal, setShowUpdatesModal } = useAppStore()
+	const { releases, seenCategories, markCategoryAsSeen } = usePlatformStore()
 	const [selectedCategory, setSelectedCategory] = useState<ReleaseType>(
 		ReleaseType.OLAKE_UI_WORKER,
 	)
 	const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set())
 
 	const currentUpdates = releases?.[selectedCategory]?.releases || []
+
+	useEffect(() => {
+		if (showUpdatesModal) {
+			markCategoryAsSeen(selectedCategory)
+		}
+	}, [showUpdatesModal, selectedCategory])
 
 	const toggleCard = (index: number) => {
 		setExpandedCards(prev => {
@@ -102,13 +110,10 @@ const UpdatesModal = () => {
 				{/* Full Width Header */}
 				<div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
 					<div className="flex items-center gap-2">
-						<div className="relative">
-							<div className="absolute right-0 top-0 h-2 w-2 animate-pulse rounded-full bg-red-500"></div>
-							<BellIcon
-								size={20}
-								color="#203FDD"
-							/>
-						</div>
+						<BellIcon
+							size={20}
+							color="#203FDD"
+						/>
 						<span className="text-lg font-semibold text-gray-900">Updates</span>
 					</div>
 					<button
@@ -127,20 +132,33 @@ const UpdatesModal = () => {
 					{/* Left Sidebar */}
 					<div className="w-[255px] border-r border-gray-200">
 						{/* Categories */}
-						{CATEGORIES.map(category => (
-							<button
-								key={category}
-								onClick={() => setSelectedCategory(category)}
-								className={clsx(
-									"w-full border-b px-6 py-2.5 text-left text-sm transition-colors",
-									selectedCategory === category
-										? "bg-gray-50 font-medium text-gray-900"
-										: "font-normal text-gray-700 hover:bg-gray-50",
-								)}
-							>
-								{RELEASE_TYPE_TO_LABEL[category]}
-							</button>
-						))}
+						{CATEGORIES.map(category => {
+							const hasNewReleases = releases?.[category]?.releases.some(
+								(r: ReleaseMetadataResponse) => r.tags.includes("New Release"),
+							)
+							const showDot =
+								hasNewReleases && !seenCategories.includes(category)
+
+							return (
+								<button
+									key={category}
+									onClick={() => setSelectedCategory(category)}
+									className={clsx(
+										"w-full border-b px-6 py-2.5 text-left text-sm transition-colors",
+										selectedCategory === category
+											? "bg-gray-50 font-medium text-gray-900"
+											: "font-normal text-gray-700 hover:bg-gray-50",
+									)}
+								>
+									<div className="flex items-center justify-between">
+										{RELEASE_TYPE_TO_LABEL[category]}
+										{showDot && (
+											<div className="h-2 w-2 rounded-full bg-red-500" />
+										)}
+									</div>
+								</button>
+							)
+						})}
 					</div>
 
 					{/* Main Content */}

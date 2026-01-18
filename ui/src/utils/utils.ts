@@ -848,8 +848,6 @@ export const processReleasesData = (
 		return null
 	}
 
-	console.log("input: ", releases)
-
 	const formatReleaseData = (releaseTypeData?: ReleaseTypeData) => {
 		if (!releaseTypeData) {
 			return undefined
@@ -869,18 +867,6 @@ export const processReleasesData = (
 			})),
 		}
 	}
-
-	console.log("output: ", {
-		[ReleaseType.OLAKE_UI_WORKER]: formatReleaseData(
-			releases[ReleaseType.OLAKE_UI_WORKER],
-		),
-		[ReleaseType.OLAKE_HELM]: formatReleaseData(
-			releases[ReleaseType.OLAKE_HELM],
-		),
-		[ReleaseType.OLAKE]: formatReleaseData(releases[ReleaseType.OLAKE]),
-		[ReleaseType.FEATURES]: formatReleaseData(releases[ReleaseType.FEATURES]),
-	})
-
 	return {
 		[ReleaseType.OLAKE_UI_WORKER]: formatReleaseData(
 			releases[ReleaseType.OLAKE_UI_WORKER],

@@ -14,6 +14,18 @@ func (s *ETLService) GetAllReleasesResponse(
 	limit int,
 ) (*dto.ReleasesResponse, error) {
 	currentVersion := constants.AppVersion
+
+	olakeSourceVersion, err := s.db.GetMinimumSourceVersion()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get minimum source version: %s", err)
+	}
+
+	// If no source version is found (e.g. fresh install), use a sentinel high version (v9999.9.9).
+	// This ensures all available releases are considered "older", suppressing false "New Release" notifications.
+	if olakeSourceVersion == "" {
+		olakeSourceVersion = "v9999.9.9"
+	}
+
 	fetchedReleases := make(map[utils.ReleaseType][]*dto.ReleaseMetadataResponse)
 
 	// fetch features
@@ -32,5 +44,5 @@ func (s *ETLService) GetAllReleasesResponse(
 		fetchedReleases[src.Type] = data
 	}
 
-	return utils.BuildReleasesResponse(currentVersion, fetchedReleases)
+	return utils.BuildReleasesResponse(currentVersion, olakeSourceVersion, fetchedReleases)
 }
