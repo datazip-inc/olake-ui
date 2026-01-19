@@ -49,9 +49,11 @@ const UpdateNotification: React.FC = () => {
 		<>
 			<div className="p-4">
 				<div className="relative rounded-xl border border-[#efefef] bg-neutral-100 p-3">
-					<button className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200">
+					<button
+						onClick={handleOpenModal}
+						className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200"
+					>
 						<ArrowsOutSimpleIcon
-							onClick={handleOpenModal}
 							size={14}
 							color="#383838"
 						/>

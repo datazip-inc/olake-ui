@@ -1112,6 +1112,9 @@ http://localhost:8080
     "success": "boolean",
     "message": "string",
     "data": {
+      "features": {
+        "releases": ["json"]
+      },
       "olake_ui_worker": {
         "current_version": "string",
         "releases": ["json"]
@@ -1120,6 +1123,7 @@ http://localhost:8080
         "releases": ["json"]
       },
       "olake": {
+        "current_version": "string",
         "releases": ["json"]
       }
     }
