@@ -50,18 +50,16 @@ const UpdateNotification: React.FC = () => {
 			<div className="p-4">
 				<div className="relative rounded-xl border border-[#efefef] bg-neutral-100 p-3">
 					<button className="absolute right-2 top-2 rounded-full p-1 hover:bg-gray-200">
-						{hasNewUpdates && (
-							<ArrowsOutSimpleIcon
-								onClick={handleOpenModal}
-								size={14}
-								color="#383838"
-							/>
-						)}
+						<ArrowsOutSimpleIcon
+							onClick={handleOpenModal}
+							size={14}
+							color="#383838"
+						/>
 					</button>
 					<div className="flex w-[90%] flex-col gap-2">
 						<div className="relative w-fit">
 							{/* Red Dot - only show if user hasn't seen updates */}
-							{!hasSeenUpdates && (
+							{hasNewUpdates && !hasSeenUpdates && (
 								<div className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-500"></div>
 							)}
 							<BellIcon
