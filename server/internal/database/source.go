@@ -8,6 +8,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"golang.org/x/mod/semver"
 )
 
 // decryptSourceSliceConfigs decrypts config fields for a slice of sources
@@ -105,4 +106,35 @@ func (db *Database) DeleteSource(id int) error {
 // IsSourceNameUniqueInProject checks if a source name is unique within a project.
 func (db *Database) IsSourceNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
 	return db.IsNameUniqueInProject(ctx, projectID, name, constants.SourceTable)
+}
+
+// GetMinimumSourceVersion returns the minimum (oldest) semantic version from all sources.
+// Uses semver comparison to find the true minimum version.
+// Returns empty string if no sources exist.
+func (db *Database) GetMinimumSourceVersion() (string, error) {
+	var versions orm.ParamsList
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Distinct().
+		ValuesFlat(&versions, "version")
+	if err != nil {
+		return "", fmt.Errorf("failed to get source versions: %s", err)
+	}
+
+	if len(versions) == 0 {
+		return "", nil
+	}
+
+	// Find minimum version using semver comparison
+	minVersion := ""
+	for _, v := range versions {
+		version := v.(string)
+		if version == "" {
+			continue
+		}
+		if minVersion == "" || semver.Compare(version, minVersion) < 0 {
+			minVersion = version
+		}
+	}
+
+	return minVersion, nil
 }
