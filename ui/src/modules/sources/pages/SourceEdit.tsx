@@ -218,26 +218,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 						value: version,
 					}))
 					setAvailableVersions([...versions])
-					if (
-						source?.type !== normalizedSourceConnector &&
-						versions.length > 0 &&
-						!initialData
-					) {
-						setSelectedVersion(versions[0].value)
-						if (onVersionChange) {
-							onVersionChange(versions[0].value)
-						}
-					} else if (initialData) {
-						if (
-							initialData?.type != normalizedSourceConnector &&
-							initialData.version
-						) {
-							setSelectedVersion(initialData.version)
-							if (onVersionChange) {
-								onVersionChange(initialData.version)
-							}
-						}
-					}
 				} else {
 					resetVersionState()
 				}
