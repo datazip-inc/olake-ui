@@ -30,9 +30,9 @@ type LocationInfo struct {
 
 type PlatformInfo struct {
 	Olake_ui_version string
-	OS           string
-	Arch         string
-	DeviceCPU    string
+	OS               string
+	Arch             string
+	DeviceCPU        string
 }
 
 type Telemetry struct {
@@ -80,10 +80,10 @@ func InitTelemetry(db *database.Database) {
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
-				OS:           runtime.GOOS,
-				Arch:         runtime.GOARCH,
+				OS:               runtime.GOOS,
+				Arch:             runtime.GOARCH,
 				Olake_ui_version: viper.GetString("APP_VERSION"),
-				DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
+				DeviceCPU:        fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
 			ipAddress:    ip,
 			TempUserID:   tempUserID,
