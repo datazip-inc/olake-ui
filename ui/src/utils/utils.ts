@@ -33,6 +33,7 @@ import {
 	MySQL,
 	Oracle,
 	Postgres,
+	MSSQL,
 } from "../assets"
 
 // Normalizes old connector types to their current internal types
@@ -75,6 +76,8 @@ export const getConnectorImage = (connector: string) => {
 			return AWSS3
 		case "db2":
 			return DB2
+		case "mssql":
+			return MSSQL
 		default:
 			// Default placeholder
 			return MongoDB
@@ -159,6 +162,8 @@ export const getConnectorInLowerCase = (connector?: string | null) => {
 			return "oracle"
 		case "db2":
 			return "db2"
+		case "mssql":
+			return "mssql"
 		default:
 			return lowerConnector
 	}
@@ -215,6 +220,8 @@ export const getConnectorLabel = (type: string): string => {
 			return "S3"
 		case "db2":
 			return "DB2"
+		case "mssql":
+			return "MSSQL"
 		default:
 			return "MongoDB"
 	}
