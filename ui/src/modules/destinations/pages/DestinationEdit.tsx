@@ -217,14 +217,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 				if (response?.version) {
 					setVersions(response.version)
-
-					// If no version is selected, set the first one as default
-					if (!selectedVersion && response.version.length > 0) {
-						setSelectedVersion(response.version[0])
-						if (onVersionChange) {
-							onVersionChange(response.version[0])
-						}
-					}
 				} else {
 					resetVersionState()
 				}

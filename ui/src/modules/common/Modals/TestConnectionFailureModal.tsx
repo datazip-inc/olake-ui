@@ -5,7 +5,7 @@ import { CopySimpleIcon } from "@phosphor-icons/react"
 import clsx from "clsx"
 
 import { useAppStore } from "../../../store"
-import ErrorIcon from "../../../assets/ErrorIcon.svg"
+import { ErrorIcon } from "../../../assets"
 import {
 	getLogTextColor,
 	getLogLevelClass,

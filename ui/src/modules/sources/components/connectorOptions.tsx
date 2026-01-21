@@ -80,6 +80,32 @@ const connectorOptions: ConnectorOption[] = [
 			</div>
 		),
 	},
+	{
+		value: "DB2",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={getConnectorImage("DB2")}
+					alt="DB2"
+					className="mr-2 size-5"
+				/>
+				<span data-testid="connector-option-db2">DB2 LUW</span>
+			</div>
+		),
+	},
+	{
+		value: "MSSQL",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={getConnectorImage("MSSQL")}
+					alt="MSSQL"
+					className="mr-2 size-5"
+				/>
+				<span data-testid="connector-option-mssql">MSSQL</span>
+			</div>
+		),
+	},
 ]
 
 export default connectorOptions
