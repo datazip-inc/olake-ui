@@ -29,7 +29,7 @@ type LocationInfo struct {
 }
 
 type PlatformInfo struct {
-	OlakeVersion string
+	Olake_ui_version string
 	OS           string
 	Arch         string
 	DeviceCPU    string
@@ -82,7 +82,7 @@ func InitTelemetry(db *database.Database) {
 			platform: PlatformInfo{
 				OS:           runtime.GOOS,
 				Arch:         runtime.GOARCH,
-				OlakeVersion: viper.GetString("BUILD"),
+				Olake_ui_version: viper.GetString("APP_VERSION"),
 				DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
 			ipAddress:    ip,
@@ -173,6 +173,7 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		"distinct_id":         instance.TempUserID,
 		"time":                time.Now().Unix(),
 		"event_original_name": eventName,
+		"Olake_ui_version":    instance.platform.Olake_ui_version,
 	}
 	for key, value := range props {
 		properties[key] = value
