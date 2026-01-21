@@ -77,6 +77,7 @@ var SupportedSourceTypes = []string{
 	"kafka",
 	"s3",
 	"db2",
+	"mssql",
 }
 
 // Supported database/source types
