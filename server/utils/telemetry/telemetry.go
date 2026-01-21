@@ -80,10 +80,10 @@ func InitTelemetry(db *database.Database) {
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
-				OS:               runtime.GOOS,
-				Arch:             runtime.GOARCH,
+				OS:             runtime.GOOS,
+				Arch:           runtime.GOARCH,
 				OlakeUIVersion: viper.GetString("APP_VERSION"),
-				DeviceCPU:        fmt.Sprintf("%d cores", runtime.NumCPU()),
+				DeviceCPU:      fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
 			ipAddress:    ip,
 			TempUserID:   tempUserID,
