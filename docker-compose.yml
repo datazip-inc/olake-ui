@@ -136,15 +136,16 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy # Wait for elasticsearch to be healthy
+        required: false
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
-      - ENABLE_ES=true
-      - ES_SEEDS=elasticsearch
-      - ES_VERSION=v7
+      - ENABLE_ES=${ENABLE_ES}
+      - ES_SEEDS=${ES_SEEDS}
+      - ES_VERSION=${ES_VERSION}
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
     networks:
@@ -170,6 +171,8 @@ services:
   elasticsearch:
     container_name: temporal-elasticsearch
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/elasticsearch:7.17.10
+    profiles:
+      - legacy
     environment:
       - cluster.routing.allocation.disk.threshold_enabled=true
       - cluster.routing.allocation.disk.watermark.low=512mb
