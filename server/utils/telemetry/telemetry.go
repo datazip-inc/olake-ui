@@ -29,10 +29,10 @@ type LocationInfo struct {
 }
 
 type PlatformInfo struct {
-	OlakeUIVersion   string
-	OS               string
-	Arch             string
-	DeviceCPU        string
+	OlakeUIVersion string
+	OS             string
+	Arch           string
+	DeviceCPU      string
 }
 
 type Telemetry struct {
