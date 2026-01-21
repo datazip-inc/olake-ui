@@ -2,7 +2,7 @@ import { Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
-import ErrorIcon from "../../../assets/ErrorIcon.svg"
+import { ErrorIcon } from "../../../assets"
 import { copyToClipboard } from "../../../utils/utils"
 
 const SpecFailedModal = ({

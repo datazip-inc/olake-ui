@@ -1,5 +1,5 @@
 import { Modal } from "antd"
-import DestinationSuccess from "../../../assets/DestinationSuccess.svg"
+import { DestinationSuccess } from "../../../assets"
 import { useAppStore } from "../../../store"
 
 const TestConnectionSuccessModal = () => {

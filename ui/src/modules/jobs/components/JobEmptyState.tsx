@@ -2,8 +2,7 @@ import { Button } from "antd"
 import { GitCommitIcon, PlayCircleIcon } from "@phosphor-icons/react"
 
 import { JobTutorialYTLink } from "../../../utils/constants"
-import FirstJob from "../../../assets/FirstJob.svg"
-import JobsTutorial from "../../../assets/JobsTutorial.svg"
+import { FirstJob, JobsTutorial } from "../../../assets"
 
 const JobEmptyState = ({
 	handleCreateJob,
