@@ -11,7 +11,15 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @router /project/:projectid/sources [get]
+// @Title ListSources
+// @Tags Sources
+// @Description Retrieve a list of all configured sources within a specific project.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Success 200 {object} dto.JSONResponse{data=[]dto.SourceDataItem}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to retrieve sources"
+// @Router /api/v1/project/{projectid}/sources [get]
 func (h *Handler) ListSources() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -29,7 +37,16 @@ func (h *Handler) ListSources() {
 	utils.SuccessResponse(&h.Controller, "sources listed successfully", sources)
 }
 
-// @router /project/:projectid/sources/:id [get]
+// @Title GetSource
+// @Tags Sources
+// @Description Retrieve details of a specific source identified by its unique ID.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "source id"
+// @Success 200 {object} dto.JSONResponse{data=dto.SourceDataItem}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get source"
+// @Router /api/v1/project/{projectid}/sources/{id} [get]
 func (h *Handler) GetSource() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -53,11 +70,19 @@ func (h *Handler) GetSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source '%d' retrieved successfully", sourceID), source)
 }
 
-// @router /project/:projectid/sources [post]
+// @Title CreateSource
+// @Tags Sources
+// @Description Create a new source within a project.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.CreateSourceRequest true "source data"
+// @Success 200 {object} dto.JSONResponse{data=dto.CreateSourceRequest}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to create source"
+// @Router /api/v1/project/{projectid}/sources [post]
 func (h *Handler) CreateSource() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
@@ -89,11 +114,21 @@ func (h *Handler) CreateSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s created successfully", req.Name), req)
 }
 
-// @router /project/:projectid/sources/:id [put]
+// @Title UpdateSource
+// @Tags Sources
+// @Description Update the configuration details of an existing source.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "source id"
+// @Param   body          body    dto.UpdateSourceRequest true "source data"
+// @Success 200 {object} dto.JSONResponse{data=dto.UpdateSourceRequest}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "source not found"
+// @Failure 500 {object} dto.Error500Response "failed to update source"
+// @Router /api/v1/project/{projectid}/sources/{id} [put]
 func (h *Handler) UpdateSource() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 
@@ -135,7 +170,17 @@ func (h *Handler) UpdateSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s updated successfully", req.Name), req)
 }
 
-// @router /project/:projectid/sources/:id [delete]
+// @Title DeleteSource
+// @Tags Sources
+// @Description Permanently delete a specified source.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "source id"
+// @Success 200 {object} dto.JSONResponse{data=dto.DeleteSourceResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "source not found"
+// @Failure 500 {object} dto.Error500Response "failed to delete source"
+// @Router /api/v1/project/{projectid}/sources/{id} [delete]
 func (h *Handler) DeleteSource() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -157,7 +202,16 @@ func (h *Handler) DeleteSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s deleted successfully", resp.Name), resp)
 }
 
-// @router /project/:projectid/sources/test [post]
+// @Title TestSourceConnection
+// @Tags Sources
+// @Description Validate the connection to a source using the provided configuration details.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.SourceTestConnectionRequest true "test connection data"
+// @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to test connection"
+// @Router /api/v1/project/{projectid}/sources/test [post]
 func (h *Handler) TestSourceConnection() {
 	var req dto.SourceTestConnectionRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
@@ -184,7 +238,16 @@ func (h *Handler) TestSourceConnection() {
 	})
 }
 
-// @router /sources/streams [post]
+// @Title GetSourceCatalog
+// @Tags Sources
+// @Description Discover and list available data streams from a source.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.StreamsRequest true "streams request data"
+// @Success 200 {object} dto.JSONResponse{data=object}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get source catalog"
+// @Router /api/v1/project/{projectid}/sources/streams [post]
 func (h *Handler) GetSourceCatalog() {
 	var req dto.StreamsRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
@@ -208,7 +271,6 @@ func (h *Handler) GetSourceCatalog() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
 }
 
-// @router /sources/:id/jobs [get]
 func (h *Handler) GetSourceJobs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -230,7 +292,16 @@ func (h *Handler) GetSourceJobs() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %d jobs listed successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
-// @router /project/:projectid/sources/versions [get]
+// @Title GetSourceVersions
+// @Tags Sources
+// @Description Retrieve the list of available versions for a specific source connector type.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   type          query   string  true    "source type"
+// @Success 200 {object} dto.JSONResponse{data=dto.VersionsResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get versions"
+// @Router /api/v1/project/{projectid}/sources/versions [get]
 func (h *Handler) GetSourceVersions() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -252,7 +323,16 @@ func (h *Handler) GetSourceVersions() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s versions fetched successfully", sourceType), versions)
 }
 
-// @router /project/:projectid/sources/spec [post]
+// @Title GetSourceSpec
+// @Tags Sources
+// @Description Retrieve the UI spec for a specific source type/version.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.SpecRequest true "spec request data"
+// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get spec"
+// @Router /api/v1/project/{projectid}/sources/spec [post]
 func (h *Handler) GetSourceSpec() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {

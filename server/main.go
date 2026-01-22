@@ -1,3 +1,11 @@
+// @title Olake UI API
+// @version 0.2.9
+// @description Olake is fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse.
+// @contact.name OLake
+// @contact.email hello@olake.io
+// @contact.url https://olake.io/contact/
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 package main
 
 import (

@@ -10,7 +10,15 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @router /project/:projectid/jobs [get]
+// @Title ListJobs
+// @Tags Jobs
+// @Description Retrieve a list of all jobs associated with a specific project.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Success 200 {object} dto.JSONResponse{data=[]dto.JobResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to retrieve jobs"
+// @Router /api/v1/project/{projectid}/jobs [get]
 func (h *Handler) ListJobs() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -28,7 +36,16 @@ func (h *Handler) ListJobs() {
 	utils.SuccessResponse(&h.Controller, "jobs listed successfully", jobs)
 }
 
-// @router /project/:projectid/jobs/:id [get]
+// @Title GetJob
+// @Tags Jobs
+// @Description Retrieve details of a specific job identified by its unique ID.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse{data=dto.JobResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get job"
+// @Router /api/v1/project/{projectid}/jobs/{id} [get]
 func (h *Handler) GetJob() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -52,11 +69,19 @@ func (h *Handler) GetJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%d' retrieved successfully", jobID), job)
 }
 
-// @router /project/:projectid/jobs [post]
+// @Title CreateJob
+// @Tags Jobs
+// @Description Create a new job within a specific project.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.CreateJobRequest true "job data"
+// @Success 200 {object} dto.JSONResponse "job created successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to create job"
+// @Router /api/v1/project/{projectid}/jobs [post]
 func (h *Handler) CreateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -104,11 +129,20 @@ func (h *Handler) CreateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
 }
 
-// @router /project/:projectid/jobs/:id [put]
+// @Title UpdateJob
+// @Tags Jobs
+// @Description Update the configuration details of an existing job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Param   body          body    dto.UpdateJobRequest true "job data"
+// @Success 200 {object} dto.JSONResponse "job updated successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to update job"
+// @Router /api/v1/project/{projectid}/jobs/{id} [put]
 func (h *Handler) UpdateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -160,7 +194,16 @@ func (h *Handler) UpdateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
 }
 
-// @router /project/:projectid/jobs/:id [delete]
+// @Title DeleteJob
+// @Tags Jobs
+// @Description Permanently delete a specified job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse "job deleted successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to delete job"
+// @Router /api/v1/project/{projectid}/jobs/{id} [delete]
 func (h *Handler) DeleteJob() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -178,7 +221,17 @@ func (h *Handler) DeleteJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
 }
 
-// @router /project/:projectid/check-unique [post]
+// @Title CheckUniqueName
+// @Tags Jobs
+// @Description Verify if a given name is unique within the project for a specific entity type.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.CheckUniqueNameRequest true "unique check data"
+// @Success 200 {object} dto.JSONResponse{data=dto.CheckUniqueJobNameResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 409 {object} dto.Error409Response "name is not unique"
+// @Failure 500 {object} dto.Error500Response "failed to check uniqueness"
+// @Router /api/v1/project/{projectid}/check-unique [post]
 func (h *Handler) CheckUniqueName() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -208,7 +261,16 @@ func (h *Handler) CheckUniqueName() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("%s name '%s' uniqueness checked successfully", req.EntityType, req.Name), dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
-// @router /project/:projectid/jobs/:id/sync [post]
+// @Title SyncJob
+// @Tags Jobs
+// @Description Trigger a manual sync for a job
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse "sync triggered successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized
+// @Failure 500 {object} dto.Error500Response "failed to trigger sync"
+// @Router /api/v1/project/{projectid}/jobs/{id}/sync [post]
 func (h *Handler) SyncJob() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -232,11 +294,20 @@ func (h *Handler) SyncJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("sync triggered successfully for job_id[%d]", id), result)
 }
 
-// @router /project/:projectid/jobs/:id/activate [put]
+// @Title ActivateJob
+// @Tags Jobs
+// @Description Pause or resume a job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Param   body          body    dto.JobStatusRequest true "activation data"
+// @Success 200 {object} dto.JSONResponse "job activated/deactivated successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to activate job"
+// @Router /api/v1/project/{projectid}/jobs/{id}/activate [post]
 func (h *Handler) ActivateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -261,7 +332,16 @@ func (h *Handler) ActivateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %d %s successfully", id, utils.Ternary(req.Activate, "resumed", "paused")), nil)
 }
 
-// @router /project/:projectid/jobs/:id/cancel [post]
+// @Title CancelJobRun
+// @Tags Jobs
+// @Description Request cancellation of a currently running job execution.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse "job cancel requested successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to cancel job run"
+// @Router /api/v1/project/{projectid}/jobs/{id}/cancel [get]
 func (h *Handler) CancelJobRun() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -284,7 +364,16 @@ func (h *Handler) CancelJobRun() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
 }
 
-// @router /project/:projectid/jobs/:id/clear-destination [post]
+// @Title ClearDestination
+// @Tags Jobs
+// @Description Initiate job to clear data in the destination associated with a job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse "clear destination triggered successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to trigger clear destination"
+// @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [post]
 func (h *Handler) ClearDestination() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -304,7 +393,17 @@ func (h *Handler) ClearDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
 }
 
-// @router /project/:projectid/jobs/:id/stream-difference [post]
+// @Title GetStreamDifference
+// @Tags Jobs
+// @Description Get difference between current streams.json and existing streams.json.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Param   body          body    dto.StreamDifferenceRequest true "stream difference data"
+// @Success 200 {object} dto.JSONResponse{data=dto.StreamDifferenceResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get stream difference"
+// @Router /api/v1/project/{projectid}/jobs/{id}/stream-difference [post]
 func (h *Handler) GetStreamDifference() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -336,7 +435,16 @@ func (h *Handler) GetStreamDifference() {
 	})
 }
 
-// @router /project/:projectid/jobs/:id/clear-destination [get]
+// @Title GetClearDestinationStatus
+// @Tags Jobs
+// @Description Retrieve the current status of an ongoing clear destination job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse{data=dto.ClearDestinationStatusResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get status"
+// @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [get]
 func (h *Handler) GetClearDestinationStatus() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -360,7 +468,16 @@ func (h *Handler) GetClearDestinationStatus() {
 	})
 }
 
-// @router /project/:projectid/jobs/:id/tasks [get]
+// @Title GetJobTasks
+// @Tags Jobs
+// @Description Retrieve a list of execution tasks associated with a specific job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse{data=[]dto.JobTask}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get job tasks"
+// @Router /api/v1/project/{projectid}/jobs/{id}/tasks [get]
 func (h *Handler) GetJobTasks() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -384,7 +501,21 @@ func (h *Handler) GetJobTasks() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
-// @router /project/:projectid/jobs/:id/logs [post]
+// @Title GetTaskLogs
+// @Tags Jobs
+// @Description Retrieves the execution logs for a specific task. The file path for the log must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks) endpoint.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Param   taskid        path    string  true    "task id (defaults to 1)"
+// @Param   body          body    dto.JobTaskRequest true "task log data"
+// @Param   cursor        query   int     false   "log cursor"
+// @Param   limit         query   int     false   "log limit"
+// @Param   direction     query   string  false   "log direction"
+// @Success 200 {object} dto.JSONResponse{data=dto.TaskLogsResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get task logs"
+// @Router /api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs [post]
 func (h *Handler) GetTaskLogs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -412,7 +543,12 @@ func (h *Handler) GetTaskLogs() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
 }
 
-// @router /internal/worker/callback/sync-telemetry [post]
+// @Title UpdateSyncTelemetry
+// @Tags Internal
+// @Description Internal callback to update sync telemetry data.
+// @Param   body          body    dto.UpdateSyncTelemetryRequest true "telemetry data"
+// @Success 200 {object} dto.JSONResponse "sync telemetry updated successfully"
+// @Router /internal/worker/callback/sync-telemetry [post]
 func (h *Handler) UpdateSyncTelemetry() {
 	var req dto.UpdateSyncTelemetryRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
@@ -434,7 +570,13 @@ func (h *Handler) UpdateSyncTelemetry() {
 }
 
 // RecoverClearDestination handles recovery from stuck clear-destination workflows (internal use only)
-// @router /projects/:project_id/jobs/:job_id/recover-clear-destination [post]
+// @Title RecoverClearDestination
+// @Tags Internal
+// @Description Internal recovery endpoint to cancel stuck clear-destination workflows and restore sync schedules.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Success 200 {object} dto.JSONResponse "successfully recovered"
+// @Router /internal/project/{projectid}/jobs/{id}/clear-destination/recover [post]
 func (h *Handler) RecoverClearDestination() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -456,7 +598,18 @@ func (h *Handler) RecoverClearDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
 }
 
-// @router /project/:projectid/jobs/:id/logs/download [get]
+// @Title DownloadTaskLogs
+// @Tags Jobs
+// @Description Downloads the log file for a specific task. The file path required for the download must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks) endpoint.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Param   file_path     query   string  true    "log file path"
+// @Success 200 {file} file
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "failed to prepare log archive"
+// @Failure 500 {object} dto.Error500Response "internal server error"
+// @Router /api/v1/project/{projectid}/jobs/{id}/logs/download [get]
 func (h *Handler) DownloadTaskLogs() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -493,7 +646,14 @@ func (h *Handler) DownloadTaskLogs() {
 	logger.Infof("successfully streamed log archive job_id[%d] filename[%s]", id, filename)
 }
 
-// @router /internal/project/:projectid/jobs/:id/statefile [put]
+// @Title UpdateStateFile
+// @Tags Internal
+// @Description Internal endpoint to update the state file associated with a job.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "job id"
+// @Param   body          body    dto.UpdateStateFileRequest true "state file data"
+// @Success 200 {object} dto.JSONResponse "state file updated successfully"
+// @Router /internal/project/{projectid}/jobs/{id}/statefile [put]
 func (h *Handler) UpdateStateFile() {
 	jobID, err := GetIDFromPath(&h.Controller)
 	if err != nil {
