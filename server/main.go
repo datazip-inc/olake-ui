@@ -6,6 +6,24 @@
 // @contact.url https://olake.io/contact/
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @tag.name Jobs
+// @tag.description Job management and execution endpoints
+// @tag.name Sources
+// @tag.description Source configuration endpoints
+// @tag.name Destinations
+// @tag.description Destination configuration endpoints
+// @tag.name Project Settings
+// @tag.description Project configuration endpoints
+// @tag.name Platform
+// @tag.description Platform-level operations
+// @tag.name Authentication
+// @tag.description Authentication endpoints
+// @tag.name Users
+// @tag.description User management endpoints
+// @tag.name Internal
+// @tag.description Internal worker callbacks (not for external use)
+
 package main
 
 import (

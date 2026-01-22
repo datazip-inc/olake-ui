@@ -4,19 +4,30 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
+// ServeSwagger serves the Swagger UI and static swagger files
 func (h *Handler) ServeSwagger() {
-	swaggerDir := "swagger"
-	relativePath := strings.TrimPrefix(h.Ctx.Input.URL(), "/swagger")
+	url := h.Ctx.Input.URL()
 
-	if relativePath == "" || relativePath == "/" {
-		relativePath = "/index.html"
+	// Redirect /swagger to /swagger/ for http-swagger compatibility
+	if url == "/swagger" {
+		h.Redirect("/swagger/", http.StatusMovedPermanently)
+		return
 	}
 
-	// Set Content-Type early
-	h.Ctx.Output.ContentType("text/html")
+	path := strings.TrimPrefix(url, "/swagger")
 
-	// Use built-in file serving for efficiency and proper headers
-	http.ServeFile(h.Ctx.ResponseWriter, h.Ctx.Request, filepath.Join(swaggerDir, filepath.Clean(relativePath)))
+	// Serve swagger.json and swagger.yaml as static files
+	if path == "/swagger.json" || path == "/swagger.yaml" {
+		http.ServeFile(h.Ctx.ResponseWriter, h.Ctx.Request, filepath.Join("swagger", filepath.Clean(path)))
+		return
+	}
+
+	// Serve Swagger UI for all other requests
+	httpSwagger.Handler(
+		httpSwagger.URL("/swagger/swagger.json"),
+	).ServeHTTP(h.Ctx.ResponseWriter, h.Ctx.Request)
 }
