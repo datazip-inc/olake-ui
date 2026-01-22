@@ -177,3 +177,27 @@ type TelemetryIDResponse struct {
 type LoginResponse struct {
 	Username string `json:"username" example:"admin"`
 }
+
+// ReleaseMetadataResponse represents a single release
+type ReleaseMetadataResponse struct {
+	Title       string   `json:"title,omitempty"`
+	Version     string   `json:"version,omitempty"`
+	Description string   `json:"description"`
+	Tags        []string `json:"tags"`
+	Date        string   `json:"date"`
+	Link        string   `json:"link"`
+}
+
+// ReleaseTypeData represents releases for a specific type
+type ReleaseTypeData struct {
+	CurrentVersion string                     `json:"current_version,omitempty"`
+	Releases       []*ReleaseMetadataResponse `json:"releases"`
+}
+
+// AllReleasesResponse represents the complete response
+type ReleasesResponse struct {
+	OlakeUIWorker *ReleaseTypeData `json:"olake_ui_worker"`
+	OlakeHelm     *ReleaseTypeData `json:"olake_helm"`
+	Olake         *ReleaseTypeData `json:"olake"`
+	Features      *ReleaseTypeData `json:"features"`
+}

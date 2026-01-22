@@ -46,6 +46,12 @@ RUN pnpm build
 # Stage 3: Final Runtime Image
 FROM alpine:3.18
 
+# Accept build argument for version
+ARG APP_VERSION=unknown
+
+# Make version available at runtime
+ENV APP_VERSION=${APP_VERSION}
+
 # Install docker-cli
 RUN apk update && apk add --no-cache docker-cli
 

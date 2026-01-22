@@ -105,6 +105,9 @@ func Init(h *handlers.Handler) {
 	// validation routes
 	web.Router("/api/v1/project/:projectid/check-unique", h, "post:CheckUniqueName")
 
+	// platform routes
+	web.Router("/api/v1/platform/releases", h, "get:GetReleaseUpdates")
+
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", h, "post:RecoverClearDestination")
