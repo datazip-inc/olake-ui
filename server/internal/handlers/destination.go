@@ -79,6 +79,7 @@ func (h *Handler) GetDestination() {
 func (h *Handler) CreateDestination() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -124,6 +125,7 @@ func (h *Handler) CreateDestination() {
 func (h *Handler) UpdateDestination() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 

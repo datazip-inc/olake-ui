@@ -82,6 +82,7 @@ func (h *Handler) GetJob() {
 func (h *Handler) CreateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -143,6 +144,7 @@ func (h *Handler) CreateJob() {
 func (h *Handler) UpdateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -308,6 +310,7 @@ func (h *Handler) SyncJob() {
 func (h *Handler) ActivateJob() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 

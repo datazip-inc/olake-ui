@@ -83,6 +83,7 @@ func (h *Handler) GetSource() {
 func (h *Handler) CreateSource() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -129,6 +130,7 @@ func (h *Handler) CreateSource() {
 func (h *Handler) UpdateSource() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 

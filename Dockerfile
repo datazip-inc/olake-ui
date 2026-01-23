@@ -17,7 +17,7 @@ RUN go install github.com/swaggo/swag/cmd/swag@latest
 # Copy the entire server source code
 COPY server/ ./server/
 
-# Generate Swagger documentation (only json/yaml, UI is embedded by http-swagger)
+# Generate Swagger documentation (only json/yaml)
 RUN cd server && swag init -g main.go -o ./swagger --parseDependency --parseInternal --outputTypes json,yaml
 
 # Build backend (assuming main package is at the root of 'server/' content)
