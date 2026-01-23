@@ -7,6 +7,8 @@
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
+// @tag.name Authentication
+// @tag.description Authentication endpoints
 // @tag.name Jobs
 // @tag.description Job management and execution endpoints
 // @tag.name Sources
@@ -17,8 +19,6 @@
 // @tag.description Project configuration endpoints
 // @tag.name Platform
 // @tag.description Platform-level operations
-// @tag.name Authentication
-// @tag.description Authentication endpoints
 // @tag.name Users
 // @tag.description User management endpoints
 // @tag.name Internal
