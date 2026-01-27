@@ -95,7 +95,7 @@ export const trackEvent = async (
 			...systemInfo,
 			...(username && { username }),
 		}
-		
+
 		await sendAnalyticsEvent(eventName, eventProperties)
 	} catch (error) {
 		console.error("Error tracking event:", error)
