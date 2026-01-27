@@ -90,11 +90,12 @@ export const trackEvent = async (
 		const eventProperties = {
 			distinct_id: telemetryId,
 			event_original_name: eventName,
+			olake_ui_version: import.meta.env.VITE_APP_VERSION,
 			...properties,
 			...systemInfo,
 			...(username && { username }),
 		}
-
+		
 		await sendAnalyticsEvent(eventName, eventProperties)
 	} catch (error) {
 		console.error("Error tracking event:", error)

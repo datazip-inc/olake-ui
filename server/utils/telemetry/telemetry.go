@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/spf13/viper"
@@ -29,20 +30,20 @@ type LocationInfo struct {
 }
 
 type PlatformInfo struct {
-	OlakeUIVersion string
-	OS             string
-	Arch           string
-	DeviceCPU      string
+	OS        string
+	Arch      string
+	DeviceCPU string
 }
 
 type Telemetry struct {
-	httpClient   *http.Client
-	platform     PlatformInfo
-	ipAddress    string
-	locationInfo *LocationInfo
-	TempUserID   string
-	username     string
-	db           *database.Database
+	OlakeUIVersion string
+	httpClient     *http.Client
+	platform       PlatformInfo
+	ipAddress      string
+	locationInfo   *LocationInfo
+	TempUserID     string
+	username       string
+	db             *database.Database
 }
 
 func InitTelemetry(db *database.Database) {
@@ -80,15 +81,15 @@ func InitTelemetry(db *database.Database) {
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
-				OS:             runtime.GOOS,
-				Arch:           runtime.GOARCH,
-				OlakeUIVersion: viper.GetString("APP_VERSION"),
-				DeviceCPU:      fmt.Sprintf("%d cores", runtime.NumCPU()),
+				OS:        runtime.GOOS,
+				Arch:      runtime.GOARCH,
+				DeviceCPU: fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
-			ipAddress:    ip,
-			TempUserID:   tempUserID,
-			locationInfo: getLocationFromIP(ip),
-			db:           db,
+			OlakeUIVersion: constants.AppVersion,
+			ipAddress:      ip,
+			TempUserID:     tempUserID,
+			locationInfo:   getLocationFromIP(ip),
+			db:             db,
 		}
 	}()
 }
@@ -173,7 +174,7 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		"distinct_id":         instance.TempUserID,
 		"time":                time.Now().Unix(),
 		"event_original_name": eventName,
-		"Olake_ui_version":    instance.platform.OlakeUIVersion,
+		"olake_ui_version":    instance.OlakeUIVersion,
 	}
 	for key, value := range props {
 		properties[key] = value
