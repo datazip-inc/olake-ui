@@ -34,7 +34,6 @@ RUN pnpm install
 
 # Copy the rest of the UI code
 COPY ui/ ./
-
 # Build the UI
 RUN pnpm build
 

@@ -150,5 +150,5 @@ type ReleasesResponse struct {
 
 type TelemetryIDResponse struct {
 	TelemetryUserID string `json:"user_id"`
-	OlakeVersion    string `json:"version"`
+	OlakeUIVersion  string `json:"version"`
 }

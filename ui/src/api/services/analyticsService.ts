@@ -70,12 +70,12 @@ const getTelemetryID = async (): Promise<{
 	try {
 		const response = await api.get("/telemetry-id")
 		return {
-			telemetryId: response.data.user_id,
-			version: response.data.version,
+			telemetryId: response.data.user_id || "",
+			version: response.data.version || "unknown",
 		}
 	} catch (error) {
 		console.error("Error fetching telemetry ID:", error)
-		return { telemetryId: "", version: "" }
+		return { telemetryId: "", version: "unknown" }
 	}
 }
 
