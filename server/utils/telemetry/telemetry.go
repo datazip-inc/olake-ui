@@ -18,7 +18,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
-	"github.com/spf13/viper"
 )
 
 var instance *Telemetry
@@ -76,7 +75,7 @@ func InitTelemetry(db *database.Database) {
 			return string(idBytes)
 		}()
 
-		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, viper.GetString("BUILD"))
+		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, constants.AppVersion)
 
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
@@ -218,6 +217,12 @@ func SetUsername(username string) {
 func GetTelemetryUserID() string {
 	if instance != nil {
 		return instance.TempUserID
+	}
+	return ""
+}
+func GetVersion() string {
+	if instance != nil {
+		return instance.OlakeUIVersion
 	}
 	return ""
 }

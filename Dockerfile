@@ -35,11 +35,6 @@ RUN pnpm install
 # Copy the rest of the UI code
 COPY ui/ ./
 
-# Accept build argument for version (repeated here to be available in this stage)
-ARG APP_VERSION=unknown
-# Set as VITE_ env var so it is baked into the build
-ENV VITE_APP_VERSION=${APP_VERSION}
-
 # Build the UI
 RUN pnpm build
 
