@@ -132,7 +132,7 @@ export interface SchemaConfigurationProps {
 	onLoadingChange?: (isLoading: boolean) => void
 }
 
-export interface ExtendedStreamConfigurationProps
+export interface ExtendedStreamConfigurationProp
 	extends StreamConfigurationProps {
 	onUpdate?: (stream: any) => void
 	isSelected: boolean
