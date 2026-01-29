@@ -115,7 +115,7 @@ func (h *Handler) GetTelemetryID() {
 	telemetryID := telemetry.GetTelemetryUserID()
 	version := telemetry.GetVersion()
 	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
-		TelemetryUserID: string(telemetryID),
-		OlakeUIVersion:  string(version),
+		TelemetryUserID: telemetryID,
+		OlakeUIVersion:  version,
 	})
 }

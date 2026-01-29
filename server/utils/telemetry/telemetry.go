@@ -220,6 +220,7 @@ func GetTelemetryUserID() string {
 	}
 	return ""
 }
+
 func GetVersion() string {
 	if instance != nil {
 		return instance.OlakeUIVersion
