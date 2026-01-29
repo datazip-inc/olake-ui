@@ -10,7 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @Title ListJobs
+// @Summary List all jobs
 // @Tags Jobs
 // @Description Retrieve a list of all jobs associated with a specific project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -36,7 +36,7 @@ func (h *Handler) ListJobs() {
 	utils.SuccessResponse(&h.Controller, "jobs listed successfully", jobs)
 }
 
-// @Title GetJob
+// @Summary Get job details
 // @Tags Jobs
 // @Description Retrieve details of a specific job identified by its unique ID.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -69,7 +69,7 @@ func (h *Handler) GetJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%d' retrieved successfully", jobID), job)
 }
 
-// @Title CreateJob
+// @Summary Create a new job
 // @Tags Jobs
 // @Description Create a new job within a specific project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -130,7 +130,7 @@ func (h *Handler) CreateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
 }
 
-// @Title UpdateJob
+// @Summary Update a job
 // @Tags Jobs
 // @Description Update the configuration details of an existing job.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -196,7 +196,7 @@ func (h *Handler) UpdateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
 }
 
-// @Title DeleteJob
+// @Summary Delete a job
 // @Tags Jobs
 // @Description Permanently delete a specified job.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -223,7 +223,7 @@ func (h *Handler) DeleteJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
 }
 
-// @Title CheckUniqueName
+// @Summary Check name uniqueness
 // @Tags Jobs
 // @Description Verify if a given name is unique within the project for a specific entity type.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -263,7 +263,7 @@ func (h *Handler) CheckUniqueName() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("%s name '%s' uniqueness checked successfully", req.EntityType, req.Name), dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
-// @Title SyncJob
+// @Summary Trigger job sync
 // @Tags Jobs
 // @Description Trigger a manual sync for a job
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -296,7 +296,7 @@ func (h *Handler) SyncJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("sync triggered successfully for job_id[%d]", id), result)
 }
 
-// @Title ActivateJob
+// @Summary Pause or resume job
 // @Tags Jobs
 // @Description Pause or resume a job.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -335,7 +335,7 @@ func (h *Handler) ActivateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job %d %s successfully", id, utils.Ternary(req.Activate, "resumed", "paused")), nil)
 }
 
-// @Title CancelJobRun
+// @Summary Cancel running job
 // @Tags Jobs
 // @Description Request cancellation of a currently running job execution.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -367,7 +367,7 @@ func (h *Handler) CancelJobRun() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
 }
 
-// @Title ClearDestination
+// @Summary Clear destination data
 // @Tags Jobs
 // @Description Initiate job to clear data in the destination associated with a job.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -396,7 +396,7 @@ func (h *Handler) ClearDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
 }
 
-// @Title GetStreamDifference
+// @Summary Get stream differences
 // @Tags Jobs
 // @Description Get difference between current streams.json and existing streams.json.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -438,7 +438,7 @@ func (h *Handler) GetStreamDifference() {
 	})
 }
 
-// @Title GetClearDestinationStatus
+// @Summary Get clear destination status
 // @Tags Jobs
 // @Description Retrieve the current status of an ongoing clear destination job.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -471,7 +471,7 @@ func (h *Handler) GetClearDestinationStatus() {
 	})
 }
 
-// @Title GetJobTasks
+// @Summary List job tasks
 // @Tags Jobs
 // @Description Retrieve a list of execution tasks associated with a specific job.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -504,7 +504,7 @@ func (h *Handler) GetJobTasks() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
-// @Title GetTaskLogs
+// @Summary Get task logs
 // @Tags Jobs
 // @Description Retrieves the execution logs for a specific task. The file path for the log must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks) endpoint.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -546,7 +546,7 @@ func (h *Handler) GetTaskLogs() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
 }
 
-// @Title UpdateSyncTelemetry
+// @Summary (Internal) Update sync telemetry
 // @Tags Internal
 // @Description Internal callback to update sync telemetry data.
 // @Param   body          body    dto.UpdateSyncTelemetryRequest true "telemetry data"
@@ -573,7 +573,7 @@ func (h *Handler) UpdateSyncTelemetry() {
 }
 
 // RecoverClearDestination handles recovery from stuck clear-destination workflows (internal use only)
-// @Title RecoverClearDestination
+// @Summary (Internal) Recover clear determination
 // @Tags Internal
 // @Description Internal recovery endpoint to cancel stuck clear-destination workflows and restore sync schedules.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -601,7 +601,7 @@ func (h *Handler) RecoverClearDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
 }
 
-// @Title DownloadTaskLogs
+// @Summary Download task logs
 // @Tags Jobs
 // @Description Downloads the log file for a specific task. The file path required for the download must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks) endpoint.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -649,7 +649,7 @@ func (h *Handler) DownloadTaskLogs() {
 	logger.Infof("successfully streamed log archive job_id[%d] filename[%s]", id, filename)
 }
 
-// @Title UpdateStateFile
+// @Summary (Internal) Update state file
 // @Tags Internal
 // @Description Internal endpoint to update the state file associated with a job.
 // @Param   projectid     path    string  true    "project id (default is 123)"

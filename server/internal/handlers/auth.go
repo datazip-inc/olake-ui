@@ -14,7 +14,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
-// @Title Login
+// @Summary User login
 // @Tags Authentication
 // @Description Authenticate a user and create a new session.
 // @Param   body          body    dto.LoginRequest true "login credentials"
@@ -55,7 +55,7 @@ func (h *Handler) Login() {
 	})
 }
 
-// @Title CheckAuth
+// @Summary Check authentication status
 // @Tags Authentication
 // @Description Verify if the current user session is active and valid.
 // @Success 200 {object} dto.JSONResponse
@@ -94,7 +94,7 @@ func (h *Handler) Logout() {
 	utils.SuccessResponse(&h.Controller, "logout successful", nil)
 }
 
-// @Title Signup
+// @Summary User signup
 // @Tags Authentication
 // @Description Register a new user account with the provided details.
 // @Param   body          body    models.User true "user info"
@@ -128,7 +128,7 @@ func (h *Handler) Signup() {
 	})
 }
 
-// @Title GetTelemetryID
+// @Summary Get telemetry ID
 // @Tags Internal
 // @Description Retrieve the unique telemetry identifier for the current installation.
 // @Success 200 {object} dto.JSONResponse{data=dto.TelemetryIDResponse}

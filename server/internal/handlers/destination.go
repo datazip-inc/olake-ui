@@ -9,7 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @Title ListDestinations
+// @Summary List all destinations
 // @Tags Destinations
 // @Description Retrieve a list of all configured destinations within a specific project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -33,7 +33,7 @@ func (h *Handler) ListDestinations() {
 	utils.SuccessResponse(&h.Controller, "Destinations listed successfully", items)
 }
 
-// @Title GetDestination
+// @Summary Get destination details
 // @Tags Destinations
 // @Description Retrieve details of a specific destination identified by its unique ID.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -66,7 +66,7 @@ func (h *Handler) GetDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination '%d' retrieved successfully", destinationID), destination)
 }
 
-// @Title CreateDestination
+// @Summary Create a new destination
 // @Tags Destinations
 // @Description Create a new destination for a project
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -111,7 +111,7 @@ func (h *Handler) CreateDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 
-// @Title UpdateDestination
+// @Summary Update a destination
 // @Tags Destinations
 // @Description Update the configuration details of an existing destination.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -162,7 +162,7 @@ func (h *Handler) UpdateDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
-// @Title DeleteDestination
+// @Summary Delete a destination
 // @Tags Destinations
 // @Description Permanently delete a specified destination.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -190,7 +190,7 @@ func (h *Handler) DeleteDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
 }
 
-// @Title TestDestinationConnection
+// @Summary Test destination connection
 // @Tags Destinations
 // @Description Validate the connection to a destination using the provided configuration details.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -239,7 +239,7 @@ func (h *Handler) GetDestinationJobs() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %d jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
-// @Title GetDestinationVersions
+// @Summary Get available destination versions
 // @Tags Destinations
 // @Description Retrieve the list of available versions for a specific destination connector type.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -272,7 +272,7 @@ func (h *Handler) GetDestinationVersions() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
 }
 
-// @Title GetDestinationSpec
+// @Summary Get destination UI spec
 // @Tags Destinations
 // @Description Retrieve the UI spec for a specific destination type/version.
 // @Param   projectid     path    string  true    "project id (default is 123)"

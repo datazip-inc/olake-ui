@@ -9,7 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @Title GetReleaseUpdates
+// @Summary Get release updates
 // @Tags Platform
 // @Description Retrieve the latest platform release updates and metadata.
 // @Param   limit         query   int     false   "limit the number of releases returned"

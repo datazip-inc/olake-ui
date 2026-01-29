@@ -10,7 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @Title CreateUser
+// @Summary Create a new user
 // @Tags Users
 // @Description Create a new user record with the provided details.
 // @Param   body    body    models.User true    "user info"
@@ -41,7 +41,7 @@ func (h *Handler) CreateUser() {
 	utils.SuccessResponse(&h.Controller, "user created successfully", req)
 }
 
-// @Title GetAllUsers
+// @Summary List all users
 // @Tags Users
 // @Description Retrieve a list of all registered users.
 // @Success 200 {array}  dto.JSONResponse{data=models.User}
@@ -61,7 +61,7 @@ func (h *Handler) GetAllUsers() {
 	utils.SuccessResponse(&h.Controller, "users listed successfully", users)
 }
 
-// @Title UpdateUser
+// @Summary Update user details
 // @Tags Users
 // @Description Update the details of an existing user identified by their unique ID.
 // @Param   id      path    int true    "user id"
@@ -95,7 +95,7 @@ func (h *Handler) UpdateUser() {
 	utils.SuccessResponse(&h.Controller, "user updated successfully", updatedUser)
 }
 
-// @Title DeleteUser
+// @Summary Delete a user
 // @Tags Users
 // @Description Permanently remove a user record identified by their unique ID.
 // @Param   id      path    int true    "user id"

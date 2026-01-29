@@ -11,7 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @Title ListSources
+// @Summary List all sources
 // @Tags Sources
 // @Description Retrieve a list of all configured sources within a specific project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -37,7 +37,7 @@ func (h *Handler) ListSources() {
 	utils.SuccessResponse(&h.Controller, "sources listed successfully", sources)
 }
 
-// @Title GetSource
+// @Summary Get source details
 // @Tags Sources
 // @Description Retrieve details of a specific source identified by its unique ID.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -70,7 +70,7 @@ func (h *Handler) GetSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source '%d' retrieved successfully", sourceID), source)
 }
 
-// @Title CreateSource
+// @Summary Create a new source
 // @Tags Sources
 // @Description Create a new source within a project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -115,7 +115,7 @@ func (h *Handler) CreateSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s created successfully", req.Name), req)
 }
 
-// @Title UpdateSource
+// @Summary Update a source
 // @Tags Sources
 // @Description Update the configuration details of an existing source.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -172,7 +172,7 @@ func (h *Handler) UpdateSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s updated successfully", req.Name), req)
 }
 
-// @Title DeleteSource
+// @Summary Delete a source
 // @Tags Sources
 // @Description Permanently delete a specified source.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -204,7 +204,7 @@ func (h *Handler) DeleteSource() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s deleted successfully", resp.Name), resp)
 }
 
-// @Title TestSourceConnection
+// @Summary Test source connection
 // @Tags Sources
 // @Description Validate the connection to a source using the provided configuration details.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -240,7 +240,7 @@ func (h *Handler) TestSourceConnection() {
 	})
 }
 
-// @Title GetSourceCatalog
+// @Summary Get source stream catalog
 // @Tags Sources
 // @Description Discover and list available data streams from a source.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -294,7 +294,7 @@ func (h *Handler) GetSourceJobs() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %d jobs listed successfully", id), map[string]interface{}{"jobs": jobs})
 }
 
-// @Title GetSourceVersions
+// @Summary Get available source versions
 // @Tags Sources
 // @Description Retrieve the list of available versions for a specific source connector type.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -325,7 +325,7 @@ func (h *Handler) GetSourceVersions() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s versions fetched successfully", sourceType), versions)
 }
 
-// @Title GetSourceSpec
+// @Summary Get source UI spec
 // @Tags Sources
 // @Description Retrieve the UI spec for a specific source type/version.
 // @Param   projectid     path    string  true    "project id (default is 123)"

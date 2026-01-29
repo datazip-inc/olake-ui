@@ -12,7 +12,7 @@ COPY server/go.mod server/go.sum ./
 RUN go mod download
 
 # Install swag for Swagger documentation generation
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
 
 # Copy the entire server source code
 COPY server/ ./server/

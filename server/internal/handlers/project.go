@@ -9,7 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @Title GetProjectSettings
+// @Summary Get project settings
 // @Tags Project Settings
 // @Description Retrieve the settings for a specific project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
@@ -35,7 +35,7 @@ func (h *Handler) GetProjectSettings() {
 	utils.SuccessResponse(&h.Controller, "Project Settings fetched successfully", settings)
 }
 
-// @Title UpsertProjectSettings
+// @Summary Update project settings
 // @Tags Project Settings
 // @Description Create or update the settings for a project.
 // @Param   projectid     path    string  true    "project id (default is 123)"
