@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
-	"github.com/spf13/viper"
 )
 
 var instance *Telemetry
@@ -29,20 +29,20 @@ type LocationInfo struct {
 }
 
 type PlatformInfo struct {
-	OlakeVersion string
-	OS           string
-	Arch         string
-	DeviceCPU    string
+	OS        string
+	Arch      string
+	DeviceCPU string
 }
 
 type Telemetry struct {
-	httpClient   *http.Client
-	platform     PlatformInfo
-	ipAddress    string
-	locationInfo *LocationInfo
-	TempUserID   string
-	username     string
-	db           *database.Database
+	OlakeUIVersion string
+	httpClient     *http.Client
+	platform       PlatformInfo
+	ipAddress      string
+	locationInfo   *LocationInfo
+	TempUserID     string
+	username       string
+	db             *database.Database
 }
 
 func InitTelemetry(db *database.Database) {
@@ -75,20 +75,20 @@ func InitTelemetry(db *database.Database) {
 			return string(idBytes)
 		}()
 
-		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, viper.GetString("BUILD"))
+		logger.Infof("telemetry initialized with user ID: %s, and App version: %s", tempUserID, constants.AppVersion)
 
 		instance = &Telemetry{
 			httpClient: &http.Client{Timeout: TelemetryConfigTimeout},
 			platform: PlatformInfo{
-				OS:           runtime.GOOS,
-				Arch:         runtime.GOARCH,
-				OlakeVersion: viper.GetString("BUILD"),
-				DeviceCPU:    fmt.Sprintf("%d cores", runtime.NumCPU()),
+				OS:        runtime.GOOS,
+				Arch:      runtime.GOARCH,
+				DeviceCPU: fmt.Sprintf("%d cores", runtime.NumCPU()),
 			},
-			ipAddress:    ip,
-			TempUserID:   tempUserID,
-			locationInfo: getLocationFromIP(ip),
-			db:           db,
+			OlakeUIVersion: constants.AppVersion,
+			ipAddress:      ip,
+			TempUserID:     tempUserID,
+			locationInfo:   getLocationFromIP(ip),
+			db:             db,
 		}
 	}()
 }
@@ -173,6 +173,7 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 		"distinct_id":         instance.TempUserID,
 		"time":                time.Now().Unix(),
 		"event_original_name": eventName,
+		"olake_ui_version":    instance.OlakeUIVersion,
 	}
 	for key, value := range props {
 		properties[key] = value
@@ -216,6 +217,13 @@ func SetUsername(username string) {
 func GetTelemetryUserID() string {
 	if instance != nil {
 		return instance.TempUserID
+	}
+	return ""
+}
+
+func GetVersion() string {
+	if instance != nil {
+		return instance.OlakeUIVersion
 	}
 	return ""
 }

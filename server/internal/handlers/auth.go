@@ -138,7 +138,9 @@ func (h *Handler) GetTelemetryID() {
 	logger.Info("Get telemetry ID initiated")
 
 	telemetryID := telemetry.GetTelemetryUserID()
-	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", map[string]interface{}{
-		telemetry.TelemetryUserIDFile: string(telemetryID),
+	version := telemetry.GetVersion()
+	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
+		TelemetryUserID: telemetryID,
+		OlakeUIVersion:  version,
 	})
 }
