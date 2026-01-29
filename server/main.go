@@ -1,5 +1,4 @@
 // @title Olake UI API
-// @version 0.2.9
 // @description Olake is fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse.
 // @contact.name OLake
 // @contact.email hello@olake.io
@@ -36,6 +35,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/routes"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+
+	"github.com/datazip-inc/olake-ui/server/docs"
 )
 
 func main() {
@@ -55,6 +56,10 @@ func main() {
 	}
 	logger.Info("Application services initialized successfully")
 	telemetry.InitTelemetry(db)
+
+	if constants.AppVersion != "" {
+		docs.SwaggerInfo.Version = constants.AppVersion
+	}
 
 	routes.Init(handlers.NewHandler(appSvc))
 	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {

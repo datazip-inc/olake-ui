@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"path/filepath"
-	"strings"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -18,16 +16,8 @@ func (h *Handler) ServeSwagger() {
 		return
 	}
 
-	path := strings.TrimPrefix(url, "/swagger")
-
-	// Serve swagger.json and swagger.yaml as static files
-	if path == "/swagger.json" || path == "/swagger.yaml" {
-		http.ServeFile(h.Ctx.ResponseWriter, h.Ctx.Request, filepath.Join("swagger", filepath.Clean(path)))
-		return
-	}
-
 	// Serve Swagger UI for all other requests
 	httpSwagger.Handler(
-		httpSwagger.URL("/swagger/swagger.json"),
+		httpSwagger.URL("doc.json"),
 	).ServeHTTP(h.Ctx.ResponseWriter, h.Ctx.Request)
 }

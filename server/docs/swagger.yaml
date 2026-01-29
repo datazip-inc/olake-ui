@@ -1,0 +1,2402 @@
+definitions:
+  dto.CheckUniqueJobNameResponse:
+    properties:
+      unique:
+        example: true
+        type: boolean
+    type: object
+  dto.CheckUniqueNameRequest:
+    properties:
+      entity_type:
+        enum:
+        - job
+        - source
+        - destination
+        example: job
+        type: string
+      name:
+        example: my-sync-job
+        type: string
+    required:
+    - entity_type
+    - name
+    type: object
+  dto.ClearDestinationStatusResponse:
+    properties:
+      running:
+        example: false
+        type: boolean
+    type: object
+  dto.CreateDestinationRequest:
+    properties:
+      config:
+        example: '{"catalog_type":"glue","warehouse":"s3://my-bucket/warehouse"}'
+        type: string
+      name:
+        example: my-iceberg-destination
+        type: string
+      type:
+        example: iceberg
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - name
+    - type
+    - version
+    type: object
+  dto.CreateJobRequest:
+    properties:
+      activate:
+        example: true
+        type: boolean
+      destination:
+        $ref: '#/definitions/dto.DriverConfig'
+      frequency:
+        example: 0 */6 * * *
+        type: string
+      name:
+        example: my-sync-job
+        type: string
+      source:
+        $ref: '#/definitions/dto.DriverConfig'
+      streams_config:
+        type: string
+    required:
+    - destination
+    - frequency
+    - name
+    - source
+    - streams_config
+    type: object
+  dto.CreateSourceRequest:
+    properties:
+      config:
+        example: '{"host":"localhost","port":5432,"database":"mydb","user":"postgres","password":"secret"}'
+        type: string
+      name:
+        example: my-postgres-source
+        type: string
+      type:
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - name
+    - type
+    - version
+    type: object
+  dto.DeleteDestinationResponse:
+    properties:
+      name:
+        example: my-iceberg-destination
+        type: string
+    type: object
+  dto.DeleteSourceResponse:
+    properties:
+      name:
+        example: my-postgres-source
+        type: string
+    type: object
+  dto.DestinationDataItem:
+    properties:
+      config:
+        example: '{"catalog_type":"glue","warehouse":"s3://bucket/warehouse"}'
+        type: string
+      created_at:
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      created_by:
+        example: admin
+        type: string
+      id:
+        example: 1
+        type: integer
+      jobs:
+        items:
+          $ref: '#/definitions/dto.JobDataItem'
+        type: array
+      name:
+        example: my-iceberg-destination
+        type: string
+      type:
+        example: iceberg
+        type: string
+      updated_at:
+        example: "2024-01-09T12:00:00Z"
+        type: string
+      updated_by:
+        example: admin
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    type: object
+  dto.DestinationTestConnectionRequest:
+    properties:
+      config:
+        example: '{"catalog_type":"glue","warehouse":"s3://my-bucket/warehouse"}'
+        type: string
+      source_type:
+        example: postgres
+        type: string
+      source_version:
+        example: v0.2.7
+        type: string
+      type:
+        example: iceberg
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - type
+    - version
+    type: object
+  dto.DriverConfig:
+    properties:
+      config:
+        example: '{"host":"localhost","port":5432}'
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: my-postgres-source
+        type: string
+      type:
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    type: object
+  dto.Error400Response:
+    properties:
+      message:
+        example: Bad request
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  dto.Error401Response:
+    properties:
+      message:
+        example: Authentication required
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  dto.Error404Response:
+    properties:
+      message:
+        example: Resource not found
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  dto.Error409Response:
+    properties:
+      message:
+        example: Resource already exists
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  dto.Error500Response:
+    properties:
+      message:
+        example: Internal server error
+        type: string
+      success:
+        example: false
+        type: boolean
+    type: object
+  dto.JSONResponse:
+    properties:
+      data: {}
+      message:
+        example: operation completed successfully
+        type: string
+      success:
+        example: true
+        type: boolean
+    type: object
+  dto.JobDataItem:
+    properties:
+      activate:
+        example: true
+        type: boolean
+      destination_name:
+        example: my-iceberg-destination
+        type: string
+      destination_type:
+        example: iceberg
+        type: string
+      id:
+        example: 1
+        type: integer
+      last_run_state:
+        example: completed
+        type: string
+      last_run_time:
+        example: "2024-01-09T12:00:00Z"
+        type: string
+      name:
+        example: my-sync-job
+        type: string
+      source_name:
+        example: my-postgres-source
+        type: string
+      source_type:
+        example: postgres
+        type: string
+    type: object
+  dto.JobResponse:
+    properties:
+      activate:
+        example: true
+        type: boolean
+      created_at:
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      created_by:
+        example: admin
+        type: string
+      destination:
+        $ref: '#/definitions/dto.DriverConfig'
+      frequency:
+        example: 0 */6 * * *
+        type: string
+      id:
+        example: 1
+        type: integer
+      last_run_state:
+        example: completed
+        type: string
+      last_run_time:
+        example: "2024-01-09T12:00:00Z"
+        type: string
+      last_run_type:
+        description: '"sync" | "clear-destination"'
+        example: sync
+        type: string
+      name:
+        example: my-sync-job
+        type: string
+      source:
+        $ref: '#/definitions/dto.DriverConfig'
+      streams_config:
+        type: string
+      updated_at:
+        example: "2024-01-09T12:00:00Z"
+        type: string
+      updated_by:
+        example: admin
+        type: string
+    type: object
+  dto.JobStatusRequest:
+    properties:
+      activate:
+        example: true
+        type: boolean
+    type: object
+  dto.JobTask:
+    properties:
+      file_path:
+        example: sync-123-2-2026-01-19T13:45:09Z
+        type: string
+      job_type:
+        description: '"sync" | "clear-destination"'
+        example: sync
+        type: string
+      runtime:
+        example: 1m30s
+        type: string
+      start_time:
+        example: "2024-01-09T12:00:00Z"
+        type: string
+      status:
+        example: completed
+        type: string
+    type: object
+  dto.JobTaskRequest:
+    properties:
+      file_path:
+        example: sync-123-2-2026-01-19T13:45:09Z
+        type: string
+    required:
+    - file_path
+    type: object
+  dto.LoginRequest:
+    properties:
+      password:
+        example: password
+        type: string
+      username:
+        example: admin
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  dto.LoginResponse:
+    properties:
+      username:
+        example: admin
+        type: string
+    type: object
+  dto.ProjectSettingsResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+      project_id:
+        example: project-123
+        type: string
+      webhook_alert_url:
+        example: https://hooks.slack.com/services/xxx/yyy/zzz
+        type: string
+    type: object
+  dto.ReleaseMetadataResponse:
+    properties:
+      date:
+        type: string
+      description:
+        type: string
+      link:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      version:
+        type: string
+    type: object
+  dto.ReleaseTypeData:
+    properties:
+      current_version:
+        type: string
+      releases:
+        items:
+          $ref: '#/definitions/dto.ReleaseMetadataResponse'
+        type: array
+    type: object
+  dto.ReleasesResponse:
+    properties:
+      features:
+        $ref: '#/definitions/dto.ReleaseTypeData'
+      olake:
+        $ref: '#/definitions/dto.ReleaseTypeData'
+      olake_helm:
+        $ref: '#/definitions/dto.ReleaseTypeData'
+      olake_ui_worker:
+        $ref: '#/definitions/dto.ReleaseTypeData'
+    type: object
+  dto.SourceDataItem:
+    properties:
+      config:
+        example: '{"host":"localhost","port":5432}'
+        type: string
+      created_at:
+        example: "2024-01-01T00:00:00Z"
+        type: string
+      created_by:
+        example: admin
+        type: string
+      id:
+        example: 1
+        type: integer
+      jobs:
+        items:
+          $ref: '#/definitions/dto.JobDataItem'
+        type: array
+      name:
+        example: my-postgres-source
+        type: string
+      type:
+        example: postgres
+        type: string
+      updated_at:
+        example: "2024-01-09T12:00:00Z"
+        type: string
+      updated_by:
+        example: admin
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    type: object
+  dto.SourceTestConnectionRequest:
+    properties:
+      config:
+        example: '{"host":"localhost","port":5432,"database":"mydb","user":"postgres","password":"secret"}'
+        type: string
+      type:
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - type
+    - version
+    type: object
+  dto.SpecRequest:
+    properties:
+      type:
+        description: 'enum: postgres,mongodb,mysql,mssql,db2,s3,kafka,iceberg'
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - type
+    - version
+    type: object
+  dto.SpecResponse:
+    properties:
+      spec:
+        type: object
+      type:
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    type: object
+  dto.StreamDifferenceRequest:
+    properties:
+      updated_streams_config:
+        type: string
+    required:
+    - updated_streams_config
+    type: object
+  dto.StreamDifferenceResponse:
+    properties:
+      difference_streams:
+        type: object
+    type: object
+  dto.StreamsRequest:
+    properties:
+      config:
+        example: '{"host":"localhost","port":5432}'
+        type: string
+      job_id:
+        example: 1
+        type: integer
+      job_name:
+        example: my-sync-job
+        type: string
+      name:
+        example: my-postgres-source
+        type: string
+      type:
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - job_id
+    - job_name
+    - name
+    - type
+    - version
+    type: object
+  dto.TaskLogsResponse:
+    properties:
+      has_more_newer:
+        example: false
+        type: boolean
+      has_more_older:
+        example: true
+        type: boolean
+      logs:
+        items:
+          type: object
+        type: array
+      newer_cursor:
+        example: 1704805200000
+        type: integer
+      older_cursor:
+        example: 1704801600000
+        type: integer
+    type: object
+  dto.TelemetryIDResponse:
+    properties:
+      user_id:
+        example: 1234567890abcdef1234567890abcdef
+        type: string
+      version:
+        example: v0.2.5
+        type: string
+    type: object
+  dto.TestConnectionResponse:
+    properties:
+      connection_result:
+        type: object
+      logs:
+        items:
+          type: object
+        type: array
+    type: object
+  dto.UpdateDestinationRequest:
+    properties:
+      config:
+        example: '{"catalog_type":"glue","warehouse":"s3://my-bucket/warehouse-v2"}'
+        type: string
+      name:
+        example: my-iceberg-destination-updated
+        type: string
+      type:
+        example: iceberg
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - name
+    - type
+    - version
+    type: object
+  dto.UpdateJobRequest:
+    properties:
+      activate:
+        example: true
+        type: boolean
+      destination:
+        $ref: '#/definitions/dto.DriverConfig'
+      difference_streams:
+        example: '[]'
+        type: string
+      frequency:
+        example: 0 */12 * * *
+        type: string
+      name:
+        example: my-sync-job-updated
+        type: string
+      source:
+        $ref: '#/definitions/dto.DriverConfig'
+      streams_config:
+        type: string
+    required:
+    - destination
+    - frequency
+    - name
+    - source
+    - streams_config
+    type: object
+  dto.UpdateSourceRequest:
+    properties:
+      config:
+        example: '{"host":"localhost","port":5432,"database":"mydb","user":"postgres","password":"newsecret"}'
+        type: string
+      name:
+        example: my-postgres-source-updated
+        type: string
+      type:
+        example: postgres
+        type: string
+      version:
+        example: v0.2.7
+        type: string
+    required:
+    - config
+    - name
+    - type
+    - version
+    type: object
+  dto.UpdateStateFileRequest:
+    properties:
+      state_file:
+        type: string
+    required:
+    - state_file
+    type: object
+  dto.UpdateSyncTelemetryRequest:
+    properties:
+      environment:
+        type: string
+      event:
+        type: string
+      job_id:
+        type: integer
+      workflow_id:
+        type: string
+    type: object
+  dto.UpsertProjectSettingsRequest:
+    properties:
+      id:
+        example: 1
+        type: integer
+      project_id:
+        example: project-123
+        type: string
+      webhook_alert_url:
+        example: https://hooks.slack.com/services/xxx/yyy/zzz
+        type: string
+    required:
+    - project_id
+    type: object
+  dto.VersionsResponse:
+    properties:
+      version:
+        example:
+        - v0.3.15
+        - v0.3.14
+        - v0.3.13
+        - v0.3.12
+        items:
+          type: string
+        type: array
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      password:
+        description: Hidden in JSON
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+info:
+  contact:
+    email: hello@olake.io
+    name: OLake
+    url: https://olake.io/contact/
+  description: Olake is fastest open-source tool for replicating Databases to Apache
+    Iceberg or Data Lakehouse.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Olake UI API
+paths:
+  /api/v1/platform/releases:
+    get:
+      description: Retrieve the latest platform release updates and metadata.
+      parameters:
+      - description: limit the number of releases returned
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ReleasesResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to fetch release metadata
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get release updates
+      tags:
+      - Platform
+  /api/v1/project/{projectid}/check-unique:
+    post:
+      description: Verify if a given name is unique within the project for a specific
+        entity type.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: unique check data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CheckUniqueNameRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CheckUniqueJobNameResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "409":
+          description: name is not unique
+          schema:
+            $ref: '#/definitions/dto.Error409Response'
+        "500":
+          description: failed to check uniqueness
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Check name uniqueness
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/destinations:
+    get:
+      description: Retrieve a list of all configured destinations within a specific
+        project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.DestinationDataItem'
+                  type: array
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get destinations
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: List all destinations
+      tags:
+      - Destinations
+    post:
+      description: Create a new destination for a project
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: destination data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateDestinationRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CreateDestinationRequest'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to create destination
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Create a new destination
+      tags:
+      - Destinations
+  /api/v1/project/{projectid}/destinations/{id}:
+    delete:
+      description: Permanently delete a specified destination.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: destination id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DeleteDestinationResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to delete destination
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Delete a destination
+      tags:
+      - Destinations
+    get:
+      description: Retrieve details of a specific destination identified by its unique
+        ID.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: destination id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DestinationDataItem'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get destination
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get destination details
+      tags:
+      - Destinations
+    put:
+      description: Update the configuration details of an existing destination.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: destination id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: destination data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDestinationRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UpdateDestinationRequest'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to update destination
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Update a destination
+      tags:
+      - Destinations
+  /api/v1/project/{projectid}/destinations/spec:
+    post:
+      description: Retrieve the UI spec for a specific destination type/version.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: spec request data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SpecRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SpecResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get spec
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get destination UI spec
+      tags:
+      - Destinations
+  /api/v1/project/{projectid}/destinations/test:
+    post:
+      description: Validate the connection to a destination using the provided configuration
+        details.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: test connection data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DestinationTestConnectionRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TestConnectionResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to test connection
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Test destination connection
+      tags:
+      - Destinations
+  /api/v1/project/{projectid}/destinations/versions:
+    get:
+      description: Retrieve the list of available versions for a specific destination
+        connector type.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: destination type
+        in: query
+        name: type
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.VersionsResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get versions
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get available destination versions
+      tags:
+      - Destinations
+  /api/v1/project/{projectid}/jobs:
+    get:
+      description: Retrieve a list of all jobs associated with a specific project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.JobResponse'
+                  type: array
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to retrieve jobs
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: List all jobs
+      tags:
+      - Jobs
+    post:
+      description: Create a new job within a specific project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateJobRequest'
+      responses:
+        "200":
+          description: job created successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to create job
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Create a new job
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}:
+    delete:
+      description: Permanently delete a specified job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: job deleted successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to delete job
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Delete a job
+      tags:
+      - Jobs
+    get:
+      description: Retrieve details of a specific job identified by its unique ID.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.JobResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get job
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get job details
+      tags:
+      - Jobs
+    put:
+      description: Update the configuration details of an existing job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: job data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateJobRequest'
+      responses:
+        "200":
+          description: job updated successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to update job
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Update a job
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/activate:
+    post:
+      description: Pause or resume a job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: activation data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.JobStatusRequest'
+      responses:
+        "200":
+          description: job activated/deactivated successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to activate job
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Pause or resume job
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/cancel:
+    get:
+      description: Request cancellation of a currently running job execution.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: job cancel requested successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to cancel job run
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Cancel running job
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/clear-destination:
+    get:
+      description: Retrieve the current status of an ongoing clear destination job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ClearDestinationStatusResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get status
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get clear destination status
+      tags:
+      - Jobs
+    post:
+      description: Initiate job to clear data in the destination associated with a
+        job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: clear destination triggered successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to trigger clear destination
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Clear destination data
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/logs/download:
+    get:
+      description: Downloads the log file for a specific task. The file path required
+        for the download must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks)
+        endpoint.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: log file path
+        in: query
+        name: file_path
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "404":
+          description: failed to prepare log archive
+          schema:
+            $ref: '#/definitions/dto.Error404Response'
+        "500":
+          description: internal server error
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Download task logs
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/stream-difference:
+    post:
+      description: Get difference between current streams.json and existing streams.json.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: stream difference data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.StreamDifferenceRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.StreamDifferenceResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get stream difference
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get stream differences
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/sync:
+    post:
+      description: Trigger a manual sync for a job
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: sync triggered successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to trigger sync
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Trigger job sync
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/tasks:
+    get:
+      description: Retrieve a list of execution tasks associated with a specific job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.JobTask'
+                  type: array
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get job tasks
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: List job tasks
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs:
+    post:
+      description: Retrieves the execution logs for a specific task. The file path
+        for the log must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks)
+        endpoint.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: task id (defaults to 1)
+        in: path
+        name: taskid
+        required: true
+        type: string
+      - description: task log data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.JobTaskRequest'
+      - description: log cursor
+        in: query
+        name: cursor
+        type: integer
+      - description: log limit
+        in: query
+        name: limit
+        type: integer
+      - description: log direction
+        in: query
+        name: direction
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TaskLogsResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get task logs
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get task logs
+      tags:
+      - Jobs
+  /api/v1/project/{projectid}/settings:
+    get:
+      description: Retrieve the settings for a specific project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Project Settings fetched successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProjectSettingsResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to retrieve project settings
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get project settings
+      tags:
+      - Project Settings
+    put:
+      description: Create or update the settings for a project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: project settings data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpsertProjectSettingsRequest'
+      responses:
+        "200":
+          description: Project Settings updated successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to update project settings
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Update project settings
+      tags:
+      - Project Settings
+  /api/v1/project/{projectid}/sources:
+    get:
+      description: Retrieve a list of all configured sources within a specific project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.SourceDataItem'
+                  type: array
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to retrieve sources
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: List all sources
+      tags:
+      - Sources
+    post:
+      description: Create a new source within a project.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: source data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateSourceRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.CreateSourceRequest'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to create source
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Create a new source
+      tags:
+      - Sources
+  /api/v1/project/{projectid}/sources/{id}:
+    delete:
+      description: Permanently delete a specified source.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: source id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DeleteSourceResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "404":
+          description: source not found
+          schema:
+            $ref: '#/definitions/dto.Error404Response'
+        "500":
+          description: failed to delete source
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Delete a source
+      tags:
+      - Sources
+    get:
+      description: Retrieve details of a specific source identified by its unique
+        ID.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: source id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SourceDataItem'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get source
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get source details
+      tags:
+      - Sources
+    put:
+      description: Update the configuration details of an existing source.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: source id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: source data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateSourceRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.UpdateSourceRequest'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "404":
+          description: source not found
+          schema:
+            $ref: '#/definitions/dto.Error404Response'
+        "500":
+          description: failed to update source
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Update a source
+      tags:
+      - Sources
+  /api/v1/project/{projectid}/sources/spec:
+    post:
+      description: Retrieve the UI spec for a specific source type/version.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: spec request data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SpecRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.SpecResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get spec
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get source UI spec
+      tags:
+      - Sources
+  /api/v1/project/{projectid}/sources/streams:
+    post:
+      description: Discover and list available data streams from a source.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: streams request data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.StreamsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  type: object
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get source catalog
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get source stream catalog
+      tags:
+      - Sources
+  /api/v1/project/{projectid}/sources/test:
+    post:
+      description: Validate the connection to a source using the provided configuration
+        details.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: test connection data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SourceTestConnectionRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TestConnectionResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to test connection
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Test source connection
+      tags:
+      - Sources
+  /api/v1/project/{projectid}/sources/versions:
+    get:
+      description: Retrieve the list of available versions for a specific source connector
+        type.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: source type
+        in: query
+        name: type
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.VersionsResponse'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get versions
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get available source versions
+      tags:
+      - Sources
+  /api/v1/users:
+    get:
+      description: Retrieve a list of all registered users.
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              allOf:
+              - $ref: '#/definitions/dto.JSONResponse'
+              - properties:
+                  data:
+                    $ref: '#/definitions/models.User'
+                type: object
+            type: array
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to get users
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: List all users
+      tags:
+      - Users
+    post:
+      description: Create a new user record with the provided details.
+      parameters:
+      - description: user info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      responses:
+        "200":
+          description: user created successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to create user
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Create a new user
+      tags:
+      - Users
+  /api/v1/users/{id}:
+    delete:
+      description: Permanently remove a user record identified by their unique ID.
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: user deleted successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to delete user
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Delete a user
+      tags:
+      - Users
+    put:
+      description: Update the details of an existing user identified by their unique
+        ID.
+      parameters:
+      - description: user id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/models.User'
+              type: object
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: unauthorized
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: failed to update user
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Update user details
+      tags:
+      - Users
+  /auth/check:
+    get:
+      description: Verify if the current user session is active and valid.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+      summary: Check authentication status
+      tags:
+      - Authentication
+  /internal/project/{projectid}/jobs/{id}/clear-destination/recover:
+    post:
+      description: Internal recovery endpoint to cancel stuck clear-destination workflows
+        and restore sync schedules.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: successfully recovered
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+      summary: (Internal) Recover clear determination
+      tags:
+      - Internal
+  /internal/project/{projectid}/jobs/{id}/statefile:
+    put:
+      description: Internal endpoint to update the state file associated with a job.
+      parameters:
+      - description: project id (default is 123)
+        in: path
+        name: projectid
+        required: true
+        type: string
+      - description: job id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: state file data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateStateFileRequest'
+      responses:
+        "200":
+          description: state file updated successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+      summary: (Internal) Update state file
+      tags:
+      - Internal
+  /internal/worker/callback/sync-telemetry:
+    post:
+      description: Internal callback to update sync telemetry data.
+      parameters:
+      - description: telemetry data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateSyncTelemetryRequest'
+      responses:
+        "200":
+          description: sync telemetry updated successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+      summary: (Internal) Update sync telemetry
+      tags:
+      - Internal
+  /login:
+    post:
+      description: Authenticate a user and create a new session.
+      parameters:
+      - description: login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.LoginResponse'
+              type: object
+        "400":
+          description: invalid request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "401":
+          description: invalid credentials
+          schema:
+            $ref: '#/definitions/dto.Error401Response'
+        "500":
+          description: internal server error
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: User login
+      tags:
+      - Authentication
+  /signup:
+    post:
+      description: Register a new user account with the provided details.
+      parameters:
+      - description: user info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      responses:
+        "200":
+          description: user created successfully
+          schema:
+            $ref: '#/definitions/dto.JSONResponse'
+        "400":
+          description: failed to validate request
+          schema:
+            $ref: '#/definitions/dto.Error400Response'
+        "409":
+          description: user already exists
+          schema:
+            $ref: '#/definitions/dto.Error409Response'
+        "500":
+          description: failed to create user
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: User signup
+      tags:
+      - Authentication
+  /telemetry-id:
+    get:
+      description: Retrieve the unique telemetry identifier and current UI version.
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.TelemetryIDResponse'
+              type: object
+        "500":
+          description: internal server error
+          schema:
+            $ref: '#/definitions/dto.Error500Response'
+      summary: Get telemetry ID
+      tags:
+      - Internal
+swagger: "2.0"
+tags:
+- description: Authentication endpoints
+  name: Authentication
+- description: Job management and execution endpoints
+  name: Jobs
+- description: Source configuration endpoints
+  name: Sources
+- description: Destination configuration endpoints
+  name: Destinations
+- description: Project configuration endpoints
+  name: Project Settings
+- description: Platform-level operations
+  name: Platform
+- description: User management endpoints
+  name: Users
+- description: Internal worker callbacks (not for external use)
+  name: Internal

@@ -12,13 +12,13 @@ COPY server/go.mod server/go.sum ./
 RUN go mod download
 
 # Install swag for Swagger documentation generation
-RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4
 
 # Copy the entire server source code
 COPY server/ ./server/
 
-# Generate Swagger documentation (only json/yaml)
-RUN cd server && swag init -g main.go -o ./swagger --parseDependency --parseInternal --outputTypes json,yaml
+# Generate Swagger documentation (embeds docs.go)
+RUN cd server && swag init -g main.go --parseDependency --parseInternal
 
 # Build backend (assuming main package is at the root of 'server/' content)
 # Using -ldflags to create smaller binaries
@@ -65,7 +65,6 @@ RUN mkdir -p conf /opt/frontend/dist
 COPY --from=go-builder /app/olake-server ./olake-server
 COPY server/conf/app.conf ./conf/app.conf
 COPY --from=node-builder /app/ui/dist /opt/frontend/dist
-COPY --from=go-builder /app/server/swagger ./swagger
 
 # Expose the Go backend port (which serves both API and frontend)
 EXPOSE 8000
