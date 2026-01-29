@@ -170,10 +170,6 @@ type ProjectSettingsResponse struct {
 	WebhookAlertURL string `json:"webhook_alert_url" example:"https://hooks.slack.com/services/xxx/yyy/zzz"`
 }
 
-type TelemetryIDResponse struct {
-	UserID string `json:"user_id" example:"string"`
-}
-
 type LoginResponse struct {
 	Username string `json:"username" example:"admin"`
 }
@@ -200,4 +196,9 @@ type ReleasesResponse struct {
 	OlakeHelm     *ReleaseTypeData `json:"olake_helm"`
 	Olake         *ReleaseTypeData `json:"olake"`
 	Features      *ReleaseTypeData `json:"features"`
+}
+
+type TelemetryIDResponse struct {
+	TelemetryUserID string `json:"user_id"`
+	OlakeUIVersion  string `json:"version"`
 }

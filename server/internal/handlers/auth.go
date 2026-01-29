@@ -130,7 +130,7 @@ func (h *Handler) Signup() {
 
 // @Summary Get telemetry ID
 // @Tags Internal
-// @Description Retrieve the unique telemetry identifier for the current installation.
+// @Description Retrieve the unique telemetry identifier and current UI version.
 // @Success 200 {object} dto.JSONResponse{data=dto.TelemetryIDResponse}
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /telemetry-id [get]
@@ -138,7 +138,9 @@ func (h *Handler) GetTelemetryID() {
 	logger.Info("Get telemetry ID initiated")
 
 	telemetryID := telemetry.GetTelemetryUserID()
-	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", map[string]interface{}{
-		telemetry.TelemetryUserIDFile: string(telemetryID),
+	version := telemetry.GetVersion()
+	utils.SuccessResponse(&h.Controller, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
+		TelemetryUserID: telemetryID,
+		OlakeUIVersion:  version,
 	})
 }
