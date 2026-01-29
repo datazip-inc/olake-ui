@@ -11,14 +11,8 @@ WORKDIR /app
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 
-# Install swag for Swagger documentation generation
-RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4
-
 # Copy the entire server source code
 COPY server/ ./server/
-
-# Generate Swagger documentation (embeds docs.go)
-RUN cd server && swag init -g main.go --parseDependency --parseInternal
 
 # Build backend (assuming main package is at the root of 'server/' content)
 # Using -ldflags to create smaller binaries
