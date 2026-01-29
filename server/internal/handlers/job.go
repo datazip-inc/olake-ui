@@ -270,7 +270,7 @@ func (h *Handler) CheckUniqueName() {
 // @Param   id            path    int     true    "job id"
 // @Success 200 {object} dto.JSONResponse "sync triggered successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
-// @Failure 401 {object} dto.Error401Response "unauthorized
+// @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to trigger sync"
 // @Router /api/v1/project/{projectid}/jobs/{id}/sync [post]
 func (h *Handler) SyncJob() {
