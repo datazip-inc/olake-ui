@@ -24,12 +24,6 @@ type Error401Response struct {
 	Message string `json:"message" example:"Authentication required"`
 }
 
-// Error403Response represents a 403 Forbidden error
-type Error403Response struct {
-	Success bool   `json:"success" example:"false"`
-	Message string `json:"message" example:"Insufficient permissions"`
-}
-
 // Error404Response represents a 404 Not Found error
 type Error404Response struct {
 	Success bool   `json:"success" example:"false"`
