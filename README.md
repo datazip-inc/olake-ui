@@ -45,12 +45,6 @@ This Docker Compose setup provides a comprehensive environment(OLake UI, Tempora
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
 ```
 
-For using the old legacy version with elasticsearch:
-
-```sh
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
-```
-
 2. **Access the services:**
 
    - **OLake UI:** [http://localhost:8000](http://localhost:8000)
@@ -119,13 +113,6 @@ To update OLake UI to the latest version, use the following command:
 ```bash
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
-```
-
-And if you are using legacy version use:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - down && \
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
 ```
 
 **Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
