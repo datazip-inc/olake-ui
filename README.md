@@ -117,6 +117,10 @@ curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-c
 
 **Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
 
+### Upgrading from legacy `docker-compose.yml`
+
+To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026** , follow this [documentation](https://olake.io/docs/install/olake-ui/#:~:text=To%20move%20from,Legacy%20Setup.).
+
 ## Contributing
 
 We ❤️ contributions big or small check our [Bounty Program](https://olake.io/docs/community/issues-and-prs#goodies). As always, thanks to our amazing contributors!.
