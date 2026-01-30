@@ -147,3 +147,8 @@ type ReleasesResponse struct {
 	Olake         *ReleaseTypeData `json:"olake"`
 	Features      *ReleaseTypeData `json:"features"`
 }
+
+type TelemetryIDResponse struct {
+	TelemetryUserID string `json:"user_id"`
+	OlakeUIVersion  string `json:"version"`
+}
