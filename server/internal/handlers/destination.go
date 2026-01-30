@@ -222,23 +222,6 @@ func (h *Handler) TestDestinationConnection() {
 	})
 }
 
-func (h *Handler) GetDestinationJobs() {
-	id, err := GetIDFromPath(&h.Controller)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-
-	logger.Debugf("Get destination jobs initiated destination_id[%d]", id)
-
-	jobs, err := h.etl.GetDestinationJobs(h.Ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
-		return
-	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %d jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
-}
-
 // @Summary Get available destination versions
 // @Tags Destinations
 // @Description Retrieve the list of available versions for a specific destination connector type.

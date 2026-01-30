@@ -240,19 +240,6 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 	return result, logs.Logs, nil
 }
 
-func (s *ETLService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
-	if _, err := s.db.GetDestinationByID(id); err != nil {
-		return nil, fmt.Errorf("failed to find destination: %s", err)
-	}
-
-	jobs, err := s.db.GetJobsByDestinationID([]int{id})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination: %s", err)
-	}
-
-	return jobs, nil
-}
-
 func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (dto.VersionsResponse, error) {
 	if destType == "" {
 		return dto.VersionsResponse{}, fmt.Errorf("destination type is required")

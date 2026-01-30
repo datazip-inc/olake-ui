@@ -57,6 +57,7 @@ func main() {
 	logger.Info("Application services initialized successfully")
 	telemetry.InitTelemetry(db)
 
+	// Set Swagger Info version to match the application's runtime version.
 	if constants.AppVersion != "" {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}

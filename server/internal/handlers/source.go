@@ -273,27 +273,6 @@ func (h *Handler) GetSourceCatalog() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
 }
 
-func (h *Handler) GetSourceJobs() {
-	id, err := GetIDFromPath(&h.Controller)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-
-	logger.Debugf("Get source jobs initiated source_id[%d]", id)
-
-	jobs, err := h.etl.GetSourceJobs(h.Ctx.Request.Context(), id)
-	if err != nil {
-		if errors.Is(err, constants.ErrSourceNotFound) {
-			utils.ErrorResponse(&h.Controller, http.StatusNotFound, fmt.Sprintf("source not found: %s", err), err)
-		} else {
-			utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source jobs: %s", err), err)
-		}
-		return
-	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("source %d jobs listed successfully", id), map[string]interface{}{"jobs": jobs})
-}
-
 // @Summary Get available source versions
 // @Tags Sources
 // @Description Retrieve the list of available versions for a specific source connector type.

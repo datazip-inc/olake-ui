@@ -81,18 +81,18 @@ func (h *Handler) CheckAuth() {
 	utils.SuccessResponse(&h.Controller, "authenticated successfully", nil)
 }
 
-func (h *Handler) Logout() {
-	userID := h.GetSession(constants.SessionUserID)
-	logger.Debugf("Logout initiated user_id[%v]", userID)
+// func (h *Handler) Logout() {
+// 	userID := h.GetSession(constants.SessionUserID)
+// 	logger.Debugf("Logout initiated user_id[%v]", userID)
 
-	err := h.DestroySession()
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to destroy session: %s", err), err)
-		return
-	}
+// 	err := h.DestroySession()
+// 	if err != nil {
+// 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to destroy session: %s", err), err)
+// 		return
+// 	}
 
-	utils.SuccessResponse(&h.Controller, "logout successful", nil)
-}
+// 	utils.SuccessResponse(&h.Controller, "logout successful", nil)
+// }
 
 // @Summary User signup
 // @Tags Authentication
