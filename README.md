@@ -60,7 +60,7 @@ curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-c
 
 **Custom Admin User:**
 
-The stack automatically creates an initial admin user on first startup. To change the default credentials, edit the `x-signup-defaults` section in `docker-compose.yml`:
+The stack automatically creates an initial admin user on first startup. To change the default credentials, edit the `x-signup-defaults` section in `docker-compose-v1.yml`:
 
 ```yaml
 x-signup-defaults:
@@ -71,7 +71,7 @@ email: &defaultEmail "your-email@example.com"
 
 **Custom Data Directory:**
 
-By default, data is stored in `${PWD}/olake-data` directory. To use a different location, edit the `x-app-defaults` section in `docker-compose.yml`:
+By default, data is stored in `${PWD}/olake-data` directory. To use a different location, edit the `x-app-defaults` section in `docker-compose-v1.yml`:
 
 ```yaml
 x-app-defaults:
@@ -82,7 +82,7 @@ Make sure the directory exists and is writable.
 
 **Encryption Modes:**
 
-Configure encryption in `docker-compose.yml`:
+Configure encryption in `docker-compose-v1.yml`:
 
 ```yaml
 x-encryption:
