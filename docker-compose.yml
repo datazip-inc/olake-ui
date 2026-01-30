@@ -134,12 +134,17 @@ services:
     depends_on:
       postgresql:
         condition: service_healthy
+      elasticsearch:
+        condition: service_healthy # Wait for elasticsearch to be healthy
     environment:
       - DB=postgres12
       - DB_PORT=5432
       - POSTGRES_USER=temporal
       - POSTGRES_PWD=temporal
       - POSTGRES_SEEDS=postgresql
+      - ENABLE_ES=true
+      - ES_SEEDS=elasticsearch
+      - ES_VERSION=v7
       - TEMPORAL_ADDRESS=temporal:7233
       - TEMPORAL_CLI_ADDRESS=temporal:7233
     networks:
@@ -162,6 +167,34 @@ services:
       - "8081:8080"
     restart: unless-stopped
 
+  elasticsearch:
+    container_name: temporal-elasticsearch
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/elasticsearch:7.17.10
+    environment:
+      - cluster.routing.allocation.disk.threshold_enabled=true
+      - cluster.routing.allocation.disk.watermark.low=512mb
+      - cluster.routing.allocation.disk.watermark.high=256mb
+      - cluster.routing.allocation.disk.watermark.flood_stage=128mb
+      - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms256m -Xmx256m
+      - xpack.security.enabled=false
+    networks:
+      - olake-network
+    volumes:
+      - temporal-elasticsearch-data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
 networks:
   olake-network:
     driver: bridge
@@ -171,4 +204,6 @@ volumes:
   temporal-postgresql-data:
     driver: local
   olake-config-data:
+    driver: local
+  temporal-elasticsearch-data:
     driver: local

@@ -42,6 +42,12 @@ This Docker Compose setup provides a comprehensive environment(OLake UI, Tempora
 1. **One-Command Setup:**
 
 ```sh
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
+```
+
+For using the old legacy version with elasticsearch:
+
+```sh
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
 ```
 
@@ -109,6 +115,13 @@ x-encryption:
 ### Updating OLake UI Version
 
 To update OLake UI to the latest version, use the following command:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
+```
+
+And if you are using legacy version use:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - down && \
