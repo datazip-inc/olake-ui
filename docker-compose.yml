@@ -104,6 +104,7 @@ services:
     environment:
       <<: *sharedEnvs
       OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
+      TEMPORAL_RETENTION_PERIOD: "168h" # 7 days
     depends_on:
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
