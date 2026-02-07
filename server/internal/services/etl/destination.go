@@ -240,30 +240,17 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 	return result, logs.Logs, nil
 }
 
-func (s *ETLService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
-	if _, err := s.db.GetDestinationByID(id); err != nil {
-		return nil, fmt.Errorf("failed to find destination: %s", err)
-	}
-
-	jobs, err := s.db.GetJobsByDestinationID([]int{id})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination: %s", err)
-	}
-
-	return jobs, nil
-}
-
-func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
+func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (dto.VersionsResponse, error) {
 	if destType == "" {
-		return nil, fmt.Errorf("destination type is required")
+		return dto.VersionsResponse{}, fmt.Errorf("destination type is required")
 	}
 
 	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get driver image tags: %s", err)
+		return dto.VersionsResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	return map[string]interface{}{"version": versions}, nil
+	return dto.VersionsResponse{Version: versions}, nil
 }
 
 // TODO: cache spec in db for each version

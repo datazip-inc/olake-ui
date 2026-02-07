@@ -1,0 +1,3670 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Olake is fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse.",
+        "title": "Olake UI API",
+        "contact": {
+            "name": "OLake",
+            "url": "https://olake.io/contact/",
+            "email": "hello@olake.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
+    },
+    "paths": {
+        "/api/v1/platform/releases": {
+            "get": {
+                "description": "Retrieve the latest platform release updates and metadata.",
+                "tags": [
+                    "Platform"
+                ],
+                "summary": "Get release updates",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "limit the number of releases returned",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ReleasesResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to fetch release metadata",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/check-unique": {
+            "post": {
+                "description": "Verify if a given name is unique within the project for a specific entity type.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Check name uniqueness",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "unique check data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CheckUniqueNameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CheckUniqueJobNameResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "409": {
+                        "description": "name is not unique",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error409Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to check uniqueness",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/destinations": {
+            "get": {
+                "description": "Retrieve a list of all configured destinations within a specific project.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "List all destinations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.DestinationDataItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get destinations",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new destination for a project",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Create a new destination",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "destination data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateDestinationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CreateDestinationRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to create destination",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/destinations/spec": {
+            "post": {
+                "description": "Retrieve the UI spec for a specific destination type/version.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Get destination UI spec",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "spec request data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SpecRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SpecResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get spec",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/destinations/test": {
+            "post": {
+                "description": "Validate the connection to a destination using the provided configuration details.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Test destination connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "test connection data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DestinationTestConnectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TestConnectionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to test connection",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/destinations/versions": {
+            "get": {
+                "description": "Retrieve the list of available versions for a specific destination connector type.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Get available destination versions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "destination type",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.VersionsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get versions",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/destinations/{id}": {
+            "get": {
+                "description": "Retrieve details of a specific destination identified by its unique ID.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Get destination details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "destination id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.DestinationDataItem"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get destination",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the configuration details of an existing destination.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Update a destination",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "destination id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "destination data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateDestinationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UpdateDestinationRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update destination",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Permanently delete a specified destination.",
+                "tags": [
+                    "Destinations"
+                ],
+                "summary": "Delete a destination",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "destination id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.DeleteDestinationResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to delete destination",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs": {
+            "get": {
+                "description": "Retrieve a list of all jobs associated with a specific project.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "List all jobs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.JobResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to retrieve jobs",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new job within a specific project.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Create a new job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "job data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to create job",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}": {
+            "get": {
+                "description": "Retrieve details of a specific job identified by its unique ID.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Get job details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.JobResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get job",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the configuration details of an existing job.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Update a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "job data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateJobRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update job",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Permanently delete a specified job.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Delete a job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to delete job",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/activate": {
+            "post": {
+                "description": "Pause or resume a job.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Pause or resume job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "activation data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.JobStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job activated/deactivated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to activate job",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/cancel": {
+            "get": {
+                "description": "Request cancellation of a currently running job execution.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Cancel running job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "job cancel requested successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to cancel job run",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/clear-destination": {
+            "get": {
+                "description": "Retrieve the current status of an ongoing clear destination job.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Get clear destination status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ClearDestinationStatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get status",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Initiate job to clear data in the destination associated with a job.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Clear destination data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "clear destination triggered successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to trigger clear destination",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/logs/download": {
+            "get": {
+                "description": "Downloads the log file for a specific task. The file path required for the download must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks) endpoint.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Download task logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "log file path",
+                        "name": "file_path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "failed to prepare log archive",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/stream-difference": {
+            "post": {
+                "description": "Get difference between current streams.json and existing streams.json.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Get stream differences",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "stream difference data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.StreamDifferenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.StreamDifferenceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get stream difference",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/sync": {
+            "post": {
+                "description": "Trigger a manual sync for a job",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Trigger job sync",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "sync triggered successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to trigger sync",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/tasks": {
+            "get": {
+                "description": "Retrieve a list of execution tasks associated with a specific job.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "List job tasks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.JobTask"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get job tasks",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs": {
+            "post": {
+                "description": "Retrieves the execution logs for a specific task. The file path for the log must be obtained from the [Get Job Tasks](#/Jobs/get_api_v1_project__projectid__jobs__id__tasks) endpoint.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Get task logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "task id (defaults to 1)",
+                        "name": "taskid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "task log data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.JobTaskRequest"
+                        }
+                    },
+                    {
+                        "type": "integer",
+                        "description": "log cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "log limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "log direction",
+                        "name": "direction",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TaskLogsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get task logs",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/settings": {
+            "get": {
+                "description": "Retrieve the settings for a specific project.",
+                "tags": [
+                    "Project Settings"
+                ],
+                "summary": "Get project settings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project Settings fetched successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ProjectSettingsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to retrieve project settings",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Create or update the settings for a project.",
+                "tags": [
+                    "Project Settings"
+                ],
+                "summary": "Update project settings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "project settings data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpsertProjectSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Project Settings updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update project settings",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/sources": {
+            "get": {
+                "description": "Retrieve a list of all configured sources within a specific project.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "List all sources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/dto.SourceDataItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to retrieve sources",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new source within a project.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Create a new source",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "source data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateSourceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.CreateSourceRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to create source",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/sources/spec": {
+            "post": {
+                "description": "Retrieve the UI spec for a specific source type/version.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Get source UI spec",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "spec request data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SpecRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SpecResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get spec",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/sources/streams": {
+            "post": {
+                "description": "Discover and list available data streams from a source.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Get source stream catalog",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "streams request data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.StreamsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get source catalog",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/sources/test": {
+            "post": {
+                "description": "Validate the connection to a source using the provided configuration details.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Test source connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "test connection data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SourceTestConnectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TestConnectionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to test connection",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/sources/versions": {
+            "get": {
+                "description": "Retrieve the list of available versions for a specific source connector type.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Get available source versions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "source type",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.VersionsResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get versions",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/sources/{id}": {
+            "get": {
+                "description": "Retrieve details of a specific source identified by its unique ID.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Get source details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "source id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.SourceDataItem"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get source",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Update the configuration details of an existing source.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Update a source",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "source id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "source data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateSourceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UpdateSourceRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "source not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update source",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Permanently delete a specified source.",
+                "tags": [
+                    "Sources"
+                ],
+                "summary": "Delete a source",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "source id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.DeleteSourceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "source not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to delete source",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users": {
+            "get": {
+                "description": "Retrieve a list of all registered users.",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "List all users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/definitions/dto.JSONResponse"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "data": {
+                                                "$ref": "#/definitions/models.User"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to get users",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new user record with the provided details.",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "user info",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "user created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to create user",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}": {
+            "put": {
+                "description": "Update the details of an existing user identified by their unique ID.",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Update user details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "user info",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/models.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update user",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Permanently remove a user record identified by their unique ID.",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Delete a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "user id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "user deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to delete user",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/check": {
+            "get": {
+                "description": "Verify if the current user session is active and valid.",
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Check authentication status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/project/{projectid}/jobs/{id}/clear-destination/recover": {
+            "post": {
+                "description": "Internal recovery endpoint to cancel stuck clear-destination workflows and restore sync schedules.",
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "(Internal) Recover clear determination",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "successfully recovered",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/project/{projectid}/jobs/{id}/statefile": {
+            "put": {
+                "description": "Internal endpoint to update the state file associated with a job.",
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "(Internal) Update state file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "state file data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateStateFileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "state file updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/worker/callback/sync-telemetry": {
+            "post": {
+                "description": "Internal callback to update sync telemetry data.",
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "(Internal) Update sync telemetry",
+                "parameters": [
+                    {
+                        "description": "telemetry data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateSyncTelemetryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "sync telemetry updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/login": {
+            "post": {
+                "description": "Authenticate a user and create a new session.",
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "login credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.LoginResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/signup": {
+            "post": {
+                "description": "Register a new user account with the provided details.",
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "User signup",
+                "parameters": [
+                    {
+                        "description": "user info",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.User"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "user created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "409": {
+                        "description": "user already exists",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error409Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to create user",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/telemetry-id": {
+            "get": {
+                "description": "Retrieve the unique telemetry identifier and current UI version.",
+                "tags": [
+                    "Internal"
+                ],
+                "summary": "Get telemetry ID",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.TelemetryIDResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.CheckUniqueJobNameResponse": {
+            "type": "object",
+            "properties": {
+                "unique": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "dto.CheckUniqueNameRequest": {
+            "type": "object",
+            "required": [
+                "entity_type",
+                "name"
+            ],
+            "properties": {
+                "entity_type": {
+                    "type": "string",
+                    "enum": [
+                        "job",
+                        "source",
+                        "destination"
+                    ],
+                    "example": "job"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-sync-job"
+                }
+            }
+        },
+        "dto.ClearDestinationStatusResponse": {
+            "type": "object",
+            "properties": {
+                "running": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.CreateDestinationRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "name",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"catalog_type\":\"glue\",\"warehouse\":\"s3://my-bucket/warehouse\"}"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-iceberg-destination"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "iceberg"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.CreateJobRequest": {
+            "type": "object",
+            "required": [
+                "destination",
+                "frequency",
+                "name",
+                "source",
+                "streams_config"
+            ],
+            "properties": {
+                "activate": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "destination": {
+                    "$ref": "#/definitions/dto.DriverConfig"
+                },
+                "frequency": {
+                    "type": "string",
+                    "example": "0 */6 * * *"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-sync-job"
+                },
+                "source": {
+                    "$ref": "#/definitions/dto.DriverConfig"
+                },
+                "streams_config": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CreateSourceRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "name",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"host\":\"localhost\",\"port\":5432,\"database\":\"mydb\",\"user\":\"postgres\",\"password\":\"secret\"}"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-postgres-source"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.DeleteDestinationResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "my-iceberg-destination"
+                }
+            }
+        },
+        "dto.DeleteSourceResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "example": "my-postgres-source"
+                }
+            }
+        },
+        "dto.DestinationDataItem": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"catalog_type\":\"glue\",\"warehouse\":\"s3://bucket/warehouse\"}"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-01T00:00:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.JobDataItem"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-iceberg-destination"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "iceberg"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-09T12:00:00Z"
+                },
+                "updated_by": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.DestinationTestConnectionRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"catalog_type\":\"glue\",\"warehouse\":\"s3://my-bucket/warehouse\"}"
+                },
+                "source_type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "source_version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "iceberg"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.DriverConfig": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"host\":\"localhost\",\"port\":5432}"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-postgres-source"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.Error400Response": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Bad request"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.Error401Response": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Authentication required"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.Error404Response": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Resource not found"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.Error409Response": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Resource already exists"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.Error500Response": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Internal server error"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.JSONResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string",
+                    "example": "operation completed successfully"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "dto.JobDataItem": {
+            "type": "object",
+            "properties": {
+                "activate": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "destination_name": {
+                    "type": "string",
+                    "example": "my-iceberg-destination"
+                },
+                "destination_type": {
+                    "type": "string",
+                    "example": "iceberg"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "last_run_state": {
+                    "type": "string",
+                    "example": "completed"
+                },
+                "last_run_time": {
+                    "type": "string",
+                    "example": "2024-01-09T12:00:00Z"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-sync-job"
+                },
+                "source_name": {
+                    "type": "string",
+                    "example": "my-postgres-source"
+                },
+                "source_type": {
+                    "type": "string",
+                    "example": "postgres"
+                }
+            }
+        },
+        "dto.JobResponse": {
+            "type": "object",
+            "properties": {
+                "activate": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-01T00:00:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "destination": {
+                    "$ref": "#/definitions/dto.DriverConfig"
+                },
+                "frequency": {
+                    "type": "string",
+                    "example": "0 */6 * * *"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "last_run_state": {
+                    "type": "string",
+                    "example": "completed"
+                },
+                "last_run_time": {
+                    "type": "string",
+                    "example": "2024-01-09T12:00:00Z"
+                },
+                "last_run_type": {
+                    "description": "\"sync\" | \"clear-destination\"",
+                    "type": "string",
+                    "example": "sync"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-sync-job"
+                },
+                "source": {
+                    "$ref": "#/definitions/dto.DriverConfig"
+                },
+                "streams_config": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-09T12:00:00Z"
+                },
+                "updated_by": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "dto.JobStatusRequest": {
+            "type": "object",
+            "properties": {
+                "activate": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "dto.JobTask": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "example": "sync-123-2-2026-01-19T13:45:09Z"
+                },
+                "job_type": {
+                    "description": "\"sync\" | \"clear-destination\"",
+                    "type": "string",
+                    "example": "sync"
+                },
+                "runtime": {
+                    "type": "string",
+                    "example": "1m30s"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "2024-01-09T12:00:00Z"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "completed"
+                }
+            }
+        },
+        "dto.JobTaskRequest": {
+            "type": "object",
+            "required": [
+                "file_path"
+            ],
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "example": "sync-123-2-2026-01-19T13:45:09Z"
+                }
+            }
+        },
+        "dto.LoginRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "password"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "dto.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
+        "dto.ProjectSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "project_id": {
+                    "type": "string",
+                    "example": "project-123"
+                },
+                "webhook_alert_url": {
+                    "type": "string",
+                    "example": "https://hooks.slack.com/services/xxx/yyy/zzz"
+                }
+            }
+        },
+        "dto.ReleaseMetadataResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "link": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ReleaseTypeData": {
+            "type": "object",
+            "properties": {
+                "current_version": {
+                    "type": "string"
+                },
+                "releases": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ReleaseMetadataResponse"
+                    }
+                }
+            }
+        },
+        "dto.ReleasesResponse": {
+            "type": "object",
+            "properties": {
+                "features": {
+                    "$ref": "#/definitions/dto.ReleaseTypeData"
+                },
+                "olake": {
+                    "$ref": "#/definitions/dto.ReleaseTypeData"
+                },
+                "olake_helm": {
+                    "$ref": "#/definitions/dto.ReleaseTypeData"
+                },
+                "olake_ui_worker": {
+                    "$ref": "#/definitions/dto.ReleaseTypeData"
+                }
+            }
+        },
+        "dto.SourceDataItem": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"host\":\"localhost\",\"port\":5432}"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-01T00:00:00Z"
+                },
+                "created_by": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "jobs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.JobDataItem"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-postgres-source"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-09T12:00:00Z"
+                },
+                "updated_by": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.SourceTestConnectionRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"host\":\"localhost\",\"port\":5432,\"database\":\"mydb\",\"user\":\"postgres\",\"password\":\"secret\"}"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.SpecRequest": {
+            "type": "object",
+            "required": [
+                "type",
+                "version"
+            ],
+            "properties": {
+                "type": {
+                    "description": "enum: postgres,mongodb,mysql,mssql,db2,s3,kafka,iceberg",
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.SpecResponse": {
+            "type": "object",
+            "properties": {
+                "spec": {
+                    "type": "object"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.StreamDifferenceRequest": {
+            "type": "object",
+            "required": [
+                "updated_streams_config"
+            ],
+            "properties": {
+                "updated_streams_config": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.StreamDifferenceResponse": {
+            "type": "object",
+            "properties": {
+                "difference_streams": {
+                    "type": "object"
+                }
+            }
+        },
+        "dto.StreamsRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "job_id",
+                "job_name",
+                "name",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"host\":\"localhost\",\"port\":5432}"
+                },
+                "job_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "job_name": {
+                    "type": "string",
+                    "example": "my-sync-job"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-postgres-source"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.TaskLogsResponse": {
+            "type": "object",
+            "properties": {
+                "has_more_newer": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "has_more_older": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "newer_cursor": {
+                    "type": "integer",
+                    "example": 1704805200000
+                },
+                "older_cursor": {
+                    "type": "integer",
+                    "example": 1704801600000
+                }
+            }
+        },
+        "dto.TelemetryIDResponse": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "example": "1234567890abcdef1234567890abcdef"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.5"
+                }
+            }
+        },
+        "dto.TestConnectionResponse": {
+            "type": "object",
+            "properties": {
+                "connection_result": {
+                    "type": "object"
+                },
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                }
+            }
+        },
+        "dto.UpdateDestinationRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "name",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"catalog_type\":\"glue\",\"warehouse\":\"s3://my-bucket/warehouse-v2\"}"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-iceberg-destination-updated"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "iceberg"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.UpdateJobRequest": {
+            "type": "object",
+            "required": [
+                "destination",
+                "frequency",
+                "name",
+                "source",
+                "streams_config"
+            ],
+            "properties": {
+                "activate": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "destination": {
+                    "$ref": "#/definitions/dto.DriverConfig"
+                },
+                "difference_streams": {
+                    "type": "string",
+                    "example": "[]"
+                },
+                "frequency": {
+                    "type": "string",
+                    "example": "0 */12 * * *"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-sync-job-updated"
+                },
+                "source": {
+                    "$ref": "#/definitions/dto.DriverConfig"
+                },
+                "streams_config": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateSourceRequest": {
+            "type": "object",
+            "required": [
+                "config",
+                "name",
+                "type",
+                "version"
+            ],
+            "properties": {
+                "config": {
+                    "type": "string",
+                    "example": "{\"host\":\"localhost\",\"port\":5432,\"database\":\"mydb\",\"user\":\"postgres\",\"password\":\"newsecret\"}"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "my-postgres-source-updated"
+                },
+                "type": {
+                    "type": "string",
+                    "example": "postgres"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "v0.2.7"
+                }
+            }
+        },
+        "dto.UpdateStateFileRequest": {
+            "type": "object",
+            "required": [
+                "state_file"
+            ],
+            "properties": {
+                "state_file": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateSyncTelemetryRequest": {
+            "type": "object",
+            "properties": {
+                "environment": {
+                    "type": "string"
+                },
+                "event": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "integer"
+                },
+                "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpsertProjectSettingsRequest": {
+            "type": "object",
+            "required": [
+                "project_id"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "project_id": {
+                    "type": "string",
+                    "example": "project-123"
+                },
+                "webhook_alert_url": {
+                    "type": "string",
+                    "example": "https://hooks.slack.com/services/xxx/yyy/zzz"
+                }
+            }
+        },
+        "dto.VersionsResponse": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "v0.3.15",
+                        "v0.3.14",
+                        "v0.3.13",
+                        "v0.3.12"
+                    ]
+                }
+            }
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "description": "Hidden in JSON",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "description": "Authentication endpoints",
+            "name": "Authentication"
+        },
+        {
+            "description": "Job management and execution endpoints",
+            "name": "Jobs"
+        },
+        {
+            "description": "Source configuration endpoints",
+            "name": "Sources"
+        },
+        {
+            "description": "Destination configuration endpoints",
+            "name": "Destinations"
+        },
+        {
+            "description": "Project configuration endpoints",
+            "name": "Project Settings"
+        },
+        {
+            "description": "Platform-level operations",
+            "name": "Platform"
+        },
+        {
+            "description": "User management endpoints",
+            "name": "Users"
+        },
+        {
+            "description": "Internal worker callbacks (not for external use)",
+            "name": "Internal"
+        }
+    ]
+}

@@ -35,6 +35,10 @@ gosec:
 trivy:
 	trivy fs  --vuln-type  os,library --severity HIGH,CRITICAL .
 
+swagger:
+	go install github.com/swaggo/swag/cmd/swag@v1.16.4
+	cd server; $(GOPATH)/bin/swag init -g main.go --parseDependency --parseInternal --outputTypes json,go
+
 # Variables
 SERVER_DIR := $(PWD)/server
 FRONTEND_DIR := $(PWD)/ui
