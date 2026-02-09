@@ -266,27 +266,14 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 	return newStreams, nil
 }
 
-func (s *ETLService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, error) {
-	if _, err := s.db.GetSourceByID(id); err != nil {
-		return nil, fmt.Errorf("failed to find source: %s", err)
-	}
-
-	jobs, err := s.db.GetJobsBySourceID([]int{id})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by source: %s", err)
-	}
-
-	return jobs, nil
-}
-
-func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
+func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Docker versions: %s", err)
+		return dto.VersionsResponse{}, fmt.Errorf("failed to get Docker versions: %s", err)
 	}
 
-	return map[string]interface{}{"version": versions}, nil
+	return dto.VersionsResponse{Version: versions}, nil
 }
 
 // TODO: cache spec in db for each version
