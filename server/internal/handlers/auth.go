@@ -14,7 +14,15 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
-// @router /login [post]
+// @Summary User login
+// @Tags Authentication
+// @Description Authenticate a user and create a new session.
+// @Param   body          body    dto.LoginRequest true "login credentials"
+// @Success 200 {object} dto.JSONResponse{data=dto.LoginResponse}
+// @Failure 400 {object} dto.Error400Response "invalid request"
+// @Failure 401 {object} dto.Error401Response "invalid credentials"
+// @Failure 500 {object} dto.Error500Response "internal server error"
+// @Router /login [post]
 func (h *Handler) Login() {
 	var req dto.LoginRequest
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
@@ -42,12 +50,17 @@ func (h *Handler) Login() {
 		_ = h.SetSession(constants.SessionUserID, user.ID)
 	}
 
-	utils.SuccessResponse(&h.Controller, "login successful", map[string]interface{}{
-		"username": user.Username,
+	utils.SuccessResponse(&h.Controller, "login successful", dto.LoginResponse{
+		Username: user.Username,
 	})
 }
 
-// @router /checkauth [get]
+// @Summary Check authentication status
+// @Tags Authentication
+// @Description Verify if the current user session is active and valid.
+// @Success 200 {object} dto.JSONResponse
+// @Failure 401 {object} dto.Error401Response "Not authenticated"
+// @Router /auth/check [get]
 func (h *Handler) CheckAuth() {
 	userID := h.GetSession(constants.SessionUserID)
 	if userID == nil {
@@ -68,21 +81,28 @@ func (h *Handler) CheckAuth() {
 	utils.SuccessResponse(&h.Controller, "authenticated successfully", nil)
 }
 
-// @router /logout [post]
-func (h *Handler) Logout() {
-	userID := h.GetSession(constants.SessionUserID)
-	logger.Debugf("Logout initiated user_id[%v]", userID)
+// func (h *Handler) Logout() {
+// 	userID := h.GetSession(constants.SessionUserID)
+// 	logger.Debugf("Logout initiated user_id[%v]", userID)
 
-	err := h.DestroySession()
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to destroy session: %s", err), err)
-		return
-	}
+// 	err := h.DestroySession()
+// 	if err != nil {
+// 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to destroy session: %s", err), err)
+// 		return
+// 	}
 
-	utils.SuccessResponse(&h.Controller, "logout successful", nil)
-}
+// 	utils.SuccessResponse(&h.Controller, "logout successful", nil)
+// }
 
-// @router /signup [post]
+// @Summary User signup
+// @Tags Authentication
+// @Description Register a new user account with the provided details.
+// @Param   body          body    models.User true "user info"
+// @Success 200 {object} dto.JSONResponse "user created successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 409 {object} dto.Error409Response "user already exists"
+// @Failure 500 {object} dto.Error500Response "failed to create user"
+// @Router /signup [post]
 func (h *Handler) Signup() {
 	var req models.User
 	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
@@ -108,7 +128,12 @@ func (h *Handler) Signup() {
 	})
 }
 
-// @router /telemetry-id [get]
+// @Summary Get telemetry ID
+// @Tags Internal
+// @Description Retrieve the unique telemetry identifier and current UI version.
+// @Success 200 {object} dto.JSONResponse{data=dto.TelemetryIDResponse}
+// @Failure 500 {object} dto.Error500Response "internal server error"
+// @Router /telemetry-id [get]
 func (h *Handler) GetTelemetryID() {
 	logger.Info("Get telemetry ID initiated")
 
