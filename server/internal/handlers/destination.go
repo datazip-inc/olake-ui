@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -10,7 +9,15 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @router /project/:projectid/destinations [get]
+// @Summary List all destinations
+// @Tags Destinations
+// @Description Retrieve a list of all configured destinations within a specific project.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Success 200 {object} dto.JSONResponse{data=[]dto.DestinationDataItem}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get destinations"
+// @Router /api/v1/project/{projectid}/destinations [get]
 func (h *Handler) ListDestinations() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -26,7 +33,16 @@ func (h *Handler) ListDestinations() {
 	utils.SuccessResponse(&h.Controller, "Destinations listed successfully", items)
 }
 
-// @router /project/:projectid/destinations/:id [get]
+// @Summary Get destination details
+// @Tags Destinations
+// @Description Retrieve details of a specific destination identified by its unique ID.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "destination id"
+// @Success 200 {object} dto.JSONResponse{data=dto.DestinationDataItem}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get destination"
+// @Router /api/v1/project/{projectid}/destinations/{id} [get]
 func (h *Handler) GetDestination() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -50,11 +66,20 @@ func (h *Handler) GetDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination '%d' retrieved successfully", destinationID), destination)
 }
 
-// @router /project/:projectid/destinations [post]
+// @Summary Create a new destination
+// @Tags Destinations
+// @Description Create a new destination for a project
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.CreateDestinationRequest true "destination data"
+// @Success 200 {object} dto.JSONResponse{data=dto.CreateDestinationRequest}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to create destination"
+// @Router /api/v1/project/{projectid}/destinations [post]
 func (h *Handler) CreateDestination() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -86,11 +111,21 @@ func (h *Handler) CreateDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 
-// @router /project/:projectid/destinations/:id [put]
+// @Summary Update a destination
+// @Tags Destinations
+// @Description Update the configuration details of an existing destination.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "destination id"
+// @Param   body          body    dto.UpdateDestinationRequest true "destination data"
+// @Success 200 {object} dto.JSONResponse{data=dto.UpdateDestinationRequest}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to update destination"
+// @Router /api/v1/project/{projectid}/destinations/{id} [put]
 func (h *Handler) UpdateDestination() {
 	userID := GetUserIDFromSession(&h.Controller)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
@@ -127,7 +162,16 @@ func (h *Handler) UpdateDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
-// @router /project/:projectid/destinations/:id [delete]
+// @Summary Delete a destination
+// @Tags Destinations
+// @Description Permanently delete a specified destination.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "destination id"
+// @Success 200 {object} dto.JSONResponse{data=dto.DeleteDestinationResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to delete destination"
+// @Router /api/v1/project/{projectid}/destinations/{id} [delete]
 func (h *Handler) DeleteDestination() {
 	id, err := GetIDFromPath(&h.Controller)
 	if err != nil {
@@ -146,7 +190,16 @@ func (h *Handler) DeleteDestination() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
 }
 
-// @router /project/:projectid/destinations/test [post]
+// @Summary Test destination connection
+// @Tags Destinations
+// @Description Validate the connection to a destination using the provided configuration details.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.DestinationTestConnectionRequest true "test connection data"
+// @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to test connection"
+// @Router /api/v1/project/{projectid}/destinations/test [post]
 func (h *Handler) TestDestinationConnection() {
 	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
@@ -169,25 +222,16 @@ func (h *Handler) TestDestinationConnection() {
 	})
 }
 
-// @router /destinations/:id/jobs [get]
-func (h *Handler) GetDestinationJobs() {
-	id, err := GetIDFromPath(&h.Controller)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-
-	logger.Debugf("Get destination jobs initiated destination_id[%d]", id)
-
-	jobs, err := h.etl.GetDestinationJobs(h.Ctx.Request.Context(), id)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get jobs related to destination: %s", err), err)
-		return
-	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %d jobs fetched successfully", id), map[string]interface{}{"jobs": jobs})
-}
-
-// @router /project/:projectid/destinations/versions [get]
+// @Summary Get available destination versions
+// @Tags Destinations
+// @Description Retrieve the list of available versions for a specific destination connector type.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   type          query   string  true    "destination type"
+// @Success 200 {object} dto.JSONResponse{data=dto.VersionsResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get versions"
+// @Router /api/v1/project/{projectid}/destinations/versions [get]
 func (h *Handler) GetDestinationVersions() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
@@ -211,7 +255,16 @@ func (h *Handler) GetDestinationVersions() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
 }
 
-// @router /project/:projectid/destinations/spec [post]
+// @Summary Get destination UI spec
+// @Tags Destinations
+// @Description Retrieve the UI spec for a specific destination type/version.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.SpecRequest true "spec request data"
+// @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to get spec"
+// @Router /api/v1/project/{projectid}/destinations/spec [post]
 func (h *Handler) GetDestinationSpec() {
 	projectID, err := GetProjectIDFromPath(&h.Controller)
 	if err != nil {
