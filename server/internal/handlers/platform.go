@@ -9,7 +9,15 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// @router /api/v1/platform/releases [get]
+// @Summary Get release updates
+// @Tags Platform
+// @Description Retrieve the latest platform release updates and metadata.
+// @Param   limit         query   int     false   "limit the number of releases returned"
+// @Success 200 {object} dto.JSONResponse{data=dto.ReleasesResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to fetch release metadata"
+// @Router /api/v1/platform/releases [get]
 func (h *Handler) GetReleaseUpdates() {
 	limitStr := h.Ctx.Input.Query("limit")
 	limit := 0
