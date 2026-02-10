@@ -136,8 +136,8 @@ func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error
 	}
 
 	var tags []string
-	for _, imageDetail := range resp.ImageDetails {
-		for _, tag := range imageDetail.ImageTags {
+	for i := range resp.ImageDetails {
+		for _, tag := range resp.ImageDetails[i].ImageTags {
 			if isValidTag(tag) {
 				tags = append(tags, tag)
 			}
