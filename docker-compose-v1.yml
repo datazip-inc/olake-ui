@@ -1,0 +1,174 @@
+x-app-defaults:
+  host_persistence_path: &hostPersistencePath ${PWD}/olake-data
+  worker_config_volume_details: &workerConfigVolumeDetails
+    type: bind
+    source: *hostPersistencePath
+    target: /tmp/olake-config
+
+x-signup-defaults:
+  username: &defaultUsername "admin"
+  password: &defaultPassword "password"
+  email: &defaultEmail "admin@example.com"
+
+x-encryption:
+  key: &encryptionKey ""
+
+x-envs:
+  shared: &sharedEnvs
+    CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
+    OLAKE_SECRET_KEY: *encryptionKey
+    PERSISTENT_DIR: *hostPersistencePath
+
+services:
+  olake-ui:
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    pull_policy: always
+    container_name: olake-ui
+    environment:
+      <<: *sharedEnvs
+      # Request body size limits (64 MB in bytes)
+      MAX_MEMORY: 67108864
+      MAX_UPLOAD_SIZE: 67108864
+    ports:
+      - "8000:8000" # Single port: Go backend serves both API and frontend
+    volumes:
+      # Mount Docker socket to enable black box environment by managing local containers/images
+      - /var/run/docker.sock:/var/run/docker.sock
+      - <<: *workerConfigVolumeDetails
+    networks:
+      - olake-network
+    depends_on:
+      postgresql:
+        condition: service_healthy # Wait for postgres to be healthy
+      temporal:
+        condition: service_started # Or service_healthy if temporal has a healthcheck
+    restart: unless-stopped
+    healthcheck: # Updated healthcheck for olake-ui
+      test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give it time to start up before first health check
+
+  signup-init:
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/curlimages/curl:latest
+    container_name: olake-signup-init
+    networks:
+      - olake-network
+    depends_on:
+      olake-ui:
+        condition: service_healthy # Wait for olake-ui to be healthy
+    environment:
+      USERNAME: *defaultUsername
+      PASSWORD: *defaultPassword
+      EMAIL: *defaultEmail
+      OLAKE_APP_URL: "http://olake-ui:8000/signup"
+    command: >
+      sh -c "
+        echo 'signup-init: Initializing user setup...'
+        # The depends_on condition: service_healthy should handle the waiting for olake-ui.
+
+        JSON_PAYLOAD=$$(printf '{\"username\":\"%s\",\"password\":\"%s\",\"email\":\"%s\"}' \"$${USERNAME}\" \"$${PASSWORD}\" \"$${EMAIL}\")
+        echo \"signup-init: Attempting to create user '$${USERNAME}' via $${OLAKE_APP_URL}\"
+
+        HTTP_RESPONSE_CODE=$$(/usr/bin/curl -s -o /dev/stderr -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d \"$${JSON_PAYLOAD}\" \"$${OLAKE_APP_URL}\")
+
+        # The actual response body from olake-ui will be printed to stderr by the '-o /dev/stderr' curl option.
+        # A newline after stderr output from curl can make logs cleaner.
+        echo '' 
+
+        if ! [ \"$${HTTP_RESPONSE_CODE}\" -eq \"$${HTTP_RESPONSE_CODE}\" ] 2>/dev/null; then
+            echo \"signup-init: ERROR - HTTP_RESPONSE_CODE is not a number: '$${HTTP_RESPONSE_CODE}'\"
+            exit 1;
+        fi
+
+        if [ \"$${HTTP_RESPONSE_CODE}\" -ge 200 ] && [ \"$${HTTP_RESPONSE_CODE}\" -lt 300 ]; then
+          echo \"signup-init: User '$${USERNAME}' creation request successful (HTTP $${HTTP_RESPONSE_CODE}).\";
+        else
+          echo \"signup-init: User '$${USERNAME}' creation request FAILED (HTTP $${HTTP_RESPONSE_CODE}). Server response body above.\";
+          exit 1; # Exit with error if signup failed
+        fi
+        echo 'signup-init: User setup process complete.';
+      "
+    restart: "no"
+
+  temporal-worker:
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
+    pull_policy: always
+    container_name: olake-temporal-worker
+    networks:
+      - olake-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - <<: *workerConfigVolumeDetails
+    environment:
+      <<: *sharedEnvs
+      OLAKE_CALLBACK_URL: "http://olake-ui:8000/internal/worker/callback"
+    depends_on:
+      temporal:
+        condition: service_started # Or service_healthy if temporal has a healthcheck
+      olake-ui:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgresql:
+    container_name: temporal-postgresql
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    networks:
+      - olake-network
+    volumes:
+      - temporal-postgresql-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal -h localhost -p 5432"] # Checks if server is accepting connections
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  temporal:
+    container_name: temporal
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/auto-setup:1.22.3
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=postgresql
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    networks:
+      - olake-network
+    restart: unless-stopped
+
+  temporal-ui:
+    container_name: temporal-ui
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.16.2
+    profiles:
+      - debug
+    depends_on:
+      temporal:
+        condition: service_started
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+    networks:
+      - olake-network
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+networks:
+  olake-network:
+    driver: bridge
+    name: olake-network
+
+volumes:
+  temporal-postgresql-data:
+    driver: local
+  olake-config-data:
+    driver: local
