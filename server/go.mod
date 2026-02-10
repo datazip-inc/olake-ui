@@ -1,6 +1,6 @@
 module github.com/datazip-inc/olake-ui/server
 
-go 1.24.11
+go 1.24.13
 
 require github.com/beego/beego/v2 v2.3.8
 
