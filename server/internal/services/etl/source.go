@@ -15,9 +15,49 @@ import (
 
 // Source-related methods on AppService
 
+// GetSource returns a single source by ID with its associated jobs.
+func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID int) (*dto.SourceDataItem, error) {
+	source, err := s.db.GetSourceByID(sourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source: %s", err)
+	}
+
+	// Get jobs for this source
+	jobs, err := s.db.GetJobsBySourceID([]int{sourceID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs for source: %s", err)
+	}
+
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
+	// Build job data items
+	jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "source")
+	if err != nil {
+		return nil, fmt.Errorf("failed to build job data items: %s", err)
+	}
+
+	item := &dto.SourceDataItem{
+		ID:        source.ID,
+		Name:      source.Name,
+		Type:      source.Type,
+		Version:   source.Version,
+		Config:    source.Config,
+		CreatedAt: source.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: source.UpdatedAt.Format(time.RFC3339),
+		Jobs:      jobItems,
+	}
+	setUsernames(&item.CreatedBy, &item.UpdatedBy, source.CreatedBy, source.UpdatedBy)
+
+	return item, nil
+}
+
 // GetAllSources returns all sources for a project with lightweight job summaries.
-func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataItem, error) {
-	sources, err := s.db.ListSources()
+func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
+	sources, err := s.db.ListSourcesByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
 	}
@@ -40,6 +80,12 @@ func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataI
 		}
 	}
 
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, allJobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
 	items := make([]dto.SourceDataItem, 0, len(sources))
 	for _, src := range sources {
 		item := dto.SourceDataItem{
@@ -54,7 +100,7 @@ func (s *ETLService) ListSources(_ context.Context, _ string) ([]dto.SourceDataI
 		setUsernames(&item.CreatedBy, &item.UpdatedBy, src.CreatedBy, src.UpdatedBy)
 
 		jobs := jobsBySourceID[src.ID]
-		jobItems, err := buildJobDataItems(jobs, s.temporal, "source")
+		jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "source")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
@@ -220,27 +266,14 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 	return newStreams, nil
 }
 
-func (s *ETLService) GetSourceJobs(_ context.Context, id int) ([]*models.Job, error) {
-	if _, err := s.db.GetSourceByID(id); err != nil {
-		return nil, fmt.Errorf("failed to find source: %s", err)
-	}
-
-	jobs, err := s.db.GetJobsBySourceID([]int{id})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by source: %s", err)
-	}
-
-	return jobs, nil
-}
-
-func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (map[string]interface{}, error) {
+func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Docker versions: %s", err)
+		return dto.VersionsResponse{}, fmt.Errorf("failed to get Docker versions: %s", err)
 	}
 
-	return map[string]interface{}{"version": versions}, nil
+	return dto.VersionsResponse{Version: versions}, nil
 }
 
 // TODO: cache spec in db for each version

@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/beego/beego/v2/client/orm"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"golang.org/x/mod/semver"
 )
 
 // decryptSourceSliceConfigs decrypts config fields for a slice of sources
@@ -47,10 +49,31 @@ func (db *Database) ListSources() ([]*models.Source, error) {
 	return sources, nil
 }
 
-func (db *Database) GetSourceByID(id int) (*models.Source, error) {
-	source := &models.Source{ID: id}
-	err := db.ormer.Read(source)
+func (db *Database) ListSourcesByProjectID(projectID string) ([]*models.Source, error) {
+	var sources []*models.Source
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).RelatedSel().Filter("project_id", projectID).OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
 	if err != nil {
+		return nil, fmt.Errorf("failed to list sources project_id[%s]: %s", projectID, err)
+	}
+
+	// Decrypt config after reading
+	if err := db.decryptSourceSliceConfigs(sources); err != nil {
+		return nil, err
+	}
+
+	return sources, nil
+}
+
+func (db *Database) GetSourceByID(id int) (*models.Source, error) {
+	var source models.Source
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Filter("id", id).
+		RelatedSel().
+		One(&source)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, fmt.Errorf("source not found id[%d]", id)
+		}
 		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)
 	}
 
@@ -60,7 +83,7 @@ func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 		return nil, fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = dConfig
-	return source, nil
+	return &source, nil
 }
 
 func (db *Database) UpdateSource(source *models.Source) error {
@@ -83,4 +106,35 @@ func (db *Database) DeleteSource(id int) error {
 // IsSourceNameUniqueInProject checks if a source name is unique within a project.
 func (db *Database) IsSourceNameUniqueInProject(ctx context.Context, projectID, name string) (bool, error) {
 	return db.IsNameUniqueInProject(ctx, projectID, name, constants.SourceTable)
+}
+
+// GetMinimumSourceVersion returns the minimum (oldest) semantic version from all sources.
+// Uses semver comparison to find the true minimum version.
+// Returns empty string if no sources exist.
+func (db *Database) GetMinimumSourceVersion() (string, error) {
+	var versions orm.ParamsList
+	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Distinct().
+		ValuesFlat(&versions, "version")
+	if err != nil {
+		return "", fmt.Errorf("failed to get source versions: %s", err)
+	}
+
+	if len(versions) == 0 {
+		return "", nil
+	}
+
+	// Find minimum version using semver comparison
+	minVersion := ""
+	for _, v := range versions {
+		version := v.(string)
+		if version == "" {
+			continue
+		}
+		if minVersion == "" || semver.Compare(version, minVersion) < 0 {
+			minVersion = version
+		}
+	}
+
+	return minVersion, nil
 }

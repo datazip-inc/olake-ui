@@ -86,12 +86,12 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [isLoading, setIsLoading] = useState(false)
-	const [destination, setDestination] = useState<Entity | null>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 
 	const {
-		destinations,
-		fetchDestinations,
+		fetchDestination,
+		destination,
+		isLoadingDestination,
 		setSelectedDestination,
 		setShowDeleteModal,
 		setShowEditDestinationModal,
@@ -126,34 +126,45 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		: transformJobs((destination?.jobs || []).slice(0, DISPLAYED_JOBS_COUNT))
 
 	useEffect(() => {
-		fetchDestinations()
-	}, [])
+		const fetchDestinationDetails = async () => {
+			// Skip fetching if in job flow mode (destination data comes from initialData)
+			if (fromJobFlow) {
+				return
+			}
 
-	useEffect(() => {
-		if (destinationId) {
-			const destination = destinations.find(
-				d => d.id.toString() === destinationId,
-			)
-			if (destination) {
-				setDestination(destination)
-				setDestinationName(destination.name)
-				const connectorType =
-					destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG
-						? CONNECTOR_TYPES.APACHE_ICEBERG
-						: CONNECTOR_TYPES.AMAZON_S3
-				setConnector(connectorType)
-				setSelectedVersion(destination.version || "")
+			if (!destinationId) {
+				navigate("/destinations")
+				return
+			}
 
-				const config =
-					typeof destination.config === "string"
-						? JSON.parse(destination.config)
-						: destination.config
-				setFormData(config)
-			} else {
+			try {
+				await fetchDestination(destinationId)
+			} catch (error) {
+				console.error("Error fetching destination:", error)
 				navigate("/destinations")
 			}
 		}
-	}, [destinationId, destinations, fetchDestinations])
+
+		fetchDestinationDetails()
+	}, [destinationId, fromJobFlow])
+
+	useEffect(() => {
+		if (destination && destinationId) {
+			setDestinationName(destination.name)
+			const connectorType =
+				destination.type === DESTINATION_INTERNAL_TYPES.ICEBERG
+					? CONNECTOR_TYPES.APACHE_ICEBERG
+					: CONNECTOR_TYPES.AMAZON_S3
+			setConnector(connectorType)
+			setSelectedVersion(destination.version || "")
+
+			const config =
+				typeof destination.config === "string"
+					? JSON.parse(destination.config)
+					: destination.config
+			setFormData(config)
+		}
+	}, [destination, destinationId])
 
 	useEffect(() => {
 		if (initialData) {
@@ -206,14 +217,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 				if (response?.version) {
 					setVersions(response.version)
-
-					// If no version is selected, set the first one as default
-					if (!selectedVersion && response.version.length > 0) {
-						setSelectedVersion(response.version[0])
-						if (onVersionChange) {
-							onVersionChange(response.version[0])
-						}
-					}
 				} else {
 					resetVersionState()
 				}
@@ -375,7 +378,9 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 
 	const handlePauseJob = async (jobId: string, checked: boolean) => {
 		await jobService.activateJob(jobId, !checked)
-		await fetchDestinations()
+		if (destinationId) {
+			await fetchDestination(destinationId)
+		}
 	}
 
 	const toggleDocsPanel = () => {
@@ -642,6 +647,14 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		</div>
 	)
 
+	if (isLoadingDestination) {
+		return (
+			<div className="flex h-screen items-center justify-center">
+				<Spin size="large" />
+			</div>
+		)
+	}
+
 	return (
 		<div className="flex h-screen">
 			<div className="flex flex-1 flex-col">
@@ -668,11 +681,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 											stepTitle={stepTitle}
 										/>
 										<Link
-											to={
-												destinationId
-													? `/destinations/${destinationId}`
-													: `/destinations/${destinations.find(d => d.name === destinationName)?.id || ""}`
-											}
+											to={`/destinations/${initialData?.id || ""}`}
 											className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-600"
 										>
 											<PencilSimpleIcon className="size-4" />

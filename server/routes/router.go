@@ -44,6 +44,9 @@ func Init(h *handlers.Handler) {
 		web.Router("/*", h, "get:ServeFrontend") // any other frontend route
 	}
 
+	// Swagger routes
+	web.Router("/swagger/*", h, "get:ServeSwagger")
+
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
@@ -61,6 +64,7 @@ func Init(h *handlers.Handler) {
 	// Source routes
 	web.Router("/api/v1/project/:projectid/sources", h, "get:ListSources")
 	web.Router("/api/v1/project/:projectid/sources", h, "post:CreateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", h, "get:GetSource")
 	web.Router("/api/v1/project/:projectid/sources/:id", h, "put:UpdateSource")
 	web.Router("/api/v1/project/:projectid/sources/:id", h, "delete:DeleteSource")
 	web.Router("/api/v1/project/:projectid/sources/test", h, "post:TestSourceConnection")
@@ -71,6 +75,7 @@ func Init(h *handlers.Handler) {
 	// Destination routes
 	web.Router("/api/v1/project/:projectid/destinations", h, "get:ListDestinations")
 	web.Router("/api/v1/project/:projectid/destinations", h, "post:CreateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", h, "get:GetDestination")
 	web.Router("/api/v1/project/:projectid/destinations/:id", h, "put:UpdateDestination")
 	web.Router("/api/v1/project/:projectid/destinations/:id", h, "delete:DeleteDestination")
 	web.Router("/api/v1/project/:projectid/destinations/test", h, "post:TestDestinationConnection")
@@ -80,6 +85,7 @@ func Init(h *handlers.Handler) {
 	// Job routes
 	web.Router("/api/v1/project/:projectid/jobs", h, "get:ListJobs")
 	web.Router("/api/v1/project/:projectid/jobs", h, "post:CreateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", h, "get:GetJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "put:UpdateJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "delete:DeleteJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/sync", h, "post:SyncJob")
@@ -99,7 +105,11 @@ func Init(h *handlers.Handler) {
 	// validation routes
 	web.Router("/api/v1/project/:projectid/check-unique", h, "post:CheckUniqueName")
 
+	// platform routes
+	web.Router("/api/v1/platform/releases", h, "get:GetReleaseUpdates")
+
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", h, "post:RecoverClearDestination")
+	web.Router("/internal/project/:projectid/jobs/:id/statefile", h, "put:UpdateStateFile")
 }

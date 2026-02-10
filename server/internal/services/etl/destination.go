@@ -15,8 +15,48 @@ import (
 
 // Destination-related methods on AppService
 
+// GetDestination returns a single destination by ID with its associated jobs.
+func (s *ETLService) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
+	destination, err := s.db.GetDestinationByID(destinationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get destination: %s", err)
+	}
+
+	// Get jobs for this destination
+	jobs, err := s.db.GetJobsByDestinationID([]int{destinationID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs for destination: %s", err)
+	}
+
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, jobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
+	// Build job data items
+	jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "destination")
+	if err != nil {
+		return nil, fmt.Errorf("failed to build job data items: %s", err)
+	}
+
+	item := &dto.DestinationDataItem{
+		ID:        destination.ID,
+		Name:      destination.Name,
+		Type:      destination.DestType,
+		Version:   destination.Version,
+		Config:    destination.Config,
+		CreatedAt: destination.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: destination.UpdatedAt.Format(time.RFC3339),
+		Jobs:      jobItems,
+	}
+	setUsernames(&item.CreatedBy, &item.UpdatedBy, destination.CreatedBy, destination.UpdatedBy)
+
+	return item, nil
+}
+
 // ListDestinations returns all destinations for a project with lightweight job summaries.
-func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dto.DestinationDataItem, error) {
+func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	destinations, err := s.db.ListDestinationsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list destinations: %s", err)
@@ -38,6 +78,12 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 		jobsByDestID[job.DestID.ID] = append(jobsByDestID[job.DestID.ID], job)
 	}
 
+	// Batch fetch workflow info for all jobs
+	lastRunByJobID, err := fetchLatestJobRunsByJobIDs(ctx, s.temporal, projectID, allJobs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest job runs from temporal: %s", err)
+	}
+
 	destItems := make([]dto.DestinationDataItem, 0, len(destinations))
 	for _, dest := range destinations {
 		entity := dto.DestinationDataItem{
@@ -52,7 +98,7 @@ func (s *ETLService) ListDestinations(_ context.Context, projectID string) ([]dt
 		setUsernames(&entity.CreatedBy, &entity.UpdatedBy, dest.CreatedBy, dest.UpdatedBy)
 
 		jobs := jobsByDestID[dest.ID]
-		jobItems, err := buildJobDataItems(jobs, s.temporal, "destination")
+		jobItems, err := buildJobDataItems(jobs, lastRunByJobID, "destination")
 		if err != nil {
 			return nil, fmt.Errorf("failed to build job data items: %s", err)
 		}
@@ -194,30 +240,17 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 	return result, logs.Logs, nil
 }
 
-func (s *ETLService) GetDestinationJobs(_ context.Context, id int) ([]*models.Job, error) {
-	if _, err := s.db.GetDestinationByID(id); err != nil {
-		return nil, fmt.Errorf("failed to find destination: %s", err)
-	}
-
-	jobs, err := s.db.GetJobsByDestinationID([]int{id})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get jobs by destination: %s", err)
-	}
-
-	return jobs, nil
-}
-
-func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (map[string]interface{}, error) {
+func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (dto.VersionsResponse, error) {
 	if destType == "" {
-		return nil, fmt.Errorf("destination type is required")
+		return dto.VersionsResponse{}, fmt.Errorf("destination type is required")
 	}
 
 	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get driver image tags: %s", err)
+		return dto.VersionsResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
 	}
 
-	return map[string]interface{}{"version": versions}, nil
+	return dto.VersionsResponse{Version: versions}, nil
 }
 
 // TODO: cache spec in db for each version

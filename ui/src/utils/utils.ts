@@ -9,20 +9,32 @@ import {
 	CursorFieldValues,
 	LogEntry,
 	TaskLogEntry,
+	SelectedStreamsByNamespace,
 } from "../types"
+import {
+	ReleasesResponse,
+	ReleaseType,
+	ReleaseTypeData,
+} from "../types/platformTypes"
 import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATION_LABELS,
 	FILTER_REGEX,
+	SOURCE_SUPPORTED_INGESTION_MODES,
+	DESTINATION_SUPPORTED_INGESTION_MODES,
 } from "./constants"
-import MongoDB from "../assets/Mongo.svg"
-import Postgres from "../assets/Postgres.svg"
-import MySQL from "../assets/MySQL.svg"
-import Oracle from "../assets/Oracle.svg"
-import AWSS3 from "../assets/AWSS3.svg"
-import ApacheIceBerg from "../assets/ApacheIceBerg.svg"
-import Kafka from "../assets/Kafka.svg"
+import {
+	AWSS3,
+	ApacheIceBerg,
+	DB2,
+	Kafka,
+	MongoDB,
+	MySQL,
+	Oracle,
+	Postgres,
+	MSSQL,
+} from "../assets"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {
@@ -30,6 +42,7 @@ export const normalizeConnectorType = (connectorType: string): string => {
 
 	switch (lowerType) {
 		case "s3":
+			return "s3"
 		case "amazon s3":
 			return "parquet"
 		case "iceberg":
@@ -59,6 +72,12 @@ export const getConnectorImage = (connector: string) => {
 			return ApacheIceBerg
 		case "kafka":
 			return Kafka
+		case "s3":
+			return AWSS3
+		case "db2":
+			return DB2
+		case "mssql":
+			return MSSQL
 		default:
 			// Default placeholder
 			return MongoDB
@@ -120,8 +139,8 @@ export const getJobTypeClass = (jobType: JobType) => {
 	}
 }
 
-export const getConnectorInLowerCase = (connector: string) => {
-	const normalizedConnector = normalizeConnectorType(connector)
+export const getConnectorInLowerCase = (connector?: string | null) => {
+	const normalizedConnector = normalizeConnectorType(connector || "")
 	const lowerConnector = normalizedConnector.toLowerCase()
 
 	switch (lowerConnector) {
@@ -131,6 +150,8 @@ export const getConnectorInLowerCase = (connector: string) => {
 		case DESTINATION_INTERNAL_TYPES.ICEBERG:
 		case DESTINATION_LABELS.APACHE_ICEBERG:
 			return DESTINATION_INTERNAL_TYPES.ICEBERG
+		case "s3":
+			return "s3"
 		case "mongodb":
 			return "mongodb"
 		case "postgres":
@@ -139,6 +160,10 @@ export const getConnectorInLowerCase = (connector: string) => {
 			return "mysql"
 		case "oracle":
 			return "oracle"
+		case "db2":
+			return "db2"
+		case "mssql":
+			return "mssql"
 		default:
 			return lowerConnector
 	}
@@ -190,6 +215,13 @@ export const getConnectorLabel = (type: string): string => {
 			return "Oracle"
 		case "kafka":
 			return "Kafka"
+		case "s3":
+		case "S3":
+			return "S3"
+		case "db2":
+			return "DB2"
+		case "mssql":
+			return "MSSQL"
 		default:
 			return "MongoDB"
 	}
@@ -623,9 +655,15 @@ export const validateStreams = (selections: {
 	)
 }
 
-export const getIngestionMode = (selectedStreams: {
-	[key: string]: SelectedStream[]
-}): IngestionMode => {
+export const getIngestionMode = (
+	selectedStreams: SelectedStreamsByNamespace,
+	sourceType?: string,
+): IngestionMode => {
+	// Fallback to APPEND if source doesn't support UPSERT
+	if (!isSourceIngestionModeSupported(IngestionMode.UPSERT, sourceType)) {
+		return IngestionMode.APPEND
+	}
+
 	const selectedStreamsObj = getSelectedStreams(selectedStreams)
 	const allSelectedStreams: SelectedStream[] = []
 
@@ -644,6 +682,37 @@ export const getIngestionMode = (selectedStreams: {
 	if (appendCount === allSelectedStreams.length) return IngestionMode.APPEND
 	if (upsertCount === allSelectedStreams.length) return IngestionMode.UPSERT
 	return IngestionMode.CUSTOM
+}
+
+// Checks if the source connector supports a specific ingestion mode
+export const isSourceIngestionModeSupported = (
+	mode: IngestionMode,
+	sourceType?: string,
+): boolean => {
+	if (!sourceType) return false
+
+	const normSourceType = normalizeConnectorType(
+		sourceType,
+	).toLowerCase() as keyof typeof SOURCE_SUPPORTED_INGESTION_MODES
+	const sourceModes = SOURCE_SUPPORTED_INGESTION_MODES[normSourceType]
+
+	return sourceModes?.some(m => m === mode) ?? false
+}
+
+// Checks if the destination connector supports a specific ingestion mode
+export const isDestinationIngestionModeSupported = (
+	mode: IngestionMode,
+	destinationType?: string,
+): boolean => {
+	if (!destinationType) return false
+
+	const normDestType = normalizeConnectorType(destinationType).toLowerCase()
+	const destModes =
+		DESTINATION_SUPPORTED_INGESTION_MODES[
+			normDestType as keyof typeof DESTINATION_SUPPORTED_INGESTION_MODES
+		]
+
+	return destModes?.some(m => m === mode) ?? false
 }
 
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
@@ -747,5 +816,72 @@ export async function copyToClipboard(textToCopy: string): Promise<void> {
 			console.error("Failed to copy logs with both methods", fallbackErr)
 			message.error("Failed to copy logs")
 		}
+	}
+}
+
+// Format date from ISO string to readable format (e.g., "Jan 17, 2026")
+export const formatDate = (dateString: string): string => {
+	try {
+		const date = new Date(dateString)
+		const options: Intl.DateTimeFormatOptions = {
+			day: "numeric",
+			month: "short",
+			year: "numeric",
+		}
+		return date.toLocaleDateString("en-US", options)
+	} catch {
+		return dateString
+	}
+}
+
+/* Processes release data for UI consumption
+ * - Converts ISO dates to readable format: "2026-01-17T10:00:00Z" -> "Released on Jan 17, 2026"
+ * - Converts kebab-case tags to Title Case: "new-release" -> "New Release"
+ *
+ * Before: {
+ *   olake_ui_worker: { releases: [{ date: "2026-01-17T10:00:00Z", tags: ["new-release"] }] },
+ *   ...
+ * }
+ *
+ * After: {
+ *   olake_ui_worker: { releases: [{ date: "Released on Jan 17, 2026", tags: ["New Release"] }] },
+ *   ...
+ * }
+ */
+export const processReleasesData = (
+	releases: ReleasesResponse | null,
+): ReleasesResponse | null => {
+	if (!releases) {
+		return null
+	}
+
+	const formatReleaseData = (releaseTypeData?: ReleaseTypeData) => {
+		if (!releaseTypeData) {
+			return undefined
+		}
+		return {
+			...releaseTypeData,
+			releases: releaseTypeData.releases.map(release => ({
+				...release,
+				date: `Released on ${formatDate(release.date)}`,
+				tags: release.tags.map(tag =>
+					tag
+						.replace(/-/g, " ")
+						.split(" ")
+						.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+						.join(" "),
+				),
+			})),
+		}
+	}
+	return {
+		[ReleaseType.OLAKE_UI_WORKER]: formatReleaseData(
+			releases[ReleaseType.OLAKE_UI_WORKER],
+		),
+		[ReleaseType.OLAKE_HELM]: formatReleaseData(
+			releases[ReleaseType.OLAKE_HELM],
+		),
+		[ReleaseType.OLAKE]: formatReleaseData(releases[ReleaseType.OLAKE]),
+		[ReleaseType.FEATURES]: formatReleaseData(releases[ReleaseType.FEATURES]),
 	}
 }

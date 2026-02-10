@@ -226,6 +226,44 @@ http://localhost:8080
     ]
   }
 
+
+### Get Source
+
+- **Endpoint**: `/api/v1/project/:projectid/sources/:id`
+- **Method**: GET
+- **Description**: Retrieve a single source by id
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "id": "integer",
+      "name": "string",
+      "type": "string",
+      "version": "string",
+      "config": "json",
+      "created_at": "timestamp",
+      "updated_at": "timestamp",
+      "created_by": "string",
+      "updated_by": "string",
+      "jobs": [
+        {
+          "name": "string",
+          "id": "integer",
+          "activate": "boolean",
+          "last_run_time": "timestamp",
+          "last_run_state": "string",
+          "dest_name": "string"
+        }
+      ]
+    }
+  }
+  ```
+
+
 ### Update Source
 
 - **Endpoint**: `/api/v1/project/:projectid/sources/:id`
@@ -454,6 +492,42 @@ http://localhost:8080
   }
   ```
 
+### Get Destination
+
+- **Endpoint**: `/api/v1/project/:projectid/destinations/:id`
+- **Method**: GET
+- **Description**: Retrieve a single destination by id
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "id": "integer",
+      "name": "string",
+      "type": "string",
+      "version": "string",
+      "config": "json",
+      "created_at": "timestamp",
+      "updated_at": "timestamp",
+      "created_by": "string",
+      "updated_by": "string",
+      "jobs": [
+        {
+          "name": "string",
+          "id": "integer",
+          "activate": "boolean",
+          "last_run_time": "timestamp",
+          "last_run_state": "string",
+          "source_name": "string"
+        }
+      ]
+    }
+  }
+  ```
+
 ### Delete Destination
 
 - **Endpoint**: `/api/v1/project/:projectid/destinations/:id`
@@ -515,7 +589,7 @@ http://localhost:8080
 
 ### Get All Jobs
 
-- **Endpoint**: `/api/v1/project/:projectid/jobs` // also use endpoint for filter such as  /jobs/dest_id="some_id" or /jobs/source_id="some_id"
+- **Endpoint**: `/api/v1/project/:projectid/jobs`
 - **Method**: GET
 - **Description**: Retrieve all jobs
 - **Headers**: `Authorization: Bearer <token>`
@@ -531,16 +605,13 @@ http://localhost:8080
         "source": {
           "name": "string",
           "type": "string",
-          "config": "json",
           "version": "string"
         },
         "destination": {
           "name": "string",
           "type": "string",
-          "config": "json",
           "version": "string"
         },
-        "streams_config":"json",
         "frequency": "string",
         "last_run_time": "timestamp",
         "last_run_state": "string",
@@ -553,6 +624,47 @@ http://localhost:8080
       // can also send state but if it is required
       }
     ]
+  }
+  ```
+
+### Get Job
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id`
+- **Method**: GET
+- **Description**: Retrieve a single job by id
+- **Headers**: `Authorization: Bearer <token>`
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "id": "int",
+      "name": "string",
+      "source": {
+        "name": "string",
+        "type": "string",
+        "config": "json",
+        "version": "string"
+      },
+      "destination": {
+        "name": "string",
+        "type": "string",
+        "config": "json",
+        "version": "string"
+      },
+      "streams_config": "json",
+      "frequency": "string",
+      "last_run_time": "timestamp",
+      "last_run_state": "string",
+      "last_run_type": "string",
+      "created_at": "timestamp",
+      "updated_at": "timestamp",
+      "activate": "boolean",
+      "created_by":  "string",
+      "updated_by":  "string"
+    }
   }
   ```
 
@@ -976,6 +1088,45 @@ http://localhost:8080
   {
     "success": "boolean",
     "message": "string"
+  }
+  ```
+
+
+## Platform
+
+### Get Release Updates
+
+---
+
+- **Endpoint**: `/api/v1/platform/releases`
+- **Method**: GET
+- **Description**: Fetch release metadata for Olake UI and Worker, Helm, and Olake.
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Parameters**:
+  - `limit` _(optional, number)_: Max number of releases to fetch for each component.
+
+- **Response**:
+
+  ```json
+  {
+    "success": "boolean",
+    "message": "string",
+    "data": {
+      "features": {
+        "releases": ["json"]
+      },
+      "olake_ui_worker": {
+        "current_version": "string",
+        "releases": ["json"]
+      },
+      "olake_helm": {
+        "releases": ["json"]
+      },
+      "olake": {
+        "current_version": "string",
+        "releases": ["json"]
+      }
+    }
   }
   ```
 

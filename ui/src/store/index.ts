@@ -6,7 +6,7 @@ import { DestinationSlice, createDestinationSlice } from "./destinationStore"
 import { TaskSlice, createTaskSlice } from "./taskStore"
 import { ModalSlice, createModalSlice } from "./modalStore"
 import { SelectionSlice, createSelectionSlice } from "./selectionStore"
-import { createSettingsSlice, SettingsSlice } from "./settingsStore"
+import { SettingsSlice, createSettingsSlice } from "./settingsStore"
 
 export type AppState = AuthSlice &
 	JobSlice &

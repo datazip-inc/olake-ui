@@ -23,8 +23,9 @@ var (
 	TableNameMap     = map[TableType]string{}
 	DefaultConfigDir = "/tmp/olake-config"
 
-	DefaultLogRetentionPeriod = 30
-	DefaultCancelSyncWaitTime = 30 * time.Second
+	DefaultLogRetentionPeriod   = 30
+	DefaultCancelSyncWaitTime   = 30 * time.Second
+	DefaultListWorkflowPageSize = 500
 
 	// versions
 	DefaultSpecVersion             = "v0.2.0"
@@ -74,6 +75,9 @@ var SupportedSourceTypes = []string{
 	"oracle",
 	"mongodb",
 	"kafka",
+	"s3",
+	"db2",
+	"mssql",
 }
 
 // Supported database/source types
@@ -92,6 +96,8 @@ var RequiredConfigVariable = []string{
 	"copyrequestbody",
 	"logsdir"}
 
+var AppVersion string
+
 func Init() {
 	viper.AutomaticEnv()
 	viper.SetDefault(EnvLogFormat, "console")
@@ -105,6 +111,8 @@ func Init() {
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
 
 	checkForRequiredVariables(RequiredConfigVariable)
+
+	AppVersion = viper.GetString("APP_VERSION")
 
 	// init table names
 	TableNameMap = map[TableType]string{
