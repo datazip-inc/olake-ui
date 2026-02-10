@@ -42,7 +42,7 @@ This Docker Compose setup provides a comprehensive environment(OLake UI, Tempora
 1. **One-Command Setup:**
 
 ```sh
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
 ```
 
 2. **Access the services:**
@@ -54,7 +54,7 @@ curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-c
 
 **Custom Admin User:**
 
-The stack automatically creates an initial admin user on first startup. To change the default credentials, edit the `x-signup-defaults` section in `docker-compose.yml`:
+The stack automatically creates an initial admin user on first startup. To change the default credentials, edit the `x-signup-defaults` section in `docker-compose-v1.yml`:
 
 ```yaml
 x-signup-defaults:
@@ -65,7 +65,7 @@ email: &defaultEmail "your-email@example.com"
 
 **Custom Data Directory:**
 
-By default, data is stored in `${PWD}/olake-data` directory. To use a different location, edit the `x-app-defaults` section in `docker-compose.yml`:
+By default, data is stored in `${PWD}/olake-data` directory. To use a different location, edit the `x-app-defaults` section in `docker-compose-v1.yml`:
 
 ```yaml
 x-app-defaults:
@@ -76,7 +76,7 @@ Make sure the directory exists and is writable.
 
 **Encryption Modes:**
 
-Configure encryption in `docker-compose.yml`:
+Configure encryption in `docker-compose-v1.yml`:
 
 ```yaml
 x-encryption:
@@ -111,11 +111,15 @@ x-encryption:
 To update OLake UI to the latest version, use the following command:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - down && \
-curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose.yml | docker compose -f - up -d
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - down && \
+curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-compose-v1.yml | docker compose -f - up -d
 ```
 
 **Note**: Your data and configurations will be preserved as they are stored in persistent volumes and the `olake-data` directory.
+
+### Upgrading from legacy `docker-compose.yml`
+
+To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026** , follow this [documentation](https://olake.io/docs/install/olake-ui/#:~:text=To%20move%20from,Legacy%20Setup.).
 
 ## Contributing
 

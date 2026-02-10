@@ -417,7 +417,7 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 	}
 
 	var tasks []dto.JobTask
-	query := fmt.Sprintf("WorkflowId between 'sync-%s-%d' and 'sync-%s-%d-~'", projectID, job.ID, projectID, job.ID)
+	query := fmt.Sprintf("WorkflowId BETWEEN 'sync-%s-%d-' AND 'sync-%s-%d-z'", projectID, job.ID, projectID, job.ID)
 
 	resp, err := s.temporal.ListWorkflow(ctx, &workflowservice.ListWorkflowExecutionsRequest{
 		Query: query,
