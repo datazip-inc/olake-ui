@@ -31,7 +31,7 @@ jobs:
           cache-dependency-path: "./ui/pnpm-lock.yaml"
 
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Run Linter
         run: pnpm lint
@@ -63,7 +63,7 @@ jobs:
           cache-dependency-path: "./ui/pnpm-lock.yaml"
 
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build Project
         run: pnpm build
