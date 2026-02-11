@@ -183,7 +183,7 @@ func FetchAndBuildReleaseMetadata(ctx context.Context, repo, releaseType string,
 		return nil, err
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) // #nosec G704 -- URL is built from a compile-time constant (githubReleasesURLTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func FetchFeaturesJSON(ctx context.Context) ([]*dto.ReleaseMetadataResponse, err
 	// GitHub API requires User-Agent header
 	req.Header.Set("User-Agent", "olake-ui-server")
 
-	resp, err := httpClient.Do(req)
+	resp, err := httpClient.Do(req) // #nosec G704 -- URL is a compile-time constant (githubFeaturesJSONURL)
 	if err != nil {
 		logger.Warnf("failed to fetch features.json: %s", err)
 		return []*dto.ReleaseMetadataResponse{}, nil

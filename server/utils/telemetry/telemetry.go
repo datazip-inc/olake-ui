@@ -128,7 +128,7 @@ func getLocationFromIP(ip string) *LocationInfo {
 	}
 
 	client := http.Client{Timeout: TelemetryConfigTimeout}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704 -- URL is constructed from a trusted constant (ipinfo.io)
 	if err != nil {
 		return locationInfo
 	}
@@ -194,7 +194,7 @@ func TrackEvent(_ context.Context, eventName string, properties map[string]inter
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := instance.httpClient.Do(req)
+	resp, err := instance.httpClient.Do(req) // #nosec G704 -- URL is a compile-time constant (ProxyTrackURL)
 	if err != nil {
 		return err
 	}
