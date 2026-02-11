@@ -62,14 +62,20 @@ const getSystemInfo = async () => {
 	}
 }
 
-// returns a unique user id for the user to track them across sessions
-const getTelemetryID = async (): Promise<string> => {
+// returns a unique user id  and olake-ui version for the user to track them across sessions
+const getTelemetryID = async (): Promise<{
+	telemetryId: string
+	version: string
+}> => {
 	try {
 		const response = await api.get("/telemetry-id")
-		return response.data.user_id || ""
+		return {
+			telemetryId: response.data.user_id || "",
+			version: response.data.version || "unknown",
+		}
 	} catch (error) {
 		console.error("Error fetching telemetry ID:", error)
-		return ""
+		return { telemetryId: "", version: "unknown" }
 	}
 }
 
@@ -78,7 +84,7 @@ export const trackEvent = async (
 	properties?: Record<string, any>,
 ) => {
 	try {
-		const telemetryId = await getTelemetryID()
+		const { telemetryId, version } = await getTelemetryID()
 		if (!telemetryId || telemetryId === "") {
 			return
 		}
@@ -90,6 +96,7 @@ export const trackEvent = async (
 		const eventProperties = {
 			distinct_id: telemetryId,
 			event_original_name: eventName,
+			olake_ui_version: version,
 			...properties,
 			...systemInfo,
 			...(username && { username }),

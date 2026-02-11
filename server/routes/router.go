@@ -44,6 +44,9 @@ func Init(h *handlers.Handler) {
 		web.Router("/*", h, "get:ServeFrontend") // any other frontend route
 	}
 
+	// Swagger routes
+	web.Router("/swagger/*", h, "get:ServeSwagger")
+
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes

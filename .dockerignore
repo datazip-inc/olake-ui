@@ -4,6 +4,7 @@
 .gitignore
 .env
 .dockerignore
+docker-compose-v1.yml
 docker-compose.yml
 *.md
 !README.md

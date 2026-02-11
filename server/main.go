@@ -1,3 +1,28 @@
+// @title Olake UI API
+// @description Olake is fastest open-source tool for replicating Databases to Apache Iceberg or Data Lakehouse.
+// @contact.name OLake
+// @contact.email hello@olake.io
+// @contact.url https://olake.io/contact/
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @tag.name Authentication
+// @tag.description Authentication endpoints
+// @tag.name Jobs
+// @tag.description Job management and execution endpoints
+// @tag.name Sources
+// @tag.description Source configuration endpoints
+// @tag.name Destinations
+// @tag.description Destination configuration endpoints
+// @tag.name Project Settings
+// @tag.description Project configuration endpoints
+// @tag.name Platform
+// @tag.description Platform-level operations
+// @tag.name Users
+// @tag.description User management endpoints
+// @tag.name Internal
+// @tag.description Internal worker callbacks (not for external use)
+
 package main
 
 import (
@@ -10,6 +35,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/routes"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+
+	"github.com/datazip-inc/olake-ui/server/docs"
 )
 
 func main() {
@@ -29,6 +56,11 @@ func main() {
 	}
 	logger.Info("Application services initialized successfully")
 	telemetry.InitTelemetry(db)
+
+	// Set Swagger Info version to match the application's runtime version.
+	if constants.AppVersion != "" {
+		docs.SwaggerInfo.Version = constants.AppVersion
+	}
 
 	routes.Init(handlers.NewHandler(appSvc))
 	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
