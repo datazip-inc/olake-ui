@@ -147,6 +147,21 @@ const StreamConfiguration = ({
 
 		setSyncMode(initialApiSyncMode ?? "full_refresh")
 		setCursorField(initialCursorField)
+		// Auto-select first available cursor field if default sync mode is incremental and no cursor field is set
+		if (initialApiSyncMode === "incremental" && !initialCursorField) {
+			const availableCursorFields = stream.stream.available_cursor_fields || []
+			const cursor = availableCursorFields[0]
+			if (cursor) {
+				setCursorField(getCursorFieldValues(cursor).primary)
+				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
+				onSyncModeChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "",
+					SyncMode.INCREMENTAL,
+					cursor,
+				)
+			}
+		}
 		setNormalization(initialNormalization)
 		setActivePartitionRegex(initialPartitionRegex || "")
 		setPartitionRegex("")
