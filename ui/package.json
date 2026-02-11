@@ -4,8 +4,7 @@
 	"version": "0.0.0",
 	"type": "module",
 	"resolutions": {
-		"form-data": "4.0.4",
-		"axios": "^1.8.2"
+		"form-data": "4.0.4"
 	},
 	"scripts": {
 		"dev": "vite",
