@@ -45,6 +45,7 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
+	ConfCustomDriverImage    = "CUSTOM_DRIVER_VERSION"
 	// database keys
 	ConfPostgresDB            = "postgresdb"
 	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
