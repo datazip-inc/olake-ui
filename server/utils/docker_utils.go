@@ -105,6 +105,11 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 		break
 	}
 
+	// Add custom version if provided
+	if customVersion := CustomDriverVersion(); customVersion != "" {
+		tags = append(tags, customVersion)
+	}
+
 	if len(tags) == 0 {
 		return nil, "", fmt.Errorf("no tags found for image: %s", imageName)
 	}
@@ -300,4 +305,22 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	}
 
 	return nil
+}
+
+// --- developer utils ---
+
+// CustomDriverVersion returns the custom driver version used to test olake with olake-ui.
+// Note: This is only for development/testing purposes.
+// When a custom version is set, semver-based compatibility checks will bypassed.
+func CustomDriverVersion() string {
+	if GetAppEnv() == "development" {
+		return os.Getenv(constants.EnvCustomDriverImage)
+	}
+	return ""
+}
+
+// GetAppEnv returns the application environment in normalized format
+// Supported values: development, production
+func GetAppEnv() string {
+	return NormalizeString(os.Getenv(constants.EnvAppEnvironment))
 }
