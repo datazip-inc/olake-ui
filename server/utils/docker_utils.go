@@ -69,6 +69,7 @@ func GetWorkerEnvVars() map[string]string {
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
 	// TODO: make constants file and validate all env vars in start of server
 	repositoryBase, err := web.AppConfig.String(constants.ConfContainerRegistryBase)
+	fmt.Printf("[LOG-SAP]repositoryBase: %s", repositoryBase)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %s", err)
 	}
@@ -77,19 +78,24 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 	if imageName == "" {
 		images = defaultImages
 	}
+	fmt.Printf("[LOG-SAP]images to check: %v", images)
 	driverImage := ""
 	for _, imageName := range images {
 		if strings.Contains(repositoryBase, "ecr") {
 			fullImage := fmt.Sprintf("%s/%s", repositoryBase, imageName)
+			fmt.Printf("[LOG-SAP]fetching tags for ECR image: %s", fullImage)
 			tags, err = getECRImageTags(ctx, fullImage)
+			fmt.Printf("[LOG-SAP]tags from ECR for %s: %v, err: %v", fullImage, tags, err)
 		} else {
 			tags, err = getDockerHubImageTags(ctx, imageName)
+			fmt.Printf("[LOG-SAP]tags from Docker Hub for %s: %v, err: %v", imageName, tags, err)
 		}
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
 			logger.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
+			fmt.Printf("[LOG-SAP]tags from cache for %s: %v, err: %v", imageName, tags, err)
 			if err != nil {
 				return nil, "", fmt.Errorf("failed to fetch cached image tags for %s: %s", imageName, err)
 			}
@@ -102,25 +108,30 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 		// TODO : return highest tag out of all sources (currently breaking loop once any tag found on any image)
 		driverImage = imageName
+		fmt.Printf("[LOG-SAP]selected driver image: %s with tags: %v", driverImage, tags)
 		break
 	}
-
+	fmt.Printf("[LOG-SAP]final selected driver image: %s with tags: %v", driverImage, tags)
 	if len(tags) == 0 {
 		return nil, "", fmt.Errorf("no tags found for image: %s", imageName)
 	}
 	driverImage = strings.TrimPrefix(driverImage, "olakego/source-")
 	sort.Slice(tags, func(i, j int) bool { return semver.Compare(tags[i], tags[j]) > 0 }) // highest first
+	fmt.Printf("[LOG-SAP]sorted tags: %v", tags)
+	fmt.Printf("[LOG-SAP]returning driver image: %s with tags: %v", driverImage, tags)
 	return tags, driverImage, err
 }
 
 // getECRImageTags fetches tags from AWS ECR
 func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error) {
 	accountID, region, repoName, err := ParseECRDetails(fullImageName)
+	fmt.Printf("[LOG-SAP]Parsed ECR details - accountID: %s, region: %s, repoName: %s, err: %v", accountID, region, repoName, err)
 	if err != nil {
 		return nil, fmt.Errorf("invalid ECR URI: %s", err)
 	}
 
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	fmt.Printf("[LOG-SAP]Loaded AWS config for region %s, err: %v", region, err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %s", err)
 	}
@@ -131,18 +142,22 @@ func getECRImageTags(ctx context.Context, fullImageName string) ([]string, error
 		RegistryId:     aws.String(accountID),
 		MaxResults:     aws.Int32(100),
 	})
+	fmt.Printf("[LOG-SAP]DescribeImages response for %s: %v, err: %v", fullImageName, resp, err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch ECR tags: %s", err)
 	}
 
 	var tags []string
 	for i := range resp.ImageDetails {
+		fmt.Printf("[LOG-SAP]Processing image details for %s: %v", fullImageName, resp.ImageDetails[i])
 		for _, tag := range resp.ImageDetails[i].ImageTags {
 			if isValidTag(tag) {
+				fmt.Printf("[LOG-SAP]Valid tag found for %s: %s", fullImageName, tag)
 				tags = append(tags, tag)
 			}
 		}
 	}
+	fmt.Printf("[LOG-SAP]Valid tags from ECR for %s: %v", fullImageName, tags)
 	return tags, nil
 }
 
