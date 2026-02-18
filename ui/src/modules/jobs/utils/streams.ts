@@ -31,6 +31,12 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		sourceType,
 	)
 
+	// Detect driver version: if any existing selected stream has `selected_columns`,
+	// the driver supports column selection and we should populate it for new streams too.
+	const supportsColumnSelection = Object.values(response.selected_streams ?? {})
+		.flat()
+		.some(s => s.selected_columns !== undefined)
+
 	// Iterate through all streams
 	response.streams.forEach((stream: StreamData) => {
 		const namespace = stream.stream.namespace || ""
@@ -69,6 +75,14 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
+				// Only add selected_columns for new-driver versions (inferred from existing streams).
+				// Omitting it on old drivers preserves the "unsupported" banner in the UI.
+				...(supportsColumnSelection && {
+					selected_columns: {
+						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
+						sync_new_columns: true,
+					},
+				}),
 			})
 		}
 	})

@@ -51,6 +51,7 @@ import {
 import StreamsSchema from "./StreamsSchema"
 
 const StreamConfiguration = ({
+	selectedStream,
 	stream,
 	onSyncModeChange,
 	isSelected,
@@ -64,6 +65,7 @@ const StreamConfiguration = ({
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	onIngestionModeChange,
+	onSelectedColumnChange,
 	sourceType,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
@@ -134,6 +136,9 @@ const StreamConfiguration = ({
 
 	useEffect(() => {
 		setActiveTab("config")
+	}, [stream.stream.name, stream.stream.namespace])
+
+	useEffect(() => {
 		const initialApiSyncMode = stream.stream.sync_mode
 		const initialCursorField = stream.stream.cursor_field
 
@@ -605,6 +610,32 @@ const StreamConfiguration = ({
 				),
 				value: field,
 			}))
+	}
+
+	const handleColumnsChange = (columns: string[]) => {
+		// Guard: old driver versions don't have selected_columns
+		if (!selectedStream.selected_columns) return
+		onSelectedColumnChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			{
+				sync_new_columns: selectedStream.selected_columns.sync_new_columns,
+				columns,
+			},
+		)
+	}
+
+	const handleSyncNewColumnsChange = (syncNewColumns: boolean) => {
+		// Guard: old driver versions don't have selected_columns
+		if (!selectedStream.selected_columns) return
+		onSelectedColumnChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			{
+				columns: selectedStream.selected_columns.columns,
+				sync_new_columns: syncNewColumns,
+			},
+		)
 	}
 
 	// Tab button component
@@ -1164,7 +1195,14 @@ const StreamConfiguration = ({
 			</div>
 
 			{activeTab === "config" && renderConfigContent()}
-			{activeTab === "schema" && <StreamsSchema initialData={stream} />}
+			{activeTab === "schema" && initialSelectedStreams && (
+				<StreamsSchema
+					initialStreamsData={stream}
+					initialSelectedStream={selectedStream}
+					onColumnsChange={handleColumnsChange}
+					onSyncNewColumnsChange={handleSyncNewColumnsChange}
+				/>
+			)}
 			{activeTab === "partitioning" && renderPartitioningContent()}
 		</div>
 	)
