@@ -75,8 +75,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
-				// Only add selected_columns for new-driver versions (inferred from existing streams).
-				// Omitting it on old drivers preserves the "unsupported" banner in the UI.
+				// Add selected_columns only when the driver supports it (based on existing streams).
 				...(supportsColumnSelection && {
 					selected_columns: {
 						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
