@@ -97,7 +97,22 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			fmt.Printf("[LOG-SAP]tags from cache for %s: %v, err: %v", imageName, tags, err)
 			if err != nil {
-				return nil, "", fmt.Errorf("failed to fetch cached image tags for %s: %s", imageName, err)
+				// If cached fetch also fails (e.g. no Docker daemon in EKS),
+				// try Docker Hub API as a last resort for the base image name
+				logger.Warn("cached image fetch failed for %s: %s, trying Docker Hub API as last resort", imageName, err)
+				baseImageName := imageName
+				// Strip any ECR prefix to get the base olakego/source-* name
+				if strings.Contains(repositoryBase, "ecr") {
+					parts := strings.Split(imageName, "/")
+					if len(parts) >= 2 {
+						baseImageName = strings.Join(parts[len(parts)-2:], "/")
+					}
+				}
+				tags, err = getDockerHubImageTags(ctx, baseImageName)
+				fmt.Printf("[LOG-SAP]tags from Docker Hub fallback for %s: %v, err: %v", baseImageName, tags, err)
+				if err != nil {
+					return nil, "", fmt.Errorf("failed to fetch image tags for %s from all sources: %s", imageName, err)
+				}
 			}
 		}
 
@@ -224,8 +239,26 @@ func fetchCachedImageTags(ctx context.Context, imageName, repositoryBase string)
 	return tags, nil
 }
 
-// GetCachedImages retrieves locally cached Docker images
+// isDockerAvailable checks if the Docker daemon is reachable
+// by verifying the Docker socket exists. In EKS/Kubernetes,
+// the container runtime is containerd and there is no Docker socket.
+func isDockerAvailable() bool {
+	// Check common Docker socket paths
+	for _, socketPath := range []string{"/var/run/docker.sock", "/run/docker.sock"} {
+		if _, err := os.Stat(socketPath); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// GetCachedImages retrieves locally cached Docker images.
+// Returns an error if the Docker daemon is not available (e.g. in EKS).
 func GetCachedImages(ctx context.Context) ([]string, error) {
+	if !isDockerAvailable() {
+		return nil, fmt.Errorf("docker daemon not available (no docker socket found) - this is expected in EKS/Kubernetes environments")
+	}
+
 	cmd := exec.CommandContext(ctx, "docker", "images", "--format", "{{.Repository}}:{{.Tag}}")
 	output, err := cmd.Output()
 	if err != nil {
