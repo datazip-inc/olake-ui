@@ -3,12 +3,17 @@ import {
 	StreamsDataStructure,
 	StreamData,
 	IngestionMode,
+	SelectedStream,
 } from "../../../types"
 import {
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
 } from "../../../utils/utils"
-import { STREAM_DEFAULTS } from "../../../utils/constants"
+import {
+	STREAM_DEFAULTS,
+	MIN_COLUMN_SELECTION_SOURCE_VERSION,
+} from "../../../utils/constants"
+import semver from "semver"
 
 /**
  * Processes the raw SourceStreamsResponse into the
@@ -18,6 +23,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 	response: StreamsDataStructure,
 	destinationType?: string,
 	sourceType?: string,
+	sourceVersion?: string,
 ): StreamsDataStructure => {
 	const mergedSelectedStreams: SelectedStreamsByNamespace = {}
 
@@ -31,11 +37,11 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		sourceType,
 	)
 
-	// Detect driver version: if any existing selected stream has `selected_columns`,
-	// the driver supports column selection and we should populate it for new streams too.
-	const supportsColumnSelection = Object.values(response.selected_streams ?? {})
-		.flat()
-		.some(s => s.selected_columns !== undefined)
+	// Column selection is supported from source version v0.3.18 onwards.
+	const supportsColumnSelection =
+		!!sourceVersion &&
+		!!semver.valid(sourceVersion) &&
+		semver.gte(sourceVersion, MIN_COLUMN_SELECTION_SOURCE_VERSION)
 
 	// Iterate through all streams
 	response.streams.forEach((stream: StreamData) => {
@@ -75,7 +81,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 				stream_name: streamName,
 				disabled: true,
 				append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported, // Default to append if either source or destination does not support upsert
-				// Add selected_columns only when the driver supports it (based on existing streams).
+				// Add selected_columns only when the source supports it.
 				...(supportsColumnSelection && {
 					selected_columns: {
 						columns: Object.keys(stream.stream.type_schema?.properties ?? {}),
@@ -90,4 +96,21 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		streams: response.streams,
 		selected_streams: mergedSelectedStreams,
 	}
+}
+
+// Returns true if the selected stream supports explicit column selection via the `selected_columns` field.
+export function isColumnSelectionSupported(
+	selectedStream: SelectedStream,
+): boolean {
+	return selectedStream.selected_columns !== undefined
+}
+
+// Returns true if the specified column is enabled for the selected stream.
+// For legacy drivers, all columns are considered enabled by default.
+export function isColumnEnabled(
+	columnName: string,
+	selectedStream: SelectedStream,
+): boolean {
+	if (!isColumnSelectionSupported(selectedStream)) return true
+	return selectedStream.selected_columns!.columns.includes(columnName)
 }

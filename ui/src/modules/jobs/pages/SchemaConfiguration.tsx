@@ -181,6 +181,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						response,
 						destinationType,
 						sourceConnector,
+						sourceVersion,
 					)
 
 				setApiResponse(streamsData)

@@ -203,8 +203,7 @@ export interface GroupedStreamsCollapsibleListProps {
 export interface StreamSchemaProps {
 	initialStreamsData: StreamData
 	initialSelectedStream: SelectedStream
-	onColumnsChange?: (columns: string[]) => void
-	onSyncNewColumnsChange?: (syncNewColumns: boolean) => void
+	onSelectedColumnChange?: (selectedColumns: SelectedColumns) => void
 }
 
 export type CursorFieldValues = {

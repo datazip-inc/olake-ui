@@ -7,14 +7,13 @@ import RenderTypeItems from "../../../common/components/RenderTypeItems"
 import {
 	isColumnSelectionSupported,
 	isColumnEnabled,
-} from "../../utils/columnSelection"
+} from "../../utils/streams"
 import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
 
 const StreamsSchema = ({
 	initialStreamsData,
 	initialSelectedStream,
-	onColumnsChange,
-	onSyncNewColumnsChange,
+	onSelectedColumnChange,
 }: StreamSchemaProps) => {
 	const typeSchemaProperties =
 		initialStreamsData.stream.type_schema?.properties || {}
@@ -64,8 +63,7 @@ const StreamsSchema = ({
 			)
 		}
 
-		const newConfig = { ...current, columns: newColumns }
-		onColumnsChange?.(newConfig.columns)
+		onSelectedColumnChange?.({ ...current, columns: newColumns })
 	}
 
 	const handleColumnSelect = (columnName: string, checked: boolean) => {
@@ -76,12 +74,15 @@ const StreamsSchema = ({
 			? [...new Set([...current.columns, columnName])]
 			: current.columns.filter(c => c !== columnName)
 
-		const newConfig = { ...current, columns: newColumns }
-		onColumnsChange?.(newConfig.columns)
+		onSelectedColumnChange?.({ ...current, columns: newColumns })
 	}
 
 	const handleSyncNewColumnsChange = (checked: boolean) => {
-		onSyncNewColumnsChange?.(checked)
+		if (!isEditable) return
+		onSelectedColumnChange?.({
+			...initialSelectedStream.selected_columns!,
+			sync_new_columns: checked,
+		})
 	}
 
 	const visibleNonLocked = Object.keys(columnsToDisplay).filter(

@@ -31,6 +31,7 @@ import {
 	SyncMode,
 	IngestionMode,
 	StreamsDataStructure,
+	SelectedColumns,
 } from "../../../../types"
 
 import {
@@ -612,29 +613,13 @@ const StreamConfiguration = ({
 			}))
 	}
 
-	const handleColumnsChange = (columns: string[]) => {
+	const handleSelectedColumnsChange = (selected_columns: SelectedColumns) => {
 		// Guard: old driver versions don't have selected_columns
 		if (!selectedStream.selected_columns) return
 		onSelectedColumnChange?.(
 			stream.stream.name,
 			stream.stream.namespace || "",
-			{
-				sync_new_columns: selectedStream.selected_columns.sync_new_columns,
-				columns,
-			},
-		)
-	}
-
-	const handleSyncNewColumnsChange = (syncNewColumns: boolean) => {
-		// Guard: old driver versions don't have selected_columns
-		if (!selectedStream.selected_columns) return
-		onSelectedColumnChange?.(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			{
-				columns: selectedStream.selected_columns.columns,
-				sync_new_columns: syncNewColumns,
-			},
+			selected_columns,
 		)
 	}
 
@@ -1199,8 +1184,7 @@ const StreamConfiguration = ({
 				<StreamsSchema
 					initialStreamsData={stream}
 					initialSelectedStream={selectedStream}
-					onColumnsChange={handleColumnsChange}
-					onSyncNewColumnsChange={handleSyncNewColumnsChange}
+					onSelectedColumnChange={handleSelectedColumnsChange}
 				/>
 			)}
 			{activeTab === "partitioning" && renderPartitioningContent()}
