@@ -8,7 +8,7 @@ import {
 	isColumnSelectionSupported,
 	isColumnEnabled,
 } from "../../utils/columnSelection"
-import { ArrowSquareOutIcon } from "@phosphor-icons/react"
+import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
 
 const StreamsSchema = ({
 	initialStreamsData,
@@ -131,13 +131,30 @@ const StreamsSchema = ({
 			)}
 
 			{/* Search */}
-			<div className="mb-3">
-				<Input.Search
-					className="custom-search-input w-full"
-					placeholder="Search Columns"
-					allowClear
-					onChange={handleSearchChange}
-				/>
+			<div className="mb-3 flex items-center gap-x-2">
+				<div className="w-full border-r pr-3">
+					<Input.Search
+						className="custom-search-input w-full"
+						placeholder="Search Columns"
+						allowClear
+						onChange={handleSearchChange}
+					/>
+				</div>
+				<div className="flex h-full items-center gap-x-2">
+					<Tooltip title="Enable only specific columns">
+						<InfoIcon className="size-5 cursor-help items-center pt-1 text-gray-500" />
+					</Tooltip>
+					<Tooltip title="View Documentation">
+						<a
+							href="https://olake.io/docs/understanding/terminologies/"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center text-primary hover:text-primary/80"
+						>
+							<ArrowSquareOutIcon className="size-5" />
+						</a>
+					</Tooltip>
+				</div>
 			</div>
 
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
@@ -181,11 +198,21 @@ const StreamsSchema = ({
 							className="flex items-center border-b border-gray-400 px-4 py-3 last:border-b-0 hover:bg-background-primary"
 						>
 							<div className="flex w-16 items-center justify-center">
-								<Checkbox
-									checked={checked}
-									onChange={e => handleColumnSelect(item, e.target.checked)}
-									disabled={checkboxDisabled}
-								/>
+								{columnSchema?.olake_column ? (
+									<Tooltip title="OLake generated column. It is mandatory and cannot be deselected.">
+										<Checkbox
+											checked={checked}
+											onChange={e => handleColumnSelect(item, e.target.checked)}
+											disabled={checkboxDisabled}
+										/>
+									</Tooltip>
+								) : (
+									<Checkbox
+										checked={checked}
+										onChange={e => handleColumnSelect(item, e.target.checked)}
+										disabled={checkboxDisabled}
+									/>
+								)}
 							</div>
 							<div className="flex-1 px-2 text-left">
 								<Tooltip title={item}>
