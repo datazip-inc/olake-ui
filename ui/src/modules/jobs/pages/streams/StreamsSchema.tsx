@@ -8,6 +8,7 @@ import {
 	isColumnSelectionSupported,
 	isColumnEnabled,
 } from "../../utils/columnSelection"
+import { ArrowSquareOutIcon } from "@phosphor-icons/react"
 
 const StreamsSchema = ({
 	initialStreamsData,
@@ -97,11 +98,25 @@ const StreamsSchema = ({
 	return (
 		<div className="rounded-xl border border-[#E3E3E3] bg-white p-4">
 			{columnSelectionSupported && (
-				<div className="mb-3 flex items-center justify-between rounded-lg border border-[#E3E3E3] px-3 py-2">
-					<div>
-						<span className="text-sm font-medium text-neutral-text">
+				<div className="mb-3 flex items-center justify-between gap-x-1 rounded-lg border border-[#E3E3E3] px-3 py-2">
+					<div className="space-y-1">
+						<div className="flex items-center gap-x-2 text-sm font-medium text-neutral-text">
 							Sync new columns automatically
-						</span>
+							<Tooltip
+								title="View Documentation"
+								className="border-l px-2"
+							>
+								<a
+									// TODO: Update the link
+									href="https://olake.io/docs/understanding/terminologies/"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="flex items-center text-gray-600 transition-colors hover:text-primary"
+								>
+									<ArrowSquareOutIcon className="size-4" />
+								</a>
+							</Tooltip>
+						</div>
 						<p className="text-xs text-gray-500">
 							When enabled, newly added columns in the source will be synced
 							automatically.
