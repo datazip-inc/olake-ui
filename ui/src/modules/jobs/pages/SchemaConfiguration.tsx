@@ -47,6 +47,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	destinationType,
 	jobName,
 	onLoadingChange,
+	advancedSettings,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
 	const {
@@ -174,6 +175,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConfig,
 					jobName,
 					fromJobEditFlow ? jobId : -1,
+					advancedSettings?.max_discover_threads,
 				)
 
 				const streamsData: StreamsDataStructure =
