@@ -332,3 +332,6 @@ export const STREAM_DEFAULTS = {
 	partition_regex: "",
 	filter: "",
 } as const
+
+// Minimum source version that supports column selection.
+export const MIN_COLUMN_SELECTION_SOURCE_VERSION = "v0.4.0"
