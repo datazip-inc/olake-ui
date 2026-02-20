@@ -25,7 +25,7 @@ const StreamsSchema = ({
 		initialSelectedStream,
 	)
 
-	// Column seletion is editable only if it supported and stream is enabled
+	// Column selection is editable only if it supported and stream is enabled
 	const isEditable = columnSelectionSupported && !initialSelectedStream.disabled
 
 	const [columnsToDisplay, setColumnsToDisplay] =
@@ -33,13 +33,12 @@ const StreamsSchema = ({
 
 	// Re-sync columns to display when the user switches to a different stream
 	useEffect(() => {
-		const props = initialStreamsData.stream.type_schema?.properties || {}
-		setColumnsToDisplay(props)
-	}, [initialStreamsData])
+		setColumnsToDisplay(typeSchemaProperties)
+	}, [initialStreamsData.stream.name, initialStreamsData.stream.namespace])
 
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const query = event.target.value
-		const props = initialStreamsData.stream.type_schema?.properties
+		const props = typeSchemaProperties
 		if (!props) return
 		const filtered = Object.entries(props).filter(([key]) =>
 			key.toLowerCase().includes(query.toLowerCase()),
@@ -108,8 +107,7 @@ const StreamsSchema = ({
 								className="border-l px-2"
 							>
 								<a
-									// TODO: Update the link
-									href="https://olake.io/docs/understanding/terminologies/"
+									href="https://olake.io/docs/understanding/terminologies/olake/#sync-new-columns-automatically"
 									target="_blank"
 									rel="noopener noreferrer"
 									className="flex items-center text-gray-600 transition-colors hover:text-primary"
@@ -147,7 +145,7 @@ const StreamsSchema = ({
 					</Tooltip>
 					<Tooltip title="View Documentation">
 						<a
-							href="https://olake.io/docs/understanding/terminologies/"
+							href="https://olake.io/docs/understanding/terminologies/olake/#4-schema"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="flex items-center text-primary hover:text-primary/80"
@@ -192,6 +190,13 @@ const StreamsSchema = ({
 					// Disabled when stream is unselected, driver is legacy, or column is locked (olake column)
 					const checkboxDisabled =
 						!isEditable || columnSchema?.olake_column === true
+					const checkbox = (
+						<Checkbox
+							checked={checked}
+							onChange={e => handleColumnSelect(item, e.target.checked)}
+							disabled={checkboxDisabled}
+						/>
+					)
 
 					return (
 						<div
@@ -199,20 +204,12 @@ const StreamsSchema = ({
 							className="flex items-center border-b border-gray-400 px-4 py-3 last:border-b-0 hover:bg-background-primary"
 						>
 							<div className="flex w-16 items-center justify-center">
-								{columnSchema?.olake_column ? (
+								{isOlakeColumn(item) ? (
 									<Tooltip title="OLake generated column. It is mandatory and cannot be deselected.">
-										<Checkbox
-											checked={checked}
-											onChange={e => handleColumnSelect(item, e.target.checked)}
-											disabled={checkboxDisabled}
-										/>
+										{checkbox}
 									</Tooltip>
 								) : (
-									<Checkbox
-										checked={checked}
-										onChange={e => handleColumnSelect(item, e.target.checked)}
-										disabled={checkboxDisabled}
-									/>
+									checkbox
 								)}
 							</div>
 							<div className="flex-1 px-2 text-left">
@@ -235,9 +232,7 @@ const StreamsSchema = ({
 							)}
 							<div className="flex-1 px-2 text-left">
 								<RenderTypeItems
-									initialList={
-										initialStreamsData.stream.type_schema?.properties
-									}
+									initialList={typeSchemaProperties}
 									item={item}
 								/>
 							</div>
