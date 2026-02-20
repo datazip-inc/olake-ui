@@ -334,4 +334,4 @@ export const STREAM_DEFAULTS = {
 } as const
 
 // Minimum source version that supports column selection.
-export const MIN_COLUMN_SELECTION_SOURCE_VERSION = "v0.3.18"
+export const MIN_COLUMN_SELECTION_SOURCE_VERSION = "v0.4.0"
