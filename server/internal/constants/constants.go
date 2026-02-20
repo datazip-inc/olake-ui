@@ -50,6 +50,7 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
+
 	// database keys
 	ConfPostgresDB            = "postgresdb"
 	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
@@ -58,6 +59,10 @@ var (
 	ConfOLakePostgresPort     = "OLAKE_POSTGRES_PORT"
 	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
+
+	// app env
+	EnvAppEnvironment    = "APP_ENV"
+	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
 
 	// logs config
 	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
