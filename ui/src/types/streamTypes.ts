@@ -31,7 +31,6 @@ export type StreamData = {
 	skip_nested_flattening?: boolean
 	cursor_field?: string[]
 	destination_sync_mode: string
-	selected_columns: string[] | null
 	sort_key: string[] | null
 	stream: {
 		name: string
@@ -41,9 +40,8 @@ export type StreamData = {
 			properties: Record<
 				string,
 				{
-					config?: {
-						destination_column_name?: string
-					}
+					destination_column_name?: string
+					olake_column?: boolean
 					type: string | string[]
 					format?: string
 					properties?: Record<string, any>
@@ -93,6 +91,12 @@ export type StreamConfigurationProps = {
 		cursorField?: string,
 	) => void
 	useDirectForms?: boolean
+	selectedStream: SelectedStream
+}
+
+export interface SelectedColumns {
+	columns: string[]
+	sync_new_columns: boolean
 }
 
 export interface SelectedStream {
@@ -102,6 +106,7 @@ export interface SelectedStream {
 	filter?: string
 	disabled?: boolean
 	append_mode?: boolean
+	selected_columns?: SelectedColumns
 }
 
 export interface SelectedStreamsByNamespace {
@@ -163,6 +168,11 @@ export interface ExtendedStreamConfigurationProps
 		namespace: string,
 		appendMode: boolean,
 	) => void
+	onSelectedColumnChange?: (
+		streamName: string,
+		namespace: string,
+		selectedColumns: SelectedColumns,
+	) => void
 	sourceType?: string
 }
 
@@ -192,9 +202,9 @@ export interface GroupedStreamsCollapsibleListProps {
 }
 
 export interface StreamSchemaProps {
-	initialData: StreamData
-	onColumnsChange?: (columns: string[]) => void
-	onSyncModeChange?: (mode: SyncMode.FULL_REFRESH | SyncMode.CDC) => void
+	initialStreamsData: StreamData
+	initialSelectedStream: SelectedStream
+	onSelectedColumnChange?: (selectedColumns: SelectedColumns) => void
 }
 
 export type CursorFieldValues = {

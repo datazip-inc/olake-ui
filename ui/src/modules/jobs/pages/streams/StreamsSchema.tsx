@@ -1,105 +1,161 @@
-import { useState, useEffect, useMemo } from "react"
-import { Checkbox, Input, Tooltip } from "antd"
+import { useState, useEffect } from "react"
+import { Checkbox, Input, Switch, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 
 import { StreamSchemaProps } from "../../../../types"
 import RenderTypeItems from "../../../common/components/RenderTypeItems"
+import {
+	isColumnSelectionSupported,
+	isColumnEnabled,
+} from "../../utils/streams"
+import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
 
-const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
-	const [columnsToDisplay, setColumnsToDisplay] = useState<Record<string, any>>(
-		initialData.stream.type_schema?.properties || {},
-	)
-	const [selectedColumns, setSelectedColumns] = useState<string[]>(
-		Object.keys(initialData.stream?.type_schema?.properties || {}),
-	)
-	const [isDisabled] = useState(true)
+const StreamsSchema = ({
+	initialStreamsData,
+	initialSelectedStream,
+	onSelectedColumnChange,
+}: StreamSchemaProps) => {
+	const typeSchemaProperties =
+		initialStreamsData.stream.type_schema?.properties || {}
 
+	const isOlakeColumn = (name: string) =>
+		typeSchemaProperties[name]?.olake_column === true
+
+	const columnSelectionSupported = isColumnSelectionSupported(
+		initialSelectedStream,
+	)
+
+	// Column selection is editable only if it supported and stream is enabled
+	const isEditable = columnSelectionSupported && !initialSelectedStream.disabled
+
+	const [columnsToDisplay, setColumnsToDisplay] =
+		useState<Record<string, any>>(typeSchemaProperties)
+
+	// Re-sync columns to display when the user switches to a different stream
 	useEffect(() => {
-		if (initialData.stream.type_schema?.properties) {
-			setColumnsToDisplay(initialData.stream.type_schema.properties)
-			setSelectedColumns(Object.keys(initialData.stream.type_schema.properties))
-		}
-	}, [initialData])
+		setColumnsToDisplay(typeSchemaProperties)
+	}, [initialStreamsData.stream.name, initialStreamsData.stream.namespace])
 
-	const handleSearch = useMemo(
-		() => (query: string) => {
-			if (!initialData.stream.type_schema?.properties) return
-			const asArray = Object.entries(initialData.stream.type_schema.properties)
-			const filtered = asArray.filter(([key]) =>
-				key.toLowerCase().includes(query.toLowerCase()),
+	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const query = event.target.value
+		const props = typeSchemaProperties
+		if (!props) return
+		const filtered = Object.entries(props).filter(([key]) =>
+			key.toLowerCase().includes(query.toLowerCase()),
+		)
+		setColumnsToDisplay(Object.fromEntries(filtered))
+	}
+
+	const handleSelectAll = (e: CheckboxChangeEvent) => {
+		if (!isEditable) return
+		const selectAll = e.target.checked
+		const current = initialSelectedStream.selected_columns!
+		const visibleColumnNames = Object.keys(columnsToDisplay)
+
+		let newColumns: string[]
+
+		if (selectAll) {
+			newColumns = [...new Set([...current.columns, ...visibleColumnNames])]
+		} else {
+			newColumns = current.columns.filter(
+				c => !visibleColumnNames.includes(c) || isOlakeColumn(c),
 			)
-			const filteredObject = Object.fromEntries(filtered)
-			setColumnsToDisplay(filteredObject as Record<string, any>)
-		},
-		[initialData],
-	)
+		}
 
-	const handleSearchValueClear = useMemo(
-		() => (event: React.ChangeEvent<HTMLInputElement>) => {
-			if (
-				event.target.value === "" &&
-				initialData.stream.type_schema?.properties
-			) {
-				setTimeout(
-					() =>
-						setColumnsToDisplay(
-							initialData?.stream?.type_schema?.properties || {},
-						),
-					0,
-				)
-			}
-		},
-		[initialData],
-	)
+		onSelectedColumnChange?.({ ...current, columns: newColumns })
+	}
 
-	const handleSelectAll = useMemo(
-		() => (e: CheckboxChangeEvent) => {
-			if (!initialData.stream.type_schema?.properties) return
-			const allColumns = Object.keys(initialData.stream.type_schema.properties)
-			setSelectedColumns(e.target.checked ? allColumns : [])
-			onColumnsChange?.(e.target.checked ? allColumns : [])
-		},
-		[initialData, onColumnsChange],
-	)
+	const handleColumnSelect = (columnName: string, checked: boolean) => {
+		if (!isEditable || isOlakeColumn(columnName)) return
 
-	const handleColumnSelect = useMemo(
-		() => (column: string, checked: boolean) => {
-			const newSelectedColumns = checked
-				? [...selectedColumns, column]
-				: selectedColumns.filter(col => col !== column)
-			setSelectedColumns(newSelectedColumns)
-			onColumnsChange?.(newSelectedColumns)
-		},
-		[selectedColumns, onColumnsChange],
-	)
+		const current = initialSelectedStream.selected_columns!
+		const newColumns = checked
+			? [...new Set([...current.columns, columnName])]
+			: current.columns.filter(c => c !== columnName)
 
-	const isAllSelected = useMemo(
-		() =>
-			initialData.stream.type_schema?.properties
-				? Object.keys(columnsToDisplay).length === selectedColumns.length
-				: false,
-		[initialData, columnsToDisplay, selectedColumns],
-	)
+		onSelectedColumnChange?.({ ...current, columns: newColumns })
+	}
 
-	const hasDestinationColumns = useMemo(
-		() =>
-			Object.values(columnsToDisplay || {}).some(
-				columnSchema => columnSchema?.destination_column_name,
-			),
-		[columnsToDisplay],
+	const handleSyncNewColumnsChange = (checked: boolean) => {
+		if (!isEditable) return
+		onSelectedColumnChange?.({
+			...initialSelectedStream.selected_columns!,
+			sync_new_columns: checked,
+		})
+	}
+
+	const visibleNonLocked = Object.keys(columnsToDisplay).filter(
+		name => !isOlakeColumn(name),
+	)
+	const isAllSelected =
+		visibleNonLocked.length > 0 &&
+		visibleNonLocked.every(name => isColumnEnabled(name, initialSelectedStream))
+
+	const hasDestinationColumns = Object.values(columnsToDisplay || {}).some(
+		columnSchema => columnSchema?.destination_column_name,
 	)
 
 	return (
 		<div className="rounded-xl border border-[#E3E3E3] bg-white p-4">
-			<div className="mb-3">
-				<Input.Search
-					className="custom-search-input w-full"
-					placeholder="Search Columns"
-					allowClear
-					onSearch={handleSearch}
-					onChange={handleSearchValueClear}
-				/>
+			{columnSelectionSupported && (
+				<div className="mb-3 flex items-center justify-between gap-x-1 rounded-lg border border-[#E3E3E3] px-3 py-2">
+					<div className="space-y-1">
+						<div className="flex items-center gap-x-2 text-sm font-medium text-neutral-text">
+							Sync new columns automatically
+							<Tooltip
+								title="View Documentation"
+								className="border-l px-2"
+							>
+								<a
+									href="https://olake.io/docs/understanding/terminologies/olake/#sync-new-columns-automatically"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="flex items-center text-gray-600 transition-colors hover:text-primary"
+								>
+									<ArrowSquareOutIcon className="size-4" />
+								</a>
+							</Tooltip>
+						</div>
+						<p className="text-xs text-gray-500">
+							When enabled, newly added columns in the source will be synced
+							automatically.
+						</p>
+					</div>
+					<Switch
+						checked={initialSelectedStream.selected_columns!.sync_new_columns}
+						onChange={handleSyncNewColumnsChange}
+						disabled={!isEditable}
+					/>
+				</div>
+			)}
+
+			{/* Search */}
+			<div className="mb-3 flex items-center gap-x-2">
+				<div className="w-full border-r pr-3">
+					<Input.Search
+						className="custom-search-input w-full"
+						placeholder="Search Columns"
+						allowClear
+						onChange={handleSearchChange}
+					/>
+				</div>
+				<div className="flex h-full items-center gap-x-2">
+					<Tooltip title="Enable only specific columns">
+						<InfoIcon className="size-5 cursor-help items-center pt-1 text-gray-500" />
+					</Tooltip>
+					<Tooltip title="View Documentation">
+						<a
+							href="https://olake.io/docs/understanding/terminologies/olake/#4-schema"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="flex items-center text-primary hover:text-primary/80"
+						>
+							<ArrowSquareOutIcon className="size-5" />
+						</a>
+					</Tooltip>
+				</div>
 			</div>
+
 			<div className="max-h-[400px] overflow-auto rounded border border-[#d9d9d9]">
 				{/* Table Header */}
 				<div className="flex items-center border-b border-gray-400 bg-gray-50 px-4 py-3">
@@ -107,7 +163,7 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 						<Checkbox
 							checked={isAllSelected}
 							onChange={handleSelectAll}
-							disabled={isDisabled}
+							disabled={!isEditable}
 						/>
 					</div>
 					<div className="flex-1 px-2 text-left font-medium text-gray-700">
@@ -122,11 +178,25 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 						Source Data type
 					</div>
 				</div>
+
 				{/* Data Rows */}
 				{Object.keys(columnsToDisplay || {}).map(item => {
 					const columnSchema = columnsToDisplay[item]
 					const destinationColumnName =
 						columnSchema?.destination_column_name || item
+					const checked = columnSelectionSupported
+						? isColumnEnabled(item, initialSelectedStream)
+						: true
+					// Disabled when stream is unselected, driver is legacy, or column is locked (olake column)
+					const checkboxDisabled =
+						!isEditable || columnSchema?.olake_column === true
+					const checkbox = (
+						<Checkbox
+							checked={checked}
+							onChange={e => handleColumnSelect(item, e.target.checked)}
+							disabled={checkboxDisabled}
+						/>
+					)
 
 					return (
 						<div
@@ -134,11 +204,13 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 							className="flex items-center border-b border-gray-400 px-4 py-3 last:border-b-0 hover:bg-background-primary"
 						>
 							<div className="flex w-16 items-center justify-center">
-								<Checkbox
-									checked={selectedColumns.includes(item)}
-									onChange={e => handleColumnSelect(item, e.target.checked)}
-									disabled={isDisabled}
-								/>
+								{isOlakeColumn(item) ? (
+									<Tooltip title="OLake generated column. It is mandatory and cannot be deselected.">
+										{checkbox}
+									</Tooltip>
+								) : (
+									checkbox
+								)}
 							</div>
 							<div className="flex-1 px-2 text-left">
 								<Tooltip title={item}>
@@ -160,7 +232,7 @@ const StreamsSchema = ({ initialData, onColumnsChange }: StreamSchemaProps) => {
 							)}
 							<div className="flex-1 px-2 text-left">
 								<RenderTypeItems
-									initialList={initialData.stream.type_schema?.properties}
+									initialList={typeSchemaProperties}
 									item={item}
 								/>
 							</div>
