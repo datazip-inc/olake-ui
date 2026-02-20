@@ -34,12 +34,13 @@ type SourceTestConnectionRequest struct {
 	Config  string `json:"config" orm:"type(jsonb)" validate:"required" example:"{\"host\":\"localhost\",\"port\":5432,\"database\":\"mydb\",\"user\":\"postgres\",\"password\":\"secret\"}"`
 }
 type StreamsRequest struct {
-	Name    string `json:"name" validate:"required" example:"my-postgres-source"`
-	Type    string `json:"type" validate:"required" example:"postgres"`
-	Version string `json:"version" validate:"required" example:"v0.2.7"`
-	Config  string `json:"config" orm:"type(jsonb)" validate:"required" example:"{\"host\":\"localhost\",\"port\":5432}"`
-	JobID   int    `json:"job_id" validate:"required" example:"1"`
-	JobName string `json:"job_name" validate:"required" example:"my-sync-job"`
+	Name               string `json:"name" validate:"required" example:"my-postgres-source"`
+	Type               string `json:"type" validate:"required" example:"postgres"`
+	Version            string `json:"version" validate:"required" example:"v0.2.7"`
+	Config             string `json:"config" orm:"type(jsonb)" validate:"required" example:"{\"host\":\"localhost\",\"port\":5432}"`
+	MaxDiscoverThreads *int   `json:"max_discover_threads,omitempty" example:"50"`
+	JobID              int    `json:"job_id" validate:"required" example:"1"`
+	JobName            string `json:"job_name" validate:"required" example:"my-sync-job"`
 }
 
 // TODO: frontend needs to send only version no need for source version
@@ -79,23 +80,29 @@ type UpdateDestinationRequest struct {
 	Config  string `json:"config" orm:"type(jsonb)" validate:"required" example:"{\"catalog_type\":\"glue\",\"warehouse\":\"s3://my-bucket/warehouse-v2\"}"`
 }
 
+type AdvancedSettings struct {
+	MaxDiscoverThreads *int `json:"max_discover_threads,omitempty" example:"50"`
+}
+
 type CreateJobRequest struct {
-	Name          string        `json:"name" validate:"required" example:"my-sync-job"`
-	Source        *DriverConfig `json:"source" validate:"required"`
-	Destination   *DriverConfig `json:"destination" validate:"required"`
-	Frequency     string        `json:"frequency" validate:"required" example:"0 */6 * * *"`
-	StreamsConfig string        `json:"streams_config" orm:"type(jsonb)" validate:"required"`
-	Activate      bool          `json:"activate,omitempty" example:"true"`
+	Name             string            `json:"name" validate:"required" example:"my-sync-job"`
+	Source           *DriverConfig     `json:"source" validate:"required"`
+	Destination      *DriverConfig     `json:"destination" validate:"required"`
+	Frequency        string            `json:"frequency" validate:"required" example:"0 */6 * * *"`
+	StreamsConfig    string            `json:"streams_config" orm:"type(jsonb)" validate:"required"`
+	Activate         bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type UpdateJobRequest struct {
-	Name              string        `json:"name" validate:"required" example:"my-sync-job-updated"`
-	Source            *DriverConfig `json:"source" validate:"required"`
-	Destination       *DriverConfig `json:"destination" validate:"required"`
-	Frequency         string        `json:"frequency" validate:"required" example:"0 */12 * * *"`
-	StreamsConfig     string        `json:"streams_config" orm:"type(jsonb)" validate:"required"`
-	DifferenceStreams string        `json:"difference_streams,omitempty" example:"[]"`
-	Activate          bool          `json:"activate,omitempty" example:"true"`
+	Name              string            `json:"name" validate:"required" example:"my-sync-job-updated"`
+	Source            *DriverConfig     `json:"source" validate:"required"`
+	Destination       *DriverConfig     `json:"destination" validate:"required"`
+	Frequency         string            `json:"frequency" validate:"required" example:"0 */12 * * *"`
+	StreamsConfig     string            `json:"streams_config" orm:"type(jsonb)" validate:"required"`
+	DifferenceStreams string            `json:"difference_streams,omitempty" example:"[]"`
+	Activate          bool              `json:"activate,omitempty" example:"true"`
+	AdvancedSettings  *AdvancedSettings `json:"advanced_settings,omitempty"`
 }
 
 type StreamDifferenceRequest struct {

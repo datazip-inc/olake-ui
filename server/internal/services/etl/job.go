@@ -100,17 +100,29 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 	}
 
 	user := &models.User{ID: *userID}
+
+	var advancedSettings *string
+	if req.AdvancedSettings != nil {
+		b, err := json.Marshal(req.AdvancedSettings)
+		if err != nil {
+			return fmt.Errorf("failed to serialise advanced_settings: %s", err)
+		}
+		s := string(b)
+		advancedSettings = &s
+	}
+
 	job := &models.Job{
-		Name:          req.Name,
-		SourceID:      source,
-		DestID:        dest,
-		Active:        true,
-		Frequency:     req.Frequency,
-		StreamsConfig: req.StreamsConfig,
-		State:         "{}",
-		ProjectID:     projectID,
-		CreatedBy:     user,
-		UpdatedBy:     user,
+		Name:             req.Name,
+		SourceID:         source,
+		DestID:           dest,
+		Active:           true,
+		Frequency:        req.Frequency,
+		StreamsConfig:    req.StreamsConfig,
+		State:            "{}",
+		AdvancedSettings: advancedSettings,
+		ProjectID:        projectID,
+		CreatedBy:        user,
+		UpdatedBy:        user,
 	}
 	if err := s.db.CreateJob(job); err != nil {
 		return fmt.Errorf("failed to create job: %s", err)
@@ -197,6 +209,14 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		"streams_config": req.StreamsConfig,
 		"project_id":     projectID,
 		"updated_by_id":  *userID,
+	}
+
+	if req.AdvancedSettings != nil {
+		b, err := json.Marshal(req.AdvancedSettings)
+		if err != nil {
+			return fmt.Errorf("failed to serialise advanced_settings: %s", err)
+		}
+		updateParams["advanced_settings"] = string(b)
 	}
 
 	// Update job within transaction
@@ -513,6 +533,14 @@ func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, 
 		jobResp.LastRunTime = lastRun.LastRunTime
 		jobResp.LastRunState = lastRun.LastRunState
 		jobResp.LastRunType = lastRun.LastRunType
+	}
+
+	if job.AdvancedSettings != nil && *job.AdvancedSettings != "" && *job.AdvancedSettings != "{}" {
+		var advSettings dto.AdvancedSettings
+		if err := json.Unmarshal([]byte(*job.AdvancedSettings), &advSettings); err != nil {
+			return dto.JobResponse{}, fmt.Errorf("failed to parse advanced_settings for job %d: %s", job.ID, err)
+		}
+		jobResp.AdvancedSettings = &advSettings
 	}
 
 	return jobResp, nil

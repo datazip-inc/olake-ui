@@ -10,6 +10,7 @@ import {
 	StreamData,
 	SyncMode,
 	StreamsDataStructure,
+	SelectedColumns,
 } from "../../../types"
 import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
@@ -46,6 +47,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	destinationType,
 	jobName,
 	onLoadingChange,
+	advancedSettings,
 }) => {
 	const prevSourceConfig = useRef(sourceConfig)
 	const {
@@ -78,6 +80,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			) || null
 		)
 	}, [activeStreamKey, apiResponse?.streams])
+
+	const activeSelectedStream = useMemo(() => {
+		if (!activeStreamKey || !apiResponse?.selected_streams) return null
+		return (
+			apiResponse.selected_streams[activeStreamKey.namespace || ""]?.find(
+				s => s.stream_name === activeStreamKey.name,
+			) || null
+		)
+	}, [activeStreamKey, apiResponse?.selected_streams])
+
 	const [isStreamsLoading, setIsStreamsLoading] = useState(!initialStreamsData)
 	// Store initial streams data for reference
 	const [initialStreamsState, setInitialStreamsState] =
@@ -163,6 +175,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					sourceConfig,
 					jobName,
 					fromJobEditFlow ? jobId : -1,
+					advancedSettings?.max_discover_threads,
 				)
 
 				const streamsData: StreamsDataStructure =
@@ -170,6 +183,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						response,
 						destinationType,
 						sourceConnector,
+						sourceVersion,
 					)
 
 				setApiResponse(streamsData)
@@ -608,6 +622,31 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		})
 	}
 
+	const handleSelectedColumnChange = (
+		streamName: string,
+		namespace: string,
+		selected_columns: SelectedColumns,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace]?.map(s =>
+					s.stream_name === streamName ? { ...s, selected_columns } : s,
+				),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
 	const { Search } = Input
 
 	return (
@@ -745,7 +784,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						!isLoading && "border-l",
 					)}
 				>
-					{activeStreamData ? (
+					{activeStreamData && activeSelectedStream ? (
 						<StreamConfiguration
 							stream={activeStreamData}
 							onUpdate={() => {
@@ -793,6 +832,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							destinationType={destinationType}
 							onIngestionModeChange={handleIngestionModeChange}
 							sourceType={sourceConnector}
+							onSelectedColumnChange={handleSelectedColumnChange}
+							selectedStream={activeSelectedStream}
 						/>
 					) : null}
 				</div>
