@@ -396,6 +396,7 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
+			advancedSettings: advancedSettings,
 		}
 
 		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")

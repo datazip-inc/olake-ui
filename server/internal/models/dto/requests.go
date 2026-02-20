@@ -79,6 +79,7 @@ type UpdateDestinationRequest struct {
 	Version string `json:"version" validate:"required" example:"v0.2.7"`
 	Config  string `json:"config" orm:"type(jsonb)" validate:"required" example:"{\"catalog_type\":\"glue\",\"warehouse\":\"s3://my-bucket/warehouse-v2\"}"`
 }
+
 type AdvancedSettings struct {
 	MaxDiscoverThreads *int `json:"max_discover_threads,omitempty" example:"50"`
 }
