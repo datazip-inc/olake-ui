@@ -258,6 +258,7 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 		encryptedConfig,
 		oldStreams,
 		req.JobName,
+		req.MaxDiscoverThreads,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %s", err)
