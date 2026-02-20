@@ -1,5 +1,5 @@
 import type { CheckboxChangeEvent } from "antd/es/checkbox"
-import type { IngestionMode, UnknownObject } from "./index"
+import type { IngestionMode, UnknownObject, AdvancedSettings } from "./index"
 
 export enum SyncMode {
 	FULL_REFRESH = "full_refresh",
@@ -130,6 +130,7 @@ export interface SchemaConfigurationProps {
 	destinationType?: string
 	jobName: string
 	onLoadingChange?: (isLoading: boolean) => void
+	advancedSettings?: AdvancedSettings | null
 }
 
 export interface ExtendedStreamConfigurationProps

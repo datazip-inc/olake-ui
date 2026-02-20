@@ -9,8 +9,9 @@ import {
 	Radio,
 	Tooltip,
 	Spin,
+	InputNumber,
 } from "antd"
-import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
+import { InfoIcon, ArrowLeftIcon, SlidersIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
 import { useAppStore } from "../../../store"
@@ -22,12 +23,14 @@ import {
 	parseCronExpression,
 	validateCronExpression,
 	isValidCronExpression,
+	restrictNumericInput,
 } from "../../../utils/utils"
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationModal from "../../common/Modals/ClearDestinationModal"
 import StreamEditDisabledModal from "../../common/Modals/StreamEditDisabledModal"
+import { AdvancedSettings } from "../../../types"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -42,6 +45,8 @@ const JobSettings: React.FC = () => {
 	const [customCronExpression, setCustomCronExpression] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
 	const [nextRuns, setNextRuns] = useState<string[]>([])
+	const [advancedSettings, setAdvancedSettings] =
+		useState<AdvancedSettings | null>(null)
 
 	// Configuration object for all select options
 	const selectConfig = {
@@ -140,6 +145,7 @@ const JobSettings: React.FC = () => {
 		if (job) {
 			setPauseJob(!job.activate)
 			setJobName(job.name)
+			setAdvancedSettings(job.advanced_settings || null)
 		}
 	}, [job])
 
@@ -280,6 +286,7 @@ const JobSettings: React.FC = () => {
 						: JSON.stringify(job.streams_config),
 				// In settings page, we are not modifying the streams, there will be no stream difference
 				difference_streams: "{}",
+				advanced_settings: advancedSettings,
 			}
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
@@ -456,6 +463,47 @@ const JobSettings: React.FC = () => {
 												</div>
 											</div>
 										)}
+									</div>
+								</div>
+
+								{/* Advanced Settings */}
+								<div className="my-6 rounded-xl border border-[#D9D9D9] bg-white px-6 py-6">
+									<div className="mb-6 flex items-center gap-2">
+										<SlidersIcon size={20} />
+										<span className="text-base font-medium text-gray-900">
+											Advanced Settings
+										</span>
+									</div>
+
+									<div className="flex w-full flex-wrap gap-x-12 gap-y-6">
+										{/* Max Discover Threads */}
+										<div className="w-1/2">
+											<div className="mb-2 flex items-center gap-1">
+												<label className="text-sm text-gray-600">
+													Max Discover Threads
+												</label>
+												<Tooltip title="Max number of parallel threads for discovery of table in database">
+													<InfoIcon
+														size={16}
+														className="cursor-help text-slate-900"
+													/>
+												</Tooltip>
+											</div>
+											<InputNumber
+												min={1}
+												precision={0}
+												className="w-full"
+												value={advancedSettings?.max_discover_threads}
+												onChange={val =>
+													setAdvancedSettings({
+														...advancedSettings,
+														max_discover_threads: val,
+													})
+												}
+												placeholder="50"
+												onKeyDown={restrictNumericInput}
+											/>
+										</div>
 									</div>
 								</div>
 
