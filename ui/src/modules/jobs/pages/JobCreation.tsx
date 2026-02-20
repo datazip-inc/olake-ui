@@ -12,7 +12,7 @@ import { useAppStore } from "../../../store"
 import { destinationService, sourceService } from "../../../api"
 import { validationService } from "../../../api/services/validationService"
 
-import { JobBase, JobCreationSteps } from "../../../types"
+import { JobBase, JobCreationSteps, AdvancedSettings } from "../../../types"
 import {
 	getConnectorInLowerCase,
 	getSelectedStreams,
@@ -95,6 +95,8 @@ const JobCreation: React.FC = () => {
 	const [cronExpression, setCronExpression] = useState(
 		initialData.cronExpression || "* * * * *",
 	)
+	const [advancedSettings, setAdvancedSettings] =
+		useState<AdvancedSettings | null>(initialData.advanced_settings || null)
 
 	//once the job name is filled we will set this to true so the job name will be disabled
 	const [jobNameFilled, setJobNameFilled] = useState(
@@ -253,6 +255,7 @@ const JobCreation: React.FC = () => {
 				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
 			}),
 			frequency: cronExpression,
+			advanced_settings: advancedSettings,
 		}
 
 		try {
@@ -393,6 +396,7 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
+			advanced_settings: advancedSettings,
 		}
 
 		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
@@ -522,6 +526,7 @@ const JobCreation: React.FC = () => {
 								destinationType={getConnectorInLowerCase(destinationConnector)}
 								jobName={jobName}
 								onLoadingChange={setIsStreamsLoading}
+								advancedSettings={advancedSettings}
 							/>
 						</div>
 					)}
@@ -535,6 +540,8 @@ const JobCreation: React.FC = () => {
 							stepNumber={JOB_STEP_NUMBERS.CONFIG}
 							stepTitle="Job Configuration"
 							jobNameFilled={jobNameFilled}
+							advancedSettings={advancedSettings}
+							setAdvancedSettings={setAdvancedSettings}
 						/>
 					)}
 				</div>

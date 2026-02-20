@@ -28,8 +28,9 @@ var (
 	DefaultListWorkflowPageSize = 500
 
 	// versions
-	DefaultSpecVersion             = "v0.2.0"
-	DefaultClearDestinationVersion = "v0.3.0"
+	DefaultSpecVersion               = "v0.2.0"
+	DefaultClearDestinationVersion   = "v0.3.0"
+	DefaultMaxDiscoverThreadsVersion = "v0.3.18"
 
 	// logging
 	EnvLogLevel          = "LOG_LEVEL"
@@ -38,6 +39,10 @@ var (
 	// Frontend index path key
 	FrontendIndexPath = "FRONTEND_INDEX_PATH"
 	TemporalTaskQueue = "OLAKE_DOCKER_TASK_QUEUE"
+
+	// command flags
+	MaxDiscoverThreadsFlag    = "--max-discover-threads"
+	DefaultMaxDiscoverThreads = 50
 
 	// conf keys
 	ConfEncryptionKey         = "encryptionkey"

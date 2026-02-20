@@ -28,6 +28,8 @@ import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import ClearDataModal from "../../common/Modals/ClearDataModal"
 import ClearDestinationModal from "../../common/Modals/ClearDestinationModal"
 import StreamEditDisabledModal from "../../common/Modals/StreamEditDisabledModal"
+import AdvancedSettingsCard from "../components/AdvancedSettingsCard"
+import { AdvancedSettings } from "../../../types"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -42,6 +44,8 @@ const JobSettings: React.FC = () => {
 	const [customCronExpression, setCustomCronExpression] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
 	const [nextRuns, setNextRuns] = useState<string[]>([])
+	const [advancedSettings, setAdvancedSettings] =
+		useState<AdvancedSettings | null>(null)
 
 	// Configuration object for all select options
 	const selectConfig = {
@@ -140,6 +144,7 @@ const JobSettings: React.FC = () => {
 		if (job) {
 			setPauseJob(!job.activate)
 			setJobName(job.name)
+			setAdvancedSettings(job.advanced_settings ?? null)
 		}
 	}, [job])
 
@@ -280,6 +285,7 @@ const JobSettings: React.FC = () => {
 						: JSON.stringify(job.streams_config),
 				// In settings page, we are not modifying the streams, there will be no stream difference
 				difference_streams: "{}",
+				advanced_settings: advancedSettings,
 			}
 
 			await jobService.updateJob(jobId, jobUpdatePayload)
@@ -458,6 +464,10 @@ const JobSettings: React.FC = () => {
 										)}
 									</div>
 								</div>
+								<AdvancedSettingsCard
+									advancedSettings={advancedSettings}
+									setAdvancedSettings={setAdvancedSettings}
+								/>
 
 								<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-4">
 									<span className="font-medium">Pause your job</span>

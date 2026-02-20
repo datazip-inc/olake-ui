@@ -74,18 +74,19 @@ func (d *Destination) TableName() string {
 
 // Job represents a synchronization job
 type Job struct {
-	BaseModel     `orm:"embedded"`
-	ID            int          `json:"id" orm:"column(id);pk;auto"`
-	Name          string       `json:"name" orm:"size(100)"`
-	SourceID      *Source      `json:"source_id" orm:"column(source_id);rel(fk)"`
-	DestID        *Destination `json:"dest_id" orm:"column(dest_id);rel(fk)"`
-	Active        bool         `json:"active"`
-	Frequency     string       `json:"frequency"`
-	StreamsConfig string       `json:"streams_config" orm:"type(jsonb)"`
-	State         string       `json:"state" orm:"type(jsonb)"`
-	CreatedBy     *User        `json:"created_by" orm:"rel(fk)"`
-	UpdatedBy     *User        `json:"updated_by" orm:"rel(fk)"`
-	ProjectID     string       `json:"project_id" orm:"column(project_id)"`
+	BaseModel        `orm:"embedded"`
+	ID               int          `json:"id" orm:"column(id);pk;auto"`
+	Name             string       `json:"name" orm:"size(100)"`
+	SourceID         *Source      `json:"source_id" orm:"column(source_id);rel(fk)"`
+	DestID           *Destination `json:"dest_id" orm:"column(dest_id);rel(fk)"`
+	Active           bool         `json:"active"`
+	Frequency        string       `json:"frequency"`
+	StreamsConfig    string       `json:"streams_config" orm:"type(jsonb)"`
+	State            string       `json:"state" orm:"type(jsonb)"`
+	AdvancedSettings *string      `json:"advanced_settings" orm:"column(advanced_settings);type(jsonb);null"`
+	CreatedBy        *User        `json:"created_by" orm:"rel(fk)"`
+	UpdatedBy        *User        `json:"updated_by" orm:"rel(fk)"`
+	ProjectID        string       `json:"project_id" orm:"column(project_id)"`
 }
 
 func (j *Job) TableName() string {

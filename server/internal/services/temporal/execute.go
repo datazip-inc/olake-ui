@@ -3,6 +3,7 @@ package temporal
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
@@ -65,7 +66,7 @@ const (
 // ref: https://docs.temporal.io/troubleshooting/blob-size-limit-error
 
 // DiscoverStreams runs a workflow to discover catalog data
-func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string) (map[string]interface{}, error) {
+func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, config, streamsConfig, jobName string, maxDiscoverThreads *int) (map[string]interface{}, error) {
 	workflowID := fmt.Sprintf("discover-catalog-%s-%d", sourceType, time.Now().Unix())
 
 	configs := []JobConfig{
@@ -86,6 +87,15 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 
 	if jobName != "" && semver.Compare(version, "v0.2.0") >= 0 {
 		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
+	}
+
+	// Only add max-discover-threads flag for versions >= v0.3.18
+	if semver.Compare(version, constants.DefaultMaxDiscoverThreadsVersion) >= 0 {
+		threads := constants.DefaultMaxDiscoverThreads
+		if maxDiscoverThreads != nil && *maxDiscoverThreads > 0 {
+			threads = *maxDiscoverThreads
+		}
+		cmdArgs = append(cmdArgs, constants.MaxDiscoverThreadsFlag, strconv.Itoa(threads))
 	}
 
 	if streamsConfig != "" {
