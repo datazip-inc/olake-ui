@@ -96,7 +96,7 @@ const JobCreation: React.FC = () => {
 		initialData.cronExpression || "* * * * *",
 	)
 	const [advancedSettings, setAdvancedSettings] =
-		useState<AdvancedSettings | null>(initialData.advancedSettings || null)
+		useState<AdvancedSettings | null>(initialData.advanced_settings || null)
 
 	//once the job name is filled we will set this to true so the job name will be disabled
 	const [jobNameFilled, setJobNameFilled] = useState(
@@ -396,7 +396,7 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify(selectedStreams),
 			frequency: cronExpression,
-			advancedSettings: advancedSettings,
+			advanced_settings: advancedSettings,
 		}
 
 		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")

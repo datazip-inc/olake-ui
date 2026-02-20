@@ -70,6 +70,7 @@ const Jobs: React.FC = () => {
 					jobName: savedJob.name,
 					cronExpression: savedJob.frequency,
 					isJobNameFilled: true,
+					advanced_settings: savedJob.advanced_settings ?? null,
 				}
 				navigate("/jobs/new", {
 					state: {
