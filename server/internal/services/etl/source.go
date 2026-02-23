@@ -269,7 +269,6 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
-	fmt.Printf("[LOG-SAP]GetSourceVersions for sourceType: %s, imageName: %s, versions: %v, err: %v", sourceType, imageName, versions, err)
 	if err != nil {
 		return dto.VersionsResponse{}, fmt.Errorf("failed to get Docker versions: %s", err)
 	}

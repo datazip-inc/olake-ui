@@ -297,7 +297,6 @@ func (h *Handler) GetSourceVersions() {
 		return
 	}
 	versions, err := h.etl.GetSourceVersions(h.Ctx.Request.Context(), sourceType)
-	fmt.Printf("[LOG-SAP]GetSourceVersions handler received versions: %v, err: %v", versions, err)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get source versions: %s", err), err)
 		return
