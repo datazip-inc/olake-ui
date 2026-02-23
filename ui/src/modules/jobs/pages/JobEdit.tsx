@@ -15,6 +15,7 @@ import {
 	SourceData,
 	DestinationData,
 	StreamsDataStructure,
+	AdvancedSettings,
 } from "../../../types"
 import JobConfiguration from "../components/JobConfiguration"
 import StepProgress from "../components/StepIndicator"
@@ -159,6 +160,8 @@ const JobEdit: React.FC = () => {
 	// Config step states
 	const [jobName, setJobName] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
+	const [advancedSettings, setAdvancedSettings] =
+		useState<AdvancedSettings | null>(null)
 	const [isFromSources, setIsFromSources] = useState(true)
 	const [streamsModified, setStreamsModified] = useState(false)
 	const [isStreamsLoading, setIsStreamsLoading] = useState(false)
@@ -227,6 +230,8 @@ const JobEdit: React.FC = () => {
 				console.error("Error parsing streams config:", e)
 			}
 		}
+
+		setAdvancedSettings(job.advanced_settings ?? null)
 	}
 
 	// Initialize defaults for a new job
@@ -345,6 +350,7 @@ const JobEdit: React.FC = () => {
 			frequency: cronExpression,
 			activate: job?.activate,
 			...(diff && { difference_streams: JSON.stringify(diff) }),
+			advanced_settings: advancedSettings,
 		}
 		return jobUpdateRequestPayload
 	}
@@ -568,6 +574,7 @@ const JobEdit: React.FC = () => {
 									}
 									jobName={jobName}
 									onLoadingChange={setIsStreamsLoading}
+									advancedSettings={advancedSettings}
 								/>
 							</div>
 						)}
@@ -580,6 +587,8 @@ const JobEdit: React.FC = () => {
 								setCronExpression={setCronExpression}
 								stepNumber={JOB_STEP_NUMBERS.CONFIG}
 								stepTitle="Job Configuration"
+								advancedSettings={advancedSettings}
+								setAdvancedSettings={setAdvancedSettings}
 							/>
 						)}
 					</div>
