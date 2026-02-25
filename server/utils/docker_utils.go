@@ -88,6 +88,10 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 
 		// Fallback to cached if online fetch fails or explicitly requested
 		if err != nil && cachedTags {
+			if constants.ExecutorEnvironment == "kubernetes" {
+				logger.Warn("failed to fetch image tags online for %s: %s. Cached fallback unavailable on Kubernetes (no Docker daemon)", imageName, err)
+				continue
+			}
 			logger.Warn("failed to fetch image tags online for %s: %s, falling back to cached tags", imageName, err)
 			tags, err = fetchCachedImageTags(ctx, imageName, repositoryBase)
 			if err != nil {
@@ -253,6 +257,9 @@ func isValidTag(tag string) bool {
 		tag >= "v0.1.0"
 }
 
+// TODO: Deprecate or remove this function.
+// It relies on the local Docker daemon to perform a login and currently has zero callers.
+// It is not compatible with daemonless environments like Kubernetes.
 // DockerLoginECR logs in to an AWS ECR repository using the AWS SDK
 func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	// Load AWS credentials & config
