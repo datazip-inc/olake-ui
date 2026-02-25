@@ -119,7 +119,7 @@ export function isColumnEnabled(
 // Returns true if filter_config (JSON) should be used instead of the legacy filter string.
 // Requires source >= v0.4.1 AND no selected stream already carries a non-empty legacy filter.
 export function shouldUseFilterConfig(
-	selectedStreams: import("../../../types").SelectedStreamsByNamespace,
+	selectedStreams: SelectedStreamsByNamespace,
 	sourceVersion: string,
 ): boolean {
 	if (!sourceVersion || !semver.valid(sourceVersion)) return false
