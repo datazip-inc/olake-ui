@@ -11,6 +11,7 @@ import {
 	LogEntry,
 	TaskLogEntry,
 	SelectedStreamsByNamespace,
+	FilterConfig,
 } from "../types"
 import {
 	ReleasesResponse,
@@ -667,11 +668,33 @@ export const validateFilter = (filter: string): boolean => {
 	return FILTER_REGEX.test(filter.trim())
 }
 
+// validates a structured filter_config object:
+export const validateFilterConfig = (filterConfig: FilterConfig): boolean => {
+	if (!filterConfig.conditions || filterConfig.conditions.length === 0) {
+		return false
+	}
+	return filterConfig.conditions.every(
+		cond =>
+			typeof cond.column === "string" &&
+			cond.column.trim() !== "" &&
+			typeof cond.operator === "string" &&
+			cond.operator.trim() !== "" &&
+			typeof cond.value === "string" &&
+			cond.value.trim() !== "",
+	)
+}
+
 export const validateStreams = (selections: {
 	[key: string]: SelectedStream[]
 }): boolean => {
 	return !Object.values(selections).some(streams =>
-		streams.some(sel => sel.filter && !validateFilter(sel.filter)),
+		streams.some(sel => {
+			// Legacy path: validate string filter
+			if (sel.filter) return !validateFilter(sel.filter)
+			// New path: validate structured filter_config
+			if (sel.filter_config) return !validateFilterConfig(sel.filter_config)
+			return false
+		}),
 	)
 }
 
