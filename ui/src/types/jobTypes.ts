@@ -27,6 +27,7 @@ export interface Job {
 	created_by: string
 	updated_by: string
 	activate: boolean
+	advanced_settings?: AdvancedSettings | null
 }
 export interface JobBase {
 	name: string
@@ -48,6 +49,7 @@ export interface JobBase {
 	streams_config: string
 	difference_streams?: string
 	activate?: boolean
+	advanced_settings?: AdvancedSettings | null
 }
 export interface JobTask {
 	runtime: string
@@ -97,6 +99,9 @@ export interface JobTableProps {
 	onDelete: (id: string) => void
 	onCancelJob: (id: string) => void
 }
+export interface AdvancedSettings {
+	max_discover_threads?: number | null
+}
 
 export interface JobConfigurationProps {
 	jobName: string
@@ -106,6 +111,10 @@ export interface JobConfigurationProps {
 	stepNumber?: number
 	stepTitle?: string
 	jobNameFilled?: boolean
+	advancedSettings: AdvancedSettings | null
+	setAdvancedSettings: React.Dispatch<
+		React.SetStateAction<AdvancedSettings | null>
+	>
 }
 
 export interface JobConnectionProps {
