@@ -15,9 +15,10 @@ import { validationService } from "../../../api/services/validationService"
 import { JobBase, JobCreationSteps, AdvancedSettings } from "../../../types"
 import {
 	getConnectorInLowerCase,
-	getSelectedStreams,
+	formatSelectedStreamsPayload,
 	validateCronExpression,
 	validateStreams,
+	getSelectedStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -252,7 +253,10 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify({
 				...selectedStreams,
-				selected_streams: getSelectedStreams(selectedStreams.selected_streams),
+				selected_streams: formatSelectedStreamsPayload(
+					selectedStreams.selected_streams,
+					selectedStreams.streams,
+				),
 			}),
 			frequency: cronExpression,
 			advanced_settings: advancedSettings,
@@ -313,10 +317,12 @@ const JobCreation: React.FC = () => {
 				break
 			}
 			case JOB_CREATION_STEPS.STREAMS:
-				if (
-					!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
-				) {
-					message.error("Filter Value cannot be empty")
+				const filterError = validateStreams(
+					getSelectedStreams(selectedStreams.selected_streams),
+					selectedStreams.streams,
+				)
+				if (filterError) {
+					message.error(filterError)
 					return
 				}
 				await handleJobCreation()

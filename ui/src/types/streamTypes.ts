@@ -14,7 +14,13 @@ export type LogicalOperator = "and" | "or"
 export type FilterCondition = {
 	column: string
 	operator: FilterOperator
-	value: string
+	value: string | null
+}
+
+export interface FilterConfigCondition {
+	column: string
+	operator: FilterOperator
+	value: any
 }
 
 export type MultiFilterCondition = {
@@ -112,7 +118,7 @@ export interface SelectedStream {
 
 export interface FilterConfig {
 	logical_operator: LogicalOperator
-	conditions: FilterCondition[]
+	conditions: FilterConfigCondition[]
 }
 
 export interface SelectedStreamsByNamespace {

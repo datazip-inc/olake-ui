@@ -27,9 +27,10 @@ import TestConnectionSuccessModal from "../../common/Modals/TestConnectionSucces
 import TestConnectionFailureModal from "../../common/Modals/TestConnectionFailureModal"
 import {
 	getConnectorInLowerCase,
-	getSelectedStreams,
+	formatSelectedStreamsPayload,
 	validateCronExpression,
 	validateStreams,
+	getSelectedStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -345,7 +346,10 @@ const JobEdit: React.FC = () => {
 			},
 			streams_config: JSON.stringify({
 				...streamsConfig,
-				selected_streams: getSelectedStreams(streamsConfig.selected_streams),
+				selected_streams: formatSelectedStreamsPayload(
+					streamsConfig.selected_streams,
+					streamsConfig.streams,
+				),
 			}),
 			frequency: cronExpression,
 			activate: job?.activate,
@@ -361,10 +365,12 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		if (
-			!validateStreams(getSelectedStreams(selectedStreams.selected_streams))
-		) {
-			message.error("Filter Value cannot be empty")
+		const filterError = validateStreams(
+			getSelectedStreams(selectedStreams.selected_streams),
+			selectedStreams.streams,
+		)
+		if (filterError) {
+			message.error(filterError)
 			return
 		}
 
@@ -373,8 +379,9 @@ const JobEdit: React.FC = () => {
 				jobId,
 				JSON.stringify({
 					...selectedStreams,
-					selected_streams: getSelectedStreams(
-						selectedStreams.selected_streams,
+					selected_streams: formatSelectedStreamsPayload(
+						getSelectedStreams(selectedStreams.selected_streams),
+						selectedStreams.streams,
 					),
 				}),
 			)
@@ -415,8 +422,12 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		if (!validateStreams(getSelectedStreams(streamsConfig.selected_streams))) {
-			message.error("Filter Value cannot be empty")
+		const filterError = validateStreams(
+			getSelectedStreams(streamsConfig.selected_streams),
+			streamsConfig.streams,
+		)
+		if (filterError) {
+			message.error(filterError)
 			return
 		}
 		setIsSubmitting(true)

@@ -12,7 +12,9 @@ import {
 	TaskLogEntry,
 	SelectedStreamsByNamespace,
 	FilterConfig,
+	FilterConfigCondition,
 } from "../types"
+import type { StreamData } from "../types/streamTypes"
 import {
 	ReleasesResponse,
 	ReleaseType,
@@ -650,14 +652,88 @@ export const handleSpecResponse = (
 	}
 }
 
-// Returns a copy of the selected streams map with all disabled streams removed
+// Casts a single filter condition's value to the appropriate native type
+// (number, boolean, object, array) based on the column's type schema.
+export const castFilterConditionValue = (
+	cond: FilterConfigCondition,
+	columnSchema?: { type: string | string[] },
+): FilterConfigCondition => {
+	if (cond.value === null || cond.value === "<null>") {
+		return { ...cond, value: null }
+	}
+
+	if (!columnSchema) return cond
+
+	// Find primary non-null type
+	const nonNullTypes = (
+		Array.isArray(columnSchema.type) ? columnSchema.type : [columnSchema.type]
+	).filter(t => t !== "null")
+
+	if (nonNullTypes.length === 0) return cond
+
+	const type = nonNullTypes[0] // take the primary type for casting
+	let castValue: any = String(cond.value).trim()
+
+	switch (type) {
+		case "integer_small":
+		case "integer":
+			castValue = castValue === "" ? null : parseInt(castValue, 10)
+			break
+		case "number_small":
+		case "number":
+			castValue = castValue === "" ? null : parseFloat(castValue)
+			break
+		case "boolean":
+			castValue = castValue === "true"
+			break
+		// arrays and objects are sent as string
+	}
+
+	return { ...cond, value: castValue }
+}
+
+// Filters out disabled streams
 export const getSelectedStreams = (selectedStreams: {
 	[key: string]: SelectedStream[]
 }): { [key: string]: SelectedStream[] } => {
+	const result: { [key: string]: SelectedStream[] } = {}
+
+	Object.keys(selectedStreams).forEach(key => {
+		result[key] = selectedStreams[key].filter(stream => !stream.disabled)
+	})
+
+	return result
+}
+
+// Applies type casting to filter_config values for their correct native types
+export const formatSelectedStreamsPayload = (
+	selectedStreams: { [key: string]: SelectedStream[] },
+	streams?: StreamData[],
+): { [key: string]: SelectedStream[] } => {
+	const filteredStreams = getSelectedStreams(selectedStreams)
+
+	const typeSchemaByName = new Map(
+		streams?.map(s => [s.stream.name, s.stream.type_schema?.properties]) ?? [],
+	)
+
 	return Object.fromEntries(
-		Object.entries(selectedStreams).map(([key, streams]) => [
+		Object.entries(filteredStreams).map(([key, nsStreams]) => [
 			key,
-			streams.filter(stream => !stream.disabled),
+			nsStreams.map(stream => {
+				const typeSchemaProps = typeSchemaByName.get(stream.stream_name)
+				if (!stream.filter_config || !typeSchemaProps) return stream
+
+				return {
+					...stream,
+					// Cast each condition's value to its schema-defined native type
+					filter_config: {
+						...stream.filter_config,
+						conditions: stream.filter_config.conditions.map(cond =>
+							castFilterConditionValue(cond, typeSchemaProps[cond.column]),
+						),
+					},
+				}
+			}),
 		]),
 	)
 }
@@ -668,34 +744,147 @@ export const validateFilter = (filter: string): boolean => {
 	return FILTER_REGEX.test(filter.trim())
 }
 
-// validates a structured filter_config object:
-export const validateFilterConfig = (filterConfig: FilterConfig): boolean => {
-	if (!filterConfig.conditions || filterConfig.conditions.length === 0) {
-		return false
-	}
-	return filterConfig.conditions.every(
-		cond =>
-			typeof cond.column === "string" &&
-			cond.column.trim() !== "" &&
-			typeof cond.operator === "string" &&
-			cond.operator.trim() !== "" &&
-			typeof cond.value === "string" &&
-			cond.value.trim() !== "",
-	)
+// ISO 8601 validation
+function isValidISO8601(str: string): boolean {
+	const iso8601Regex =
+		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+	if (!iso8601Regex.test(str)) return false
+
+	const date = new Date(str)
+	return !isNaN(date.getTime())
 }
 
-export const validateStreams = (selections: {
-	[key: string]: SelectedStream[]
-}): boolean => {
-	return !Object.values(selections).some(streams =>
-		streams.some(sel => {
-			// Legacy path: validate string filter
-			if (sel.filter) return !validateFilter(sel.filter)
-			// New path: validate structured filter_config
-			if (sel.filter_config) return !validateFilterConfig(sel.filter_config)
-			return false
-		}),
+// Validates if value is compatible with any given DataType.
+// Explicitly handles "null" values by checking if the column schema allows it.
+// Converts other values to string internally to handle native types safely.
+export const isValueValidForTypes = (
+	value: any,
+	type: string | string[],
+): boolean => {
+	const typeArray = Array.isArray(type) ? type : [type]
+	if (typeArray.length === 0) return false
+
+	const v = value === null ? "" : String(value)
+
+	return typeArray.some(t => {
+		switch (t) {
+			case "null":
+				return value === null || v === "<null>"
+
+			case "integer_small":
+			case "integer":
+				return /^-?\d+$/.test(v) && Number.isInteger(Number(v))
+
+			case "number_small":
+			case "number":
+				return !isNaN(Number(v)) && v !== ""
+
+			case "boolean":
+				return v === "true" || v === "false"
+
+			case "timestamp":
+			case "timestamp_milli":
+			case "timestamp_micro":
+			case "timestamp_nano":
+				return isValidISO8601(v)
+
+			case "array": {
+				try {
+					return Array.isArray(JSON.parse(v))
+				} catch {
+					return false
+				}
+			}
+
+			case "object": {
+				try {
+					const parsed = JSON.parse(v)
+					return (
+						parsed !== null &&
+						typeof parsed === "object" &&
+						!Array.isArray(parsed)
+					)
+				} catch {
+					return false
+				}
+			}
+
+			// "string", "unknown", or any unrecognised type
+			default:
+				return true
+		}
+	})
+}
+
+// Validates a structured filter_config object.
+// Returns null if valid, or a descriptive error string.
+export const validateFilterConfig = (
+	filterConfig: FilterConfig,
+	typeSchemaProperties?: Record<string, { type: string | string[] }>,
+): string | null => {
+	if (!filterConfig.conditions || filterConfig.conditions.length === 0) {
+		return "Filter conditions cannot be empty"
+	}
+
+	for (const cond of filterConfig.conditions) {
+		if (typeof cond.column !== "string" || cond.column.trim() === "") {
+			return "Filter condition is missing a column"
+		}
+		// Values can be null if the schema allows it, but they cannot be missing/undefined entirely
+		if (cond.value === undefined) {
+			return `Filter condition for "${cond.column}" is missing a value`
+		}
+
+		// Type-aware validation when schema is available
+		if (typeSchemaProperties) {
+			const columnSchema = typeSchemaProperties[cond.column]
+			if (
+				columnSchema &&
+				!isValueValidForTypes(cond.value, columnSchema.type)
+			) {
+				const expectedTypes = (
+					(Array.isArray(columnSchema.type)
+						? columnSchema.type
+						: [columnSchema.type]
+					).filter(t => t !== "null")[0]
+						? (Array.isArray(columnSchema.type)
+								? columnSchema.type
+								: [columnSchema.type]
+							).filter(t => t !== "null")
+						: ["null"]
+				).join(" | ")
+				return `Invalid value "${cond.value}" for column "${cond.column}" — expected type: ${expectedTypes}`
+			}
+		}
+	}
+
+	return null
+}
+
+// Returns null if all stream filters are valid, or a descriptive error string.
+export const validateStreams = (
+	selections: { [key: string]: SelectedStream[] },
+	streams?: StreamData[],
+): string | null => {
+	// Map typeSchemaProperties by stream name for quick lookup
+	const typeSchemaByName = new Map(
+		streams?.map(s => [s.stream.name, s.stream.type_schema?.properties]) ?? [],
 	)
+
+	for (const nsStreams of Object.values(selections)) {
+		for (const sel of nsStreams) {
+			if (sel.filter && !validateFilter(sel.filter)) {
+				return "Invalid filter expression"
+			}
+			if (sel.filter_config) {
+				const typeSchemaProps = typeSchemaByName.get(sel.stream_name)
+				const error = validateFilterConfig(sel.filter_config, typeSchemaProps)
+				if (error) return error
+			}
+		}
+	}
+
+	return null
 }
 
 export const getIngestionMode = (

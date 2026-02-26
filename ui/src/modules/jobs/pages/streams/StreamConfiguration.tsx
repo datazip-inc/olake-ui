@@ -209,7 +209,7 @@ const StreamConfiguration = ({
 				setStreamFilterStates(prev => ({ ...prev, [streamKey]: true }))
 			} else {
 				setMultiFilterCondition({
-					conditions: [{ column: "", operator: "=", value: "" }],
+					conditions: [{ column: "", operator: "=", value: null }],
 					logicalOperator: "and",
 				})
 				const savedFilterState = streamFilterStates[streamKey] || false
@@ -390,7 +390,7 @@ const StreamConfiguration = ({
 				{
 					column: "",
 					operator: "=",
-					value: "",
+					value: null,
 				},
 			],
 			logicalOperator: "and",
@@ -444,7 +444,7 @@ const StreamConfiguration = ({
 			const filterString = newConditions
 				.map(
 					cond =>
-						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value)}`,
+						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 				)
 				.join(` ${newMultiCondition.logicalOperator} `)
 			onFullLoadFilterChange?.(
@@ -464,7 +464,7 @@ const StreamConfiguration = ({
 
 		// Regenerate filter string if conditions exist
 		const filledConditions = multiFilterCondition.conditions.filter(
-			cond => cond.column && cond.operator && cond.value,
+			cond => cond.column && cond.operator,
 		)
 
 		if (filledConditions.length > 1) {
@@ -483,7 +483,7 @@ const StreamConfiguration = ({
 				const filterString = filledConditions
 					.map(
 						cond =>
-							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value)}`,
+							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${value} `)
 				onFullLoadFilterChange?.(
@@ -501,18 +501,14 @@ const StreamConfiguration = ({
 		if (conditions.length >= 2) return
 
 		const firstCondition = conditions[0]
-		if (
-			!firstCondition.column ||
-			!firstCondition.operator ||
-			!firstCondition.value
-		) {
+		if (!firstCondition.column || !firstCondition.operator) {
 			message.error("Please complete the first filter before applying another.")
 			return
 		}
 
 		const newConditions = [
 			...conditions,
-			{ column: "", operator: "=" as FilterOperator, value: "" },
+			{ column: "", operator: "=" as FilterOperator, value: null },
 		]
 		setMultiFilterCondition({
 			...multiFilterCondition,
@@ -535,7 +531,7 @@ const StreamConfiguration = ({
 				conditions
 					.map(
 						cond =>
-							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value)}`,
+							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${multiFilterCondition.logicalOperator} `) + " = "
 			onFullLoadFilterChange?.(
@@ -561,7 +557,7 @@ const StreamConfiguration = ({
 			const condition = newConditions[0]
 			isLocalFilterUpdateRef.current = true
 			if (useFilterConfig) {
-				if (condition.column && condition.operator && condition.value) {
+				if (condition.column && condition.operator) {
 					const filterConfig: FilterConfig = {
 						logical_operator: newMultiCondition.logicalOperator,
 						conditions: newConditions,
@@ -580,8 +576,8 @@ const StreamConfiguration = ({
 					)
 				}
 			} else {
-				if (condition.column && condition.operator && condition.value) {
-					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value)}`
+				if (condition.column && condition.operator) {
+					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value as string)}`
 					onFullLoadFilterChange?.(
 						stream.stream.name,
 						stream.stream.namespace || "",
@@ -1185,8 +1181,13 @@ const StreamConfiguration = ({
 						<div>
 							<label className="mb-2 block text-sm text-gray-600">Value</label>
 							<Input
-								placeholder="Enter value"
-								value={condition.value}
+								placeholder={condition.value === null ? "<null>" : ""}
+								value={condition.value === null ? "" : condition.value}
+								onFocus={() => {
+									if (condition.value === null) {
+										handleFilterConditionChange(index, "value", "")
+									}
+								}}
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
