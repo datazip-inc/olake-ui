@@ -17,9 +17,9 @@ type BaseModel struct {
 type User struct {
 	BaseModel `orm:"embedded"`
 	ID        int    `json:"id" orm:"column(id);pk;auto"`
-	Username  string `json:"username" orm:"size(100);unique"`
-	Password  string `json:"password" orm:"size(100)"` // Hidden in JSON
-	Email     string `json:"email" orm:"size(100);unique"`
+	Username  string `json:"username" orm:"size(100);unique" validate:"required,min=3"`
+	Password  string `json:"password" orm:"size(100)" validate:"required,min=6"` // Hidden in JSON
+	Email     string `json:"email" orm:"size(100);unique" validate:"required,email"`
 }
 
 func (u *User) TableName() string {
