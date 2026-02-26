@@ -74,7 +74,7 @@ start-frontend:
 # Start backend server with env vars
 start-backend:
 	cd $(SERVER_DIR) && \
-	$(BACKEND_ENV_VARS) bee run
+	$(BACKEND_ENV_VARS) $(GOPATH)/bin/bee run
 
 
 # Start Temporal services using Docker Compose
