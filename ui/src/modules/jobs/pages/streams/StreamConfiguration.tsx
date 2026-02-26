@@ -31,6 +31,7 @@ import {
 	SyncMode,
 	IngestionMode,
 	StreamsDataStructure,
+	SelectedColumns,
 } from "../../../../types"
 
 import {
@@ -51,6 +52,7 @@ import {
 import StreamsSchema from "./StreamsSchema"
 
 const StreamConfiguration = ({
+	selectedStream,
 	stream,
 	onSyncModeChange,
 	isSelected,
@@ -64,6 +66,7 @@ const StreamConfiguration = ({
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	onIngestionModeChange,
+	onSelectedColumnChange,
 	sourceType,
 }: ExtendedStreamConfigurationProps) => {
 	const [activeTab, setActiveTab] = useState("config")
@@ -134,6 +137,9 @@ const StreamConfiguration = ({
 
 	useEffect(() => {
 		setActiveTab("config")
+	}, [stream.stream.name, stream.stream.namespace])
+
+	useEffect(() => {
 		const initialApiSyncMode = stream.stream.sync_mode
 		const initialCursorField = stream.stream.cursor_field
 
@@ -605,6 +611,16 @@ const StreamConfiguration = ({
 				),
 				value: field,
 			}))
+	}
+
+	const handleSelectedColumnsChange = (selected_columns: SelectedColumns) => {
+		// Guard: old driver versions don't have selected_columns
+		if (!selectedStream.selected_columns) return
+		onSelectedColumnChange?.(
+			stream.stream.name,
+			stream.stream.namespace || "",
+			selected_columns,
+		)
 	}
 
 	// Tab button component
@@ -1164,7 +1180,13 @@ const StreamConfiguration = ({
 			</div>
 
 			{activeTab === "config" && renderConfigContent()}
-			{activeTab === "schema" && <StreamsSchema initialData={stream} />}
+			{activeTab === "schema" && initialSelectedStreams && (
+				<StreamsSchema
+					initialStreamsData={stream}
+					initialSelectedStream={selectedStream}
+					onSelectedColumnChange={handleSelectedColumnsChange}
+				/>
+			)}
 			{activeTab === "partitioning" && renderPartitioningContent()}
 		</div>
 	)
