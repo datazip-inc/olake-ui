@@ -13,6 +13,7 @@ import {
 } from "../../../utils/utils"
 import { DAYS, FREQUENCY_OPTIONS } from "../../../utils/constants"
 import StepTitle from "../../common/components/StepTitle"
+import AdvancedSettingsCard from "./AdvancedSettingsCard"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	jobName,
@@ -22,6 +23,8 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	stepNumber = 4,
 	stepTitle = "Job Configuration",
 	jobNameFilled = false,
+	advancedSettings,
+	setAdvancedSettings,
 }) => {
 	const location = useLocation()
 	const isEditMode = location.pathname.includes("/edit")
@@ -287,6 +290,12 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 					</div>
 				)}
 			</div>
+
+			{/* Advanced Settings Card */}
+			<AdvancedSettingsCard
+				advancedSettings={advancedSettings}
+				setAdvancedSettings={setAdvancedSettings}
+			/>
 		</div>
 	)
 }

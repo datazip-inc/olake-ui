@@ -1,3 +1,4 @@
+import React from "react"
 import { message } from "antd"
 import parser from "cron-parser"
 
@@ -607,6 +608,25 @@ export const validateAlphanumericUnderscore = (
 			validValue !== value
 				? "Only lowercase letters, numbers and underscores allowed"
 				: "",
+	}
+}
+
+// restricts input to only numbers and control keys
+export const restrictNumericInput = (
+	event: React.KeyboardEvent<HTMLInputElement>,
+) => {
+	const allowedKeys = [
+		"Backspace",
+		"Delete",
+		"ArrowLeft",
+		"ArrowRight",
+		"Tab",
+		"Home",
+		"End",
+	]
+
+	if (!/[0-9]/.test(event.key) && !allowedKeys.includes(event.key)) {
+		event.preventDefault()
 	}
 }
 
