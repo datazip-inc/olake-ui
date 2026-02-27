@@ -18,6 +18,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/spf13/viper"
 	"golang.org/x/mod/semver"
 )
 
@@ -103,6 +104,11 @@ func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) 
 		// TODO : return highest tag out of all sources (currently breaking loop once any tag found on any image)
 		driverImage = imageName
 		break
+	}
+
+	// Add custom version if provided
+	if customVersion := GetCustomDriverVersion(); customVersion != "" {
+		tags = append(tags, customVersion)
 	}
 
 	if len(tags) == 0 {
@@ -300,4 +306,22 @@ func DockerLoginECR(ctx context.Context, region, registryID string) error {
 	}
 
 	return nil
+}
+
+// --- developer utils ---
+
+// CustomDriverVersion returns the custom driver version used to test olake with olake-ui.
+// Note: This is only for development/testing purposes.
+// When a custom version is set, semver-based compatibility checks will bypassed.
+func GetCustomDriverVersion() string {
+	if strings.EqualFold(GetAppEnv(), constants.AppEnvDevelopment) {
+		return viper.GetString(constants.EnvCustomDriverImage)
+	}
+	return ""
+}
+
+// GetAppEnv returns the application environment in normalized format
+// Supported values: development, production
+func GetAppEnv() string {
+	return NormalizeString(viper.GetString(constants.EnvAppEnvironment))
 }
