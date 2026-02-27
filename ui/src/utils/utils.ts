@@ -820,19 +820,23 @@ export const isValueValidForTypes = (
 // Returns null if valid, or a descriptive error string.
 export const validateFilterConfig = (
 	filterConfig: FilterConfig,
+	streamName: string,
+	namespace: string,
 	typeSchemaProperties?: Record<string, { type: string | string[] }>,
 ): string | null => {
+	const streamPrefix = `[${namespace}.${streamName}]`
+
 	if (!filterConfig.conditions || filterConfig.conditions.length === 0) {
-		return "Filter conditions cannot be empty"
+		return `${streamPrefix} Filter conditions cannot be empty`
 	}
 
 	for (const cond of filterConfig.conditions) {
 		if (typeof cond.column !== "string" || cond.column.trim() === "") {
-			return "Filter condition is missing a column"
+			return `${streamPrefix} Filter condition is missing a column`
 		}
 		// Values can be null if the schema allows it, but they cannot be missing/undefined entirely
 		if (cond.value === undefined) {
-			return `Filter condition for "${cond.column}" is missing a value`
+			return `${streamPrefix} Filter condition for "${cond.column}" is missing a value`
 		}
 
 		// Type-aware validation when schema is available
@@ -842,6 +846,10 @@ export const validateFilterConfig = (
 				columnSchema &&
 				!isValueValidForTypes(cond.value, columnSchema.type)
 			) {
+				// Retrieve the column's expected types. We filter out "null" to present
+				// a cleaner error (e.g., "expected: string" instead of "expected: string | null").
+				// The ternary checks if filtering out "null" leaves an empty array.
+				// If it's empty (meaning the column ONLY supports "null"), it safely falls back to ["null"].
 				const expectedTypes = (
 					(Array.isArray(columnSchema.type)
 						? columnSchema.type
@@ -853,7 +861,7 @@ export const validateFilterConfig = (
 							).filter(t => t !== "null")
 						: ["null"]
 				).join(" | ")
-				return `Invalid value "${cond.value}" for column "${cond.column}" — expected type: ${expectedTypes}`
+				return `${streamPrefix} Invalid value "${cond.value}" for column "${cond.column}" — expected type: ${expectedTypes}`
 			}
 		}
 	}
@@ -871,14 +879,19 @@ export const validateStreams = (
 		streams?.map(s => [s.stream.name, s.stream.type_schema?.properties]) ?? [],
 	)
 
-	for (const nsStreams of Object.values(selections)) {
+	for (const [namespace, nsStreams] of Object.entries(selections)) {
 		for (const sel of nsStreams) {
 			if (sel.filter && !validateFilter(sel.filter)) {
-				return "Invalid filter expression"
+				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Invalid filter expression`
 			}
 			if (sel.filter_config) {
 				const typeSchemaProps = typeSchemaByName.get(sel.stream_name)
-				const error = validateFilterConfig(sel.filter_config, typeSchemaProps)
+				const error = validateFilterConfig(
+					sel.filter_config,
+					sel.stream_name,
+					namespace,
+					typeSchemaProps,
+				)
 				if (error) return error
 			}
 		}
