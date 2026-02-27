@@ -86,7 +86,7 @@ func (t *Temporal) DiscoverStreams(ctx context.Context, sourceType, version, con
 		"/mnt/config/config.json",
 	}
 
-	if jobName != "" && (utils.CustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
+	if jobName != "" && (utils.GetCustomDriverVersion() != "" || semver.Compare(version, "v0.2.0") >= 0) {
 		cmdArgs = append(cmdArgs, "--destination-database-prefix", jobName)
 	}
 
@@ -142,7 +142,7 @@ func (t *Temporal) GetDriverSpecs(ctx context.Context, destinationType, sourceTy
 	workflowID := fmt.Sprintf("fetch-spec-%s-%d", sourceType, time.Now().Unix())
 
 	// spec version >= DefaultSpecVersion is required
-	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.CustomDriverVersion() == "" {
+	if semver.Compare(version, constants.DefaultSpecVersion) < 0 && utils.GetCustomDriverVersion() == "" {
 		version = constants.DefaultSpecVersion
 	}
 
