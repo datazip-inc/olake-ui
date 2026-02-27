@@ -25,6 +25,9 @@ import (
 
 // docker hub tags api url template
 const dockerHubTagsURLTemplate = "https://hub.docker.com/v2/repositories/%s/tags/?page_size=100"
+const ecrRepositoryPrivateRegex = `^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?/(.+)$`
+const ecrRepositoryPublicRegex = `^public\.ecr\.aws/(.+)$`
+const gcrArtifactRegistryRepositoryRegex = `^([a-z][a-z0-9-]*)-docker\.pkg\.dev/([^/]+)/([^/]+)/(.+)$`
 
 // DockerHubTag represents a single tag from Docker Hub API response
 type DockerHubTag struct {
@@ -256,7 +259,7 @@ func ParseGCRArtifactRegistryDetails(fullImageName string) (project, location, r
 	imageRef := strings.SplitN(fullImageName, ":", 2)[0]
 
 	// Format: {location}-docker.pkg.dev/{project}/{repository}/{package-path}
-	arRe := regexp.MustCompile(`^([a-z][a-z0-9-]*)-docker\.pkg\.dev/([^/]+)/([^/]+)/(.+)$`)
+	arRe := regexp.MustCompile(gcrArtifactRegistryRepositoryRegex)
 	if matches := arRe.FindStringSubmatch(imageRef); len(matches) == 5 {
 		location = matches[1]
 		project = matches[2]
@@ -321,8 +324,8 @@ func GetCachedImages(ctx context.Context) ([]string, error) {
 //	        repoName  = "olakego/source-mysql:latest"
 func ParseECRDetails(fullImageName string) (accountID, region, repoName string, err error) {
 	// handle private and public ecr and china ecr
-	privateRe := regexp.MustCompile(`^(\d+)\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?/(.+)$`)
-	publicRe := regexp.MustCompile(`^public\.ecr\.aws/(.+)$`)
+	privateRe := regexp.MustCompile(ecrRepositoryPrivateRegex)
+	publicRe := regexp.MustCompile(ecrRepositoryPublicRegex)
 
 	if matches := privateRe.FindStringSubmatch(fullImageName); len(matches) == 5 {
 		return matches[1], matches[2], matches[4], nil
