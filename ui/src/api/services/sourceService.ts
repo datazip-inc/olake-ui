@@ -177,6 +177,7 @@ export const sourceService = {
 		config: string,
 		job_name: string,
 		job_id?: number,
+		max_discover_threads?: number | null,
 	) => {
 		try {
 			const response = await api.post<StreamsDataStructure>(
@@ -188,6 +189,7 @@ export const sourceService = {
 					job_id: job_id ? job_id : -1,
 					version,
 					config,
+					max_discover_threads,
 				},
 				{ timeout: 0 },
 			)
