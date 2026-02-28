@@ -71,6 +71,10 @@ var (
 
 	// DefaultLogsDirection is the fallback pagination direction ("older" or "newer").
 	DefaultLogsDirection = "older"
+
+	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
+	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
+	ExecutorEnvironment = "docker"
 )
 
 // Supported database/source types
@@ -118,6 +122,10 @@ func Init() {
 	checkForRequiredVariables(RequiredConfigVariable)
 
 	AppVersion = viper.GetString("APP_VERSION")
+
+	if viper.GetString("KUBERNETES_SERVICE_HOST") != "" {
+		ExecutorEnvironment = "kubernetes"
+	}
 
 	// init table names
 	TableNameMap = map[TableType]string{
