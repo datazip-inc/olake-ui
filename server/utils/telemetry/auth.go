@@ -26,3 +26,22 @@ func TrackUserLogin(ctx context.Context, user *models.User) {
 		}
 	}()
 }
+
+// TrackUserUpdate records when a user updates their credentials.
+func TrackUserUpdate(ctx context.Context, user *models.User) {
+	go func() {
+		if instance == nil || user == nil {
+			return
+		}
+
+		properties := map[string]interface{}{
+			"user_id": user.ID,
+			"email":   user.Email,
+		}
+
+		err := TrackEvent(ctx, "user_update", properties)
+		if err != nil {
+			logger.Debug("Failed to track user update event: %s", err)
+		}
+	}()
+}

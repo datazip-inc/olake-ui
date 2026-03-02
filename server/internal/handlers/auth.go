@@ -128,6 +128,47 @@ func (h *Handler) Signup() {
 	})
 }
 
+// @Summary Update user credentials
+// @Tags Authentication
+// @Description Change the authenticated user's credentials.  User must be logged in via session.
+// @Param   body          body    dto.UpdateCredentialsRequest true "new username/password"
+// @Success 200 {object} dto.JSONResponse "credentials updated successfully"
+// @Failure 400 {object} dto.Error400Response "invalid request"
+// @Failure 401 {object} dto.Error401Response "not authenticated"
+// @Failure 500 {object} dto.Error500Response "failed to update credentials"
+// @Router /user/credentials [put]
+func (h *Handler) UpdateCredentials() {
+	// ensure user is authenticated via session
+	userID := h.GetSession(constants.SessionUserID)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
+		return
+	}
+	userIDInt, ok := userID.(int)
+	if !ok {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Invalid session data", errors.New("invalid session user id"))
+		return
+	}
+
+	var req dto.UpdateCredentialsRequest
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		return
+	}
+
+	if req.Username == "" && req.Password == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "nothing to update", errors.New("no credentials provided"))
+		return
+	}
+
+	if err := h.etl.UpdateCredentials(h.Ctx.Request.Context(), userIDInt, req.Username, req.Password); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update credentials: %s", err), err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, "credentials updated successfully", nil)
+}
+
 // @Summary Get telemetry ID
 // @Tags Internal
 // @Description Retrieve the unique telemetry identifier and current UI version.

@@ -85,7 +85,37 @@ start-temporal:
 start-temporal-server:
 	cd $(SERVER_DIR) && $(BACKEND_ENV_VARS)  go run ./cmd/temporal-worker/main.go
 
+COOKIE_JAR := /tmp/olake_cookies.txt
+
 # Create a user with specified username, password and email (e.g. make create-user username=admin password=admin123 email=admin@example.com)
 create-user:
-	@curl -s -X POST http://localhost:8000/signup -H "Content-Type: application/json" -d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "\"success\": true" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
+	@curl -s -X POST http://localhost:8000/signup \
+		-H "Content-Type: application/json" \
+		-d "{\"username\":\"$(username)\",\"password\":\"$(password)\",\"email\":\"$(email)\"}" | grep -q "\"success\": true" && echo "User $(username) created successfully" || echo "Failed to create user $(username)"
+
+
+# helper target that logs in with provided credentials and stores cookie
+# prints an error and exits if login fails or no cookie received
+login:
+	@echo "logging in as '$(oldusername)'..."
+	@rm -f $(COOKIE_JAR)
+	@curl -c $(COOKIE_JAR) -s -X POST http://localhost:8000/login \
+		-H 'Content-Type: application/json' \
+		-d '{"username":"$(oldusername)","password":"$(oldpassword)"}' \
+		| tee /dev/stderr | grep -q "\"success\": true" \
+	&& [ -s $(COOKIE_JAR) ] \
+	&& echo "login succeeded" \
+	|| (echo "login failed or no session cookie written"; exit 1)
+
+# Update an existing user's credentials.
+# Pass oldusername, oldpassword, newusername and newpassword variables.
+# Example: make update-user oldusername=admin oldpassword=secret newusername=alice newpassword=newpass
+update-user: login
+	@echo "updating credentials to $(newusername)..."
+	@curl -b $(COOKIE_JAR) -s -X PUT http://localhost:8000/user/credentials \
+		-H "Content-Type: application/json" \
+		-d "{\"username\":\"$(newusername)\",\"password\":\"$(newpassword)\"}" \
+		| tee /dev/stderr | grep -q "\"success\": true" \
+	&& echo "Credentials updated successfully" \
+	|| echo "Failed to update credentials"
 
