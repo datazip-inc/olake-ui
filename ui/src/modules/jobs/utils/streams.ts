@@ -12,6 +12,7 @@ import {
 import {
 	STREAM_DEFAULTS,
 	MIN_COLUMN_SELECTION_SOURCE_VERSION,
+	MIN_JSON_FILTER_VERSION,
 } from "../../../utils/constants"
 import semver from "semver"
 
@@ -113,4 +114,19 @@ export function isColumnEnabled(
 ): boolean {
 	if (!isColumnSelectionSupported(selectedStream)) return true
 	return selectedStream.selected_columns!.columns.includes(columnName)
+}
+
+// Returns true if filter_config (JSON) should be used instead of the legacy filter string.
+// Requires source >= v0.4.1 AND no selected stream already carries a non-empty legacy filter.
+export function shouldUseFilterConfig(
+	selectedStreams: SelectedStreamsByNamespace,
+	sourceVersion: string,
+): boolean {
+	if (!sourceVersion || !semver.valid(sourceVersion)) return false
+	if (!semver.gte(sourceVersion, MIN_JSON_FILTER_VERSION)) return false
+
+	// If ANY stream already carries a legacy filter string, keep legacy path.
+	return !Object.values(selectedStreams).some(streams =>
+		streams.some(s => typeof s.filter === "string" && s.filter !== ""),
+	)
 }
