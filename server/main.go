@@ -30,7 +30,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	etlhandlers "github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
 	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/routes"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -62,7 +62,7 @@ func main() {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
-	routes.Init(handlers.NewHandler(appSvc))
+	routes.Init(etlhandlers.NewHandler(appSvc))
 	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}

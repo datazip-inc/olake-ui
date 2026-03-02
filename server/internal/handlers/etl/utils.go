@@ -1,4 +1,4 @@
-package handlers
+package etlhandlers
 
 import (
 	"encoding/json"
