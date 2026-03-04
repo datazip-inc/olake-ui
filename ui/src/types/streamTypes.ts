@@ -12,9 +12,15 @@ export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
 export type LogicalOperator = "and" | "or"
 
 export type FilterCondition = {
-	columnName: string
+	column: string
 	operator: FilterOperator
-	value: string
+	value: string | null
+}
+
+export interface FilterConfigCondition {
+	column: string
+	operator: FilterOperator
+	value: any
 }
 
 export type MultiFilterCondition = {
@@ -107,6 +113,12 @@ export interface SelectedStream {
 	disabled?: boolean
 	append_mode?: boolean
 	selected_columns?: SelectedColumns
+	filter_config?: FilterConfig
+}
+
+export interface FilterConfig {
+	logical_operator: LogicalOperator
+	conditions: FilterConfigCondition[]
 }
 
 export interface SelectedStreamsByNamespace {
@@ -145,6 +157,7 @@ export interface ExtendedStreamConfigurationProps
 	initialNormalization: boolean
 	initialPartitionRegex: string
 	initialFullLoadFilter?: string
+	initialFilterConfig?: FilterConfig
 	fromJobEditFlow?: boolean
 	initialSelectedStreams?: StreamsDataStructure
 	destinationType?: string
@@ -162,6 +175,11 @@ export interface ExtendedStreamConfigurationProps
 		streamName: string,
 		namespace: string,
 		filterValue: string,
+	) => void
+	onFilterConfigChange?: (
+		streamName: string,
+		namespace: string,
+		filterConfig: FilterConfig | undefined,
 	) => void
 	onIngestionModeChange: (
 		streamName: string,

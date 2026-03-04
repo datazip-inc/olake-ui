@@ -11,6 +11,7 @@ import {
 	SyncMode,
 	StreamsDataStructure,
 	SelectedColumns,
+	FilterConfig,
 } from "../../../types"
 import FilterButton from "../components/FilterButton"
 import StepTitle from "../../common/components/StepTitle"
@@ -28,7 +29,10 @@ import {
 } from "../../../utils/constants"
 import { extractNamespaceFromDestination } from "../../../utils/destination-database"
 import DestinationDatabaseModal from "../../common/Modals/DestinationDatabaseModal"
-import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
+import {
+	getStreamsDataFromSourceStreamsResponse,
+	shouldUseFilterConfig,
+} from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -89,6 +93,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			) || null
 		)
 	}, [activeStreamKey, apiResponse?.selected_streams])
+
+	const useFilterConfig = useMemo(
+		() =>
+			shouldUseFilterConfig(apiResponse?.selected_streams ?? {}, sourceVersion),
+		[apiResponse?.selected_streams, sourceVersion],
+	)
 
 	const [isStreamsLoading, setIsStreamsLoading] = useState(!initialStreamsData)
 	// Store initial streams data for reference
@@ -647,6 +657,46 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		})
 	}
 
+	const handleFilterConfigChange = (
+		streamName: string,
+		namespace: string,
+		filterConfig: FilterConfig | undefined,
+	) => {
+		setApiResponse(prev => {
+			if (!prev) return prev
+
+			const streamExistsInSelected = prev.selected_streams[namespace]?.some(
+				s => s.stream_name === streamName,
+			)
+
+			if (!streamExistsInSelected) return prev
+
+			const updatedSelectedStreams = {
+				...prev.selected_streams,
+				[namespace]: prev.selected_streams[namespace].map(s => {
+					if (s.stream_name === streamName) {
+						if (!filterConfig) {
+							// Remove filter_config when filter is disabled
+							const updated = { ...s }
+							delete updated.filter_config
+							return updated
+						}
+						return { ...s, filter_config: filterConfig }
+					}
+					return s
+				}),
+			}
+
+			const updated = {
+				...prev,
+				selected_streams: updatedSelectedStreams,
+			}
+
+			setSelectedStreams(updated)
+			return updated
+		})
+	}
+
 	const { Search } = Input
 
 	return (
@@ -826,7 +876,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.filter || ""
 							}
+							initialFilterConfig={
+								apiResponse?.selected_streams[
+									activeStreamData.stream.namespace || ""
+								]?.find(s => s.stream_name === activeStreamData.stream.name)
+									?.filter_config
+							}
 							onFullLoadFilterChange={handleFullLoadFilterChange}
+							onFilterConfigChange={
+								useFilterConfig ? handleFilterConfigChange : undefined
+							}
 							fromJobEditFlow={fromJobEditFlow}
 							initialSelectedStreams={apiResponse || undefined}
 							destinationType={destinationType}

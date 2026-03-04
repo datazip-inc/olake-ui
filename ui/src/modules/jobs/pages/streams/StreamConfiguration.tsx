@@ -25,6 +25,7 @@ import {
 import {
 	ExtendedStreamConfigurationProps,
 	FilterCondition,
+	FilterConfig,
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
@@ -61,7 +62,9 @@ const StreamConfiguration = ({
 	onNormalizationChange,
 	onPartitionRegexChange,
 	initialFullLoadFilter = "",
+	initialFilterConfig,
 	onFullLoadFilterChange,
+	onFilterConfigChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
@@ -69,6 +72,7 @@ const StreamConfiguration = ({
 	onSelectedColumnChange,
 	sourceType,
 }: ExtendedStreamConfigurationProps) => {
+	const useFilterConfig = typeof onFilterConfigChange === "function"
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
 	const [cursorField, setCursorField] = useState<string | undefined>(
@@ -91,7 +95,7 @@ const StreamConfiguration = ({
 		useState<MultiFilterCondition>({
 			conditions: [
 				{
-					columnName: "",
+					column: "",
 					operator: "=",
 					value: "",
 				},
@@ -194,7 +198,26 @@ const StreamConfiguration = ({
 			isLocalFilterUpdateRef.current = false
 			return
 		}
-		// Parse initial filter if exists
+
+		if (useFilterConfig) {
+			if (initialFilterConfig && initialFilterConfig.conditions.length > 0) {
+				setMultiFilterCondition({
+					conditions: initialFilterConfig.conditions,
+					logicalOperator: initialFilterConfig.logical_operator,
+				})
+				setFullLoadFilter(true)
+				setStreamFilterStates(prev => ({ ...prev, [streamKey]: true }))
+			} else {
+				setMultiFilterCondition({
+					conditions: [{ column: "", operator: "=", value: null }],
+					logicalOperator: "and",
+				})
+				const savedFilterState = streamFilterStates[streamKey] || false
+				setFullLoadFilter(savedFilterState)
+			}
+			return
+		}
+
 		if (initialFullLoadFilter) {
 			const conditions: FilterCondition[] = []
 			let logicalOperator: LogicalOperator = "and"
@@ -218,7 +241,7 @@ const StreamConfiguration = ({
 					// Remove quotes if present in the value
 					const cleanValue = value.trim().replace(/^"(.*)"$/, "$1")
 					conditions.push({
-						columnName: columnName.trim(),
+						column: columnName.trim(),
 						operator,
 						value: cleanValue,
 					})
@@ -241,7 +264,7 @@ const StreamConfiguration = ({
 			setMultiFilterCondition({
 				conditions: [
 					{
-						columnName: "",
+						column: "",
 						operator: "=",
 						value: "",
 					},
@@ -252,7 +275,7 @@ const StreamConfiguration = ({
 			const savedFilterState = streamFilterStates[streamKey] || false
 			setFullLoadFilter(savedFilterState)
 		}
-	}, [initialFullLoadFilter])
+	}, [initialFullLoadFilter, initialFilterConfig])
 
 	// Add helper function for checking supported sync modes
 	const isSyncModeSupported = (mode: string): boolean => {
@@ -365,20 +388,28 @@ const StreamConfiguration = ({
 		setMultiFilterCondition({
 			conditions: [
 				{
-					columnName: "",
+					column: "",
 					operator: "=",
-					value: "",
+					value: null,
 				},
 			],
 			logicalOperator: "and",
 		})
 		isLocalFilterUpdateRef.current = true
 		// If toggled on insert empty condition
-		onFullLoadFilterChange?.(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			checked ? "=" : "",
-		)
+		if (useFilterConfig) {
+			onFilterConfigChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				checked ? { logical_operator: "and", conditions: [] } : undefined,
+			)
+		} else {
+			onFullLoadFilterChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				checked ? "=" : "",
+			)
+		}
 	}
 
 	const handleFilterConditionChange = (
@@ -397,20 +428,31 @@ const StreamConfiguration = ({
 			conditions: newConditions,
 		}
 		setMultiFilterCondition(newMultiCondition)
-
-		const filterString = newConditions
-			.map(
-				cond =>
-					`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-			)
-			.join(` ${newMultiCondition.logicalOperator} `)
-
 		isLocalFilterUpdateRef.current = true
-		onFullLoadFilterChange?.(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			filterString,
-		)
+
+		if (useFilterConfig) {
+			const filterConfig: FilterConfig = {
+				logical_operator: newMultiCondition.logicalOperator,
+				conditions: newConditions,
+			}
+			onFilterConfigChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				filterConfig,
+			)
+		} else {
+			const filterString = newConditions
+				.map(
+					cond =>
+						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
+				)
+				.join(` ${newMultiCondition.logicalOperator} `)
+			onFullLoadFilterChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				filterString,
+			)
+		}
 	}
 
 	const handleLogicalOperatorChange = (value: LogicalOperator) => {
@@ -422,23 +464,34 @@ const StreamConfiguration = ({
 
 		// Regenerate filter string if conditions exist
 		const filledConditions = multiFilterCondition.conditions.filter(
-			cond => cond.columnName && cond.operator && cond.value,
+			cond => cond.column && cond.operator,
 		)
 
 		if (filledConditions.length > 1) {
-			const filterString = filledConditions
-				.map(
-					cond =>
-						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-				)
-				.join(` ${value} `)
-
 			isLocalFilterUpdateRef.current = true
-			onFullLoadFilterChange?.(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterString,
-			)
+			if (useFilterConfig) {
+				const filterConfig: FilterConfig = {
+					logical_operator: value,
+					conditions: filledConditions,
+				}
+				onFilterConfigChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "",
+					filterConfig,
+				)
+			} else {
+				const filterString = filledConditions
+					.map(
+						cond =>
+							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
+					)
+					.join(` ${value} `)
+				onFullLoadFilterChange?.(
+					stream.stream.name,
+					stream.stream.namespace || "",
+					filterString,
+				)
+			}
 		}
 	}
 
@@ -448,35 +501,45 @@ const StreamConfiguration = ({
 		if (conditions.length >= 2) return
 
 		const firstCondition = conditions[0]
-		if (
-			!firstCondition.columnName ||
-			!firstCondition.operator ||
-			!firstCondition.value
-		) {
+		if (!firstCondition.column || !firstCondition.operator) {
 			message.error("Please complete the first filter before applying another.")
 			return
 		}
 
+		const newConditions = [
+			...conditions,
+			{ column: "", operator: "=" as FilterOperator, value: null },
+		]
 		setMultiFilterCondition({
 			...multiFilterCondition,
-			conditions: [...conditions, { columnName: "", operator: "=", value: "" }],
+			conditions: newConditions,
 		})
 
-		// insert empty condition in the filter string
-		const filterString =
-			conditions
-				.map(
-					cond =>
-						`${cond.columnName} ${cond.operator} ${formatFilterValue(cond.columnName, cond.value)}`,
-				)
-				.join(` ${multiFilterCondition.logicalOperator} `) + " = "
-
 		isLocalFilterUpdateRef.current = true
-		onFullLoadFilterChange?.(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			filterString,
-		)
+		if (useFilterConfig) {
+			const filterConfig: FilterConfig = {
+				logical_operator: multiFilterCondition.logicalOperator,
+				conditions: newConditions,
+			}
+			onFilterConfigChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				filterConfig,
+			)
+		} else {
+			const filterString =
+				conditions
+					.map(
+						cond =>
+							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
+					)
+					.join(` ${multiFilterCondition.logicalOperator} `) + " = "
+			onFullLoadFilterChange?.(
+				stream.stream.name,
+				stream.stream.namespace || "",
+				filterString,
+			)
+		}
 	}
 
 	const handleRemoveFilter = (index: number) => {
@@ -492,21 +555,41 @@ const StreamConfiguration = ({
 		// If removing leaves us with one condition, update the filter string
 		if (newConditions.length === 1) {
 			const condition = newConditions[0]
-			if (condition.columnName && condition.operator && condition.value) {
-				const filterString = `${condition.columnName} ${condition.operator} ${formatFilterValue(condition.columnName, condition.value)}`
-				isLocalFilterUpdateRef.current = true
-				onFullLoadFilterChange?.(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					filterString,
-				)
+			isLocalFilterUpdateRef.current = true
+			if (useFilterConfig) {
+				if (condition.column && condition.operator) {
+					const filterConfig: FilterConfig = {
+						logical_operator: newMultiCondition.logicalOperator,
+						conditions: newConditions,
+					}
+					onFilterConfigChange?.(
+						stream.stream.name,
+						stream.stream.namespace || "",
+						filterConfig,
+					)
+				} else {
+					// Remaining condition is incomplete — clear filter_config
+					onFilterConfigChange?.(
+						stream.stream.name,
+						stream.stream.namespace || "",
+						undefined,
+					)
+				}
 			} else {
-				isLocalFilterUpdateRef.current = true
-				onFullLoadFilterChange?.(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					"",
-				)
+				if (condition.column && condition.operator) {
+					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value as string)}`
+					onFullLoadFilterChange?.(
+						stream.stream.name,
+						stream.stream.namespace || "",
+						filterString,
+					)
+				} else {
+					onFullLoadFilterChange?.(
+						stream.stream.name,
+						stream.stream.namespace || "",
+						"",
+					)
+				}
 			}
 		}
 	}
@@ -1070,9 +1153,9 @@ const StreamConfiguration = ({
 							<Select
 								className="w-full"
 								placeholder="Select Column"
-								value={condition.columnName}
+								value={condition.column}
 								onChange={value =>
-									handleFilterConditionChange(index, "columnName", value)
+									handleFilterConditionChange(index, "column", value)
 								}
 								options={getColumnOptions()}
 								labelInValue={false}
@@ -1098,8 +1181,13 @@ const StreamConfiguration = ({
 						<div>
 							<label className="mb-2 block text-sm text-gray-600">Value</label>
 							<Input
-								placeholder="Enter value"
-								value={condition.value}
+								placeholder={condition.value === null ? "<null>" : ""}
+								value={condition.value === null ? "" : condition.value}
+								onFocus={() => {
+									if (condition.value === null) {
+										handleFilterConditionChange(index, "value", "")
+									}
+								}}
 								onChange={e =>
 									handleFilterConditionChange(index, "value", e.target.value)
 								}
