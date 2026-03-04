@@ -744,16 +744,6 @@ export const validateFilter = (filter: string): boolean => {
 	return FILTER_REGEX.test(filter.trim())
 }
 
-// ISO 8601 validation
-function isValidISO8601(str: string): boolean {
-	const iso8601Regex =
-		/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
-	if (!iso8601Regex.test(str)) return false
-
-	const date = new Date(str)
-	return !isNaN(date.getTime())
-}
-
 // Validates if value is compatible with any given DataType.
 // Explicitly handles "null" values by checking if the column schema allows it.
 // Converts other values to string internally to handle native types safely.
@@ -781,12 +771,6 @@ export const isValueValidForTypes = (
 
 			case "boolean":
 				return v === "true" || v === "false"
-
-			case "timestamp":
-			case "timestamp_milli":
-			case "timestamp_micro":
-			case "timestamp_nano":
-				return isValidISO8601(v)
 
 			case "array": {
 				try {

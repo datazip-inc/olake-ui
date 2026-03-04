@@ -336,5 +336,6 @@ export const STREAM_DEFAULTS = {
 // Minimum source version that supports column selection.
 export const MIN_COLUMN_SELECTION_SOURCE_VERSION = "v0.4.0"
 
+// TODO: Update this version before merge
 // Minimum source version that supports structured filter_config (JSON) instead of the legacy filter string.
 export const MIN_JSON_FILTER_VERSION = "v0.4.1"
