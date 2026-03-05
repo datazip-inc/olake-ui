@@ -1,0 +1,32 @@
+import { ConnectorOption } from "../../../common/types"
+import { AWSS3, ApacheIceBerg } from "../../../assets"
+import { CONNECTOR_TYPES } from "../../../common/constants/constants"
+
+export const connectorOptions: ConnectorOption[] = [
+	{
+		value: "Amazon S3",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={AWSS3}
+					alt={CONNECTOR_TYPES.AMAZON_S3}
+					className="mr-2 size-5"
+				/>
+				<span data-testid="connector-option-s3">Amazon S3</span>
+			</div>
+		),
+	},
+	{
+		value: "Apache Iceberg",
+		label: (
+			<div className="flex items-center">
+				<img
+					src={ApacheIceBerg}
+					alt="Apache Iceberg"
+					className="mr-2 size-5"
+				/>
+				<span data-testid="connector-option-iceberg">Apache Iceberg</span>
+			</div>
+		),
+	},
+]

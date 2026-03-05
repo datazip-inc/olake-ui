@@ -1,0 +1,669 @@
+import {
+	useState,
+	useEffect,
+	forwardRef,
+	useImperativeHandle,
+	useRef,
+} from "react"
+import { Link } from "react-router-dom"
+import { message, Select, Spin, Tooltip } from "antd"
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
+	NotebookIcon,
+} from "@phosphor-icons/react"
+import Form from "@rjsf/antd"
+import validator from "@rjsf/validator-ajv8"
+
+import { validationService } from "@/common/services/validationService"
+import { Source, CreateSourceProps } from "../types"
+import { SetupType, TestConnectionError } from "@/common/types"
+import { getConnectorLabel } from "../utils"
+import { trimFormDataStrings } from "@/utils"
+import { getConnectorInLowerCase, handleSpecResponse } from "@/common/utils"
+import {
+	useSources,
+	useSourceVersions,
+	useSourceSpec,
+} from "../hooks/queries/useSourceQueries"
+import {
+	useCreateSource,
+	useTestSourceConnection,
+} from "../hooks/mutations/useSourceMutations"
+import {
+	CONNECTOR_TYPES,
+	transformErrors,
+	TEST_CONNECTION_STATUS,
+	ENTITY_TYPES,
+} from "../../../common/constants/constants"
+import EndpointTitle from "../../../common/components/EndpointTitle"
+import FormField from "../../../common/components/FormField"
+import DocumentationPanel from "@/common/components/DocumentationPanel"
+import { SetupTypeSelector } from "@/common/components/SetupTypeSelector"
+import TestConnectionModal from "@/common/components/modals/TestConnectionModal"
+import TestConnectionSuccessModal from "@/common/components/modals/TestConnectionSuccessModal"
+import TestConnectionFailureModal from "@/common/components/modals/TestConnectionFailureModal"
+import EntitySavedModal from "@/common/components/modals/EntitySavedModal"
+import EntityCancelModal from "@/common/components/modals/EntityCancelModal"
+import connectorOptions from "../components/connectorOptions"
+import { SETUP_TYPES } from "../../../common/constants/constants"
+import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
+import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import { widgets } from "@/common/components/form/widgets"
+import SpecFailedModal from "@/common/components/modals/SpecFailedModal"
+import { OLAKE_LATEST_VERSION_URL } from "@/constants"
+
+// Create ref handle interface
+export interface CreateSourceHandle {
+	validateSource: () => Promise<boolean>
+}
+
+const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
+	(
+		{
+			onComplete,
+			initialFormData,
+			initialName,
+			initialConnector,
+			initialVersion,
+			initialExistingSourceId,
+			onSourceNameChange,
+			onConnectorChange,
+			onFormDataChange,
+			onVersionChange,
+			docsMinimized = false,
+			onDocsMinimizedChange,
+			onExistingSourceIdChange,
+		},
+		ref,
+	) => {
+		const formRef = useRef<any>(null)
+		const [setupType, setSetupType] = useState<SetupType>(
+			initialExistingSourceId ? SETUP_TYPES.EXISTING : SETUP_TYPES.NEW,
+		)
+		const [connector, setConnector] = useState(initialConnector || "MongoDB")
+		const [sourceName, setSourceName] = useState(initialName || "")
+		const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
+		const [formData, setFormData] = useState<any>({})
+		const [schema, setSchema] = useState<any>(null)
+		const [uiSchema, setUiSchema] = useState<any>(null)
+		const [filteredSources, setFilteredSources] = useState<Source[]>([])
+		const [sourceNameError, setSourceNameError] = useState<string | null>(null)
+		const [existingSource, setExistingSource] = useState<string | null>(null)
+		const [specError, setSpecError] = useState<string | null>(null)
+
+		const normalizedConnector = getConnectorInLowerCase(connector)
+
+		const [showTestingModal, setShowTestingModal] = useState(false)
+		const [showSuccessModal, setShowSuccessModal] = useState(false)
+		const [showFailureModal, setShowFailureModal] = useState(false)
+		const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
+		const [showSourceCancelModal, setShowSourceCancelModal] = useState(false)
+		const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
+		const [testConnectionError, setTestConnectionError] =
+			useState<TestConnectionError | null>(null)
+		const { data: sources = [], isLoading: isLoadingSources } = useSources()
+		const { data: versionsData, isLoading: loadingVersions } =
+			useSourceVersions(normalizedConnector)
+		const versions = versionsData?.version ?? []
+		const createSourceMutation = useCreateSource()
+		const testSourceMutation = useTestSourceConnection()
+
+		// Set existingSource when sources are loaded and we have an initialExistingSourceId
+		useEffect(() => {
+			if (
+				initialExistingSourceId &&
+				sources.length > 0 &&
+				setupType === SETUP_TYPES.EXISTING
+			) {
+				// Find source in the filtered list (filtered by connector type)
+				const source = sources.find(s => s.id === initialExistingSourceId)
+				if (source && source.type === getConnectorInLowerCase(connector)) {
+					setExistingSource(source.name)
+				}
+			}
+		}, [initialExistingSourceId, sources.length])
+
+		useEffect(() => {
+			if (initialName) {
+				setSourceName(initialName)
+			}
+		}, [initialName])
+
+		useEffect(() => {
+			if (initialFormData) {
+				setFormData(initialFormData)
+			}
+		}, [initialFormData])
+
+		useEffect(() => {
+			if (setupType === SETUP_TYPES.EXISTING) {
+				setFilteredSources(
+					sources.filter(source => source.type === normalizedConnector),
+				)
+			}
+		}, [normalizedConnector, setupType, sources])
+
+		// Auto-select version when versions are loaded
+		useEffect(() => {
+			if (versions.length > 0 && !selectedVersion) {
+				const defaultVersion =
+					normalizedConnector ===
+						getConnectorInLowerCase(initialConnector || "") && initialVersion
+						? initialVersion
+						: versions[0]
+				setSelectedVersion(defaultVersion)
+				onVersionChange?.(defaultVersion)
+			}
+		}, [versions])
+
+		useEffect(() => {
+			if (
+				initialVersion &&
+				initialVersion !== "" &&
+				initialConnector === connector
+			) {
+				setSelectedVersion(initialVersion)
+			}
+		}, [initialVersion, initialConnector, connector])
+
+		// Fetch spec via TanStack Query (enabled guard: new setup only)
+		const {
+			data: specData,
+			isLoading: loadingSpec,
+			error: specQueryError,
+			refetch: refetchSpec,
+		} = useSourceSpec(
+			setupType === SETUP_TYPES.NEW ? normalizedConnector : "",
+			selectedVersion,
+		)
+
+		useEffect(() => {
+			if (specData) {
+				handleSpecResponse(specData, setSchema, setUiSchema, "source")
+			}
+		}, [specData])
+
+		useEffect(() => {
+			if (specQueryError) {
+				setSchema({})
+				setUiSchema({})
+				const errMsg =
+					specQueryError instanceof Error
+						? specQueryError.message
+						: "Failed to fetch spec, Please try again."
+				setSpecError(errMsg)
+				setShowSpecFailedModal(true)
+			}
+		}, [specQueryError])
+
+		useEffect(() => {
+			if (initialConnector) {
+				setConnector(getConnectorLabel(initialConnector))
+			}
+		}, [])
+
+		const handleCancel = () => {
+			setShowSourceCancelModal(true)
+		}
+
+		const validateSource = async (): Promise<boolean> => {
+			try {
+				if (setupType === SETUP_TYPES.NEW) {
+					if (!sourceName.trim() && selectedVersion.trim() !== "") {
+						setSourceNameError("Source name is required")
+						message.error("Source name is required")
+						return false
+					} else {
+						setSourceNameError(null)
+					}
+
+					if (selectedVersion.trim() === "") {
+						message.error("No versions available")
+						return false
+					}
+
+					// Use RJSF's built-in validation - validate returns validation state
+					if (schema && formRef.current) {
+						const validationResult = formRef.current.validateForm()
+						return validationResult
+					}
+				}
+
+				if (setupType === SETUP_TYPES.EXISTING) {
+					if (sourceName.trim() === "") {
+						message.error("Source name is required")
+						return false
+					} else {
+						setSourceNameError(null)
+					}
+				}
+
+				return true
+			} catch (error) {
+				console.error("Error validating source:", error)
+				return false
+			}
+		}
+
+		useImperativeHandle(ref, () => ({
+			validateSource,
+		}))
+
+		const handleCreate = async () => {
+			const isValid = await validateSource()
+			if (!isValid) return
+
+			const isUnique = await validationService.checkUniqueName(
+				sourceName,
+				ENTITY_TYPES.SOURCE,
+			)
+			if (!isUnique) return
+
+			const newSourceData = {
+				name: sourceName,
+				type: normalizedConnector,
+				version: selectedVersion,
+				config: JSON.stringify(formData),
+			}
+
+			setShowTestingModal(true)
+			const testResult = await testSourceMutation.mutateAsync({
+				source: newSourceData,
+			})
+			setShowTestingModal(false)
+			if (
+				testResult.data?.connection_result.status ===
+				TEST_CONNECTION_STATUS.SUCCEEDED
+			) {
+				setShowSuccessModal(true)
+				setTimeout(() => {
+					setShowSuccessModal(false)
+					createSourceMutation.mutate(newSourceData, {
+						onSuccess: () => setShowEntitySavedModal(true),
+						onError: error => console.error("Error adding source:", error),
+					})
+				}, 1000)
+			} else {
+				setTestConnectionError({
+					message: testResult.data?.connection_result.message || "",
+					logs: testResult.data?.logs || [],
+				})
+				setShowFailureModal(true)
+			}
+		}
+
+		const handleSourceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+			const newName = e.target.value.trim()
+			if (newName.length >= 1) {
+				setSourceNameError(null)
+			}
+			setSourceName(newName)
+
+			if (onSourceNameChange) {
+				onSourceNameChange(newName)
+			}
+		}
+
+		const handleConnectorChange = (value: string) => {
+			setConnector(value)
+			if (setupType === SETUP_TYPES.EXISTING) {
+				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
+				setSourceName("")
+				onSourceNameChange?.("")
+			}
+			setSelectedVersion("")
+			setFormData({})
+			setSchema(null)
+
+			// Parent callbacks
+			onConnectorChange?.(value)
+			onVersionChange?.("")
+			onFormDataChange?.({})
+		}
+
+		const handleSetupTypeChange = (type: SetupType) => {
+			setSetupType(type)
+			setSourceName("")
+			onSourceNameChange?.("")
+			// show documentation only in the case of new
+			if (onDocsMinimizedChange) {
+				if (type === SETUP_TYPES.EXISTING) {
+					onDocsMinimizedChange(true) // Close doc panel
+				} else if (type === SETUP_TYPES.NEW) {
+					onDocsMinimizedChange(false)
+				}
+			}
+			// Clear form data when switching to new source
+			if (type === SETUP_TYPES.NEW) {
+				setFormData({})
+				setSchema(null)
+				setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
+				setExistingSource(null)
+				onExistingSourceIdChange?.(null)
+				// Schema will be automatically fetched due to useEffect when connector changes
+				if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
+				if (onFormDataChange) onFormDataChange({})
+				if (onVersionChange) onVersionChange("")
+			}
+		}
+
+		const handleExistingSourceSelect = (value: string) => {
+			const selectedSource = sources.find(
+				s => s.id.toString() === value.toString(),
+			)
+
+			if (selectedSource) {
+				if (onSourceNameChange) {
+					onSourceNameChange(selectedSource.name)
+				}
+				if (onConnectorChange) {
+					onConnectorChange(selectedSource.type)
+				}
+				if (onVersionChange) {
+					onVersionChange(selectedSource.version)
+				}
+				if (onFormDataChange) {
+					onFormDataChange(selectedSource.config)
+				}
+				setExistingSource(value)
+				setSourceName(selectedSource.name)
+				setConnector(getConnectorLabel(selectedSource.type))
+				setSelectedVersion(selectedSource.version)
+				onExistingSourceIdChange?.(selectedSource.id)
+			}
+		}
+
+		const handleVersionChange = (value: string) => {
+			setSelectedVersion(value)
+			if (onVersionChange) {
+				onVersionChange(value)
+			}
+		}
+
+		const handleToggleDocPanel = () => {
+			if (onDocsMinimizedChange) {
+				onDocsMinimizedChange(prev => !prev)
+			}
+		}
+
+		const renderConnectorSelection = () => (
+			<div className="w-1/2">
+				<label className="mb-2 block text-sm font-medium text-gray-700">
+					Connector:
+				</label>
+				<div className="flex items-center">
+					<Select
+						value={connector}
+						onChange={handleConnectorChange}
+						data-testid="source-connector-select"
+						className={setupType === SETUP_TYPES.NEW ? "h-8 w-full" : "w-full"}
+						options={connectorOptions}
+						{...(setupType !== SETUP_TYPES.NEW
+							? { style: { boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)" } }
+							: {})}
+					/>
+				</div>
+			</div>
+		)
+
+		const renderNewSourceForm = () => (
+			<div className="flex flex-col gap-6">
+				<div className="flex w-full gap-6">
+					{renderConnectorSelection()}
+
+					<div className="w-1/2">
+						<label className="mb-2 flex items-center gap-1 text-sm font-medium text-gray-700">
+							OLake Version:
+							<Tooltip title="Choose the OLake version for the source">
+								<InfoIcon
+									size={16}
+									className="cursor-help text-slate-900"
+								/>
+							</Tooltip>
+							<a
+								href={OLAKE_LATEST_VERSION_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="flex items-center text-primary hover:text-primary/80"
+							>
+								<ArrowSquareOutIcon className="size-4" />
+							</a>
+						</label>
+						{loadingVersions ? (
+							<div className="flex h-8 items-center justify-center">
+								<Spin size="small" />
+							</div>
+						) : versions && versions.length > 0 ? (
+							<>
+								<Select
+									value={selectedVersion}
+									onChange={handleVersionChange}
+									className="w-full"
+									placeholder="Select version"
+									data-testid="source-version-select"
+									options={versions.map(version => ({
+										value: version,
+										label: version,
+									}))}
+								/>
+							</>
+						) : (
+							<div className="flex items-center gap-1 text-sm text-red-500">
+								<InfoIcon />
+								No versions available
+							</div>
+						)}
+					</div>
+				</div>
+
+				<div className="w-1/2">
+					<FormField
+						label="Name of your source"
+						required
+						error={sourceNameError}
+					>
+						<input
+							type="text"
+							className={`h-8 w-full rounded-md border ${sourceNameError ? "border-red-500" : "border-gray-400"} px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+							placeholder="Enter the name of your source"
+							value={sourceName}
+							onChange={handleSourceNameChange}
+						/>
+					</FormField>
+				</div>
+			</div>
+		)
+
+		const renderExistingSourceForm = () => (
+			<div className="flex-start flex w-full gap-6">
+				{renderConnectorSelection()}
+
+				<div className="w-1/2">
+					<label className="mb-2 block text-sm font-medium text-gray-700">
+						Select existing source:
+					</label>
+					{isLoadingSources ? (
+						<div className="flex h-8 items-center justify-center">
+							<Spin size="small" />
+						</div>
+					) : (
+						<Select
+							placeholder="Select a source"
+							className="w-full"
+							data-testid="existing-source"
+							onChange={handleExistingSourceSelect}
+							value={existingSource}
+							options={filteredSources.map(s => ({
+								value: s.id,
+								label: s.name,
+							}))}
+						/>
+					)}
+				</div>
+			</div>
+		)
+
+		const renderSetupTypeSelector = () => (
+			<SetupTypeSelector
+				value={setupType as SetupType}
+				onChange={handleSetupTypeChange}
+				newLabel="Set up a new source"
+			/>
+		)
+
+		const renderSchemaForm = () =>
+			setupType === SETUP_TYPES.NEW && (
+				<>
+					{loadingSpec ? (
+						<div className="flex h-32 items-center justify-center">
+							<Spin tip="Loading schema..." />
+						</div>
+					) : (
+						schema && (
+							<div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+								<EndpointTitle title="Endpoint config" />
+								<Form
+									ref={formRef}
+									schema={schema}
+									templates={{
+										ObjectFieldTemplate,
+										FieldTemplate: CustomFieldTemplate,
+										ArrayFieldTemplate,
+										ButtonTemplates: {
+											SubmitButton: () => null,
+										},
+									}}
+									widgets={widgets}
+									formData={formData}
+									onChange={e => {
+										const trimmedData = trimFormDataStrings(e.formData)
+										setFormData(trimmedData)
+										if (onFormDataChange) onFormDataChange(trimmedData)
+									}}
+									transformErrors={transformErrors}
+									uiSchema={uiSchema}
+									validator={validator}
+									omitExtraData
+									liveOmit
+									showErrorList={false} // adding this will not show error list
+									onSubmit={handleCreate}
+								/>
+							</div>
+						)
+					)}
+				</>
+			)
+
+		return (
+			<div className={`flex h-screen`}>
+				<div className="flex flex-1 flex-col">
+					<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
+						<Link
+							to={"/sources"}
+							className="flex items-center gap-2 p-1.5 hover:rounded-md hover:bg-gray-100 hover:text-black"
+						>
+							<ArrowLeftIcon className="mr-1 size-5" />
+						</Link>
+						<div className="text-lg font-bold">Create source</div>
+					</div>
+
+					<div className="flex flex-1 overflow-hidden">
+						<div className="flex flex-1 flex-col">
+							<div className="flex-1 overflow-auto p-6 pt-0">
+								<div className="mb-6 mt-2 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+									<div className="mb-6">
+										<div className="mb-4 flex items-center gap-2 text-base font-medium">
+											<NotebookIcon className="size-5" />
+											Capture information
+										</div>
+
+										{renderSetupTypeSelector()}
+
+										{setupType === SETUP_TYPES.NEW
+											? renderNewSourceForm()
+											: renderExistingSourceForm()}
+									</div>
+								</div>
+
+								{renderSchemaForm()}
+							</div>
+
+							{/* Footer  */}
+							<div className="flex justify-between border-t border-gray-200 bg-white p-4 shadow-sm">
+								<button
+									onClick={handleCancel}
+									className="ml-1 rounded-md border border-danger px-4 py-2 text-danger transition-colors duration-200 hover:bg-danger hover:text-white"
+								>
+									Cancel
+								</button>
+								<button
+									className="mr-1 flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white shadow-sm transition-colors duration-200 hover:bg-primary-600"
+									onClick={() => {
+										if (formRef.current) {
+											formRef.current.submit()
+										}
+									}}
+								>
+									Create
+									<ArrowRightIcon className="size-4 text-white" />
+								</button>
+							</div>
+						</div>
+
+						<DocumentationPanel
+							docUrl={`https://olake.io/docs/connectors/${normalizedConnector}`}
+							isMinimized={docsMinimized}
+							onToggle={handleToggleDocPanel}
+							showResizer={true}
+						/>
+					</div>
+				</div>
+
+				<TestConnectionModal
+					open={showTestingModal}
+					connectionType="source"
+				/>
+				<TestConnectionSuccessModal
+					open={showSuccessModal}
+					connectionType="source"
+				/>
+				<TestConnectionFailureModal
+					open={showFailureModal}
+					onClose={() => setShowFailureModal(false)}
+					connectionType="source"
+					testConnectionError={testConnectionError}
+				/>
+				<EntitySavedModal
+					open={showEntitySavedModal}
+					onClose={() => setShowEntitySavedModal(false)}
+					type="source"
+					onComplete={onComplete}
+					fromJobFlow={false}
+					entityName={sourceName}
+				/>
+				<EntityCancelModal
+					open={showSourceCancelModal}
+					onClose={() => setShowSourceCancelModal(false)}
+					type="source"
+					navigateTo="sources"
+				/>
+				<SpecFailedModal
+					open={showSpecFailedModal}
+					onClose={() => setShowSpecFailedModal(false)}
+					fromSource
+					error={specError ?? ""}
+					onTryAgain={refetchSpec}
+				/>
+			</div>
+		)
+	},
+)
+
+CreateSource.displayName = "CreateSource"
+
+export default CreateSource
