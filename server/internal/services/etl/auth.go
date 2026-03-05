@@ -62,3 +62,30 @@ func (s *ETLService) ValidateUser(userID int) error {
 	}
 	return nil
 }
+
+func (s *ETLService) UpdateCredentials(ctx context.Context, userID int, newUsername, newPassword string) error {
+	user, err := s.db.GetUserByID(userID)
+	if err != nil {
+		return fmt.Errorf("failed to load user: %s", err)
+	}
+
+	if newUsername != "" {
+		user.Username = newUsername
+	}
+
+	if newPassword != "" {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return fmt.Errorf("failed to hash new password: %s", err)
+		}
+		user.Password = string(hashed)
+	}
+
+	if err := s.db.UpdateUser(user); err != nil {
+		return fmt.Errorf("failed to update credentials: %s", err)
+	}
+
+	telemetry.TrackUserUpdate(ctx, user)
+
+	return nil
+}

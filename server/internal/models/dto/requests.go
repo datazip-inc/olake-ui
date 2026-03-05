@@ -15,6 +15,11 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required" example:"password"`
 }
 
+type UpdateCredentialsRequest struct {
+	Username string `json:"username" validate:"required" example:"newadmin"`
+	Password string `json:"password" validate:"required" example:"newpassword"`
+}
+
 type SpecRequest struct {
 	// enum: postgres,mongodb,mysql,mssql,db2,s3,kafka,iceberg
 	Type    string `json:"type" validate:"required" example:"postgres"`
