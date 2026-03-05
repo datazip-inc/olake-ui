@@ -2,10 +2,9 @@ package handlers
 
 import (
 	"github.com/beego/beego/v2/server/web"
-	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/compaction"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
-	etlservices "github.com/datazip-inc/olake-ui/server/internal/services/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/services"
 )
 
 type Handler struct {
@@ -14,9 +13,9 @@ type Handler struct {
 	Compaction *compaction.Handler
 }
 
-func NewHandler(etlService *etlservices.ETLService, db *database.Database) *Handler {
+func NewHandler(appSvc *services.AppService) *Handler {
 	return &Handler{
-		ETL:        etl.NewHandler(etlService),
-		Compaction: compaction.NewHandler(db),
+		ETL:        etl.NewHandler(appSvc.ETL()),
+		Compaction: compaction.NewHandler(appSvc.Compaction()),
 	}
 }

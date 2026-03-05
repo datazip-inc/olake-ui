@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"github.com/datazip-inc/olake-ui/server/internal/database"
