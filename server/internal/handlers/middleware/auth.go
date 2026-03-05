@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strings"
+
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 
@@ -10,6 +12,11 @@ import (
 
 // middleware only works if session is enabled
 func AuthMiddleware(ctx *context.Context) {
+	// skipping as fusion has its own signature-based authentication
+	if strings.HasPrefix(ctx.Request.URL.Path, "/api/v1/fusion/") {
+		return
+	}
+
 	if web.BConfig.WebConfig.Session.SessionOn {
 		if userID := ctx.Input.Session(constants.SessionUserID); userID == nil {
 			// Send unauthorized response

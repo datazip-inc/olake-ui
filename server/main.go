@@ -62,7 +62,7 @@ func main() {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
-	routes.Init(handlers.NewHandler(appSvc))
+	routes.Init(handlers.NewHandler(appSvc, db))
 	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
