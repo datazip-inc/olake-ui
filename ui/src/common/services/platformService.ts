@@ -1,6 +1,6 @@
-import api from "../../api/axios"
-import { API_CONFIG } from "../../api/config"
-import { ReleasesResponse } from "../types/platformTypes"
+import api from "@/api/axios"
+import { API_CONFIG } from "@/api/config"
+import { ReleasesResponse } from "../types"
 
 export const platformService = {
 	getReleases: async (limit?: number): Promise<ReleasesResponse> => {

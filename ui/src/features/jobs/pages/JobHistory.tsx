@@ -9,7 +9,7 @@ import {
 	EyeIcon,
 } from "@phosphor-icons/react"
 
-import { useJobDetails, useJobTasks } from "../hooks/queries/useJobQueries"
+import { useJobDetails, useJobTasks } from "../hooks"
 import {
 	getConnectorImage,
 	getStatusClass,

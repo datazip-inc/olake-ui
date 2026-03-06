@@ -3,11 +3,11 @@ import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
 
-import { StreamData } from "../../../../common/types"
+import { StreamData } from "@/common/types"
 import { useJobStore, useStreamSelectionStore } from "../../stores"
 import StreamPanel from "./StreamPanel"
 import { IngestionMode } from "../../enums"
-import IngestionModeChangeModal from "@/features/jobs/components/modals/IngestionModeChangeModal"
+import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
 import {
 	getIngestionMode,
 	isDestinationIngestionModeSupported,

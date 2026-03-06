@@ -3,7 +3,7 @@ import { Button, Modal } from "antd"
 import { WarningIcon } from "@phosphor-icons/react"
 
 import { useJobStore } from "@/features/jobs/stores"
-import { useDeleteJob } from "../../hooks/mutations/useJobMutations"
+import { useDeleteJob } from "../../hooks"
 
 const DeleteJobModal = ({
 	fromJobSettings = false,

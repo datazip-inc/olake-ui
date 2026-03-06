@@ -7,8 +7,7 @@ import {
 	InfoIcon,
 } from "@phosphor-icons/react"
 
-import { useStreamSelectionStore } from "../../stores"
-import { selectActiveStreamData } from "../../stores/streamSelectionStore"
+import { useStreamSelectionStore, selectActiveStreamData } from "../../stores"
 import { formatDestinationPath } from "../../utils"
 import { DESTINATION_TABLE_TOOLTIP_TEXT, TAB_STYLES } from "../../constants"
 

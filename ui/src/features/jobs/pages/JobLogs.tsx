@@ -18,7 +18,7 @@ import {
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import { useTaskStore } from "../stores"
-import { useJobDetails } from "../hooks/queries/useJobQueries"
+import { useJobDetails } from "../hooks"
 import {
 	getConnectorImage,
 	getLogLevelClass,

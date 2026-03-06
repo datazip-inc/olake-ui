@@ -3,17 +3,14 @@ import { Checkbox, Input, Switch, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 
 import RenderTypeItems from "../RenderTypeItems"
-import {
-	isColumnSelectionSupported,
-	isColumnEnabled,
-} from "../../utils/streams"
+import { isColumnSelectionSupported, isColumnEnabled } from "../../utils"
 import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
 
 import {
 	selectActiveSelectedStream,
 	selectActiveStreamData,
 	useStreamSelectionStore,
-} from "../../stores/streamSelectionStore"
+} from "../../stores"
 
 const StreamsSchema = () => {
 	const streamData = useStreamSelectionStore(selectActiveStreamData)

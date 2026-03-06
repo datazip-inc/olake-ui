@@ -2,12 +2,11 @@ import { useEffect, useState } from "react"
 
 import { DESTINATION_INTERNAL_TYPES } from "@/common/constants/constants"
 import { StreamConfigurationProps } from "../../types"
-
-import { useStreamSelectionStore } from "../../stores"
 import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
-} from "../../stores/streamSelectionStore"
+	useStreamSelectionStore,
+} from "../../stores"
 
 import StreamConfigHeader from "./StreamConfigHeader"
 import ConfigTab from "./ConfigTab"

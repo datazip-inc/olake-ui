@@ -4,7 +4,7 @@ import { Button, Tabs, Empty, message, Spin } from "antd"
 import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
 
 import { useJobStore } from "../stores"
-import { useJobs } from "../hooks/queries/useJobQueries"
+import { useJobs } from "../hooks"
 import {
 	useSyncJob,
 	useActivateJob,
@@ -13,9 +13,7 @@ import {
 import analyticsService from "@/common/services/analyticsService"
 import { Job, JobStatus, SavedJobDraft } from "../types"
 import { JOB_STATUS } from "../constants"
-import JobTable from "../components/JobTable"
-import JobEmptyState from "../components/JobEmptyState"
-import DeleteJobModal from "@/features/jobs/components/modals/DeleteJobModal"
+import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
 import { AnalyticsEvent } from "@/common/enums"
 
 const Jobs: React.FC = () => {

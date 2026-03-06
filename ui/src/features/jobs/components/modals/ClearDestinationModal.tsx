@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { WarningIcon } from "@phosphor-icons/react"
 import { Button, message, Modal } from "antd"
 import { useJobStore } from "@/features/jobs/stores"
-import { useClearDestination } from "../../hooks/mutations/useJobMutations"
+import { useClearDestination } from "../../hooks"
 
 const ClearDestinationModal = () => {
 	const {

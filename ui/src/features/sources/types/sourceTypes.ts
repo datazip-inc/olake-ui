@@ -1,4 +1,4 @@
-import { Entity, EntityBase } from "../../../common/types/entityTypes"
+import { Entity, EntityBase } from "@/common/types"
 
 export interface SourceTableProps {
 	sources: Entity[]

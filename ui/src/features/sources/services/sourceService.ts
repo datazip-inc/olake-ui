@@ -1,5 +1,5 @@
-import api from "../../../api/axios"
-import { API_CONFIG } from "../../../api/config"
+import api from "@/api/axios"
+import { API_CONFIG } from "@/api/config"
 import {
 	Entity,
 	EntityBase,

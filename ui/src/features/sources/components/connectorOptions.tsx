@@ -1,4 +1,4 @@
-import { ConnectorOption } from "../../../common/types"
+import { ConnectorOption } from "@/common/types"
 import { getConnectorImage } from "@/common/utils"
 
 const connectorOptions: ConnectorOption[] = [

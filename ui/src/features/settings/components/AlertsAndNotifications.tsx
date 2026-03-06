@@ -2,8 +2,7 @@ import { Button, message } from "antd"
 import { Input } from "antd/lib"
 import { useEffect, useMemo, useState } from "react"
 import { PencilSimpleIcon } from "@phosphor-icons/react"
-import { useSystemSettings } from "../hooks/queries/useSettingsQueries"
-import { useUpdateSystemSettings } from "../hooks/mutations/useSettingsMutations"
+import { useSystemSettings, useUpdateSystemSettings } from "../hooks"
 
 const AlertsAndNotifications = () => {
 	const { data: systemSettings } = useSystemSettings()

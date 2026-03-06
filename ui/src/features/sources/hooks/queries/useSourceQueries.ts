@@ -32,6 +32,6 @@ export const useSourceSpec = (type: string, version: string) => {
 		queryFn: ({ signal }) => sourceService.getSourceSpec(type, version, signal),
 		enabled: !!type && !!version,
 		staleTime: Infinity,
-		gcTime: 24 * 60 * 60 * 1000,
+		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})
 }

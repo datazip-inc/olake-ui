@@ -9,8 +9,7 @@ import { sourceTabs } from "../constants"
 import SourceTable from "../components/SourceTable"
 import SourceEmptyState from "../components/SourceEmptyState"
 import { AnalyticsEvent } from "@/common/enums"
-import { useSources } from "../hooks/queries/useSourceQueries"
-import { useDeleteSource } from "../hooks/mutations/useSourceMutations"
+import { useSources, useDeleteSource } from "../hooks"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")

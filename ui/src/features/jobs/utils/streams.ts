@@ -38,7 +38,7 @@ export const getStreamsDataFromSourceStreamsResponse = (
 		sourceType,
 	)
 
-	// Column selection is supported from source version v0.3.18 onwards.
+	// Column selection is supported from source version v0.4.0 onwards.
 	const supportsColumnSelection =
 		!!sourceVersion &&
 		!!semver.valid(sourceVersion) &&

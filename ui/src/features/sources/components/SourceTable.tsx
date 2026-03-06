@@ -12,7 +12,7 @@ import { getConnectorImage } from "@/common/utils"
 import { getConnectorLabel } from "../utils"
 import { PAGE_SIZE } from "@/common/constants/constants"
 import JobConnection from "@/common/components/JobConnection"
-import DeleteModal from "@/common/components/modals/DeleteModal"
+import { DeleteModal } from "@/common/components"
 
 const renderJobConnection = (record: Entity) => {
 	const jobs = record.jobs as any[]

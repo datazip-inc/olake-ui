@@ -13,7 +13,7 @@ import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
 	selectIsStreamEnabled,
-} from "../../stores/streamSelectionStore"
+} from "../../stores"
 
 interface IngestionModeSectionProps {
 	sourceType?: string

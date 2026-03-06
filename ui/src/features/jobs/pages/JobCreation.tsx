@@ -9,9 +9,9 @@ import {
 import { v4 as uuidv4 } from "uuid"
 
 import { useJobStore, useStreamSelectionStore } from "../stores"
-import { useCreateJob } from "../hooks/mutations/useJobMutations"
-import { useTestSourceConnection } from "@/features/sources/hooks/mutations/useSourceMutations"
-import { useTestDestinationConnection } from "@/features/destinations/hooks/mutations/useDestinationMutations"
+import { useCreateJob } from "../hooks"
+import { useTestSourceConnection } from "@/features/sources/hooks"
+import { useTestDestinationConnection } from "@/features/destinations/hooks"
 import { useSources } from "@/features/sources/hooks"
 import { useDestinations } from "@/features/destinations/hooks"
 import { validationService } from "@/common/services/validationService"
@@ -24,22 +24,23 @@ import {
 	getSelectedStreams,
 	validateStreams,
 } from "../utils"
-import {
-	ENTITY_TYPES,
-	TEST_CONNECTION_STATUS,
-} from "../../../common/constants/constants"
+import { ENTITY_TYPES, TEST_CONNECTION_STATUS } from "@/common/constants"
 import { JOB_CREATION_STEPS, JOB_STEP_NUMBERS } from "../constants"
 
 // Internal imports from components
-import JobConfiguration from "../components/JobConfiguration"
-import StepProgress from "../components/StepIndicator"
-import SchemaConfiguration from "../components/SchemaConfiguration"
-import TestConnectionModal from "@/common/components/modals/TestConnectionModal"
-import TestConnectionSuccessModal from "@/common/components/modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "@/common/components/modals/TestConnectionFailureModal"
-import EntitySavedModal from "@/common/components/modals/EntitySavedModal"
-import EntityCancelModal from "@/common/components/modals/EntityCancelModal"
-import ResetStreamsModal from "@/features/jobs/components/modals/ResetStreamsModal"
+import {
+	JobConfiguration,
+	StepIndicator as StepProgress,
+	SchemaConfiguration,
+	ResetStreamsModal,
+} from "../components"
+import {
+	TestConnectionModal,
+	TestConnectionSuccessModal,
+	TestConnectionFailureModal,
+	EntitySavedModal,
+	EntityCancelModal,
+} from "@/common/components"
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()

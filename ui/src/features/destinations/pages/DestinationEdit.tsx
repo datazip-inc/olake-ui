@@ -47,18 +47,20 @@ import {
 } from "../../../common/constants/constants"
 import { DISPLAYED_JOBS_COUNT, OLAKE_LATEST_VERSION_URL } from "@/constants"
 import DocumentationPanel from "@/common/components/DocumentationPanel"
-import DeleteModal from "@/common/components/modals/DeleteModal"
-import TestConnectionSuccessModal from "@/common/components/modals/TestConnectionSuccessModal"
-import TestConnectionFailureModal from "@/common/components/modals/TestConnectionFailureModal"
-import TestConnectionModal from "@/common/components/modals/TestConnectionModal"
-import EntityEditModal from "@/common/components/modals/EntityEditModal"
+import {
+	DeleteModal,
+	TestConnectionSuccessModal,
+	TestConnectionFailureModal,
+	TestConnectionModal,
+	EntityEditModal,
+	SpecFailedModal,
+} from "@/common/components"
 import { connectorOptions } from "../components/connectorOptions"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
-import SpecFailedModal from "@/common/components/modals/SpecFailedModal"
 import { TAB_TYPES } from "@/features/jobs/constants"
 
 const DestinationEdit: React.FC<DestinationEditProps> = ({

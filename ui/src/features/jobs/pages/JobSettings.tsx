@@ -17,11 +17,9 @@ import { useJobStore } from "../stores"
 import {
 	useJobDetails,
 	useClearDestinationStatus,
-} from "../hooks/queries/useJobQueries"
-import {
 	useActivateJob,
 	useUpdateJob,
-} from "../hooks/mutations/useJobMutations"
+} from "../hooks"
 import { getConnectorImage } from "@/common/utils"
 import {
 	parseCronExpression,
@@ -30,11 +28,13 @@ import {
 	generateCronExpression,
 } from "../utils"
 import { DAYS, FREQUENCY_OPTIONS } from "../constants"
-import DeleteJobModal from "@/features/jobs/components/modals/DeleteJobModal"
-import ClearDataModal from "@/features/jobs/components/modals/ClearDataModal"
-import ClearDestinationModal from "@/features/jobs/components/modals/ClearDestinationModal"
-import StreamEditDisabledModal from "@/features/jobs/components/modals/StreamEditDisabledModal"
-import AdvancedSettingsCard from "../components/AdvancedSettingsCard"
+import {
+	DeleteJobModal,
+	ClearDataModal,
+	ClearDestinationModal,
+	StreamEditDisabledModal,
+	AdvancedSettingsCard,
+} from "../components"
 import { AdvancedSettings } from "../types"
 
 const JobSettings: React.FC = () => {

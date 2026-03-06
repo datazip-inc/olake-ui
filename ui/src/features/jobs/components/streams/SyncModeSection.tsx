@@ -5,12 +5,11 @@ import { PlusIcon, InfoIcon } from "@phosphor-icons/react"
 import { SyncMode } from "../../../../common/types"
 import { SYNC_MODE_MAP } from "../../constants"
 import { getCursorFieldValues } from "../../utils/streams"
-
-import { useStreamSelectionStore } from "../../stores"
 import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
-} from "../../stores/streamSelectionStore"
+	useStreamSelectionStore,
+} from "../../stores"
 
 const SyncModeSection = () => {
 	const store = useStreamSelectionStore()

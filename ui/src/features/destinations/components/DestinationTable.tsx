@@ -9,7 +9,7 @@ import {
 import { DestinationTableProps } from "../types"
 import { getConnectorImage } from "@/common/utils"
 import JobConnection from "@/common/components/JobConnection"
-import DeleteModal from "@/common/components/modals/DeleteModal"
+import { DeleteModal } from "@/common/components"
 import { CONNECTOR_TYPES } from "@/common/constants/constants"
 import { Entity } from "@/common/types"
 

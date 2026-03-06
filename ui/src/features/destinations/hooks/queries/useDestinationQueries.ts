@@ -44,6 +44,6 @@ export const useDestinationSpec = (
 			),
 		enabled: !!type && !!version,
 		staleTime: Infinity,
-		gcTime: 24 * 60 * 60 * 1000,
+		gcTime: 24 * 60 * 60 * 1000, // 24 hours
 	})
 }

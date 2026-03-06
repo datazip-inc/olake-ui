@@ -23,7 +23,7 @@ import {
 } from "@phosphor-icons/react"
 import { DESTINATATION_DATABASE_TOOLTIP_TEXT } from "../constants"
 import { DESTINATION_INTERNAL_TYPES } from "@/common/constants/constants"
-import DestinationDatabaseModal from "@/features/jobs/components/modals/DestinationDatabaseModal"
+import DestinationDatabaseModal from "./modals/DestinationDatabaseModal"
 import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]

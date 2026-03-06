@@ -5,14 +5,18 @@ import { message } from "antd"
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 
 import { useJobStore, useStreamSelectionStore } from "../stores"
-import { useJobDetails } from "../hooks/queries/useJobQueries"
-import { useUpdateJob } from "../hooks/mutations/useJobMutations"
+import { useJobDetails, useUpdateJob } from "../hooks"
 import { jobService } from "../services"
 import { Job, JobBase, JobCreationSteps, AdvancedSettings } from "../types"
 import { StreamData, StreamsDataStructure } from "@/common/types"
-import JobConfiguration from "../components/JobConfiguration"
-import StepProgress from "../components/StepIndicator"
-import SchemaConfiguration from "../components/SchemaConfiguration"
+import {
+	JobConfiguration,
+	StepIndicator as StepProgress,
+	SchemaConfiguration,
+	ResetStreamsModal,
+	StreamDifferenceModal,
+	StreamEditDisabledModal,
+} from "../components"
 import { getConnectorInLowerCase } from "@/common/utils"
 import {
 	validateCronExpression,
@@ -24,9 +28,6 @@ import {
 	JOB_STEP_NUMBERS,
 	STREAM_DEFAULTS,
 } from "../constants"
-import ResetStreamsModal from "@/features/jobs/components/modals/ResetStreamsModal"
-import StreamDifferenceModal from "@/features/jobs/components/modals/StreamDifferenceModal"
-import StreamEditDisabledModal from "@/features/jobs/components/modals/StreamEditDisabledModal"
 
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()

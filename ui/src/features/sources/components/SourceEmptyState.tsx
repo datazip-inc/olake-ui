@@ -1,8 +1,8 @@
 import { Button } from "antd"
 import { PlayCircleIcon, PlusIcon } from "@phosphor-icons/react"
 
-import { SourceTutorialYTLink } from "../../../common/constants/constants"
-import { FirstSource, SourcesTutorial } from "../../../assets"
+import { SourceTutorialYTLink } from "@/common/constants"
+import { FirstSource, SourcesTutorial } from "@/assets"
 
 const SourceEmptyState = ({
 	handleCreateSource,
