@@ -29,12 +29,10 @@ import {
 	useSourceDetails,
 	useSourceVersions,
 	useSourceSpec,
-} from "../hooks/queries/useSourceQueries"
-import {
 	useUpdateSource,
 	useDeleteSource,
 	useTestSourceConnection,
-} from "../hooks/mutations/useSourceMutations"
+} from "../hooks"
 import { useActivateJob } from "@/features/jobs/hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import { sourceKeys } from "../constants/queryKeys"

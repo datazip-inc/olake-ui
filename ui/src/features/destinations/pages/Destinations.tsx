@@ -9,8 +9,7 @@ import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"
 import { AnalyticsEvent } from "@/common/enums"
 import { destinationTabs } from "../constants"
-import { useDestinations } from "../hooks/queries/useDestinationQueries"
-import { useDeleteDestination } from "../hooks/mutations/useDestinationMutations"
+import { useDestinations, useDeleteDestination } from "../hooks"
 
 const Destinations: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")

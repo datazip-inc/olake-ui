@@ -28,13 +28,11 @@ import {
 	useDestinationDetails,
 	useDestinationVersions,
 	useDestinationSpec,
-} from "../hooks/queries/useDestinationQueries"
-import {
 	useUpdateDestination,
 	useDeleteDestination,
 	useTestDestinationConnection,
-} from "../hooks/mutations/useDestinationMutations"
-import { useActivateJob } from "@/features/jobs/hooks/mutations/useJobMutations"
+} from "../hooks"
+import { useActivateJob } from "@/features/jobs/hooks"
 import { useQueryClient } from "@tanstack/react-query"
 import { destinationKeys } from "../constants/queryKeys"
 import { getStatusIcon } from "../../../common/components/statusIcons"
