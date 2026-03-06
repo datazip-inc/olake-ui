@@ -69,11 +69,13 @@ const JobSettings: React.FC = () => {
 		setShowClearDestinationModal,
 		setShowStreamEditDisabledModal,
 	} = useJobStore()
+	// Keep job data permanently fresh to prevent refetches (e.g., on tab focus) that could overwrite in-progress edits.
+	// The query will still update when job mutations succeed because they invalidate the job queries.
 	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
 		staleTime: Infinity,
 	})
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
-		useClearDestinationStatus(jobId || "", { staleTime: Infinity })
+		useClearDestinationStatus(jobId || "")
 	const selectedClearDestinationRunning = clearDestStatus?.running ?? false
 	const { mutateAsync: activateJobMutation } = useActivateJob()
 	const { mutateAsync: updateJobMutation } = useUpdateJob()

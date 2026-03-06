@@ -121,16 +121,18 @@ const DeleteModal = ({
 					</div>
 				</div>
 
-				<Table
-					dataSource={dataSource}
-					columns={columns}
-					rowKey="id"
-					loading={loading}
-					pagination={false}
-					className="w-full rounded-md border"
-					rowClassName="no-hover"
-					scroll={{ y: 300 }}
-				/>
+				{dataSource && dataSource?.length > 0 && (
+					<Table
+						dataSource={dataSource}
+						columns={columns}
+						rowKey="id"
+						loading={loading}
+						pagination={false}
+						className="w-full rounded-md border"
+						rowClassName="no-hover"
+						scroll={{ y: 300 }}
+					/>
+				)}
 				<div className="flex w-full justify-end space-x-2">
 					<Button
 						className="px-4 py-4"

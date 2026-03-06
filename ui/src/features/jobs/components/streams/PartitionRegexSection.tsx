@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button, Input, Tooltip } from "antd"
 import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
 
@@ -27,36 +27,23 @@ const PartitionRegexSection = ({
 	)
 
 	const [partitionRegex, setPartitionRegex] = useState("")
-	const [activePartitionRegex, setActivePartitionRegex] = useState(
-		selectedStream?.partition_regex || "",
-	)
-
-	// Re-sync partition state when the active stream changes
-	useEffect(() => {
-		if (!selectedStream) return
-		setActivePartitionRegex(selectedStream.partition_regex || "")
-		setPartitionRegex("")
-	}, [stream])
 
 	if (!stream || !selectedStream) return null
 
+	const activePartitionRegex = selectedStream.partition_regex || ""
+
 	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			setActivePartitionRegex(partitionRegex)
-			setPartitionRegex("")
 			store.updatePartitionRegex(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				partitionRegex,
 			)
+			setPartitionRegex("")
 		}
 	}
 
-	// deletes the partition regex for the corresponding stream
 	const handleClearPartitionRegex = () => {
-		setActivePartitionRegex("")
-		setPartitionRegex("")
-		// deletes the partition regex for the corresponding stream
 		store.updatePartitionRegex(
 			stream.stream.name,
 			stream.stream.namespace || "",

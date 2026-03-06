@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 
-import { SelectedColumns } from "../../../../common/types"
 import { DESTINATION_INTERNAL_TYPES } from "@/common/constants/constants"
 import { StreamConfigurationProps } from "../../types"
 
@@ -32,16 +31,6 @@ const StreamConfiguration = ({
 
 	if (!stream || !selectedStream) return null
 
-	// Guard: old driver versions don't have selected_columns
-	const handleSelectedColumnsChange = (selected_columns: SelectedColumns) => {
-		if (!selectedStream.selected_columns) return
-		store.updateSelectedColumns(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			selected_columns,
-		)
-	}
-
 	return (
 		<div>
 			<StreamConfigHeader
@@ -55,13 +44,7 @@ const StreamConfiguration = ({
 					destinationType={destinationType}
 				/>
 			)}
-			{activeTab === "schema" && store.streamsData && (
-				<StreamsSchema
-					initialStreamsData={stream}
-					initialSelectedStream={selectedStream}
-					onSelectedColumnChange={handleSelectedColumnsChange}
-				/>
-			)}
+			{activeTab === "schema" && store.streamsData && <StreamsSchema />}
 			{activeTab === "partitioning" && (
 				<PartitionRegexSection destinationType={destinationType} />
 			)}

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react"
 import clsx from "clsx"
 import { Radio, Tooltip } from "antd"
 import { InfoIcon } from "@phosphor-icons/react"
@@ -32,15 +31,13 @@ const IngestionModeSection = ({
 		selectIsStreamEnabled(state, stream),
 	)
 
-	const [appendMode, setAppendMode] = useState(false)
-
-	const isSourceAppendSupported = isSourceIngestionModeSupported(
-		IngestionMode.APPEND,
+	const isSourceUpsertSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
 		sourceType,
 	)
 
-	const isSourceUpsertSupported = isSourceIngestionModeSupported(
-		IngestionMode.UPSERT,
+	const isSourceAppendSupported = isSourceIngestionModeSupported(
+		IngestionMode.APPEND,
 		sourceType,
 	)
 
@@ -49,22 +46,17 @@ const IngestionModeSection = ({
 		destinationType,
 	)
 
-	// Re-sync ingestion mode state when the active stream changes
-	// Edge case: force appendMode = true when source doesn't support upsert
-	useEffect(() => {
-		if (!stream || !selectedStream) return
-		setAppendMode(
-			!isSourceUpsertSupported ? true : selectedStream.append_mode || false,
-		)
-	}, [stream])
-
 	if (!stream || !selectedStream) return null
 
 	// Don't render if destination doesn't support upsert mode
 	if (!isDestUpsertModeSupported) return null
 
+	// Ingestion mode is Append if:
+	// 1. Source doesn't support Upsert (forced Append)
+	// 2. OR user selected Append mode
+	const isAppendMode = !isSourceUpsertSupported || !!selectedStream.append_mode
+
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
-		setAppendMode(ingestionMode === IngestionMode.APPEND)
 		store.updateIngestionMode(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -95,7 +87,7 @@ const IngestionModeSection = ({
 			<Radio.Group
 				disabled={!isSelected}
 				className="mb-4 grid grid-cols-2 gap-4"
-				value={appendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
+				value={isAppendMode ? IngestionMode.APPEND : IngestionMode.UPSERT}
 				onChange={e => handleIngestionModeChange(e.target.value)}
 			>
 				<Tooltip

@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { Checkbox, Input, Switch, Tooltip } from "antd"
 import { CheckboxChangeEvent } from "antd/es/checkbox/Checkbox"
 
-import { StreamSchemaProps } from "../../types"
 import RenderTypeItems from "../RenderTypeItems"
 import {
 	isColumnSelectionSupported,
@@ -10,23 +9,30 @@ import {
 } from "../../utils/streams"
 import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
 
-const StreamsSchema = ({
-	initialStreamsData,
-	initialSelectedStream,
-	onSelectedColumnChange,
-}: StreamSchemaProps) => {
-	const typeSchemaProperties =
-		initialStreamsData.stream.type_schema?.properties || {}
+import {
+	selectActiveSelectedStream,
+	selectActiveStreamData,
+	useStreamSelectionStore,
+} from "../../stores/streamSelectionStore"
+
+const StreamsSchema = () => {
+	const streamData = useStreamSelectionStore(selectActiveStreamData)
+	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
+	const updateSelectedColumns = useStreamSelectionStore(
+		state => state.updateSelectedColumns,
+	)
+
+	if (!streamData || !selectedStream) return null
+
+	const typeSchemaProperties = streamData.stream.type_schema?.properties || {}
 
 	const isOlakeColumn = (name: string) =>
 		typeSchemaProperties[name]?.olake_column === true
 
-	const columnSelectionSupported = isColumnSelectionSupported(
-		initialSelectedStream,
-	)
+	const columnSelectionSupported = isColumnSelectionSupported(selectedStream)
 
 	// Column selection is editable only if it supported and stream is enabled
-	const isEditable = columnSelectionSupported && !initialSelectedStream.disabled
+	const isEditable = columnSelectionSupported && !selectedStream.disabled
 
 	const [columnsToDisplay, setColumnsToDisplay] =
 		useState<Record<string, any>>(typeSchemaProperties)
@@ -34,7 +40,7 @@ const StreamsSchema = ({
 	// Re-sync columns to display when the user switches to a different stream
 	useEffect(() => {
 		setColumnsToDisplay(typeSchemaProperties)
-	}, [initialStreamsData.stream.name, initialStreamsData.stream.namespace])
+	}, [streamData.stream.name, streamData.stream.namespace])
 
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const query = event.target.value
@@ -47,9 +53,9 @@ const StreamsSchema = ({
 	}
 
 	const handleSelectAll = (e: CheckboxChangeEvent) => {
-		if (!isEditable) return
+		if (!isEditable || !selectedStream.selected_columns) return
 		const selectAll = e.target.checked
-		const current = initialSelectedStream.selected_columns!
+		const current = selectedStream.selected_columns
 		const visibleColumnNames = Object.keys(columnsToDisplay)
 
 		let newColumns: string[]
@@ -62,26 +68,43 @@ const StreamsSchema = ({
 			)
 		}
 
-		onSelectedColumnChange?.({ ...current, columns: newColumns })
+		updateSelectedColumns(
+			streamData.stream.name,
+			streamData.stream.namespace || "",
+			{ ...current, columns: newColumns },
+		)
 	}
 
 	const handleColumnSelect = (columnName: string, checked: boolean) => {
-		if (!isEditable || isOlakeColumn(columnName)) return
+		if (
+			!isEditable ||
+			isOlakeColumn(columnName) ||
+			!selectedStream.selected_columns
+		)
+			return
 
-		const current = initialSelectedStream.selected_columns!
+		const current = selectedStream.selected_columns
 		const newColumns = checked
 			? [...new Set([...current.columns, columnName])]
 			: current.columns.filter(c => c !== columnName)
 
-		onSelectedColumnChange?.({ ...current, columns: newColumns })
+		updateSelectedColumns(
+			streamData.stream.name,
+			streamData.stream.namespace || "",
+			{ ...current, columns: newColumns },
+		)
 	}
 
 	const handleSyncNewColumnsChange = (checked: boolean) => {
-		if (!isEditable) return
-		onSelectedColumnChange?.({
-			...initialSelectedStream.selected_columns!,
-			sync_new_columns: checked,
-		})
+		if (!isEditable || !selectedStream.selected_columns) return
+		updateSelectedColumns(
+			streamData.stream.name,
+			streamData.stream.namespace || "",
+			{
+				...selectedStream.selected_columns,
+				sync_new_columns: checked,
+			},
+		)
 	}
 
 	const visibleNonLocked = Object.keys(columnsToDisplay).filter(
@@ -89,7 +112,7 @@ const StreamsSchema = ({
 	)
 	const isAllSelected =
 		visibleNonLocked.length > 0 &&
-		visibleNonLocked.every(name => isColumnEnabled(name, initialSelectedStream))
+		visibleNonLocked.every(name => isColumnEnabled(name, selectedStream))
 
 	const hasDestinationColumns = Object.values(columnsToDisplay || {}).some(
 		columnSchema => columnSchema?.destination_column_name,
@@ -122,7 +145,7 @@ const StreamsSchema = ({
 						</p>
 					</div>
 					<Switch
-						checked={initialSelectedStream.selected_columns!.sync_new_columns}
+						checked={!!selectedStream.selected_columns?.sync_new_columns}
 						onChange={handleSyncNewColumnsChange}
 						disabled={!isEditable}
 					/>
@@ -185,7 +208,7 @@ const StreamsSchema = ({
 					const destinationColumnName =
 						columnSchema?.destination_column_name || item
 					const checked = columnSelectionSupported
-						? isColumnEnabled(item, initialSelectedStream)
+						? isColumnEnabled(item, selectedStream)
 						: true
 					// Disabled when stream is unselected, driver is legacy, or column is locked (olake column)
 					const checkboxDisabled =

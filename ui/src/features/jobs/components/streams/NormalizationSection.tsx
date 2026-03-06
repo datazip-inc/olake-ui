@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react"
 import clsx from "clsx"
 import { Switch } from "antd"
 import { InfoIcon } from "@phosphor-icons/react"
@@ -19,20 +18,9 @@ const NormalizationSection = () => {
 		selectIsStreamEnabled(state, stream),
 	)
 
-	const [normalization, setNormalization] = useState<boolean>(
-		selectedStream?.normalization || false,
-	)
-
-	// Re-sync normalization state when the active stream changes
-	useEffect(() => {
-		if (!selectedStream) return
-		setNormalization(selectedStream.normalization || false)
-	}, [stream])
-
 	if (!stream || !selectedStream) return null
 
 	const handleNormalizationChange = (checked: boolean) => {
-		setNormalization(checked)
 		store.updateNormalization(
 			stream.stream.name,
 			stream.stream.namespace || "",
@@ -51,7 +39,7 @@ const NormalizationSection = () => {
 				<div className="flex items-center justify-between">
 					<label>Normalization</label>
 					<Switch
-						checked={normalization}
+						checked={selectedStream.normalization || false}
 						onChange={handleNormalizationChange}
 						disabled={!isSelected}
 					/>

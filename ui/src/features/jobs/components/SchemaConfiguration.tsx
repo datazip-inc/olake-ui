@@ -49,9 +49,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const discoverMutation = useDiscoverSourceStreams()
 
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
-		useClearDestinationStatus(jobId >= 0 ? jobId.toString() : "", {
-			staleTime: Infinity,
-		})
+		useClearDestinationStatus(jobId >= 0 ? jobId.toString() : "")
 	// Show stream-edit-disabled modal when clear destination is running
 	useEffect(() => {
 		if (clearDestStatus?.running) {

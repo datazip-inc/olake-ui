@@ -1,4 +1,4 @@
-import { SelectedColumns, SelectedStream, StreamData } from "@/common/types"
+import { StreamData } from "@/common/types"
 
 import { AdvancedSettings } from "./jobTypes"
 import { CheckboxChangeEvent } from "antd"
@@ -52,12 +52,6 @@ export interface GroupedStreamsCollapsibleListProps {
 	groupedStreams: { [namespace: string]: StreamData[] }
 	sourceType?: string
 	destinationType?: string
-}
-
-export interface StreamSchemaProps {
-	initialStreamsData: StreamData
-	initialSelectedStream: SelectedStream
-	onSelectedColumnChange?: (selectedColumns: SelectedColumns) => void
 }
 
 export type CursorFieldValues = {

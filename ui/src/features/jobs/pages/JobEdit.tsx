@@ -38,6 +38,8 @@ const JobEdit: React.FC = () => {
 	} = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
 	const streamsData = useStreamSelectionStore(state => state.streamsData)
+	// Keep job data permanently fresh to prevent refetches (e.g., on tab focus) that could overwrite in-progress edits.
+	// The query will still update when job mutations succeed because they invalidate the job queries.
 	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
 		staleTime: Infinity,
 	})

@@ -35,14 +35,10 @@ export const useJobTasks = (
 	})
 }
 
-export const useClearDestinationStatus = (
-	jobId: string,
-	options?: { staleTime?: number },
-) => {
+export const useClearDestinationStatus = (jobId: string) => {
 	return useQuery({
 		queryKey: jobsKeys.clearDestination(jobId),
 		queryFn: () => jobService.getClearDestinationStatus(jobId),
 		enabled: !!jobId,
-		staleTime: options?.staleTime,
 	})
 }

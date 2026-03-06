@@ -324,7 +324,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								<Button
 									type="default"
 									icon={<PencilSimpleIcon className="size-4" />}
-									onClick={() => navigate(`/sources/${selectedSourceId}/edit`)}
+									onClick={() => navigate(`/sources/${selectedSourceId}`)}
 									className="flex items-center gap-1"
 								>
 									Edit Source
@@ -369,7 +369,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 									type="default"
 									icon={<PencilSimpleIcon className="size-4" />}
 									onClick={() =>
-										navigate(`/destinations/${selectedDestinationId}/edit`)
+										navigate(`/destinations/${selectedDestinationId}`)
 									}
 									className="flex items-center gap-1"
 								>
