@@ -1,13 +1,13 @@
 import { lazy } from "react"
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
 
-import { useAppStore } from "../store"
-import Layout from "../modules/common/components/Layout"
-import { ErrorBoundary } from "../modules/common/components/ErrorBoundary"
+import { useAuthStore } from "@/stores/authStore"
+import Layout from "@/common/components/Layout"
+import { ErrorBoundary } from "@/common/components/ErrorBoundary"
 
 // eslint-disable-next-line react-refresh/only-export-components
 const RootHandler = () => {
-	const isAuthenticated = useAppStore(state => state.isAuthenticated)
+	const isAuthenticated = useAuthStore(state => state.isAuthenticated)
 
 	if (isAuthenticated) {
 		return (
@@ -27,27 +27,27 @@ const RootHandler = () => {
 
 //lazy load components
 const lazyComponents = {
-	Login: lazy(() => import("../modules/auth/pages/Login")),
-	Jobs: lazy(() => import("../modules/jobs/pages/Jobs")),
-	JobHistory: lazy(() => import("../modules/jobs/pages/JobHistory")),
-	JobLogs: lazy(() => import("../modules/jobs/pages/JobLogs")),
-	JobSettings: lazy(() => import("../modules/jobs/pages/JobSettings")),
-	JobCreation: lazy(() => import("../modules/jobs/pages/JobCreation")),
-	JobEdit: lazy(() => import("../modules/jobs/pages/JobEdit")),
-	Sources: lazy(() => import("../modules/sources/pages/Sources")),
-	SourceEdit: lazy(() => import("../modules/sources/pages/SourceEdit")),
-	CreateSource: lazy(() => import("../modules/sources/pages/CreateSource")),
+	Login: lazy(() => import("@/features/auth/pages/Login")),
+	Jobs: lazy(() => import("../features/jobs/pages/Jobs")),
+	JobHistory: lazy(() => import("../features/jobs/pages/JobHistory")),
+	JobLogs: lazy(() => import("../features/jobs/pages/JobLogs")),
+	JobSettings: lazy(() => import("../features/jobs/pages/JobSettings")),
+	JobCreation: lazy(() => import("../features/jobs/pages/JobCreation")),
+	JobEdit: lazy(() => import("../features/jobs/pages/JobEdit")),
+	Sources: lazy(() => import("../features/sources/pages/Sources")),
+	SourceEdit: lazy(() => import("../features/sources/pages/SourceEdit")),
+	CreateSource: lazy(() => import("../features/sources/pages/CreateSource")),
 	Destinations: lazy(
-		() => import("../modules/destinations/pages/Destinations"),
+		() => import("../features/destinations/pages/Destinations"),
 	),
 	DestinationEdit: lazy(
-		() => import("../modules/destinations/pages/DestinationEdit"),
+		() => import("../features/destinations/pages/DestinationEdit"),
 	),
 	CreateDestination: lazy(
-		() => import("../modules/destinations/pages/CreateDestination"),
+		() => import("../features/destinations/pages/CreateDestination"),
 	),
 	SystemSettings: lazy(
-		() => import("../modules/common/settings/pages/SystemSettings"),
+		() => import("@/features/settings/pages/SystemSettings"),
 	),
 }
 

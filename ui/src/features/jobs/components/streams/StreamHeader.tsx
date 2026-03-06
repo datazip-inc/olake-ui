@@ -1,0 +1,65 @@
+import { CaretRightIcon } from "@phosphor-icons/react"
+import { Checkbox, CheckboxChangeEvent } from "antd"
+import clsx from "clsx"
+
+import { StreamHeaderProps } from "@/features/jobs/types"
+import { useStreamSelectionStore } from "../../stores"
+
+const StreamHeader: React.FC<StreamHeaderProps> = ({
+	stream,
+	toggle,
+	checked,
+}) => {
+	const store = useStreamSelectionStore()
+
+	const {
+		stream: { name, namespace },
+	} = stream
+
+	const isActiveStream =
+		store.activeStreamKey?.name === name &&
+		store.activeStreamKey?.namespace === (namespace ?? "")
+
+	const setActive = () =>
+		store.setActiveStreamKey({ name, namespace: namespace ?? "" })
+
+	const handleChange = (e: CheckboxChangeEvent) => {
+		toggle(e)
+		setActive()
+	}
+
+	return (
+		<div
+			className={clsx(
+				"flex w-full items-center justify-between border-b border-solid border-[#e5e7eb] py-3 pl-6",
+				isActiveStream
+					? "bg-[#D2D8F7]"
+					: "bg-white hover:bg-background-primary",
+			)}
+		>
+			<div
+				role="button"
+				tabIndex={0}
+				className="flex w-full cursor-pointer select-none items-center justify-between"
+				onClick={setActive}
+			>
+				<div className="flex items-center gap-2">
+					<Checkbox
+						checked={checked}
+						onChange={handleChange}
+						onClick={e => e.stopPropagation()}
+						className={clsx("text-lg", checked && "text-[#1FA7C9]")}
+					/>
+					{name}
+				</div>
+				{!isActiveStream && (
+					<div className="mr-4">
+						<CaretRightIcon className="size-4 text-gray-500" />
+					</div>
+				)}
+			</div>
+		</div>
+	)
+}
+
+export default StreamHeader

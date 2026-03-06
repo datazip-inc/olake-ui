@@ -2,13 +2,30 @@ import { Suspense, useEffect } from "react"
 import { RouterProvider } from "react-router-dom"
 import { ConfigProvider, App as AntApp } from "antd"
 
-import { useAppStore } from "./store"
+import { useAuthStore } from "@/stores/authStore"
 import { router } from "./routes"
-import { THEME_CONFIG } from "./utils/constants"
-import { AuthLoadingScreen } from "./modules/common/components/LoadingStates"
+import { THEME_CONFIG } from "./common/constants/constants"
+import { AuthLoadingScreen } from "@/common/components/LoadingStates"
+import {
+	MutationCache,
+	QueryClient,
+	QueryClientProvider,
+} from "@tanstack/react-query"
+
+// After any mutation succeeds, invalidate all queries that share its mutationKey.
+// Mutations with no mutationKey set will not invalidate anything.
+const queryClient = new QueryClient({
+	mutationCache: new MutationCache({
+		onSuccess: (_data, _variables, _context, mutation) => {
+			queryClient.invalidateQueries({
+				queryKey: mutation.options.mutationKey,
+			})
+		},
+	}),
+})
 
 function App() {
-	const { isAuthLoading, initAuth } = useAppStore()
+	const { isAuthLoading, initAuth } = useAuthStore()
 
 	useEffect(() => {
 		initAuth()
@@ -19,13 +36,15 @@ function App() {
 	}
 
 	return (
-		<ConfigProvider theme={THEME_CONFIG}>
-			<AntApp>
-				<Suspense fallback={<AuthLoadingScreen />}>
-					<RouterProvider router={router} />
-				</Suspense>
-			</AntApp>
-		</ConfigProvider>
+		<QueryClientProvider client={queryClient}>
+			<ConfigProvider theme={THEME_CONFIG}>
+				<AntApp>
+					<Suspense fallback={<AuthLoadingScreen />}>
+						<RouterProvider router={router} />
+					</Suspense>
+				</AntApp>
+			</ConfigProvider>
+		</QueryClientProvider>
 	)
 }
 
