@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
@@ -18,21 +19,19 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to retrieve project settings"
 // @Router /api/v1/project/{projectid}/settings [get]
-func (h *Handler) GetProjectSettings() {
-	projectID, err := GetProjectIDFromPath(&h.Controller)
+func (h *GinHandler) getProjectSettings(c *gin.Context) {
+	projectID, err := getProjectID(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Debugf("Get project settings initiated project_id[%s]", projectID)
-
 	settings, err := h.etl.GetProjectSettings(projectID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, "Project Settings fetched successfully", settings)
+	successResponse(c, "Project Settings fetched successfully", settings)
 }
 
 // @Summary Update project settings
@@ -45,26 +44,16 @@ func (h *Handler) GetProjectSettings() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update project settings"
 // @Router /api/v1/project/{projectid}/settings [put]
-func (h *Handler) UpsertProjectSettings() {
-	projectID, err := GetProjectIDFromPath(&h.Controller)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-
+func (h *GinHandler) upsertProjectSettings(c *gin.Context) {
 	var req dto.UpsertProjectSettingsRequest
-
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := bindAndValidate(c, &req); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
-	logger.Debugf("Update project settings initiated project_id[%s]", projectID)
-
+	logger.Debugf("Upsert project settings initiated project_id[%s]", req.ProjectID)
 	if err := h.etl.UpsertProjectSettings(req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, "Project Settings updated successfully", nil)
+	successResponse(c, "Project Settings updated successfully", nil)
 }

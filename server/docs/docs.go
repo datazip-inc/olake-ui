@@ -2672,6 +2672,15 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.AdvancedSettings": {
+            "type": "object",
+            "properties": {
+                "max_discover_threads": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
         "dto.CheckUniqueJobNameResponse": {
             "type": "object",
             "properties": {
@@ -2752,6 +2761,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3045,6 +3057,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "created_at": {
                     "type": "string",
@@ -3390,6 +3405,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "my-sync-job"
                 },
+                "max_discover_threads": {
+                    "type": "integer",
+                    "example": 50
+                },
                 "name": {
                     "type": "string",
                     "example": "my-postgres-source"
@@ -3498,6 +3517,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"

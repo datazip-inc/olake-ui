@@ -1,49 +1,57 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
-	"github.com/beego/beego/v2/server/web"
+	"github.com/gin-gonic/gin"
 
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-// get id from path
-func GetIDFromPath(c *web.Controller) (int, error) {
-	idStr := c.Ctx.Input.Param(":id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid id: %s", err)
-	}
-	return id, nil
-}
-
-// get id from path
-func GetProjectIDFromPath(c *web.Controller) (string, error) {
-	projectID := c.Ctx.Input.Param(":projectid")
+func getProjectID(c *gin.Context) (string, error) {
+	projectID := c.Param("projectid")
 	if projectID == "" {
 		return "", fmt.Errorf("project id is required")
 	}
 	return projectID, nil
 }
 
-// Helper to extract user ID from session
-func GetUserIDFromSession(c *web.Controller) *int {
-	if sessionUserID := c.GetSession(constants.SessionUserID); sessionUserID != nil {
-		if uid, ok := sessionUserID.(int); ok {
-			return &uid
-		}
+func getIDParam(c *gin.Context, key string) (int, error) {
+	id, err := strconv.Atoi(c.Param(key))
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s: %s", key, err)
 	}
-	return nil
+	return id, nil
 }
 
-// UnmarshalAndValidate unmarshals JSON from request body into the provided struct
-func UnmarshalAndValidate(requestBody []byte, target interface{}) error {
-	if err := json.Unmarshal(requestBody, target); err != nil {
-		return err
+func getCurrentUserID(c *gin.Context, sessions *sessionStore) *int {
+	userID, ok := sessions.GetUserID(c)
+	if !ok {
+		return nil
 	}
-	return dto.Validate(target)
+	return &userID
+}
+
+func bindAndValidate(c *gin.Context, target interface{}) error {
+	return c.ShouldBindJSON(target)
+}
+
+func successResponse(c *gin.Context, message string, data interface{}) {
+	c.JSON(200, dto.JSONResponse{
+		Success: true,
+		Message: message,
+		Data:    data,
+	})
+}
+
+func errorResponse(c *gin.Context, status int, message string, err error) {
+	if err != nil {
+		logger.Errorf("error in request %s: %s", c.Request.URL.Path, err)
+	}
+	c.JSON(status, dto.JSONResponse{
+		Success: false,
+		Message: message,
+	})
 }

@@ -6,9 +6,7 @@ import (
 	"net/url"
 
 	"github.com/beego/beego/v2/client/orm"
-	"github.com/beego/beego/v2/server/web"
-	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
-	_ "github.com/lib/pq"                                     // required for registering driver
+	_ "github.com/lib/pq" // required for registering driver
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -38,14 +36,6 @@ func Init() (*Database, error) {
 	err = orm.RegisterDataBase("default", "postgres", uri)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register postgres database: %s", err)
-	}
-
-	// enable session by default
-	if cfg.SessionOn {
-		web.BConfig.WebConfig.Session.SessionName = "olake-session"
-		web.BConfig.WebConfig.Session.SessionProvider = "postgresql"
-		web.BConfig.WebConfig.Session.SessionProviderConfig = uri
-		web.BConfig.WebConfig.Session.SessionCookieLifeTime = 30 * 24 * 60 * 60 // 30 days
 	}
 
 	// register session user

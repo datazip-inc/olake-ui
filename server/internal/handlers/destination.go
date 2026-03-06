@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
@@ -18,19 +19,19 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get destinations"
 // @Router /api/v1/project/{projectid}/destinations [get]
-func (h *Handler) ListDestinations() {
-	projectID, err := GetProjectIDFromPath(&h.Controller)
+func (h *GinHandler) listDestinations(c *gin.Context) {
+	projectID, err := getProjectID(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
-	items, err := h.etl.ListDestinations(h.Ctx.Request.Context(), projectID)
+	logger.Debugf("Get all destinations initiated project_id[%s]", projectID)
+	items, err := h.etl.ListDestinations(c.Request.Context(), projectID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, "Destinations listed successfully", items)
+	successResponse(c, "Destinations listed successfully", items)
 }
 
 // @Summary Get destination details
@@ -43,27 +44,24 @@ func (h *Handler) ListDestinations() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [get]
-func (h *Handler) GetDestination() {
-	projectID, err := GetProjectIDFromPath(&h.Controller)
+func (h *GinHandler) getDestination(c *gin.Context) {
+	projectID, err := getProjectID(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
-	destinationID, err := GetIDFromPath(&h.Controller)
+	destinationID, err := getIDParam(c, "id")
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Debugf("Get destination initiated project_id[%s] destination_id[%d]", projectID, destinationID)
-
-	destination, err := h.etl.GetDestination(h.Ctx.Request.Context(), projectID, destinationID)
+	destination, err := h.etl.GetDestination(c.Request.Context(), projectID, destinationID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination '%d' retrieved successfully", destinationID), destination)
+	successResponse(c, fmt.Sprintf("destination '%d' retrieved successfully", destinationID), destination)
 }
 
 // @Summary Create a new destination
@@ -76,39 +74,33 @@ func (h *Handler) GetDestination() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to create destination"
 // @Router /api/v1/project/{projectid}/destinations [post]
-func (h *Handler) CreateDestination() {
-	userID := GetUserIDFromSession(&h.Controller)
+func (h *GinHandler) createDestination(c *gin.Context) {
+	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-
-	projectID, err := GetProjectIDFromPath(&h.Controller)
+	projectID, err := getProjectID(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	var req dto.CreateDestinationRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := bindAndValidate(c, &req); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Debugf("Create destination initiated project_id[%s] destination_type[%s] destination_name[%s] user_id[%v]",
 		projectID, req.Type, req.Name, userID)
-
-	if err := h.etl.CreateDestination(h.Ctx.Request.Context(), &req, projectID, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
+	if err := h.etl.CreateDestination(c.Request.Context(), &req, projectID, userID); err != nil {
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
+	successResponse(c, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 
 // @Summary Update a destination
@@ -122,44 +114,40 @@ func (h *Handler) CreateDestination() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [put]
-func (h *Handler) UpdateDestination() {
-	userID := GetUserIDFromSession(&h.Controller)
+func (h *GinHandler) updateDestination(c *gin.Context) {
+	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
-		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-
-	id, err := GetIDFromPath(&h.Controller)
+	id, err := getIDParam(c, "id")
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
-	projectID, err := GetProjectIDFromPath(&h.Controller)
+	projectID, err := getProjectID(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	var req dto.UpdateDestinationRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := bindAndValidate(c, &req); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	logger.Debugf("Update destination initiated project_id[%s], destination_id[%d], destination_type[%s], user_id[%v]",
 		projectID, id, req.Type, userID)
 
-	if err := h.etl.UpdateDestination(h.Ctx.Request.Context(), id, projectID, &req, userID); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
+	if err := h.etl.UpdateDestination(c.Request.Context(), id, projectID, &req, userID); err != nil {
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s updated successfully", req.Name), req)
+	successResponse(c, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
 // @Summary Delete a destination
@@ -172,22 +160,19 @@ func (h *Handler) UpdateDestination() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to delete destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [delete]
-func (h *Handler) DeleteDestination() {
-	id, err := GetIDFromPath(&h.Controller)
+func (h *GinHandler) deleteDestination(c *gin.Context) {
+	id, err := getIDParam(c, "id")
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Debugf("Delete destination initiated destination_id[%d]", id)
-
-	resp, err := h.etl.DeleteDestination(h.Ctx.Request.Context(), id)
+	resp, err := h.etl.DeleteDestination(c.Request.Context(), id)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
+	successResponse(c, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
 }
 
 // @Summary Test destination connection
@@ -200,23 +185,22 @@ func (h *Handler) DeleteDestination() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to test connection"
 // @Router /api/v1/project/{projectid}/destinations/test [post]
-func (h *Handler) TestDestinationConnection() {
+func (h *GinHandler) testDestinationConnection(c *gin.Context) {
 	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := bindAndValidate(c, &req); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	logger.Infof("Test destination connection initiated destination_type[%s] destination_version[%s]", req.Type, req.Version)
 
-	result, logs, err := h.etl.TestDestinationConnection(h.Ctx.Request.Context(), &req)
+	result, logs, err := h.etl.TestDestinationConnection(c.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to verify driver credentials: %s", err), err)
 		return
 	}
-
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s connection tested successfully", req.Type), dto.TestConnectionResponse{
+	successResponse(c, fmt.Sprintf("destination %s connection tested successfully", req.Type), dto.TestConnectionResponse{
 		ConnectionResult: result,
 		Logs:             logs,
 	})
@@ -232,27 +216,26 @@ func (h *Handler) TestDestinationConnection() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get versions"
 // @Router /api/v1/project/{projectid}/destinations/versions [get]
-func (h *Handler) GetDestinationVersions() {
-	projectID, err := GetProjectIDFromPath(&h.Controller)
+func (h *GinHandler) getDestinationVersions(c *gin.Context) {
+	projectID, err := getProjectID(c)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
-	destType := h.GetString("type")
+	destType := c.Query("type")
 	if err := dto.ValidateDestinationType(destType); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	logger.Debugf("Get destination versions initiated project_id[%s] destination_type[%s]", projectID, destType)
 
-	versions, err := h.etl.GetDestinationVersions(h.Ctx.Request.Context(), destType)
+	versions, err := h.etl.GetDestinationVersions(c.Request.Context(), destType)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
+	successResponse(c, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
 }
 
 // @Summary Get destination UI spec
@@ -265,26 +248,18 @@ func (h *Handler) GetDestinationVersions() {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/destinations/spec [post]
-func (h *Handler) GetDestinationSpec() {
-	projectID, err := GetProjectIDFromPath(&h.Controller)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-
+func (h *GinHandler) getDestinationSpec(c *gin.Context) {
 	var req dto.SpecRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := bindAndValidate(c, &req); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-
 	logger.Debugf("Get destination spec initiated project_id[%s] destination_type[%s] destination_version[%s]",
-		projectID, req.Type, req.Version)
-
-	resp, err := h.etl.GetDestinationSpec(h.Ctx.Request.Context(), &req)
+		c.Param("projectid"), req.Type, req.Version)
+	resp, err := h.etl.GetDestinationSpec(c.Request.Context(), &req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s spec fetched successfully", req.Type), resp)
+	successResponse(c, fmt.Sprintf("destination %s spec fetched successfully", req.Type), resp)
 }

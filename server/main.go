@@ -26,14 +26,18 @@
 package main
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/beego/beego/v2/client/orm"
-	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	"github.com/datazip-inc/olake-ui/server/internal/httpserver"
 	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
-	"github.com/datazip-inc/olake-ui/server/routes"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 
@@ -63,7 +67,6 @@ func main() {
 		docs.SwaggerInfo.Version = constants.AppVersion
 	}
 
-	routes.Init(handlers.NewHandler(appSvc))
 	cfg := appconfig.Load()
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
@@ -73,6 +76,18 @@ func main() {
 	if runMode == "dev" || runMode == "staging" {
 		orm.Debug = true
 	}
-	web.Run()
-	// TODO: handle gracefull shutdown
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	api, err := handlers.NewGinHandler(appSvc, cfg)
+	if err != nil {
+		logger.Fatalf("Failed to initialize Gin API: %s", err)
+		return
+	}
+	server := httpserver.New(cfg, api.RegisterRoutes)
+	logger.Infof("Starting Gin server on port %s", cfg.HTTPPort)
+	if err := server.Run(ctx); err != nil {
+		logger.Fatalf("Gin server exited with error: %s", err)
+	}
 }

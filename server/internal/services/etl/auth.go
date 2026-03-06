@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"golang.org/x/crypto/bcrypt"
@@ -16,13 +17,13 @@ func (s *ETLService) Login(ctx context.Context, username, password string) (*mod
 	user, err := s.db.GetUserByUsername(username)
 	if err != nil {
 		if strings.Contains(err.Error(), "no row found") {
-			return nil, fmt.Errorf("user not found: %s", err)
+			return nil, fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
 		}
 		return nil, fmt.Errorf("failed to get user: %s", err)
 	}
 
 	if err := s.db.CompareUserPassword(user.Password, password); err != nil {
-		return nil, fmt.Errorf("invalid credentials: %s", err)
+		return nil, fmt.Errorf("%w: %v", constants.ErrInvalidCredentials, err)
 	}
 
 	telemetry.TrackUserLogin(ctx, user)
@@ -33,13 +34,13 @@ func (s *ETLService) Login(ctx context.Context, username, password string) (*mod
 func (s *ETLService) Signup(_ context.Context, user *models.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %s", err)
+		return fmt.Errorf("%w: %v", constants.ErrPasswordProcessing, err)
 	}
 	user.Password = string(hashedPassword)
 
 	if err := s.db.CreateUser(user); err != nil {
 		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-			return fmt.Errorf("user already exists: %s", err)
+			return fmt.Errorf("%w: %v", constants.ErrUserAlreadyExists, err)
 		}
 		return fmt.Errorf("failed to create user: %s", err)
 	}

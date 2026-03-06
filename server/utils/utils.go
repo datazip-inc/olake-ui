@@ -18,7 +18,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/oklog/ulid"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -37,27 +36,6 @@ func ToMapOfInterface(structure any) map[string]interface{} {
 	_ = json.Unmarshal(data, &output)
 
 	return output
-}
-
-func RespondJSON(ctx *web.Controller, status int, success bool, message string, data interface{}) {
-	ctx.Ctx.Output.SetStatus(status)
-	ctx.Data["json"] = dto.JSONResponse{
-		Success: success,
-		Message: message,
-		Data:    data,
-	}
-	_ = ctx.ServeJSON()
-}
-
-func SuccessResponse(ctx *web.Controller, message string, data interface{}) {
-	RespondJSON(ctx, http.StatusOK, true, message, data)
-}
-
-func ErrorResponse(ctx *web.Controller, status int, message string, err error) {
-	if err != nil {
-		logger.Errorf("error in request %s: %s", ctx.Ctx.Input.URI(), err)
-	}
-	RespondJSON(ctx, status, false, message, nil)
 }
 
 func HandleJSONOK(w http.ResponseWriter, content interface{}) {

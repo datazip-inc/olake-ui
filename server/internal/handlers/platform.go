@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/gin-gonic/gin"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
+
 )
 
 // @Summary Get release updates
@@ -18,21 +19,18 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to fetch release metadata"
 // @Router /api/v1/platform/releases [get]
-func (h *Handler) GetReleaseUpdates() {
-	limitStr := h.Ctx.Input.Query("limit")
+func (h *GinHandler) getReleaseUpdates(c *gin.Context) {
 	limit := 0
-	if limitStr != "" {
-		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-			limit = parsedLimit
+	if raw := c.Query("limit"); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = parsed
 		}
 	}
-
-	logger.Debugf("Get release metadata initiated limit[%d]", limit)
-
-	response, err := h.etl.GetAllReleasesResponse(h.Ctx.Request.Context(), limit)
+	logger.Debugf("Get release updates initiated limit[%d]", limit)
+	response, err := h.etl.GetAllReleasesResponse(c.Request.Context(), limit)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to fetch release metadata: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to fetch release metadata: %s", err), err)
 		return
 	}
-	utils.SuccessResponse(&h.Controller, "release metadata fetched successfully", response)
+	successResponse(c, "release metadata fetched successfully", response)
 }
