@@ -360,7 +360,7 @@ func isValidTag(tag string) bool {
 // Note: This is only for development/testing purposes.
 // When a custom version is set, semver-based compatibility checks will bypassed.
 func GetCustomDriverVersion() string {
-	if strings.EqualFold(GetAppEnv(), constants.AppEnvDevelopment) {
+	if GetAppEnv() == constants.AppEnvDevelopment {
 		return viper.GetString(constants.EnvCustomDriverImage)
 	}
 	return ""
