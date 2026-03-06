@@ -28,6 +28,7 @@ package main
 import (
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
@@ -63,11 +64,13 @@ func main() {
 	}
 
 	routes.Init(handlers.NewHandler(appSvc))
-	if key, _ := web.AppConfig.String(constants.ConfEncryptionKey); key == "" {
+	cfg := appconfig.Load()
+	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
 	}
 
-	if web.BConfig.RunMode == "dev" || web.BConfig.RunMode == "staging" {
+	runMode := cfg.RunMode
+	if runMode == "dev" || runMode == "staging" {
 		orm.Debug = true
 	}
 	web.Run()

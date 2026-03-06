@@ -10,6 +10,7 @@ import (
 	_ "github.com/beego/beego/v2/server/web/session/postgres" // required for session
 	_ "github.com/lib/pq"                                     // required for registering driver
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -20,6 +21,8 @@ type Database struct {
 }
 
 func Init() (*Database, error) {
+	cfg := appconfig.Load()
+
 	// register driver
 	uri, err := BuildPostgresURIFromConfig()
 	if err != nil {
@@ -38,7 +41,7 @@ func Init() (*Database, error) {
 	}
 
 	// enable session by default
-	if web.BConfig.WebConfig.Session.SessionOn {
+	if cfg.SessionOn {
 		web.BConfig.WebConfig.Session.SessionName = "olake-session"
 		web.BConfig.WebConfig.Session.SessionProvider = "postgresql"
 		web.BConfig.WebConfig.Session.SessionProviderConfig = uri
@@ -64,7 +67,7 @@ func Init() (*Database, error) {
 	}
 
 	// Add session table if sessions are enabled
-	if web.BConfig.WebConfig.Session.SessionOn {
+	if cfg.SessionOn {
 		_, err = orm.NewOrm().Raw(`CREATE TABLE IF NOT EXISTS session (
     session_key VARCHAR(64) PRIMARY KEY,
     session_data BYTEA,
@@ -82,18 +85,19 @@ func Init() (*Database, error) {
 // and constructs the Postgres connection URI.
 func BuildPostgresURIFromConfig() (string, error) {
 	logger.Info("Building Postgres URI from config")
+	cfg := appconfig.Load()
 
 	// First, check if postgresdb is set directly
-	if dsn, err := web.AppConfig.String(constants.ConfPostgresDB); err == nil && dsn != "" {
-		return dsn, nil
+	if cfg.PostgresDSN != "" {
+		return cfg.PostgresDSN, nil
 	}
 
-	user, _ := web.AppConfig.String(constants.ConfOLakePostgresUser)
-	password, _ := web.AppConfig.String(constants.ConfOLakePostgresPassword)
-	host, _ := web.AppConfig.String(constants.ConfOLakePostgresHost)
-	port, _ := web.AppConfig.String(constants.ConfOLakePostgresPort)
-	dbName, _ := web.AppConfig.String(constants.ConfOLakePostgresDBname)
-	sslMode, _ := web.AppConfig.String(constants.ConfOLakePostgresSslmode)
+	user := cfg.OlakePostgresUser
+	password := cfg.OlakePostgresPassword
+	host := cfg.OlakePostgresHost
+	port := cfg.OlakePostgresPort
+	dbName := cfg.OlakePostgresDBName
+	sslMode := cfg.OlakePostgresSSLMode
 
 	u := &url.URL{
 		Scheme: "postgres",

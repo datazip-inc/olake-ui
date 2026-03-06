@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -21,13 +21,13 @@ type Temporal struct {
 
 // NewClient creates a new Temporal client
 func NewClient() (*Temporal, error) {
-	temporalAddress, err := web.AppConfig.String(constants.ConfTemporalAddress)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get temporal address: %s", err)
+	temporalAddress := appconfig.Load().TemporalAddress
+	if temporalAddress == "" {
+		return nil, fmt.Errorf("failed to get temporal address")
 	}
 
 	var temporalClient *Temporal
-	err = utils.RetryWithBackoff(func() error {
+	err := utils.RetryWithBackoff(func() error {
 		client, dialErr := client.Dial(client.Options{
 			HostPort: temporalAddress,
 		})

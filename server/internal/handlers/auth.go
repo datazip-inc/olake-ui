@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -46,7 +46,7 @@ func (h *Handler) Login() {
 	}
 
 	// check if session is enabled
-	if web.BConfig.WebConfig.Session.SessionOn {
+	if appconfig.Load().SessionOn {
 		_ = h.SetSession(constants.SessionUserID, user.ID)
 	}
 

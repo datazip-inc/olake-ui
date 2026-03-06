@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
-	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"golang.org/x/mod/semver"
@@ -73,10 +73,12 @@ func GetWorkerEnvVars() map[string]string {
 // GetDriverImageTags returns image tags from ECR, Artifact Registry, or Docker Hub with fallback to cached images
 func GetDriverImageTags(ctx context.Context, imageName string, cachedTags bool) ([]string, string, error) {
 	// TODO: make constants file and validate all env vars in start of server
-	repositoryBase, err := web.AppConfig.String(constants.ConfContainerRegistryBase)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE: %s", err)
+	repositoryBase := appconfig.Load().ContainerRegistryBase
+	if repositoryBase == "" {
+		return nil, "", fmt.Errorf("failed to get CONTAINER_REGISTRY_BASE")
 	}
+
+	var err error
 	var tags []string
 	images := []string{imageName}
 	if imageName == "" {

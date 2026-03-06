@@ -5,8 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/core/config"
-	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/spf13/viper"
 )
 
@@ -44,21 +43,6 @@ var (
 	MaxDiscoverThreadsFlag    = "--max-discover-threads"
 	DefaultMaxDiscoverThreads = 50
 
-	// conf keys
-	ConfEncryptionKey         = "encryptionkey"
-	ConfTemporalAddress       = "TEMPORAL_ADDRESS"
-	ConfDeploymentMode        = "DEPLOYMENT_MODE"
-	ConfRunMode               = "runmode"
-	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
-	// database keys
-	ConfPostgresDB            = "postgresdb"
-	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
-	ConfOLakePostgresPassword = "OLAKE_POSTGRES_PASSWORD"
-	ConfOLakePostgresHost     = "OLAKE_POSTGRES_HOST"
-	ConfOLakePostgresPort     = "OLAKE_POSTGRES_PORT"
-	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
-	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
-
 	// logs config
 	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
 	LogReadChunkSize = 64 * 1024 // 64KB
@@ -95,16 +79,6 @@ var SupportedDestinationTypes = []string{
 	"iceberg",
 }
 
-var RequiredConfigVariable = []string{
-	"OLAKE_POSTGRES_USER",
-	"OLAKE_POSTGRES_PASSWORD",
-	"OLAKE_POSTGRES_HOST",
-	"OLAKE_POSTGRES_PORT",
-	"OLAKE_POSTGRES_DBNAME",
-	"OLAKE_POSTGRES_SSLMODE",
-	"copyrequestbody",
-	"logsdir"}
-
 var AppVersion string
 
 func Init() {
@@ -119,7 +93,7 @@ func Init() {
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
 
-	checkForRequiredVariables(RequiredConfigVariable)
+	checkForRequiredVariables()
 
 	AppVersion = viper.GetString("APP_VERSION")
 
@@ -140,15 +114,30 @@ func Init() {
 
 	// replace $$ with the environment
 	for k, v := range TableNameMap {
-		TableNameMap[k] = strings.ReplaceAll(v, "$$", web.BConfig.RunMode)
+		TableNameMap[k] = strings.ReplaceAll(v, "$$", appconfig.Load().RunMode)
 	}
 }
 
-func checkForRequiredVariables(vars []string) {
-	for _, v := range vars {
-		value, err := config.String(v)
-		if err != nil || value == "" {
-			panic("Required config variable not found: ," + v)
+func checkForRequiredVariables() {
+	cfg := appconfig.Load()
+
+	// If a full DSN is provided, we don't require individual DB parts.
+	if strings.TrimSpace(cfg.PostgresDSN) != "" {
+		return
+	}
+
+	requiredValues := map[string]string{
+		"OLAKE_POSTGRES_USER":     cfg.OlakePostgresUser,
+		"OLAKE_POSTGRES_PASSWORD": cfg.OlakePostgresPassword,
+		"OLAKE_POSTGRES_HOST":     cfg.OlakePostgresHost,
+		"OLAKE_POSTGRES_PORT":     cfg.OlakePostgresPort,
+		"OLAKE_POSTGRES_DBNAME":   cfg.OlakePostgresDBName,
+		"OLAKE_POSTGRES_SSLMODE":  cfg.OlakePostgresSSLMode,
+	}
+
+	for val, key := range requiredValues {
+		if val == "" {
+			panic("Required config variable not found: " + key)
 		}
 	}
 }
