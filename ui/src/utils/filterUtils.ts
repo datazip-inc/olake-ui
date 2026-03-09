@@ -58,27 +58,27 @@ export const isValueValidForTypes = (
 	const typeArray = Array.isArray(type) ? type : [type]
 	if (typeArray.length === 0) return false
 
-	const v = value === null ? "" : String(value)
+	const raw = value === null ? "" : String(value)
 
 	return typeArray.some(t => {
 		switch (t) {
 			case "null":
-				return value === null || v === "<null>"
+				return value === null || raw === "<null>"
 
 			case "integer_small":
 			case "integer":
-				return /^-?\d+$/.test(v) && Number.isInteger(Number(v))
+				return /^-?\d+$/.test(raw) && Number.isInteger(Number(raw))
 
 			case "number_small":
 			case "number":
-				return !isNaN(Number(v)) && v !== ""
+				return !isNaN(Number(raw)) && raw !== ""
 
 			case "boolean":
-				return v.toLowerCase() === "true" || v.toLowerCase() === "false"
+				return raw.toLowerCase() === "true" || raw.toLowerCase() === "false"
 
 			case "array": {
 				try {
-					return Array.isArray(JSON.parse(v))
+					return Array.isArray(JSON.parse(raw))
 				} catch {
 					return false
 				}
@@ -86,7 +86,7 @@ export const isValueValidForTypes = (
 
 			case "object": {
 				try {
-					const parsed = JSON.parse(v)
+					const parsed = JSON.parse(raw)
 					return (
 						parsed !== null &&
 						typeof parsed === "object" &&

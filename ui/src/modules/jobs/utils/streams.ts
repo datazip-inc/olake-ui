@@ -127,6 +127,6 @@ export function shouldUseFilterConfig(
 
 	// If ANY stream already carries a legacy filter string, keep legacy path.
 	return !Object.values(selectedStreams).some(streams =>
-		streams.some(s => typeof s.filter === "string" && s.filter !== ""),
+		streams.some(s => typeof s.filter === "string" && s.filter.trim() !== ""),
 	)
 }
