@@ -142,12 +142,12 @@ func buildJobDataItems(jobs []*models.Job, lastRunByJobID map[int]JobLastRunInfo
 		}
 
 		// Set source/destination info based on context
-		if contextType == "source" && job.DestID != nil {
-			jobInfo.DestinationName = job.DestID.Name
-			jobInfo.DestinationType = job.DestID.DestType
-		} else if contextType == "destination" && job.SourceID != nil {
-			jobInfo.SourceName = job.SourceID.Name
-			jobInfo.SourceType = job.SourceID.Type
+		if contextType == "source" && job.Destination != nil {
+			jobInfo.DestinationName = job.Destination.Name
+			jobInfo.DestinationType = job.Destination.DestType
+		} else if contextType == "destination" && job.Source != nil {
+			jobInfo.SourceName = job.Source.Name
+			jobInfo.SourceType = job.Source.Type
 		}
 
 		// Set workflow info from pre-fetched map

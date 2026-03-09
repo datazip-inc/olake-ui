@@ -300,8 +300,8 @@ func (t *Temporal) GetStreamDifference(ctx context.Context, job *models.Job, old
 
 	req := &ExecutionRequest{
 		Command:       Discover,
-		ConnectorType: job.SourceID.Type,
-		Version:       job.SourceID.Version,
+		ConnectorType: job.Source.Type,
+		Version:       job.Source.Version,
 		Args:          cmdArgs,
 		Configs:       nil,
 		WorkflowID:    workflowID,

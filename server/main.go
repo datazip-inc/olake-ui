@@ -31,7 +31,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
@@ -70,11 +69,6 @@ func main() {
 	cfg := appconfig.Load()
 	if cfg.EncryptionKey == "" {
 		logger.Warn("Encryption key is not set. This is not recommended for production environments.")
-	}
-
-	runMode := cfg.RunMode
-	if runMode == "dev" || runMode == "staging" {
-		orm.Debug = true
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

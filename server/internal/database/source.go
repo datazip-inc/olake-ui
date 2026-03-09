@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/beego/beego/v2/client/orm"
+	"gorm.io/gorm"
+
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -30,13 +31,16 @@ func (db *Database) CreateSource(source *models.Source) error {
 		return fmt.Errorf("failed to encrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = eConfig
-	_, err = db.ormer.Insert(source)
-	return err
+	return db.conn.Create(source).Error
 }
 
 func (db *Database) ListSources() ([]*models.Source, error) {
 	var sources []*models.Source
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
+	err := db.conn.
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		Order("updated_at DESC").
+		Find(&sources).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
 	}
@@ -51,7 +55,12 @@ func (db *Database) ListSources() ([]*models.Source, error) {
 
 func (db *Database) ListSourcesByProjectID(projectID string) ([]*models.Source, error) {
 	var sources []*models.Source
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).RelatedSel().Filter("project_id", projectID).OrderBy(constants.OrderByUpdatedAtDesc).All(&sources)
+	err := db.conn.
+		Where("project_id = ?", projectID).
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		Order("updated_at DESC").
+		Find(&sources).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources project_id[%s]: %s", projectID, err)
 	}
@@ -66,12 +75,13 @@ func (db *Database) ListSourcesByProjectID(projectID string) ([]*models.Source, 
 
 func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 	var source models.Source
-	err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
-		Filter("id", id).
-		RelatedSel().
-		One(&source)
+	err := db.conn.
+		Where("id = ?", id).
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		First(&source).Error
 	if err != nil {
-		if err == orm.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("source not found id[%d]", id)
 		}
 		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)
@@ -93,14 +103,18 @@ func (db *Database) UpdateSource(source *models.Source) error {
 		return fmt.Errorf("failed to encrypt source config id[%d]: %s", source.ID, err)
 	}
 	source.Config = eConfig
-	_, err = db.ormer.Update(source)
-	return err
+	return db.conn.Updates(source).Error
 }
 
 func (db *Database) DeleteSource(id int) error {
-	source := &models.Source{ID: id}
-	_, err := db.ormer.Delete(source)
-	return err
+	result := db.conn.Delete(&models.Source{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // IsSourceNameUniqueInProject checks if a source name is unique within a project.
@@ -112,10 +126,11 @@ func (db *Database) IsSourceNameUniqueInProject(ctx context.Context, projectID, 
 // Uses semver comparison to find the true minimum version.
 // Returns empty string if no sources exist.
 func (db *Database) GetMinimumSourceVersion() (string, error) {
-	var versions orm.ParamsList
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+	var versions []string
+	err := db.conn.
+		Model(&models.Source{}).
 		Distinct().
-		ValuesFlat(&versions, "version")
+		Pluck("version", &versions).Error
 	if err != nil {
 		return "", fmt.Errorf("failed to get source versions: %s", err)
 	}
@@ -127,7 +142,7 @@ func (db *Database) GetMinimumSourceVersion() (string, error) {
 	// Find minimum version using semver comparison
 	minVersion := ""
 	for _, v := range versions {
-		version := v.(string)
+		version := v
 		if version == "" {
 			continue
 		}

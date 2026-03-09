@@ -3,19 +3,18 @@ package database
 import (
 	"fmt"
 
-	"github.com/beego/beego/v2/client/orm"
+	"gorm.io/gorm"
 
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 )
 
 // GetProjectSettingsByProjectID fetches the settings row for a project ID.
 func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.ProjectSettings, error) {
 	settings := &models.ProjectSettings{}
-	err := db.ormer.QueryTable(constants.TableNameMap[constants.ProjectSettingsTable]).
-		Filter("project_id", projectID).
-		One(settings)
-	if err == orm.ErrNoRows {
+	err := db.conn.
+		Where("project_id = ?", projectID).
+		First(settings).Error
+	if err == gorm.ErrRecordNotFound {
 		return &models.ProjectSettings{ProjectID: projectID, ID: 0}, nil
 	}
 	if err != nil {
@@ -34,23 +33,26 @@ func (db *Database) UpsertProjectSettingsModel(settings *models.ProjectSettings)
 		return fmt.Errorf("project_id is required")
 	}
 
-	existing := &models.ProjectSettings{ProjectID: settings.ProjectID}
-	err := db.ormer.Read(existing, "ProjectID")
-
-	if err == orm.ErrNoRows {
+	existing := &models.ProjectSettings{}
+	err := db.conn.Where("project_id = ?", settings.ProjectID).First(existing).Error
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return fmt.Errorf("failed to lookup project settings project_id[%s]: %s", settings.ProjectID, err)
+	}
+	if err == gorm.ErrRecordNotFound {
 		settings.ID = 0
-		if _, err := db.ormer.Insert(settings); err != nil {
+		if err := db.conn.Create(settings).Error; err != nil {
 			return fmt.Errorf("failed to insert project settings project_id[%s]: %s", settings.ProjectID, err)
 		}
 		return nil
 	}
-	if err != nil {
-		return fmt.Errorf("failed to lookup project settings project_id[%s]: %s", settings.ProjectID, err)
-	}
 
-	// Record exists, update it
 	settings.ID = existing.ID
-	if _, err := db.ormer.Update(settings); err != nil {
+	if err := db.conn.Model(&models.ProjectSettings{}).
+		Where("id = ?", settings.ID).
+		Updates(map[string]any{
+			"project_id":        settings.ProjectID,
+			"webhook_alert_url": settings.WebhookAlertURL,
+		}).Error; err != nil {
 		return fmt.Errorf("failed to update project settings project_id[%s]: %s", settings.ProjectID, err)
 	}
 	return nil

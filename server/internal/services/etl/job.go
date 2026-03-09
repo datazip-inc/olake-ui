@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/client/orm"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -113,14 +112,18 @@ func (s *ETLService) CreateJob(ctx context.Context, req *dto.CreateJobRequest, p
 
 	job := &models.Job{
 		Name:             req.Name,
-		SourceID:         source,
-		DestID:           dest,
+		SourceID:         source.ID,
+		DestID:           dest.ID,
+		Source:           source,
+		Destination:      dest,
 		Active:           true,
 		Frequency:        req.Frequency,
 		StreamsConfig:    req.StreamsConfig,
 		State:            "{}",
 		AdvancedSettings: advancedSettings,
 		ProjectID:        projectID,
+		CreatedByID:      user.ID,
+		UpdatedByID:      user.ID,
 		CreatedBy:        user,
 		UpdatedBy:        user,
 	}
@@ -179,28 +182,16 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		}
 	}
 
-	// Start transaction
-	tx, err := s.db.BeginTx()
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %s", err)
-	}
-	defer func() {
-		if err := tx.RollbackUnlessCommit(); err != nil {
-			logger.Errorf("failed to rollback transaction for job[%d]: %s", existingJob.ID, err)
-		}
-	}()
-
 	source, err := s.upsertSource(ctx, req.Source, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process source for job update: %s", err)
 	}
-
 	dest, err := s.upsertDestination(ctx, req.Destination, projectID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to process destination for job update: %s", err)
 	}
 
-	updateParams := orm.Params{
+	updateParams := map[string]any{
 		"name":           req.Name,
 		"source_id":      source.ID,
 		"dest_id":        dest.ID,
@@ -210,30 +201,24 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		"project_id":     projectID,
 		"updated_by_id":  *userID,
 	}
-
 	if req.AdvancedSettings != nil {
 		b, err := json.Marshal(req.AdvancedSettings)
 		if err != nil {
 			return fmt.Errorf("failed to serialise advanced_settings: %s", err)
 		}
 		updateParams["advanced_settings"] = string(b)
+	} else {
+		updateParams["advanced_settings"] = nil
 	}
 
-	// Update job within transaction
-	if err := s.db.UpdateJobWithTx(tx, existingJob.ID, updateParams); err != nil {
+	if err := s.db.UpdateJob(existingJob.ID, updateParams); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
-	}
-
-	// Commit transaction
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %s", err)
 	}
 
 	// Update temporal schedule only if frequency has changed
 	if req.Frequency != existingJob.Frequency {
 		err = s.temporal.UpdateSchedule(ctx, req.Frequency, projectID, existingJob.ID, nil)
 		if err != nil {
-			logger.Errorf("job updated in database but failed to update temporal schedule: %s", err)
 			return fmt.Errorf("failed to update temporal workflow: %s", err)
 		}
 	}
@@ -310,7 +295,7 @@ func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStat
 		}
 	}
 
-	updateParams := orm.Params{
+	updateParams := map[string]any{
 		"active":        req.Activate,
 		"updated_by_id": *userID,
 	}
@@ -328,7 +313,10 @@ func (s *ETLService) ClearDestination(ctx context.Context, projectID string, job
 		return fmt.Errorf("job not found: %s", err)
 	}
 
-	if err := CheckClearDestinationCompatibility(job.SourceID.Version); err != nil {
+	if job.Source == nil {
+		return fmt.Errorf("job source details not found")
+	}
+	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return err
 	}
 
@@ -377,7 +365,10 @@ func (s *ETLService) GetStreamDifference(ctx context.Context, _ string, jobID in
 		return nil, fmt.Errorf("job not found: %s", err)
 	}
 
-	if err := CheckClearDestinationCompatibility(job.SourceID.Version); err != nil {
+	if job.Source == nil {
+		return nil, fmt.Errorf("job source details not found")
+	}
+	if err := CheckClearDestinationCompatibility(job.Source.Version); err != nil {
 		return nil, err
 	}
 
@@ -502,24 +493,24 @@ func (s *ETLService) buildJobResponse(job *models.Job, lastRun *JobLastRunInfo, 
 
 	jobResp.StreamsConfig = utils.Ternary(includeConfig, job.StreamsConfig, "").(string)
 
-	if job.SourceID != nil {
+	if job.Source != nil {
 		jobResp.Source = dto.DriverConfig{
-			ID:      &job.SourceID.ID,
-			Name:    job.SourceID.Name,
-			Type:    job.SourceID.Type,
-			Version: job.SourceID.Version,
+			ID:      &job.Source.ID,
+			Name:    job.Source.Name,
+			Type:    job.Source.Type,
+			Version: job.Source.Version,
 		}
-		jobResp.Source.Config = utils.Ternary(includeConfig, job.SourceID.Config, "").(string)
+		jobResp.Source.Config = utils.Ternary(includeConfig, job.Source.Config, "").(string)
 	}
 
-	if job.DestID != nil {
+	if job.Destination != nil {
 		jobResp.Destination = dto.DriverConfig{
-			ID:      &job.DestID.ID,
-			Name:    job.DestID.Name,
-			Type:    job.DestID.DestType,
-			Version: job.DestID.Version,
+			ID:      &job.Destination.ID,
+			Name:    job.Destination.Name,
+			Type:    job.Destination.DestType,
+			Version: job.Destination.Version,
 		}
-		jobResp.Destination.Config = utils.Ternary(includeConfig, job.DestID.Config, "").(string)
+		jobResp.Destination.Config = utils.Ternary(includeConfig, job.Destination.Config, "").(string)
 	}
 
 	if job.CreatedBy != nil {
@@ -569,13 +560,15 @@ func (s *ETLService) upsertSource(ctx context.Context, config *dto.DriverConfig,
 	user := &models.User{ID: *userID}
 
 	newSource := &models.Source{
-		Name:      config.Name,
-		Type:      config.Type,
-		Config:    config.Config,
-		Version:   config.Version,
-		ProjectID: projectID,
-		CreatedBy: user,
-		UpdatedBy: user,
+		Name:        config.Name,
+		Type:        config.Type,
+		Config:      config.Config,
+		Version:     config.Version,
+		ProjectID:   projectID,
+		CreatedByID: user.ID,
+		UpdatedByID: user.ID,
+		CreatedBy:   user,
+		UpdatedBy:   user,
 	}
 	if err := s.db.CreateSource(newSource); err != nil {
 		return nil, fmt.Errorf("failed to create source: %s", err)
@@ -607,13 +600,15 @@ func (s *ETLService) upsertDestination(ctx context.Context, config *dto.DriverCo
 	user := &models.User{ID: *userID}
 
 	newDest := &models.Destination{
-		Name:      config.Name,
-		DestType:  config.Type,
-		Config:    config.Config,
-		Version:   config.Version,
-		ProjectID: projectID,
-		CreatedBy: user,
-		UpdatedBy: user,
+		Name:        config.Name,
+		DestType:    config.Type,
+		Config:      config.Config,
+		Version:     config.Version,
+		ProjectID:   projectID,
+		CreatedByID: user.ID,
+		UpdatedByID: user.ID,
+		CreatedBy:   user,
+		UpdatedBy:   user,
 	}
 
 	if err := s.db.CreateDestination(newDest); err != nil {
@@ -736,7 +731,7 @@ func (s *ETLService) UpdateStateFile(jobID int, stateFile string) error {
 		return fmt.Errorf("job not found: %s", err)
 	}
 
-	if err := s.db.UpdateJob(jobID, orm.Params{"state": stateFile}); err != nil {
+	if err := s.db.UpdateJob(jobID, map[string]any{"state": stateFile}); err != nil {
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 

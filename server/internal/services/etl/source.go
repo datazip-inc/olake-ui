@@ -75,9 +75,7 @@ func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.S
 
 	jobsBySourceID := make(map[int][]*models.Job)
 	for _, job := range allJobs {
-		if job.SourceID != nil {
-			jobsBySourceID[job.SourceID.ID] = append(jobsBySourceID[job.SourceID.ID], job)
-		}
+		jobsBySourceID[job.SourceID] = append(jobsBySourceID[job.SourceID], job)
 	}
 
 	// Batch fetch workflow info for all jobs
@@ -130,6 +128,8 @@ func (s *ETLService) CreateSource(ctx context.Context, req *dto.CreateSourceRequ
 	}
 
 	user := &models.User{ID: *userID}
+	src.CreatedByID = user.ID
+	src.UpdatedByID = user.ID
 	src.CreatedBy = user
 	src.UpdatedBy = user
 
@@ -153,6 +153,7 @@ func (s *ETLService) UpdateSource(ctx context.Context, projectID string, id int,
 	existing.Version = req.Version
 
 	user := &models.User{ID: *userID}
+	existing.UpdatedByID = user.ID
 	existing.UpdatedBy = user
 
 	jobs, err := s.db.GetJobsBySourceID([]int{existing.ID})

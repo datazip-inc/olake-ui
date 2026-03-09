@@ -1,74 +1,66 @@
 package database
 
 import (
-	"encoding/gob"
 	"fmt"
 	"net/url"
 
-	"github.com/beego/beego/v2/client/orm"
 	_ "github.com/lib/pq" // required for registering driver
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
-	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 type Database struct {
-	ormer orm.Ormer
+	conn *gorm.DB
 }
 
 func Init() (*Database, error) {
 	cfg := appconfig.Load()
 
-	// register driver
 	uri, err := BuildPostgresURIFromConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build postgres uri: %s", err)
 	}
 
-	err = orm.RegisterDriver("postgres", orm.DRPostgres)
-	if err != nil {
-		return nil, fmt.Errorf("failed to register postgres driver: %s", err)
+	logLevel := gormlogger.Warn
+	if cfg.RunMode == "dev" || cfg.RunMode == "staging" || cfg.RunMode == "localdev" {
+		logLevel = gormlogger.Info
 	}
 
-	// register database
-	err = orm.RegisterDataBase("default", "postgres", uri)
+	conn, err := gorm.Open(postgres.Open(uri), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(logLevel),
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to register postgres database: %s", err)
+		return nil, fmt.Errorf("failed to connect to postgres: %s", err)
 	}
 
-	// register session user
-	gob.Register(constants.SessionUserID)
-	// register models in order of dependency or foreign key constraints
-	orm.RegisterModel(
+	if err := conn.AutoMigrate(
 		new(models.ProjectSettings),
 		new(models.Source),
 		new(models.Destination),
 		new(models.Job),
 		new(models.User),
 		new(models.Catalog),
-	)
-
-	// Create tables if they do not exist
-	err = orm.RunSyncdb("default", false, true)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sync database schema: %s", err)
+	); err != nil {
+		return nil, fmt.Errorf("failed to run automigrate: %s", err)
 	}
 
 	// Add session table if sessions are enabled
 	if cfg.SessionOn {
-		_, err = orm.NewOrm().Raw(`CREATE TABLE IF NOT EXISTS session (
+		err = conn.Exec(`CREATE TABLE IF NOT EXISTS session (
     session_key VARCHAR(64) PRIMARY KEY,
     session_data BYTEA,
-    session_expiry TIMESTAMP WITH TIME ZONE
-);`).Exec()
+    session_expiry TIMESTAMP WITH TIME ZONE);`).Error
 
 		if err != nil {
 			return nil, fmt.Errorf("failed to create session table: %s", err)
 		}
 	}
-	return &Database{ormer: orm.NewOrm()}, nil
+	return &Database{conn: conn}, nil
 }
 
 // BuildPostgresURIFromConfig reads POSTGRES_DB_HOST, POSTGRES_DB_PORT, etc. from app.conf

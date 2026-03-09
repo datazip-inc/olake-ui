@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/beego/beego/v2/client/orm"
+	"gorm.io/gorm"
+
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -29,13 +30,16 @@ func (db *Database) CreateDestination(destination *models.Destination) error {
 		return fmt.Errorf("failed to encrypt destination config id[%d]: %s", destination.ID, err)
 	}
 	destination.Config = eConfig
-	_, err = db.ormer.Insert(destination)
-	return err
+	return db.conn.Create(destination).Error
 }
 
 func (db *Database) ListDestinations() ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&destinations)
+	err := db.conn.
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		Order("updated_at DESC").
+		Find(&destinations).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to list destinations: %s", err)
 	}
@@ -50,7 +54,12 @@ func (db *Database) ListDestinations() ([]*models.Destination, error) {
 
 func (db *Database) ListDestinationsByProjectID(projectID string) ([]*models.Destination, error) {
 	var destinations []*models.Destination
-	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).Filter("project_id", projectID).RelatedSel().OrderBy(constants.OrderByUpdatedAtDesc).All(&destinations)
+	err := db.conn.
+		Where("project_id = ?", projectID).
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		Order("updated_at DESC").
+		Find(&destinations).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to list destinations project_id[%s]: %s", projectID, err)
 	}
@@ -65,12 +74,13 @@ func (db *Database) ListDestinationsByProjectID(projectID string) ([]*models.Des
 
 func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
 	var destination models.Destination
-	err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).
-		Filter("id", id).
-		RelatedSel().
-		One(&destination)
+	err := db.conn.
+		Where("id = ?", id).
+		Preload("CreatedBy").
+		Preload("UpdatedBy").
+		First(&destination).Error
 	if err != nil {
-		if err == orm.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("destination not found id[%d]", id)
 		}
 		return nil, fmt.Errorf("failed to get destination id[%d]: %s", id, err)
@@ -92,16 +102,18 @@ func (db *Database) UpdateDestination(destination *models.Destination) error {
 		return fmt.Errorf("failed to encrypt destination[%d] config: %s", destination.ID, err)
 	}
 	destination.Config = eConfig
-	_, err = db.ormer.Update(destination)
-	return err
+	return db.conn.Updates(destination).Error
 }
 
 func (db *Database) DeleteDestination(id int) error {
-	destination := &models.Destination{ID: id}
-	// Use ORM's Delete method which will automatically handle the soft delete
-	// by setting the DeletedAt field due to the ORM tags in BaseModel
-	_, err := db.ormer.Delete(destination)
-	return err
+	result := db.conn.Delete(&models.Destination{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // IsDestinationNameUniqueInProject checks if a destination name is unique within a project.

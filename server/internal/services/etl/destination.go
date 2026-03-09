@@ -75,7 +75,7 @@ func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]
 
 	jobsByDestID := make(map[int][]*models.Job)
 	for _, job := range allJobs {
-		jobsByDestID[job.DestID.ID] = append(jobsByDestID[job.DestID.ID], job)
+		jobsByDestID[job.DestID] = append(jobsByDestID[job.DestID], job)
 	}
 
 	// Batch fetch workflow info for all jobs
@@ -126,6 +126,8 @@ func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDesti
 		ProjectID: projectID,
 	}
 	user := &models.User{ID: *userID}
+	destination.CreatedByID = user.ID
+	destination.UpdatedByID = user.ID
 	destination.CreatedBy = user
 	destination.UpdatedBy = user
 
@@ -149,6 +151,7 @@ func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID st
 	existingDest.Config = req.Config
 
 	user := &models.User{ID: *userID}
+	existingDest.UpdatedByID = user.ID
 	existingDest.UpdatedBy = user
 
 	jobs, err := s.db.GetJobsByDestinationID([]int{existingDest.ID})
