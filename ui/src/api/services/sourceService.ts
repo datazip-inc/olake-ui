@@ -136,8 +136,9 @@ export const sourceService = {
 	getSourceVersions: async (type: string) => {
 		try {
 			const response = await api.get<{ version: string[] }>(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/versions`,
 				{
+					params: { type },
 					timeout: 0, // Disable timeout for this request since it can take longer
 				},
 			)

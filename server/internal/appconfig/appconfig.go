@@ -58,9 +58,14 @@ func loadFromViper() Config {
 		AppName:               strings.TrimSpace(v.GetString("APP_NAME")),
 		HTTPPort:              strings.TrimSpace(v.GetString("HTTP_PORT")),
 		RunMode:               strings.TrimSpace(v.GetString("RUN_MODE")),
+		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
+		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
+		TemporalAddress:       strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
 		CopyRequestBody:       v.GetBool("COPY_REQUEST_BODY"),
 		MaxMemory:             v.GetInt64("MAX_MEMORY"),
 		MaxUploadSize:         v.GetInt64("MAX_UPLOAD_SIZE"),
+		SessionOn:             v.GetBool("SESSION_ON"),
+
 		PostgresDSN:           strings.TrimSpace(v.GetString("POSTGRES_DB")),
 		EncryptionKey:         strings.TrimSpace(v.GetString("OLAKE_SECRET_KEY")),
 		OlakePostgresUser:     strings.TrimSpace(v.GetString("OLAKE_POSTGRES_USER")),
@@ -69,9 +74,5 @@ func loadFromViper() Config {
 		OlakePostgresPort:     strings.TrimSpace(v.GetString("OLAKE_POSTGRES_PORT")),
 		OlakePostgresDBName:   strings.TrimSpace(v.GetString("OLAKE_POSTGRES_DBNAME")),
 		OlakePostgresSSLMode:  strings.TrimSpace(v.GetString("OLAKE_POSTGRES_SSLMODE")),
-		LogsDir:               strings.TrimSpace(v.GetString("LOGS_DIR")),
-		SessionOn:             v.GetBool("SESSION_ON"),
-		TemporalAddress:       strings.TrimSpace(v.GetString("TEMPORAL_ADDRESS")),
-		ContainerRegistryBase: strings.TrimSpace(v.GetString("CONTAINER_REGISTRY_BASE")),
 	}
 }
