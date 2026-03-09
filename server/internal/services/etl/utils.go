@@ -13,8 +13,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
-	"go.temporal.io/api/workflow/v1"
-	"go.temporal.io/api/workflowservice/v1"
+	workflowpb "go.temporal.io/api/workflow/v1"
+	workflowservice "go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/converter"
 	"golang.org/x/mod/semver"
 )
@@ -172,7 +172,7 @@ func setUsernames(createdBy, updatedBy *string, createdByUser, updatedByUser *mo
 }
 
 // Checks if the sync worklfow run is "sync" or "clear-destination"
-func syncWorkflowOperationType(execution *workflow.WorkflowExecutionInfo) temporal.Command {
+func syncWorkflowOperationType(execution *workflowpb.WorkflowExecutionInfo) temporal.Command {
 	if execution.SearchAttributes == nil {
 		return temporal.Sync
 	}
@@ -191,7 +191,7 @@ func syncWorkflowOperationType(execution *workflow.WorkflowExecutionInfo) tempor
 }
 
 // isWorkflowRunning checks if workflows of a specific type are running
-func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, opType temporal.Command) (bool, []*workflow.WorkflowExecutionInfo, error) {
+func isWorkflowRunning(ctx context.Context, tempClient *temporal.Temporal, projectID string, jobID int, opType temporal.Command) (bool, []*workflowpb.WorkflowExecutionInfo, error) {
 	query := fmt.Sprintf(
 		"WorkflowId BETWEEN 'sync-%s-%d-' AND 'sync-%s-%d-z' AND OperationType = '%s' AND ExecutionStatus = 'Running'",
 		projectID, jobID, projectID, jobID, opType,

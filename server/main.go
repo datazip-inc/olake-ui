@@ -74,12 +74,12 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	api, err := handlers.NewGinHandler(appSvc, cfg)
+	api, err := handlers.NewHandler(appSvc, &cfg)
 	if err != nil {
 		logger.Fatalf("Failed to initialize Gin API: %s", err)
 		return
 	}
-	server := httpserver.New(cfg, api)
+	server := httpserver.New(&cfg, api)
 	logger.Infof("Starting Gin server on port %s", cfg.HTTPPort)
 	if err := server.Run(ctx); err != nil {
 		logger.Fatalf("Gin server exited with error: %s", err)

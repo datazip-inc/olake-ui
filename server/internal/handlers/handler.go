@@ -10,7 +10,7 @@ type Handler struct {
 	sessions *sessionStore
 }
 
-func NewGinHandler(s *services.ETLService, cfg appconfig.Config) (*Handler, error) {
+func NewHandler(s *services.ETLService, cfg *appconfig.Config) (*Handler, error) {
 	sessionStore, err := newSessionStore(cfg)
 	if err != nil {
 		return nil, err

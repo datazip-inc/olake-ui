@@ -23,7 +23,7 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func New(cfg appconfig.Config, h *handlers.Handler) *Server {
+func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 
@@ -79,7 +79,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
-func configureMode(cfg appconfig.Config) {
+func configureMode(cfg *appconfig.Config) {
 	switch cfg.RunMode {
 	case "dev", "localdev":
 		gin.SetMode(gin.DebugMode)

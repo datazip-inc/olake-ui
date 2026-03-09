@@ -9,8 +9,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"go.temporal.io/api/enums/v1"
-	"go.temporal.io/api/workflowservice/v1"
+	enumspb "go.temporal.io/api/enums/v1"
+	workflowservice "go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
 
@@ -78,7 +78,7 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 			Args:      []any{*req},
 			TaskQueue: t.taskQueue,
 		},
-		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
+		Overlap: enumspb.SCHEDULE_OVERLAP_POLICY_SKIP,
 	})
 
 	return err
@@ -137,7 +137,7 @@ func (t *Temporal) DeleteSchedule(ctx context.Context, projectID string, jobID i
 func (t *Temporal) TriggerSchedule(ctx context.Context, projectID string, jobID int) error {
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
 	return t.Client.ScheduleClient().GetHandle(ctx, scheduleID).Trigger(ctx, client.ScheduleTriggerOptions{
-		Overlap: enums.SCHEDULE_OVERLAP_POLICY_SKIP,
+		Overlap: enumspb.SCHEDULE_OVERLAP_POLICY_SKIP,
 	})
 }
 

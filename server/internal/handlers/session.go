@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	// pq registers the postgres driver for database/sql used by the session store.
 	_ "github.com/lib/pq"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
@@ -30,7 +31,7 @@ const (
 	sessionMaxAgeDays = 30
 )
 
-func newSessionStore(cfg appconfig.Config) (*sessionStore, error) {
+func newSessionStore(cfg *appconfig.Config) (*sessionStore, error) {
 	store := &sessionStore{
 		enabled: cfg.SessionOn,
 		secure:  cfg.RunMode != "localdev",
