@@ -24,7 +24,7 @@ import {
 
 import {
 	ExtendedStreamConfigurationProps,
-	FilterCondition,
+	FilterConfigCondition,
 	FilterConfig,
 	FilterOperator,
 	LogicalOperator,
@@ -61,9 +61,9 @@ const StreamConfiguration = ({
 	initialPartitionRegex,
 	onNormalizationChange,
 	onPartitionRegexChange,
-	initialFullLoadFilter = "",
+	initialFilter = "",
 	initialFilterConfig,
-	onFullLoadFilterChange,
+	onFilterChange,
 	onFilterConfigChange,
 	fromJobEditFlow = false,
 	initialSelectedStreams,
@@ -72,7 +72,7 @@ const StreamConfiguration = ({
 	onSelectedColumnChange,
 	sourceType,
 }: ExtendedStreamConfigurationProps) => {
-	const useFilterConfig = typeof onFilterConfigChange === "function"
+	const useFilterConfig = typeof onFilterConfigChange !== "undefined"
 	const [activeTab, setActiveTab] = useState("config")
 	const [syncMode, setSyncMode] = useState(stream.stream.sync_mode)
 	const [cursorField, setCursorField] = useState<string | undefined>(
@@ -81,7 +81,7 @@ const StreamConfiguration = ({
 	const [appendMode, setAppendMode] = useState(false)
 	const [normalization, setNormalization] =
 		useState<boolean>(initialNormalization)
-	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
+	const [isFilterEnabled, setIsFilterEnabled] = useState<boolean>(false)
 	const [streamFilterStates, setStreamFilterStates] = useState<
 		Record<string, boolean>
 	>({})
@@ -180,7 +180,7 @@ const StreamConfiguration = ({
 			...prevFormData,
 			sync_mode: initialApiSyncMode,
 			partition_regex: initialPartitionRegex || "",
-			fullLoadFilter: formData.fullLoadFilter || false,
+			isFilterEnabled: formData.isFilterEnabled || false,
 		}))
 
 		const initialAppendMode =
@@ -205,7 +205,7 @@ const StreamConfiguration = ({
 					conditions: initialFilterConfig.conditions,
 					logicalOperator: initialFilterConfig.logical_operator,
 				})
-				setFullLoadFilter(true)
+				setIsFilterEnabled(true)
 				setStreamFilterStates(prev => ({ ...prev, [streamKey]: true }))
 			} else {
 				setMultiFilterCondition({
@@ -213,22 +213,22 @@ const StreamConfiguration = ({
 					logicalOperator: "and",
 				})
 				const savedFilterState = streamFilterStates[streamKey] || false
-				setFullLoadFilter(savedFilterState)
+				setIsFilterEnabled(savedFilterState)
 			}
 			return
 		}
 
-		if (initialFullLoadFilter) {
-			const conditions: FilterCondition[] = []
+		if (initialFilter) {
+			const conditions: FilterConfigCondition[] = []
 			let logicalOperator: LogicalOperator = "and"
 
 			// Check for AND/OR operator
-			const parts = initialFullLoadFilter.toLowerCase().includes(" and ")
-				? initialFullLoadFilter.split(" and ")
-				: initialFullLoadFilter.split(" or ")
+			const parts = initialFilter.toLowerCase().includes(" and ")
+				? initialFilter.split(" and ")
+				: initialFilter.split(" or ")
 
 			if (parts.length > 1) {
-				logicalOperator = initialFullLoadFilter.toLowerCase().includes(" and ")
+				logicalOperator = initialFilter.toLowerCase().includes(" and ")
 					? "and"
 					: "or"
 			}
@@ -253,7 +253,7 @@ const StreamConfiguration = ({
 					conditions,
 					logicalOperator,
 				})
-				setFullLoadFilter(true)
+				setIsFilterEnabled(true)
 				// Store the filter state for this stream
 				setStreamFilterStates(prev => ({
 					...prev,
@@ -273,9 +273,9 @@ const StreamConfiguration = ({
 			})
 			// Restore filter state for this stream or default to false
 			const savedFilterState = streamFilterStates[streamKey] || false
-			setFullLoadFilter(savedFilterState)
+			setIsFilterEnabled(savedFilterState)
 		}
-	}, [initialFullLoadFilter, initialFilterConfig])
+	}, [initialFilter, initialFilterConfig])
 
 	// Add helper function for checking supported sync modes
 	const isSyncModeSupported = (mode: string): boolean => {
@@ -377,8 +377,8 @@ const StreamConfiguration = ({
 		})
 	}
 
-	const handleFullLoadFilterChange = (checked: boolean) => {
-		setFullLoadFilter(checked)
+	const handleFilterEnabledChange = (checked: boolean) => {
+		setIsFilterEnabled(checked)
 		// Persist the filter state for this stream
 		setStreamFilterStates(prev => ({
 			...prev,
@@ -404,7 +404,7 @@ const StreamConfiguration = ({
 				checked ? { logical_operator: "and", conditions: [] } : undefined,
 			)
 		} else {
-			onFullLoadFilterChange?.(
+			onFilterChange?.(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				checked ? "=" : "",
@@ -414,7 +414,7 @@ const StreamConfiguration = ({
 
 	const handleFilterConditionChange = (
 		index: number,
-		field: keyof FilterCondition,
+		field: keyof FilterConfigCondition,
 		value: string,
 	) => {
 		const newConditions = [...multiFilterCondition.conditions]
@@ -447,7 +447,7 @@ const StreamConfiguration = ({
 						`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 				)
 				.join(` ${newMultiCondition.logicalOperator} `)
-			onFullLoadFilterChange?.(
+			onFilterChange?.(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				filterString,
@@ -486,7 +486,7 @@ const StreamConfiguration = ({
 							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${value} `)
-				onFullLoadFilterChange?.(
+				onFilterChange?.(
 					stream.stream.name,
 					stream.stream.namespace || "",
 					filterString,
@@ -534,7 +534,7 @@ const StreamConfiguration = ({
 							`${cond.column} ${cond.operator} ${formatFilterValue(cond.column, cond.value as string)}`,
 					)
 					.join(` ${multiFilterCondition.logicalOperator} `) + " = "
-			onFullLoadFilterChange?.(
+			onFilterChange?.(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				filterString,
@@ -578,13 +578,13 @@ const StreamConfiguration = ({
 			} else {
 				if (condition.column && condition.operator) {
 					const filterString = `${condition.column} ${condition.operator} ${formatFilterValue(condition.column, condition.value as string)}`
-					onFullLoadFilterChange?.(
+					onFilterChange?.(
 						stream.stream.name,
 						stream.stream.namespace || "",
 						filterString,
 					)
 				} else {
-					onFullLoadFilterChange?.(
+					onFilterChange?.(
 						stream.stream.name,
 						stream.stream.namespace || "",
 						"",
@@ -992,12 +992,12 @@ const StreamConfiguration = ({
 					<div className="flex items-center justify-between !p-3">
 						<label className="">Data Filter</label>
 						<Switch
-							checked={fullLoadFilter}
-							onChange={handleFullLoadFilterChange}
+							checked={isFilterEnabled}
+							onChange={handleFilterEnabledChange}
 							disabled={!isSelected}
 						/>
 					</div>
-					{fullLoadFilter && (
+					{isFilterEnabled && (
 						<>
 							<Divider className="my-0 p-0" />
 							{renderFilterContent()}

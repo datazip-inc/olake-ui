@@ -411,7 +411,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		}, 0)
 	}
 
-	const handleFullLoadFilterChange = (
+	const handleFilterChange = (
 		streamName: string,
 		namespace: string,
 		filterValue: string,
@@ -870,7 +870,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									?.partition_regex || ""
 							}
 							onPartitionRegexChange={handlePartitionRegexChange}
-							initialFullLoadFilter={
+							initialFilter={
 								apiResponse?.selected_streams[
 									activeStreamData.stream.namespace || ""
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
@@ -882,7 +882,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								]?.find(s => s.stream_name === activeStreamData.stream.name)
 									?.filter_config
 							}
-							onFullLoadFilterChange={handleFullLoadFilterChange}
+							onFilterChange={handleFilterChange}
 							onFilterConfigChange={
 								useFilterConfig ? handleFilterConfigChange : undefined
 							}

@@ -11,12 +11,6 @@ export enum SyncMode {
 export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
 export type LogicalOperator = "and" | "or"
 
-export type FilterCondition = {
-	column: string
-	operator: FilterOperator
-	value: string | null
-}
-
 export interface FilterConfigCondition {
 	column: string
 	operator: FilterOperator
@@ -24,7 +18,7 @@ export interface FilterConfigCondition {
 }
 
 export type MultiFilterCondition = {
-	conditions: FilterCondition[]
+	conditions: FilterConfigCondition[]
 	logicalOperator: LogicalOperator
 }
 
@@ -156,7 +150,7 @@ export interface ExtendedStreamConfigurationProps
 	isSelected: boolean
 	initialNormalization: boolean
 	initialPartitionRegex: string
-	initialFullLoadFilter?: string
+	initialFilter?: string
 	initialFilterConfig?: FilterConfig
 	fromJobEditFlow?: boolean
 	initialSelectedStreams?: StreamsDataStructure
@@ -171,7 +165,7 @@ export interface ExtendedStreamConfigurationProps
 		namespace: string,
 		partitionRegex: string,
 	) => void
-	onFullLoadFilterChange?: (
+	onFilterChange?: (
 		streamName: string,
 		namespace: string,
 		filterValue: string,

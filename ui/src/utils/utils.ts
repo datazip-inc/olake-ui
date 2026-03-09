@@ -11,10 +11,8 @@ import {
 	LogEntry,
 	TaskLogEntry,
 	SelectedStreamsByNamespace,
-	FilterConfig,
-	FilterConfigCondition,
 } from "../types"
-import type { StreamData } from "../types/streamTypes"
+import type { StreamsDataStructure } from "../types/streamTypes"
 import {
 	ReleasesResponse,
 	ReleaseType,
@@ -24,7 +22,6 @@ import {
 	DAYS_MAP,
 	DESTINATION_INTERNAL_TYPES,
 	DESTINATION_LABELS,
-	FILTER_REGEX,
 	SOURCE_SUPPORTED_INGESTION_MODES,
 	DESTINATION_SUPPORTED_INGESTION_MODES,
 } from "./constants"
@@ -39,6 +36,11 @@ import {
 	Postgres,
 	MSSQL,
 } from "../assets"
+import {
+	castFilterConditionValue,
+	validateFilter,
+	validateFilterConfig,
+} from "./filterUtils"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {
@@ -652,51 +654,11 @@ export const handleSpecResponse = (
 	}
 }
 
-// Casts a single filter condition's value to the appropriate native type
-// (number, boolean, object, array) based on the column's type schema.
-export const castFilterConditionValue = (
-	cond: FilterConfigCondition,
-	columnSchema?: { type: string | string[] },
-): FilterConfigCondition => {
-	if (cond.value === null || cond.value === "<null>") {
-		return { ...cond, value: null }
-	}
-
-	if (!columnSchema) return cond
-
-	// Find primary non-null type
-	const nonNullTypes = (
-		Array.isArray(columnSchema.type) ? columnSchema.type : [columnSchema.type]
-	).filter(t => t !== "null")
-
-	if (nonNullTypes.length === 0) return cond
-
-	const type = nonNullTypes[0] // take the primary type for casting
-	let castValue: any = String(cond.value).trim()
-
-	switch (type) {
-		case "integer_small":
-		case "integer":
-			castValue = castValue === "" ? null : parseInt(castValue, 10)
-			break
-		case "number_small":
-		case "number":
-			castValue = castValue === "" ? null : parseFloat(castValue)
-			break
-		case "boolean":
-			castValue = castValue === "true"
-			break
-		// arrays and objects are sent as string
-	}
-
-	return { ...cond, value: castValue }
-}
-
 // Filters out disabled streams
-export const getSelectedStreams = (selectedStreams: {
-	[key: string]: SelectedStream[]
-}): { [key: string]: SelectedStream[] } => {
-	const result: { [key: string]: SelectedStream[] } = {}
+export const getSelectedStreams = (
+	selectedStreams: SelectedStreamsByNamespace,
+): SelectedStreamsByNamespace => {
+	const result: SelectedStreamsByNamespace = {}
 
 	Object.keys(selectedStreams).forEach(key => {
 		result[key] = selectedStreams[key].filter(stream => !stream.disabled)
@@ -707,20 +669,24 @@ export const getSelectedStreams = (selectedStreams: {
 
 // Applies type casting to filter_config values for their correct native types
 export const formatSelectedStreamsPayload = (
-	selectedStreams: { [key: string]: SelectedStream[] },
-	streams?: StreamData[],
-): { [key: string]: SelectedStream[] } => {
-	const filteredStreams = getSelectedStreams(selectedStreams)
+	streamsConfig: StreamsDataStructure,
+): SelectedStreamsByNamespace => {
+	const filteredStreams = getSelectedStreams(streamsConfig.selected_streams)
 
 	const typeSchemaByName = new Map(
-		streams?.map(s => [s.stream.name, s.stream.type_schema?.properties]) ?? [],
+		streamsConfig.streams?.map(s => [
+			`${s.stream.namespace}.${s.stream.name}`,
+			s.stream.type_schema?.properties,
+		]) ?? [],
 	)
 
 	return Object.fromEntries(
-		Object.entries(filteredStreams).map(([key, nsStreams]) => [
-			key,
-			nsStreams.map(stream => {
-				const typeSchemaProps = typeSchemaByName.get(stream.stream_name)
+		Object.entries(filteredStreams).map(([namespace, namespaceStreams]) => [
+			namespace,
+			namespaceStreams.map(stream => {
+				const typeSchemaProps = typeSchemaByName.get(
+					`${namespace}.${stream.stream_name}`,
+				)
 				if (!stream.filter_config || !typeSchemaProps) return stream
 
 				return {
@@ -738,138 +704,29 @@ export const formatSelectedStreamsPayload = (
 	)
 }
 
-// validates filter expression
-export const validateFilter = (filter: string): boolean => {
-	if (!filter.trim()) return false
-	return FILTER_REGEX.test(filter.trim())
-}
-
-// Validates if value is compatible with any given DataType.
-// Explicitly handles "null" values by checking if the column schema allows it.
-// Converts other values to string internally to handle native types safely.
-export const isValueValidForTypes = (
-	value: any,
-	type: string | string[],
-): boolean => {
-	const typeArray = Array.isArray(type) ? type : [type]
-	if (typeArray.length === 0) return false
-
-	const v = value === null ? "" : String(value)
-
-	return typeArray.some(t => {
-		switch (t) {
-			case "null":
-				return value === null || v === "<null>"
-
-			case "integer_small":
-			case "integer":
-				return /^-?\d+$/.test(v) && Number.isInteger(Number(v))
-
-			case "number_small":
-			case "number":
-				return !isNaN(Number(v)) && v !== ""
-
-			case "boolean":
-				return v === "true" || v === "false"
-
-			case "array": {
-				try {
-					return Array.isArray(JSON.parse(v))
-				} catch {
-					return false
-				}
-			}
-
-			case "object": {
-				try {
-					const parsed = JSON.parse(v)
-					return (
-						parsed !== null &&
-						typeof parsed === "object" &&
-						!Array.isArray(parsed)
-					)
-				} catch {
-					return false
-				}
-			}
-
-			// "string", "unknown", or any unrecognised type
-			default:
-				return true
-		}
-	})
-}
-
-// Validates a structured filter_config object.
-// Returns null if valid, or a descriptive error string.
-export const validateFilterConfig = (
-	filterConfig: FilterConfig,
-	streamName: string,
-	namespace: string,
-	typeSchemaProperties?: Record<string, { type: string | string[] }>,
-): string | null => {
-	const streamPrefix = `[${namespace}.${streamName}]`
-
-	if (!filterConfig.conditions || filterConfig.conditions.length === 0) {
-		return `${streamPrefix} Filter conditions cannot be empty`
-	}
-
-	for (const cond of filterConfig.conditions) {
-		if (typeof cond.column !== "string" || cond.column.trim() === "") {
-			return `${streamPrefix} Filter condition is missing a column`
-		}
-		// Values can be null if the schema allows it, but they cannot be missing/undefined entirely
-		if (cond.value === undefined) {
-			return `${streamPrefix} Filter condition for "${cond.column}" is missing a value`
-		}
-
-		// Type-aware validation when schema is available
-		if (typeSchemaProperties) {
-			const columnSchema = typeSchemaProperties[cond.column]
-			if (
-				columnSchema &&
-				!isValueValidForTypes(cond.value, columnSchema.type)
-			) {
-				// Retrieve the column's expected types. We filter out "null" to present
-				// a cleaner error (e.g., "expected: string" instead of "expected: string | null").
-				// The ternary checks if filtering out "null" leaves an empty array.
-				// If it's empty (meaning the column ONLY supports "null"), it safely falls back to ["null"].
-				const expectedTypes = (
-					(Array.isArray(columnSchema.type)
-						? columnSchema.type
-						: [columnSchema.type]
-					).filter(t => t !== "null")[0]
-						? (Array.isArray(columnSchema.type)
-								? columnSchema.type
-								: [columnSchema.type]
-							).filter(t => t !== "null")
-						: ["null"]
-				).join(" | ")
-				return `${streamPrefix} Invalid value "${cond.value}" for column "${cond.column}" — expected type: ${expectedTypes}`
-			}
-		}
-	}
-
-	return null
-}
-
-// Returns null if all stream filters are valid, or a descriptive error string.
+// Returns null if all selected stream configurations are valid, or a descriptive error string otherwise.
 export const validateStreams = (
-	selections: { [key: string]: SelectedStream[] },
-	streams?: StreamData[],
+	streamsConfig: StreamsDataStructure,
 ): string | null => {
 	// Map typeSchemaProperties by stream name for quick lookup
 	const typeSchemaByName = new Map(
-		streams?.map(s => [s.stream.name, s.stream.type_schema?.properties]) ?? [],
+		streamsConfig.streams?.map(s => [
+			`${s.stream.namespace}.${s.stream.name}`,
+			s.stream.type_schema?.properties,
+		]) ?? [],
 	)
 
-	for (const [namespace, nsStreams] of Object.entries(selections)) {
+	const selectedStreams = getSelectedStreams(streamsConfig.selected_streams)
+
+	for (const [namespace, nsStreams] of Object.entries(selectedStreams)) {
 		for (const sel of nsStreams) {
 			if (sel.filter && !validateFilter(sel.filter)) {
 				return `[${namespace ? `${namespace}.` : ""}${sel.stream_name}] Invalid filter expression`
 			}
 			if (sel.filter_config) {
-				const typeSchemaProps = typeSchemaByName.get(sel.stream_name)
+				const typeSchemaProps = typeSchemaByName.get(
+					`${namespace}.${sel.stream_name}`,
+				)
 				const error = validateFilterConfig(
 					sel.filter_config,
 					sel.stream_name,

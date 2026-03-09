@@ -18,7 +18,6 @@ import {
 	formatSelectedStreamsPayload,
 	validateCronExpression,
 	validateStreams,
-	getSelectedStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -253,10 +252,7 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify({
 				...selectedStreams,
-				selected_streams: formatSelectedStreamsPayload(
-					selectedStreams.selected_streams,
-					selectedStreams.streams,
-				),
+				selected_streams: formatSelectedStreamsPayload(selectedStreams),
 			}),
 			frequency: cronExpression,
 			advanced_settings: advancedSettings,
@@ -317,12 +313,9 @@ const JobCreation: React.FC = () => {
 				break
 			}
 			case JOB_CREATION_STEPS.STREAMS:
-				const filterError = validateStreams(
-					getSelectedStreams(selectedStreams.selected_streams),
-					selectedStreams.streams,
-				)
-				if (filterError) {
-					message.error(filterError)
+				const error = validateStreams(selectedStreams)
+				if (error) {
+					message.error(error)
 					return
 				}
 				await handleJobCreation()

@@ -30,7 +30,6 @@ import {
 	formatSelectedStreamsPayload,
 	validateCronExpression,
 	validateStreams,
-	getSelectedStreams,
 } from "../../../utils/utils"
 import {
 	DESTINATION_INTERNAL_TYPES,
@@ -346,10 +345,7 @@ const JobEdit: React.FC = () => {
 			},
 			streams_config: JSON.stringify({
 				...streamsConfig,
-				selected_streams: formatSelectedStreamsPayload(
-					streamsConfig.selected_streams,
-					streamsConfig.streams,
-				),
+				selected_streams: formatSelectedStreamsPayload(streamsConfig),
 			}),
 			frequency: cronExpression,
 			activate: job?.activate,
@@ -365,12 +361,9 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const filterError = validateStreams(
-			getSelectedStreams(selectedStreams.selected_streams),
-			selectedStreams.streams,
-		)
-		if (filterError) {
-			message.error(filterError)
+		const error = validateStreams(selectedStreams)
+		if (error) {
+			message.error(error)
 			return
 		}
 
@@ -379,10 +372,7 @@ const JobEdit: React.FC = () => {
 				jobId,
 				JSON.stringify({
 					...selectedStreams,
-					selected_streams: formatSelectedStreamsPayload(
-						getSelectedStreams(selectedStreams.selected_streams),
-						selectedStreams.streams,
-					),
+					selected_streams: formatSelectedStreamsPayload(selectedStreams),
 				}),
 			)
 		)?.difference_streams
@@ -422,12 +412,9 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		const filterError = validateStreams(
-			getSelectedStreams(streamsConfig.selected_streams),
-			streamsConfig.streams,
-		)
-		if (filterError) {
-			message.error(filterError)
+		const error = validateStreams(streamsConfig)
+		if (error) {
+			message.error(error)
 			return
 		}
 		setIsSubmitting(true)
