@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
@@ -20,7 +21,7 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 		return nil, fmt.Errorf("failed to get catalog %s: %w", catalog, err)
 	}
 
-	var catalogResp models.Response
+	var catalogResp dto.CompactionResponse
 	if err := json.Unmarshal(respBody, &catalogResp); err != nil {
 		return nil, fmt.Errorf("failed to parse catalog response: %w", err)
 	}
@@ -61,7 +62,7 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 		return nil, fmt.Errorf("failed to update catalog %s: %w", catalog, err)
 	}
 
-	var updateResp models.Response
+	var updateResp dto.CompactionResponse
 	if err := json.Unmarshal(updateRespBody, &updateResp); err != nil {
 		return nil, fmt.Errorf("failed to parse update response: %w", err)
 	}
@@ -78,14 +79,13 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 
 // GetCompactionCronConfig retrieves the compaction cron configuration from catalog properties
 func (c *Service) GetCompactionCronConfig(ctx context.Context, catalog, database, table string) (*models.CompactionCronConfigRequest, error) {
-	// Get the catalog metadata
 	catalogPath := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
 	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, catalogPath, url.Values{}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get catalog %s: %w", catalog, err)
 	}
 
-	var catalogResp models.Response
+	var catalogResp dto.CompactionResponse
 	if err := json.Unmarshal(respBody, &catalogResp); err != nil {
 		return nil, fmt.Errorf("failed to parse catalog response: %w", err)
 	}

@@ -117,16 +117,16 @@ func Init(h *handlers.Handler) {
 
 	compactionHandler := h.Compaction
 
-	// Catalog and table listing routes
+	// table listing route
 	web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
 
-	// Catalog management routes
+	// catalog
 	web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
 	web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
 	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "put:UpdateCatalog")
 	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "delete:DeleteCatalog")
 
-	// Table-specific routes
+	// table
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/metrics", compactionHandler, "get:GetTableMetrics")
 
 	// cron
@@ -135,7 +135,7 @@ func Init(h *handlers.Handler) {
 
 	// runs
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs", compactionHandler, "get:GetCompactionRuns")
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/:runid/metrics", compactionHandler, "get:GetProcessMetrics")
+	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs/:processid/cancel", compactionHandler, "post:CancelCompactionProcess")
 
 	// Compaction table properties routes
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")

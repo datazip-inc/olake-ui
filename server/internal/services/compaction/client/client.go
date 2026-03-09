@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -23,7 +23,15 @@ type Compaction struct {
 	client    *http.Client
 }
 
-func NewClient(baseURL, apiKey, apiSecret string) *Compaction {
+func NewClient() *Compaction {
+	baseURL := os.Getenv("")
+	if baseURL == "" {
+		baseURL = ""
+	}
+
+	apiKey := os.Getenv("")
+	apiSecret := os.Getenv("")
+
 	return &Compaction{
 		baseURL:   baseURL,
 		apiKey:    apiKey,
@@ -44,7 +52,6 @@ func (c *Compaction) calculateSignature(params url.Values) string {
 	return signature
 }
 
-// generateEncryptString matches Java's ParamSignatureCalculator logic
 func (c *Compaction) generateEncryptString(params url.Values) string {
 	filtered := make(url.Values)
 	for k, v := range params {
@@ -93,7 +100,7 @@ func (c *Compaction) DoRequest(ctx context.Context, method, path string, queryPa
 		fullURL += "?" + queryParams.Encode()
 	}
 
-	log.Printf("[DEBUG] Full request URL: %s", fullURL)
+	// logger.Debugf("Full request URL: %s", fullURL)
 
 	var bodyReader io.Reader
 	if body != nil {

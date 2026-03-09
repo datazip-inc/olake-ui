@@ -22,7 +22,7 @@ func MapOLakeConfigToCompactionCatalog(destinationName string, configJSON string
 		Name:            destinationName,
 		Type:            catalogType,
 		OptimizerGroup:  models.OptimizerGroup,
-		TableFormatList: "ICEBERG",
+		TableFormatList: []string{"ICEBERG"},
 		StorageConfig:   make(map[string]string),
 		AuthConfig:      make(map[string]string),
 		Properties:      make(map[string]string),
@@ -32,7 +32,6 @@ func MapOLakeConfigToCompactionCatalog(destinationName string, configJSON string
 	compactionReq.StorageConfig["storage.type"] = models.DefaultStroageType
 
 	mapAuthConfig(config, compactionReq.AuthConfig, compactionReq.StorageConfig)
-	// Use the original OLake catalog type when deriving catalog-specific properties
 	mapCatalogProperties(config, compactionReq.Properties, string(config.CatalogType))
 
 	return compactionReq, nil
@@ -54,7 +53,6 @@ func mapAuthConfig(olakeConfig olake.Config, authConfig map[string]string, cmpSt
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.endpoint", olakeConfig.S3Endpoint)
 
 	if olakeConfig.AccessKey != "" && olakeConfig.SecretKey != "" {
-		// AK/SK is the auth type expected by Amoro
 		authConfig["auth.type"] = "AK/SK"
 		authConfig["auth.ak_sk.access_key"] = olakeConfig.AccessKey
 		authConfig["auth.ak_sk.secret_key"] = olakeConfig.SecretKey

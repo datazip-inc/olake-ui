@@ -1,20 +1,11 @@
 package models
 
-import "encoding/json"
-
-// check if the repo has a constant Response
-type Response struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Result  json.RawMessage `json:"result"`
-}
-
 // CatalogRequest represents the request to create or update a catalog
 type CatalogRequest struct {
 	Name            string            `json:"name"`
 	Type            string            `json:"type"`
 	OptimizerGroup  string            `json:"optimizerGroup,omitempty"`
-	TableFormatList string            `json:"tableFormatList"`
+	TableFormatList []string          `json:"tableFormatList"`
 	StorageConfig   map[string]string `json:"storageConfig"`
 	AuthConfig      map[string]string `json:"authConfig"`
 	Properties      map[string]string `json:"properties"`
@@ -34,7 +25,7 @@ type CatalogsResponse struct {
 
 type CatalogWithDatabases struct {
 	Name      string   `json:"name"`
-	Type      string   `json:"type,omitempty"`
+	Type      string   `json:"type"`
 	Databases []string `json:"databases"`
 }
 

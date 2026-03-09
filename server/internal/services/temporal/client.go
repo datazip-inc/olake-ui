@@ -40,7 +40,7 @@ func NewClient() (*Temporal, error) {
 			taskQueue: constants.TemporalTaskQueue,
 		}
 		return nil
-	}, 3, time.Second)
+	}, 5, 2*time.Second)
 	if err != nil {
 		return nil, err
 	}

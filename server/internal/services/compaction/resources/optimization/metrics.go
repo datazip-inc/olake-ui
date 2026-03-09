@@ -5,16 +5,18 @@ import (
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
-	tbl "github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/tables"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/table"
 )
 
 type Service struct {
 	compaction *client.Compaction
+	table      *table.Service
 }
 
-func NewService(c *client.Compaction) *Service {
+func NewService(c *client.Compaction, tbl *table.Service) *Service {
 	return &Service{
 		compaction: c,
+		table:      tbl,
 	}
 }
 
@@ -30,9 +32,9 @@ type TableMetrics struct {
 }
 
 type FileCount struct {
-	Total       int         `json:"total"`
-	DataFiles   int         `json:"data-files"`
-	DeleteFiles DeleteFiles `json:"delete-files"`
+	Total       int `json:"total"`
+	DataFiles   int `json:"data-files"`
+	DeleteFiles int `json:"delete-files"`
 }
 
 type DeleteFiles struct {
@@ -40,89 +42,64 @@ type DeleteFiles struct {
 	Positional int `json:"positional"`
 }
 
-// GetTableMetrics fetches detailed file metrics for a specific table
-func (c *Service) GetTableMetrics(ctx context.Context, catalog, database, table string) (*TableMetricsResponse, error) {
-	t := tbl.NewService(c.compaction)
-	tableDetails, err := t.GetTableDetails(ctx, catalog, database, table)
+// fetches detailed file metrics for a specific table.
+func (s *Service) GetTableMetrics(ctx context.Context, catalog, database, table string) (*TableMetricsResponse, error) {
+	tableDetails, err := s.table.GetTableDetails(ctx, catalog, database, table)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get table details for %s.%s.%s: %w", catalog, database, table, err)
+		return nil, fmt.Errorf(
+			"failed to get table details for %s.%s.%s: %w",
+			catalog, database, table, err,
+		)
 	}
 
-	response := &TableMetricsResponse{
-		TableMetrics: TableMetrics{
-			FileCount: FileCount{
-				DeleteFiles: DeleteFiles{
-					Equality:   0,
-					Positional: 0,
-				},
-			},
-		},
+	response := &TableMetricsResponse{}
+
+	detailsMap, ok := tableDetails.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("unexpected table details format")
 	}
 
-	if detailsMap, ok := tableDetails.(map[string]interface{}); ok {
-		if baseMetrics, ok := detailsMap["baseMetrics"].(map[string]interface{}); ok {
-			if fileCount, ok := baseMetrics["fileCount"].(float64); ok {
-				response.TableMetrics.FileCount.Total = int(fileCount)
-			}
+	baseMetrics, ok := detailsMap["baseMetrics"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("missing baseMetrics in table details")
+	}
 
-			if avgSize, ok := baseMetrics["averageFileSize"].(string); ok {
-				response.TableMetrics.AverageFileSize = avgSize
-			}
+	if fileCount, ok := baseMetrics["fileCount"].(float64); ok {
+		response.TableMetrics.FileCount.Total = int(fileCount)
+	}
 
-			if lastCommitTime, ok := baseMetrics["lastCommitTime"].(float64); ok {
-				response.TableMetrics.LastCommitTime = int64(lastCommitTime)
+	if avgSize, ok := baseMetrics["averageFileSize"].(string); ok {
+		response.TableMetrics.AverageFileSize = avgSize
+	}
+
+	if lastCommitTime, ok := baseMetrics["lastCommitTime"].(float64); ok {
+		response.TableMetrics.LastCommitTime = int64(lastCommitTime)
+	}
+
+	// from the latest snapshot
+	snapshotSummary, err := s.table.GetLatestSnapshot(ctx, catalog, database, table)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest snapshot for %s.%s.%s: %w", catalog, database, table, err)
+	}
+
+	if snapshotSummary != nil {
+		if dataFilesStr, ok := snapshotSummary["total-data-files"].(string); ok {
+			if count, err := parseIntFromString(dataFilesStr); err == nil {
+				response.TableMetrics.FileCount.DataFiles = count
 			}
 		}
 
-		if tableSummary, ok := detailsMap["tableSummary"].(map[string]interface{}); ok {
-			if summary, ok := tableSummary["summary"].(map[string]interface{}); ok {
-				if dataFiles, ok := summary["total-data-files"].(string); ok {
-					if count, err := parseIntFromString(dataFiles); err == nil {
-						response.TableMetrics.FileCount.DataFiles = count
-					}
-				} else if dataFiles, ok := summary["total-data-files"].(float64); ok {
-					response.TableMetrics.FileCount.DataFiles = int(dataFiles)
-				}
-
-				if deleteFiles, ok := summary["total-delete-files"].(string); ok {
-					if count, err := parseIntFromString(deleteFiles); err == nil {
-						totalDeleteFiles := count
-
-						if eqDeletes, ok := summary["total-equality-deletes"].(string); ok {
-							if eqCount, err := parseIntFromString(eqDeletes); err == nil {
-								response.TableMetrics.FileCount.DeleteFiles.Equality = eqCount
-							}
-						}
-
-						if posDeletes, ok := summary["total-positional-deletes"].(string); ok {
-							if posCount, err := parseIntFromString(posDeletes); err == nil {
-								response.TableMetrics.FileCount.DeleteFiles.Positional = posCount
-							}
-						}
-
-						if response.TableMetrics.FileCount.DeleteFiles.Equality == 0 &&
-							response.TableMetrics.FileCount.DeleteFiles.Positional == 0 {
-							response.TableMetrics.FileCount.DeleteFiles.Equality = totalDeleteFiles
-						}
-					}
-				} else if deleteFiles, ok := summary["total-delete-files"].(float64); ok {
-					response.TableMetrics.FileCount.DeleteFiles.Equality = int(deleteFiles)
-				}
+		if deleteFilesStr, ok := snapshotSummary["total-delete-files"].(string); ok {
+			if count, err := parseIntFromString(deleteFilesStr); err == nil {
+				response.TableMetrics.FileCount.DeleteFiles = count
 			}
-		}
-
-		// If we couldn't get data files from summary, calculate from total - delete files
-		if response.TableMetrics.FileCount.DataFiles == 0 && response.TableMetrics.FileCount.Total > 0 {
-			totalDeleteFiles := response.TableMetrics.FileCount.DeleteFiles.Equality +
-				response.TableMetrics.FileCount.DeleteFiles.Positional
-			response.TableMetrics.FileCount.DataFiles = response.TableMetrics.FileCount.Total - totalDeleteFiles
 		}
 	}
 
 	return response, nil
 }
 
-// Helper function to parse integer from string
+// helper function
 func parseIntFromString(s string) (int, error) {
 	var result int
 	_, err := fmt.Sscanf(s, "%d", &result)

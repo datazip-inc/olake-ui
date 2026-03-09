@@ -1,5 +1,7 @@
 package dto
 
+import "encoding/json"
+
 type JSONResponse struct {
 	Success bool        `json:"success" example:"true"`
 	Message string      `json:"message" example:"operation completed successfully"`
@@ -196,4 +198,11 @@ type ReleasesResponse struct {
 type TelemetryIDResponse struct {
 	TelemetryUserID string `json:"user_id" example:"1234567890abcdef1234567890abcdef"`
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
+}
+
+// check if the repo has a constant Response
+type CompactionResponse struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Result  json.RawMessage `json:"result"`
 }
