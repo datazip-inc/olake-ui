@@ -22,7 +22,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to retrieve jobs"
 // @Router /api/v1/project/{projectid}/jobs [get]
-func (h *GinHandler) listJobs(c *gin.Context) {
+func (h *Handler) ListJobs(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -47,7 +47,7 @@ func (h *GinHandler) listJobs(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [get]
-func (h *GinHandler) getJob(c *gin.Context) {
+func (h *Handler) GetJob(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -77,7 +77,7 @@ func (h *GinHandler) getJob(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to create job"
 // @Router /api/v1/project/{projectid}/jobs [post]
-func (h *GinHandler) createJob(c *gin.Context) {
+func (h *Handler) CreateJob(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -124,7 +124,7 @@ func (h *GinHandler) createJob(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [put]
-func (h *GinHandler) updateJob(c *gin.Context) {
+func (h *Handler) UpdateJob(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -163,7 +163,7 @@ func (h *GinHandler) updateJob(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to delete job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [delete]
-func (h *GinHandler) deleteJob(c *gin.Context) {
+func (h *Handler) DeleteJob(c *gin.Context) {
 	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -189,7 +189,7 @@ func (h *GinHandler) deleteJob(c *gin.Context) {
 // @Failure 409 {object} dto.Error409Response "name is not unique"
 // @Failure 500 {object} dto.Error500Response "failed to check uniqueness"
 // @Router /api/v1/project/{projectid}/check-unique [post]
-func (h *GinHandler) checkUniqueName(c *gin.Context) {
+func (h *Handler) CheckUniqueName(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -223,7 +223,7 @@ func (h *GinHandler) checkUniqueName(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to trigger sync"
 // @Router /api/v1/project/{projectid}/jobs/{id}/sync [post]
-func (h *GinHandler) syncJob(c *gin.Context) {
+func (h *Handler) SyncJob(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -254,7 +254,7 @@ func (h *GinHandler) syncJob(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to activate job"
 // @Router /api/v1/project/{projectid}/jobs/{id}/activate [post]
-func (h *GinHandler) activateJob(c *gin.Context) {
+func (h *Handler) ActivateJob(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -292,7 +292,7 @@ func (h *GinHandler) activateJob(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to cancel job run"
 // @Router /api/v1/project/{projectid}/jobs/{id}/cancel [get]
-func (h *GinHandler) cancelJobRun(c *gin.Context) {
+func (h *Handler) CancelJobRun(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -321,7 +321,7 @@ func (h *GinHandler) cancelJobRun(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to trigger clear destination"
 // @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [post]
-func (h *GinHandler) clearDestination(c *gin.Context) {
+func (h *Handler) ClearDestination(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -351,7 +351,7 @@ func (h *GinHandler) clearDestination(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get stream difference"
 // @Router /api/v1/project/{projectid}/jobs/{id}/stream-difference [post]
-func (h *GinHandler) getStreamDifference(c *gin.Context) {
+func (h *Handler) GetStreamDifference(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -388,7 +388,7 @@ func (h *GinHandler) getStreamDifference(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get status"
 // @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [get]
-func (h *GinHandler) getClearDestinationStatus(c *gin.Context) {
+func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -418,7 +418,7 @@ func (h *GinHandler) getClearDestinationStatus(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get job tasks"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks [get]
-func (h *GinHandler) getJobTasks(c *gin.Context) {
+func (h *Handler) GetJobTasks(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -453,7 +453,7 @@ func (h *GinHandler) getJobTasks(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get task logs"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs [post]
-func (h *GinHandler) getTaskLogs(c *gin.Context) {
+func (h *Handler) GetTaskLogs(c *gin.Context) {
 	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -500,7 +500,7 @@ func (h *GinHandler) getTaskLogs(c *gin.Context) {
 // @Failure 404 {object} dto.Error404Response "failed to prepare log archive"
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /api/v1/project/{projectid}/jobs/{id}/logs/download [get]
-func (h *GinHandler) downloadTaskLogs(c *gin.Context) {
+func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -535,7 +535,7 @@ func (h *GinHandler) downloadTaskLogs(c *gin.Context) {
 // @Param   body          body    dto.UpdateSyncTelemetryRequest true "telemetry data"
 // @Success 200 {object} dto.JSONResponse "sync telemetry updated successfully"
 // @Router /internal/worker/callback/sync-telemetry [post]
-func (h *GinHandler) updateSyncTelemetry(c *gin.Context) {
+func (h *Handler) UpdateSyncTelemetry(c *gin.Context) {
 	var req dto.UpdateSyncTelemetryRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -561,7 +561,7 @@ func (h *GinHandler) updateSyncTelemetry(c *gin.Context) {
 // @Param   id            path    int     true    "job id"
 // @Success 200 {object} dto.JSONResponse "successfully recovered"
 // @Router /internal/project/{projectid}/jobs/{id}/clear-destination/recover [post]
-func (h *GinHandler) recoverClearDestination(c *gin.Context) {
+func (h *Handler) RecoverClearDestination(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -588,7 +588,7 @@ func (h *GinHandler) recoverClearDestination(c *gin.Context) {
 // @Param   body          body    dto.UpdateStateFileRequest true "state file data"
 // @Success 200 {object} dto.JSONResponse "state file updated successfully"
 // @Router /internal/project/{projectid}/jobs/{id}/statefile [put]
-func (h *GinHandler) updateStateFile(c *gin.Context) {
+func (h *Handler) UpdateStateFile(c *gin.Context) {
 	jobID, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

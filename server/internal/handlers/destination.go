@@ -19,7 +19,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get destinations"
 // @Router /api/v1/project/{projectid}/destinations [get]
-func (h *GinHandler) listDestinations(c *gin.Context) {
+func (h *Handler) ListDestinations(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -44,7 +44,7 @@ func (h *GinHandler) listDestinations(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [get]
-func (h *GinHandler) getDestination(c *gin.Context) {
+func (h *Handler) GetDestination(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -74,7 +74,7 @@ func (h *GinHandler) getDestination(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to create destination"
 // @Router /api/v1/project/{projectid}/destinations [post]
-func (h *GinHandler) createDestination(c *gin.Context) {
+func (h *Handler) CreateDestination(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -114,7 +114,7 @@ func (h *GinHandler) createDestination(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [put]
-func (h *GinHandler) updateDestination(c *gin.Context) {
+func (h *Handler) UpdateDestination(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -160,7 +160,7 @@ func (h *GinHandler) updateDestination(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to delete destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [delete]
-func (h *GinHandler) deleteDestination(c *gin.Context) {
+func (h *Handler) DeleteDestination(c *gin.Context) {
 	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -185,7 +185,7 @@ func (h *GinHandler) deleteDestination(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 400 {object} dto.Error400Response "failed to verify driver credentials"
 // @Router /api/v1/project/{projectid}/destinations/test [post]
-func (h *GinHandler) testDestinationConnection(c *gin.Context) {
+func (h *Handler) TestDestinationConnection(c *gin.Context) {
 	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
 	if err := bindAndValidate(c, &req); err != nil {
@@ -216,7 +216,7 @@ func (h *GinHandler) testDestinationConnection(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get versions"
 // @Router /api/v1/project/{projectid}/destinations/versions [get]
-func (h *GinHandler) getDestinationVersions(c *gin.Context) {
+func (h *Handler) GetDestinationVersions(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -248,7 +248,7 @@ func (h *GinHandler) getDestinationVersions(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/destinations/spec [post]
-func (h *GinHandler) getDestinationSpec(c *gin.Context) {
+func (h *Handler) GetDestinationSpec(c *gin.Context) {
 	var req dto.SpecRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

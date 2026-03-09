@@ -22,7 +22,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "invalid credentials"
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /login [post]
-func (h *GinHandler) login(c *gin.Context) {
+func (h *Handler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
@@ -57,7 +57,7 @@ func (h *GinHandler) login(c *gin.Context) {
 // @Failure 409 {object} dto.Error409Response "user already exists"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /signup [post]
-func (h *GinHandler) signup(c *gin.Context) {
+func (h *Handler) Signup(c *gin.Context) {
 	var req models.User
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
@@ -88,7 +88,7 @@ func (h *GinHandler) signup(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse
 // @Failure 401 {object} dto.Error401Response "Not authenticated"
 // @Router /auth/check [get]
-func (h *GinHandler) checkAuth(c *gin.Context) {
+func (h *Handler) CheckAuth(c *gin.Context) {
 	userID, ok := h.sessions.GetUserID(c)
 	if !ok {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
@@ -110,7 +110,7 @@ func (h *GinHandler) checkAuth(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.TelemetryIDResponse}
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /telemetry-id [get]
-func (h *GinHandler) telemetryID(c *gin.Context) {
+func (h *Handler) TelemetryID(c *gin.Context) {
 	logger.Info("Get telemetry ID initiated")
 	successResponse(c, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
 		TelemetryUserID: telemetry.GetTelemetryUserID(),
@@ -118,7 +118,7 @@ func (h *GinHandler) telemetryID(c *gin.Context) {
 	})
 }
 
-func (h *GinHandler) authMiddleware() gin.HandlerFunc {
+func (h *Handler) AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !h.sessions.enabled {
 			c.Next()

@@ -27,16 +27,18 @@ type Config struct {
 	ContainerRegistryBase string
 }
 
-var cfg = loadFromViper()
+var cfg = loadConfig()
 
 func Load() Config {
 	return cfg
 }
 
-func loadFromViper() Config {
+func loadConfig() Config {
 	v := viper.New()
+	// load environment variables
 	v.AutomaticEnv()
 
+	// set default values
 	v.SetDefault("APP_NAME", "olake-server")
 	v.SetDefault("HTTP_PORT", "8000")
 	v.SetDefault("RUN_MODE", "dev")

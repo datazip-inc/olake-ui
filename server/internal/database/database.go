@@ -27,7 +27,7 @@ func Init() (*Database, error) {
 	}
 
 	logLevel := gormlogger.Warn
-	if cfg.RunMode == "dev" || cfg.RunMode == "staging" || cfg.RunMode == "localdev" {
+	if cfg.RunMode == "dev" || cfg.RunMode == "localdev" {
 		logLevel = gormlogger.Info
 	}
 
@@ -38,6 +38,7 @@ func Init() (*Database, error) {
 		return nil, fmt.Errorf("failed to connect to postgres: %s", err)
 	}
 
+	// migration for database tables
 	if err := conn.AutoMigrate(
 		new(models.ProjectSettings),
 		new(models.Source),
@@ -52,10 +53,9 @@ func Init() (*Database, error) {
 	// Add session table if sessions are enabled
 	if cfg.SessionOn {
 		err = conn.Exec(`CREATE TABLE IF NOT EXISTS session (
-    session_key VARCHAR(64) PRIMARY KEY,
-    session_data BYTEA,
-    session_expiry TIMESTAMP WITH TIME ZONE);`).Error
-
+			session_key VARCHAR(64) PRIMARY KEY,
+			session_data BYTEA,
+			session_expiry TIMESTAMP WITH TIME ZONE);`).Error
 		if err != nil {
 			return nil, fmt.Errorf("failed to create session table: %s", err)
 		}

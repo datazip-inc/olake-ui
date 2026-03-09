@@ -79,7 +79,7 @@ func main() {
 		logger.Fatalf("Failed to initialize Gin API: %s", err)
 		return
 	}
-	server := httpserver.New(cfg, api.RegisterRoutes)
+	server := httpserver.New(cfg, api)
 	logger.Infof("Starting Gin server on port %s", cfg.HTTPPort)
 	if err := server.Run(ctx); err != nil {
 		logger.Fatalf("Gin server exited with error: %s", err)

@@ -18,17 +18,25 @@ x-envs:
     CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
+    TELEMETRY_DISABLED: true
+    AWS_EC2_METADATA_SERVICE_ENDPOINT: "http://172.31.32.11:61847"
+    AWS_METADATA_SERVICE_TIMEOUT: 5
+    LOG_LEVEL: "debug"
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
-    pull_policy: always
+    # image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    # pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: olake-ui
     environment:
       <<: *sharedEnvs
       # Request body size limits (64 MB in bytes)
       MAX_MEMORY: 67108864
       MAX_UPLOAD_SIZE: 67108864
+
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
@@ -93,8 +101,11 @@ services:
     restart: "no"
 
   temporal-worker:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
-    pull_policy: always
+    # image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui-worker:latest
+    # pull_policy: always
+    build:
+      context: /Users/admin/Desktop/DEV/Datazip/olake-helm/worker
+      dockerfile: Dockerfile
     container_name: olake-temporal-worker
     networks:
       - olake-network
@@ -127,6 +138,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432"
 
   temporal:
     container_name: temporal
@@ -149,8 +162,8 @@ services:
   temporal-ui:
     container_name: temporal-ui
     image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/temporalio/ui:2.16.2
-    profiles:
-      - debug
+    # profiles:
+    #   - debug
     depends_on:
       temporal:
         condition: service_started

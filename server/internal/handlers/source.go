@@ -21,7 +21,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to retrieve sources"
 // @Router /api/v1/project/{projectid}/sources [get]
-func (h *GinHandler) listSources(c *gin.Context) {
+func (h *Handler) ListSources(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -46,7 +46,7 @@ func (h *GinHandler) listSources(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get source"
 // @Router /api/v1/project/{projectid}/sources/{id} [get]
-func (h *GinHandler) getSource(c *gin.Context) {
+func (h *Handler) GetSource(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -76,7 +76,7 @@ func (h *GinHandler) getSource(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to create source"
 // @Router /api/v1/project/{projectid}/sources [post]
-func (h *GinHandler) createSource(c *gin.Context) {
+func (h *Handler) CreateSource(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -116,7 +116,7 @@ func (h *GinHandler) createSource(c *gin.Context) {
 // @Failure 404 {object} dto.Error404Response "source not found"
 // @Failure 500 {object} dto.Error500Response "failed to update source"
 // @Router /api/v1/project/{projectid}/sources/{id} [put]
-func (h *GinHandler) updateSource(c *gin.Context) {
+func (h *Handler) UpdateSource(c *gin.Context) {
 	userID := getCurrentUserID(c, h.sessions)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
@@ -164,7 +164,7 @@ func (h *GinHandler) updateSource(c *gin.Context) {
 // @Failure 404 {object} dto.Error404Response "source not found"
 // @Failure 500 {object} dto.Error500Response "failed to delete source"
 // @Router /api/v1/project/{projectid}/sources/{id} [delete]
-func (h *GinHandler) deleteSource(c *gin.Context) {
+func (h *Handler) DeleteSource(c *gin.Context) {
 	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -189,7 +189,7 @@ func (h *GinHandler) deleteSource(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to test connection"
 // @Router /api/v1/project/{projectid}/sources/test [post]
-func (h *GinHandler) testSourceConnection(c *gin.Context) {
+func (h *Handler) TestSourceConnection(c *gin.Context) {
 	var req dto.SourceTestConnectionRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -221,7 +221,7 @@ func (h *GinHandler) testSourceConnection(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get source catalog"
 // @Router /api/v1/project/{projectid}/sources/streams [post]
-func (h *GinHandler) getSourceCatalog(c *gin.Context) {
+func (h *Handler) GetSourceCatalog(c *gin.Context) {
 	var req dto.StreamsRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -250,7 +250,7 @@ func (h *GinHandler) getSourceCatalog(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get versions"
 // @Router /api/v1/project/{projectid}/sources/versions [get]
-func (h *GinHandler) getSourceVersions(c *gin.Context) {
+func (h *Handler) GetSourceVersions(c *gin.Context) {
 	sourceType := c.Query("type")
 	if sourceType == "" {
 		errorResponse(c, http.StatusBadRequest, "failed to get source versions: source type is required", fmt.Errorf("source type is required"))
@@ -275,7 +275,7 @@ func (h *GinHandler) getSourceVersions(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/sources/spec [post]
-func (h *GinHandler) getSourceSpec(c *gin.Context) {
+func (h *Handler) GetSourceSpec(c *gin.Context) {
 	var req dto.SpecRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

@@ -49,8 +49,9 @@ type Source struct {
 	Type        string `json:"type" gorm:"column:type"`
 	CreatedByID int    `json:"-" gorm:"column:created_by_id"`
 	UpdatedByID int    `json:"-" gorm:"column:updated_by_id"`
-	CreatedBy   *User  `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;references:ID"`
-	UpdatedBy   *User  `json:"updated_by,omitempty" gorm:"foreignKey:UpdatedByID;references:ID"`
+
+	CreatedBy *User `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;references:ID"`
+	UpdatedBy *User `json:"updated_by,omitempty" gorm:"foreignKey:UpdatedByID;references:ID"`
 }
 
 func (s *Source) TableName() string {
@@ -68,8 +69,9 @@ type Destination struct {
 	Config      string `json:"config" gorm:"column:config;type:jsonb"`
 	CreatedByID int    `json:"-" gorm:"column:created_by_id"`
 	UpdatedByID int    `json:"-" gorm:"column:updated_by_id"`
-	CreatedBy   *User  `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;references:ID"`
-	UpdatedBy   *User  `json:"updated_by,omitempty" gorm:"foreignKey:UpdatedByID;references:ID"`
+
+	CreatedBy *User `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;references:ID"`
+	UpdatedBy *User `json:"updated_by,omitempty" gorm:"foreignKey:UpdatedByID;references:ID"`
 }
 
 func (d *Destination) TableName() string {
@@ -79,22 +81,23 @@ func (d *Destination) TableName() string {
 // Job represents a synchronization job
 type Job struct {
 	BaseModel
-	ID               int          `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	Name             string       `json:"name" gorm:"column:name;size:100"`
-	SourceID         int          `json:"source_id" gorm:"column:source_id"`
-	DestID           int          `json:"dest_id" gorm:"column:dest_id"`
-	Source           *Source      `json:"source,omitempty" gorm:"foreignKey:SourceID;references:ID"`
-	Destination      *Destination `json:"destination,omitempty" gorm:"foreignKey:DestID;references:ID"`
-	Active           bool         `json:"active" gorm:"column:active"`
-	Frequency        string       `json:"frequency" gorm:"column:frequency"`
-	StreamsConfig    string       `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
-	State            string       `json:"state" gorm:"column:state;type:jsonb"`
-	AdvancedSettings *string      `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
-	CreatedByID      int          `json:"-" gorm:"column:created_by_id"`
-	UpdatedByID      int          `json:"-" gorm:"column:updated_by_id"`
-	CreatedBy        *User        `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;references:ID"`
-	UpdatedBy        *User        `json:"updated_by,omitempty" gorm:"foreignKey:UpdatedByID;references:ID"`
-	ProjectID        string       `json:"project_id" gorm:"column:project_id"`
+	ID               int     `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
+	Name             string  `json:"name" gorm:"column:name;size:100"`
+	SourceID         int     `json:"source_id" gorm:"column:source_id"`
+	DestID           int     `json:"dest_id" gorm:"column:dest_id"`
+	Active           bool    `json:"active" gorm:"column:active"`
+	Frequency        string  `json:"frequency" gorm:"column:frequency"`
+	StreamsConfig    string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
+	State            string  `json:"state" gorm:"column:state;type:jsonb"`
+	AdvancedSettings *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
+	CreatedByID      int     `json:"-" gorm:"column:created_by_id"`
+	UpdatedByID      int     `json:"-" gorm:"column:updated_by_id"`
+	ProjectID        string  `json:"project_id" gorm:"column:project_id"`
+
+	Source      *Source      `json:"source,omitempty" gorm:"foreignKey:SourceID;references:ID"`
+	Destination *Destination `json:"destination,omitempty" gorm:"foreignKey:DestID;references:ID"`
+	CreatedBy   *User        `json:"created_by,omitempty" gorm:"foreignKey:CreatedByID;references:ID"`
+	UpdatedBy   *User        `json:"updated_by,omitempty" gorm:"foreignKey:UpdatedByID;references:ID"`
 }
 
 func (j *Job) TableName() string {

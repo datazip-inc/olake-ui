@@ -12,18 +12,18 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers"
+	"github.com/datazip-inc/olake-ui/server/routes"
 )
 
 const frontendDistPath = "/opt/frontend/dist"
-
-type RegisterRoutesFunc func(*gin.Engine)
 
 type Server struct {
 	engine     *gin.Engine
 	httpServer *http.Server
 }
 
-func New(cfg appconfig.Config, register RegisterRoutesFunc) *Server {
+func New(cfg appconfig.Config, h *handlers.Handler) *Server {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
 
@@ -36,8 +36,8 @@ func New(cfg appconfig.Config, register RegisterRoutesFunc) *Server {
 		configureStaticFrontend(engine)
 	}
 
-	if register != nil {
-		register(engine)
+	if h != nil {
+		routes.RegisterRoutes(engine, h)
 	}
 
 	server := &http.Server{
@@ -86,7 +86,7 @@ func configureMode(cfg appconfig.Config) {
 	case "test":
 		gin.SetMode(gin.TestMode)
 	default:
-		gin.SetMode(gin.Mode())
+		gin.SetMode(gin.ReleaseMode)
 	}
 }
 

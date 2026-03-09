@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
-
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Get release updates
@@ -19,7 +18,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to fetch release metadata"
 // @Router /api/v1/platform/releases [get]
-func (h *GinHandler) getReleaseUpdates(c *gin.Context) {
+func (h *Handler) GetReleaseUpdates(c *gin.Context) {
 	limit := 0
 	if raw := c.Query("limit"); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {

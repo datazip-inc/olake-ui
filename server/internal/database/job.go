@@ -11,6 +11,23 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
+// jobListColumns is the minimal Job projection needed by job list responses.
+// It intentionally omits heavy fields like streams_config and state.
+var jobListColumns = []string{
+	"id",
+	"name",
+	"frequency",
+	"active",
+	"created_at",
+	"updated_at",
+	"source_id",
+	"dest_id",
+	"created_by_id",
+	"updated_by_id",
+	"project_id",
+	"advanced_settings",
+}
+
 // decryptJobConfig decrypts Config fields in related Source and Destination
 func (db *Database) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
@@ -77,6 +94,8 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 	var jobs []*models.Job
 
 	err := db.conn.
+		Model(&models.Job{}).
+		Select(jobListColumns).
 		Where("project_id = ?", projectID).
 		Preload("Source").
 		Preload("Destination").

@@ -19,7 +19,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to retrieve project settings"
 // @Router /api/v1/project/{projectid}/settings [get]
-func (h *GinHandler) getProjectSettings(c *gin.Context) {
+func (h *Handler) GetProjectSettings(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -44,7 +44,7 @@ func (h *GinHandler) getProjectSettings(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update project settings"
 // @Router /api/v1/project/{projectid}/settings [put]
-func (h *GinHandler) upsertProjectSettings(c *gin.Context) {
+func (h *Handler) UpsertProjectSettings(c *gin.Context) {
 	projectID, err := getProjectID(c)
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)

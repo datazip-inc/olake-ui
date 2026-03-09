@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/gin-gonic/gin"
 )
 
 // @Summary Create a new user
@@ -20,7 +20,7 @@ import (
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /api/v1/users [post]
-func (h *GinHandler) createUser(c *gin.Context) {
+func (h *Handler) CreateUser(c *gin.Context) {
 	var req models.User
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -49,7 +49,7 @@ func (h *GinHandler) createUser(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get users"
 // @Router /api/v1/users [get]
-func (h *GinHandler) getAllUsers(c *gin.Context) {
+func (h *Handler) GetAllUsers(c *gin.Context) {
 	logger.Info("Get all users initiated")
 	users, err := h.etl.GetAllUsers(c.Request.Context())
 	if err != nil {
@@ -69,7 +69,7 @@ func (h *GinHandler) getAllUsers(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
-func (h *GinHandler) updateUser(c *gin.Context) {
+func (h *Handler) UpdateUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -100,7 +100,7 @@ func (h *GinHandler) updateUser(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to delete user"
 // @Router /api/v1/users/{id} [delete]
-func (h *GinHandler) deleteUser(c *gin.Context) {
+func (h *Handler) DeleteUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
