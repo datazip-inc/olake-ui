@@ -45,12 +45,25 @@ func (h *GinHandler) getProjectSettings(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update project settings"
 // @Router /api/v1/project/{projectid}/settings [put]
 func (h *GinHandler) upsertProjectSettings(c *gin.Context) {
+	projectID, err := getProjectID(c)
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
 	var req dto.UpsertProjectSettingsRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	logger.Debugf("Upsert project settings initiated project_id[%s]", req.ProjectID)
+
+	if req.ProjectID != projectID {
+		err := fmt.Errorf("path project_id '%s' does not match body project_id '%s'", projectID, req.ProjectID)
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Upsert project settings initiated project_id[%s]", projectID)
 	if err := h.etl.UpsertProjectSettings(req); err != nil {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
 		return

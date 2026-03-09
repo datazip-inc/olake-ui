@@ -183,7 +183,7 @@ func (h *GinHandler) deleteDestination(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
-// @Failure 500 {object} dto.Error500Response "failed to test connection"
+// @Failure 400 {object} dto.Error400Response "failed to verify driver credentials"
 // @Router /api/v1/project/{projectid}/destinations/test [post]
 func (h *GinHandler) testDestinationConnection(c *gin.Context) {
 	// need to remove sourceVersion from request
@@ -232,7 +232,7 @@ func (h *GinHandler) getDestinationVersions(c *gin.Context) {
 
 	versions, err := h.etl.GetDestinationVersions(c.Request.Context(), destType)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to get destination versions: %s", err), err)
+		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination versions: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("destination %s versions fetched successfully", destType), versions)
