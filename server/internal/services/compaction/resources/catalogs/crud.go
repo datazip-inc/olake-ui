@@ -1,4 +1,4 @@
-package compaction
+package catalog
 
 import (
 	"context"
@@ -6,39 +6,57 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
-// CatalogRequest represents the request to create or update a catalog
-type CatalogRequest struct {
-	Name             string            `json:"name"`
-	Type             string            `json:"type"`
-	OptimizerGroup   string            `json:"optimizerGroup,omitempty"`
-	TableFormatList  []string          `json:"tableFormatList"`
-	StorageConfig    map[string]string `json:"storageConfig"`
-	AuthConfig       map[string]string `json:"authConfig"`
-	Properties       map[string]string `json:"properties"`
-	TableProperties  map[string]string `json:"tableProperties"`
+type Service struct {
+	compaction *client.Compaction
 }
 
-// CatalogResponse represents the response from catalog operations
-type CatalogResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
+func NewService(c *client.Compaction) *Service {
+	return &Service{
+		compaction: c,
+	}
 }
 
-// CreateCatalog creates a new catalog in Amoro
-func (c *Compaction) CreateCatalog(ctx context.Context, req CatalogRequest) (*CatalogResponse, error) {
-	// Validate required fields
+// GetCatalogs returns the list of catalogs from fusion
+func (c *Service) GetCatalogs(ctx context.Context) (interface{}, error) {
+	path := models.ApiBase + "catalogs"
+	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, path, url.Values{}, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all catalogs: %w", err)
+	}
+
+	var resp models.Response
+	if err := json.Unmarshal(respBody, &resp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if resp.Code != 200 && resp.Code != 0 {
+		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
+	}
+
+	// Result can be an array or object, so unmarshal to interface{}
+	var result interface{}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse catalog result: %w", err)
+	}
+
+	return result, nil
+}
+
+// CreateCatalog creates a new catalog in Fusion, need to be very particular here
+func (c *Service) CreateCatalog(ctx context.Context, req models.CatalogRequest) (*models.CatalogResponse, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("catalog name is required")
 	}
 	if req.Type == "" {
 		return nil, fmt.Errorf("catalog type is required")
 	}
-	if len(req.TableFormatList) == 0 {
-		// Default to ICEBERG for Iceberg-specific catalogs
-		req.TableFormatList = []string{"ICEBERG"}
-	}
+
+	req.TableFormatList = "ICEBERG"
 	if req.StorageConfig == nil {
 		req.StorageConfig = make(map[string]string)
 	}
@@ -52,16 +70,14 @@ func (c *Compaction) CreateCatalog(ctx context.Context, req CatalogRequest) (*Ca
 		req.TableProperties = make(map[string]string)
 	}
 
-	// Build the API path
-	path := fmt.Sprintf("%scatalogs", apiBase)
+	path := fmt.Sprintf("%scatalogs", models.ApiBase)
 
-	// Make the POST request
-	respBody, err := c.doRequest(ctx, http.MethodPost, path, url.Values{}, req)
+	respBody, err := c.compaction.DoRequest(ctx, http.MethodPost, path, url.Values{}, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create catalog %s: %w", req.Name, err)
 	}
 
-	var resp Response
+	var resp models.Response
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -70,25 +86,23 @@ func (c *Compaction) CreateCatalog(ctx context.Context, req CatalogRequest) (*Ca
 		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
 	}
 
-	return &CatalogResponse{
+	return &models.CatalogResponse{
 		Success: true,
 		Message: fmt.Sprintf("Successfully created catalog %s", req.Name),
 	}, nil
 }
 
 // UpdateCatalog updates an existing catalog in Amoro
-func (c *Compaction) UpdateCatalog(ctx context.Context, catalogName string, req CatalogRequest) (*CatalogResponse, error) {
-	// Validate required fields
+func (c *Service) UpdateCatalog(ctx context.Context, catalogName string, req models.CatalogRequest) (*models.CatalogResponse, error) {
 	if catalogName == "" {
 		return nil, fmt.Errorf("catalog name is required")
 	}
 	if req.Type == "" {
 		return nil, fmt.Errorf("catalog type is required")
 	}
-	if len(req.TableFormatList) == 0 {
-		// Default to ICEBERG for Iceberg-specific catalogs
-		req.TableFormatList = []string{"ICEBERG"}
-	}
+
+	req.TableFormatList = "ICEBERG"
+	
 	if req.StorageConfig == nil {
 		req.StorageConfig = make(map[string]string)
 	}
@@ -106,15 +120,15 @@ func (c *Compaction) UpdateCatalog(ctx context.Context, catalogName string, req 
 	req.Name = catalogName
 
 	// Build the API path
-	path := fmt.Sprintf("%scatalogs/%s", apiBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
 
 	// Make the PUT request
-	respBody, err := c.doRequest(ctx, http.MethodPut, path, url.Values{}, req)
+	respBody, err := c.compaction.DoRequest(ctx, http.MethodPut, path, url.Values{}, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update catalog %s: %w", catalogName, err)
 	}
 
-	var resp Response
+	var resp models.Response
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -123,29 +137,29 @@ func (c *Compaction) UpdateCatalog(ctx context.Context, catalogName string, req 
 		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
 	}
 
-	return &CatalogResponse{
+	return &models.CatalogResponse{
 		Success: true,
 		Message: fmt.Sprintf("Successfully updated catalog %s", catalogName),
 	}, nil
 }
 
 // DeleteCatalog deletes a catalog from Amoro
-func (c *Compaction) DeleteCatalog(ctx context.Context, catalogName string) (*CatalogResponse, error) {
+func (c *Service) DeleteCatalog(ctx context.Context, catalogName string) (*models.CatalogResponse, error) {
 	// Validate required fields
 	if catalogName == "" {
 		return nil, fmt.Errorf("catalog name is required")
 	}
 
 	// Build the API path
-	path := fmt.Sprintf("%scatalogs/%s", apiBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
 
 	// Make the DELETE request
-	respBody, err := c.doRequest(ctx, http.MethodDelete, path, url.Values{}, nil)
+	respBody, err := c.compaction.DoRequest(ctx, http.MethodDelete, path, url.Values{}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete catalog %s: %w", catalogName, err)
 	}
 
-	var resp Response
+	var resp models.Response
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
@@ -154,7 +168,7 @@ func (c *Compaction) DeleteCatalog(ctx context.Context, catalogName string) (*Ca
 		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
 	}
 
-	return &CatalogResponse{
+	return &models.CatalogResponse{
 		Success: true,
 		Message: fmt.Sprintf("Successfully deleted catalog %s", catalogName),
 	}, nil

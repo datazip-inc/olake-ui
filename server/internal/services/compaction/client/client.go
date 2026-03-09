@@ -1,4 +1,4 @@
-package compaction
+package client
 
 import (
 	"bytes"
@@ -24,7 +24,6 @@ type Compaction struct {
 }
 
 func NewClient(baseURL, apiKey, apiSecret string) *Compaction {
-	// Use provided values, fallback to environment variables, then to defaults
 	return &Compaction{
 		baseURL:   baseURL,
 		apiKey:    apiKey,
@@ -35,23 +34,18 @@ func NewClient(baseURL, apiKey, apiSecret string) *Compaction {
 	}
 }
 
+// for compaction authentication: calculating md5: apiKey + encryptString + secret
 func (c *Compaction) calculateSignature(params url.Values) string {
-	// Generate encrypt string from params (matching Java implementation)
 	encryptString := c.generateEncryptString(params)
-
-	// calculating md5: apiKey + encryptString + secret
 	plainText := fmt.Sprintf("%s%s%s", c.apiKey, encryptString, c.apiSecret)
 	hash := md5.Sum([]byte(plainText))
 	signature := hex.EncodeToString(hash[:])
-
-	log.Printf("[DEBUG] Signature calculation: encryptString=%s, plainText=%s, signature=%s", encryptString, plainText, signature)
 
 	return signature
 }
 
 // generateEncryptString matches Java's ParamSignatureCalculator logic
 func (c *Compaction) generateEncryptString(params url.Values) string {
-	// Remove apiKey and signature from params
 	filtered := make(url.Values)
 	for k, v := range params {
 		if k != "apiKey" && k != "signature" {
@@ -59,12 +53,10 @@ func (c *Compaction) generateEncryptString(params url.Values) string {
 		}
 	}
 
-	// If no params left, return current date in yyyyMMdd format
 	if len(filtered) == 0 {
 		return time.Now().UTC().Format("20060102")
 	}
 
-	// Sort keys and concatenate as key+value
 	keys := make([]string, 0, len(filtered))
 	for k := range filtered {
 		keys = append(keys, k)
@@ -75,7 +67,6 @@ func (c *Compaction) generateEncryptString(params url.Values) string {
 	for _, k := range keys {
 		values := filtered[k]
 		if len(values) > 0 && values[0] != "" {
-			// URL decode the value (matching Java's URLDecoder.decode)
 			decodedValue, err := url.QueryUnescape(values[0])
 			if err != nil {
 				decodedValue = values[0]
@@ -92,8 +83,7 @@ func (c *Compaction) generateEncryptString(params url.Values) string {
 	return strings.Join(parts, "")
 }
 
-func (c *Compaction) doRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
-	// Calculate signature BEFORE adding apiKey to params
+func (c *Compaction) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
 	signature := c.calculateSignature(queryParams)
 	queryParams.Set("apiKey", c.apiKey)
 	queryParams.Set("signature", signature)

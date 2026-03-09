@@ -3,18 +3,18 @@ package compaction
 import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	services "github.com/datazip-inc/olake-ui/server/internal/services/compaction"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction"
 )
 
 type Handler struct {
 	web.Controller
 	db         *database.Database
-	compaction *services.CompactionService
+	compaction *compaction.CompactionService
 }
 
-var compactionService *services.CompactionService
+var compactionService *compaction.CompactionService
 
-func NewHandler(s *services.CompactionService) *Handler {
+func NewHandler(s *compaction.CompactionService) *Handler {
 	compactionService = s
 	return &Handler{
 		db:         s.GetDB(),

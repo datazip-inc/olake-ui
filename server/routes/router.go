@@ -115,22 +115,25 @@ func Init(h *handlers.Handler) {
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
 	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
 
-	// fusion routes
 	compactionHandler := h.Compaction
 
+	// Catalog and table listing routes
+	web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
+
 	// Catalog management routes
+	web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
 	web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
 	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "put:UpdateCatalog")
 	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "delete:DeleteCatalog")
 
-	// Catalog and table listing routes
-	web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
-	web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
-
 	// Table-specific routes
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/metrics", compactionHandler, "get:GetTableMetrics")
+
+	// cron
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "put:SetCompactionCronConfig")
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "get:GetCompactionCronConfig")
+
+	// runs
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs", compactionHandler, "get:GetCompactionRuns")
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/:runid/metrics", compactionHandler, "get:GetProcessMetrics")
 

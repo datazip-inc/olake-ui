@@ -138,6 +138,12 @@ func Ternary(cond bool, a, b any) any {
 	return b
 }
 
+func SetIfNotEmpty(m map[string]string, key, value string) {
+	if value != "" {
+		m[key] = value
+	}
+}
+
 // ExtractJobIDFromWorkflowID extracts the JobID from Temporal workflow IDs created by this system.
 //
 // Expected workflow ID shapes:

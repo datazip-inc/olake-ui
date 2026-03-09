@@ -2,40 +2,15 @@ package compaction
 
 import (
 	"net/http"
-	"os"
 
-	"github.com/datazip-inc/olake-ui/server/internal/services/compaction"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
+	catalog "github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalogs"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-func getCompactionClient() *compaction.Compaction {
-	baseURL := os.Getenv("AMORO_BASE_URL")
-	if baseURL == "" {
-		baseURL = "http://127.0.0.1:1630"
-	}
-
-	apiKey := os.Getenv("AMORO_API_KEY")
-	apiSecret := os.Getenv("AMORO_API_SECRET")
-
-	return compaction.NewClient(baseURL, apiKey, apiSecret)
-}
-
-// func (h *Handler) GetDashboard() {
-// 	client := getCompactionClient()
-// 	dashboard, err := client.GetDashboard(h.Ctx.Request.Context())
-// 	if err != nil {
-// 		logger.Errorf("Failed to get dashboard data: %v", err)
-// 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get dashboard data", err)
-// 		return
-// 	}
-
-// 	utils.SuccessResponse(&h.Controller, "Successfully fetched dashboard data", dashboard)
-// }
-
 func (h *Handler) GetCatalogsWithDatabases() {
-	client := getCompactionClient()
-	catalogs, err := client.GetCatalogsWithDatabases(h.Ctx.Request.Context())
+	catalogs, err := h.compaction.Aggregator.GetCatalogsWithDatabases(h.Ctx.Request.Context())
 	if err != nil {
 		logger.Errorf("Failed to get catalogs with databases: %v", err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get catalogs with databases", err)
@@ -54,8 +29,7 @@ func (h *Handler) GetTablesWithDetails() {
 		return
 	}
 
-	client := getCompactionClient()
-	tables, err := client.GetTablesWithDetails(h.Ctx.Request.Context(), catalog, database, h.db)
+	tables, err := h.compaction.Aggregator.GetTablesWithDetails(h.Ctx.Request.Context(), catalog, database, h.db)
 	if err != nil {
 		logger.Errorf("Failed to get tables with details for catalog %s, database %s: %v", catalog, database, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get tables with details", err)
@@ -76,8 +50,7 @@ func (h *Handler) EnableSelfOptimizing() {
 		return
 	}
 
-	client := getCompactionClient()
-	result, err := client.EnableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
+	result, err := h.compaction.Table.EnableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
 	if err != nil {
 		logger.Errorf("Failed to enable self-optimizing for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to enable self-optimizing", err)
@@ -98,8 +71,7 @@ func (h *Handler) DisableSelfOptimizing() {
 		return
 	}
 
-	client := getCompactionClient()
-	result, err := client.DisableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
+	result, err := h.compaction.Table.DisableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
 	if err != nil {
 		logger.Errorf("Failed to disable self-optimizing for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to disable self-optimizing", err)
@@ -120,7 +92,7 @@ func (h *Handler) SetTableProperties() {
 		return
 	}
 
-	var req compaction.SetTablePropertiesRequest
+	var req models.SetTablePropertiesRequest
 	if err := h.Ctx.BindJSON(&req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request body", err)
 		return
@@ -131,8 +103,7 @@ func (h *Handler) SetTableProperties() {
 	req.Database = database
 	req.Table = table
 
-	client := getCompactionClient()
-	result, err := client.SetTableProperties(h.Ctx.Request.Context(), req)
+	result, err := h.compaction.Table.SetTableProperties(h.Ctx.Request.Context(), req)
 	if err != nil {
 		logger.Errorf("Failed to set table properties for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set table properties", err)
@@ -153,8 +124,7 @@ func (h *Handler) GetTableMetrics() {
 		return
 	}
 
-	client := getCompactionClient()
-	metrics, err := client.GetTableMetrics(h.Ctx.Request.Context(), catalog, database, table)
+	metrics, err := h.compaction.Optimization.GetTableMetrics(h.Ctx.Request.Context(), catalog, database, table)
 	if err != nil {
 		logger.Errorf("Failed to get table metrics for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get table metrics", err)
@@ -175,14 +145,13 @@ func (h *Handler) SetCompactionCronConfig() {
 		return
 	}
 
-	var config compaction.CompactionCronConfigRequest
+	var config models.CompactionCronConfigRequest
 	if err := h.Ctx.BindJSON(&config); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
-	client := getCompactionClient()
-	result, err := client.SetCompactionCronConfig(h.Ctx.Request.Context(), catalog, database, table, config)
+	result, err := h.compaction.Optimization.SetCompactionCronConfig(h.Ctx.Request.Context(), catalog, database, table, config)
 	if err != nil {
 		logger.Errorf("Failed to set compaction cron config for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set compaction cron configuration", err)
@@ -203,8 +172,7 @@ func (h *Handler) GetCompactionCronConfig() {
 		return
 	}
 
-	client := getCompactionClient()
-	config, err := client.GetCompactionCronConfig(h.Ctx.Request.Context(), catalog, database, table)
+	config, err := h.compaction.Optimization.GetCompactionCronConfig(h.Ctx.Request.Context(), catalog, database, table)
 	if err != nil {
 		logger.Errorf("Failed to get compaction cron config for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get compaction cron configuration", err)
@@ -236,8 +204,7 @@ func (h *Handler) GetCompactionRuns() {
 		pageSize = 20
 	}
 
-	client := getCompactionClient()
-	runs, err := client.GetCompactionRuns(h.Ctx.Request.Context(), catalog, database, table, page, pageSize)
+	runs, err := h.compaction.Optimization.GetCompactionRuns(h.Ctx.Request.Context(), catalog, database, table, page, pageSize)
 	if err != nil {
 		logger.Errorf("Failed to get compaction runs for %s.%s.%s: %v", catalog, database, table, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get compaction runs", err)
@@ -259,8 +226,7 @@ func (h *Handler) GetProcessMetrics() {
 		return
 	}
 
-	client := getCompactionClient()
-	metrics, err := client.GetProcessMetrics(h.Ctx.Request.Context(), catalog, database, table, runID)
+	metrics, err := h.compaction.Optimization.GetProcessMetrics(h.Ctx.Request.Context(), catalog, database, table, runID)
 	if err != nil {
 		logger.Errorf("Failed to get process metrics for %s.%s.%s process %s: %v", catalog, database, table, runID, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get process metrics", err)
@@ -272,14 +238,14 @@ func (h *Handler) GetProcessMetrics() {
 
 // CreateCatalog creates a new catalog
 func (h *Handler) CreateCatalog() {
-	var req compaction.CatalogRequest
+	var req models.CatalogRequest
 	if err := h.Ctx.BindJSON(&req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
-	client := getCompactionClient()
-	result, err := client.CreateCatalog(h.Ctx.Request.Context(), req)
+	c := catalog.NewService(h.compaction.GetClient())
+	result, err := c.CreateCatalog(h.Ctx.Request.Context(), req)
 	if err != nil {
 		logger.Errorf("Failed to create catalog %s: %v", req.Name, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to create catalog", err)
@@ -297,14 +263,14 @@ func (h *Handler) UpdateCatalog() {
 		return
 	}
 
-	var req compaction.CatalogRequest
+	var req models.CatalogRequest
 	if err := h.Ctx.BindJSON(&req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
-	client := getCompactionClient()
-	result, err := client.UpdateCatalog(h.Ctx.Request.Context(), catalogName, req)
+	c := catalog.NewService(h.compaction.GetClient())
+	result, err := c.UpdateCatalog(h.Ctx.Request.Context(), catalogName, req)
 	if err != nil {
 		logger.Errorf("Failed to update catalog %s: %v", catalogName, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update catalog", err)
@@ -322,8 +288,8 @@ func (h *Handler) DeleteCatalog() {
 		return
 	}
 
-	client := getCompactionClient()
-	result, err := client.DeleteCatalog(h.Ctx.Request.Context(), catalogName)
+	c := catalog.NewService(h.compaction.GetClient())
+	result, err := c.DeleteCatalog(h.Ctx.Request.Context(), catalogName)
 	if err != nil {
 		logger.Errorf("Failed to delete catalog %s: %v", catalogName, err)
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete catalog", err)

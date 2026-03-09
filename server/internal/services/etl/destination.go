@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalogs"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
-
-// Destination-related methods on AppService
 
 // GetDestination returns a single destination by ID with its associated jobs.
 func (s *ETLService) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
@@ -133,6 +134,14 @@ func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDesti
 		return fmt.Errorf("failed to create destination: %s", err)
 	}
 
+	// add the catalog to Fusion
+	c := catalog.NewService(s.compaction)
+	if strings.ToLower(req.Type) == "iceberg" {
+		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, true); err != nil {
+			logger.Errorf("Failed to sync catalog to Amoro for destination %s: %v", req.Name, err)
+		}
+	}
+
 	telemetry.TrackDestinationCreation(ctx, destination)
 	return nil
 }
@@ -162,6 +171,14 @@ func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID st
 
 	if err := s.db.UpdateDestination(existingDest); err != nil {
 		return fmt.Errorf("failed to update destination: %s", err)
+	}
+
+	// just in case of edits in olake_destination, the catalog in fusion will be udpated automatically
+	c := catalog.NewService(s.compaction)
+	if strings.ToLower(req.Type) == "iceberg" {
+		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, true); err != nil {
+			logger.Errorf("Failed to sync catalog to Amoro for destination %s: %v", req.Name, err)
+		}
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
