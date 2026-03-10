@@ -6,6 +6,8 @@ import {
 	JOB_CONFIG,
 	TestDataBuilder,
 	verifyEntityCreationSuccessModal,
+	ICEBERG_JDBC_CONFIG,
+	createIcebergJdbcConfig,
 } from "../utils"
 
 test.describe("Job End-to-End User Journey", () => {
