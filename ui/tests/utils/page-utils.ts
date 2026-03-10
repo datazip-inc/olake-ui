@@ -40,7 +40,7 @@ export const selectConnector = async (
 export const pollToClickAndVerifyText = async (
 	page: Page,
 	refreshButton: Locator,
-	expectedText: string,
+	expected: string | Locator,
 	options: { timeout?: number; interval?: number; expectTimeout?: number } = {},
 ) => {
 	const {
@@ -51,7 +51,12 @@ export const pollToClickAndVerifyText = async (
 
 	await expect(async () => {
 		await refreshButton.click()
-		await expect(page.getByText(expectedText)).toBeVisible({
+
+		// If string is passed, grab by text. Otherwise, use the locator directly.
+		const target =
+			typeof expected === "string" ? page.getByText(expected) : expected
+
+		await expect(target).toBeVisible({
 			timeout: expectTimeout,
 		})
 	}).toPass({

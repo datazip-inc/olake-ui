@@ -5,11 +5,7 @@ import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
 
 import { useJobStore } from "../stores"
 import { useJobs } from "../hooks"
-import {
-	useSyncJob,
-	useActivateJob,
-	useCancelJob,
-} from "../hooks/mutations/useJobMutations"
+import { useSyncJob, useActivateJob, useCancelJob } from "../hooks"
 import analyticsService from "@/common/services/analyticsService"
 import { Job, JobStatus, SavedJobDraft } from "../types"
 import { JOB_STATUS } from "../constants"

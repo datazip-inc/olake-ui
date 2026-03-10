@@ -8,8 +8,8 @@ import {
 	selectActiveStreamData,
 	selectDestinationDatabase,
 } from "../stores/streamSelectionStore"
-import { useDiscoverSourceStreams } from "@/features/sources/hooks/mutations/useDiscoverSourceStreams"
-import { useClearDestinationStatus } from "../hooks/queries/useJobQueries"
+import { useDiscoverSourceStreams } from "@/features/sources/hooks"
+import { useClearDestinationStatus } from "../hooks"
 import { StreamData, StreamsDataStructure } from "../../../common/types"
 import { SchemaConfigurationProps } from "../types"
 import FilterButton from "./FilterButton"

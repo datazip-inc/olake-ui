@@ -230,6 +230,7 @@ const JobHistory: React.FC = () => {
 					/>
 					<Tooltip title="Click to refetch">
 						<Button
+							data-testid="refresh-tasks-button"
 							icon={<ArrowsClockwiseIcon size={16} />}
 							onClick={() => refetchJobTasks()}
 							className="flex items-center"

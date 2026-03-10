@@ -89,10 +89,10 @@ export class JobsPage extends BasePage {
 		await this.page.waitForLoadState("networkidle", {
 			timeout: TIMEOUTS.LONG,
 		})
+
+		// wait for job history to load before trying to refetch
 		await this.page.waitForTimeout(5000)
 
-		// If a jobName is provided, find the button within that specific job's row.
-		// Otherwise, find the first button on the page (assuming multiple runs exist on history page).
 		const container = jobName ? await this.getJobRow(jobName) : this.page
 		const viewLogsButtonElement = container.getByRole("button", {
 			name: "View logs",
@@ -101,10 +101,15 @@ export class JobsPage extends BasePage {
 			? viewLogsButtonElement
 			: viewLogsButtonElement.first()
 
-		await viewLogsButton.waitFor({
-			state: "visible",
-			timeout: TIMEOUTS.LONG,
-		})
+		const refreshBtn = this.page.getByTestId("refresh-tasks-button")
+
+		// Reusing the polling utility!
+		await pollToClickAndVerifyText(
+			this.page,
+			refreshBtn,
+			viewLogsButton,
+			{ interval: 2000 }, // wait 2s between clicks
+		)
 
 		// Ensure the button is enabled before clicking
 		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.LONG })
