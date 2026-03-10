@@ -97,34 +97,27 @@ export class JobsPage extends BasePage {
 			timeout: TIMEOUTS.LONG,
 		})
 
-		// Dynamic getter so Playwright re-evaluates the DOM on every retry loop
-		const getViewLogsButton = () => {
-			const container = jobName
-				? this.page.getByTestId(`job-${jobName}`)
-				: this.page
-			return container.getByRole("button", { name: "View logs" }).first()
-		}
+		await this.page.waitForTimeout(5000)
 
-		// Playwright will retry this block until the assertions inside pass
-		await expect(async () => {
-			const btn = getViewLogsButton()
+		// If a jobName is provided, find the button within that specific job's row.
+		// Otherwise, find the first button on the page (assuming multiple runs exist on history page).
+		const container = jobName ? await this.getJobRow(jobName) : this.page
+		const viewLogsButtonElement = container.getByRole("button", {
+			name: "View logs",
+		})
+		const viewLogsButton = jobName
+			? viewLogsButtonElement
+			: viewLogsButtonElement.first()
 
-			// If the job hasn't appeared yet, force a hard reload
-			if (!(await btn.isVisible())) {
-				await this.page.reload()
-				await this.page.waitForLoadState("networkidle")
-			}
-
-			// Attempt to assert visibility. If this fails, expect.toPass() catches the error and retries.
-			await expect(btn).toBeVisible({ timeout: 2000 })
-		}).toPass({
+		await viewLogsButton.waitFor({
+			state: "visible",
 			timeout: TIMEOUTS.LONG,
-			intervals: [3000], // Wait 3 seconds between reload attempts
 		})
 
-		const finalBtn = getViewLogsButton()
-		await expect(finalBtn).toBeEnabled({ timeout: TIMEOUTS.LONG })
-		await finalBtn.click()
+		// Ensure the button is enabled before clicking
+		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.LONG })
+
+		await viewLogsButton.click()
 	}
 
 	async viewJobConfigurations() {
