@@ -13,7 +13,7 @@ import {
 import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
 
-import { useJobStore } from "../stores"
+import { useJobConfigurationStore, useJobStore } from "../stores"
 import {
 	useJobDetails,
 	useClearDestinationStatus,
@@ -35,7 +35,6 @@ import {
 	StreamEditDisabledModal,
 	AdvancedSettingsCard,
 } from "../components"
-import { AdvancedSettings } from "../types"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()
@@ -50,8 +49,6 @@ const JobSettings: React.FC = () => {
 	const [customCronExpression, setCustomCronExpression] = useState("")
 	const [cronExpression, setCronExpression] = useState("* * * * *")
 	const [nextRuns, setNextRuns] = useState<string[]>([])
-	const [advancedSettings, setAdvancedSettings] =
-		useState<AdvancedSettings | null>(null)
 
 	// Configuration object for all select options
 	const selectConfig = {
@@ -69,6 +66,8 @@ const JobSettings: React.FC = () => {
 		setShowClearDestinationModal,
 		setShowStreamEditDisabledModal,
 	} = useJobStore()
+	const { advancedSettings, setAdvancedSettings } = useJobConfigurationStore()
+
 	// Keep job data permanently fresh to prevent refetches (e.g., on tab focus) that could overwrite in-progress edits.
 	// The query will still update when job mutations succeed because they invalidate the job queries.
 	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
@@ -479,10 +478,7 @@ const JobSettings: React.FC = () => {
 										)}
 									</div>
 								</div>
-								<AdvancedSettingsCard
-									advancedSettings={advancedSettings}
-									setAdvancedSettings={setAdvancedSettings}
-								/>
+								<AdvancedSettingsCard />
 
 								<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-4">
 									<span className="font-medium">Pause your job</span>

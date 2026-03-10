@@ -50,7 +50,7 @@ import {
 	EntityCancelModal,
 	SpecFailedModal,
 } from "@/common/components"
-import { connectorOptions } from "../components/connectorOptions"
+import { destinationConnectorOptions as connectorOptions } from "@/common/components/connectorOptions"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import validator from "@rjsf/validator-ajv8"

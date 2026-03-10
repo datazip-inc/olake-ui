@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { message } from "antd"
 import {
@@ -8,15 +8,19 @@ import {
 } from "@phosphor-icons/react"
 import { v4 as uuidv4 } from "uuid"
 
-import { useJobStore, useStreamSelectionStore } from "../stores"
 import { useCreateJob } from "../hooks"
-import { useTestSourceConnection } from "@/features/sources/hooks"
 import { useTestDestinationConnection } from "@/features/destinations/hooks"
+import { useTestSourceConnection } from "@/features/sources/hooks"
 import { useSources } from "@/features/sources/hooks"
 import { useDestinations } from "@/features/destinations/hooks"
+import {
+	useJobStore,
+	useStreamSelectionStore,
+	useJobConfigurationStore,
+} from "../stores"
 import { validationService } from "@/common/services/validationService"
 
-import { JobBase, JobCreationSteps, AdvancedSettings } from "../types"
+import { JobBase, JobCreationSteps } from "../types"
 import type { TestConnectionError } from "@/common/types"
 import {
 	buildConnectorPayload,
@@ -52,26 +56,66 @@ const JobCreation: React.FC = () => {
 		JOB_CREATION_STEPS.CONFIG as JobCreationSteps,
 	)
 
-	// Source/destination IDs selected from dropdowns
-	const [selectedSourceId, setSelectedSourceId] = useState<number | null>(
-		initialData.sourceId ? parseInt(initialData.sourceId) : null,
-	)
-	const [selectedDestinationId, setSelectedDestinationId] = useState<
-		number | null
-	>(initialData.destinationId ? parseInt(initialData.destinationId) : null)
+	// Config step states
+	const {
+		jobName,
+		cronExpression,
+		advancedSettings,
+		selectedSource,
+		selectedDestination,
+		setJobName,
+		setCronExpression,
+		setSelectedSource,
+		setSelectedDestination,
+		setAdvancedSettings,
+		setIsEditMode,
+		reset: resetJobConfig,
+	} = useJobConfigurationStore()
 
 	const streamsData = useStreamSelectionStore(state => state.streamsData)
-	const [jobName, setJobName] = useState(initialData.jobName || "")
-	const [cronExpression, setCronExpression] = useState(
-		initialData.cronExpression || "* * * * *",
-	)
-	const [advancedSettings, setAdvancedSettings] =
-		useState<AdvancedSettings | null>(initialData.advanced_settings || null)
 
-	// Once the job name is filled we disable it
-	const [jobNameFilled, setJobNameFilled] = useState(
-		initialData.isJobNameFilled || false,
-	)
+	// Initialize the store exactly once using initialData if navigating
+	useEffect(() => {
+		if (initialData.jobName) setJobName(initialData.jobName)
+		if (initialData.cronExpression)
+			setCronExpression(initialData.cronExpression)
+		if (initialData.advanced_settings)
+			setAdvancedSettings(initialData.advanced_settings)
+		setIsEditMode(false)
+
+		return () => {
+			resetJobConfig()
+		}
+	}, [])
+
+	// Load sources and destinations lists for dropdown resolution
+	const { data: sourcesData } = useSources()
+	const { data: destinationsData } = useDestinations()
+
+	// Pre-fill full source entity from URL param ID once sources load
+	useEffect(() => {
+		if (initialData.sourceId && sourcesData && !selectedSource) {
+			const source = (sourcesData as any[]).find(
+				(s: any) => s.id === parseInt(initialData.sourceId!),
+			)
+			if (source) setSelectedSource(source)
+		}
+	}, [initialData.sourceId, sourcesData, selectedSource, setSelectedSource])
+
+	// Pre-fill full destination entity from URL param ID once destinations load
+	useEffect(() => {
+		if (initialData.destinationId && destinationsData && !selectedDestination) {
+			const dest = (destinationsData as any[]).find(
+				(d: any) => d.id === parseInt(initialData.destinationId!),
+			)
+			if (dest) setSelectedDestination(dest)
+		}
+	}, [
+		initialData.destinationId,
+		destinationsData,
+		selectedDestination,
+		setSelectedDestination,
+	])
 
 	const { setShowResetStreamsModal } = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
@@ -91,18 +135,8 @@ const JobCreation: React.FC = () => {
 		"source" | "destination"
 	>("source")
 
-	// Load sources and destinations lists for dropdown resolution
-	const { data: sourcesData } = useSources()
-	const { data: destinationsData } = useDestinations()
-
-	// Resolve full entity data from selected IDs
-	const selectedSource =
-		sourcesData?.find((s: any) => s.id === selectedSourceId) ?? null
-	const selectedDestination =
-		destinationsData?.find((d: any) => d.id === selectedDestinationId) ?? null
-
-	const sourceConnector = buildConnectorPayload(selectedSource)
-	const destinationConnector = buildConnectorPayload(selectedDestination)
+	const sourceConnectorPayload = buildConnectorPayload(selectedSource)
+	const destinationConnectorPayload = buildConnectorPayload(selectedDestination)
 
 	const validateConfig = (): boolean => {
 		if (!jobName.trim()) {
@@ -110,11 +144,11 @@ const JobCreation: React.FC = () => {
 			return false
 		}
 		if (!validateCronExpression(cronExpression)) return false
-		if (!selectedSourceId) {
+		if (!selectedSource?.id) {
 			message.error("Please select a source")
 			return false
 		}
-		if (!selectedDestinationId) {
+		if (!selectedDestination?.id) {
 			message.error("Please select a destination")
 			return false
 		}
@@ -130,21 +164,21 @@ const JobCreation: React.FC = () => {
 			const testResult = isSource
 				? await testSourceMutation.mutateAsync({
 						source: {
-							type: sourceConnector.type,
-							version: sourceConnector.version,
-							config: sourceConnector.config,
+							type: sourceConnectorPayload.type,
+							version: sourceConnectorPayload.version,
+							config: sourceConnectorPayload.config,
 						},
 						existing: true,
 					})
 				: await testDestinationMutation.mutateAsync({
 						destination: {
-							type: destinationConnector.type,
-							version: destinationConnector.version,
-							config: destinationConnector.config,
+							type: destinationConnectorPayload.type,
+							version: destinationConnectorPayload.version,
+							config: destinationConnectorPayload.config,
 						},
 						existing: true,
-						sourceType: sourceConnector.type,
-						sourceVersion: sourceConnector.version,
+						sourceType: sourceConnectorPayload.type,
+						sourceVersion: sourceConnectorPayload.version,
 					})
 			setShowTestingModal(false)
 			if (
@@ -178,18 +212,18 @@ const JobCreation: React.FC = () => {
 		const newJobData: JobBase = {
 			name: jobName,
 			source: {
-				...(selectedSourceId && { id: selectedSourceId }),
+				...(selectedSource?.id && { id: selectedSource.id }),
 				name: selectedSource?.name ?? "",
-				type: sourceConnector.type,
-				version: sourceConnector.version,
-				config: sourceConnector.config,
+				type: sourceConnectorPayload.type,
+				version: sourceConnectorPayload.version,
+				config: sourceConnectorPayload.config,
 			},
 			destination: {
-				...(selectedDestinationId && { id: selectedDestinationId }),
+				...(selectedDestination?.id && { id: selectedDestination.id }),
 				name: selectedDestination?.name ?? "",
-				type: destinationConnector.type,
-				version: destinationConnector.version,
-				config: destinationConnector.config,
+				type: destinationConnectorPayload.type,
+				version: destinationConnectorPayload.version,
+				config: destinationConnectorPayload.config,
 			},
 			streams_config: JSON.stringify({
 				...streamsData,
@@ -233,7 +267,6 @@ const JobCreation: React.FC = () => {
 				const destOk = await runConnectionTest(false)
 				if (!destOk) return
 
-				setJobNameFilled(true)
 				setCurrentStep(JOB_CREATION_STEPS.STREAMS)
 				break
 			}
@@ -276,13 +309,13 @@ const JobCreation: React.FC = () => {
 			name: jobName,
 			source: {
 				name: selectedSource?.name ?? "",
-				type: sourceConnector.type,
-				id: selectedSourceId,
+				type: selectedSource?.type ?? "",
+				id: selectedSource?.id ?? undefined,
 			},
 			destination: {
 				name: selectedDestination?.name ?? "",
-				type: destinationConnector.type,
-				id: selectedDestinationId,
+				type: selectedDestination?.type ?? "",
+				id: selectedDestination?.id ?? undefined,
 			},
 			streams_config: JSON.stringify(draftStreams),
 			frequency: cronExpression,
@@ -330,20 +363,8 @@ const JobCreation: React.FC = () => {
 				>
 					{currentStep === JOB_CREATION_STEPS.CONFIG && (
 						<JobConfiguration
-							jobName={jobName}
-							setJobName={setJobName}
-							cronExpression={cronExpression}
-							setCronExpression={setCronExpression}
 							stepNumber={JOB_STEP_NUMBERS.CONFIG}
 							stepTitle="Job Configuration"
-							jobNameFilled={jobNameFilled}
-							advancedSettings={advancedSettings}
-							setAdvancedSettings={setAdvancedSettings}
-							selectedSourceId={selectedSourceId}
-							setSelectedSourceId={setSelectedSourceId}
-							selectedDestinationId={selectedDestinationId}
-							setSelectedDestinationId={setSelectedDestinationId}
-							isEditMode={false}
 						/>
 					)}
 
@@ -353,10 +374,10 @@ const JobCreation: React.FC = () => {
 								stepNumber={JOB_STEP_NUMBERS.STREAMS}
 								stepTitle="Streams Selection"
 								sourceName={selectedSource?.name ?? ""}
-								sourceConnector={sourceConnector.type}
-								sourceVersion={sourceConnector.version}
-								sourceConfig={sourceConnector.config}
-								destinationType={destinationConnector.type}
+								sourceConnector={sourceConnectorPayload.type}
+								sourceVersion={sourceConnectorPayload.version}
+								sourceConfig={sourceConnectorPayload.config}
+								destinationType={destinationConnectorPayload.type}
 								jobName={jobName}
 								advancedSettings={advancedSettings}
 							/>

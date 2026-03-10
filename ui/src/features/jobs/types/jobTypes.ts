@@ -123,22 +123,8 @@ export interface AdvancedSettings {
 }
 
 export interface JobConfigurationProps {
-	jobName: string
-	setJobName: React.Dispatch<React.SetStateAction<string>>
-	cronExpression?: string
-	setCronExpression: React.Dispatch<React.SetStateAction<string>>
 	stepNumber?: number
 	stepTitle?: string
-	jobNameFilled?: boolean
-	advancedSettings: AdvancedSettings | null
-	setAdvancedSettings: React.Dispatch<
-		React.SetStateAction<AdvancedSettings | null>
-	>
-	selectedSourceId: number | null
-	setSelectedSourceId: React.Dispatch<React.SetStateAction<number | null>>
-	selectedDestinationId: number | null
-	setSelectedDestinationId: React.Dispatch<React.SetStateAction<number | null>>
-	isEditMode?: boolean
 }
 export enum JobType {
 	Sync = "sync",

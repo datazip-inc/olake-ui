@@ -1,4 +1,5 @@
 import { Page, Locator, expect } from "@playwright/test"
+import { TIMEOUTS } from "../../playwright.config"
 import {
 	SOURCE_CONNECTOR_TEST_ID_MAP,
 	DESTINATION_CONNECTOR_TEST_ID_MAP,
@@ -30,4 +31,31 @@ export const selectConnector = async (
 	}
 
 	await expect(connectorSelect).toContainText(connector)
+}
+
+/**
+ * Polls for specific text by repeatedly clicking a given button.
+ * Default polling interval is 1 seconds. Max timeout uses `TIMEOUTS.LONG`.
+ */
+export const pollToClickAndVerifyText = async (
+	page: Page,
+	refreshButton: Locator,
+	expectedText: string,
+	options: { timeout?: number; interval?: number; expectTimeout?: number } = {},
+) => {
+	const {
+		timeout = TIMEOUTS.LONG,
+		interval = 1000,
+		expectTimeout = 1000,
+	} = options
+
+	await expect(async () => {
+		await refreshButton.click()
+		await expect(page.getByText(expectedText)).toBeVisible({
+			timeout: expectTimeout,
+		})
+	}).toPass({
+		timeout,
+		intervals: [interval],
+	})
 }

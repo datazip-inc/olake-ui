@@ -1,6 +1,7 @@
 import { Page, Locator, expect } from "@playwright/test"
 import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
+import { pollToClickAndVerifyText } from "../utils/page-utils"
 
 export class JobsPage extends BasePage {
 	readonly createJobButton: Locator
@@ -83,14 +84,23 @@ export class JobsPage extends BasePage {
 		await this.savedTab.click()
 	}
 
-	async viewJobLogs() {
+	async viewJobLogs(jobName?: string) {
 		// Wait for the page to be fully loaded first
 		await this.page.waitForLoadState("networkidle", {
 			timeout: TIMEOUTS.LONG,
 		})
+		await this.page.waitForTimeout(5000)
 
-		// Wait for the View logs button to be visible and enabled
-		const viewLogsButton = this.page.getByRole("button", { name: "View logs" })
+		// If a jobName is provided, find the button within that specific job's row.
+		// Otherwise, find the first button on the page (assuming multiple runs exist on history page).
+		const container = jobName ? await this.getJobRow(jobName) : this.page
+		const viewLogsButtonElement = container.getByRole("button", {
+			name: "View logs",
+		})
+		const viewLogsButton = jobName
+			? viewLogsButtonElement
+			: viewLogsButtonElement.first()
+
 		await viewLogsButton.waitFor({
 			state: "visible",
 			timeout: TIMEOUTS.LONG,
@@ -112,5 +122,25 @@ export class JobsPage extends BasePage {
 		await expect(
 			this.page.getByRole("cell", { name: "Total records read:" }),
 		).toBeVisible()
+	}
+
+	async waitForSyncCompletionLogs() {
+		// Find the refresh button using test id
+		const refreshButton = this.page.getByTestId("refresh-logs-button")
+
+		// Poll every 5 seconds for up to the LONG timeout
+		await pollToClickAndVerifyText(
+			this.page,
+			refreshButton,
+			"Sync completed, wait 5 seconds cleanup in progress...",
+		)
+
+		// Wait 5 seconds after the message appears as requested
+		await this.page.waitForTimeout(5000)
+	}
+
+	async expectJobStatus(jobName: string, expectedStatus: string) {
+		const row = this.page.getByRole("row").filter({ hasText: jobName }).first()
+		await expect(row).toContainText(expectedStatus)
 	}
 }

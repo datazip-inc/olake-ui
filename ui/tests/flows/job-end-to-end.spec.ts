@@ -3,8 +3,6 @@ import { testAuthenticated as test, expect } from "../fixtures"
 import {
 	createPostgresSourceConfig,
 	POSTGRES_SOURCE_CONFIG,
-	createIcebergJdbcConfig,
-	ICEBERG_JDBC_CONFIG,
 	JOB_CONFIG,
 	TestDataBuilder,
 	verifyEntityCreationSuccessModal,
@@ -94,16 +92,20 @@ test.describe("Job End-to-End User Journey", () => {
 
 		// Step 4: Sync Job and Verify
 		await jobsPage.syncJob(jobName)
-		await expect(page).toHaveURL(/\/jobs\/.*\/history/)
 
-		// Step 5: Verify Job Details
+		// Step 5: Wait for sync logs to appear
 		await jobsPage.viewJobLogs()
-		await jobsPage.viewJobConfigurations()
 
-		// Step 6: Verify Job in List
+		// Step 6: Wait for sync completion
+		await jobsPage.waitForSyncCompletionLogs()
+
+		// Step 7: Verify Job in List
 		await jobsPage.navigateToJobs()
 		await jobsPage.expectJobsPageVisible()
 		await jobsPage.expectJobExists(jobName)
+
+		// Step 8: Verify status is Completed
+		await jobsPage.expectJobStatus(jobName, "Completed")
 	})
 
 	// test("should handle error scenarios in job workflow", async ({

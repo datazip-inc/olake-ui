@@ -7,8 +7,8 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
 import { useJobStore, useStreamSelectionStore } from "../stores"
 import { useJobDetails, useUpdateJob } from "../hooks"
 import { jobService } from "../services"
-import { Job, JobBase, JobCreationSteps, AdvancedSettings } from "../types"
-import { StreamData, StreamsDataStructure } from "@/common/types"
+import { Job, JobBase, JobCreationSteps } from "../types"
+import { StreamData, StreamsDataStructure, Entity } from "@/common/types"
 import {
 	JobConfiguration,
 	StepIndicator as StepProgress,
@@ -28,6 +28,7 @@ import {
 	JOB_STEP_NUMBERS,
 	STREAM_DEFAULTS,
 } from "../constants"
+import { useJobConfigurationStore } from "../stores"
 
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
@@ -57,11 +58,6 @@ const JobEdit: React.FC = () => {
 	)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 
-	const [selectedSourceId, setSelectedSourceId] = useState<number | null>(null)
-	const [selectedDestinationId, setSelectedDestinationId] = useState<
-		number | null
-	>(null)
-
 	const [sourceSnapshot, setSourceSnapshot] = useState<{
 		id?: number
 		name: string
@@ -81,11 +77,18 @@ const JobEdit: React.FC = () => {
 	const [streamDifference, setStreamDifference] =
 		useState<StreamsDataStructure | null>(null)
 
-	// Config step states
-	const [jobName, setJobName] = useState("")
-	const [cronExpression, setCronExpression] = useState("* * * * *")
-	const [advancedSettings, setAdvancedSettings] =
-		useState<AdvancedSettings | null>(null)
+	const {
+		jobName,
+		cronExpression,
+		advancedSettings,
+		setJobName,
+		setCronExpression,
+		setSelectedSource,
+		setSelectedDestination,
+		setAdvancedSettings,
+		setIsEditMode,
+		reset: resetJobConfig,
+	} = useJobConfigurationStore()
 
 	const initialStreamsData = useRef<StreamsDataStructure | null>(null)
 
@@ -101,7 +104,13 @@ const JobEdit: React.FC = () => {
 			typeof job.source.config === "string"
 				? job.source.config
 				: JSON.stringify(job.source.config)
-		setSelectedSourceId(job.source.id ?? null)
+		setSelectedSource({
+			id: job.source.id as number,
+			name: job.source.name,
+			type: job.source.type,
+			config: sourceConfig,
+			version: job.source.version,
+		} as Entity)
 		setSourceSnapshot({
 			id: job.source.id,
 			name: job.source.name,
@@ -115,7 +124,13 @@ const JobEdit: React.FC = () => {
 			typeof job.destination.config === "string"
 				? job.destination.config
 				: JSON.stringify(job.destination.config)
-		setSelectedDestinationId(job.destination.id ?? null)
+		setSelectedDestination({
+			id: job.destination.id as number,
+			name: job.destination.name,
+			type: job.destination.type,
+			config: destConfig,
+			version: job.destination.version,
+		} as Entity)
 		setDestinationSnapshot({
 			id: job.destination.id,
 			name: job.destination.name,
@@ -128,6 +143,8 @@ const JobEdit: React.FC = () => {
 		if (job.frequency) {
 			setCronExpression(job.frequency)
 		}
+
+		setIsEditMode(true)
 
 		// Parse streams config
 		if (job.streams_config) {
@@ -160,6 +177,13 @@ const JobEdit: React.FC = () => {
 			initializeFromExistingJob(job)
 		}
 	}, [job])
+
+	// Clean up store on unmount
+	useEffect(() => {
+		return () => {
+			resetJobConfig()
+		}
+	}, [])
 
 	// Navigate to jobs list on fetch error
 	useEffect(() => {
@@ -383,19 +407,8 @@ const JobEdit: React.FC = () => {
 					<div className="h-full">
 						{currentStep === JOB_CREATION_STEPS.CONFIG && (
 							<JobConfiguration
-								jobName={jobName}
-								setJobName={setJobName}
-								cronExpression={cronExpression}
-								setCronExpression={setCronExpression}
 								stepNumber={JOB_STEP_NUMBERS.CONFIG}
 								stepTitle="Job Configuration"
-								advancedSettings={advancedSettings}
-								setAdvancedSettings={setAdvancedSettings}
-								selectedSourceId={selectedSourceId}
-								setSelectedSourceId={setSelectedSourceId}
-								selectedDestinationId={selectedDestinationId}
-								setSelectedDestinationId={setSelectedDestinationId}
-								isEditMode={true}
 							/>
 						)}
 

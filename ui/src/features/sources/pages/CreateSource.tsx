@@ -42,7 +42,7 @@ import {
 	EntityCancelModal,
 	SpecFailedModal,
 } from "@/common/components"
-import connectorOptions from "../components/connectorOptions"
+import { sourceConnectorOptions as connectorOptions } from "@/common/components/connectorOptions"
 import { SETUP_TYPES } from "../../../common/constants/constants"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"

@@ -2,18 +2,11 @@ import React from "react"
 import { InputNumber, Tooltip } from "antd"
 import { InfoIcon, SlidersIcon } from "@phosphor-icons/react"
 
-import { AdvancedSettings } from "../types"
 import { restrictNumericInput } from "@/common/utils"
+import { useJobConfigurationStore } from "../stores"
 
-interface AdvancedSettingsCardProps {
-	advancedSettings: AdvancedSettings | null
-	setAdvancedSettings: (settings: AdvancedSettings | null) => void
-}
-
-const AdvancedSettingsCard: React.FC<AdvancedSettingsCardProps> = ({
-	advancedSettings,
-	setAdvancedSettings,
-}) => {
+const AdvancedSettingsCard: React.FC = () => {
+	const { advancedSettings, setAdvancedSettings } = useJobConfigurationStore()
 	return (
 		<div className="mt-5 rounded-xl border border-[#D9D9D9] p-6">
 			<div className="mb-6 flex items-center gap-2">

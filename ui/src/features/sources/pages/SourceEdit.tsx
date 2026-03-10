@@ -45,7 +45,7 @@ import {
 	EntityEditModal,
 	SpecFailedModal,
 } from "@/common/components"
-import connectorOptions from "../components/connectorOptions"
+import { sourceConnectorOptions as connectorOptions } from "@/common/components/connectorOptions"
 import { getStatusIcon } from "@/common/components/statusIcons"
 import {
 	transformErrors,

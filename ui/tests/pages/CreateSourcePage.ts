@@ -3,6 +3,10 @@ import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
 import { SourceFormConfig } from "../types/PageConfig.types"
 import { selectConnector } from "../utils/page-utils"
+import {
+	expectTestConnectionModalVisible,
+	assertTestConnectionOutcome,
+} from "../utils/modal-utils"
 import { SourceConnector } from "../enums"
 
 export class CreateSourcePage extends BasePage {
@@ -147,38 +151,23 @@ export class CreateSourcePage extends BasePage {
 	}
 
 	async expectTestConnectionModal() {
-		// Wait for the modal with "Testing your connection" text to appear
-		await this.page.waitForSelector("text=Testing your connection", {
-			state: "visible",
-		})
-
-		// Check if the text exists (more reliable than checking modal visibility)
-		await expect(this.page.getByText("Testing your connection")).toHaveCount(1)
+		await expectTestConnectionModalVisible(this.page, "Source")
 	}
 
 	async expectSuccessModal() {
-		await this.page.waitForSelector("text=Connection successful", {
-			state: "visible",
-		})
-		await expect(this.page.getByText("Connection successful")).toBeVisible()
+		await this.page.waitForSelector(
+			"text=Source test connection is successful",
+			{
+				state: "visible",
+			},
+		)
+		await expect(
+			this.page.getByText("Source test connection is successful"),
+		).toBeVisible()
 	}
 
 	async assertTestConnectionSucceeded() {
-		const failure = this.page
-			.waitForSelector("text=Your test connection has failed", {
-				state: "visible",
-				timeout: TIMEOUTS.LONG,
-			})
-			.then(() => "failure")
-		const success = this.page
-			.waitForSelector("text=Connection successful", {
-				state: "visible",
-				timeout: TIMEOUTS.LONG,
-			})
-			.then(() => "success")
-
-		const outcome = await Promise.race([failure, success])
-		expect(outcome, "Test connection failed").toBe("success")
+		await assertTestConnectionOutcome(this.page, "Source")
 	}
 
 	async expectEntitySavedModal() {

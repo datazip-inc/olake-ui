@@ -295,6 +295,7 @@ const JobLogs: React.FC = () => {
 					/>
 					<Tooltip title="Click to refetch the logs">
 						<Button
+							data-testid="refresh-logs-button"
 							icon={<ArrowsClockwiseIcon size={16} />}
 							onClick={handleRefresh}
 							className="flex items-center"
