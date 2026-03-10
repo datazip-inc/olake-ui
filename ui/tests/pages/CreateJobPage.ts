@@ -1,4 +1,4 @@
-import { Page, Locator, expect } from "@playwright/test"
+import { Page, Locator } from "@playwright/test"
 import { BasePage } from "./BasePage"
 import { JobFormConfig } from "../types/PageConfig.types"
 import { DestinationConnector, SourceConnector } from "../enums"

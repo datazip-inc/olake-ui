@@ -1,5 +1,4 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
 import { BasePage } from "./BasePage"
 import { SourceFormConfig } from "../types/PageConfig.types"
 import { selectConnector } from "../utils/page-utils"
