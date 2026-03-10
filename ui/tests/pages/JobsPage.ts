@@ -47,7 +47,15 @@ export class JobsPage extends BasePage {
 	async syncJob(jobName: string) {
 		const jobRow = await this.getJobRow(jobName)
 		await jobRow.click()
-		await this.page.getByText("Sync now").click()
+		const syncNowBtn = this.page.getByText("Sync now")
+		await expect(syncNowBtn).toBeVisible()
+		await expect(syncNowBtn).toBeEnabled()
+
+		// Click the button AND wait for the navigation to the history page
+		await Promise.all([
+			this.page.waitForURL("**/history", { timeout: 10000 }), // Wait up to 10s for the redirect
+			syncNowBtn.click(),
+		])
 	}
 
 	async editJob(jobName: string) {
@@ -85,36 +93,38 @@ export class JobsPage extends BasePage {
 	}
 
 	async viewJobLogs(jobName?: string) {
-		// Wait for the page to be fully loaded first
 		await this.page.waitForLoadState("networkidle", {
 			timeout: TIMEOUTS.LONG,
 		})
 
-		// wait for job history to load before trying to refetch
-		await this.page.waitForTimeout(5000)
+		// Dynamic getter so Playwright re-evaluates the DOM on every retry loop
+		const getViewLogsButton = () => {
+			const container = jobName
+				? this.page.getByTestId(`job-${jobName}`)
+				: this.page
+			return container.getByRole("button", { name: "View logs" }).first()
+		}
 
-		const container = jobName ? await this.getJobRow(jobName) : this.page
-		const viewLogsButtonElement = container.getByRole("button", {
-			name: "View logs",
+		// Playwright will retry this block until the assertions inside pass
+		await expect(async () => {
+			const btn = getViewLogsButton()
+
+			// If the job hasn't appeared yet, force a hard reload
+			if (!(await btn.isVisible())) {
+				await this.page.reload()
+				await this.page.waitForLoadState("networkidle")
+			}
+
+			// Attempt to assert visibility. If this fails, expect.toPass() catches the error and retries.
+			await expect(btn).toBeVisible({ timeout: 2000 })
+		}).toPass({
+			timeout: TIMEOUTS.LONG,
+			intervals: [3000], // Wait 3 seconds between reload attempts
 		})
-		const viewLogsButton = jobName
-			? viewLogsButtonElement
-			: viewLogsButtonElement.first()
 
-		const refreshBtn = this.page.getByTestId("refresh-tasks-button")
-
-		// Reusing the polling utility!
-		await pollToClickAndVerifyText(
-			this.page,
-			refreshBtn,
-			viewLogsButton,
-			{ interval: 2000 }, // wait 2s between clicks
-		)
-
-		// Ensure the button is enabled before clicking
-		await expect(viewLogsButton).toBeEnabled({ timeout: TIMEOUTS.LONG })
-
-		await viewLogsButton.click()
+		const finalBtn = getViewLogsButton()
+		await expect(finalBtn).toBeEnabled({ timeout: TIMEOUTS.LONG })
+		await finalBtn.click()
 	}
 
 	async viewJobConfigurations() {
