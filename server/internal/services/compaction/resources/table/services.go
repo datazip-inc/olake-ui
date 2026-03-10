@@ -2,7 +2,6 @@ package table
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -21,12 +20,6 @@ func NewService(c *client.Compaction) *Service {
 	}
 }
 
-type Response struct {
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Result  json.RawMessage `json:"result"`
-}
-
 // GetDatabases returns the list of databases for a given catalog
 func (c *Service) GetDatabases(ctx context.Context, catalog string, keywords string) (interface{}, error) {
 	path := fmt.Sprintf("%scatalogs/%s/databases", models.ApiBase, catalog)
@@ -36,26 +29,7 @@ func (c *Service) GetDatabases(ctx context.Context, catalog string, keywords str
 		params.Set("keywords", keywords)
 	}
 
-	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, path, params, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get databases for catalog %s: %w", catalog, err)
-	}
-
-	var resp Response
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if resp.Code != 200 && resp.Code != 0 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
-	}
-
-	var result interface{}
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse databases result: %w", err)
-	}
-
-	return result, nil
+	return c.compaction.Do(ctx, http.MethodGet, path, params, nil)
 }
 
 // GetTables returns the list of tables for a given catalog and database
@@ -67,26 +41,7 @@ func (c *Service) GetTables(ctx context.Context, catalog string, database string
 		params.Set("keywords", keywords)
 	}
 
-	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, path, params, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %w", catalog, database, err)
-	}
-
-	var resp Response
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if resp.Code != 200 && resp.Code != 0 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
-	}
-
-	var result interface{}
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse tables result: %w", err)
-	}
-
-	return result, nil
+	return c.compaction.Do(ctx, http.MethodGet, path, params, nil)
 }
 
 // returns the details of a specific table including size information
@@ -132,29 +87,18 @@ func (c *Service) GetLatestSnapshot(ctx context.Context, catalog string, databas
 	return summary, nil
 }
 
-// GetOptimizingProcesses returns the optimization process history for a table
-func (c *Service) GetOptimizingProcesses(ctx context.Context, catalog string, database string, table string) (interface{}, error) {
+// returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
+func (c *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.ApiBase, catalog, database, table)
 
 	params := url.Values{}
+	params.Set("type", processType)
+	params.Set("page", "1")
+	params.Set("pageSize", "1")
 
-	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, path, params, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get optimizing processes for %s.%s.%s: %w", catalog, database, table, err)
-	}
-
-	var resp Response
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if resp.Code != 200 && resp.Code != 0 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
-	}
-
-	var result interface{}
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse optimizing processes result: %w", err)
+	var result map[string]interface{}
+	if err := c.compaction.DoInto(ctx, http.MethodGet, path, params, nil, &result); err != nil {
+		return nil, fmt.Errorf("failed to get latest %s process for %s.%s.%s: %w", processType, catalog, database, table, err)
 	}
 
 	return result, nil

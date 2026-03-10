@@ -117,14 +117,12 @@ func Init(h *handlers.Handler) {
 
 	compactionHandler := h.Compaction
 
-	// table listing route
-	web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
-
 	// catalog
 	web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
-	web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
+	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "get:GetCatalog")
 	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "put:UpdateCatalog")
 	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "delete:DeleteCatalog")
+	web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
 
 	// table
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/metrics", compactionHandler, "get:GetTableMetrics")
@@ -140,5 +138,7 @@ func Init(h *handlers.Handler) {
 	// Compaction table properties routes
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")
 	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/disable-optimizing", compactionHandler, "post:DisableSelfOptimizing")
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/properties", compactionHandler, "post:SetTableProperties")
+
+	// table listing route
+	web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
 }

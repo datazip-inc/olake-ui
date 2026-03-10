@@ -3,7 +3,6 @@ package aggregator
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
@@ -92,6 +91,13 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog string, data
 		return response, nil
 	}
 
+	// Fetch catalog metadata once to get table properties
+	var catalogMeta *models.CatalogRequest
+	catalogMeta, err = s.getCatalogMetadata(ctx, catalog)
+	if err != nil {
+		fmt.Printf("Failed to get catalog metadata for %s: %v\n", catalog, err)
+	}
+
 	// Parse tables and fetch details for each
 	for _, tableItem := range tablesList {
 		tableMap, ok := tableItem.(map[string]interface{})
@@ -118,6 +124,11 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog string, data
 				}
 			}
 
+			// Get enabled/disabled status from catalog table properties
+			if catalogMeta != nil {
+				tableInfo.Enabled = s.getTableEnabledStatus(catalogMeta, databaseName, tableName)
+			}
+
 			// Fetch table details to get totalSize
 			tableDetails, err := s.table.GetTableDetails(ctx, catalog, databaseName, tableName)
 			if err != nil {
@@ -133,89 +144,10 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog string, data
 				}
 			}
 
-			// Fetch optimizing processes to get MAJOR, MINOR, FULL optimization data
-			optimizingProcesses, err := s.table.GetOptimizingProcesses(ctx, catalog, databaseName, tableName)
-			if err != nil {
-				fmt.Printf("Failed to get optimizing processes for table %s.%s.%s: %v\n", catalog, databaseName, tableName, err)
-			} else {
-				// Parse optimization processes
-				if processesMap, ok := optimizingProcesses.(map[string]interface{}); ok {
-					if processList, ok := processesMap["list"].([]interface{}); ok {
-						// Track latest process for each type
-						latestProcesses := make(map[string]map[string]interface{})
-
-						// Iterate through all processes to find the latest for each type
-						for _, processItem := range processList {
-							if process, ok := processItem.(map[string]interface{}); ok {
-								optimizingType, _ := process["optimizingType"].(string)
-								finishTime, _ := process["finishTime"].(float64)
-
-								if optimizingType != "" {
-									// Check if this is the latest process for this type
-									if existing, exists := latestProcesses[optimizingType]; !exists {
-										latestProcesses[optimizingType] = process
-									} else {
-										existingFinishTime, _ := existing["finishTime"].(float64)
-										if finishTime > existingFinishTime {
-											latestProcesses[optimizingType] = process
-										}
-									}
-								}
-							}
-						}
-
-						// Extract data for MAJOR, MINOR, FULL
-						for processType, process := range latestProcesses {
-							finishTime, _ := process["finishTime"].(float64)
-							status, _ := process["status"].(string)
-
-							// Convert timestamp to relative time format
-							var lastRun string
-							if finishTime > 0 {
-								timestamp := time.Unix(0, int64(finishTime)*int64(time.Millisecond))
-								duration := time.Since(timestamp)
-
-								if duration < time.Minute {
-									seconds := int(duration.Seconds())
-									if seconds == 1 {
-										lastRun = "1 sec ago"
-									} else {
-										lastRun = fmt.Sprintf("%d secs ago", seconds)
-									}
-								} else if duration < time.Hour {
-									minutes := int(duration.Minutes())
-									if minutes == 1 {
-										lastRun = "1 minute ago"
-									} else {
-										lastRun = fmt.Sprintf("%d minutes ago", minutes)
-									}
-								} else {
-									hours := int(duration.Hours())
-									if hours == 1 {
-										lastRun = "1 hour ago"
-									} else {
-										lastRun = fmt.Sprintf("%d hours ago", hours)
-									}
-								}
-							}
-
-							optimizationInfo := &models.OptimizationInfo{
-								LastRun: lastRun,
-								Status:  status,
-							}
-
-							switch processType {
-							case "MAJOR":
-								tableInfo.Major = optimizationInfo
-							case "MINOR":
-								tableInfo.Minor = optimizationInfo
-							case "FULL":
-								tableInfo.Full = optimizationInfo
-							}
-						}
-					}
-				}
-			}
+			// Fetch latest optimizing processes for each type using API parameters
+			tableInfo.Minor = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MINOR")
+			tableInfo.Major = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MAJOR")
+			tableInfo.Full = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "FULL")
 
 			response.Tables = append(response.Tables, tableInfo)
 		}

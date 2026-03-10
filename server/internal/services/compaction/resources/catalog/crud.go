@@ -20,7 +20,6 @@ func NewService(c *client.Compaction) *Service {
 	}
 }
 
-// returns the list of catalogs
 func (s *Service) GetCatalogs(ctx context.Context) (interface{}, error) {
 	path := models.ApiBase + "catalogs"
 	result, err := s.compaction.Do(ctx, http.MethodGet, path, url.Values{}, nil)
@@ -31,11 +30,28 @@ func (s *Service) GetCatalogs(ctx context.Context) (interface{}, error) {
 	return result, nil
 }
 
+func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.CatalogRequest, error) {
+	if catalogName == "" {
+		return nil, fmt.Errorf("catalog name is required")
+	}
+
+	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
+	var result models.CatalogRequest
+	if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result); err != nil {
+		return nil, fmt.Errorf("failed to get catalog %s: %w", catalogName, err)
+	}
+
+	return &result, nil
+}
+
 // creates a new catalog
 func (s *Service) CreateCatalog(ctx context.Context, req models.CatalogRequest) (*models.CatalogResponse, error) {
 	if err := validateCatalog(&req); err != nil {
 		return nil, err
 	}
+
+	// Set default table properties for Iceberg tables
+	setDefaultTableProperties(&req)
 
 	path := fmt.Sprintf("%scatalogs", models.ApiBase)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
@@ -56,7 +72,7 @@ func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req mod
 
 	req.Name = catalogName
 	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
-	if err := s.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
+	if err := s.compaction.DoAndValidate(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
 		return nil, fmt.Errorf("failed to update catalog %s: %w", req.Name, err)
 	}
 
@@ -105,4 +121,33 @@ func validateCatalog(req *models.CatalogRequest) error {
 	}
 
 	return nil
+}
+
+func setDefaultTableProperties(req *models.CatalogRequest) {
+	if req.Properties == nil {
+		req.Properties = make(map[string]string)
+	}
+
+	req.Properties["table.self-optimizing.enabled"] = "false"
+	req.Properties["table.self-optimizing.quota"] = "0.1"
+}
+
+// SetCatalogTableProperty sets a table property in the catalog's tableProperties map
+// The key format is: <database>:<table>
+// The value format is: <enabled>,<minor_interval>,<major_interval>,<full_interval>
+func (s *Service) SetCatalogTableProperty(ctx context.Context, catalogName, database, table, key, value string) (*models.CatalogResponse, error) {
+	catalogReq, err := s.GetCatalog(ctx, catalogName)
+	if err != nil {
+		return nil, err
+	}
+
+	if catalogReq.TableProperties == nil {
+		catalogReq.TableProperties = make(map[string]string)
+	}
+
+	// Use <database>:<table> as the key
+	tableKey := fmt.Sprintf("%s:%s", database, table)
+	catalogReq.TableProperties[tableKey] = value
+
+	return s.UpdateCatalog(ctx, catalogName, *catalogReq)
 }

@@ -60,28 +60,12 @@ type SetTablePropertiesRequest struct {
 }
 
 // CompactionCronConfigRequest represents the request to set compaction cron configuration
+// TriggerInterval values are in milliseconds. Use "never" to disable a specific compaction type.
 type CompactionCronConfigRequest struct {
-	Minor          *CronFrequency  `json:"minor,omitempty"`
-	Major          *CronFrequency  `json:"major,omitempty"`
-	Full           *CronFrequency  `json:"full,omitempty"`
-	AdvancedConfig *AdvancedConfig `json:"advanced-config,omitempty"`
-	Cleanup        *CleanupConfig  `json:"cleanup,omitempty"`
-}
-
-type CronFrequency struct {
-	Frequency string `json:"frequency"`
-}
-
-type AdvancedConfig struct {
-	TargetFileSize string `json:"target-file-size,omitempty"`
-}
-
-type CleanupConfig struct {
-	AdvancedConfig *CleanupAdvancedConfig `json:"advanced-config,omitempty"`
-}
-
-type CleanupAdvancedConfig struct {
-	RemoveSnapshotsOlderThan string `json:"remove-snapshots-older-than,omitempty"`
+	Enabled              bool   `json:"enabled"`
+	MinorTriggerInterval string `json:"minorTriggerInterval"`
+	MajorTriggerInterval string `json:"majorTriggerInterval"`
+	FullTriggerInterval  string `json:"fullTriggerInterval"`
 }
 
 // CompactionCronConfigResponse represents the response from setting cron configuration

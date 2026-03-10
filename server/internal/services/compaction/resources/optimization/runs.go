@@ -2,12 +2,10 @@ package optimization
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 
-	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
@@ -215,19 +213,5 @@ func (c *Service) CancelCompactionProcess(ctx context.Context, catalog, database
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes/%s/cancel",
 		models.ApiBase, catalog, database, table, processID)
 
-	respBody, err := c.compaction.DoRequest(ctx, http.MethodPost, path, url.Values{}, nil)
-	if err != nil {
-		return fmt.Errorf("failed to cancel process %s for %s.%s.%s: %w", processID, catalog, database, table, err)
-	}
-
-	var resp dto.CompactionResponse
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	if resp.Code != 200 && resp.Code != 0 {
-		return fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
-	}
-
-	return nil
+	return c.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, nil)
 }

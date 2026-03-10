@@ -2,11 +2,11 @@ package compaction
 
 import (
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/views"
-	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalog"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalog"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/optimization"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/table"
+	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/views"
 )
 
 // CompactionService is a unified service for compaction operations
@@ -26,8 +26,8 @@ func InitAppService(db *database.Database, client *client.Compaction) (*Compacti
 	return &CompactionService{
 		db:           db,
 		client:       client,
-		Catalog:      catalog.NewService(client),
-		Table:        table.NewService(client),
+		Catalog:      catalogSvc,
+		Table:        tableSvc,
 		Optimization: optimization.NewService(client, tableSvc),
 		Aggregator:   aggregator.NewService(client, catalogSvc, tableSvc),
 	}, nil

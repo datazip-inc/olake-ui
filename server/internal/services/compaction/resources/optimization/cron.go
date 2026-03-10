@@ -2,122 +2,148 @@ package optimization
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
-	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
-// SetCompactionCronConfig stores the compaction cron configuration in catalog properties
-// The configuration is stored with key: table.<database>:<table>:cron
 func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) (*models.CompactionCronConfigResponse, error) {
-	// First, get the current catalog metadata
-	catalogPath := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
-	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, catalogPath, url.Values{}, nil)
+	properties := make(map[string]string)
+
+	minorInterval := parseIntervalValue(config.MinorTriggerInterval)
+	if minorInterval != "-1" {
+		properties["self-optimizing.minor.trigger.interval"] = minorInterval
+	}
+
+	majorInterval := parseIntervalValue(config.MajorTriggerInterval)
+	if majorInterval != "-1" {
+		// TODO: recheck this
+		properties["self-optimizing.minor.trigger.interval"] = majorInterval
+	}
+
+	fullInterval := parseIntervalValue(config.FullTriggerInterval)
+	if fullInterval != "-1" {
+		properties["self-optimizing.full.trigger.interval"] = fullInterval
+	}
+
+	// sql query
+	sqlResult, err := c.table.SetTableProperties(ctx, models.SetTablePropertiesRequest{
+		Catalog:    catalog,
+		Database:   database,
+		Table:      table,
+		Properties: properties,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get catalog %s: %w", catalog, err)
+		return nil, fmt.Errorf("failed to execute SQL for table properties: %w", err)
 	}
 
-	var catalogResp dto.CompactionResponse
-	if err := json.Unmarshal(respBody, &catalogResp); err != nil {
-		return nil, fmt.Errorf("failed to parse catalog response: %w", err)
+	if !sqlResult.Success {
+		return &models.CompactionCronConfigResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to set table properties via SQL: %s", sqlResult.Message),
+		}, nil
 	}
 
-	if catalogResp.Code != 200 && catalogResp.Code != 0 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", catalogResp.Code, catalogResp.Message)
-	}
-
-	// Parse catalog metadata
-	var catalogMeta map[string]interface{}
-	if err := json.Unmarshal(catalogResp.Result, &catalogMeta); err != nil {
-		return nil, fmt.Errorf("failed to parse catalog metadata: %w", err)
-	}
-
-	// Get or create properties map
-	var properties map[string]interface{}
-	if props, ok := catalogMeta["properties"].(map[string]interface{}); ok {
-		properties = props
-	} else {
-		properties = make(map[string]interface{})
-		catalogMeta["properties"] = properties
-	}
-
-	// Convert config to JSON string
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config: %w", err)
-	}
-
-	// Store config with key: table.<database>:<table>:cron
-	propertyKey := fmt.Sprintf("table.%s:%s:cron", database, table)
-	properties[propertyKey] = string(configJSON)
-
-	// Update the catalog with new properties
-	updatePath := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
-	updateRespBody, err := c.compaction.DoRequest(ctx, http.MethodPut, updatePath, url.Values{}, catalogMeta)
-	if err != nil {
-		return nil, fmt.Errorf("failed to update catalog %s: %w", catalog, err)
-	}
-
-	var updateResp dto.CompactionResponse
-	if err := json.Unmarshal(updateRespBody, &updateResp); err != nil {
-		return nil, fmt.Errorf("failed to parse update response: %w", err)
-	}
-
-	if updateResp.Code != 200 && updateResp.Code != 0 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", updateResp.Code, updateResp.Message)
+	// store in catalog properties
+	if err := c.storeCatalogTableProperty(ctx, catalog, database, table, config); err != nil {
+		return nil, fmt.Errorf("failed to store catalog table property: %w", err)
 	}
 
 	return &models.CompactionCronConfigResponse{
 		Success: true,
-		Message: fmt.Sprintf("Successfully stored compaction cron configuration for %s.%s.%s", catalog, database, table),
+		Message: fmt.Sprintf("Successfully configured compaction for %s.%s.%s", catalog, database, table),
 	}, nil
 }
 
-// GetCompactionCronConfig retrieves the compaction cron configuration from catalog properties
+// retrieves the compaction cron configuration from catalog properties
 func (c *Service) GetCompactionCronConfig(ctx context.Context, catalog, database, table string) (*models.CompactionCronConfigRequest, error) {
-	catalogPath := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
-	respBody, err := c.compaction.DoRequest(ctx, http.MethodGet, catalogPath, url.Values{}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get catalog %s: %w", catalog, err)
-	}
+	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
 
-	var catalogResp dto.CompactionResponse
-	if err := json.Unmarshal(respBody, &catalogResp); err != nil {
-		return nil, fmt.Errorf("failed to parse catalog response: %w", err)
-	}
-
-	if catalogResp.Code != 200 && catalogResp.Code != 0 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", catalogResp.Code, catalogResp.Message)
-	}
-
-	// Parse catalog metadata
 	var catalogMeta map[string]interface{}
-	if err := json.Unmarshal(catalogResp.Result, &catalogMeta); err != nil {
-		return nil, fmt.Errorf("failed to parse catalog metadata: %w", err)
+	if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
+		return nil, fmt.Errorf("failed to get catalog: %w", err)
 	}
 
-	// Get properties map
-	properties, ok := catalogMeta["properties"].(map[string]interface{})
-	if !ok {
-		return &models.CompactionCronConfigRequest{}, nil
-	}
+	tableProperties, _ := catalogMeta["tableProperties"].(map[string]interface{})
 
-	// Retrieve config with key: table.<database>:<table>:cron
-	propertyKey := fmt.Sprintf("table.%s:%s:cron", database, table)
-	configStr, ok := properties[propertyKey].(string)
+	tableKey := fmt.Sprintf("%s:%s", database, table)
+	configStr, ok := tableProperties[tableKey].(string)
 	if !ok || configStr == "" {
-		return &models.CompactionCronConfigRequest{}, nil
+		return &models.CompactionCronConfigRequest{
+			MinorTriggerInterval: "never",
+			MajorTriggerInterval: "never",
+			FullTriggerInterval:  "never",
+		}, nil
 	}
 
-	// Parse the JSON config
-	var config models.CompactionCronConfigRequest
-	if err := json.Unmarshal([]byte(configStr), &config); err != nil {
-		return nil, fmt.Errorf("failed to parse stored config: %w", err)
+	// parse the config string: <enabled>,<minor>,<major>,<full>
+	parts := strings.Split(configStr, ",")
+	if len(parts) != 4 {
+		return nil, fmt.Errorf("invalid config format: expected 4 parts, got %d", len(parts))
 	}
 
-	return &config, nil
+	enabled := parts[0] == "true"
+
+	return &models.CompactionCronConfigRequest{
+		Enabled:              enabled,
+		MinorTriggerInterval: parts[1],
+		MajorTriggerInterval: parts[2],
+		FullTriggerInterval:  parts[3],
+	}, nil
 }
+
+// parseIntervalValue converts user input to milliseconds or -1 for "never"
+func parseIntervalValue(interval string) string {
+	// never
+	if strings.ToLower(interval) == "never" || interval == "" {
+		return "-1"
+	}
+
+	if _, err := strconv.ParseInt(interval, 10, 64); err == nil {
+		return interval
+	}
+
+	return "-1"
+}
+
+// storeCatalogTableProperty stores the configuration in catalog table properties
+func (c *Service) storeCatalogTableProperty(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) error {
+	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
+
+	var catalogMeta map[string]interface{}
+	if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
+		return fmt.Errorf("failed to get catalog: %w", err)
+	}
+
+	// Get or create table properties map
+	var tableProperties map[string]interface{}
+	if props, ok := catalogMeta["tableProperties"].(map[string]interface{}); ok {
+		tableProperties = props
+	} else {
+		tableProperties = make(map[string]interface{})
+		catalogMeta["tableProperties"] = tableProperties
+	}
+
+	// Store config with key: <database>:<table>, value: <enabled>,<minor>,<major>,<full>
+	tableKey := fmt.Sprintf("%s:%s", database, table)
+	enabledStr := "false"
+	if config.Enabled {
+		enabledStr = "true"
+	}
+	configValue := fmt.Sprintf("%s,%s,%s,%s",
+		enabledStr,
+		parseIntervalValue(config.MinorTriggerInterval),
+		parseIntervalValue(config.MajorTriggerInterval),
+		parseIntervalValue(config.FullTriggerInterval),
+	)
+	tableProperties[tableKey] = configValue
+
+	// Update catalog
+	updatePath := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
+	return c.compaction.DoAndValidate(ctx, http.MethodPut, updatePath, url.Values{}, catalogMeta)
+}
+

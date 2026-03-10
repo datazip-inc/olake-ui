@@ -55,6 +55,16 @@ func (h *Handler) EnableSelfOptimizing() {
 	logger.Debugf("Enable self-optimizing initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
 
 	result, err := h.compaction.Table.EnableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
+
+	// update catalog table property with format: <db>:<tbl> → <enabled>,<minor>,<major>,<full>
+	if err == nil && result.Success {
+		// if earlier enabled and then disabled, update the chron config again
+		configValue := "true,-1,-1,-1"
+		if _, catalogErr := h.compaction.Catalog.SetCatalogTableProperty(h.Ctx.Request.Context(), catalog, database, table, "", configValue); catalogErr != nil {
+			logger.Warnf("Failed to update catalog table property for %s.%s.%s: %v", catalog, database, table, catalogErr)
+		}
+	}
+
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to enable self-optimizing", err)
 		return
@@ -63,7 +73,6 @@ func (h *Handler) EnableSelfOptimizing() {
 	utils.SuccessResponse(&h.Controller, result.Message, result)
 }
 
-// DisableSelfOptimizing disables self-optimizing for a specific table
 func (h *Handler) DisableSelfOptimizing() {
 	catalog := h.Ctx.Input.Param(":catalog")
 	database := h.Ctx.Input.Param(":database")
@@ -77,41 +86,17 @@ func (h *Handler) DisableSelfOptimizing() {
 	logger.Debugf("Disable self-optimizing initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
 
 	result, err := h.compaction.Table.DisableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
+
+	// update catalog table property with format: <db>:<tbl> → <enabled>,<minor>,<major>,<full>
+	if err == nil && result.Success {
+		configValue := "false,-1,-1,-1"
+		if _, catalogErr := h.compaction.Catalog.SetCatalogTableProperty(h.Ctx.Request.Context(), catalog, database, table, "", configValue); catalogErr != nil {
+			logger.Warnf("Failed to update catalog table property for %s.%s.%s: %v", catalog, database, table, catalogErr)
+		}
+	}
+
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to disable self-optimizing", err)
-		return
-	}
-
-	utils.SuccessResponse(&h.Controller, result.Message, result)
-}
-
-// SetTableProperties sets custom properties for a table
-func (h *Handler) SetTableProperties() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "catalog, database, and table parameters are required", nil)
-		return
-	}
-
-	var req models.SetTablePropertiesRequest
-	if err := h.Ctx.BindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "invalid request body", err)
-		return
-	}
-
-	// Override catalog, database, table from URL params
-	req.Catalog = catalog
-	req.Database = database
-	req.Table = table
-
-	logger.Debugf("Set table properties initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
-
-	result, err := h.compaction.Table.SetTableProperties(h.Ctx.Request.Context(), req)
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to set table properties", err)
 		return
 	}
 
@@ -216,8 +201,24 @@ func (h *Handler) GetCompactionRuns() {
 	utils.SuccessResponse(&h.Controller, "Successfully fetched compaction runs", runs)
 }
 
+func (h *Handler) GetCatalog() {
+	catalogName := h.Ctx.Input.Param(":catalog")
+	if catalogName == "" {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "catalog name is required", nil)
+		return
+	}
 
-// creates a new catalog
+	logger.Debugf("Get catalog details initiated catalog[%s]", catalogName)
+
+	catalog, err := h.compaction.Catalog.GetCatalog(h.Ctx.Request.Context(), catalogName)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to get catalog details", err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, "successfully fetched catalog details", catalog)
+}
+
 func (h *Handler) CreateCatalog() {
 	var req models.CatalogRequest
 	if err := h.Ctx.BindJSON(&req); err != nil {

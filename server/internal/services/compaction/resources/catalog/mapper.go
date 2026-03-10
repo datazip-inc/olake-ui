@@ -61,6 +61,7 @@ func mapAuthConfig(olakeConfig olake.Config, authConfig map[string]string, cmpSt
 	}
 }
 
+// TODO: test for each and every catalog and map the keys to respsective values
 func mapCatalogProperties(olakeConfig olake.Config, properties map[string]string, olakeCatalogType string) {
 	warehouse := olakeConfig.IcebergS3Path
 
