@@ -9,7 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-func (s *Service) SyncCatalogToFusion(ctx context.Context, destinationName, destinationType, configJSON string, isUpdate bool) error {
+func (s *Service) SyncCatalogToFusion(ctx context.Context, destinationName, _, configJSON string, isUpdate bool) error {
 	amoroCatalogReq, err := MapOLakeConfigToCompactionCatalog(destinationName, configJSON)
 	if err != nil {
 		return fmt.Errorf("failed to map OLake config to Amoro catalog: %w", err)
@@ -46,7 +46,7 @@ func (s *Service) createCatalogInAmoro(ctx context.Context, req *models.CatalogR
 		return fmt.Errorf("catalog with the same name already exists")
 	}
 
-	resp, err := s.CreateCatalog(ctx, *req)
+	resp, err := s.CreateCatalog(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (s *Service) updateCatalogInAmoro(ctx context.Context, req *models.CatalogR
 		return nil
 	}
 
-	resp, err := s.UpdateCatalog(ctx, req.Name, *req)
+	resp, err := s.UpdateCatalog(ctx, req.Name, req)
 	if err != nil {
 		return err
 	}

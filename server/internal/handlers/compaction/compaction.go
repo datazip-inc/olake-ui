@@ -228,7 +228,7 @@ func (h *Handler) CreateCatalog() {
 
 	logger.Debugf("Create catalog initiated name[%s]", req.Name)
 
-	result, err := h.compaction.Catalog.CreateCatalog(h.Ctx.Request.Context(), req)
+	result, err := h.compaction.Catalog.CreateCatalog(h.Ctx.Request.Context(), &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to create catalog", err)
 		return
@@ -253,7 +253,7 @@ func (h *Handler) UpdateCatalog() {
 
 	logger.Debugf("Update catalog initiated catalog[%s]", catalogName)
 
-	result, err := h.compaction.Catalog.UpdateCatalog(h.Ctx.Request.Context(), catalogName, req)
+	result, err := h.compaction.Catalog.UpdateCatalog(h.Ctx.Request.Context(), catalogName, &req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update catalog", err)
 		return

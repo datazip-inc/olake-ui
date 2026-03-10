@@ -9,12 +9,12 @@ import (
 type Handler struct {
 	web.Controller
 	db         *database.Database
-	compaction *compaction.CompactionService
+	compaction *compaction.Service
 }
 
-var compactionService *compaction.CompactionService
+var compactionService *compaction.Service
 
-func NewHandler(s *compaction.CompactionService) *Handler {
+func NewHandler(s *compaction.Service) *Handler {
 	compactionService = s
 	return &Handler{
 		db:         s.GetDB(),

@@ -100,8 +100,6 @@ func (c *Compaction) DoRequest(ctx context.Context, method, path string, queryPa
 		fullURL += "?" + queryParams.Encode()
 	}
 
-	// logger.Debugf("Full request URL: %s", fullURL)
-
 	var bodyReader io.Reader
 	if body != nil {
 		bodyBytes, err := json.Marshal(body)
@@ -125,7 +123,9 @@ func (c *Compaction) DoRequest(ctx context.Context, method, path string, queryPa
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

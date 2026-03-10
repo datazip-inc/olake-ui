@@ -18,13 +18,13 @@ type StreamInfo struct {
 	Normalization  bool   `json:"normalization"`
 }
 
-func (db *Database) CheckTableManagedByOLake(catalogName string, databaseName string, tableName string) (bool, error) {
+func (db *Database) CheckTableManagedByOLake(catalogName, databaseName, tableName string) (bool, error) {
 	var jobs []*models.Job
 
 	_, err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
 		RelatedSel("DestID").
 		All(&jobs)
-	
+
 	if err != nil {
 		return false, fmt.Errorf("failed to query jobs: %w", err)
 	}

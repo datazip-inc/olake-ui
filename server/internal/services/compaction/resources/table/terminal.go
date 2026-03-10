@@ -59,7 +59,7 @@ func (c *Service) SetTableProperties(ctx context.Context, req models.SetTablePro
 	)
 
 	// Execute via Terminal API
-	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", models.ApiBase, req.Catalog)
+	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", models.APIBase, req.Catalog)
 	requestBody := TerminalExecuteRequest{
 		SQL: sql,
 	}
@@ -116,13 +116,13 @@ func (c *Service) DisableSelfOptimizing(ctx context.Context, catalog, database, 
 }
 
 // pollForCompletion polls the Amoro server for SQL execution completion
-func (c *Service) pollForCompletion(ctx context.Context, catalog, sessionID string) (*LogInfo, error) {
+func (c *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*LogInfo, error) {
 	const (
 		pollInterval = 1500 * time.Millisecond
 		maxTimeout   = 5 * time.Minute
 	)
 
-	path := fmt.Sprintf("%sterminal/%s/logs", models.ApiBase, sessionID)
+	path := fmt.Sprintf("%sterminal/%s/logs", models.APIBase, sessionID)
 	timeoutCtx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 

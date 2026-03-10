@@ -10,7 +10,7 @@ import (
 type AppService struct {
 	db         *database.Database
 	etl        *etl.ETLService
-	compaction *compaction.CompactionService
+	compaction *compaction.Service
 }
 
 func InitAppService(db *database.Database) (*AppService, error) {
@@ -39,6 +39,6 @@ func (s *AppService) ETL() *etl.ETLService {
 	return s.etl
 }
 
-func (s *AppService) Compaction() *compaction.CompactionService {
+func (s *AppService) Compaction() *compaction.Service {
 	return s.compaction
 }

@@ -21,7 +21,7 @@ func NewService(c *client.Compaction) *Service {
 }
 
 func (s *Service) GetCatalogs(ctx context.Context) (interface{}, error) {
-	path := models.ApiBase + "catalogs"
+	path := models.APIBase + "catalogs"
 	result, err := s.compaction.Do(ctx, http.MethodGet, path, url.Values{}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all catalogs: %w", err)
@@ -35,7 +35,7 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 		return nil, fmt.Errorf("catalog name is required")
 	}
 
-	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalogName)
 	var result models.CatalogRequest
 	if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result); err != nil {
 		return nil, fmt.Errorf("failed to get catalog %s: %w", catalogName, err)
@@ -45,15 +45,15 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 }
 
 // creates a new catalog
-func (s *Service) CreateCatalog(ctx context.Context, req models.CatalogRequest) (*models.CatalogResponse, error) {
-	if err := validateCatalog(&req); err != nil {
+func (s *Service) CreateCatalog(ctx context.Context, req *models.CatalogRequest) (*models.CatalogResponse, error) {
+	if err := validateCatalog(req); err != nil {
 		return nil, err
 	}
 
 	// Set default table properties for Iceberg tables
-	setDefaultTableProperties(&req)
+	setDefaultTableProperties(req)
 
-	path := fmt.Sprintf("%scatalogs", models.ApiBase)
+	path := fmt.Sprintf("%scatalogs", models.APIBase)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
 		return nil, fmt.Errorf("failed to create catalog %s: %w", req.Name, err)
 	}
@@ -65,13 +65,13 @@ func (s *Service) CreateCatalog(ctx context.Context, req models.CatalogRequest) 
 }
 
 // updates an existing catalog
-func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req models.CatalogRequest) (*models.CatalogResponse, error) {
-	if err := validateCatalog(&req); err != nil {
+func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *models.CatalogRequest) (*models.CatalogResponse, error) {
+	if err := validateCatalog(req); err != nil {
 		return nil, err
 	}
 
 	req.Name = catalogName
-	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalogName)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
 		return nil, fmt.Errorf("failed to update catalog %s: %w", req.Name, err)
 	}
@@ -84,7 +84,7 @@ func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req mod
 
 // DeleteCatalog deletes a catalog from Amoro
 func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (*models.CatalogResponse, error) {
-	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalogName)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodDelete, path, url.Values{}, nil); err != nil {
 		return nil, fmt.Errorf("failed to delete catalog %s: %w", catalogName, err)
 	}
@@ -104,7 +104,7 @@ func validateCatalog(req *models.CatalogRequest) error {
 		return fmt.Errorf("catalog type is required")
 	}
 
-	if req.TableFormatList == nil || len(req.TableFormatList) == 0 {
+	if len(req.TableFormatList) == 0 {
 		req.TableFormatList = []string{"ICEBERG"}
 	}
 	if req.StorageConfig == nil {
@@ -135,7 +135,7 @@ func setDefaultTableProperties(req *models.CatalogRequest) {
 // SetCatalogTableProperty sets a table property in the catalog's tableProperties map
 // The key format is: <database>:<table>
 // The value format is: <enabled>,<minor_interval>,<major_interval>,<full_interval>
-func (s *Service) SetCatalogTableProperty(ctx context.Context, catalogName, database, table, key, value string) (*models.CatalogResponse, error) {
+func (s *Service) SetCatalogTableProperty(ctx context.Context, catalogName, database, table, _, value string) (*models.CatalogResponse, error) {
 	catalogReq, err := s.GetCatalog(ctx, catalogName)
 	if err != nil {
 		return nil, err
@@ -149,5 +149,5 @@ func (s *Service) SetCatalogTableProperty(ctx context.Context, catalogName, data
 	tableKey := fmt.Sprintf("%s:%s", database, table)
 	catalogReq.TableProperties[tableKey] = value
 
-	return s.UpdateCatalog(ctx, catalogName, *catalogReq)
+	return s.UpdateCatalog(ctx, catalogName, catalogReq)
 }

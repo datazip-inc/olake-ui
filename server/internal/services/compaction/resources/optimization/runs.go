@@ -27,7 +27,7 @@ type CompactionRunsResponse struct {
 
 // returns the list of compaction processes/runs for a particular table along with its metrics
 func (c *Service) GetCompactionRuns(ctx context.Context, catalog, database, table string, page, pageSize int) (*CompactionRunsResponse, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.ApiBase, catalog, database, table)
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.APIBase, catalog, database, table)
 	params := url.Values{}
 
 	params.Add("page", fmt.Sprintf("%d", page))
@@ -209,9 +209,9 @@ func parseInt64FromString(s string) (int64, error) {
 }
 
 // CancelCompactionProcess cancels a running compaction process for a table
-func (c *Service) CancelCompactionProcess(ctx context.Context, catalog, database, table, processID string) error {
+func (s *Service) CancelCompactionProcess(ctx context.Context, catalog, database, table, processID string) error {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes/%s/cancel",
-		models.ApiBase, catalog, database, table, processID)
+		models.APIBase, catalog, database, table, processID)
 
-	return c.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, nil)
+	return s.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, nil)
 }

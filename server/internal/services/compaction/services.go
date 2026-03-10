@@ -9,8 +9,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/views"
 )
 
-// CompactionService is a unified service for compaction operations
-type CompactionService struct {
+// Service is a unified service for compaction operations
+type Service struct {
 	db           *database.Database
 	client       *client.Compaction
 	Catalog      *catalog.Service
@@ -19,11 +19,11 @@ type CompactionService struct {
 	Aggregator   *aggregator.Service
 }
 
-func InitAppService(db *database.Database, client *client.Compaction) (*CompactionService, error) {
+func InitAppService(db *database.Database, client *client.Compaction) (*Service, error) {
 	catalogSvc := catalog.NewService(client)
 	tableSvc := table.NewService(client)
 
-	return &CompactionService{
+	return &Service{
 		db:           db,
 		client:       client,
 		Catalog:      catalogSvc,
@@ -33,10 +33,10 @@ func InitAppService(db *database.Database, client *client.Compaction) (*Compacti
 	}, nil
 }
 
-func (s *CompactionService) GetClient() *client.Compaction {
+func (s *Service) GetClient() *client.Compaction {
 	return s.client
 }
 
-func (s *CompactionService) GetDB() *database.Database {
+func (s *Service) GetDB() *database.Database {
 	return s.db
 }

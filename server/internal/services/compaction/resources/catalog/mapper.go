@@ -10,7 +10,7 @@ import (
 	olake "github.com/datazip-inc/olake/destination/iceberg"
 )
 
-func MapOLakeConfigToCompactionCatalog(destinationName string, configJSON string) (*models.CatalogRequest, error) {
+func MapOLakeConfigToCompactionCatalog(destinationName, configJSON string) (*models.CatalogRequest, error) {
 	var config olake.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse OLake config: %w", err)
@@ -31,8 +31,8 @@ func MapOLakeConfigToCompactionCatalog(destinationName string, configJSON string
 
 	compactionReq.StorageConfig["storage.type"] = models.DefaultStroageType
 
-	mapAuthConfig(config, compactionReq.AuthConfig, compactionReq.StorageConfig)
-	mapCatalogProperties(config, compactionReq.Properties, string(config.CatalogType))
+	mapAuthConfig(&config, compactionReq.AuthConfig, compactionReq.StorageConfig)
+	mapCatalogProperties(&config, compactionReq.Properties, string(config.CatalogType))
 
 	return compactionReq, nil
 }
@@ -48,7 +48,7 @@ func normalizeCatalogType(olakeCatalogType string) string {
 	}
 }
 
-func mapAuthConfig(olakeConfig olake.Config, authConfig map[string]string, cmpStorageConfig map[string]string) {
+func mapAuthConfig(olakeConfig *olake.Config, authConfig map[string]string, cmpStorageConfig map[string]string) {
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.region", olakeConfig.Region)
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.endpoint", olakeConfig.S3Endpoint)
 
@@ -62,7 +62,7 @@ func mapAuthConfig(olakeConfig olake.Config, authConfig map[string]string, cmpSt
 }
 
 // TODO: test for each and every catalog and map the keys to respsective values
-func mapCatalogProperties(olakeConfig olake.Config, properties map[string]string, olakeCatalogType string) {
+func mapCatalogProperties(olakeConfig *olake.Config, properties map[string]string, olakeCatalogType string) {
 	warehouse := olakeConfig.IcebergS3Path
 
 	switch strings.ToLower(olakeCatalogType) {
@@ -76,13 +76,10 @@ func mapCatalogProperties(olakeConfig olake.Config, properties map[string]string
 		}
 	case "jdbc":
 		properties["warehouse"] = warehouse
-
-		if strings.ToLower(string(olakeConfig.CatalogType)) == "jdbc" {
-			utils.SetIfNotEmpty(properties, "uri", olakeConfig.JDBCUrl)
-			utils.SetIfNotEmpty(properties, "jdbc.user", olakeConfig.JDBCUsername)
-			utils.SetIfNotEmpty(properties, "jdbc.password", olakeConfig.JDBCPassword)
-			properties["catalog-impl"] = "org.apache.iceberg.jdbc.JdbcCatalog"
-		}
+		utils.SetIfNotEmpty(properties, "uri", olakeConfig.JDBCUrl)
+		utils.SetIfNotEmpty(properties, "jdbc.user", olakeConfig.JDBCUsername)
+		utils.SetIfNotEmpty(properties, "jdbc.password", olakeConfig.JDBCPassword)
+		properties["catalog-impl"] = "org.apache.iceberg.jdbc.JdbcCatalog"
 
 	case "hive":
 		utils.SetIfNotEmpty(properties, "warehouse", warehouse)

@@ -74,7 +74,7 @@ func (s *Service) GetCatalogsWithDatabases(ctx context.Context) (*models.Catalog
 }
 
 // GetTablesWithDetails fetches all tables with full details for a specific catalog and database
-func (s *Service) GetTablesWithDetails(ctx context.Context, catalog string, databaseName string, db *database.Database) (*models.TablesResponse, error) {
+func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string, db *database.Database) (*models.TablesResponse, error) {
 	response := &models.TablesResponse{
 		Catalog:  catalog,
 		Database: databaseName,
@@ -115,13 +115,11 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog string, data
 			}
 
 			// Check if table is managed by OLake
-			if db != nil {
-				isManagedByOLake, err := db.CheckTableManagedByOLake(catalog, databaseName, tableName)
-				if err != nil {
-					fmt.Printf("Failed to check if table %s.%s.%s is managed by OLake: %v\n", catalog, databaseName, tableName, err)
-				} else {
-					tableInfo.ByOLake = isManagedByOLake
-				}
+			isManagedByOLake, err := db.CheckTableManagedByOLake(catalog, databaseName, tableName)
+			if err != nil {
+				fmt.Printf("Failed to check if table %s.%s.%s is managed by OLake: %v\n", catalog, databaseName, tableName, err)
+			} else {
+				tableInfo.ByOLake = isManagedByOLake
 			}
 
 			// Get enabled/disabled status from catalog table properties

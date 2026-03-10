@@ -61,7 +61,7 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 
 // retrieves the compaction cron configuration from catalog properties
 func (c *Service) GetCompactionCronConfig(ctx context.Context, catalog, database, table string) (*models.CompactionCronConfigRequest, error) {
-	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
+	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
 
 	var catalogMeta map[string]interface{}
 	if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
@@ -99,7 +99,7 @@ func (c *Service) GetCompactionCronConfig(ctx context.Context, catalog, database
 // parseIntervalValue converts user input to milliseconds or -1 for "never"
 func parseIntervalValue(interval string) string {
 	// never
-	if strings.ToLower(interval) == "never" || interval == "" {
+	if strings.EqualFold(interval, "never") || interval == "" {
 		return "-1"
 	}
 
@@ -112,7 +112,7 @@ func parseIntervalValue(interval string) string {
 
 // storeCatalogTableProperty stores the configuration in catalog table properties
 func (c *Service) storeCatalogTableProperty(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) error {
-	path := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
+	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
 
 	var catalogMeta map[string]interface{}
 	if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
@@ -143,7 +143,6 @@ func (c *Service) storeCatalogTableProperty(ctx context.Context, catalog, databa
 	tableProperties[tableKey] = configValue
 
 	// Update catalog
-	updatePath := fmt.Sprintf("%scatalogs/%s", models.ApiBase, catalog)
+	updatePath := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
 	return c.compaction.DoAndValidate(ctx, http.MethodPut, updatePath, url.Values{}, catalogMeta)
 }
-

@@ -21,8 +21,8 @@ func NewService(c *client.Compaction) *Service {
 }
 
 // GetDatabases returns the list of databases for a given catalog
-func (c *Service) GetDatabases(ctx context.Context, catalog string, keywords string) (interface{}, error) {
-	path := fmt.Sprintf("%scatalogs/%s/databases", models.ApiBase, catalog)
+func (c *Service) GetDatabases(ctx context.Context, catalog, keywords string) (interface{}, error) {
+	path := fmt.Sprintf("%scatalogs/%s/databases", models.APIBase, catalog)
 
 	params := url.Values{}
 	if keywords != "" {
@@ -33,8 +33,8 @@ func (c *Service) GetDatabases(ctx context.Context, catalog string, keywords str
 }
 
 // GetTables returns the list of tables for a given catalog and database
-func (c *Service) GetTables(ctx context.Context, catalog string, database string, keywords string) (interface{}, error) {
-	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", models.ApiBase, catalog, database)
+func (c *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
+	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", models.APIBase, catalog, database)
 
 	params := url.Values{}
 	if keywords != "" {
@@ -45,15 +45,15 @@ func (c *Service) GetTables(ctx context.Context, catalog string, database string
 }
 
 // returns the details of a specific table including size information
-func (c *Service) GetTableDetails(ctx context.Context, catalog string, database string, table string) (interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", models.ApiBase, catalog, database, table)
+func (c *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", models.APIBase, catalog, database, table)
 
 	return c.compaction.Do(ctx, http.MethodGet, path, url.Values{}, nil)
 }
 
 // returns the latest snapshot summary for a table
-func (c *Service) GetLatestSnapshot(ctx context.Context, catalog string, database string, table string) (map[string]interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/snapshots", models.ApiBase, catalog, database, table)
+func (c *Service) GetLatestSnapshot(ctx context.Context, catalog, database, table string) (map[string]interface{}, error) {
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/snapshots", models.APIBase, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("page", "1")
@@ -89,7 +89,7 @@ func (c *Service) GetLatestSnapshot(ctx context.Context, catalog string, databas
 
 // returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
 func (c *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.ApiBase, catalog, database, table)
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.APIBase, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("type", processType)

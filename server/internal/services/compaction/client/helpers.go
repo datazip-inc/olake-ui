@@ -34,7 +34,7 @@ func (c *Compaction) Do(ctx context.Context, method, path string, queryParams ur
 }
 
 // (type-safe parsing): performs an HTTP request and parses the response returning raw result into the provided result pointer
-func (c *Compaction) DoInto(ctx context.Context, method, path string, queryParams url.Values, body interface{}, result interface{}) error {
+func (c *Compaction) DoInto(ctx context.Context, method, path string, queryParams url.Values, body, result interface{}) error {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return err

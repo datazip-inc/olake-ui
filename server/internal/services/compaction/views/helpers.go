@@ -61,21 +61,22 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 		timestamp := time.Unix(0, int64(finishTime)*int64(time.Millisecond))
 		duration := time.Since(timestamp)
 
-		if duration < time.Minute {
+		switch {
+		case duration < time.Minute:
 			seconds := int(duration.Seconds())
 			if seconds == 1 {
 				lastRun = "1 sec ago"
 			} else {
 				lastRun = fmt.Sprintf("%d secs ago", seconds)
 			}
-		} else if duration < time.Hour {
+		case duration < time.Hour:
 			minutes := int(duration.Minutes())
 			if minutes == 1 {
 				lastRun = "1 minute ago"
 			} else {
 				lastRun = fmt.Sprintf("%d minutes ago", minutes)
 			}
-		} else {
+		default:
 			hours := int(duration.Hours())
 			if hours == 1 {
 				lastRun = "1 hour ago"
