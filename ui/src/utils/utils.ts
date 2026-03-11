@@ -655,7 +655,7 @@ export const handleSpecResponse = (
 }
 
 // Filters out disabled streams
-export const getSelectedStreams = (
+const getSelectedStreams = (
 	selectedStreams: SelectedStreamsByNamespace,
 ): SelectedStreamsByNamespace => {
 	const result: SelectedStreamsByNamespace = {}
@@ -667,7 +667,7 @@ export const getSelectedStreams = (
 	return result
 }
 
-// Applies type casting to filter_config values for their correct native types
+// Formats the selected streams configuration for the API payload
 export const formatSelectedStreamsPayload = (
 	streamsConfig: StreamsDataStructure,
 ): SelectedStreamsByNamespace => {

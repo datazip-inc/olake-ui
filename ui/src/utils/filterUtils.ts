@@ -6,7 +6,7 @@ import { FILTER_REGEX } from "./constants"
 // (number, boolean, object, array) based on the column's type schema.
 export const castFilterConditionValue = (
 	cond: FilterConfigCondition,
-	columnSchema?: { type: string | string[] },
+	columnSchema?: { type: string[] },
 ): FilterConfigCondition => {
 	if (cond.value === null || cond.value === "<null>") {
 		return { ...cond, value: null }
@@ -15,9 +15,7 @@ export const castFilterConditionValue = (
 	if (!columnSchema) return cond
 
 	// Find primary non-null type
-	const nonNullTypes = (
-		Array.isArray(columnSchema.type) ? columnSchema.type : [columnSchema.type]
-	).filter(t => t !== "null")
+	const nonNullTypes = columnSchema.type.filter(t => t !== "null")
 
 	if (nonNullTypes.length === 0) return cond
 
@@ -51,16 +49,12 @@ export const validateFilter = (filter: string): boolean => {
 // Validates if value is compatible with any given DataType.
 // Explicitly handles "null" values by checking if the column schema allows it.
 // Converts other values to string internally to handle native types safely.
-export const isValueValidForTypes = (
-	value: any,
-	type: string | string[],
-): boolean => {
-	const typeArray = Array.isArray(type) ? type : [type]
-	if (typeArray.length === 0) return false
+export const isValueValidForTypes = (value: any, type: string[]): boolean => {
+	if (type.length === 0) return false
 
 	const raw = value === null ? "" : String(value)
 
-	return typeArray.some(t => {
+	return type.some(t => {
 		switch (t) {
 			case "null":
 				return value === null || raw === "<null>"
@@ -110,7 +104,7 @@ export const validateFilterConfig = (
 	filterConfig: FilterConfig,
 	streamName: string,
 	namespace: string,
-	typeSchemaProperties?: Record<string, { type: string | string[] }>,
+	typeSchemaProperties?: Record<string, { type: string[] }>,
 ): string | null => {
 	const streamPrefix = `[${namespace}.${streamName}]`
 
@@ -132,13 +126,9 @@ export const validateFilterConfig = (
 		const columnSchema = typeSchemaProperties[cond.column]
 		if (!columnSchema) continue
 
-		const typeArray = Array.isArray(columnSchema.type)
-			? columnSchema.type
-			: [columnSchema.type]
+		if (isValueValidForTypes(cond.value, columnSchema.type)) continue
 
-		if (isValueValidForTypes(cond.value, typeArray)) continue
-
-		const nonNullTypes = typeArray.filter(t => t !== "null")
+		const nonNullTypes = columnSchema.type.filter(t => t !== "null")
 		const expectedTypes = (nonNullTypes.length ? nonNullTypes : ["null"]).join(
 			" | ",
 		)

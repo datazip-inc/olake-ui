@@ -42,7 +42,7 @@ export type StreamData = {
 				{
 					destination_column_name?: string
 					olake_column?: boolean
-					type: string | string[]
+					type: string[]
 					format?: string
 					properties?: Record<string, any>
 				}

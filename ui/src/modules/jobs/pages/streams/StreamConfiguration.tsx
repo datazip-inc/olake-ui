@@ -614,9 +614,7 @@ const StreamConfiguration = ({
 			.map(key => {
 				const types = properties[key].type
 				// Get the first non-null type as primary type
-				const primaryType = Array.isArray(types)
-					? types.find(t => t !== "null") || types[0]
-					: types
+				const primaryType = types.find(t => t !== "null") || types[0]
 
 				const isPrimaryKey = primaryKeys.includes(key)
 
@@ -647,9 +645,7 @@ const StreamConfiguration = ({
 	const formatFilterValue = (columnName: string, value: string) => {
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type
-		const primaryType = Array.isArray(columnType)
-			? columnType.find(t => t !== "null") || columnType[0]
-			: columnType
+		const primaryType = columnType.find(t => t !== "null") || columnType[0]
 
 		if (
 			primaryType === "string" ||
