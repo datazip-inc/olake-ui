@@ -12,7 +12,7 @@ import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
 
 import { validationService } from "@/common/services/validationService"
-import { Source, CreateSourceProps } from "../types"
+import { Source } from "../types"
 import { SetupType, TestConnectionError } from "@/common/types"
 import { getConnectorLabel } from "../utils"
 import { trimFormDataStrings } from "@/utils"
@@ -50,28 +50,12 @@ import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import { OLAKE_LATEST_VERSION_URL } from "@/constants"
 
-const CreateSource: React.FC<CreateSourceProps> = ({
-	onComplete,
-	initialFormData,
-	initialName,
-	initialConnector,
-	initialVersion,
-	initialExistingSourceId,
-	onSourceNameChange,
-	onConnectorChange,
-	onFormDataChange,
-	onVersionChange,
-	docsMinimized = false,
-	onDocsMinimizedChange,
-	onExistingSourceIdChange,
-}) => {
+const CreateSource: React.FC = () => {
 	const formRef = useRef<any>(null)
-	const [setupType, setSetupType] = useState<SetupType>(
-		initialExistingSourceId ? SETUP_TYPES.EXISTING : SETUP_TYPES.NEW,
-	)
-	const [connector, setConnector] = useState(initialConnector || "MongoDB")
-	const [sourceName, setSourceName] = useState(initialName || "")
-	const [selectedVersion, setSelectedVersion] = useState(initialVersion || "")
+	const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
+	const [connector, setConnector] = useState(CONNECTOR_TYPES.MONGODB)
+	const [sourceName, setSourceName] = useState("")
+	const [selectedVersion, setSelectedVersion] = useState("")
 	const [formData, setFormData] = useState<any>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
@@ -79,6 +63,7 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	const [sourceNameError, setSourceNameError] = useState<string | null>(null)
 	const [existingSource, setExistingSource] = useState<string | null>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
+	const [docsMinimized, setDocsMinimized] = useState(false)
 
 	const normalizedConnector = getConnectorInLowerCase(connector)
 
@@ -97,33 +82,6 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	const createSourceMutation = useCreateSource()
 	const testSourceMutation = useTestSourceConnection()
 
-	// Set existingSource when sources are loaded and we have an initialExistingSourceId
-	useEffect(() => {
-		if (
-			initialExistingSourceId &&
-			sources.length > 0 &&
-			setupType === SETUP_TYPES.EXISTING
-		) {
-			// Find source in the filtered list (filtered by connector type)
-			const source = sources.find(s => s.id === initialExistingSourceId)
-			if (source && source.type === getConnectorInLowerCase(connector)) {
-				setExistingSource(source.name)
-			}
-		}
-	}, [initialExistingSourceId, sources.length])
-
-	useEffect(() => {
-		if (initialName) {
-			setSourceName(initialName)
-		}
-	}, [initialName])
-
-	useEffect(() => {
-		if (initialFormData) {
-			setFormData(initialFormData)
-		}
-	}, [initialFormData])
-
 	useEffect(() => {
 		if (setupType === SETUP_TYPES.EXISTING) {
 			setFilteredSources(
@@ -135,25 +93,9 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 	// Auto-select version when versions are loaded
 	useEffect(() => {
 		if (versions.length > 0 && !selectedVersion) {
-			const defaultVersion =
-				normalizedConnector ===
-					getConnectorInLowerCase(initialConnector || "") && initialVersion
-					? initialVersion
-					: versions[0]
-			setSelectedVersion(defaultVersion)
-			onVersionChange?.(defaultVersion)
+			setSelectedVersion(versions[0])
 		}
 	}, [versions])
-
-	useEffect(() => {
-		if (
-			initialVersion &&
-			initialVersion !== "" &&
-			initialConnector === connector
-		) {
-			setSelectedVersion(initialVersion)
-		}
-	}, [initialVersion, initialConnector, connector])
 
 	// Fetch spec via TanStack Query (enabled guard: new setup only)
 	const {
@@ -184,12 +126,6 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 			setShowSpecFailedModal(true)
 		}
 	}, [specQueryError])
-
-	useEffect(() => {
-		if (initialConnector) {
-			setConnector(getConnectorLabel(initialConnector))
-		}
-	}, [])
 
 	const handleCancel = () => {
 		setShowSourceCancelModal(true)
@@ -283,53 +219,29 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 			setSourceNameError(null)
 		}
 		setSourceName(newName)
-
-		if (onSourceNameChange) {
-			onSourceNameChange(newName)
-		}
 	}
 
 	const handleConnectorChange = (value: string) => {
 		setConnector(value)
 		if (setupType === SETUP_TYPES.EXISTING) {
 			setExistingSource(null)
-			onExistingSourceIdChange?.(null)
 			setSourceName("")
-			onSourceNameChange?.("")
 		}
 		setSelectedVersion("")
 		setFormData({})
 		setSchema(null)
-
-		// Parent callbacks
-		onConnectorChange?.(value)
-		onVersionChange?.("")
-		onFormDataChange?.({})
 	}
 
 	const handleSetupTypeChange = (type: SetupType) => {
 		setSetupType(type)
 		setSourceName("")
-		onSourceNameChange?.("")
-		// show documentation only in the case of new
-		if (onDocsMinimizedChange) {
-			if (type === SETUP_TYPES.EXISTING) {
-				onDocsMinimizedChange(true) // Close doc panel
-			} else if (type === SETUP_TYPES.NEW) {
-				onDocsMinimizedChange(false)
-			}
-		}
+		setDocsMinimized(type === SETUP_TYPES.EXISTING) // Close doc panel for existing
 		// Clear form data when switching to new source
 		if (type === SETUP_TYPES.NEW) {
 			setFormData({})
 			setSchema(null)
 			setConnector(CONNECTOR_TYPES.SOURCE_DEFAULT_CONNECTOR) // Reset to default connector
 			setExistingSource(null)
-			onExistingSourceIdChange?.(null)
-			// Schema will be automatically fetched due to useEffect when connector changes
-			if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.MONGODB)
-			if (onFormDataChange) onFormDataChange({})
-			if (onVersionChange) onVersionChange("")
 		}
 	}
 
@@ -339,37 +251,19 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 		)
 
 		if (selectedSource) {
-			if (onSourceNameChange) {
-				onSourceNameChange(selectedSource.name)
-			}
-			if (onConnectorChange) {
-				onConnectorChange(selectedSource.type)
-			}
-			if (onVersionChange) {
-				onVersionChange(selectedSource.version)
-			}
-			if (onFormDataChange) {
-				onFormDataChange(selectedSource.config)
-			}
 			setExistingSource(value)
 			setSourceName(selectedSource.name)
 			setConnector(getConnectorLabel(selectedSource.type))
 			setSelectedVersion(selectedSource.version)
-			onExistingSourceIdChange?.(selectedSource.id)
 		}
 	}
 
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
-		if (onVersionChange) {
-			onVersionChange(value)
-		}
 	}
 
 	const handleToggleDocPanel = () => {
-		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(prev => !prev)
-		}
+		setDocsMinimized(prev => !prev)
 	}
 
 	const renderConnectorSelection = () => (
@@ -524,7 +418,6 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 								onChange={e => {
 									const trimmedData = trimFormDataStrings(e.formData)
 									setFormData(trimmedData)
-									if (onFormDataChange) onFormDataChange(trimmedData)
 								}}
 								transformErrors={transformErrors}
 								uiSchema={uiSchema}
@@ -623,7 +516,6 @@ const CreateSource: React.FC<CreateSourceProps> = ({
 				open={showEntitySavedModal}
 				onClose={() => setShowEntitySavedModal(false)}
 				type="source"
-				onComplete={onComplete}
 				fromJobFlow={false}
 				entityName={sourceName}
 			/>

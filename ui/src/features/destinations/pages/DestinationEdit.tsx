@@ -13,7 +13,7 @@ import validator from "@rjsf/validator-ajv8"
 import Form from "@rjsf/antd"
 
 import { useDestinationStore } from "../stores"
-import { DestinationEditProps, DestinationJob } from "../types"
+import { DestinationJob } from "../types"
 import { Entity, EntityType } from "@/common/types"
 import type { TestConnectionError } from "@/common/types"
 import { getConnectorImage } from "@/common/utils"
@@ -61,15 +61,7 @@ import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import { TAB_TYPES } from "@/features/jobs/constants"
 
-const DestinationEdit: React.FC<DestinationEditProps> = ({
-	initialData,
-	onNameChange,
-	onConnectorChange,
-	onVersionChange,
-	onFormDataChange,
-	docsMinimized = false,
-	onDocsMinimizedChange,
-}) => {
+const DestinationEdit: React.FC = () => {
 	const formRef = useRef<any>(null)
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
@@ -82,6 +74,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [formData, setFormData] = useState<Record<string, any>>({})
 	const [specError, setSpecError] = useState<string | null>(null)
+	const [docsMinimized, setDocsMinimized] = useState(false)
 
 	const [showEditModal, setShowEditModal] = useState(false)
 
@@ -182,34 +175,8 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}, [destination, destinationId])
 
-	useEffect(() => {
-		if (initialData) {
-			setDestinationName(initialData.name || "")
-			let connectorType = initialData.type
-			if (connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.S3) {
-				connectorType = CONNECTOR_TYPES.AMAZON_S3
-			} else if (
-				connectorType?.toLowerCase() === DESTINATION_INTERNAL_TYPES.ICEBERG
-			) {
-				connectorType = CONNECTOR_TYPES.APACHE_ICEBERG
-			}
-
-			// Only set connector if it's not already set or if it's the same as initialData
-			if (!connector || connector === connectorType) {
-				setConnector(connectorType)
-				setSelectedVersion(initialData.version || "")
-				if (initialData.config) {
-					setFormData(initialData.config)
-				}
-			}
-		}
-	}, [initialData, selectedVersion])
-
 	const handleVersionChange = (value: string) => {
 		setSelectedVersion(value)
-		if (onVersionChange) {
-			onVersionChange(value)
-		}
 	}
 
 	const getDestinationData = () => {
@@ -325,19 +292,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		}
 	}
 
-	// const handlePauseAllJobs = async (checked: boolean) => {
-	// 	try {
-	// 		const allJobs = displayedJobs.map(job => job.id.toString())
-	// 		await Promise.all(
-	// 			allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
-	// 		)
-	// 		message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
-	// 	} catch (error) {
-	// 		console.error("Error toggling all jobs status:", error)
-	// 		message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
-	// 	}
-	// }
-
 	const handlePauseJob = (jobId: string, checked: boolean) => {
 		activateJob(
 			{ jobId, activate: !checked },
@@ -355,9 +309,7 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 	}
 
 	const toggleDocsPanel = () => {
-		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(prev => !prev)
-		}
+		setDocsMinimized(prev => !prev)
 	}
 
 	const updateConnector = (value: string) => {
@@ -365,20 +317,10 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 		setSchema(null)
 		setUiSchema(null)
 		setConnector(value)
-
-		if (onFormDataChange) {
-			onFormDataChange({})
-		}
-		if (onConnectorChange) {
-			onConnectorChange(value)
-		}
 	}
 
 	const updateDestinationName = (value: string) => {
 		setDestinationName(value)
-		if (onNameChange) {
-			onNameChange(value)
-		}
 	}
 
 	const columns: ColumnsType<DestinationJob> = [
@@ -564,7 +506,6 @@ const DestinationEdit: React.FC<DestinationEditProps> = ({
 						onChange={e => {
 							const trimmedData = trimFormDataStrings(e.formData)
 							setFormData(trimmedData)
-							if (onFormDataChange) onFormDataChange(trimmedData)
 							const catalogValue = trimmedData?.writer?.catalog_type
 							if (catalogValue) setCatalog(catalogValue)
 						}}

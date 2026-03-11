@@ -21,30 +21,6 @@ export interface Destination {
 export interface ExtendedDestination extends Destination {
 	config: DestinationConfig
 }
-
-export interface CreateDestinationProps {
-	onComplete?: () => void
-	initialConfig?: {
-		name: string
-		type: string
-		config?: DestinationConfig
-	}
-	initialFormData?: DestinationConfig
-	initialName?: string
-	initialConnector?: string
-	initialVersion?: string
-	initialCatalog?: string | null
-	initialExistingDestinationId?: number | null
-	onDestinationNameChange?: (name: string) => void
-	onConnectorChange?: (connector: string) => void
-	onFormDataChange?: (formData: DestinationConfig) => void
-	onVersionChange?: (version: string) => void
-	onCatalogTypeChange?: (catalog: string | null) => void
-	onExistingDestinationIdChange?: (id: number | null) => void
-	docsMinimized?: boolean
-	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
-}
-
 export interface DestinationTableProps {
 	destinations: Entity[]
 	loading: boolean
@@ -67,14 +43,4 @@ export interface DestinationData {
 	type: string
 	config: Record<string, any>
 	version?: string
-}
-
-export interface DestinationEditProps {
-	initialData?: any
-	onNameChange?: (name: string) => void
-	onConnectorChange?: (type: string) => void
-	onVersionChange?: (version: string) => void
-	onFormDataChange?: (config: Record<string, any>) => void
-	docsMinimized?: boolean
-	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }

@@ -14,7 +14,7 @@ import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
 
 import { useSourceStore } from "../stores"
-import { SourceEditProps, SourceJob } from "../types"
+import { SourceJob } from "../types"
 import type { TestConnectionError } from "@/common/types"
 import { getConnectorLabel } from "../utils"
 import {
@@ -57,14 +57,7 @@ import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 
-const SourceEdit: React.FC<SourceEditProps> = ({
-	initialData,
-	onNameChange,
-	onConnectorChange,
-	onVersionChange,
-	docsMinimized = false,
-	onDocsMinimizedChange,
-}) => {
+const SourceEdit: React.FC = () => {
 	const formRef = useRef<any>(null)
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
@@ -80,6 +73,7 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
+	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
 
@@ -128,34 +122,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 			)
 		}
 	}, [source, sourceId])
-
-	useEffect(() => {
-		if (initialData) {
-			setSourceName(initialData.name || "")
-			const normalizedType = getConnectorLabel(initialData.type)
-
-			// Only set connector if it's not already set or if it's the same as initialData
-			if (!connector || connector === normalizedType) {
-				setConnector(normalizedType)
-				setSelectedVersion(initialData.version || "")
-
-				// Set form data from initialData only if connector matches
-				if (initialData.config) {
-					if (typeof initialData.config === "string") {
-						try {
-							const parsedConfig = JSON.parse(initialData.config)
-							setFormData(parsedConfig)
-						} catch (error) {
-							console.error("Error parsing source config:", error)
-							setFormData({})
-						}
-					} else {
-						setFormData(initialData.config)
-					}
-				}
-			}
-		}
-	}, [initialData])
 
 	// Fetch spec via TanStack Query
 	const {
@@ -330,24 +296,8 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 		)
 	}
 
-	// const handlePauseAllJobs = async (checked: boolean) => {
-	// 	try {
-	// 		// We're working with a custom job format, so we need to extract IDs
-	// 		const allJobs = displayedJobs.map(job => String(job.id))
-	// 		await Promise.all(
-	// 			allJobs.map(jobId => jobService.activateJob(jobId, !checked)),
-	// 		)
-	// 		message.success(`Successfully ${checked ? "paused" : "resumed"} all jobs`)
-	// 	} catch (error) {
-	// 		console.error("Error toggling all jobs status:", error)
-	// 		message.error(`Failed to ${checked ? "pause" : "resume"} all jobs`)
-	// 	}
-	// }
-
 	const toggleDocsPanel = () => {
-		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(prev => !prev)
-		}
+		setDocsMinimized(prev => !prev)
 	}
 
 	const columns: ColumnsType<SourceJob> = [
@@ -495,9 +445,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 															setConnector(value)
 															setFormData({})
 															setSchema(null)
-															if (onConnectorChange) {
-																onConnectorChange(value)
-															}
 														}}
 														className="h-8 w-full"
 														options={connectorOptions}
@@ -516,9 +463,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 													value={sourceName}
 													onChange={e => {
 														setSourceName(e.target.value)
-														if (onNameChange) {
-															onNameChange(e.target.value)
-														}
 													}}
 													className="h-8"
 													disabled
@@ -554,9 +498,6 @@ const SourceEdit: React.FC<SourceEditProps> = ({
 														value={selectedVersion}
 														onChange={value => {
 															setSelectedVersion(value)
-															if (onVersionChange) {
-																onVersionChange(value)
-															}
 														}}
 														className="h-8 w-full"
 														options={availableVersions}

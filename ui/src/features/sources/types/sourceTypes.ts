@@ -1,4 +1,4 @@
-import { Entity, EntityBase } from "@/common/types"
+import { Entity } from "@/common/types"
 
 export interface SourceTableProps {
 	sources: Entity[]
@@ -13,23 +13,6 @@ export interface Source {
 	type: string
 	version: string
 	config?: any
-}
-
-export interface CreateSourceProps {
-	onComplete?: () => void
-	initialConfig?: EntityBase
-	initialFormData?: any
-	initialName?: string
-	initialConnector?: string
-	initialVersion?: string
-	initialExistingSourceId?: number | null
-	onSourceNameChange?: (name: string) => void
-	onConnectorChange?: (connector: string) => void
-	onFormDataChange?: (formData: any) => void
-	onVersionChange?: (version: string) => void
-	onExistingSourceIdChange?: (id: number | null) => void
-	docsMinimized?: boolean
-	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export interface SourceJob {
@@ -48,16 +31,6 @@ export interface SourceData {
 	type: string
 	config: Record<string, any>
 	version?: string
-}
-
-export interface SourceEditProps {
-	initialData?: any
-	onNameChange?: (name: string) => void
-	onConnectorChange?: (type: string) => void
-	onVersionChange?: (version: string) => void
-	onFormDataChange?: (config: Record<string, any>) => void
-	docsMinimized?: boolean
-	onDocsMinimizedChange?: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 export interface DiscoverSourceStreamsParams {

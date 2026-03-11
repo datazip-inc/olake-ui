@@ -11,11 +11,7 @@ import {
 import Form from "@rjsf/antd"
 
 import { validationService } from "@/common/services/validationService"
-import {
-	CreateDestinationProps,
-	DestinationConfig,
-	ExtendedDestination,
-} from "../types"
+import { DestinationConfig, ExtendedDestination } from "../types"
 import { SetupType } from "@/common/types"
 import type { TestConnectionError } from "@/common/types"
 import { getConnectorInLowerCase } from "@/common/utils"
@@ -59,37 +55,15 @@ import { widgets } from "@/common/components/form/widgets"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
-const CreateDestination: React.FC<CreateDestinationProps> = ({
-	onComplete,
-	initialConfig,
-	initialFormData,
-	initialName,
-	initialConnector,
-	initialVersion,
-	initialCatalog,
-	initialExistingDestinationId,
-	onDestinationNameChange,
-	onConnectorChange,
-	onFormDataChange,
-	onVersionChange,
-	onExistingDestinationIdChange,
-	docsMinimized = false,
-	onDocsMinimizedChange,
-}) => {
+const CreateDestination: React.FC = () => {
 	const formRef = useRef<any>(null)
-	const [setupType, setSetupType] = useState(
-		initialExistingDestinationId ? SETUP_TYPES.EXISTING : SETUP_TYPES.NEW,
-	)
+	const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
 	const [connector, setConnector] = useState<ConnectorType>(
-		initialConnector === undefined
-			? CONNECTOR_TYPES.AMAZON_S3
-			: initialConnector === DESTINATION_INTERNAL_TYPES.S3
-				? CONNECTOR_TYPES.AMAZON_S3
-				: CONNECTOR_TYPES.APACHE_ICEBERG,
+		CONNECTOR_TYPES.AMAZON_S3,
 	)
-	const [catalog, setCatalog] = useState<string | null>(initialCatalog || null)
-	const [destinationName, setDestinationName] = useState(initialName || "")
-	const [version, setVersion] = useState(initialVersion || "")
+	const [catalog, setCatalog] = useState<string | null>(null)
+	const [destinationName, setDestinationName] = useState("")
+	const [version, setVersion] = useState("")
 	const [formData, setFormData] = useState<DestinationConfig>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
@@ -110,6 +84,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	const [showEntitySavedModal, setShowEntitySavedModal] = useState(false)
 	const [showSourceCancelModal, setShowSourceCancelModal] = useState(false)
 	const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
+	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
 	const { data: destinations = [], isLoading: isLoadingDestinations } =
@@ -170,60 +145,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		return config as DestinationConfig
 	}
 
-	// Set existingDestination when destinations are loaded and we have an initialExistingDestinationId
-	useEffect(() => {
-		if (
-			initialExistingDestinationId &&
-			destinations.length > 0 &&
-			setupType === SETUP_TYPES.EXISTING
-		) {
-			const destination = destinations.find(
-				d => d.id === initialExistingDestinationId,
-			)
-			const connectorLowerCase = getConnectorInLowerCase(connector)
-			if (destination && destination.type === connectorLowerCase) {
-				setExistingDestination(destination.name)
-			}
-		}
-	}, [initialExistingDestinationId, destinations.length])
-
-	useEffect(() => {
-		if (initialConfig) {
-			setDestinationName(initialConfig.name)
-			setConnector(initialConfig.type as ConnectorType)
-			setFormData(initialConfig.config || {})
-		}
-	}, [initialConfig])
-
-	useEffect(() => {
-		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(false)
-		}
-	}, [])
-
-	useEffect(() => {
-		if (initialFormData) {
-			setFormData(initialFormData)
-			setCatalog(initialFormData?.writer?.catalog_type ?? null)
-		}
-	}, [initialFormData])
-
-	useEffect(() => {
-		if (initialName) {
-			setDestinationName(initialName)
-		}
-	}, [initialName])
-
-	useEffect(() => {
-		if (initialConnector) {
-			setConnector(
-				initialConnector === DESTINATION_INTERNAL_TYPES.S3
-					? CONNECTOR_TYPES.AMAZON_S3
-					: CONNECTOR_TYPES.APACHE_ICEBERG,
-			)
-		}
-	}, [initialConnector])
-
 	useEffect(() => {
 		if (setupType !== SETUP_TYPES.EXISTING) return
 
@@ -244,13 +165,8 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 	// Auto-select version when versions are loaded
 	useEffect(() => {
 		if (versions.length > 0 && !version) {
-			const defaultVersion =
-				getConnectorInLowerCase(connector) === initialConnector &&
-				initialVersion
-					? initialVersion
-					: versions[0]
+			const defaultVersion = versions[0]
 			setVersion(defaultVersion)
-			onVersionChange?.(defaultVersion)
 		}
 	}, [versions])
 
@@ -358,53 +274,29 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 			setDestinationNameError(null)
 		}
 		setDestinationName(newName)
-		if (onDestinationNameChange) {
-			onDestinationNameChange(newName)
-		}
 	}
 
 	const handleConnectorChange = (value: string) => {
 		setConnector(value as ConnectorType)
 		if (setupType === SETUP_TYPES.EXISTING) {
 			setExistingDestination(null)
-			onExistingDestinationIdChange?.(null)
 			setDestinationName("")
-			onDestinationNameChange?.("")
 		}
 		setVersion("")
 		setFormData({})
 		setSchema(null)
-
-		// Parent callbacks
-		onConnectorChange?.(value)
-		onVersionChange?.("")
-		onFormDataChange?.({})
 	}
 
 	const handleSetupTypeChange = (type: SetupType) => {
 		setSetupType(type)
 		setDestinationName("")
-		onExistingDestinationIdChange?.(null)
-		onDestinationNameChange?.("")
-
-		if (onDocsMinimizedChange) {
-			if (type === SETUP_TYPES.EXISTING) {
-				onDocsMinimizedChange(true)
-			} else if (type === SETUP_TYPES.NEW) {
-				onDocsMinimizedChange(false)
-			}
-		}
+		setDocsMinimized(type === SETUP_TYPES.EXISTING)
 		// Clear form data when switching to new destination
 		if (type === SETUP_TYPES.NEW) {
 			setFormData({})
 			setSchema(null)
 			setConnector(CONNECTOR_TYPES.DESTINATION_DEFAULT_CONNECTOR) // Reset to default connector
 			setExistingDestination(null)
-			onExistingDestinationIdChange?.(null)
-			// Schema will be automatically fetched due to useEffect when connector changes
-			if (onConnectorChange) onConnectorChange(CONNECTOR_TYPES.AMAZON_S3)
-			if (onFormDataChange) onFormDataChange({})
-			if (onVersionChange) onVersionChange("")
 		}
 	}
 
@@ -414,29 +306,19 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		)
 		if (!selectedDestination) return
 
-		if (onDestinationNameChange)
-			onDestinationNameChange(selectedDestination.name)
-		if (onConnectorChange) onConnectorChange(selectedDestination.type)
-		if (onVersionChange) onVersionChange(selectedDestination.version)
-
 		const configObj =
 			selectedDestination.config &&
 			typeof selectedDestination.config === "object"
 				? selectedDestination.config
 				: {}
 
-		if (onFormDataChange) onFormDataChange(configObj)
 		setDestinationName(selectedDestination.name)
 		setFormData(configObj)
 		setExistingDestination(value)
-		onExistingDestinationIdChange?.(selectedDestination.id)
 	}
 
 	const handleVersionChange = (value: string) => {
 		setVersion(value)
-		if (onVersionChange) {
-			onVersionChange(value)
-		}
 	}
 
 	const setupTypeSelector = () => (
@@ -589,7 +471,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 								onChange={e => {
 									const trimmedData = trimFormDataStrings(e.formData)
 									setFormData(trimmedData)
-									if (onFormDataChange) onFormDataChange(trimmedData)
 									const catalogValue = trimmedData?.writer?.catalog_type
 									if (catalogValue) setCatalog(catalogValue)
 								}}
@@ -607,9 +488,7 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 		)
 
 	const handleToggleDocPanel = () => {
-		if (onDocsMinimizedChange) {
-			onDocsMinimizedChange(prev => !prev)
-		}
+		setDocsMinimized(prev => !prev)
 	}
 
 	return (
@@ -692,7 +571,6 @@ const CreateDestination: React.FC<CreateDestinationProps> = ({
 				open={showEntitySavedModal}
 				onClose={() => setShowEntitySavedModal(false)}
 				type="destination"
-				onComplete={onComplete}
 				fromJobFlow={false}
 				entityName={destinationName}
 			/>
