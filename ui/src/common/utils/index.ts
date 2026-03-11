@@ -1,2 +1,2 @@
 export * from "./utils"
-export * from "./analyticsUtils"
+export * from "../../core/analytics/analyticsUtils"

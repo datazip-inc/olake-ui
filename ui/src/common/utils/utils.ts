@@ -5,68 +5,7 @@ import {
 	ReleasesResponse,
 	ReleaseType,
 	ReleaseTypeData,
-} from "../types/platformTypes"
-import { DESTINATION_INTERNAL_TYPES, DESTINATION_LABELS } from "../constants"
-import {
-	AWSS3,
-	ApacheIceBerg,
-	DB2,
-	Kafka,
-	MongoDB,
-	MySQL,
-	Oracle,
-	Postgres,
-	MSSQL,
-} from "@/assets"
-import { formatDate } from "@/utils"
-
-// Normalizes old connector types to their current internal types
-export const normalizeConnectorType = (connectorType: string): string => {
-	const lowerType = connectorType.toLowerCase()
-
-	switch (lowerType) {
-		case "s3":
-			return "s3"
-		case "amazon s3":
-			return "parquet"
-		case "iceberg":
-		case "apache iceberg":
-			return "iceberg"
-		default:
-			return connectorType
-	}
-}
-
-// These are used to show in connector dropdowns
-export const getConnectorImage = (connector: string) => {
-	const normalizedConnector = normalizeConnectorType(connector).toLowerCase()
-
-	switch (normalizedConnector) {
-		case "mongodb":
-			return MongoDB
-		case "postgres":
-			return Postgres
-		case "mysql":
-			return MySQL
-		case "oracle":
-			return Oracle
-		case DESTINATION_INTERNAL_TYPES.S3:
-			return AWSS3
-		case DESTINATION_INTERNAL_TYPES.ICEBERG:
-			return ApacheIceBerg
-		case "kafka":
-			return Kafka
-		case "s3":
-			return AWSS3
-		case "db2":
-			return DB2
-		case "mssql":
-			return MSSQL
-		default:
-			// Default placeholder
-			return MongoDB
-	}
-}
+} from "../../core/platform/types/platformTypes"
 
 export const getStatusClass = (status: string) => {
 	switch (status.toLowerCase()) {
@@ -83,36 +22,6 @@ export const getStatusClass = (status: string) => {
 			return "text-[rgba(0,0,0,88)] bg-neutral-light"
 		default:
 			return "text-[rgba(0,0,0,88)] bg-transparent"
-	}
-}
-
-export const getConnectorInLowerCase = (connector?: string | null) => {
-	const normalizedConnector = normalizeConnectorType(connector || "")
-	const lowerConnector = normalizedConnector.toLowerCase()
-
-	switch (lowerConnector) {
-		case DESTINATION_INTERNAL_TYPES.S3:
-		case DESTINATION_LABELS.AMAZON_S3:
-			return DESTINATION_INTERNAL_TYPES.S3
-		case DESTINATION_INTERNAL_TYPES.ICEBERG:
-		case DESTINATION_LABELS.APACHE_ICEBERG:
-			return DESTINATION_INTERNAL_TYPES.ICEBERG
-		case "s3":
-			return "s3"
-		case "mongodb":
-			return "mongodb"
-		case "postgres":
-			return "postgres"
-		case "mysql":
-			return "mysql"
-		case "oracle":
-			return "oracle"
-		case "db2":
-			return "db2"
-		case "mssql":
-			return "mssql"
-		default:
-			return lowerConnector
 	}
 }
 
@@ -300,5 +209,115 @@ export const processReleasesData = (
 		),
 		[ReleaseType.OLAKE]: formatReleaseData(releases[ReleaseType.OLAKE]),
 		[ReleaseType.FEATURES]: formatReleaseData(releases[ReleaseType.FEATURES]),
+	}
+}
+
+// Parses a date string into a timestamp (ms since epoch); handles ISO and legacy formats; returns null if parsing fails
+export const parseDateToTimestamp = (timeStr: string): number | null => {
+	if (!timeStr) {
+		return null
+	}
+
+	const timestamp = new Date(timeStr).getTime()
+	return isNaN(timestamp) ? null : timestamp
+}
+
+// Format date from ISO string to readable format (e.g., "Jan 17, 2026")
+export const formatDate = (dateString: string): string => {
+	try {
+		const date = new Date(dateString)
+		const options: Intl.DateTimeFormatOptions = {
+			day: "numeric",
+			month: "short",
+			year: "numeric",
+		}
+		return date.toLocaleDateString("en-US", options)
+	} catch {
+		return dateString
+	}
+}
+
+// recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
+export const trimFormDataStrings = (data: any): any => {
+	if (data === null || data === undefined) {
+		return data
+	}
+
+	if (typeof data === "string") {
+		return data.trim()
+	}
+
+	if (Array.isArray(data)) {
+		return data.map(item => trimFormDataStrings(item))
+	}
+
+	if (typeof data === "object") {
+		const trimmedObject: Record<string, any> = {}
+		for (const key in data) {
+			if (Object.prototype.hasOwnProperty.call(data, key)) {
+				trimmedObject[key] = trimFormDataStrings(data[key])
+			}
+		}
+		return trimmedObject
+	}
+
+	return data
+}
+
+// validate alphanumeric underscore
+export const validateAlphanumericUnderscore = (
+	value: string,
+): { validValue: string; errorMessage: string } => {
+	const validValue = value.replace(/[^a-z0-9_]/g, "")
+	return {
+		validValue,
+		errorMessage:
+			validValue !== value
+				? "Only lowercase letters, numbers and underscores allowed"
+				: "",
+	}
+}
+
+export type AbortableFunction<T> = (signal: AbortSignal) => Promise<T>
+
+// used to cancel old requests when new one is made which helps in removing the old data
+export const withAbortController = <T>(
+	fn: AbortableFunction<T>,
+	onSuccess: (data: T) => void,
+	onError?: (error: unknown) => void,
+	onFinally?: () => void,
+) => {
+	let isMounted = true
+	const abortController = new AbortController()
+
+	const execute = async () => {
+		try {
+			const response = await fn(abortController.signal)
+			if (isMounted) {
+				onSuccess(response)
+			}
+		} catch (error: unknown) {
+			if (isMounted && error instanceof Error && error.name !== "AbortError") {
+				if (onError) {
+					onError(error)
+				} else {
+					console.error("Error in abortable function:", error)
+				}
+			}
+		} finally {
+			if (isMounted && onFinally) {
+				onFinally()
+			}
+		}
+	}
+
+	execute()
+
+	return () => {
+		isMounted = false
+		abortController.abort()
+		if (onFinally) {
+			onFinally()
+		}
 	}
 }

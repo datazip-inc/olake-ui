@@ -1,5 +1,5 @@
 import { ReactNode } from "react"
-import { LogEntry } from "@/common/types/entityTypes"
+import { LogEntry } from "@/modules/ingestion/common/types/entityTypes"
 
 export interface Props {
 	children: ReactNode
