@@ -9,13 +9,22 @@ import (
 )
 
 type StreamsConfig struct {
-	SelectedStreams map[string][]StreamInfo `json:"selected_streams"`
+	SelectedStreams map[string][]SelectedStream `json:"selected_streams"`
+	Streams         []StreamWrapper             `json:"streams"`
 }
 
-type StreamInfo struct {
-	PartitionRegex string `json:"partition_regex"`
-	StreamName     string `json:"stream_name"`
-	Normalization  bool   `json:"normalization"`
+type SelectedStream struct {
+	StreamName string `json:"stream_name"`
+}
+
+type StreamWrapper struct {
+	Stream Stream `json:"stream"`
+}
+
+type Stream struct {
+	Name                string `json:"name"`
+	DestinationDatabase string `json:"destination_database"`
+	DestinationTable    string `json:"destination_table"`
 }
 
 func (db *Database) CheckTableManagedByOLake(catalogName, databaseName, tableName string) (bool, error) {
@@ -30,7 +39,8 @@ func (db *Database) CheckTableManagedByOLake(catalogName, databaseName, tableNam
 	}
 
 	for _, job := range jobs {
-		if job.DestID == nil || job.DestID.Name != catalogName {
+		// destination_name == catalogName in compaction
+		if job.DestID.Name != catalogName {
 			continue
 		}
 
@@ -39,11 +49,22 @@ func (db *Database) CheckTableManagedByOLake(catalogName, databaseName, tableNam
 			continue
 		}
 
-		if streams, exists := streamsConfig.SelectedStreams[databaseName]; exists {
-			for _, stream := range streams {
-				if stream.StreamName == tableName {
-					return true, nil
-				}
+		selectedStreams, exists := streamsConfig.SelectedStreams[databaseName]
+		if !exists {
+			continue
+		}
+
+		selectedStreamNames := make(map[string]bool)
+		for _, selected := range selectedStreams {
+			selectedStreamNames[selected.StreamName] = true
+		}
+
+		for _, streamWrapper := range streamsConfig.Streams {
+			stream := streamWrapper.Stream
+			if selectedStreamNames[stream.Name] &&
+				stream.DestinationDatabase == databaseName &&
+				stream.DestinationTable == tableName {
+				return true, nil
 			}
 		}
 	}
