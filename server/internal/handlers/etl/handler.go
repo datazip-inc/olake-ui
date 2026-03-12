@@ -7,12 +7,12 @@ import (
 
 type Handler struct {
 	web.Controller
-	etl *services.ETLService
+	etl *services.Service
 }
 
-var etl *services.ETLService
+var etl *services.Service
 
-func NewHandler(s *services.ETLService) *Handler {
+func NewHandler(s *services.Service) *Handler {
 	etl = s
 	return &Handler{etl: s}
 }

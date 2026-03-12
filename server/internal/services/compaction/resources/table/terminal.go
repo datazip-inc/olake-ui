@@ -45,7 +45,7 @@ type LogInfo struct {
 }
 
 // sets table properties using the SQL query
-func (c *Service) SetTableProperties(ctx context.Context, req models.SetTablePropertiesRequest) (*SetTablePropertiesResponse, error) {
+func (s *Service) SetTableProperties(ctx context.Context, req models.SetTablePropertiesRequest) (*SetTablePropertiesResponse, error) {
 	var propsSQL []string
 	for key, value := range req.Properties {
 		propsSQL = append(propsSQL, fmt.Sprintf("'%s' = '%s'", key, value))
@@ -65,12 +65,12 @@ func (c *Service) SetTableProperties(ctx context.Context, req models.SetTablePro
 	}
 
 	var sessionResult TerminalSessionResponse
-	if err := c.compaction.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
+	if err := s.compaction.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
 		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", req.Catalog, req.Database, req.Table, err)
 	}
 
 	// Poll for execution completion
-	logInfo, err := c.pollForCompletion(ctx, req.Catalog, sessionResult.SessionID)
+	logInfo, err := s.pollForCompletion(ctx, req.Catalog, sessionResult.SessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to poll for completion: %w", err)
 	}
@@ -93,8 +93,8 @@ func (c *Service) SetTableProperties(ctx context.Context, req models.SetTablePro
 	}, nil
 }
 
-func (c *Service) EnableSelfOptimizing(ctx context.Context, catalog, database, table string) (*SetTablePropertiesResponse, error) {
-	return c.SetTableProperties(ctx, models.SetTablePropertiesRequest{
+func (s *Service) EnableSelfOptimizing(ctx context.Context, catalog, database, table string) (*SetTablePropertiesResponse, error) {
+	return s.SetTableProperties(ctx, models.SetTablePropertiesRequest{
 		Catalog:  catalog,
 		Database: database,
 		Table:    table,
@@ -104,8 +104,8 @@ func (c *Service) EnableSelfOptimizing(ctx context.Context, catalog, database, t
 	})
 }
 
-func (c *Service) DisableSelfOptimizing(ctx context.Context, catalog, database, table string) (*SetTablePropertiesResponse, error) {
-	return c.SetTableProperties(ctx, models.SetTablePropertiesRequest{
+func (s *Service) DisableSelfOptimizing(ctx context.Context, catalog, database, table string) (*SetTablePropertiesResponse, error) {
+	return s.SetTableProperties(ctx, models.SetTablePropertiesRequest{
 		Catalog:  catalog,
 		Database: database,
 		Table:    table,
@@ -116,7 +116,7 @@ func (c *Service) DisableSelfOptimizing(ctx context.Context, catalog, database, 
 }
 
 // pollForCompletion polls the Amoro server for SQL execution completion
-func (c *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*LogInfo, error) {
+func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*LogInfo, error) {
 	const (
 		pollInterval = 1500 * time.Millisecond
 		maxTimeout   = 5 * time.Minute
@@ -135,7 +135,7 @@ func (c *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 			return nil, fmt.Errorf("timeout waiting for SQL execution to complete")
 		case <-ticker.C:
 			var logInfo LogInfo
-			if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &logInfo); err != nil {
+			if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &logInfo); err != nil {
 				return nil, fmt.Errorf("failed to get logs for session %s: %w", sessionID, err)
 			}
 

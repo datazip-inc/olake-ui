@@ -7,7 +7,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
 
-func (s *ETLService) GetProjectSettings(projectID string) (dto.ProjectSettingsResponse, error) {
+func (s Service) GetProjectSettings(projectID string) (dto.ProjectSettingsResponse, error) {
 	settings, err := s.db.GetProjectSettingsByProjectID(projectID)
 	if err != nil {
 		return dto.ProjectSettingsResponse{}, fmt.Errorf("failed to get project settings: %s", err)
@@ -24,7 +24,7 @@ func (s *ETLService) GetProjectSettings(projectID string) (dto.ProjectSettingsRe
 	}, nil
 }
 
-func (s *ETLService) UpsertProjectSettings(req dto.UpsertProjectSettingsRequest) error {
+func (s Service) UpsertProjectSettings(req dto.UpsertProjectSettingsRequest) error {
 	projectSettings := &models.ProjectSettings{
 		ID:              req.ID,
 		ProjectID:       req.ProjectID,

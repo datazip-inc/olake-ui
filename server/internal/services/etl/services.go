@@ -7,7 +7,7 @@ import (
 )
 
 // AppService is a unified service exposing all domain operations backed by shared deps.
-type ETLService struct {
+type Service struct {
 	// single ORM facade using one Ormer
 	db         *database.Database
 	temporal   *temporal.Temporal
@@ -15,13 +15,13 @@ type ETLService struct {
 }
 
 // InitAppService constructs a unified AppService with singletons.
-func InitAppService(db *database.Database, compactionClient *cmpClient.Compaction) (*ETLService, error) {
+func InitService(db *database.Database, compactionClient *cmpClient.Compaction) (*Service, error) {
 	client, err := temporal.NewClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return &ETLService{
+	return &Service{
 		db:         db,
 		temporal:   client,
 		compaction: compactionClient,

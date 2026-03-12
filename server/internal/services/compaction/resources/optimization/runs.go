@@ -26,14 +26,14 @@ type CompactionRunsResponse struct {
 }
 
 // returns the list of compaction processes/runs for a particular table along with its metrics
-func (c *Service) GetCompactionRuns(ctx context.Context, catalog, database, table string, page, pageSize int) (*CompactionRunsResponse, error) {
+func (s *Service) GetCompactionRuns(ctx context.Context, catalog, database, table string, page, pageSize int) (*CompactionRunsResponse, error) {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.APIBase, catalog, database, table)
 	params := url.Values{}
 
 	params.Add("page", fmt.Sprintf("%d", page))
 	params.Add("pageSize", fmt.Sprintf("%d", pageSize))
 
-	data, err := c.compaction.Do(ctx, http.MethodGet, path, params, nil)
+	data, err := s.compaction.Do(ctx, http.MethodGet, path, params, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get optimizing processes for %s.%s.%s: %w", catalog, database, table, err)
 	}

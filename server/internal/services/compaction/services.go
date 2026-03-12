@@ -6,7 +6,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalog"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/optimization"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/table"
-	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/views"
+	aggregator "github.com/datazip-inc/olake-ui/server/internal/services/compaction/views"
 )
 
 // Service is a unified service for compaction operations
@@ -19,7 +19,7 @@ type Service struct {
 	Aggregator   *aggregator.Service
 }
 
-func InitAppService(db *database.Database, client *client.Compaction) (*Service, error) {
+func InitService(db *database.Database, client *client.Compaction) (*Service, error) {
 	catalogSvc := catalog.NewService(client)
 	tableSvc := table.NewService(client)
 

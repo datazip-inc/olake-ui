@@ -11,7 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
-func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) (*models.CompactionCronConfigResponse, error) {
+func (s *Service) SetCompactionCronConfig(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) (*models.CompactionCronConfigResponse, error) {
 	properties := make(map[string]string)
 
 	minorInterval := parseIntervalValue(config.MinorTriggerInterval)
@@ -31,7 +31,7 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 	}
 
 	// sql query
-	sqlResult, err := c.table.SetTableProperties(ctx, models.SetTablePropertiesRequest{
+	sqlResult, err := s.table.SetTableProperties(ctx, models.SetTablePropertiesRequest{
 		Catalog:    catalog,
 		Database:   database,
 		Table:      table,
@@ -49,7 +49,7 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 	}
 
 	// store in catalog properties
-	if err := c.storeCatalogTableProperty(ctx, catalog, database, table, config); err != nil {
+	if err := s.storeCatalogTableProperty(ctx, catalog, database, table, config); err != nil {
 		return nil, fmt.Errorf("failed to store catalog table property: %w", err)
 	}
 
@@ -60,11 +60,11 @@ func (c *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 }
 
 // retrieves the compaction cron configuration from catalog properties
-func (c *Service) GetCompactionCronConfig(ctx context.Context, catalog, database, table string) (*models.CompactionCronConfigRequest, error) {
+func (s *Service) GetCompactionCronConfig(ctx context.Context, catalog, database, table string) (*models.CompactionCronConfigRequest, error) {
 	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
 
 	var catalogMeta map[string]interface{}
-	if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
+	if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
 		return nil, fmt.Errorf("failed to get catalog: %w", err)
 	}
 
@@ -111,11 +111,11 @@ func parseIntervalValue(interval string) string {
 }
 
 // storeCatalogTableProperty stores the configuration in catalog table properties
-func (c *Service) storeCatalogTableProperty(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) error {
+func (s *Service) storeCatalogTableProperty(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) error {
 	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
 
 	var catalogMeta map[string]interface{}
-	if err := c.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
+	if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
 		return fmt.Errorf("failed to get catalog: %w", err)
 	}
 
@@ -144,5 +144,5 @@ func (c *Service) storeCatalogTableProperty(ctx context.Context, catalog, databa
 
 	// Update catalog
 	updatePath := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
-	return c.compaction.DoAndValidate(ctx, http.MethodPut, updatePath, url.Values{}, catalogMeta)
+	return s.compaction.DoAndValidate(ctx, http.MethodPut, updatePath, url.Values{}, catalogMeta)
 }

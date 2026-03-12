@@ -48,7 +48,7 @@ func normalizeCatalogType(olakeCatalogType string) string {
 	}
 }
 
-func mapAuthConfig(olakeConfig *olake.Config, authConfig map[string]string, cmpStorageConfig map[string]string) {
+func mapAuthConfig(olakeConfig *olake.Config, authConfig, cmpStorageConfig map[string]string) {
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.region", olakeConfig.Region)
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.endpoint", olakeConfig.S3Endpoint)
 

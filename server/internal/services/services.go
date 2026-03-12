@@ -9,7 +9,7 @@ import (
 
 type AppService struct {
 	db         *database.Database
-	etl        *etl.ETLService
+	etl        *etl.Service
 	compaction *compaction.Service
 }
 
@@ -17,13 +17,13 @@ func InitAppService(db *database.Database) (*AppService, error) {
 	compactionClient := cmpClient.NewClient()
 
 	// Initialize ETL service
-	etlSvc, err := etl.InitAppService(db, compactionClient)
+	etlSvc, err := etl.InitService(db, compactionClient)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize Compaction service
-	compactionSvc, err := compaction.InitAppService(db, compactionClient)
+	compactionSvc, err := compaction.InitService(db, compactionClient)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func InitAppService(db *database.Database) (*AppService, error) {
 	}, nil
 }
 
-func (s *AppService) ETL() *etl.ETLService {
+func (s *AppService) ETL() *etl.Service {
 	return s.etl
 }
 

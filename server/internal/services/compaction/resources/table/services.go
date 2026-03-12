@@ -21,7 +21,7 @@ func NewService(c *client.Compaction) *Service {
 }
 
 // GetDatabases returns the list of databases for a given catalog
-func (c *Service) GetDatabases(ctx context.Context, catalog, keywords string) (interface{}, error) {
+func (s *Service) GetDatabases(ctx context.Context, catalog, keywords string) (interface{}, error) {
 	path := fmt.Sprintf("%scatalogs/%s/databases", models.APIBase, catalog)
 
 	params := url.Values{}
@@ -29,11 +29,11 @@ func (c *Service) GetDatabases(ctx context.Context, catalog, keywords string) (i
 		params.Set("keywords", keywords)
 	}
 
-	return c.compaction.Do(ctx, http.MethodGet, path, params, nil)
+	return s.compaction.Do(ctx, http.MethodGet, path, params, nil)
 }
 
 // GetTables returns the list of tables for a given catalog and database
-func (c *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
+func (s *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
 	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", models.APIBase, catalog, database)
 
 	params := url.Values{}
@@ -41,25 +41,25 @@ func (c *Service) GetTables(ctx context.Context, catalog, database, keywords str
 		params.Set("keywords", keywords)
 	}
 
-	return c.compaction.Do(ctx, http.MethodGet, path, params, nil)
+	return s.compaction.Do(ctx, http.MethodGet, path, params, nil)
 }
 
 // returns the details of a specific table including size information
-func (c *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
+func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", models.APIBase, catalog, database, table)
 
-	return c.compaction.Do(ctx, http.MethodGet, path, url.Values{}, nil)
+	return s.compaction.Do(ctx, http.MethodGet, path, url.Values{}, nil)
 }
 
 // returns the latest snapshot summary for a table
-func (c *Service) GetLatestSnapshot(ctx context.Context, catalog, database, table string) (map[string]interface{}, error) {
+func (s *Service) GetLatestSnapshot(ctx context.Context, catalog, database, table string) (map[string]interface{}, error) {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/snapshots", models.APIBase, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("page", "1")
 	params.Set("pageSize", "1")
 
-	result, err := c.compaction.Do(ctx, http.MethodGet, path, params, nil)
+	result, err := s.compaction.Do(ctx, http.MethodGet, path, params, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get snapshots for %s.%s.%s: %w", catalog, database, table, err)
 	}
@@ -88,7 +88,7 @@ func (c *Service) GetLatestSnapshot(ctx context.Context, catalog, database, tabl
 }
 
 // returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
-func (c *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
+func (s *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", models.APIBase, catalog, database, table)
 
 	params := url.Values{}
@@ -97,7 +97,7 @@ func (c *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog,
 	params.Set("pageSize", "1")
 
 	var result map[string]interface{}
-	if err := c.compaction.DoInto(ctx, http.MethodGet, path, params, nil, &result); err != nil {
+	if err := s.compaction.DoInto(ctx, http.MethodGet, path, params, nil, &result); err != nil {
 		return nil, fmt.Errorf("failed to get latest %s process for %s.%s.%s: %w", processType, catalog, database, table, err)
 	}
 
