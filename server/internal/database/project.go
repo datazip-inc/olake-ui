@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 )
@@ -33,27 +34,20 @@ func (db *Database) UpsertProjectSettingsModel(settings *models.ProjectSettings)
 		return fmt.Errorf("project_id is required")
 	}
 
-	existing := &models.ProjectSettings{}
-	err := db.conn.Where("project_id = ?", settings.ProjectID).First(existing).Error
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return fmt.Errorf("failed to lookup project settings project_id[%s]: %s", settings.ProjectID, err)
+	row := &models.ProjectSettings{
+		ID:              0,
+		ProjectID:       settings.ProjectID,
+		WebhookAlertURL: settings.WebhookAlertURL,
 	}
-	if err == gorm.ErrRecordNotFound {
-		settings.ID = 0
-		if err := db.conn.Create(settings).Error; err != nil {
-			return fmt.Errorf("failed to insert project settings project_id[%s]: %s", settings.ProjectID, err)
-		}
-		return nil
-	}
-
-	settings.ID = existing.ID
-	if err := db.conn.Model(&models.ProjectSettings{}).
-		Where("id = ?", settings.ID).
-		Updates(map[string]any{
-			"project_id":        settings.ProjectID,
-			"webhook_alert_url": settings.WebhookAlertURL,
-		}).Error; err != nil {
-		return fmt.Errorf("failed to update project settings project_id[%s]: %s", settings.ProjectID, err)
+	if err := db.conn.
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "project_id"}},
+			DoUpdates: clause.Assignments(map[string]any{
+				"webhook_alert_url": settings.WebhookAlertURL,
+			}),
+		}).
+		Create(row).Error; err != nil {
+		return fmt.Errorf("failed to upsert project settings project_id[%s]: %s", settings.ProjectID, err)
 	}
 	return nil
 }

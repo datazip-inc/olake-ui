@@ -7,6 +7,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -31,7 +32,12 @@ func (s *ETLService) Login(ctx context.Context, username, password string) (*mod
 	return user, nil
 }
 
-func (s *ETLService) Signup(_ context.Context, user *models.User) error {
+func (s *ETLService) Signup(_ context.Context, req *dto.CreateUserRequest) error {
+	user := &models.User{
+		Username: req.Username,
+		Password: req.Password,
+		Email:    req.Email,
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("%w: %v", constants.ErrPasswordProcessing, err)

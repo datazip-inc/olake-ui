@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -61,7 +62,11 @@ func (h *Handler) GetJob(c *gin.Context) {
 	logger.Debugf("Get job initiated project_id[%s] job_id[%d]", projectID, jobID)
 	job, err := h.etl.GetJob(c.Request.Context(), projectID, jobID)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get job: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to get job: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("job '%d' retrieved successfully", jobID), job)
@@ -93,17 +98,9 @@ func (h *Handler) CreateJob(c *gin.Context) {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	if req.Source != nil && req.Source.ID == nil {
-		if err := dto.ValidateSourceType(req.Source.Type); err != nil {
-			errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-			return
-		}
-	}
-	if req.Destination != nil && req.Destination.ID == nil {
-		if err := dto.ValidateDestinationType(req.Destination.Type); err != nil {
-			errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-			return
-		}
+	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
 	}
 	logger.Debugf("Create job initiated project_id[%s] user_id[%v] job_name[%s]", projectID, userID, req.Name)
 	if err := h.etl.CreateJob(c.Request.Context(), &req, projectID, userID); err != nil {
@@ -145,9 +142,18 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
+	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
 	logger.Debugf("Update job initiated project_id[%s] job_id[%d] user_id[%v]", projectID, jobID, userID)
 	if err := h.etl.UpdateJob(c.Request.Context(), &req, projectID, jobID, userID); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update job: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to update job: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
@@ -172,7 +178,11 @@ func (h *Handler) DeleteJob(c *gin.Context) {
 	logger.Debugf("Delete job initiated job_id[%d]", id)
 	jobName, err := h.etl.DeleteJob(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete job: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to delete job: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
@@ -237,7 +247,11 @@ func (h *Handler) SyncJob(c *gin.Context) {
 	logger.Debugf("Sync job initiated project_id[%s] job_id[%d]", projectID, id)
 	result, err := h.etl.SyncJob(c.Request.Context(), projectID, id)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to trigger sync: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to trigger sync: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("sync triggered successfully for job_id[%d]", id), result)
@@ -272,7 +286,11 @@ func (h *Handler) ActivateJob(c *gin.Context) {
 	}
 	logger.Debugf("Activate job initiated job_id[%d] activate[%t] user_id[%v]", id, req.Activate, userID)
 	if err := h.etl.ActivateJob(c.Request.Context(), id, req, userID); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to activate job: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
 	action := "paused"
@@ -305,7 +323,11 @@ func (h *Handler) CancelJobRun(c *gin.Context) {
 	}
 	logger.Debugf("Cancel job run initiated project_id[%s] job_id[%d]", projectID, id)
 	if err := h.etl.CancelJobRun(c.Request.Context(), projectID, id); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to cancel job run: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to cancel job run: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
@@ -334,7 +356,11 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 	}
 	logger.Debugf("Clear destination initiated project_id[%s] job_id[%d]", projectID, id)
 	if err := h.etl.ClearDestination(c.Request.Context(), projectID, id, "", 0, true); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
@@ -370,7 +396,11 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 	logger.Debugf("Get stream difference initiated project_id[%s] job_id[%d]", projectID, id)
 	diffStreams, err := h.etl.GetStreamDifference(c.Request.Context(), projectID, id, req)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get stream difference: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{
@@ -402,7 +432,11 @@ func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
 	logger.Debugf("Get clear destination status initiated project_id[%s] job_id[%d]", projectID, jobID)
 	status, err := h.etl.GetClearDestinationStatus(c.Request.Context(), projectID, jobID)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get clear destination status: %s", err), err)
+		httpStatus := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			httpStatus = http.StatusNotFound
+		}
+		errorResponse(c, httpStatus, fmt.Sprintf("failed to get clear destination status: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("clear destination status retrieved successfully for job_id[%d]", jobID), dto.ClearDestinationStatusResponse{Running: status})
@@ -432,7 +466,11 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 	logger.Debugf("Get job tasks initiated project_id[%s] job_id[%d]", projectID, id)
 	tasks, err := h.etl.GetJobTasks(c.Request.Context(), projectID, id)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get job tasks: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to get job tasks: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
@@ -482,7 +520,11 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 
 	logs, err := h.etl.GetTaskLogs(c.Request.Context(), id, req.FilePath, cursor, limit, direction)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get task logs: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
@@ -525,6 +567,7 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 	c.Header("Access-Control-Expose-Headers", "Content-Disposition")
 	c.Status(http.StatusOK)
 	if err := h.etl.StreamLogArchive(id, filePath, c.Writer); err != nil {
+		logger.Errorf("failed to stream log archive job_id[%d]: %s", id, err)
 		return
 	}
 }
@@ -574,7 +617,11 @@ func (h *Handler) RecoverClearDestination(c *gin.Context) {
 	}
 	logger.Debugf("Recover clear destination initiated project_id[%s] job_id[%d]", projectID, jobID)
 	if err := h.etl.RecoverFromClearDestination(c.Request.Context(), projectID, jobID); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to recover from clear-destination: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to recover from clear-destination: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
@@ -601,8 +648,32 @@ func (h *Handler) UpdateStateFile(c *gin.Context) {
 	}
 	logger.Debugf("Update state file callback initiated job_id[%d]", jobID)
 	if err := h.etl.UpdateStateFile(jobID, req.StateFile); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update state file: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrJobNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to update state file: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("state file updated successfully for job_id[%d]", jobID), nil)
+}
+
+func validateJobDriverConfig(source, destination *dto.DriverConfig) error {
+	if source != nil && source.ID == nil {
+		if err := dto.ValidateSourceType(source.Type); err != nil {
+			return err
+		}
+		if source.Name == "" || source.Version == "" || source.Config == "" {
+			return fmt.Errorf("source name, version, and config are required when source id is not provided")
+		}
+	}
+	if destination != nil && destination.ID == nil {
+		if err := dto.ValidateDestinationType(destination.Type); err != nil {
+			return err
+		}
+		if destination.Name == "" || destination.Version == "" || destination.Config == "" {
+			return fmt.Errorf("destination name, version, and config are required when destination id is not provided")
+		}
+	}
+	return nil
 }

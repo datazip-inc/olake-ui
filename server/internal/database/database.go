@@ -27,7 +27,7 @@ func Init() (*Database, error) {
 	}
 
 	logLevel := gormlogger.Warn
-	if cfg.RunMode == "dev" || cfg.RunMode == "localdev" {
+	if cfg.RunMode == "localdev" {
 		logLevel = gormlogger.Info
 	}
 

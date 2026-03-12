@@ -126,6 +126,9 @@ func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
 		Preload("UpdatedBy").
 		First(job).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("%w: job not found id[%d]", constants.ErrJobNotFound, id)
+		}
 		return nil, fmt.Errorf("failed to get job id[%d]: %s", id, err)
 	}
 
@@ -196,7 +199,7 @@ func (db *Database) DeleteJob(id int) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return constants.ErrJobNotFound
 	}
 	return nil
 }
@@ -208,13 +211,8 @@ func (db *Database) IsNameUniqueInProject(ctx context.Context, projectID, name s
 		return false, fmt.Errorf("invalid table type: %v", tableType)
 	}
 
-	countQuery := db.conn.Table(tableName)
-	if ctx != nil {
-		countQuery = countQuery.WithContext(ctx)
-	}
-
 	var count int64
-	err := countQuery.
+	err := db.conn.Table(tableName).WithContext(ctx).
 		Where("name = ?", name).
 		Where("project_id = ?", projectID).
 		Count(&count).Error

@@ -1,15 +1,12 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	// pq registers the postgres driver for database/sql used by the session store.
-	_ "github.com/lib/pq"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
@@ -21,7 +18,7 @@ type sessionPayload struct {
 }
 
 type sessionStore struct {
-	db      *sql.DB
+	db      *database.Database
 	enabled bool
 	secure  bool
 }
@@ -31,30 +28,15 @@ const (
 	sessionMaxAgeDays = 30
 )
 
-func newSessionStore(cfg *appconfig.Config) (*sessionStore, error) {
+func newSessionStore(cfg *appconfig.Config, db *database.Database) (*sessionStore, error) {
 	store := &sessionStore{
+		db:      db,
 		enabled: cfg.SessionOn,
 		secure:  cfg.RunMode != "localdev",
 	}
 	if !store.enabled {
 		return store, nil
 	}
-
-	dsn, err := database.BuildPostgresURIFromConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build postgres URI for session store: %w", err)
-	}
-
-	dbConn, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect postgres session store: %w", err)
-	}
-	if err := dbConn.Ping(); err != nil {
-		_ = dbConn.Close()
-		return nil, fmt.Errorf("failed to ping postgres session store: %w", err)
-	}
-
-	store.db = dbConn
 	return store, nil
 }
 
@@ -71,12 +53,7 @@ func (s *sessionStore) SetUserSession(c *gin.Context, userID int) error {
 		return fmt.Errorf("failed to marshal session payload: %w", err)
 	}
 
-	_, err = s.db.Exec(`
-		INSERT INTO session (session_key, session_data, session_expiry)
-		VALUES ($1, $2, $3)
-		ON CONFLICT (session_key)
-		DO UPDATE SET session_data = EXCLUDED.session_data, session_expiry = EXCLUDED.session_expiry
-	`, sessionID, payload, expiresAt)
+	err = s.db.UpsertSession(sessionID, payload, expiresAt)
 	if err != nil {
 		return fmt.Errorf("failed to persist session: %w", err)
 	}
@@ -96,12 +73,7 @@ func (s *sessionStore) GetUserID(c *gin.Context) (int, bool) {
 		return 0, false
 	}
 
-	var rawPayload []byte
-	err = s.db.QueryRow(`
-		SELECT session_data
-		FROM session
-		WHERE session_key = $1 AND session_expiry > NOW()
-	`, sessionID).Scan(&rawPayload)
+	rawPayload, err := s.db.GetActiveSessionData(sessionID)
 	if err != nil {
 		return 0, false
 	}

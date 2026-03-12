@@ -15,6 +15,17 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required" example:"password"`
 }
 
+type CreateUserRequest struct {
+	Username string `json:"username" binding:"required" example:"admin"`
+	Password string `json:"password" binding:"required" example:"password"`
+	Email    string `json:"email" binding:"required,email" example:"admin@example.com"`
+}
+
+type UpdateUserRequest struct {
+	Username string `json:"username" example:"admin"`
+	Email    string `json:"email" example:"admin@example.com"`
+}
+
 type SpecRequest struct {
 	// enum: postgres,mongodb,mysql,mssql,db2,s3,kafka,iceberg
 	Type    string `json:"type" binding:"required" example:"postgres"`

@@ -25,8 +25,12 @@ type Server struct {
 
 func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 	engine := gin.New()
+	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{
+		SkipPaths: []string{"/health"},
+	}))
 	engine.Use(gin.Recovery())
 
+	configureRequestLimits(engine, cfg)
 	configureMode(cfg)
 	configureBaseRoutes(engine)
 
@@ -81,13 +85,26 @@ func (s *Server) Run(ctx context.Context) error {
 
 func configureMode(cfg *appconfig.Config) {
 	switch cfg.RunMode {
-	case "dev", "localdev":
+	case "localdev":
 		gin.SetMode(gin.DebugMode)
 	case "test":
 		gin.SetMode(gin.TestMode)
 	default:
 		gin.SetMode(gin.ReleaseMode)
 	}
+}
+
+func configureRequestLimits(engine *gin.Engine, cfg *appconfig.Config) {
+	// the maximum amount of memory used to store parsed multipart form data, such as file uploads.
+	engine.MaxMultipartMemory = cfg.MaxMemory
+
+	// middleware to limit the size of the request body
+	engine.Use(func(c *gin.Context) {
+		if c.Request != nil && c.Request.Body != nil {
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, cfg.MaxUploadSize)
+		}
+		c.Next()
+	})
 }
 
 func configureBaseRoutes(engine *gin.Engine) {

@@ -74,7 +74,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	api, err := handlers.NewHandler(appSvc, &cfg)
+	api, err := handlers.NewHandler(appSvc, &cfg, db)
 	if err != nil {
 		logger.Fatalf("Failed to initialize Gin API: %s", err)
 		return

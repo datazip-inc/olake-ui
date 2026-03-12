@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -19,6 +20,9 @@ import (
 func (s *ETLService) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
 	destination, err := s.db.GetDestinationByID(destinationID)
 	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to get destination: %s", err)
 	}
 
@@ -142,6 +146,9 @@ func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDesti
 func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
 	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return fmt.Errorf("failed to get destination: %s", err)
 	}
 
@@ -174,6 +181,9 @@ func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID st
 func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
 	dest, err := s.db.GetDestinationByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find destination: %s", err)
 	}
 
@@ -195,6 +205,9 @@ func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.Delete
 	}
 
 	if err := s.db.DeleteDestination(id); err != nil {
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrDestinationNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to delete destination: %s", err)
 	}
 

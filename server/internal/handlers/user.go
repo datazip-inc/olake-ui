@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/gin-gonic/gin"
 )
@@ -14,37 +13,41 @@ import (
 // @Summary Create a new user
 // @Tags Users
 // @Description Create a new user record with the provided details.
-// @Param   body    body    models.User true    "user info"
-// @Success 200 {object} dto.JSONResponse "user created successfully"
+// @Param   body    body    dto.CreateUserRequest true    "user info"
+// @Success 200 {object} dto.JSONResponse{data=dto.UserResponse} "user created successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /api/v1/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
-	var req models.User
+	var req dto.CreateUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
-		return
-	}
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		err := errors.New("missing required user fields")
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
 
-	if err := h.etl.CreateUser(c.Request.Context(), &req); err != nil {
+	user := &models.User{
+		Username: req.Username,
+		Password: req.Password,
+		Email:    req.Email,
+	}
+	if err := h.etl.CreateUser(c.Request.Context(), user); err != nil {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
 		return
 	}
 
-	successResponse(c, "user created successfully", req)
+	successResponse(c, "user created successfully", dto.UserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	})
 }
 
 // @Summary List all users
 // @Tags Users
 // @Description Retrieve a list of all registered users.
-// @Success 200 {array}  dto.JSONResponse{data=models.User}
+// @Success 200 {array}  dto.JSONResponse{data=dto.UserResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to get users"
@@ -56,39 +59,54 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
 		return
 	}
-	successResponse(c, "users listed successfully", users)
+	resp := make([]dto.UserResponse, 0, len(users))
+	for _, user := range users {
+		resp = append(resp, dto.UserResponse{
+			ID:       user.ID,
+			Username: user.Username,
+			Email:    user.Email,
+		})
+	}
+	successResponse(c, "users listed successfully", resp)
 }
 
 // @Summary Update user details
 // @Tags Users
 // @Description Update the details of an existing user identified by their unique ID.
 // @Param   id      path    int true    "user id"
-// @Param   body    body    models.User true    "user info"
-// @Success 200 {object} dto.JSONResponse{data=models.User}
+// @Param   body    body    dto.UpdateUserRequest true    "user info"
+// @Success 200 {object} dto.JSONResponse{data=dto.UserResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	var req models.User
+	var req dto.UpdateUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)
 
-	updatedUser, err := h.etl.UpdateUser(c.Request.Context(), id, &req)
+	updatedUser, err := h.etl.UpdateUser(c.Request.Context(), id, &models.User{
+		Username: req.Username,
+		Email:    req.Email,
+	})
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
 		return
 	}
-	successResponse(c, "user updated successfully", updatedUser)
+	successResponse(c, "user updated successfully", dto.UserResponse{
+		ID:       updatedUser.ID,
+		Username: updatedUser.Username,
+		Email:    updatedUser.Email,
+	})
 }
 
 // @Summary Delete a user
@@ -101,7 +119,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete user"
 // @Router /api/v1/users/{id} [delete]
 func (h *Handler) DeleteUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	id, err := getIDParam(c, "id")
 	if err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return

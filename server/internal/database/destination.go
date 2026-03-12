@@ -81,7 +81,7 @@ func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
 		First(&destination).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("destination not found id[%d]", id)
+			return nil, fmt.Errorf("%w: destination not found id[%d]", constants.ErrDestinationNotFound, id)
 		}
 		return nil, fmt.Errorf("failed to get destination id[%d]: %s", id, err)
 	}
@@ -111,7 +111,7 @@ func (db *Database) DeleteDestination(id int) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return constants.ErrDestinationNotFound
 	}
 	return nil
 }

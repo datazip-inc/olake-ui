@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
@@ -51,19 +50,20 @@ func (h *Handler) Login(c *gin.Context) {
 // @Summary User signup
 // @Tags Authentication
 // @Description Register a new user account with the provided details.
-// @Param   body          body    models.User true "user info"
+// @Param   body          body    dto.CreateUserRequest true "user info"
 // @Success 200 {object} dto.JSONResponse "user created successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 409 {object} dto.Error409Response "user already exists"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /signup [post]
 func (h *Handler) Signup(c *gin.Context) {
-	var req models.User
+	var req dto.CreateUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
+	logger.Debugf("Signup initiated username[%s] email[%s]", req.Username, req.Email)
 	if err := h.etl.Signup(c.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):

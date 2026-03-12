@@ -60,7 +60,11 @@ func (h *Handler) GetSource(c *gin.Context) {
 	logger.Debugf("Get source initiated project_id[%s] source_id[%d]", projectID, sourceID)
 	source, err := h.etl.GetSource(c.Request.Context(), projectID, sourceID)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to get source: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("source '%d' retrieved successfully", sourceID), source)
@@ -173,7 +177,11 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 	logger.Debugf("Delete source initiated source_id[%d]", id)
 	resp, err := h.etl.DeleteSource(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete source: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to delete source: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("source %s deleted successfully", resp.Name), resp)
@@ -251,12 +259,17 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get versions"
 // @Router /api/v1/project/{projectid}/sources/versions [get]
 func (h *Handler) GetSourceVersions(c *gin.Context) {
+	projectID, err := getProjectID(c)
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 	sourceType := c.Query("type")
 	if sourceType == "" {
 		errorResponse(c, http.StatusBadRequest, "failed to get source versions: source type is required", fmt.Errorf("source type is required"))
 		return
 	}
-	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", c.Param("projectid"), sourceType)
+	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", projectID, sourceType)
 	versions, err := h.etl.GetSourceVersions(c.Request.Context(), sourceType)
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source versions: %s", err), err)
@@ -276,6 +289,11 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/sources/spec [post]
 func (h *Handler) GetSourceSpec(c *gin.Context) {
+	projectID, err := getProjectID(c)
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 	var req dto.SpecRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
@@ -285,7 +303,7 @@ func (h *Handler) GetSourceSpec(c *gin.Context) {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]", c.Param("projectid"), req.Type, req.Version)
+	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]", projectID, req.Type, req.Version)
 	resp, err := h.etl.GetSourceSpec(c.Request.Context(), &req)
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)

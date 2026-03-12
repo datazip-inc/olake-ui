@@ -169,6 +169,12 @@ type LoginResponse struct {
 	Username string `json:"username" example:"admin"`
 }
 
+type UserResponse struct {
+	ID       int    `json:"id" example:"1"`
+	Username string `json:"username" example:"admin"`
+	Email    string `json:"email" example:"admin@example.com"`
+}
+
 // ReleaseMetadataResponse represents a single release
 type ReleaseMetadataResponse struct {
 	Title       string   `json:"title,omitempty"`

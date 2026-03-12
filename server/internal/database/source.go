@@ -82,7 +82,7 @@ func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 		First(&source).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("source not found id[%d]", id)
+			return nil, fmt.Errorf("%w: source not found id[%d]", constants.ErrSourceNotFound, id)
 		}
 		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)
 	}
@@ -112,7 +112,7 @@ func (db *Database) DeleteSource(id int) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return constants.ErrSourceNotFound
 	}
 	return nil
 }

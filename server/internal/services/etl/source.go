@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -19,6 +20,9 @@ import (
 func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID int) (*dto.SourceDataItem, error) {
 	source, err := s.db.GetSourceByID(sourceID)
 	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to get source: %s", err)
 	}
 
@@ -144,6 +148,9 @@ func (s *ETLService) CreateSource(ctx context.Context, req *dto.CreateSourceRequ
 func (s *ETLService) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
 	existing, err := s.db.GetSourceByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return fmt.Errorf("failed to get source: %s", err)
 	}
 
@@ -176,6 +183,9 @@ func (s *ETLService) UpdateSource(ctx context.Context, projectID string, id int,
 func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
 	src, err := s.db.GetSourceByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find source: %s", err)
 	}
 
@@ -196,6 +206,9 @@ func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 	}
 
 	if err := s.db.DeleteSource(id); err != nil {
+		if errors.Is(err, constants.ErrSourceNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrSourceNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to delete source: %s", err)
 	}
 

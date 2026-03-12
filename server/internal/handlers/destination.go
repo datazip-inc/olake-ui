@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
@@ -31,7 +33,7 @@ func (h *Handler) ListDestinations(c *gin.Context) {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destinations: %s", err), err)
 		return
 	}
-	successResponse(c, "Destinations listed successfully", items)
+	successResponse(c, "destinations listed successfully", items)
 }
 
 // @Summary Get destination details
@@ -58,7 +60,11 @@ func (h *Handler) GetDestination(c *gin.Context) {
 	logger.Debugf("Get destination initiated project_id[%s] destination_id[%d]", projectID, destinationID)
 	destination, err := h.etl.GetDestination(c.Request.Context(), projectID, destinationID)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to get destination: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("destination '%d' retrieved successfully", destinationID), destination)
@@ -144,7 +150,11 @@ func (h *Handler) UpdateDestination(c *gin.Context) {
 		projectID, id, req.Type, userID)
 
 	if err := h.etl.UpdateDestination(c.Request.Context(), id, projectID, &req, userID); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to update destination: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("destination %s updated successfully", req.Name), req)
@@ -169,7 +179,11 @@ func (h *Handler) DeleteDestination(c *gin.Context) {
 	logger.Debugf("Delete destination initiated destination_id[%d]", id)
 	resp, err := h.etl.DeleteDestination(c.Request.Context(), id)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrDestinationNotFound) {
+			status = http.StatusNotFound
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to delete destination: %s", err), err)
 		return
 	}
 	successResponse(c, fmt.Sprintf("destination %s deleted successfully", resp.Name), resp)
@@ -249,13 +263,18 @@ func (h *Handler) GetDestinationVersions(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/destinations/spec [post]
 func (h *Handler) GetDestinationSpec(c *gin.Context) {
+	projectID, err := getProjectID(c)
+	if err != nil {
+		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
 	var req dto.SpecRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get destination spec initiated project_id[%s] destination_type[%s] destination_version[%s]",
-		c.Param("projectid"), req.Type, req.Version)
+		projectID, req.Type, req.Version)
 	resp, err := h.etl.GetDestinationSpec(c.Request.Context(), &req)
 	if err != nil {
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get destination spec: %s", err), err)

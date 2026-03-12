@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -56,6 +57,9 @@ func (s *ETLService) ListJobs(ctx context.Context, projectID string) ([]dto.JobR
 func (s *ETLService) GetJob(ctx context.Context, projectID string, jobID int) (*dto.JobResponse, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to get job: %s", err)
 	}
 
@@ -151,6 +155,9 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 	// TODO: remove fetching existing job from database to verify it's existence, fetch only if the details aren't already available in the params/request. If job not exists it will fail during query execution.
 	existingJob, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return fmt.Errorf("failed to get job: %s", err)
 	}
 
@@ -215,6 +222,7 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 		return fmt.Errorf("failed to update job: %s", err)
 	}
 
+	// TODO: check compensation/outbox pattern or any relevant measures to handle failure of update schedule workflow
 	// Update temporal schedule only if frequency has changed
 	if req.Frequency != existingJob.Frequency {
 		err = s.temporal.UpdateSchedule(ctx, req.Frequency, projectID, existingJob.ID, nil)
@@ -229,6 +237,9 @@ func (s *ETLService) UpdateJob(ctx context.Context, req *dto.UpdateJobRequest, p
 func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return "", fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return "", fmt.Errorf("failed to find job: %s", err)
 	}
 
@@ -246,6 +257,9 @@ func (s *ETLService) DeleteJob(ctx context.Context, jobID int) (string, error) {
 func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (interface{}, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
@@ -265,6 +279,9 @@ func (s *ETLService) SyncJob(ctx context.Context, projectID string, jobID int) (
 func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return fmt.Errorf("failed to find job: %s", err)
 	}
 
@@ -278,6 +295,9 @@ func (s *ETLService) CancelJobRun(ctx context.Context, projectID string, jobID i
 func (s *ETLService) ActivateJob(ctx context.Context, jobID int, req dto.JobStatusRequest, userID *int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return fmt.Errorf("failed to find job: %s", err)
 	}
 
@@ -424,6 +444,9 @@ func (s *ETLService) CheckUniqueName(ctx context.Context, projectID string, req 
 func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID int) ([]dto.JobTask, error) {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
@@ -463,6 +486,9 @@ func (s *ETLService) GetJobTasks(ctx context.Context, projectID string, jobID in
 func (s *ETLService) GetTaskLogs(_ context.Context, jobID int, filePath string, cursor int64, limit int, direction string) (*dto.TaskLogsResponse, error) {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find job: %s", err)
 	}
 
@@ -637,6 +663,9 @@ func (s *ETLService) UpdateSyncTelemetry(ctx context.Context, req dto.UpdateSync
 func (s *ETLService) RecoverFromClearDestination(ctx context.Context, projectID string, jobID int) error {
 	job, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return fmt.Errorf("job not found: %s", err)
 	}
 
@@ -728,6 +757,9 @@ func (s *ETLService) StreamLogArchive(jobID int, taskLogFilePath string, writer 
 func (s *ETLService) UpdateStateFile(jobID int, stateFile string) error {
 	_, err := s.db.GetJobByID(jobID, true)
 	if err != nil {
+		if errors.Is(err, constants.ErrJobNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrJobNotFound, err)
+		}
 		return fmt.Errorf("job not found: %s", err)
 	}
 
