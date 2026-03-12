@@ -44,6 +44,7 @@ func (h *Handler) ListSources(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.SourceDataItem}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "source not found"
 // @Failure 500 {object} dto.Error500Response "failed to get source"
 // @Router /api/v1/project/{projectid}/sources/{id} [get]
 func (h *Handler) GetSource(c *gin.Context) {
@@ -78,6 +79,7 @@ func (h *Handler) GetSource(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.CreateSourceRequest}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to create source"
 // @Router /api/v1/project/{projectid}/sources [post]
 func (h *Handler) CreateSource(c *gin.Context) {
@@ -118,6 +120,7 @@ func (h *Handler) CreateSource(c *gin.Context) {
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 404 {object} dto.Error404Response "source not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update source"
 // @Router /api/v1/project/{projectid}/sources/{id} [put]
 func (h *Handler) UpdateSource(c *gin.Context) {
@@ -195,6 +198,7 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to test connection"
 // @Router /api/v1/project/{projectid}/sources/test [post]
 func (h *Handler) TestSourceConnection(c *gin.Context) {
@@ -227,6 +231,7 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=object}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to get source catalog"
 // @Router /api/v1/project/{projectid}/sources/streams [post]
 func (h *Handler) GetSourceCatalog(c *gin.Context) {
@@ -286,6 +291,7 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/sources/spec [post]
 func (h *Handler) GetSourceSpec(c *gin.Context) {

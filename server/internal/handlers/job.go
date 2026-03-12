@@ -46,6 +46,7 @@ func (h *Handler) ListJobs(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.JobResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to get job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [get]
 func (h *Handler) GetJob(c *gin.Context) {
@@ -80,6 +81,7 @@ func (h *Handler) GetJob(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "job created successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to create job"
 // @Router /api/v1/project/{projectid}/jobs [post]
 func (h *Handler) CreateJob(c *gin.Context) {
@@ -119,6 +121,8 @@ func (h *Handler) CreateJob(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "job updated successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [put]
 func (h *Handler) UpdateJob(c *gin.Context) {
@@ -167,6 +171,7 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "job deleted successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to delete job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [delete]
 func (h *Handler) DeleteJob(c *gin.Context) {
@@ -197,6 +202,7 @@ func (h *Handler) DeleteJob(c *gin.Context) {
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 409 {object} dto.Error409Response "name is not unique"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to check uniqueness"
 // @Router /api/v1/project/{projectid}/check-unique [post]
 func (h *Handler) CheckUniqueName(c *gin.Context) {
@@ -231,6 +237,7 @@ func (h *Handler) CheckUniqueName(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "sync triggered successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to trigger sync"
 // @Router /api/v1/project/{projectid}/jobs/{id}/sync [post]
 func (h *Handler) SyncJob(c *gin.Context) {
@@ -266,6 +273,8 @@ func (h *Handler) SyncJob(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "job activated/deactivated successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to activate job"
 // @Router /api/v1/project/{projectid}/jobs/{id}/activate [post]
 func (h *Handler) ActivateJob(c *gin.Context) {
@@ -308,6 +317,7 @@ func (h *Handler) ActivateJob(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "job cancel requested successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to cancel job run"
 // @Router /api/v1/project/{projectid}/jobs/{id}/cancel [get]
 func (h *Handler) CancelJobRun(c *gin.Context) {
@@ -341,6 +351,7 @@ func (h *Handler) CancelJobRun(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "clear destination triggered successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to trigger clear destination"
 // @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [post]
 func (h *Handler) ClearDestination(c *gin.Context) {
@@ -375,6 +386,8 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.StreamDifferenceResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to get stream difference"
 // @Router /api/v1/project/{projectid}/jobs/{id}/stream-difference [post]
 func (h *Handler) GetStreamDifference(c *gin.Context) {
@@ -416,6 +429,7 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.ClearDestinationStatusResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to get status"
 // @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [get]
 func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
@@ -450,6 +464,7 @@ func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=[]dto.JobTask}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
 // @Failure 500 {object} dto.Error500Response "failed to get job tasks"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks [get]
 func (h *Handler) GetJobTasks(c *gin.Context) {
@@ -489,6 +504,8 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.TaskLogsResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "job not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to get task logs"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs [post]
 func (h *Handler) GetTaskLogs(c *gin.Context) {
@@ -577,6 +594,9 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 // @Description Internal callback to update sync telemetry data.
 // @Param   body          body    dto.UpdateSyncTelemetryRequest true "telemetry data"
 // @Success 200 {object} dto.JSONResponse "sync telemetry updated successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 413 {object} dto.Error413Response "payload too large"
+// @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /internal/worker/callback/sync-telemetry [post]
 func (h *Handler) UpdateSyncTelemetry(c *gin.Context) {
 	var req dto.UpdateSyncTelemetryRequest
@@ -603,6 +623,9 @@ func (h *Handler) UpdateSyncTelemetry(c *gin.Context) {
 // @Param   projectid     path    string  true    "project id (default is 123)"
 // @Param   id            path    int     true    "job id"
 // @Success 200 {object} dto.JSONResponse "successfully recovered"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 404 {object} dto.Error404Response "job not found"
+// @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /internal/project/{projectid}/jobs/{id}/clear-destination/recover [post]
 func (h *Handler) RecoverClearDestination(c *gin.Context) {
 	projectID, err := getProjectID(c)
@@ -634,6 +657,10 @@ func (h *Handler) RecoverClearDestination(c *gin.Context) {
 // @Param   id            path    int     true    "job id"
 // @Param   body          body    dto.UpdateStateFileRequest true "state file data"
 // @Success 200 {object} dto.JSONResponse "state file updated successfully"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 404 {object} dto.Error404Response "job not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
+// @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /internal/project/{projectid}/jobs/{id}/statefile [put]
 func (h *Handler) UpdateStateFile(c *gin.Context) {
 	jobID, err := getIDParam(c, "id")

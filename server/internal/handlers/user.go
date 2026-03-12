@@ -19,6 +19,8 @@ import (
 // @Success 200 {object} dto.JSONResponse{data=dto.UserResponse} "user created successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 409 {object} dto.Error409Response "user already exists"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /api/v1/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
@@ -84,6 +86,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.UserResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {

@@ -44,6 +44,7 @@ func (h *Handler) ListDestinations(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.DestinationDataItem}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "destination not found"
 // @Failure 500 {object} dto.Error500Response "failed to get destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [get]
 func (h *Handler) GetDestination(c *gin.Context) {
@@ -78,6 +79,7 @@ func (h *Handler) GetDestination(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.CreateDestinationRequest}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to create destination"
 // @Router /api/v1/project/{projectid}/destinations [post]
 func (h *Handler) CreateDestination(c *gin.Context) {
@@ -118,6 +120,8 @@ func (h *Handler) CreateDestination(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.UpdateDestinationRequest}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "destination not found"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [put]
 func (h *Handler) UpdateDestination(c *gin.Context) {
@@ -168,6 +172,7 @@ func (h *Handler) UpdateDestination(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.DeleteDestinationResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "destination not found"
 // @Failure 500 {object} dto.Error500Response "failed to delete destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [delete]
 func (h *Handler) DeleteDestination(c *gin.Context) {
@@ -197,7 +202,7 @@ func (h *Handler) DeleteDestination(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.TestConnectionResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
-// @Failure 400 {object} dto.Error400Response "failed to verify driver credentials"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Router /api/v1/project/{projectid}/destinations/test [post]
 func (h *Handler) TestDestinationConnection(c *gin.Context) {
 	// need to remove sourceVersion from request
@@ -260,6 +265,7 @@ func (h *Handler) GetDestinationVersions(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.SpecResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/destinations/spec [post]
 func (h *Handler) GetDestinationSpec(c *gin.Context) {

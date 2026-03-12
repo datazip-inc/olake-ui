@@ -19,6 +19,7 @@ import (
 // @Success 200 {object} dto.JSONResponse{data=dto.LoginResponse}
 // @Failure 400 {object} dto.Error400Response "invalid request"
 // @Failure 401 {object} dto.Error401Response "invalid credentials"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /login [post]
 func (h *Handler) Login(c *gin.Context) {
@@ -54,6 +55,7 @@ func (h *Handler) Login(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "user created successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 409 {object} dto.Error409Response "user already exists"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to create user"
 // @Router /signup [post]
 func (h *Handler) Signup(c *gin.Context) {

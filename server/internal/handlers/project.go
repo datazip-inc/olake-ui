@@ -42,6 +42,7 @@ func (h *Handler) GetProjectSettings(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "Project Settings updated successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update project settings"
 // @Router /api/v1/project/{projectid}/settings [put]
 func (h *Handler) UpsertProjectSettings(c *gin.Context) {
