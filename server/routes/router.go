@@ -6,7 +6,7 @@ import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/beego/beego/v2/server/web/context"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	etlhandlers "github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/middleware"
 )
 
@@ -33,7 +33,9 @@ func CustomCorsFilter(ctx *context.Context) {
 	}
 }
 
-func Init(h *etlhandlers.Handler) {
+func Init(h *handlers.Handler) {
+	etlHandler := h.ETL
+
 	if runmode, err := web.AppConfig.String(constants.ConfRunMode); err == nil && runmode == "localdev" {
 		web.InsertFilter("*", web.BeforeRouter, CustomCorsFilter)
 	} else {
@@ -41,75 +43,75 @@ func Init(h *etlhandlers.Handler) {
 		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
 
 		// Serve index.html for React frontend
-		web.Router("/*", h, "get:ServeFrontend") // any other frontend route
+		web.Router("/*", etlHandler, "get:ServeFrontend") // any other frontend route
 	}
 
 	// Swagger routes
-	web.Router("/swagger/*", h, "get:ServeSwagger")
+	web.Router("/swagger/*", etlHandler, "get:ServeSwagger")
 
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
-	web.Router("/login", h, "post:Login")
-	web.Router("/signup", h, "post:Signup")
-	web.Router("/auth/check", h, "get:CheckAuth")
-	web.Router("/telemetry-id", h, "get:GetTelemetryID")
+	web.Router("/login", etlHandler, "post:Login")
+	web.Router("/signup", etlHandler, "post:Signup")
+	web.Router("/auth/check", etlHandler, "get:CheckAuth")
+	web.Router("/telemetry-id", etlHandler, "get:GetTelemetryID")
 
 	// User routes
-	web.Router("/api/v1/users", h, "post:CreateUser")
-	web.Router("/api/v1/users", h, "get:GetAllUsers")
-	web.Router("/api/v1/users/:id", h, "put:UpdateUser")
-	web.Router("/api/v1/users/:id", h, "delete:DeleteUser")
+	web.Router("/api/v1/users", etlHandler, "post:CreateUser")
+	web.Router("/api/v1/users", etlHandler, "get:GetAllUsers")
+	web.Router("/api/v1/users/:id", etlHandler, "put:UpdateUser")
+	web.Router("/api/v1/users/:id", etlHandler, "delete:DeleteUser")
 
 	// Source routes
-	web.Router("/api/v1/project/:projectid/sources", h, "get:ListSources")
-	web.Router("/api/v1/project/:projectid/sources", h, "post:CreateSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", h, "get:GetSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", h, "put:UpdateSource")
-	web.Router("/api/v1/project/:projectid/sources/:id", h, "delete:DeleteSource")
-	web.Router("/api/v1/project/:projectid/sources/test", h, "post:TestSourceConnection")
-	web.Router("/api/v1/project/:projectid/sources/streams", h, "post:GetSourceCatalog")
-	web.Router("/api/v1/project/:projectid/sources/versions", h, "get:GetSourceVersions")
-	web.Router("/api/v1/project/:projectid/sources/spec", h, "post:GetSourceSpec")
+	web.Router("/api/v1/project/:projectid/sources", etlHandler, "get:ListSources")
+	web.Router("/api/v1/project/:projectid/sources", etlHandler, "post:CreateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", etlHandler, "get:GetSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", etlHandler, "put:UpdateSource")
+	web.Router("/api/v1/project/:projectid/sources/:id", etlHandler, "delete:DeleteSource")
+	web.Router("/api/v1/project/:projectid/sources/test", etlHandler, "post:TestSourceConnection")
+	web.Router("/api/v1/project/:projectid/sources/streams", etlHandler, "post:GetSourceCatalog")
+	web.Router("/api/v1/project/:projectid/sources/versions", etlHandler, "get:GetSourceVersions")
+	web.Router("/api/v1/project/:projectid/sources/spec", etlHandler, "post:GetSourceSpec")
 
 	// Destination routes
-	web.Router("/api/v1/project/:projectid/destinations", h, "get:ListDestinations")
-	web.Router("/api/v1/project/:projectid/destinations", h, "post:CreateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", h, "get:GetDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", h, "put:UpdateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", h, "delete:DeleteDestination")
-	web.Router("/api/v1/project/:projectid/destinations/test", h, "post:TestDestinationConnection")
-	web.Router("/api/v1/project/:projectid/destinations/versions", h, "get:GetDestinationVersions")
-	web.Router("/api/v1/project/:projectid/destinations/spec", h, "post:GetDestinationSpec")
+	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "get:ListDestinations")
+	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "post:CreateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "get:GetDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "put:UpdateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "delete:DeleteDestination")
+	web.Router("/api/v1/project/:projectid/destinations/test", etlHandler, "post:TestDestinationConnection")
+	web.Router("/api/v1/project/:projectid/destinations/versions", etlHandler, "get:GetDestinationVersions")
+	web.Router("/api/v1/project/:projectid/destinations/spec", etlHandler, "post:GetDestinationSpec")
 
 	// Job routes
-	web.Router("/api/v1/project/:projectid/jobs", h, "get:ListJobs")
-	web.Router("/api/v1/project/:projectid/jobs", h, "post:CreateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", h, "get:GetJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", h, "put:UpdateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id", h, "delete:DeleteJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/sync", h, "post:SyncJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/activate", h, "post:ActivateJob")
-	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", h, "get:GetJobTasks")
-	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", h, "get:CancelJobRun")
-	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", h, "post:GetTaskLogs")
-	web.Router("/api/v1/project/:projectid/jobs/:id/logs/download", h, "get:DownloadTaskLogs")
-	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "post:ClearDestination")
-	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", h, "get:GetClearDestinationStatus")
-	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", h, "post:GetStreamDifference")
+	web.Router("/api/v1/project/:projectid/jobs", etlHandler, "get:ListJobs")
+	web.Router("/api/v1/project/:projectid/jobs", etlHandler, "post:CreateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", etlHandler, "get:GetJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", etlHandler, "put:UpdateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id", etlHandler, "delete:DeleteJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/sync", etlHandler, "post:SyncJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/activate", etlHandler, "post:ActivateJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", etlHandler, "get:GetJobTasks")
+	web.Router("/api/v1/project/:projectid/jobs/:id/cancel", etlHandler, "get:CancelJobRun")
+	web.Router("/api/v1/project/:projectid/jobs/:id/tasks/:taskid/logs", etlHandler, "post:GetTaskLogs")
+	web.Router("/api/v1/project/:projectid/jobs/:id/logs/download", etlHandler, "get:DownloadTaskLogs")
+	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", etlHandler, "post:ClearDestination")
+	web.Router("/api/v1/project/:projectid/jobs/:id/clear-destination", etlHandler, "get:GetClearDestinationStatus")
+	web.Router("/api/v1/project/:projectid/jobs/:id/stream-difference", etlHandler, "post:GetStreamDifference")
 
 	// Project settings routes
-	web.Router("/api/v1/project/:projectid/settings", h, "put:UpsertProjectSettings")
-	web.Router("/api/v1/project/:projectid/settings", h, "get:GetProjectSettings")
+	web.Router("/api/v1/project/:projectid/settings", etlHandler, "put:UpsertProjectSettings")
+	web.Router("/api/v1/project/:projectid/settings", etlHandler, "get:GetProjectSettings")
 
 	// validation routes
-	web.Router("/api/v1/project/:projectid/check-unique", h, "post:CheckUniqueName")
+	web.Router("/api/v1/project/:projectid/check-unique", etlHandler, "post:CheckUniqueName")
 
 	// platform routes
-	web.Router("/api/v1/platform/releases", h, "get:GetReleaseUpdates")
+	web.Router("/api/v1/platform/releases", etlHandler, "get:GetReleaseUpdates")
 
 	// internal routes
-	web.Router("/internal/worker/callback/sync-telemetry", h, "post:UpdateSyncTelemetry")
-	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", h, "post:RecoverClearDestination")
-	web.Router("/internal/project/:projectid/jobs/:id/statefile", h, "put:UpdateStateFile")
+	web.Router("/internal/worker/callback/sync-telemetry", etlHandler, "post:UpdateSyncTelemetry")
+	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
+	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
 }

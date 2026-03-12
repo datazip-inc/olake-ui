@@ -1,4 +1,4 @@
-package etlhandlers
+package etl
 
 import (
 	"net/http"

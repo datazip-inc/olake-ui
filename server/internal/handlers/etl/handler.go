@@ -1,4 +1,4 @@
-package etlhandlers
+package etl
 
 import (
 	"github.com/beego/beego/v2/server/web"
@@ -7,13 +7,13 @@ import (
 
 type Handler struct {
 	web.Controller
-	etl *services.ETLService
+	etl *services.Service
 }
 
 // appService holds the singleton service instance injected at startup.
-var etl *services.ETLService
+var etl *services.Service
 
-func NewHandler(s *services.ETLService) *Handler {
+func NewHandler(s *services.Service) *Handler {
 	etl = s
 	return &Handler{etl: s}
 }
