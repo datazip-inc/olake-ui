@@ -12,10 +12,11 @@ import { NavLink, Link, useNavigate } from "react-router-dom"
 
 import { OlakeLogo, OLake } from "@/assets"
 import { NAV_ITEMS } from "@/common/constants/constants"
-import { UpdatesModal } from "@/core//platform/components"
 import { useAuthStore } from "@/core/auth/stores"
 import { usePlatformStore } from "@/core/platform/stores"
 import { ReleaseMetadataResponse } from "@/core/platform/types"
+
+import { UpdatesModal } from "../platform/components"
 
 // will be shown in the later period when we have new updates
 const UpdateNotification: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
