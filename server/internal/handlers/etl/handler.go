@@ -10,6 +10,7 @@ type Handler struct {
 	etl *services.Service
 }
 
+// appService holds the singleton service instance injected at startup.
 var etl *services.Service
 
 func NewHandler(s *services.Service) *Handler {
@@ -17,6 +18,8 @@ func NewHandler(s *services.Service) *Handler {
 	return &Handler{etl: s}
 }
 
+// Prepare runs before each action; Beego constructs a fresh controller per request,
+// so we assign the shared AppService here to avoid nil dereferences.
 func (h *Handler) Prepare() {
 	h.etl = etl
 }

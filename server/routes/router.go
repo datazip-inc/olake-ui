@@ -43,11 +43,11 @@ func Init(h *handlers.Handler) {
 		web.SetStaticPath("", "/opt/frontend/dist") // Vite assets are in /assets
 
 		// Serve index.html for React frontend
-		web.Router("/*", h, "get:ServeFrontend") // any other frontend route
+		web.Router("/*", etlHandler, "get:ServeFrontend") // any other frontend route
 	}
 
 	// Swagger routes
-	web.Router("/swagger/*", h, "get:ServeSwagger")
+	web.Router("/swagger/*", etlHandler, "get:ServeSwagger")
 
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
