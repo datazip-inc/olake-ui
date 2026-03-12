@@ -18,8 +18,8 @@ func InitAppService(db *database.Database) (*AppService, error) {
 	}
 
 	return &AppService{
-		db:         db,
-		etl:        etlSvc,
+		db:  db,
+		etl: etlSvc,
 	}, nil
 }
 
