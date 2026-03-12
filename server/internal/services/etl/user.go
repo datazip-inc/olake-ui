@@ -2,15 +2,27 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // User-related methods on AppService
 
 func (s *ETLService) CreateUser(_ context.Context, req *models.User) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("%w: %v", constants.ErrPasswordProcessing, err)
+	}
+	req.Password = string(hashedPassword)
+
 	if err := s.db.CreateUser(req); err != nil {
+		if errors.Is(err, constants.ErrUserAlreadyExists) {
+			return err
+		}
 		return fmt.Errorf("failed to create user: %s", err)
 	}
 

@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -81,7 +82,7 @@ func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 		Preload("UpdatedBy").
 		First(&source).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%w: source not found id[%d]", constants.ErrSourceNotFound, id)
 		}
 		return nil, fmt.Errorf("failed to get source id[%d]: %s", id, err)

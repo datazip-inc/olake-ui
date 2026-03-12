@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -126,7 +127,7 @@ func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
 		Preload("UpdatedBy").
 		First(job).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%w: job not found id[%d]", constants.ErrJobNotFound, id)
 		}
 		return nil, fmt.Errorf("failed to get job id[%d]: %s", id, err)

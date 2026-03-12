@@ -53,7 +53,7 @@ func (h *Handler) UpsertProjectSettings(c *gin.Context) {
 
 	var req dto.UpsertProjectSettingsRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 

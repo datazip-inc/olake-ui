@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -80,7 +81,7 @@ func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
 		Preload("UpdatedBy").
 		First(&destination).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("%w: destination not found id[%d]", constants.ErrDestinationNotFound, id)
 		}
 		return nil, fmt.Errorf("failed to get destination id[%d]: %s", id, err)

@@ -196,14 +196,6 @@ func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 	if len(jobs) > 0 {
 		return nil, fmt.Errorf("cannot delete source '%s' id[%d] because it is used in %d jobs; please delete the associated jobs first", src.Name, id, len(jobs))
 	}
-	jobIDs := make([]int, 0, len(jobs))
-	for _, job := range jobs {
-		jobIDs = append(jobIDs, job.ID)
-	}
-
-	if err := s.db.DeactivateJobs(jobIDs); err != nil {
-		return nil, fmt.Errorf("failed to update jobs for source deletion: %s", err)
-	}
 
 	if err := s.db.DeleteSource(id); err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {

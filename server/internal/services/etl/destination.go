@@ -194,15 +194,6 @@ func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.Delete
 	if len(jobs) > 0 {
 		return nil, fmt.Errorf("cannot delete destination '%s' id[%d] because it is used in %d jobs; please delete the associated jobs first", dest.Name, id, len(jobs))
 	}
-	var jobIDs []int
-	for _, job := range jobs {
-		job.Active = false
-		jobIDs = append(jobIDs, job.ID)
-	}
-
-	if err := s.db.DeactivateJobs(jobIDs); err != nil {
-		return nil, fmt.Errorf("failed to deactivate jobs for destination deletion: %s", err)
-	}
 
 	if err := s.db.DeleteDestination(id); err != nil {
 		if errors.Is(err, constants.ErrDestinationNotFound) {

@@ -1,19 +1,27 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 )
 
 func (db *Database) GetUserByUsername(username string) (*models.User, error) {
 	var user models.User
 	err := db.conn.Where("username = ?", username).First(&user).Error
-	return &user, err
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		}
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (db *Database) CompareUserPassword(hashedPassword, plainPassword string) error {
@@ -26,10 +34,12 @@ func (db *Database) CreateUser(user *models.User) error {
 		return err
 	}
 	if count > 0 {
-		return fmt.Errorf("username already exists")
+		return fmt.Errorf("%w", constants.ErrUserAlreadyExists)
 	}
-
-	return db.conn.Create(user).Error
+	if err := db.conn.Create(user).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (db *Database) ListUsers() ([]*models.User, error) {

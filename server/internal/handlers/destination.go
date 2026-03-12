@@ -93,7 +93,7 @@ func (h *Handler) CreateDestination(c *gin.Context) {
 	}
 	var req dto.CreateDestinationRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
@@ -138,7 +138,7 @@ func (h *Handler) UpdateDestination(c *gin.Context) {
 	}
 	var req dto.UpdateDestinationRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
@@ -203,7 +203,7 @@ func (h *Handler) TestDestinationConnection(c *gin.Context) {
 	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -270,7 +270,7 @@ func (h *Handler) GetDestinationSpec(c *gin.Context) {
 	}
 	var req dto.SpecRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get destination spec initiated project_id[%s] destination_type[%s] destination_version[%s]",

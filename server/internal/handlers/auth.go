@@ -24,7 +24,7 @@ import (
 func (h *Handler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		errorResponse(c, statusFromBindError(err), constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	logger.Debugf("Login initiated username[%s]", req.Username)
@@ -32,7 +32,7 @@ func (h *Handler) Login(c *gin.Context) {
 	user, err := h.etl.Login(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, constants.ErrUserNotFound) || errors.Is(err, constants.ErrInvalidCredentials) {
-			errorResponse(c, http.StatusUnauthorized, fmt.Sprintf("Invalid credentials: %s", err), err)
+			errorResponse(c, http.StatusUnauthorized, "Invalid credentials", err)
 			return
 		}
 		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Login failed: %s", err), err)
@@ -59,7 +59,7 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Signup(c *gin.Context) {
 	var req dto.CreateUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
+		errorResponse(c, statusFromBindError(err), constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 

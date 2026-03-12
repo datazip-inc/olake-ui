@@ -96,15 +96,19 @@ func configureMode(cfg *appconfig.Config) {
 
 func configureRequestLimits(engine *gin.Engine, cfg *appconfig.Config) {
 	// the maximum amount of memory used to store parsed multipart form data, such as file uploads.
-	engine.MaxMultipartMemory = cfg.MaxMemory
+	if cfg.MaxMemory > 0 {
+		engine.MaxMultipartMemory = cfg.MaxMemory
+	}
 
 	// middleware to limit the size of the request body
-	engine.Use(func(c *gin.Context) {
-		if c.Request != nil && c.Request.Body != nil {
-			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, cfg.MaxUploadSize)
-		}
-		c.Next()
-	})
+	if cfg.MaxUploadSize > 0 {
+		engine.Use(func(c *gin.Context) {
+			if c.Request != nil && c.Request.Body != nil {
+				c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, cfg.MaxUploadSize)
+			}
+			c.Next()
+		})
+	}
 }
 
 func configureBaseRoutes(engine *gin.Engine) {

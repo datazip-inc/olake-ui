@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -36,6 +39,18 @@ func getCurrentUserID(c *gin.Context, sessions *sessionStore) *int {
 
 func bindAndValidate(c *gin.Context, target interface{}) error {
 	return c.ShouldBindJSON(target)
+}
+
+func statusFromBindError(err error) int {
+	var mbe *http.MaxBytesError
+	if errors.As(err, &mbe) {
+		return http.StatusRequestEntityTooLarge
+	}
+	if strings.Contains(strings.ToLower(err.Error()), "request body too large") {
+		return http.StatusRequestEntityTooLarge
+	}
+
+	return http.StatusBadRequest
 }
 
 func successResponse(c *gin.Context, message string, data interface{}) {

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -15,7 +16,7 @@ func (db *Database) GetProjectSettingsByProjectID(projectID string) (*models.Pro
 	err := db.conn.
 		Where("project_id = ?", projectID).
 		First(settings).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return &models.ProjectSettings{ProjectID: projectID, ID: 0}, nil
 	}
 	if err != nil {

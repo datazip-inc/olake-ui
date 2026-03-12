@@ -93,7 +93,7 @@ func (h *Handler) CreateSource(c *gin.Context) {
 	}
 	var req dto.CreateSourceRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
@@ -138,7 +138,7 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 	}
 	var req dto.UpdateSourceRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
@@ -200,7 +200,7 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 func (h *Handler) TestSourceConnection(c *gin.Context) {
 	var req dto.SourceTestConnectionRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
@@ -232,7 +232,7 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 func (h *Handler) GetSourceCatalog(c *gin.Context) {
 	var req dto.StreamsRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
@@ -296,7 +296,7 @@ func (h *Handler) GetSourceSpec(c *gin.Context) {
 	}
 	var req dto.SpecRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {

@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
@@ -17,8 +17,8 @@ import (
 func (s *ETLService) Login(ctx context.Context, username, password string) (*models.User, error) {
 	user, err := s.db.GetUserByUsername(username)
 	if err != nil {
-		if strings.Contains(err.Error(), "no row found") {
-			return nil, fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get user: %s", err)
 	}
@@ -45,8 +45,8 @@ func (s *ETLService) Signup(_ context.Context, req *dto.CreateUserRequest) error
 	user.Password = string(hashedPassword)
 
 	if err := s.db.CreateUser(user); err != nil {
-		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-			return fmt.Errorf("%w: %v", constants.ErrUserAlreadyExists, err)
+		if errors.Is(err, constants.ErrUserAlreadyExists) {
+			return err
 		}
 		return fmt.Errorf("failed to create user: %s", err)
 	}

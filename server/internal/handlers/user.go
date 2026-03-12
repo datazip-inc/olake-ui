@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
@@ -22,7 +24,7 @@ import (
 func (h *Handler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
@@ -33,7 +35,11 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		Email:    req.Email,
 	}
 	if err := h.etl.CreateUser(c.Request.Context(), user); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrUserAlreadyExists) {
+			status = http.StatusConflict
+		}
+		errorResponse(c, status, fmt.Sprintf("failed to create user: %s", err), err)
 		return
 	}
 
@@ -89,7 +95,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 
 	var req dto.UpdateUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)

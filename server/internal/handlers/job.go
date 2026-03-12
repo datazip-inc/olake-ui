@@ -95,7 +95,7 @@ func (h *Handler) CreateJob(c *gin.Context) {
 	}
 	var req dto.CreateJobRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
@@ -139,7 +139,7 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 	}
 	var req dto.UpdateJobRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
@@ -207,7 +207,7 @@ func (h *Handler) CheckUniqueName(c *gin.Context) {
 	}
 	var req dto.CheckUniqueNameRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Check unique name initiated project_id[%s] entity_type[%s] name[%s]", projectID, req.EntityType, req.Name)
@@ -281,7 +281,7 @@ func (h *Handler) ActivateJob(c *gin.Context) {
 	}
 	var req dto.JobStatusRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Activate job initiated job_id[%d] activate[%t] user_id[%v]", id, req.Activate, userID)
@@ -390,7 +390,7 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 	}
 	var req dto.StreamDifferenceRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get stream difference initiated project_id[%s] job_id[%d]", projectID, id)
@@ -499,7 +499,7 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 	}
 	var req dto.JobTaskRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
@@ -581,7 +581,7 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 func (h *Handler) UpdateSyncTelemetry(c *gin.Context) {
 	var req dto.UpdateSyncTelemetryRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if req.JobID == 0 || req.WorkflowID == "" {
@@ -643,7 +643,7 @@ func (h *Handler) UpdateStateFile(c *gin.Context) {
 	}
 	var req dto.UpdateStateFileRequest
 	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Update state file callback initiated job_id[%d]", jobID)
