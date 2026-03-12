@@ -1,6 +1,6 @@
-import clsx from "clsx"
-import { Switch } from "antd"
 import { InfoIcon } from "@phosphor-icons/react"
+import { Switch } from "antd"
+import clsx from "clsx"
 
 import { CARD_STYLE } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
@@ -11,7 +11,9 @@ import {
 } from "../../stores"
 
 const NormalizationSection = () => {
-	const store = useStreamSelectionStore()
+	const updateNormalization = useStreamSelectionStore(
+		state => state.updateNormalization,
+	)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const isSelected = useStreamSelectionStore(state =>
@@ -21,7 +23,7 @@ const NormalizationSection = () => {
 	if (!stream || !selectedStream) return null
 
 	const handleNormalizationChange = (checked: boolean) => {
-		store.updateNormalization(
+		updateNormalization(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			checked,

@@ -3,14 +3,8 @@ import {
 	LinktreeLogoIcon,
 	PathIcon,
 } from "@phosphor-icons/react"
-import { NavItem, TestConnectionStatus } from "../types"
 
-export const THEME_CONFIG = {
-	token: {
-		colorPrimary: "#203FDD",
-		borderRadius: 6,
-	},
-}
+import { NavItem, TestConnectionStatus } from "../types"
 
 export const NAV_ITEMS: NavItem[] = [
 	{ path: "/jobs", label: "Jobs", icon: GitCommitIcon },

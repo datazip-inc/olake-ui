@@ -1,26 +1,38 @@
-import { useEffect, useRef, useState } from "react"
 import { CaretDownIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, Empty } from "antd"
 import clsx from "clsx"
+import { useEffect, useRef, useState } from "react"
 
 import { StreamData } from "@/modules/ingestion/common/types"
-import { useJobStore, useStreamSelectionStore } from "../../stores"
+
 import StreamPanel from "./StreamPanel"
 import { IngestionMode } from "../../enums"
-import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
+import {
+	useJobStore,
+	useStreamSelectionStore,
+	selectSelectedStreams,
+} from "../../stores"
+import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
 } from "../../utils/streams"
-import { GroupedStreamsCollapsibleListProps } from "../../types"
+import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
 
 const StreamsCollapsibleList = ({
 	groupedStreams,
 	sourceType,
 	destinationType,
 }: GroupedStreamsCollapsibleListProps) => {
-	const store = useStreamSelectionStore()
+	const selectedStreams = useStreamSelectionStore(selectSelectedStreams)
+	const toggleStream = useStreamSelectionStore(state => state.toggleStream)
+	const updateAllIngestionMode = useStreamSelectionStore(
+		state => state.updateAllIngestionMode,
+	)
+	const setActiveStreamKey = useStreamSelectionStore(
+		state => state.setActiveStreamKey,
+	)
 	const { setShowIngestionModeChangeModal, ingestionMode, setIngestionMode } =
 		useJobStore()
 	const [openNamespaces, setOpenNamespaces] = useState<{
@@ -43,8 +55,6 @@ const StreamsCollapsibleList = ({
 	>([])
 
 	const prevGroupedStreams = useRef(groupedStreams)
-
-	const selectedStreams = store.streamsData?.selected_streams ?? {}
 
 	useEffect(() => {
 		setIngestionMode(getIngestionMode(selectedStreams, sourceType))
@@ -164,18 +174,19 @@ const StreamsCollapsibleList = ({
 
 	// Auto-select first stream once sortedGroupedNamespaces is populated
 	useEffect(() => {
+		const activeKey = useStreamSelectionStore.getState().activeStreamKey
 		if (
-			!store.activeStreamKey &&
+			!activeKey &&
 			sortedGroupedNamespaces.length > 0 &&
 			sortedGroupedNamespaces[0][1].length > 0
 		) {
 			const first = sortedGroupedNamespaces[0][1][0]
-			store.setActiveStreamKey({
+			setActiveStreamKey({
 				name: first.stream.name,
 				namespace: first.stream.namespace ?? "",
 			})
 		}
-	}, [sortedGroupedNamespaces])
+	}, [sortedGroupedNamespaces, setActiveStreamKey])
 
 	const handleToggleNamespace = (ns: string) => {
 		setOpenNamespaces(prev => ({ ...prev, [ns]: !prev[ns] }))
@@ -199,7 +210,7 @@ const StreamsCollapsibleList = ({
 
 		const streamsInNamespace = groupedStreams[ns] || []
 		streamsInNamespace.forEach(streamData => {
-			store.toggleStream(streamData.stream.name, ns, checked, ingestionMode)
+			toggleStream(streamData.stream.name, ns, checked, ingestionMode)
 		})
 	}
 
@@ -226,7 +237,7 @@ const StreamsCollapsibleList = ({
 
 		Object.entries(groupedStreams).forEach(([ns, streams]) => {
 			streams.forEach(streamData => {
-				store.toggleStream(streamData.stream.name, ns, checked, ingestionMode)
+				toggleStream(streamData.stream.name, ns, checked, ingestionMode)
 			})
 		})
 	}
@@ -262,7 +273,7 @@ const StreamsCollapsibleList = ({
 			}
 		})
 
-		store.toggleStream(streamName, ns, checked, ingestionMode)
+		toggleStream(streamName, ns, checked, ingestionMode)
 	}
 
 	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
@@ -421,7 +432,7 @@ const StreamsCollapsibleList = ({
 				onConfirm={(mode: IngestionMode) => {
 					const appendMode = mode === IngestionMode.APPEND
 					setIngestionMode(mode)
-					store.updateAllIngestionMode(appendMode)
+					updateAllIngestionMode(appendMode)
 				}}
 			/>
 		</>

@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom"
 import {
 	CheckIcon,
 	GitCommitIcon,
@@ -6,6 +5,8 @@ import {
 	LinktreeLogoIcon,
 } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
+import { useNavigate } from "react-router-dom"
+
 import { EntitySavedModalProps } from "@/modules/ingestion/common/types"
 
 const EntitySavedModal: React.FC<EntitySavedModalProps> = ({

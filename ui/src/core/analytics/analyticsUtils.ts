@@ -1,9 +1,9 @@
+import { TEST_CONNECTION_STATUS } from "@/common/constants"
+import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import {
 	EntityTestRequest,
 	EntityTestResponse,
 } from "@/modules/ingestion/common/types"
-import { TEST_CONNECTION_STATUS } from "@/common/constants"
-import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 export const trackTestConnection = async (
 	isSource: boolean,

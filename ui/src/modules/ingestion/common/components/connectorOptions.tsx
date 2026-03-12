@@ -1,7 +1,7 @@
+import { AWSS3, ApacheIceBerg } from "@/assets"
+import { CONNECTOR_TYPES } from "@/modules/ingestion/common/constants"
 import { ConnectorOption } from "@/modules/ingestion/common/types"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
-import { CONNECTOR_TYPES } from "@/modules/ingestion/common/constants"
-import { AWSS3, ApacheIceBerg } from "@/assets"
 
 export const sourceConnectorOptions: ConnectorOption[] = [
 	{

@@ -1,17 +1,21 @@
-import { useState } from "react"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
 	DotsThreeIcon,
 	PencilSimpleLineIcon,
 	TrashIcon,
 } from "@phosphor-icons/react"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
+import { useState } from "react"
+
+import { DeleteModal } from "@/modules/ingestion/common/components"
+import JobConnection from "@/modules/ingestion/common/components/JobConnection"
+import {
+	CONNECTOR_TYPES,
+	PAGE_SIZE,
+} from "@/modules/ingestion/common/constants"
+import { Entity } from "@/modules/ingestion/common/types"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 import { DestinationTableProps } from "../types"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
-import JobConnection from "@/modules/ingestion/common/components/JobConnection"
-import { DeleteModal } from "@/modules/ingestion/common/components"
-import { CONNECTOR_TYPES } from "@/modules/ingestion/common/constants"
-import { Entity } from "@/modules/ingestion/common/types"
 
 const DestinationTable: React.FC<DestinationTableProps> = ({
 	destinations,
@@ -23,7 +27,6 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 	const [currentPage, setCurrentPage] = useState(1)
 	const [showDeleteModal, setShowDeleteModal] = useState(false)
 	const [deleteEntity, setDeleteEntity] = useState<Entity | null>(null)
-	const pageSize = 8
 
 	const { Search } = Input
 
@@ -121,8 +124,8 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			destination.type.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
-	const startIndex = (currentPage - 1) * pageSize
-	const endIndex = Math.min(startIndex + pageSize, filteredDestinations.length)
+	const startIndex = (currentPage - 1) * PAGE_SIZE
+	const endIndex = Math.min(startIndex + PAGE_SIZE, filteredDestinations.length)
 	const currentPageData = filteredDestinations.slice(startIndex, endIndex)
 
 	return (
@@ -159,12 +162,12 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 				/>
 			</div>
 
-			<div className="bottom-15 z-100 fixed right-10 flex justify-end bg-white p-2">
+			<div className="fixed bottom-[60px] right-10 z-50 flex justify-end bg-white p-2">
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}
 					total={filteredDestinations.length}
-					pageSize={pageSize}
+					pageSize={PAGE_SIZE}
 					showSizeChanger={false}
 				/>
 			</div>

@@ -1,11 +1,11 @@
+import { CopySimpleIcon } from "@phosphor-icons/react"
+import { Modal } from "antd"
+import clsx from "clsx"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Modal } from "antd"
-import { CopySimpleIcon } from "@phosphor-icons/react"
-import clsx from "clsx"
 
-import { TestConnectionError } from "@/common/types"
 import { ErrorIcon } from "@/assets"
+import { TestConnectionError } from "@/common/types"
 import {
 	getLogTextColor,
 	getLogLevelClass,

@@ -1,4 +1,10 @@
+import { AxiosError } from "axios"
+
 import { API_CONFIG } from "@/config/apiConfig"
+import { api } from "@/core/api"
+import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
+
 import {
 	Job,
 	JobBase,
@@ -7,10 +13,6 @@ import {
 	TaskLogsPaginationParams,
 	TaskLogsResponse,
 } from "../types"
-import { StreamsDataStructure } from "@/modules/ingestion/common/types"
-import { AxiosError } from "axios"
-import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
-import { api } from "@/core/api"
 
 export const jobService = {
 	getJobs: async (): Promise<Job[]> => {

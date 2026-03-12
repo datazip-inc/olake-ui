@@ -1,12 +1,13 @@
 /**
  * AuthService handles authentication-related API calls and localStorage management.
  */
-import { api } from "@/core/api"
-import { LoginArgs, LoginResponse } from "../types"
 import {
 	LOCALSTORAGE_TOKEN_KEY,
 	LOCALSTORAGE_USERNAME_KEY,
 } from "@/common/constants"
+import { api } from "@/core/api"
+
+import { LoginArgs, LoginResponse } from "../types"
 
 export const authService = {
 	login: async ({ username, password }: LoginArgs) => {

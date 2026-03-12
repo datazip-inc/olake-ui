@@ -1,35 +1,38 @@
-import React, { useEffect, useState, useMemo } from "react"
-import { Input, Empty, Spin, Tooltip } from "antd"
-import clsx from "clsx"
-
-import { useShallow } from "zustand/react/shallow"
-import { useJobStore, useStreamSelectionStore } from "../stores"
-import {
-	selectActiveStreamData,
-	selectDestinationDatabase,
-} from "../stores/streamSelectionStore"
-import { useDiscoverSourceStreams } from "@/modules/ingestion/features/sources/hooks"
-import { useIsFetching } from "@tanstack/react-query"
-import { useClearDestinationStatus } from "../hooks"
-import { jobsKeys } from "../constants"
-import { SchemaConfigurationProps } from "../types"
-import FilterButton from "./FilterButton"
-import StepTitle from "@/modules/ingestion/common/components/StepTitle"
-import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
-import StreamConfiguration from "./streams/StreamConfiguration"
 import {
 	ArrowSquareOutIcon,
 	InfoIcon,
 	PencilSimpleIcon,
 } from "@phosphor-icons/react"
-import { DESTINATATION_DATABASE_TOOLTIP_TEXT } from "../constants"
+import { useIsFetching } from "@tanstack/react-query"
+import { Input, Empty, Spin, Tooltip } from "antd"
+import clsx from "clsx"
+import React, { useEffect, useState, useMemo } from "react"
+import { useShallow } from "zustand/react/shallow"
+
+import StepTitle from "@/modules/ingestion/common/components/StepTitle"
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
-import DestinationDatabaseModal from "./modals/DestinationDatabaseModal"
-import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
 import {
 	StreamData,
 	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
+import { useDiscoverSourceStreams } from "@/modules/ingestion/features/sources/hooks"
+
+import { jobsKeys, DESTINATATION_DATABASE_TOOLTIP_TEXT } from "../constants"
+import { useClearDestinationStatus } from "../hooks"
+import { useJobStore, useStreamSelectionStore } from "../stores"
+import {
+	selectActiveStreamData,
+	selectDestinationDatabase,
+	selectStreamsData,
+	selectIsDiscovering,
+	selectInitialStreamsSnapshot,
+} from "../stores/streamSelectionStore"
+import { SchemaConfigurationProps } from "../types"
+import FilterButton from "./FilterButton"
+import DestinationDatabaseModal from "./modals/DestinationDatabaseModal"
+import StreamConfiguration from "./streams/StreamConfiguration"
+import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
+import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -49,7 +52,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const { setShowDestinationDatabaseModal, setShowStreamEditDisabledModal } =
 		useJobStore()
 
-	const store = useStreamSelectionStore()
+	const streamsData = useStreamSelectionStore(selectStreamsData)
+	const isDiscovering = useStreamSelectionStore(selectIsDiscovering)
+	const initialStreamsSnapshot = useStreamSelectionStore(
+		selectInitialStreamsSnapshot,
+	)
 
 	const discoverMutation = useDiscoverSourceStreams()
 
@@ -83,7 +90,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		)
 			return
 
-		store.setDiscovering(true)
+		const { setDiscovering, initializeFromDiscovery, setDiscoverError } =
+			useStreamSelectionStore.getState()
+		setDiscovering(true)
 
 		discoverMutation.mutate(
 			{
@@ -97,7 +106,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			},
 			{
 				onSuccess: response => {
-					const streamsData: StreamsDataStructure =
+					const data: StreamsDataStructure =
 						getStreamsDataFromSourceStreamsResponse(
 							response,
 							destinationType,
@@ -105,10 +114,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							sourceVersion,
 						)
 
-					store.initializeFromDiscovery(streamsData)
+					initializeFromDiscovery(data)
 				},
 				onError: error => {
-					store.setDiscoverError(error)
+					setDiscoverError(error)
 				},
 			},
 		)
@@ -124,12 +133,13 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	// Reset store on unmount
 	useEffect(() => {
 		return () => {
-			store.reset()
+			discoverMutation.reset()
+			useStreamSelectionStore.getState().reset()
 		}
 	}, [])
 
 	const isLoading =
-		isJobFetching || store.isDiscovering || isClearDestinationStatusLoading
+		isJobFetching || isDiscovering || isClearDestinationStatusLoading
 
 	const activeStreamData = useStreamSelectionStore(selectActiveStreamData)
 	// useShallow: selector returns a new object literal each time; shallow comparison
@@ -140,8 +150,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	} = useStreamSelectionStore(useShallow(selectDestinationDatabase))
 
 	const filteredStreams = useMemo(() => {
-		if (!store.streamsData?.streams) return []
-		let tempFilteredStreams = [...store.streamsData.streams]
+		if (!streamsData?.streams) return []
+		let tempFilteredStreams = [...streamsData.streams]
 
 		if (searchText) {
 			tempFilteredStreams = tempFilteredStreams.filter(stream =>
@@ -158,9 +168,9 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 		return tempFilteredStreams.filter(stream => {
 			const ns = stream.stream.namespace || ""
-			const matchingSelectedStream = store.streamsData!.selected_streams[
-				ns
-			]?.find(s => s.stream_name === stream.stream.name)
+			const matchingSelectedStream = streamsData!.selected_streams[ns]?.find(
+				s => s.stream_name === stream.stream.name,
+			)
 			const isSelected =
 				matchingSelectedStream && !matchingSelectedStream?.disabled
 			if (showSelected && showNotSelected) return true
@@ -168,7 +178,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			if (showNotSelected) return !isSelected
 			return false
 		})
-	}, [store.streamsData, searchText, selectedFilters])
+	}, [streamsData, searchText, selectedFilters])
 
 	const groupedFilteredStreams = useMemo(() => {
 		const grouped: { [namespace: string]: StreamData[] } = {}
@@ -274,7 +284,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						"max-h-[calc(100vh-250px)] overflow-y-auto",
 					)}
 				>
-					{!isLoading && store.streamsData?.streams ? (
+					{!isLoading && streamsData?.streams ? (
 						<StreamsCollapsibleList
 							groupedStreams={groupedFilteredStreams}
 							sourceType={sourceConnector}
@@ -308,12 +318,14 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			<DestinationDatabaseModal
 				destinationType={destinationType || ""}
 				destinationDatabase={destinationDatabaseForModal}
-				allStreams={store.streamsData}
+				allStreams={streamsData}
 				onSave={(format: string, databaseName: string) => {
-					store.updateDestinationDatabase(format, databaseName)
+					useStreamSelectionStore
+						.getState()
+						.updateDestinationDatabase(format, databaseName)
 				}}
 				originalDatabase={destinationDatabase || ""}
-				initialStreams={store.initialStreamsSnapshot}
+				initialStreams={initialStreamsSnapshot}
 			/>
 		</div>
 	)

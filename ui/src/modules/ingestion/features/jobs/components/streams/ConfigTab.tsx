@@ -1,8 +1,8 @@
-import { CARD_STYLE } from "../../constants"
-import SyncModeSection from "./SyncModeSection"
+import DataFilterSection from "./DataFilterSection"
 import IngestionModeSection from "./IngestionModeSection"
 import NormalizationSection from "./NormalizationSection"
-import DataFilterSection from "./DataFilterSection"
+import SyncModeSection from "./SyncModeSection"
+import { CARD_STYLE } from "../../constants"
 
 interface ConfigTabProps {
 	sourceType?: string

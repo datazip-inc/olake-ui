@@ -1,8 +1,3 @@
-import { useState, useEffect, useRef } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
-import { formatDistanceToNow } from "date-fns"
-import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
-import type { ColumnsType } from "antd/es/table"
 import {
 	GenderNeuterIcon,
 	NotebookIcon,
@@ -12,33 +7,29 @@ import {
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
+import { useQueryClient } from "@tanstack/react-query"
+import { Input, Button, Select, Switch, Table, Spin, Tooltip } from "antd"
+import type { ColumnsType } from "antd/es/table"
+import { formatDistanceToNow } from "date-fns"
+import { useState, useEffect, useRef } from "react"
+import { useParams, useNavigate, Link } from "react-router-dom"
 
-import { useSourceStore } from "../stores"
-import { SourceJob } from "../types"
-import type { TestConnectionError } from "@/common/types"
-import { getConnectorLabel } from "../utils"
+import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
+import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import { widgets } from "@/common/components/form/widgets"
 import {
-	getConnectorImage,
-	getConnectorInLowerCase,
-} from "@/modules/ingestion/common/utils"
+	transformErrors,
+	TEST_CONNECTION_STATUS,
+	OLAKE_LATEST_VERSION_URL,
+} from "@/common/constants"
+import type { TestConnectionError } from "@/common/types"
 import {
 	getStatusClass,
 	getStatusLabel,
 	handleSpecResponse,
 	trimFormDataStrings,
 } from "@/common/utils"
-import {
-	useSourceDetails,
-	useSourceVersions,
-	useSourceSpec,
-	useUpdateSource,
-	useDeleteSource,
-	useTestSourceConnection,
-} from "../hooks"
-import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
-import { useQueryClient } from "@tanstack/react-query"
-import { sourceKeys } from "../constants/queryKeys"
-import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
 import {
 	DeleteModal,
 	TestConnectionSuccessModal,
@@ -48,19 +39,30 @@ import {
 	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
+import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import { DISPLAYED_JOBS_COUNT } from "@/modules/ingestion/common/constants"
 import {
-	transformErrors,
-	TEST_CONNECTION_STATUS,
-	OLAKE_LATEST_VERSION_URL,
-} from "@/common/constants"
-import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
-import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+	getConnectorImage,
+	getConnectorInLowerCase,
+} from "@/modules/ingestion/common/utils"
+import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
+
+import { sourceKeys } from "../constants/queryKeys"
+import {
+	useSourceDetails,
+	useSourceVersions,
+	useSourceSpec,
+	useUpdateSource,
+	useDeleteSource,
+	useTestSourceConnection,
+} from "../hooks"
+import { useSourceStore } from "../stores"
+import { SourceJob } from "../types"
+import { getConnectorLabel } from "../utils"
 
 const SourceEdit: React.FC = () => {
+	// Local component state.
 	const formRef = useRef<any>(null)
 	const { sourceId } = useParams<{ sourceId: string }>()
 	const navigate = useNavigate()
@@ -79,16 +81,16 @@ const SourceEdit: React.FC = () => {
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
-
-	const normalizedSourceConnector = getConnectorInLowerCase(connector)
-
 	const [showTestingModal, setShowTestingModal] = useState(false)
 	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
 	const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
-	const queryClient = useQueryClient()
 
-	// TanStack Query hooks
+	// Derived constants from current state.
+	const normalizedSourceConnector = getConnectorInLowerCase(connector)
+
+	// Data fetching and mutation hooks.
+	const queryClient = useQueryClient()
 	const { data: source, isLoading: isLoadingSource } = useSourceDetails(
 		sourceId ?? "",
 	)
@@ -126,7 +128,7 @@ const SourceEdit: React.FC = () => {
 		}
 	}, [source, sourceId])
 
-	// Fetch spec via TanStack Query
+	// Spec query for selected connector and version.
 	const {
 		data: specData,
 		isLoading: loadingSpec,

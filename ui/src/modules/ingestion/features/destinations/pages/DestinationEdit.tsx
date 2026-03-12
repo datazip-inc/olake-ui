@@ -1,53 +1,34 @@
-import React, { useState, useEffect, useRef } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
-import { formatDistanceToNow } from "date-fns"
-import { Input, Button, Select, Switch, Spin, Table, Tooltip } from "antd"
-import type { ColumnsType } from "antd/es/table"
 import {
 	ArrowLeftIcon,
 	ArrowSquareOutIcon,
 	InfoIcon,
 	NotebookIcon,
 } from "@phosphor-icons/react"
-import validator from "@rjsf/validator-ajv8"
 import Form from "@rjsf/antd"
-
-import { useDestinationStore } from "../stores"
-import { DestinationJob } from "../types"
-import { Entity, EntityType } from "@/modules/ingestion/common/types"
-import { TestConnectionError } from "@/common/types"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
-import { getConnectorDocumentationPath } from "../utils"
-import { trimFormDataStrings } from "@/common/utils"
-import {
-	getStatusClass,
-	getStatusLabel,
-	handleSpecResponse,
-} from "@/common/utils"
-import {
-	useDestinationDetails,
-	useDestinationVersions,
-	useDestinationSpec,
-	useUpdateDestination,
-	useDeleteDestination,
-	useTestDestinationConnection,
-} from "../hooks"
-import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
+import validator from "@rjsf/validator-ajv8"
 import { useQueryClient } from "@tanstack/react-query"
-import { destinationKeys } from "../constants/queryKeys"
-import { getStatusIcon } from "../../../common/components/statusIcons"
-import {
-	CONNECTOR_TYPES,
-	DESTINATION_INTERNAL_TYPES,
-	ENTITY_TYPES,
-	DISPLAYED_JOBS_COUNT,
-} from "@/modules/ingestion/common/constants"
+import { Input, Button, Select, Switch, Spin, Table, Tooltip } from "antd"
+import type { ColumnsType } from "antd/es/table"
+import { formatDistanceToNow } from "date-fns"
+import React, { useState, useEffect, useRef } from "react"
+import { useParams, Link, useNavigate } from "react-router-dom"
+
+import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
+import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import { widgets } from "@/common/components/form/widgets"
 import {
 	transformErrors,
 	TEST_CONNECTION_STATUS,
 	OLAKE_LATEST_VERSION_URL,
 } from "@/common/constants"
-import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
+import { TestConnectionError } from "@/common/types"
+import {
+	getStatusClass,
+	getStatusLabel,
+	handleSpecResponse,
+} from "@/common/utils"
+import { trimFormDataStrings } from "@/common/utils"
 import {
 	DeleteModal,
 	TestConnectionSuccessModal,
@@ -57,14 +38,34 @@ import {
 	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
-import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
-
-import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
+import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
+import {
+	CONNECTOR_TYPES,
+	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
+	DISPLAYED_JOBS_COUNT,
+} from "@/modules/ingestion/common/constants"
+import { Entity, EntityType } from "@/modules/ingestion/common/types"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
 import { TAB_TYPES } from "@/modules/ingestion/features/jobs/constants"
+import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
+
+import { destinationKeys } from "../constants/queryKeys"
+import {
+	useDestinationDetails,
+	useDestinationVersions,
+	useDestinationSpec,
+	useUpdateDestination,
+	useDeleteDestination,
+	useTestDestinationConnection,
+} from "../hooks"
+import { useDestinationStore } from "../stores"
+import { DestinationJob } from "../types"
+import { getConnectorDocumentationPath } from "../utils"
 
 const DestinationEdit: React.FC = () => {
+	// Local component state.
 	const formRef = useRef<any>(null)
 	const { destinationId } = useParams<{ destinationId: string }>()
 	const [activeTab, setActiveTab] = useState(TAB_TYPES.CONFIG)
@@ -89,13 +90,15 @@ const DestinationEdit: React.FC = () => {
 	const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
-	const queryClient = useQueryClient()
 
-	// TanStack Query hooks
+	// Derived constants from current state.
 	const internalConnectorType =
 		connector === CONNECTOR_TYPES.APACHE_ICEBERG
 			? DESTINATION_INTERNAL_TYPES.ICEBERG
 			: DESTINATION_INTERNAL_TYPES.S3
+
+	// Data fetching and mutation hooks.
+	const queryClient = useQueryClient()
 	const { data: destination, isLoading: isLoadingDestination } =
 		useDestinationDetails(destinationId ?? "")
 	const { data: versionsData, isLoading: loadingVersions } =
@@ -106,7 +109,7 @@ const DestinationEdit: React.FC = () => {
 	const testDestinationMutation = useTestDestinationConnection()
 	const { mutate: activateJob } = useActivateJob()
 
-	// Fetch spec via TanStack Query
+	// Spec query for selected connector and version.
 	const {
 		data: specData,
 		isLoading: loadingSpec,

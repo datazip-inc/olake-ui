@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { Select, Button, Spin } from "antd"
 import {
 	PlusIcon,
 	PencilSimpleIcon,
 	GitCommitIcon,
 } from "@phosphor-icons/react"
-import { useSources } from "@/modules/ingestion/features/sources/hooks"
-import { useDestinations } from "@/modules/ingestion/features/destinations/hooks"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+import { Select, Button, Spin } from "antd"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+
 import {
 	sourceConnectorOptions,
 	destinationConnectorOptions,
 } from "@/modules/ingestion/common/components/connectorOptions"
+import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+import { useDestinations } from "@/modules/ingestion/features/destinations/hooks"
+import { useSources } from "@/modules/ingestion/features/sources/hooks"
+
 import { useJobConfigurationStore } from "../stores"
 
 const JobSourceDestinationSelection: React.FC = () => {

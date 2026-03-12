@@ -1,5 +1,4 @@
 export * from "./commonTypes"
 export * from "./formTypes"
-export * from "../../core/platform/types/platformTypes"
 export * from "./errorTypes"
 export * from "./apiTypes"

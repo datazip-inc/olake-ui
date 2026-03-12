@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react"
-import clsx from "clsx"
-import { Button, Tooltip } from "antd"
 import {
 	CornersOutIcon,
 	CaretRightIcon,
 	InfoIcon,
 	ArrowSquareOutIcon,
 } from "@phosphor-icons/react"
+import { Button, Tooltip } from "antd"
+import clsx from "clsx"
+import { useState, useRef, useEffect } from "react"
 
 import { DocumentationPanelProps } from "@/modules/ingestion/common/types"
 

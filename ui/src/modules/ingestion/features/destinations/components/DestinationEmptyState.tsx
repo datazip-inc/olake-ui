@@ -1,8 +1,8 @@
-import { Button } from "antd"
 import { PlayCircleIcon, PlusIcon } from "@phosphor-icons/react"
+import { Button } from "antd"
 
-import { DestinationTutorialYTLink } from "@/modules/ingestion/common/constants"
 import { FirstDestination, DestinationTutorial } from "@/assets"
+import { DestinationTutorialYTLink } from "@/modules/ingestion/features/destinations/constants"
 
 const DestinationEmptyState = ({
 	handleCreateDestination,

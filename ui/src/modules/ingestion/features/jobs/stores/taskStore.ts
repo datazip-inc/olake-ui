@@ -1,8 +1,12 @@
 import { create } from "zustand"
-import type { TaskLogEntry, TaskLogsPaginationParams } from "../types"
-import { TaskLogsDirection } from "../types"
-import { jobService } from "../services"
+
 import { LOGS_CONFIG } from "../constants"
+import { jobService } from "../services"
+import {
+	TaskLogsDirection,
+	type TaskLogEntry,
+	type TaskLogsPaginationParams,
+} from "../types"
 import { mapLogEntriesToTaskLogEntries } from "../utils"
 
 export interface TaskState {

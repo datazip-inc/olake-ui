@@ -1,4 +1,5 @@
 import { Page, expect } from "@playwright/test"
+
 import { TIMEOUTS } from "../../playwright.config"
 
 export interface ModalTestablePage {

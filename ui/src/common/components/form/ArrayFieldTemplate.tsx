@@ -2,9 +2,9 @@
  * ArrayFieldTemplate is a component that renders an array of items this overrides the default array field template of rjsf
  */
 
+import { PlusIcon, TrashIcon } from "@phosphor-icons/react"
 import { ArrayFieldTemplateProps } from "@rjsf/utils"
 import { Button } from "antd"
-import { PlusIcon, TrashIcon } from "@phosphor-icons/react"
 
 const ArrayFieldTemplate = (props: ArrayFieldTemplateProps) => {
 	const { items, canAdd, onAddClick } = props

@@ -1,7 +1,3 @@
-import { useState, useEffect } from "react"
-import clsx from "clsx"
-import { NavLink, Link, useNavigate } from "react-router-dom"
-import { LayoutProps } from "antd"
 import {
 	ArrowsOutSimpleIcon,
 	BellIcon,
@@ -9,13 +5,17 @@ import {
 	GearSixIcon,
 	SignOutIcon,
 } from "@phosphor-icons/react"
+import { LayoutProps } from "antd"
+import clsx from "clsx"
+import { useState, useEffect } from "react"
+import { NavLink, Link, useNavigate } from "react-router-dom"
 
+import { OlakeLogo, OLake } from "@/assets"
+import { NAV_ITEMS } from "@/common/constants/constants"
+import { UpdatesModal } from "@/core//platform/components"
 import { useAuthStore } from "@/core/auth/stores"
 import { usePlatformStore } from "@/core/platform/stores"
-import { NAV_ITEMS } from "@/common/constants/constants"
-import { ReleaseMetadataResponse } from "@/common/types"
-import { OlakeLogo, OLake } from "@/assets"
-import { UpdatesModal } from "@/core//platform/components"
+import { ReleaseMetadataResponse } from "@/core/platform/types"
 
 // will be shown in the later period when we have new updates
 const UpdateNotification: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {

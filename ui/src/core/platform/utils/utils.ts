@@ -1,4 +1,5 @@
 import { formatDate } from "@/common/utils"
+
 import { ReleasesResponse, ReleaseType, ReleaseTypeData } from "../types"
 
 /* Processes release data for UI consumption

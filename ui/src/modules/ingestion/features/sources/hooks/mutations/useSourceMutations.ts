@@ -1,10 +1,12 @@
 import { useMutation } from "@tanstack/react-query"
-import { sourceService } from "../../services"
-import { sourceKeys } from "../../constants/queryKeys"
+
 import type {
 	EntityBase,
 	EntityTestRequest,
 } from "@/modules/ingestion/common/types"
+
+import { sourceKeys } from "../../constants/queryKeys"
+import { sourceService } from "../../services"
 
 export const useCreateSource = () => {
 	return useMutation({
@@ -15,7 +17,7 @@ export const useCreateSource = () => {
 
 export const useUpdateSource = (id: string) => {
 	return useMutation({
-		mutationKey: sourceKeys.detail(id),
+		mutationKey: sourceKeys.lists(),
 		mutationFn: (source: EntityBase) => sourceService.updateSource(id, source),
 	})
 }

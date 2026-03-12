@@ -1,9 +1,10 @@
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
+import { useState } from "react"
+
+import { SelectedStream } from "@/modules/ingestion/common/types"
 import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
 import { StreamDifferenceModalProps } from "@/modules/ingestion/features/jobs/types"
-import { SelectedStream } from "@/modules/ingestion/common/types"
-import { useState } from "react"
 
 const StreamDifferenceModal = ({
 	streamDifference,

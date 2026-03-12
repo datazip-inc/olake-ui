@@ -1,5 +1,6 @@
 import { TestConnectionStatus } from "@/common/types"
 
+// Entity models a source/destination record returned by ingestion APIs
 export interface Entity {
 	id: number
 	name: string

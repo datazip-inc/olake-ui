@@ -1,8 +1,9 @@
-import React from "react"
-import { InputNumber, Tooltip } from "antd"
 import { InfoIcon, SlidersIcon } from "@phosphor-icons/react"
+import { InputNumber, Tooltip } from "antd"
+import React from "react"
 
 import { restrictNumericInput } from "@/common/utils"
+
 import { useJobConfigurationStore } from "../stores"
 
 const AdvancedSettingsCard: React.FC = () => {

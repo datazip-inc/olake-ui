@@ -1,6 +1,7 @@
-import { sourceService } from "../../services"
-import { sourceKeys } from "../../constants/queryKeys"
 import { useQuery } from "@tanstack/react-query"
+
+import { sourceKeys } from "../../constants/queryKeys"
+import { sourceService } from "../../services"
 
 export const useSources = () => {
 	return useQuery({

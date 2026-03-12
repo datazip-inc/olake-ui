@@ -1,23 +1,24 @@
-import { useState, useEffect } from "react"
+import { DotOutlineIcon } from "@phosphor-icons/react"
 import { Modal, Radio, Input, Button, message } from "antd"
-import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
+import { useState, useEffect } from "react"
+
 import { validateAlphanumericUnderscore } from "@/common/utils"
+import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 import {
 	FORMAT_OPTIONS,
 	LABELS,
 	NAMESPACE_PLACEHOLDER,
 } from "@/modules/ingestion/features/jobs/constants"
-import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
-import { DotOutlineIcon } from "@phosphor-icons/react"
-import { DestinationDatabaseModalProps } from "../../types"
-
-type FormatType = (typeof FORMAT_OPTIONS)[keyof typeof FORMAT_OPTIONS]
-
+import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
 import {
 	extractDatabasePrefix,
 	determineDefaultFormat,
 	generateDatabaseNames,
 } from "@/modules/ingestion/features/jobs/utils/destination-database"
+
+import { DestinationDatabaseModalProps } from "../../types"
+
+type FormatType = (typeof FORMAT_OPTIONS)[keyof typeof FORMAT_OPTIONS]
 
 const DestinationDatabaseModal = ({
 	destinationType,

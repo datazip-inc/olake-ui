@@ -1,8 +1,3 @@
-export const SourceTutorialYTLink =
-	"https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-export const DestinationTutorialYTLink =
-	"https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-
 export const CONNECTOR_TYPES = {
 	AMAZON_S3: "Amazon S3",
 	APACHE_ICEBERG: "Apache Iceberg",

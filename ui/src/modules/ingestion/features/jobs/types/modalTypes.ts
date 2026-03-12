@@ -1,4 +1,5 @@
 import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+
 import { IngestionMode } from "../enums"
 
 export interface DestinationDatabaseModalProps {

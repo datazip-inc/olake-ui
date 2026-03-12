@@ -2,6 +2,7 @@ import {
 	StepIndicatorProps,
 	StepProgressProps,
 } from "@/modules/ingestion/common/types"
+
 import { steps } from "../constants"
 
 const StepIndicator: React.FC<StepIndicatorProps> = ({

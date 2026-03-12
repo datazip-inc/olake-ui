@@ -1,7 +1,8 @@
+import { PencilSimpleIcon } from "@phosphor-icons/react"
 import { Button, message } from "antd"
 import { Input } from "antd/lib"
 import { useEffect, useMemo, useState } from "react"
-import { PencilSimpleIcon } from "@phosphor-icons/react"
+
 import { useSystemSettings, useUpdateSystemSettings } from "../hooks"
 
 const AlertsAndNotifications = () => {

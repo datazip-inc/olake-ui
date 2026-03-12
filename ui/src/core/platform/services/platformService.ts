@@ -1,6 +1,7 @@
-import { api } from "@/core/api"
 import { API_CONFIG } from "@/config/apiConfig"
-import { ReleasesResponse } from "../../../common/types"
+import { api } from "@/core/api"
+
+import { ReleasesResponse } from "../types"
 
 export const platformService = {
 	getReleases: async (limit?: number): Promise<ReleasesResponse> => {

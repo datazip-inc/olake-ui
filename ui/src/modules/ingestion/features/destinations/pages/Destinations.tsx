@@ -1,10 +1,11 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
 import { PathIcon, PlusIcon } from "@phosphor-icons/react"
 import { Button, Tabs, Empty, Spin } from "antd"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { Entity } from "@/modules/ingestion/common/types"
+
 import DestinationEmptyState from "../components/DestinationEmptyState"
 import DestinationTable from "../components/DestinationTable"
 import { destinationTabs } from "../constants"

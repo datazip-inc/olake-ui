@@ -1,2 +1,2 @@
-export * from "./DestinationTable"
-export * from "./DestinationEmptyState"
+export { default as DestinationTable } from "./DestinationTable"
+export { default as DestinationEmptyState } from "./DestinationEmptyState"

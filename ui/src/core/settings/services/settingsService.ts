@@ -1,6 +1,7 @@
-import { api } from "@/core/api"
-import { SystemSettings, UpdateSystemSettingsRequest } from "../types"
 import { API_CONFIG } from "@/config/apiConfig"
+import { api } from "@/core/api"
+
+import { SystemSettings, UpdateSystemSettingsRequest } from "../types"
 
 export const settingsService = {
 	getSystemSettings: async (): Promise<SystemSettings> => {

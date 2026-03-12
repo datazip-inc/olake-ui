@@ -1,5 +1,6 @@
-import { api } from "@/core/api"
 import { API_CONFIG } from "@/config"
+import { trackTestConnection } from "@/core/analytics/analyticsUtils"
+import { api } from "@/core/api"
 import {
 	Entity,
 	EntityBase,
@@ -7,8 +8,6 @@ import {
 	EntityTestResponse,
 	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
-
-import { trackTestConnection } from "@/common/utils"
 
 export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
@@ -162,9 +161,12 @@ export const sourceService = {
 				{ timeout: 300000, signal, disableErrorNotification: true }, //timeout is 300000 as spec takes more time as it needs to fetch the spec from olake
 			)
 			return response.data
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error getting source spec:", error)
-			throw error
+			const serverMessage = error?.response?.data?.message
+			throw new Error(
+				serverMessage ?? error?.message ?? "Failed to fetch source spec",
+			)
 		}
 	},
 

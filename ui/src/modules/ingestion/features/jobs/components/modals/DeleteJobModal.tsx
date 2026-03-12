@@ -1,8 +1,9 @@
-import { useNavigate } from "react-router-dom"
-import { Button, Modal } from "antd"
 import { WarningIcon } from "@phosphor-icons/react"
+import { Button, Modal } from "antd"
+import { useNavigate } from "react-router-dom"
 
 import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
+
 import { useDeleteJob } from "../../hooks"
 
 const DeleteJobModal = ({

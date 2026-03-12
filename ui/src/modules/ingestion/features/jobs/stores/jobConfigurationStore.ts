@@ -1,6 +1,8 @@
 import { create } from "zustand"
-import { AdvancedSettings } from "../types"
+
 import { Entity } from "@/modules/ingestion/common/types"
+
+import { AdvancedSettings } from "../types"
 
 interface JobConfigurationState {
 	jobName: string

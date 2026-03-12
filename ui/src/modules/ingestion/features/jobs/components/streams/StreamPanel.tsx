@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useState, useEffect } from "react"
 import { CheckboxChangeEvent } from "antd"
+import { useCallback, useMemo, useState, useEffect } from "react"
 
-import { StreamPanelProps } from "../../types"
 import StreamHeader from "./StreamHeader"
+import { StreamPanelProps } from "../../types"
 
 const StreamPanel: React.FC<StreamPanelProps> = ({
 	stream,

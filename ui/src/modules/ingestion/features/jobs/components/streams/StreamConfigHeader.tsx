@@ -1,15 +1,15 @@
-import clsx from "clsx"
-import { Tooltip } from "antd"
 import {
 	SlidersHorizontalIcon,
 	ColumnsPlusRightIcon,
 	GridFourIcon,
 	InfoIcon,
 } from "@phosphor-icons/react"
+import { Tooltip } from "antd"
+import clsx from "clsx"
 
+import { DESTINATION_TABLE_TOOLTIP_TEXT, TAB_STYLES } from "../../constants"
 import { useStreamSelectionStore, selectActiveStreamData } from "../../stores"
 import { formatDestinationPath } from "../../utils"
-import { DESTINATION_TABLE_TOOLTIP_TEXT, TAB_STYLES } from "../../constants"
 
 interface StreamConfigHeaderProps {
 	activeTab: string

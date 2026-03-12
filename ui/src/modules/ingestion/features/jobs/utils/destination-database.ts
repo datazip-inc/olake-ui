@@ -1,4 +1,5 @@
 import { StreamsDataStructure } from "@/modules/ingestion/common/types"
+
 import { FORMAT_OPTIONS, NAMESPACE_PLACEHOLDER } from "../constants"
 
 type FormatType = (typeof FORMAT_OPTIONS)[keyof typeof FORMAT_OPTIONS]

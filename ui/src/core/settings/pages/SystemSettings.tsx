@@ -1,6 +1,7 @@
 import { GearSixIcon } from "@phosphor-icons/react"
 import { Spin, Tabs } from "antd"
 import { useState } from "react"
+
 import AlertsAndNotifications from "../components/AlertsAndNotifications"
 import { useSystemSettings } from "../hooks"
 

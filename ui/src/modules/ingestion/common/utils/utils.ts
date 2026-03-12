@@ -1,4 +1,3 @@
-import { DESTINATION_INTERNAL_TYPES, DESTINATION_LABELS } from "../constants"
 import {
 	AWSS3,
 	ApacheIceBerg,
@@ -10,6 +9,8 @@ import {
 	Postgres,
 	MSSQL,
 } from "@/assets"
+
+import { DESTINATION_INTERNAL_TYPES, DESTINATION_LABELS } from "../constants"
 
 // Normalizes old connector types to their current internal types
 export const normalizeConnectorType = (connectorType: string): string => {

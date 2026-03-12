@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
+
 import { platformService } from "../services"
 import { ReleasesResponse, ReleaseType } from "../types"
 import { processReleasesData } from "../utils"

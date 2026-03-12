@@ -1,13 +1,14 @@
+import { LinktreeLogoIcon, PlusIcon } from "@phosphor-icons/react"
+import { Button, Tabs, Empty, Spin } from "antd"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button, Tabs, Empty, Spin } from "antd"
-import { LinktreeLogoIcon, PlusIcon } from "@phosphor-icons/react"
 
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { Entity } from "@/modules/ingestion/common/types"
-import { sourceTabs } from "../constants"
-import SourceTable from "../components/SourceTable"
+
 import SourceEmptyState from "../components/SourceEmptyState"
+import SourceTable from "../components/SourceTable"
+import { sourceTabs } from "../constants"
 import { useSources, useDeleteSource } from "../hooks"
 
 const Sources: React.FC = () => {

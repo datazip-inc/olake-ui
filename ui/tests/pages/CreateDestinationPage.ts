@@ -1,13 +1,14 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import { BasePage } from "./BasePage"
+import { TIMEOUTS } from "../../playwright.config"
+import { CatalogType, DestinationConnector } from "../enums"
 import { DestinationFormConfig } from "../types/PageConfig.types"
 import {
 	expectTestConnectionModalVisible,
 	assertTestConnectionOutcome,
 } from "../utils/modal-utils"
 import { selectConnector } from "../utils/page-utils"
-import { CatalogType, DestinationConnector } from "../enums"
 
 export class CreateDestinationPage extends BasePage {
 	readonly destinationNameInput: Locator

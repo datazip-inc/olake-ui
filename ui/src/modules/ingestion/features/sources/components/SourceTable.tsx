@@ -1,18 +1,19 @@
-import React, { useState } from "react"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
 	DotsThreeIcon,
 	PencilSimpleLineIcon,
 	TrashIcon,
 } from "@phosphor-icons/react"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
+import React, { useState } from "react"
 
-import { Entity } from "@/modules/ingestion/common/types"
-import { SourceTableProps } from "../types"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
-import { getConnectorLabel } from "../utils"
-import { PAGE_SIZE } from "@/modules/ingestion/common/constants"
-import JobConnection from "@/modules/ingestion/common/components/JobConnection"
 import { DeleteModal } from "@/modules/ingestion/common/components"
+import JobConnection from "@/modules/ingestion/common/components/JobConnection"
+import { PAGE_SIZE } from "@/modules/ingestion/common/constants"
+import { Entity } from "@/modules/ingestion/common/types"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
+
+import { SourceTableProps } from "../types"
+import { getConnectorLabel } from "../utils"
 
 const renderJobConnection = (record: Entity) => {
 	const jobs = record.jobs as any[]
@@ -156,7 +157,7 @@ const SourceTable: React.FC<SourceTableProps> = ({
 				/>
 			</div>
 
-			<div className="z-100 fixed bottom-[60px] right-[40px] flex justify-end bg-white p-2">
+			<div className="fixed bottom-[60px] right-[40px] z-50 flex justify-end bg-white p-2">
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}

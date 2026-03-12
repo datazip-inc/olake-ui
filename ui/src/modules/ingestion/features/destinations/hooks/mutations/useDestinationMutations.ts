@@ -1,10 +1,12 @@
 import { useMutation } from "@tanstack/react-query"
-import { destinationService } from "../../services"
-import { destinationKeys } from "../../constants/queryKeys"
+
 import type {
 	EntityBase,
 	EntityTestRequest,
 } from "@/modules/ingestion/common/types"
+
+import { destinationKeys } from "../../constants/queryKeys"
+import { destinationService } from "../../services"
 
 export const useCreateDestination = () => {
 	return useMutation({
@@ -16,7 +18,7 @@ export const useCreateDestination = () => {
 
 export const useUpdateDestination = (id: string) => {
 	return useMutation({
-		mutationKey: destinationKeys.detail(id),
+		mutationKey: destinationKeys.lists(),
 		mutationFn: (destination: EntityBase) =>
 			destinationService.updateDestination(id, destination),
 	})

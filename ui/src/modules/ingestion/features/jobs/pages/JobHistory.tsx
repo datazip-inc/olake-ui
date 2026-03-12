@@ -1,24 +1,25 @@
-import { useState, useRef, useEffect } from "react"
-import clsx from "clsx"
-import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
-import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	ArrowsClockwiseIcon,
 	EyeIcon,
 } from "@phosphor-icons/react"
+import { Table, Button, Input, Spin, Pagination, Tooltip } from "antd"
+import clsx from "clsx"
+import { useState, useRef, useEffect } from "react"
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom"
 
-import { useJobDetails, useJobTasks } from "../hooks"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
 import {
 	getStatusClass,
 	getStatusLabel,
 	parseDateToTimestamp,
 } from "@/common/utils"
-import { getJobTypeClass, getJobTypeLabel } from "../utils"
 import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
+
+import { useJobDetails, useJobTasks } from "../hooks"
 import { JobType } from "../types"
+import { getJobTypeClass, getJobTypeLabel } from "../utils"
 
 interface JobHistoryNavState {
 	waitForNewSync?: boolean

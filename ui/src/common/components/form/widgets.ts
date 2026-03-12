@@ -1,4 +1,5 @@
 import type { RegistryWidgetsType, RJSFSchema } from "@rjsf/utils"
+
 import BooleanSwitchWidget from "./BooleanSwitchWidget"
 import CustomRadioWidget from "./CustomRadioWidget"
 

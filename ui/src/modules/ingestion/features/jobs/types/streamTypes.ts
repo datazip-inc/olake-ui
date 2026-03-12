@@ -1,7 +1,8 @@
+import { CheckboxChangeEvent } from "antd"
+
 import { StreamData } from "@/modules/ingestion/common/types"
 
 import { AdvancedSettings } from "./jobTypes"
-import { CheckboxChangeEvent } from "antd"
 
 export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
 export type LogicalOperator = "and" | "or"

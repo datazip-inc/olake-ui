@@ -1,5 +1,6 @@
 import { Component, ErrorInfo } from "react"
-import { Props, State } from "../../../../common/types"
+
+import { Props, State } from "@/common/types"
 
 export class ErrorBoundary extends Component<Props, State> {
 	public state: State = {

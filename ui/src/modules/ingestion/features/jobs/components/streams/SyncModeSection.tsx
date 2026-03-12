@@ -1,18 +1,19 @@
-import { useEffect, useState } from "react"
-import { Radio, Select, Tooltip, Button } from "antd"
 import { PlusIcon, InfoIcon } from "@phosphor-icons/react"
+import { Radio, Select, Tooltip, Button } from "antd"
+import { useEffect, useState } from "react"
 
 import { SyncMode } from "@/modules/ingestion/common/types"
+
 import { SYNC_MODE_MAP } from "../../constants"
-import { getCursorFieldValues } from "../../utils/streams"
 import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
 	useStreamSelectionStore,
 } from "../../stores"
+import { getCursorFieldValues } from "../../utils/streams"
 
 const SyncModeSection = () => {
-	const store = useStreamSelectionStore()
+	const updateSyncMode = useStreamSelectionStore(state => state.updateSyncMode)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 
@@ -47,7 +48,7 @@ const SyncModeSection = () => {
 			if (cursor) {
 				setCursorField(getCursorFieldValues(cursor).primary)
 				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
-				store.updateSyncMode(
+				updateSyncMode(
 					stream.stream.name,
 					stream.stream.namespace || "",
 					SyncMode.INCREMENTAL,
@@ -78,7 +79,7 @@ const SyncModeSection = () => {
 			if (cursor) {
 				setCursorField(getCursorFieldValues(cursor).primary)
 				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
-				store.updateSyncMode(
+				updateSyncMode(
 					stream.stream.name,
 					stream.stream.namespace || "",
 					SyncMode.INCREMENTAL,
@@ -86,7 +87,7 @@ const SyncModeSection = () => {
 				)
 			}
 		} else {
-			store.updateSyncMode(
+			updateSyncMode(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				newApiSyncMode,
@@ -100,7 +101,7 @@ const SyncModeSection = () => {
 			: value
 		setCursorField(newCursorField)
 		setFallBackCursorField("")
-		store.updateSyncMode(
+		updateSyncMode(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			SyncMode.INCREMENTAL,
@@ -115,7 +116,7 @@ const SyncModeSection = () => {
 			: cursorFieldValues.primary
 		setCursorField(newCursorField)
 		setFallBackCursorField(value)
-		store.updateSyncMode(
+		updateSyncMode(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			SyncMode.INCREMENTAL,
@@ -129,7 +130,7 @@ const SyncModeSection = () => {
 		const cursorFieldValues = getCursorFieldValues(cursorField)
 		const newCursorField = cursorFieldValues.primary
 		setCursorField(newCursorField)
-		store.updateSyncMode(
+		updateSyncMode(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			SyncMode.INCREMENTAL,

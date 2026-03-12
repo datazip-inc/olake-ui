@@ -2,8 +2,9 @@
  * AnalyticsService handles sending analytics events
  */
 
-import { api } from "@/core/api"
 import axios from "axios"
+
+import { api } from "@/core/api"
 
 // endpoint which handles rate limiting and forwards the events to mixpanel
 const ANALYTICS_ENDPOINT = "https://analytics.olake.io/mp/track"

@@ -3,13 +3,15 @@ import axios, {
 	InternalAxiosRequestConfig,
 	AxiosResponse,
 } from "axios"
-import { API_CONFIG } from "../../config/apiConfig"
+
 import {
 	ERROR_MESSAGES,
 	HTTP_STATUS,
 	LOCALSTORAGE_TOKEN_KEY,
 } from "@/common/constants"
-import { notificationService } from "@/core/platform/services"
+import { notificationService } from "@/core/notifications"
+
+import { API_CONFIG } from "../../config/apiConfig"
 /**
  * Extend Axios types to support our custom notification flag
  */

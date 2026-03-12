@@ -1,6 +1,7 @@
 import { Tooltip } from "antd"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
+
 import { JobConnectionProps } from "@/modules/ingestion/common/types"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 const JobConnection: React.FC<JobConnectionProps> = ({
 	sourceType,

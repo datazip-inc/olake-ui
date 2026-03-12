@@ -1,44 +1,15 @@
-import { useState, useEffect } from "react"
-import { useNavigate, Link, useLocation } from "react-router-dom"
-import { message } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
 	DownloadSimpleIcon,
 } from "@phosphor-icons/react"
+import { message } from "antd"
+import { useState, useEffect } from "react"
+import { useNavigate, Link, useLocation } from "react-router-dom"
 import { v4 as uuidv4 } from "uuid"
 
-import { useCreateJob } from "../hooks"
-import { useTestDestinationConnection } from "@/modules/ingestion/features/destinations/hooks"
-import { useTestSourceConnection } from "@/modules/ingestion/features/sources/hooks"
-import { useSources } from "@/modules/ingestion/features/sources/hooks"
-import { useDestinations } from "@/modules/ingestion/features/destinations/hooks"
-import {
-	useJobStore,
-	useStreamSelectionStore,
-	useJobConfigurationStore,
-} from "../stores"
-import { validationService } from "@/modules/ingestion/common/services/validationService"
-
-import { JobBase, JobCreationSteps } from "../types"
-import type { TestConnectionError } from "@/common/types"
-import {
-	buildConnectorPayload,
-	validateCronExpression,
-	getSelectedStreams,
-	validateStreams,
-} from "../utils"
-import { ENTITY_TYPES } from "@/modules/ingestion/common/constants"
 import { TEST_CONNECTION_STATUS } from "@/common/constants"
-import { JOB_CREATION_STEPS, JOB_STEP_NUMBERS } from "../constants"
-
-// Internal imports from components
-import {
-	JobConfiguration,
-	StepIndicator as StepProgress,
-	SchemaConfiguration,
-	ResetStreamsModal,
-} from "../components"
+import type { TestConnectionError } from "@/common/types"
 import {
 	TestConnectionModal,
 	TestConnectionSuccessModal,
@@ -46,6 +17,39 @@ import {
 	EntitySavedModal,
 	EntityCancelModal,
 } from "@/modules/ingestion/common/components"
+import { ENTITY_TYPES } from "@/modules/ingestion/common/constants"
+import { validationService } from "@/modules/ingestion/common/services/validationService"
+import {
+	useTestDestinationConnection,
+	useDestinations,
+} from "@/modules/ingestion/features/destinations/hooks"
+import {
+	useTestSourceConnection,
+	useSources,
+} from "@/modules/ingestion/features/sources/hooks"
+
+import {
+	JobConfiguration,
+	StepIndicator as StepProgress,
+	SchemaConfiguration,
+	ResetStreamsModal,
+} from "../components"
+import { JOB_CREATION_STEPS, JOB_STEP_NUMBERS } from "../constants"
+import { useCreateJob } from "../hooks"
+import {
+	useJobStore,
+	useStreamSelectionStore,
+	useJobConfigurationStore,
+} from "../stores"
+import { JobBase, JobCreationSteps } from "../types"
+import {
+	buildConnectorPayload,
+	validateCronExpression,
+	getSelectedStreams,
+	validateStreams,
+} from "../utils"
+
+// Internal imports from components
 
 const JobCreation: React.FC = () => {
 	const navigate = useNavigate()

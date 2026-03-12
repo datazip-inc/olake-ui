@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+
 import { jobsKeys } from "../../constants"
 import { jobService } from "../../services"
 

@@ -5,11 +5,12 @@ import {
 	CaretDownIcon,
 } from "@phosphor-icons/react"
 import { Modal, Tooltip } from "antd"
-import { useState, useEffect } from "react"
 import clsx from "clsx"
+import { useState, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
-import { ReleaseMetadataResponse, ReleaseType } from "../types"
+
 import { usePlatformStore } from "../stores"
+import { ReleaseMetadataResponse, ReleaseType } from "../types"
 
 const CATEGORIES: ReleaseType[] = [
 	ReleaseType.FEATURES,

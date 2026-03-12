@@ -1,15 +1,15 @@
+import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
+import { Button, Tabs, Empty, message, Spin } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Button, Tabs, Empty, message, Spin } from "antd"
-import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
 
-import { useJobStore } from "../stores"
-import { useJobs } from "../hooks"
-import { useSyncJob, useActivateJob, useCancelJob } from "../hooks"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
-import { Job, JobStatus, SavedJobDraft } from "../types"
-import { JOB_STATUS } from "../constants"
+
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
+import { JOB_STATUS } from "../constants"
+import { useJobs, useSyncJob, useActivateJob, useCancelJob } from "../hooks"
+import { useJobStore } from "../stores"
+import { Job, JobStatus, SavedJobDraft } from "../types"
 
 const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobStatus>(
@@ -54,10 +54,8 @@ const Jobs: React.FC = () => {
 				const initialData = {
 					sourceId: savedJob.source?.id ?? null,
 					destinationId: savedJob.destination?.id ?? null,
-					selectedStreams: JSON.parse(savedJob.streams_config),
 					jobName: savedJob.name,
 					cronExpression: savedJob.frequency,
-					isJobNameFilled: true,
 					advanced_settings: savedJob.advanced_settings ?? null,
 				}
 				navigate("/jobs/new", {

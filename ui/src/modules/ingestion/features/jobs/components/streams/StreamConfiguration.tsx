@@ -1,23 +1,24 @@
 import { useEffect, useState } from "react"
 
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants/constants"
-import { StreamConfigurationProps } from "../../types"
+
+import ConfigTab from "./ConfigTab"
+import PartitionRegexSection from "./PartitionRegexSection"
+import StreamConfigHeader from "./StreamConfigHeader"
+import StreamsSchema from "./StreamsSchema"
 import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
+	selectStreamsData,
 	useStreamSelectionStore,
 } from "../../stores"
-
-import StreamConfigHeader from "./StreamConfigHeader"
-import ConfigTab from "./ConfigTab"
-import PartitionRegexSection from "./PartitionRegexSection"
-import StreamsSchema from "./StreamsSchema"
+import { StreamConfigurationProps } from "../../types"
 
 const StreamConfiguration = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	sourceType,
 }: StreamConfigurationProps) => {
-	const store = useStreamSelectionStore()
+	const streamsData = useStreamSelectionStore(selectStreamsData)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 
@@ -43,7 +44,7 @@ const StreamConfiguration = ({
 					destinationType={destinationType}
 				/>
 			)}
-			{activeTab === "schema" && store.streamsData && <StreamsSchema />}
+			{activeTab === "schema" && streamsData && <StreamsSchema />}
 			{activeTab === "partitioning" && (
 				<PartitionRegexSection destinationType={destinationType} />
 			)}

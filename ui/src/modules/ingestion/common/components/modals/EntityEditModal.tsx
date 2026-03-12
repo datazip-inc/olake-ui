@@ -1,6 +1,6 @@
-import { formatDistanceToNow } from "date-fns"
-import { Button, Modal, Table } from "antd"
 import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
+import { Button, Modal, Table } from "antd"
+import { formatDistanceToNow } from "date-fns"
 
 import { EntityEditModalProps } from "@/modules/ingestion/common/types"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"

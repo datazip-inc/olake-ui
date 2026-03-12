@@ -1,10 +1,10 @@
-import { useState } from "react"
-import { Button, Input, Tooltip } from "antd"
 import { ArrowSquareOutIcon, InfoIcon } from "@phosphor-icons/react"
+import { Button, Input, Tooltip } from "antd"
+import { useState } from "react"
 
-import { PartitioningRegexTooltip } from "../../constants"
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 
+import { PartitioningRegexTooltip } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import {
 	selectActiveStreamData,
@@ -19,7 +19,9 @@ interface PartitionRegexSectionProps {
 const PartitionRegexSection = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 }: PartitionRegexSectionProps) => {
-	const store = useStreamSelectionStore()
+	const updatePartitionRegex = useStreamSelectionStore(
+		state => state.updatePartitionRegex,
+	)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const isSelected = useStreamSelectionStore(state =>
@@ -34,7 +36,7 @@ const PartitionRegexSection = ({
 
 	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			store.updatePartitionRegex(
+			updatePartitionRegex(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				partitionRegex,
@@ -44,11 +46,7 @@ const PartitionRegexSection = ({
 	}
 
 	const handleClearPartitionRegex = () => {
-		store.updatePartitionRegex(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			"",
-		)
+		updatePartitionRegex(stream.stream.name, stream.stream.namespace || "", "")
 	}
 
 	return (

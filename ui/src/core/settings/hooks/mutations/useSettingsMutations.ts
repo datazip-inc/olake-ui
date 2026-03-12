@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query"
-import { settingsService } from "../../services"
+
 import { settingsKeys } from "../../constants/queryKeys"
+import { settingsService } from "../../services"
 import type { UpdateSystemSettingsRequest } from "../../types"
 
 export const useUpdateSystemSettings = () => {

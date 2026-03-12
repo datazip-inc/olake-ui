@@ -1,4 +1,5 @@
 import { LogEntry } from "@/modules/ingestion/common/types"
+
 import { TaskLogEntry } from "../types"
 
 export const mapLogEntriesToTaskLogEntries = (

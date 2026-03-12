@@ -1,6 +1,7 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import { BasePage } from "./BasePage"
+import { TIMEOUTS } from "../../playwright.config"
 import { pollToClickAndVerifyText } from "../utils/page-utils"
 
 export class JobsPage extends BasePage {

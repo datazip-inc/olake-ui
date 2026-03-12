@@ -6,7 +6,6 @@ import { authService } from "@/core/auth/services/authService"
 export interface AuthState {
 	isAuthenticated: boolean
 	isAuthLoading: boolean
-	jobsError: string | null
 	initAuth: () => Promise<void>
 	login: (username: string, password: string) => Promise<void>
 	logout: () => void
@@ -17,7 +16,6 @@ export const useAuthStore = create<AuthState>()(
 		set => ({
 			isAuthenticated: false,
 			isAuthLoading: false,
-			jobsError: null,
 			initAuth: async () => {
 				set({ isAuthLoading: true })
 				try {
@@ -27,14 +25,10 @@ export const useAuthStore = create<AuthState>()(
 					}
 					set({ isAuthenticated: true, isAuthLoading: false })
 					// Identify user for analytics when returning with an existing session
-				} catch (error) {
+				} catch {
 					set({
 						isAuthLoading: false,
 						isAuthenticated: false,
-						jobsError:
-							error instanceof Error
-								? error.message
-								: "Failed to initialize auth",
 					})
 				}
 			},

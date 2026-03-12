@@ -1,13 +1,14 @@
 import { Page, Locator } from "@playwright/test"
+
 import { BasePage } from "./BasePage"
-import { JobFormConfig } from "../types/PageConfig.types"
 import { DestinationConnector, SourceConnector } from "../enums"
-import { selectConnector } from "../utils/page-utils"
+import { JobFormConfig } from "../types/PageConfig.types"
 import {
 	verifyEntityTestConnectionSuccessModal,
 	expectTestConnectionModalVisible,
 	assertTestConnectionOutcome,
 } from "../utils"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateJobPage extends BasePage {
 	readonly jobNameInput: Locator

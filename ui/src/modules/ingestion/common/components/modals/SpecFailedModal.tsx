@@ -1,5 +1,5 @@
-import { Modal } from "antd"
 import { CopySimpleIcon } from "@phosphor-icons/react"
+import { Modal } from "antd"
 
 import { ErrorIcon } from "@/assets"
 import { copyToClipboard } from "@/common/utils"

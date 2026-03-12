@@ -1,13 +1,14 @@
 import { test as base } from "@playwright/test"
+
+import { CreateDestinationPage } from "../pages/CreateDestinationPage"
+import { CreateJobPage } from "../pages/CreateJobPage"
+import { CreateSourcePage } from "../pages/CreateSourcePage"
+import { DestinationsPage } from "../pages/DestinationsPage"
+import { EditDestinationPage } from "../pages/EditDestinationPage"
+import { EditSourcePage } from "../pages/EditSourcePage"
+import { JobsPage } from "../pages/JobsPage"
 import { LoginPage } from "../pages/LoginPage"
 import { SourcesPage } from "../pages/SourcesPage"
-import { CreateSourcePage } from "../pages/CreateSourcePage"
-import { EditSourcePage } from "../pages/EditSourcePage"
-import { DestinationsPage } from "../pages/DestinationsPage"
-import { CreateDestinationPage } from "../pages/CreateDestinationPage"
-import { EditDestinationPage } from "../pages/EditDestinationPage"
-import { JobsPage } from "../pages/JobsPage"
-import { CreateJobPage } from "../pages/CreateJobPage"
 
 /**
  * Base fixture providing all page objects

@@ -1,13 +1,14 @@
+import semver from "semver"
+
+import { MIN_COLUMN_SELECTION_SOURCE_VERSION } from "@/modules/ingestion/common/constants"
 import {
 	SelectedStreamsByNamespace,
 	StreamsDataStructure,
 	StreamData,
 	SelectedStream,
 } from "@/modules/ingestion/common/types"
-import { CursorFieldValues } from "../types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
-import { MIN_COLUMN_SELECTION_SOURCE_VERSION } from "@/modules/ingestion/common/constants"
-import semver from "semver"
+
 import {
 	DESTINATION_SUPPORTED_INGESTION_MODES,
 	FILTER_REGEX,
@@ -15,6 +16,7 @@ import {
 	STREAM_DEFAULTS,
 } from "../constants"
 import { IngestionMode } from "../enums"
+import { CursorFieldValues } from "../types"
 
 /**
  * Processes the raw SourceStreamsResponse into the

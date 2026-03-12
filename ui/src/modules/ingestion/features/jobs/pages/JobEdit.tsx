@@ -1,18 +1,16 @@
-import { useState, useEffect, useRef } from "react"
-import clsx from "clsx"
-import { useNavigate, Link, useParams } from "react-router-dom"
-import { message } from "antd"
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
+import { message } from "antd"
+import clsx from "clsx"
+import { useState, useEffect, useRef } from "react"
+import { useNavigate, Link, useParams } from "react-router-dom"
 
-import { useJobStore, useStreamSelectionStore } from "../stores"
-import { useJobDetails, useUpdateJob } from "../hooks"
-import { jobService } from "../services"
-import { Job, JobBase, JobCreationSteps } from "../types"
 import {
 	StreamData,
 	StreamsDataStructure,
 	Entity,
 } from "@/modules/ingestion/common/types"
+import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+
 import {
 	JobConfiguration,
 	StepIndicator as StepProgress,
@@ -21,18 +19,24 @@ import {
 	StreamDifferenceModal,
 	StreamEditDisabledModal,
 } from "../components"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
-import {
-	validateCronExpression,
-	getSelectedStreams,
-	validateStreams,
-} from "../utils"
 import {
 	JOB_CREATION_STEPS,
 	JOB_STEP_NUMBERS,
 	STREAM_DEFAULTS,
 } from "../constants"
-import { useJobConfigurationStore } from "../stores"
+import { useJobDetails, useUpdateJob } from "../hooks"
+import { jobService } from "../services"
+import {
+	useJobStore,
+	useStreamSelectionStore,
+	useJobConfigurationStore,
+} from "../stores"
+import { Job, JobBase, JobCreationSteps } from "../types"
+import {
+	validateCronExpression,
+	getSelectedStreams,
+	validateStreams,
+} from "../utils"
 
 const JobEdit: React.FC = () => {
 	const navigate = useNavigate()
@@ -187,6 +191,7 @@ const JobEdit: React.FC = () => {
 	// Clean up store on unmount
 	useEffect(() => {
 		return () => {
+			hasInitialized.current = false
 			resetJobConfig()
 		}
 	}, [])

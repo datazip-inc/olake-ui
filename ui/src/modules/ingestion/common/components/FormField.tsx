@@ -1,6 +1,7 @@
-import { Tooltip } from "antd"
 import { Info } from "@phosphor-icons/react"
-import { FormFieldProps } from "../../../../common/types"
+import { Tooltip } from "antd"
+
+import { FormFieldProps } from "@/common/types"
 
 const FormField = ({
 	label,

@@ -1,30 +1,40 @@
-import { useEffect, useRef, useState } from "react"
-import clsx from "clsx"
-import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
 import { LightningIcon, PlusIcon, XIcon, InfoIcon } from "@phosphor-icons/react"
+import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
+import clsx from "clsx"
+import { useEffect, useRef, useState } from "react"
 
+import { CARD_STYLE, operatorOptions } from "../../constants"
+import { useStreamSelectionStore } from "../../stores"
+import {
+	selectActiveStreamData,
+	selectActiveSelectedStream,
+	selectIsStreamEnabled,
+	selectStreamFilterState,
+} from "../../stores"
 import {
 	FilterCondition,
 	FilterOperator,
 	LogicalOperator,
 	MultiFilterCondition,
 } from "../../types"
-import { CARD_STYLE } from "../../constants"
-import { operatorOptions } from "../../constants"
-
-import { useStreamSelectionStore } from "../../stores"
-import {
-	selectActiveStreamData,
-	selectActiveSelectedStream,
-	selectIsStreamEnabled,
-} from "../../stores"
 
 const DataFilterSection = () => {
-	const store = useStreamSelectionStore()
+	const updateFilter = useStreamSelectionStore(state => state.updateFilter)
+	const setStreamFilterState = useStreamSelectionStore(
+		state => state.setStreamFilterState,
+	)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const isSelected = useStreamSelectionStore(state =>
 		selectIsStreamEnabled(state, stream),
+	)
+
+	// Unique stream key to differentiate a stream with same name and different namespace
+	const streamKey = stream
+		? `${stream.stream.namespace || ""}_${stream.stream.name}`
+		: ""
+	const streamFilterState = useStreamSelectionStore(
+		selectStreamFilterState(streamKey),
 	)
 
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
@@ -44,9 +54,6 @@ const DataFilterSection = () => {
 	const isLocalFilterUpdateRef = useRef(false)
 
 	if (!stream || !selectedStream) return null
-
-	// Unique stream key to differentiate a stream with same name and different namespace
-	const streamKey = `${stream.stream.namespace || ""}_${stream.stream.name}`
 
 	// Filter parsing effect to parse the filter string and set the filter state
 	const currentFilter = selectedStream.filter || ""
@@ -90,7 +97,7 @@ const DataFilterSection = () => {
 				setMultiFilterCondition({ conditions, logicalOperator })
 				setFullLoadFilter(true)
 				// Persist the filter enabled state for this stream
-				store.setStreamFilterState(streamKey, true)
+				setStreamFilterState(streamKey, true)
 			}
 		} else {
 			setMultiFilterCondition({
@@ -98,8 +105,7 @@ const DataFilterSection = () => {
 				logicalOperator: "and",
 			})
 			// Restore filter state for this stream or default to false
-			const savedState = store.streamFilterStates[streamKey] || false
-			setFullLoadFilter(savedState)
+			setFullLoadFilter(streamFilterState)
 		}
 	}, [currentFilter])
 
@@ -177,7 +183,7 @@ const DataFilterSection = () => {
 	const handleFullLoadFilterChange = (checked: boolean) => {
 		setFullLoadFilter(checked)
 		// Persist the filter state for this stream
-		store.setStreamFilterState(streamKey, checked)
+		setStreamFilterState(streamKey, checked)
 
 		setMultiFilterCondition({
 			conditions: [{ columnName: "", operator: "=", value: "" }],
@@ -185,7 +191,7 @@ const DataFilterSection = () => {
 		})
 		isLocalFilterUpdateRef.current = true
 		// If toggled on insert empty condition
-		store.updateFilter(
+		updateFilter(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			checked ? "=" : "",
@@ -214,7 +220,7 @@ const DataFilterSection = () => {
 			.join(` ${newMultiCondition.logicalOperator} `)
 
 		isLocalFilterUpdateRef.current = true
-		store.updateFilter(
+		updateFilter(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			filterString,
@@ -242,7 +248,7 @@ const DataFilterSection = () => {
 				.join(` ${value} `)
 
 			isLocalFilterUpdateRef.current = true
-			store.updateFilter(
+			updateFilter(
 				stream.stream.name,
 				stream.stream.namespace || "",
 				filterString,
@@ -280,7 +286,7 @@ const DataFilterSection = () => {
 				.join(` ${multiFilterCondition.logicalOperator} `) + " = "
 
 		isLocalFilterUpdateRef.current = true
-		store.updateFilter(
+		updateFilter(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			filterString,
@@ -303,18 +309,14 @@ const DataFilterSection = () => {
 			if (condition.columnName && condition.operator && condition.value) {
 				const filterString = `${condition.columnName} ${condition.operator} ${formatFilterValue(condition.columnName, condition.value)}`
 				isLocalFilterUpdateRef.current = true
-				store.updateFilter(
+				updateFilter(
 					stream.stream.name,
 					stream.stream.namespace || "",
 					filterString,
 				)
 			} else {
 				isLocalFilterUpdateRef.current = true
-				store.updateFilter(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					"",
-				)
+				updateFilter(stream.stream.name, stream.stream.namespace || "", "")
 			}
 		}
 	}

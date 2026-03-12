@@ -1,9 +1,11 @@
+import { message } from "antd"
+import parser from "cron-parser"
+
+import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+import { CronParseResult } from "@/modules/ingestion/features/jobs/types"
+
 import { DAYS_MAP } from "../constants"
 import { JobType } from "../types"
-import { message } from "antd"
-import { CronParseResult } from "@/modules/ingestion/features/jobs/types"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
-import parser from "cron-parser"
 
 export const buildConnectorPayload = (
 	entity: {

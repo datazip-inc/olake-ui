@@ -1,6 +1,7 @@
 import { create } from "zustand"
-import type { Entity } from "@/modules/ingestion/common/types"
+
 import type { TestConnectionError } from "@/common/types"
+import type { Entity } from "@/modules/ingestion/common/types"
 
 // Client-side UI state only. Server state is handled by TanStack Query.
 export interface DestinationState {

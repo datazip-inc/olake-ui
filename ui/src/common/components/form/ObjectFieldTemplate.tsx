@@ -1,4 +1,3 @@
-import clsx from "clsx"
 import {
 	FormContextType,
 	GenericObjectType,
@@ -14,11 +13,12 @@ import {
 	titleId,
 } from "@rjsf/utils"
 import Col from "antd/lib/col"
-import Row from "antd/lib/row"
 import {
 	ConfigConsumer,
 	ConfigConsumerProps,
 } from "antd/lib/config-provider/context"
+import Row from "antd/lib/row"
+import clsx from "clsx"
 
 const DESCRIPTION_COL_STYLE = {
 	paddingBottom: "8px",

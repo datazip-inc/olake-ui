@@ -1,8 +1,8 @@
 /**
  * BooleanSwitchWidget is a component that renders a boolean switch this overrides the default boolean field template of rjsf
  */
-import { Switch } from "antd"
 import { WidgetProps } from "@rjsf/utils"
+import { Switch } from "antd"
 
 const BooleanSwitchWidget = ({
 	value,

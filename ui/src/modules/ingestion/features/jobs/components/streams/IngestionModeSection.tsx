@@ -1,19 +1,18 @@
-import clsx from "clsx"
-import { Radio, Tooltip } from "antd"
 import { InfoIcon } from "@phosphor-icons/react"
+import { Radio, Tooltip } from "antd"
+import clsx from "clsx"
 
 import { IngestionMode } from "../../enums"
-import {
-	isSourceIngestionModeSupported,
-	isDestinationIngestionModeSupported,
-} from "../../utils/streams"
-
 import { useStreamSelectionStore } from "../../stores"
 import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
 	selectIsStreamEnabled,
 } from "../../stores"
+import {
+	isSourceIngestionModeSupported,
+	isDestinationIngestionModeSupported,
+} from "../../utils/streams"
 
 interface IngestionModeSectionProps {
 	sourceType?: string
@@ -24,7 +23,9 @@ const IngestionModeSection = ({
 	sourceType,
 	destinationType,
 }: IngestionModeSectionProps) => {
-	const store = useStreamSelectionStore()
+	const updateIngestionMode = useStreamSelectionStore(
+		state => state.updateIngestionMode,
+	)
 	const stream = useStreamSelectionStore(selectActiveStreamData)
 	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
 	const isSelected = useStreamSelectionStore(state =>
@@ -57,7 +58,7 @@ const IngestionModeSection = ({
 	const isAppendMode = !isSourceUpsertSupported || !!selectedStream.append_mode
 
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
-		store.updateIngestionMode(
+		updateIngestionMode(
 			stream.stream.name,
 			stream.stream.namespace || "",
 			ingestionMode === IngestionMode.APPEND,

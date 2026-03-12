@@ -1,9 +1,10 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import {
 	SOURCE_CONNECTOR_TEST_ID_MAP,
 	DESTINATION_CONNECTOR_TEST_ID_MAP,
 } from "./constants"
+import { TIMEOUTS } from "../../playwright.config"
 import { DestinationConnector, SourceConnector } from "../enums"
 
 // Shared utility to select a connector from a dropdown for both source and destination

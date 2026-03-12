@@ -1,4 +1,5 @@
 import { create } from "zustand"
+
 import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 
 // Client-side UI state only. Server state is handled by TanStack Query.

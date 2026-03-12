@@ -1,5 +1,6 @@
-import { api } from "@/core/api"
 import { API_CONFIG } from "@/config"
+import { trackTestConnection } from "@/core/analytics/analyticsUtils"
+import { api } from "@/core/api"
 import {
 	Entity,
 	EntityBase,
@@ -10,7 +11,6 @@ import {
 	getConnectorInLowerCase,
 	normalizeConnectorType,
 } from "@/modules/ingestion/common/utils"
-import { trackTestConnection } from "@/common/utils"
 
 export const destinationService = {
 	getDestinations: async () => {
@@ -156,18 +156,26 @@ export const destinationService = {
 		source_version: string = "",
 		signal?: AbortSignal,
 	) => {
-		const normalizedType = normalizeConnectorType(type)
-		const response = await api.post<any>(
-			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
-			{
-				type: normalizedType,
-				version: version,
-				source_type: source_type,
-				source_version: source_version,
-			},
-			//timeout is 300000 as spec takes more time as it needs to fetch the spec from the destination
-			{ timeout: 300000, signal, disableErrorNotification: true },
-		)
-		return response.data
+		try {
+			const normalizedType = normalizeConnectorType(type)
+			const response = await api.post<any>(
+				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
+				{
+					type: normalizedType,
+					version: version,
+					source_type: source_type,
+					source_version: source_version,
+				},
+				//timeout is 300000 as spec takes more time as it needs to fetch the spec from the destination
+				{ timeout: 300000, signal, disableErrorNotification: true },
+			)
+			return response.data
+		} catch (error: any) {
+			console.error("Error getting destination spec:", error)
+			const serverMessage = error?.response?.data?.message
+			throw new Error(
+				serverMessage ?? error?.message ?? "Failed to fetch destination spec",
+			)
+		}
 	},
 }

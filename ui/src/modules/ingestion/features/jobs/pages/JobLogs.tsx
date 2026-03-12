@@ -1,4 +1,12 @@
 import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	ArrowsClockwiseIcon,
+	DownloadIcon,
+} from "@phosphor-icons/react"
+import { Input, Spin, Button, Tooltip, message } from "antd"
+import clsx from "clsx"
+import {
 	useEffect,
 	useState,
 	useRef,
@@ -6,24 +14,17 @@ import {
 	useMemo,
 	useLayoutEffect,
 } from "react"
-import clsx from "clsx"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom"
-import { Input, Spin, Button, Tooltip, message } from "antd"
-import {
-	ArrowLeftIcon,
-	ArrowRightIcon,
-	ArrowsClockwiseIcon,
-	DownloadIcon,
-} from "@phosphor-icons/react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
-import { useTaskStore } from "../stores"
-import { useJobDetails } from "../hooks"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
 import { getLogLevelClass, getLogTextColor } from "@/common/utils"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
+
 import { LOGS_CONFIG } from "../constants"
-import { TaskLogEntry } from "../types"
+import { useJobDetails } from "../hooks"
 import { jobService } from "../services"
+import { useTaskStore } from "../stores"
+import { TaskLogEntry } from "../types"
 
 const INITIAL_SCROLL_TIMEOUT = 100 // Timeout in ms for initial scroll to bottom
 

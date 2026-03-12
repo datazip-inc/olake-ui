@@ -1,6 +1,7 @@
-import { useNavigate } from "react-router-dom"
 import { WarningIcon } from "@phosphor-icons/react"
 import { Button, message, Modal } from "antd"
+import { useNavigate } from "react-router-dom"
+
 import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
 
 const ClearDataModal = () => {

@@ -1,7 +1,3 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { formatDistanceToNow } from "date-fns"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
 	ArrowsClockwiseIcon,
 	ClockCounterClockwiseIcon,
@@ -13,14 +9,19 @@ import {
 	TrashIcon,
 	XIcon,
 } from "@phosphor-icons/react"
+import { Table, Input, Button, Dropdown, Pagination } from "antd"
+import { formatDistanceToNow } from "date-fns"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 
-import { Job, JobTableProps, JobType, SavedJobDraft } from "../types"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
 import { getStatusClass, getStatusLabel } from "@/common/utils"
-import { getJobTypeClass, getJobTypeLabel } from "../utils"
-import { getStatusIcon } from "../../../common/components/statusIcons"
+import { getStatusIcon } from "@/modules/ingestion/common/components/statusIcons"
 import { PAGE_SIZE } from "@/modules/ingestion/common/constants"
+import { getConnectorImage } from "@/modules/ingestion/common/utils"
+
 import { useJobStore } from "../stores"
+import { Job, JobTableProps, JobType, SavedJobDraft } from "../types"
+import { getJobTypeClass, getJobTypeLabel } from "../utils"
 
 const formatLastSyncTime = (text?: string) => {
 	if (!text) return <div className="pl-4">-</div>
@@ -280,7 +281,7 @@ const JobTable: React.FC<JobTableProps> = ({
 				</div>
 			</div>
 
-			<div className="z-100 fixed bottom-[60px] right-[40px] flex justify-end bg-white p-2">
+			<div className="fixed bottom-[60px] right-[40px] z-50 flex justify-end bg-white p-2">
 				<Pagination
 					current={currentPage}
 					onChange={setCurrentPage}

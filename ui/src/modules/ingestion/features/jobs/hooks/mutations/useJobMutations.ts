@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query"
+
+import { jobsKeys } from "../../constants"
 import { jobService } from "../../services"
 import { JobBase } from "../../types"
-import { jobsKeys } from "../../constants"
 
 // mutationKey: jobsKeys.all() tells the global MutationCache (in App.tsx) to
 // invalidate all job-related queries after this mutation succeeds.

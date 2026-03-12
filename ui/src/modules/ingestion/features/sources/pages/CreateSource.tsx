@@ -1,6 +1,3 @@
-import { useState, useEffect, useRef } from "react"
-import { Link } from "react-router-dom"
-import { message, Select, Spin, Tooltip } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
@@ -10,36 +7,21 @@ import {
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
+import { message, Select, Spin, Tooltip } from "antd"
+import { useState, useEffect, useRef } from "react"
+import { Link } from "react-router-dom"
 
-import { validationService } from "@/modules/ingestion/common/services/validationService"
-import { Source } from "../types"
-import { SetupType } from "@/modules/ingestion/common/types"
-import { TestConnectionError } from "@/common/types"
-import { getConnectorLabel } from "../utils"
-import { trimFormDataStrings } from "@/common/utils"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
-import { handleSpecResponse } from "@/common/utils"
-import {
-	useSources,
-	useSourceVersions,
-	useSourceSpec,
-	useCreateSource,
-	useTestSourceConnection,
-} from "../hooks"
-import {
-	CONNECTOR_TYPES,
-	ENTITY_TYPES,
-	SETUP_TYPES,
-} from "@/modules/ingestion/common/constants"
+import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
+import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import { widgets } from "@/common/components/form/widgets"
 import {
 	transformErrors,
 	TEST_CONNECTION_STATUS,
 	OLAKE_LATEST_VERSION_URL,
 } from "@/common/constants"
-import EndpointTitle from "../../../common/components/EndpointTitle"
-import FormField from "../../../common/components/FormField"
-import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
-import { SetupTypeSelector } from "@/modules/ingestion/common/components/SetupTypeSelector"
+import { TestConnectionError } from "@/common/types"
+import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	TestConnectionModal,
 	TestConnectionSuccessModal,
@@ -49,12 +31,31 @@ import {
 	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { sourceConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
-import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
-import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
+import EndpointTitle from "@/modules/ingestion/common/components/EndpointTitle"
+import FormField from "@/modules/ingestion/common/components/FormField"
+import { SetupTypeSelector } from "@/modules/ingestion/common/components/SetupTypeSelector"
+import {
+	CONNECTOR_TYPES,
+	ENTITY_TYPES,
+	SETUP_TYPES,
+} from "@/modules/ingestion/common/constants"
+import { validationService } from "@/modules/ingestion/common/services/validationService"
+import { SetupType } from "@/modules/ingestion/common/types"
+import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+
+import {
+	useSources,
+	useSourceVersions,
+	useSourceSpec,
+	useCreateSource,
+	useTestSourceConnection,
+} from "../hooks"
+import { Source } from "../types"
+import { getConnectorLabel } from "../utils"
 
 const CreateSource: React.FC = () => {
+	// Local component state.
 	const formRef = useRef<any>(null)
 	const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
 	const [connector, setConnector] = useState(CONNECTOR_TYPES.MONGODB)
@@ -68,9 +69,6 @@ const CreateSource: React.FC = () => {
 	const [existingSource, setExistingSource] = useState<string | null>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
 	const [docsMinimized, setDocsMinimized] = useState(false)
-
-	const normalizedConnector = getConnectorInLowerCase(connector)
-
 	const [showTestingModal, setShowTestingModal] = useState(false)
 	const [showSuccessModal, setShowSuccessModal] = useState(false)
 	const [showFailureModal, setShowFailureModal] = useState(false)
@@ -79,6 +77,11 @@ const CreateSource: React.FC = () => {
 	const [showSpecFailedModal, setShowSpecFailedModal] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
+
+	// Derived constants from current state.
+	const normalizedConnector = getConnectorInLowerCase(connector)
+
+	// Data fetching and mutation hooks.
 	const { data: sources = [], isLoading: isLoadingSources } = useSources()
 	const { data: versionsData, isLoading: loadingVersions } =
 		useSourceVersions(normalizedConnector)
@@ -101,7 +104,7 @@ const CreateSource: React.FC = () => {
 		}
 	}, [versions])
 
-	// Fetch spec via TanStack Query (enabled guard: new setup only)
+	// Spec query for selected connector and version.
 	const {
 		data: specData,
 		isLoading: loadingSpec,

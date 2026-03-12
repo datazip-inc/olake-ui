@@ -1,12 +1,13 @@
 import { Page, Locator, expect } from "@playwright/test"
+
 import { BasePage } from "./BasePage"
+import { SourceConnector } from "../enums"
 import { SourceFormConfig } from "../types/PageConfig.types"
-import { selectConnector } from "../utils/page-utils"
 import {
 	expectTestConnectionModalVisible,
 	assertTestConnectionOutcome,
 } from "../utils/modal-utils"
-import { SourceConnector } from "../enums"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateSourcePage extends BasePage {
 	readonly sourceNameInput: Locator

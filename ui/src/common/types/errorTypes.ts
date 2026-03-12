@@ -1,4 +1,5 @@
 import { ReactNode } from "react"
+
 import { LogEntry } from "@/modules/ingestion/common/types/entityTypes"
 
 export interface Props {

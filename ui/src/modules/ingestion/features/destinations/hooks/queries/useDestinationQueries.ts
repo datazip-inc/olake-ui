@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
-import { destinationService } from "../../services"
+
 import { destinationKeys } from "../../constants/queryKeys"
+import { destinationService } from "../../services"
 
 export const useDestinations = () => {
 	return useQuery({

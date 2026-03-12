@@ -1,7 +1,9 @@
 import { InfoIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
-import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
 import { useNavigate } from "react-router-dom"
+
+import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
+
 import { StreamEditDisabledModalProps } from "../../types"
 
 const StreamEditDisabledModal = ({ from }: StreamEditDisabledModalProps) => {

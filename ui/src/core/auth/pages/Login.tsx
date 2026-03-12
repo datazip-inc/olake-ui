@@ -1,9 +1,10 @@
+import { UserIcon, LockKeyIcon } from "@phosphor-icons/react"
+import { Form, Input, Button, Card, message } from "antd"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Form, Input, Button, Card, message } from "antd"
-import { UserIcon, LockKeyIcon } from "@phosphor-icons/react"
 
 import { useAuthStore } from "@/core/auth/stores/authStore"
+
 import { LoginArgs } from "../types"
 
 const Login: React.FC = () => {

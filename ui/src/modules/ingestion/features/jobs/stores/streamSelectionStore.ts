@@ -1,12 +1,15 @@
 import { create } from "zustand"
+
 import {
 	StreamsDataStructure,
 	StreamData,
 	SelectedStream,
+	SelectedStreamsByNamespace,
 	SelectedColumns,
 	SyncMode,
 } from "@/modules/ingestion/common/types"
 import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
+
 import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
 
@@ -416,6 +419,22 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 
 	reset: () => set(initialState),
 }))
+
+// Narrow selectors for optimized subscriptions (avoid full-store re-renders).
+export const selectSelectedStreams = (
+	state: StreamSelectionState,
+): SelectedStreamsByNamespace => state.streamsData?.selected_streams ?? {}
+export const selectStreamsData = (state: StreamSelectionState) =>
+	state.streamsData
+export const selectIsDiscovering = (state: StreamSelectionState) =>
+	state.isDiscovering
+export const selectInitialStreamsSnapshot = (state: StreamSelectionState) =>
+	state.initialStreamsSnapshot
+export const selectActiveStreamKey = (state: StreamSelectionState) =>
+	state.activeStreamKey
+export const selectStreamFilterState =
+	(streamKey: string) => (state: StreamSelectionState) =>
+		state.streamFilterStates[streamKey] ?? false
 
 // Returns the StreamData entry for the currently active stream.
 export const selectActiveStreamData = (

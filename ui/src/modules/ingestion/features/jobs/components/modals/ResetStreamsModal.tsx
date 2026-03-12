@@ -1,8 +1,9 @@
-import { FC } from "react"
 import { WarningIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
+import { FC } from "react"
 
 import { useJobStore } from "@/modules/ingestion/features/jobs/stores"
+
 import { ResetStreamsModalProps } from "../../types"
 
 const ResetStreamsModal: FC<ResetStreamsModalProps> = ({ onConfirm }) => {

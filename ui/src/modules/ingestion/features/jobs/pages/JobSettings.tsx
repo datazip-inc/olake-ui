@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import {
 	Input,
 	Button,
@@ -10,24 +9,12 @@ import {
 	Tooltip,
 	Spin,
 } from "antd"
-import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import parser from "cron-parser"
+import { useState, useEffect } from "react"
+import { useParams, Link, useNavigate } from "react-router-dom"
 
-import { useJobConfigurationStore, useJobStore } from "../stores"
-import {
-	useJobDetails,
-	useClearDestinationStatus,
-	useActivateJob,
-	useUpdateJob,
-} from "../hooks"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
-import {
-	parseCronExpression,
-	validateCronExpression,
-	isValidCronExpression,
-	generateCronExpression,
-} from "../utils"
-import { DAYS, FREQUENCY_OPTIONS } from "../constants"
+
 import {
 	DeleteJobModal,
 	ClearDataModal,
@@ -35,6 +22,20 @@ import {
 	StreamEditDisabledModal,
 	AdvancedSettingsCard,
 } from "../components"
+import { DAYS, FREQUENCY_OPTIONS } from "../constants"
+import {
+	useJobDetails,
+	useClearDestinationStatus,
+	useActivateJob,
+	useUpdateJob,
+} from "../hooks"
+import { useJobConfigurationStore, useJobStore } from "../stores"
+import {
+	parseCronExpression,
+	validateCronExpression,
+	isValidCronExpression,
+	generateCronExpression,
+} from "../utils"
 
 const JobSettings: React.FC = () => {
 	const { jobId } = useParams<{ jobId: string }>()

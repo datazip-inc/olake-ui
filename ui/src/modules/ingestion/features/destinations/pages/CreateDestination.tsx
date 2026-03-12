@@ -1,6 +1,3 @@
-import { useState, useEffect, useRef } from "react"
-import { Link } from "react-router-dom"
-import { Input, message, Select, Spin } from "antd"
 import {
 	ArrowLeftIcon,
 	ArrowRightIcon,
@@ -9,37 +6,22 @@ import {
 	NotebookIcon,
 } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
+import validator from "@rjsf/validator-ajv8"
+import { Input, message, Select, Spin } from "antd"
+import { useState, useEffect, useRef } from "react"
+import { Link } from "react-router-dom"
 
-import { validationService } from "@/modules/ingestion/common/services/validationService"
-import { DestinationConfig, ExtendedDestination } from "../types"
-import { SetupType } from "@/modules/ingestion/common/types"
-import { TestConnectionError } from "@/common/types"
-import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
-import { getConnectorDocumentationPath } from "../utils"
-import { trimFormDataStrings } from "@/common/utils"
-import { handleSpecResponse } from "@/common/utils"
-import {
-	useDestinations,
-	useDestinationVersions,
-	useDestinationSpec,
-	useCreateDestination,
-	useTestDestinationConnection,
-} from "../hooks"
-import {
-	CONNECTOR_TYPES,
-	DESTINATION_INTERNAL_TYPES,
-	ENTITY_TYPES,
-	SETUP_TYPES,
-} from "@/modules/ingestion/common/constants"
+import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
+import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
+import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
+import { widgets } from "@/common/components/form/widgets"
 import {
 	TEST_CONNECTION_STATUS,
 	transformErrors,
 	OLAKE_LATEST_VERSION_URL,
 } from "@/common/constants"
-import EndpointTitle from "@/modules/ingestion/common/components/EndpointTitle"
-import FormField from "@/modules/ingestion/common/components/FormField"
-import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
-import { SetupTypeSelector } from "@/modules/ingestion/common/components/SetupTypeSelector"
+import { TestConnectionError } from "@/common/types"
+import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
 	TestConnectionModal,
 	TestConnectionSuccessModal,
@@ -49,15 +31,34 @@ import {
 	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
-import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
-import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
-import validator from "@rjsf/validator-ajv8"
-import ArrayFieldTemplate from "@/common/components/form/ArrayFieldTemplate"
-import { widgets } from "@/common/components/form/widgets"
+import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
+import EndpointTitle from "@/modules/ingestion/common/components/EndpointTitle"
+import FormField from "@/modules/ingestion/common/components/FormField"
+import { SetupTypeSelector } from "@/modules/ingestion/common/components/SetupTypeSelector"
+import {
+	CONNECTOR_TYPES,
+	DESTINATION_INTERNAL_TYPES,
+	ENTITY_TYPES,
+	SETUP_TYPES,
+} from "@/modules/ingestion/common/constants"
+import { validationService } from "@/modules/ingestion/common/services/validationService"
+import { SetupType } from "@/modules/ingestion/common/types"
+import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
+
+import {
+	useDestinations,
+	useDestinationVersions,
+	useDestinationSpec,
+	useCreateDestination,
+	useTestDestinationConnection,
+} from "../hooks"
+import { DestinationConfig, ExtendedDestination } from "../types"
+import { getConnectorDocumentationPath } from "../utils"
 
 type ConnectorType = (typeof CONNECTOR_TYPES)[keyof typeof CONNECTOR_TYPES]
 
 const CreateDestination: React.FC = () => {
+	// Local component state.
 	const formRef = useRef<any>(null)
 	const [setupType, setSetupType] = useState<SetupType>(SETUP_TYPES.NEW)
 	const [connector, setConnector] = useState<ConnectorType>(
@@ -89,12 +90,16 @@ const CreateDestination: React.FC = () => {
 	const [docsMinimized, setDocsMinimized] = useState(false)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
-	const { data: destinations = [], isLoading: isLoadingDestinations } =
-		useDestinations()
+
+	// Derived constants from current state.
 	const internalConnectorType =
 		connector === CONNECTOR_TYPES.APACHE_ICEBERG
 			? DESTINATION_INTERNAL_TYPES.ICEBERG
 			: DESTINATION_INTERNAL_TYPES.S3
+
+	// Data fetching and mutation hooks.
+	const { data: destinations = [], isLoading: isLoadingDestinations } =
+		useDestinations()
 	const { data: versionsData, isLoading: loadingVersions } =
 		useDestinationVersions(internalConnectorType)
 	const versions = versionsData?.version ?? []

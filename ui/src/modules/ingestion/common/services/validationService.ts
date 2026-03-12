@@ -1,5 +1,5 @@
-import { api } from "@/core/api"
 import { API_CONFIG } from "@/config/apiConfig"
+import { api } from "@/core/api"
 import { ENTITY_TYPES } from "@/modules/ingestion/common/constants/constants"
 
 export const validationService = {

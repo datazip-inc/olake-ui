@@ -1,27 +1,34 @@
 import { CaretRightIcon } from "@phosphor-icons/react"
 import { Checkbox, CheckboxChangeEvent } from "antd"
 import clsx from "clsx"
+import { useShallow } from "zustand/react/shallow"
 
 import { StreamHeaderProps } from "@/modules/ingestion/features/jobs/types"
-import { useStreamSelectionStore } from "../../stores"
+
+import { useStreamSelectionStore, selectActiveStreamKey } from "../../stores"
 
 const StreamHeader: React.FC<StreamHeaderProps> = ({
 	stream,
 	toggle,
 	checked,
 }) => {
-	const store = useStreamSelectionStore()
+	const activeStreamKey = useStreamSelectionStore(
+		useShallow(selectActiveStreamKey),
+	)
+	const setActiveStreamKey = useStreamSelectionStore(
+		state => state.setActiveStreamKey,
+	)
 
 	const {
 		stream: { name, namespace },
 	} = stream
 
 	const isActiveStream =
-		store.activeStreamKey?.name === name &&
-		store.activeStreamKey?.namespace === (namespace ?? "")
+		activeStreamKey?.name === name &&
+		activeStreamKey?.namespace === (namespace ?? "")
 
 	const setActive = () =>
-		store.setActiveStreamKey({ name, namespace: namespace ?? "" })
+		setActiveStreamKey({ name, namespace: namespace ?? "" })
 
 	const handleChange = (e: CheckboxChangeEvent) => {
 		toggle(e)
