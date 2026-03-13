@@ -5,5 +5,4 @@ export interface LoginArgs {
 
 export interface LoginResponse {
 	username: string
-	password: string
 }
