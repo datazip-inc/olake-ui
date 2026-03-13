@@ -30,7 +30,7 @@ func (u *User) TableName() string {
 type ProjectSettings struct {
 	BaseModel
 	ID              int    `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	ProjectID       string `json:"project_id" gorm:"column:project_id;unique"`
+	ProjectID       string `json:"project_id" gorm:"column:project_id;size:255;unique"`
 	WebhookAlertURL string `json:"webhook_alert_url" gorm:"column:webhook_alert_url;size:512"`
 }
 
@@ -42,11 +42,11 @@ func (s *ProjectSettings) TableName() string {
 type Source struct {
 	BaseModel
 	ID          int    `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	Name        string `json:"name" gorm:"column:name"`
-	ProjectID   string `json:"project_id" gorm:"column:project_id"`
+	Name        string `json:"name" gorm:"column:name;size:255"`
+	ProjectID   string `json:"project_id" gorm:"column:project_id;size:255"`
 	Config      string `json:"config" gorm:"column:config;type:jsonb"`
-	Version     string `json:"version" gorm:"column:version"`
-	Type        string `json:"type" gorm:"column:type"`
+	Version     string `json:"version" gorm:"column:version;size:255"`
+	Type        string `json:"type" gorm:"column:type;size:255"`
 	CreatedByID int    `json:"-" gorm:"column:created_by_id"`
 	UpdatedByID int    `json:"-" gorm:"column:updated_by_id"`
 
@@ -62,10 +62,10 @@ func (s *Source) TableName() string {
 type Destination struct {
 	BaseModel
 	ID          int    `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
-	Name        string `json:"name" gorm:"column:name"`
-	ProjectID   string `json:"project_id" gorm:"column:project_id"`
-	DestType    string `json:"type" gorm:"column:dest_type"`
-	Version     string `json:"version" gorm:"column:version"`
+	Name        string `json:"name" gorm:"column:name;size:255"`
+	ProjectID   string `json:"project_id" gorm:"column:project_id;size:255"`
+	DestType    string `json:"type" gorm:"column:dest_type;size:255"`
+	Version     string `json:"version" gorm:"column:version;size:255"`
 	Config      string `json:"config" gorm:"column:config;type:jsonb"`
 	CreatedByID int    `json:"-" gorm:"column:created_by_id"`
 	UpdatedByID int    `json:"-" gorm:"column:updated_by_id"`
@@ -86,13 +86,13 @@ type Job struct {
 	SourceID         int     `json:"source_id" gorm:"column:source_id"`
 	DestID           int     `json:"dest_id" gorm:"column:dest_id"`
 	Active           bool    `json:"active" gorm:"column:active"`
-	Frequency        string  `json:"frequency" gorm:"column:frequency"`
+	Frequency        string  `json:"frequency" gorm:"column:frequency;size:255"`
 	StreamsConfig    string  `json:"streams_config" gorm:"column:streams_config;type:jsonb"`
 	State            string  `json:"state" gorm:"column:state;type:jsonb"`
 	AdvancedSettings *string `json:"advanced_settings" gorm:"column:advanced_settings;type:jsonb"`
 	CreatedByID      int     `json:"-" gorm:"column:created_by_id"`
 	UpdatedByID      int     `json:"-" gorm:"column:updated_by_id"`
-	ProjectID        string  `json:"project_id" gorm:"column:project_id"`
+	ProjectID        string  `json:"project_id" gorm:"column:project_id;size:255"`
 
 	Source      *Source      `json:"source,omitempty" gorm:"foreignKey:SourceID;references:ID"`
 	Destination *Destination `json:"destination,omitempty" gorm:"foreignKey:DestID;references:ID"`
@@ -110,7 +110,7 @@ type Catalog struct {
 	Type    string `json:"type" gorm:"column:type;size:50"`
 	Name    string `json:"name" gorm:"column:name;size:100"`
 	Specs   string `json:"specs" gorm:"column:specs;type:jsonb"`
-	Version string `json:"version" gorm:"column:version"`
+	Version string `json:"version" gorm:"column:version;size:255"`
 }
 
 func (c *Catalog) TableName() string {
