@@ -35,9 +35,8 @@ func Load() Config {
 
 func loadConfig() Config {
 	v := viper.New()
-	// load environment variables
-	v.AutomaticEnv()
 
+	// Note: config priority: env -> file -> default
 	// set default values
 	v.SetDefault("APP_NAME", "olake-server")
 	v.SetDefault("HTTP_PORT", "8000")
@@ -55,6 +54,14 @@ func loadConfig() Config {
 	v.SetDefault("SESSION_ON", true)
 	v.SetDefault("TEMPORAL_ADDRESS", "temporal:7233")
 	v.SetDefault("CONTAINER_REGISTRY_BASE", "registry-1.docker.io")
+
+	v.SetConfigFile("./conf/app.yaml")
+	if err := v.ReadInConfig(); err != nil {
+		panic(err)
+	}
+
+	// load environment variables
+	v.AutomaticEnv()
 
 	return Config{
 		AppName:               strings.TrimSpace(v.GetString("APP_NAME")),
