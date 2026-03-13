@@ -203,16 +203,23 @@ const JobEdit: React.FC = () => {
 
 	// Process streams configuration into a consistent format
 	const processStreamsConfig = (
-		parsedConfig: any,
+		parsedConfig: unknown,
 	): StreamsDataStructure | null => {
-		if (parsedConfig.streams && parsedConfig.selected_streams) {
+		if (
+			parsedConfig !== null &&
+			typeof parsedConfig === "object" &&
+			!Array.isArray(parsedConfig) &&
+			"streams" in parsedConfig &&
+			"selected_streams" in parsedConfig
+		) {
 			return parsedConfig as StreamsDataStructure
 		} else if (Array.isArray(parsedConfig)) {
 			const streamsData: StreamsDataStructure = {
 				selected_streams: { default: [] },
 				streams: [],
 			}
-			parsedConfig.forEach((streamName: string) => {
+			parsedConfig.forEach((streamName: unknown) => {
+				if (typeof streamName !== "string") return
 				streamsData.selected_streams.default.push({
 					...STREAM_DEFAULTS,
 					stream_name: streamName,
@@ -225,9 +232,10 @@ const JobEdit: React.FC = () => {
 				} as StreamData)
 			})
 			return streamsData
-		} else if (typeof parsedConfig === "object") {
+		} else if (parsedConfig !== null && typeof parsedConfig === "object") {
 			return {
-				selected_streams: parsedConfig,
+				selected_streams:
+					parsedConfig as StreamsDataStructure["selected_streams"],
 				streams: [],
 			}
 		}
@@ -331,9 +339,6 @@ const JobEdit: React.FC = () => {
 			const jobUpdatePayload = getJobUpdatePayLoad(streamsConfig, diff)
 
 			await updateJob({ jobId, job: jobUpdatePayload })
-
-			// wait for 1 second before refreshing jobs to avoid fetching old state
-			await new Promise(resolve => setTimeout(resolve, 1000))
 			navigate("/jobs")
 		} catch (error) {
 			console.error("Error saving job:", error)

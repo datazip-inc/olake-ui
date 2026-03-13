@@ -2,7 +2,10 @@ import { InfoIcon, WarningIcon } from "@phosphor-icons/react"
 import { Button, Modal, Table } from "antd"
 import { formatDistanceToNow } from "date-fns"
 
-import { EntityEditModalProps } from "@/modules/ingestion/common/types"
+import {
+	EntityEditModalProps,
+	EntityJob,
+} from "@/modules/ingestion/common/types"
 import { getConnectorImage } from "@/modules/ingestion/common/utils"
 
 const EntityEditModal = ({
@@ -51,7 +54,7 @@ const EntityEditModal = ({
 			title: isSource ? "Destination" : "Source",
 			dataIndex: isSource ? "destination_name" : "source_name",
 			key: isSource ? "destination_name" : "source_name",
-			render: (name: string, record: any) => (
+			render: (name: string, record: EntityJob) => (
 				<div className="flex items-center">
 					<img
 						src={getConnectorImage(

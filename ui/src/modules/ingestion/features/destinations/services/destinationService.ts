@@ -1,3 +1,4 @@
+import { SpecResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -158,7 +159,7 @@ export const destinationService = {
 	) => {
 		try {
 			const normalizedType = normalizeConnectorType(type)
-			const response = await api.post<any>(
+			const response = await api.post<SpecResponse>(
 				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: normalizedType,

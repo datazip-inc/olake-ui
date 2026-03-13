@@ -32,10 +32,7 @@ export const useJobDetails = (
 export const useJobTasks = (
 	jobId: string,
 	options?: {
-		refetchInterval?:
-			| number
-			| false
-			| ((query: any) => number | false | undefined)
+		refetchInterval?: number | false | undefined
 	},
 ) => {
 	return useQuery({

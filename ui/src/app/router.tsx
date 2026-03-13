@@ -1,5 +1,10 @@
 import { lazy } from "react"
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom"
+import {
+	createBrowserRouter,
+	Navigate,
+	Outlet,
+	useLocation,
+} from "react-router-dom"
 
 import { useAuthStore } from "@/core/auth/stores/authStore"
 import Layout from "@/core/layout"
@@ -8,11 +13,14 @@ import { ErrorBoundary } from "@/modules/ingestion/common/components/ErrorBounda
 // eslint-disable-next-line react-refresh/only-export-components
 const RootHandler = () => {
 	const isAuthenticated = useAuthStore(state => state.isAuthenticated)
+	const location = useLocation()
 
 	if (isAuthenticated) {
 		return (
 			<Layout>
-				<Outlet />
+				<ErrorBoundary key={location.pathname}>
+					<Outlet />
+				</ErrorBoundary>
 			</Layout>
 		)
 	} else {

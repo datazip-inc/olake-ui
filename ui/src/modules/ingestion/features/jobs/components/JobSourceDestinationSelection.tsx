@@ -60,27 +60,25 @@ const JobSourceDestinationSelection: React.FC = () => {
 
 	// Pre-fill local source connector dropdown state if a source is already selected
 	useEffect(() => {
-		if (selectedSource && !sourceConnector) {
-			const matchingOption = sourceConnectorOptions.find(
-				opt => getConnectorInLowerCase(opt.value) === selectedSource.type,
-			)
-			if (matchingOption) {
-				setSourceConnector(matchingOption.value)
-			}
+		if (!selectedSource) return
+		const matchingOption = sourceConnectorOptions.find(
+			opt => getConnectorInLowerCase(opt.value) === selectedSource.type,
+		)
+		if (matchingOption) {
+			setSourceConnector(matchingOption.value)
 		}
-	}, [selectedSource, sourceConnector])
+	}, [selectedSource])
 
 	// Pre-fill local destination connector dropdown state if a destination is already selected
 	useEffect(() => {
-		if (selectedDestination && !destinationConnector) {
-			const matchingOption = destinationConnectorOptions.find(
-				opt => getConnectorInLowerCase(opt.value) === selectedDestination.type,
-			)
-			if (matchingOption) {
-				setDestinationConnector(matchingOption.value)
-			}
+		if (!selectedDestination) return
+		const matchingOption = destinationConnectorOptions.find(
+			opt => getConnectorInLowerCase(opt.value) === selectedDestination.type,
+		)
+		if (matchingOption) {
+			setDestinationConnector(matchingOption.value)
 		}
-	}, [selectedDestination, destinationConnector])
+	}, [selectedDestination])
 
 	return (
 		<div className="mt-5 flex flex-col gap-2 rounded-xl border border-[#D9D9D9] p-6">

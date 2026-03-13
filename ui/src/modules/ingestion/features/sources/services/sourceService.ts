@@ -1,3 +1,4 @@
+import { SpecResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -152,7 +153,7 @@ export const sourceService = {
 		signal?: AbortSignal,
 	) => {
 		try {
-			const response = await api.post<any>(
+			const response = await api.post<SpecResponse>(
 				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: type.toLowerCase(),

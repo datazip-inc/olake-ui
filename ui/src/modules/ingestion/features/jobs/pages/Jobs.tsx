@@ -8,6 +8,7 @@ import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
 import { JOB_STATUS } from "../constants"
 import { useJobs, useSyncJob, useActivateJob, useCancelJob } from "../hooks"
+import { savedJobsService } from "../services"
 import { useJobStore } from "../stores"
 import { Job, JobStatus, SavedJobDraft } from "../types"
 
@@ -76,23 +77,12 @@ const Jobs: React.FC = () => {
 
 	// cancels the running job
 	const handleCancelJob = async (id: string) => {
-		try {
-			await cancelJob(id)
-		} catch (error) {
-			console.error("Error canceling job:", error)
-		}
+		await cancelJob(id)
 	}
 
 	const handleDeleteJob = (id: string) => {
 		if (activeTab === JOB_STATUS.SAVED) {
-			const savedJobsFromStorage = JSON.parse(
-				localStorage.getItem("savedJobs") || "[]",
-			)
-			const updatedSavedJobs = savedJobsFromStorage.filter(
-				(job: any) => job.id !== id,
-			)
-			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
-			setSavedJobs(updatedSavedJobs)
+			setSavedJobs(savedJobsService.remove(id))
 			message.success("Saved job deleted successfully")
 		} else {
 			setShowDeleteJobModal(true)
@@ -102,10 +92,7 @@ const Jobs: React.FC = () => {
 	const [savedJobs, setSavedJobs] = useState<SavedJobDraft[]>([])
 
 	useEffect(() => {
-		const savedJobsFromStorage = JSON.parse(
-			localStorage.getItem("savedJobs") || "[]",
-		)
-		setSavedJobs(savedJobsFromStorage)
+		setSavedJobs(savedJobsService.getAll())
 	}, [])
 
 	const filteredJobs: (Job | SavedJobDraft)[] = (() => {

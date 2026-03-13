@@ -1,5 +1,5 @@
 import { CheckboxChangeEvent } from "antd"
-import { useCallback, useMemo, useState, useEffect } from "react"
+import { useCallback, useState, useEffect } from "react"
 
 import StreamHeader from "./StreamHeader"
 import { StreamPanelProps } from "../../types"
@@ -25,20 +25,15 @@ const StreamPanel: React.FC<StreamPanelProps> = ({
 		[stream, onStreamSelect],
 	)
 
-	const { header } = useMemo<{ header: JSX.Element } | any>(
-		() => ({
-			header: (
-				<StreamHeader
-					stream={stream}
-					toggle={toggle}
-					checked={checked}
-				/>
-			),
-		}),
-		[stream, checked, toggle],
+	return (
+		<div>
+			<StreamHeader
+				stream={stream}
+				toggle={toggle}
+				checked={checked}
+			/>
+		</div>
 	)
-
-	return <div>{header}</div>
 }
 
 export default StreamPanel

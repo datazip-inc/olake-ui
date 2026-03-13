@@ -1,6 +1,8 @@
 import { message } from "antd"
 import React from "react"
 
+import { SpecResponse } from "@/common/types"
+
 export const getStatusClass = (status: string) => {
 	switch (status.toLowerCase()) {
 		case "success":
@@ -87,9 +89,9 @@ export const restrictNumericInput = (
 }
 
 export const handleSpecResponse = (
-	response: any,
-	setSchema: (schema: any) => void,
-	setUiSchema: (uiSchema: any) => void,
+	response: SpecResponse,
+	setSchema: (schema: object) => void,
+	setUiSchema: (uiSchema: object) => void,
 	errorType: "source" | "destination" = "source",
 ) => {
 	try {

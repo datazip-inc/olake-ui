@@ -1,9 +1,12 @@
-import { QueryClientProvider } from "@tanstack/react-query"
+import {
+	MutationCache,
+	QueryClient,
+	QueryClientProvider,
+} from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { App as AntApp, ConfigProvider } from "antd"
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 
-import { queryClient } from "@/lib/queryClient"
 import { THEME_CONFIG } from "@/lib/theme"
 
 interface AppProviderProps {
@@ -11,6 +14,20 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
+	const [queryClient] = useState(
+		() =>
+			new QueryClient({
+				mutationCache: new MutationCache({
+					onSuccess: (_data, _variables, _context, mutation) => {
+						if (!mutation.options.mutationKey) return
+						queryClient.invalidateQueries({
+							queryKey: mutation.options.mutationKey,
+						})
+					},
+				}),
+			}),
+	)
+
 	return (
 		<QueryClientProvider client={queryClient}>
 			<ConfigProvider theme={THEME_CONFIG}>

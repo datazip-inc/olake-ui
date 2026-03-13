@@ -18,9 +18,17 @@ const StreamsSchema = () => {
 		state => state.updateSelectedColumns,
 	)
 
-	if (!streamData || !selectedStream) return null
+	const typeSchemaProperties = streamData?.stream.type_schema?.properties || {}
 
-	const typeSchemaProperties = streamData.stream.type_schema?.properties || {}
+	const [columnsToDisplay, setColumnsToDisplay] =
+		useState<Record<string, any>>(typeSchemaProperties)
+
+	// Re-sync columns to display when the user switches to a different stream
+	useEffect(() => {
+		setColumnsToDisplay(typeSchemaProperties)
+	}, [streamData?.stream.name, streamData?.stream.namespace])
+
+	if (!streamData || !selectedStream) return null
 
 	const isOlakeColumn = (name: string) =>
 		typeSchemaProperties[name]?.olake_column === true
@@ -29,14 +37,6 @@ const StreamsSchema = () => {
 
 	// Column selection is editable only if it supported and stream is enabled
 	const isEditable = columnSelectionSupported && !selectedStream.disabled
-
-	const [columnsToDisplay, setColumnsToDisplay] =
-		useState<Record<string, any>>(typeSchemaProperties)
-
-	// Re-sync columns to display when the user switches to a different stream
-	useEffect(() => {
-		setColumnsToDisplay(typeSchemaProperties)
-	}, [streamData.stream.name, streamData.stream.namespace])
 
 	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const query = event.target.value

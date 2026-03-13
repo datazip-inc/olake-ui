@@ -36,6 +36,7 @@ import {
 } from "../components"
 import { JOB_CREATION_STEPS, JOB_STEP_NUMBERS } from "../constants"
 import { useCreateJob } from "../hooks"
+import { savedJobsService } from "../services"
 import {
 	useJobStore,
 	useStreamSelectionStore,
@@ -100,8 +101,8 @@ const JobCreation: React.FC = () => {
 	// Pre-fill full source entity from URL param ID once sources load
 	useEffect(() => {
 		if (initialData.sourceId && sourcesData && !selectedSource) {
-			const source = (sourcesData as any[]).find(
-				(s: any) => s.id === parseInt(initialData.sourceId!),
+			const source = (sourcesData ?? []).find(
+				s => s.id === parseInt(initialData.sourceId!, 10),
 			)
 			if (source) setSelectedSource(source)
 		}
@@ -110,8 +111,8 @@ const JobCreation: React.FC = () => {
 	// Pre-fill full destination entity from URL param ID once destinations load
 	useEffect(() => {
 		if (initialData.destinationId && destinationsData && !selectedDestination) {
-			const dest = (destinationsData as any[]).find(
-				(d: any) => d.id === parseInt(initialData.destinationId!),
+			const dest = (destinationsData ?? []).find(
+				d => d.id === parseInt(initialData.destinationId!, 10),
 			)
 			if (dest) setSelectedDestination(dest)
 		}
@@ -214,6 +215,7 @@ const JobCreation: React.FC = () => {
 
 	// Job creation handler
 	const handleJobCreation = async () => {
+		if (!streamsData) return
 		const newJobData: JobBase = {
 			name: jobName,
 			source: {
@@ -232,7 +234,7 @@ const JobCreation: React.FC = () => {
 			},
 			streams_config: JSON.stringify({
 				...streamsData,
-				selected_streams: getSelectedStreams(streamsData!.selected_streams),
+				selected_streams: getSelectedStreams(streamsData.selected_streams),
 			}),
 			frequency: cronExpression,
 			advanced_settings: advancedSettings,
@@ -241,11 +243,7 @@ const JobCreation: React.FC = () => {
 		try {
 			await addJob(newJobData)
 			if (savedJobId) {
-				const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
-				const updatedSavedJobs = savedJobs.filter(
-					(job: any) => job.id !== savedJobId,
-				)
-				localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
+				savedJobsService.remove(savedJobId)
 			}
 			setShowEntitySavedModal(true)
 		} catch (error) {
@@ -327,17 +325,7 @@ const JobCreation: React.FC = () => {
 			advanced_settings: advancedSettings,
 		}
 
-		const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]")
-
-		if (savedJobId) {
-			const updatedSavedJobs = savedJobs.map((job: any) =>
-				job.id === savedJobId ? jobData : job,
-			)
-			localStorage.setItem("savedJobs", JSON.stringify(updatedSavedJobs))
-		} else {
-			savedJobs.push(jobData)
-			localStorage.setItem("savedJobs", JSON.stringify(savedJobs))
-		}
+		savedJobsService.upsert(jobData)
 
 		navigate("/jobs")
 	}
