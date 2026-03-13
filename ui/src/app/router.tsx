@@ -36,45 +36,43 @@ const RootHandler = () => {
 //lazy load components
 const lazyComponents = {
 	Login: lazy(() => import("@/core/auth/pages/Login")),
-	Jobs: lazy(() => import("../modules/ingestion/features/jobs/pages/Jobs")),
+	Jobs: lazy(() => import("@/modules/ingestion/features/jobs/pages/Jobs")),
 	JobHistory: lazy(
-		() => import("../modules/ingestion/features/jobs/pages/JobHistory"),
+		() => import("@/modules/ingestion/features/jobs/pages/JobHistory"),
 	),
 	JobLogs: lazy(
-		() => import("../modules/ingestion/features/jobs/pages/JobLogs"),
+		() => import("@/modules/ingestion/features/jobs/pages/JobLogs"),
 	),
 	JobSettings: lazy(
-		() => import("../modules/ingestion/features/jobs/pages/JobSettings"),
+		() => import("@/modules/ingestion/features/jobs/pages/JobSettings"),
 	),
 	JobCreation: lazy(
-		() => import("../modules/ingestion/features/jobs/pages/JobCreation"),
+		() => import("@/modules/ingestion/features/jobs/pages/JobCreation"),
 	),
 	JobEdit: lazy(
-		() => import("../modules/ingestion/features/jobs/pages/JobEdit"),
+		() => import("@/modules/ingestion/features/jobs/pages/JobEdit"),
 	),
 	Sources: lazy(
-		() => import("../modules/ingestion/features/sources/pages/Sources"),
+		() => import("@/modules/ingestion/features/sources/pages/Sources"),
 	),
 	SourceEdit: lazy(
-		() => import("../modules/ingestion/features/sources/pages/SourceEdit"),
+		() => import("@/modules/ingestion/features/sources/pages/SourceEdit"),
 	),
 	CreateSource: lazy(
-		() => import("../modules/ingestion/features/sources/pages/CreateSource"),
+		() => import("@/modules/ingestion/features/sources/pages/CreateSource"),
 	),
 	Destinations: lazy(
 		() =>
-			import("../modules/ingestion/features/destinations/pages/Destinations"),
+			import("@/modules/ingestion/features/destinations/pages/Destinations"),
 	),
 	DestinationEdit: lazy(
 		() =>
-			import(
-				"../modules/ingestion/features/destinations/pages/DestinationEdit"
-			),
+			import("@/modules/ingestion/features/destinations/pages/DestinationEdit"),
 	),
 	CreateDestination: lazy(
 		() =>
 			import(
-				"../modules/ingestion/features/destinations/pages/CreateDestination"
+				"@/modules/ingestion/features/destinations/pages/CreateDestination"
 			),
 	),
 	SystemSettings: lazy(() => import("@/core/settings/pages/SystemSettings")),

@@ -24,7 +24,6 @@ export const useAuthStore = create<AuthState>()(
 						return
 					}
 					set({ isAuthenticated: true, isAuthLoading: false })
-					// Identify user for analytics when returning with an existing session
 				} catch {
 					set({
 						isAuthLoading: false,
@@ -36,8 +35,6 @@ export const useAuthStore = create<AuthState>()(
 				try {
 					await authService.login({ username, password })
 					set({ isAuthenticated: true, isAuthLoading: false })
-					// Identify user for analytics after new login
-					// Run in background without blocking to provide faster login experience
 				} catch (error) {
 					set({ isAuthLoading: false })
 					throw error
