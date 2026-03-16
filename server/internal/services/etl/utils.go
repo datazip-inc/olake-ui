@@ -252,7 +252,7 @@ func waitForSyncToStop(ctx context.Context, tempClient *temporal.Temporal, proje
 // checks the version compatibility for clear-destination and stream difference operation
 // supported in versions >= v0.3.0
 func CheckClearDestinationCompatibility(sourceVersion string) error {
-	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 {
+	if semver.Compare(sourceVersion, constants.DefaultClearDestinationVersion) < 0 && utils.GetCustomDriverVersion() == "" {
 		return fmt.Errorf("source version %s is not supported for clear destination. please update the source version to %s or higher", sourceVersion, constants.DefaultClearDestinationVersion)
 	}
 	return nil

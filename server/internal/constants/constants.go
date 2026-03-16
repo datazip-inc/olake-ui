@@ -43,6 +43,30 @@ var (
 	MaxDiscoverThreadsFlag    = "--max-discover-threads"
 	DefaultMaxDiscoverThreads = 50
 
+	// conf keys
+	ConfEncryptionKey         = "encryptionkey"
+	ConfTemporalAddress       = "TEMPORAL_ADDRESS"
+	ConfDeploymentMode        = "DEPLOYMENT_MODE"
+	ConfRunMode               = "runmode"
+	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
+
+	// database keys
+	ConfPostgresDB            = "postgresdb"
+	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
+	ConfOLakePostgresPassword = "OLAKE_POSTGRES_PASSWORD"
+	ConfOLakePostgresHost     = "OLAKE_POSTGRES_HOST"
+	ConfOLakePostgresPort     = "OLAKE_POSTGRES_PORT"
+	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
+	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
+
+	// app env
+	EnvAppEnvironment    = "APP_ENV"
+	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
+
+	// App environment supported values: production/development
+	AppEnvProduction  = "production"
+	AppEnvDevelopment = "development"
+
 	// logs config
 	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
 	LogReadChunkSize = 64 * 1024 // 64KB
@@ -85,6 +109,7 @@ func Init() {
 	viper.AutomaticEnv()
 	viper.SetDefault(EnvLogFormat, "console")
 	viper.SetDefault(EnvLogLevel, "info")
+	viper.SetDefault(EnvAppEnvironment, AppEnvProduction)
 	viper.SetDefault("PORT", defaultPort)
 	viper.SetDefault("BUILD", version)
 	viper.SetDefault("COMMITSHA", commitsha)
