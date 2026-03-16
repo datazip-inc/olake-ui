@@ -24,4 +24,3 @@ CONTAINER_REGISTRY_BASE: registry-1.docker.io
 
 # Prefer setting this via environment.
 OLAKE_SECRET_KEY: ""
-NAME: vishal
