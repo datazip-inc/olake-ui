@@ -443,7 +443,9 @@ export const selectActiveStreamData = (
 	if (!state.activeStreamKey || !state.streamsData?.streams) return null
 	return (
 		state.streamsData.streams.find(
-			s => s.stream.namespace === state.activeStreamKey!.namespace,
+			s =>
+				s.stream.namespace === state.activeStreamKey!.namespace &&
+				s.stream.name === state.activeStreamKey!.name,
 		) ?? null
 	)
 }

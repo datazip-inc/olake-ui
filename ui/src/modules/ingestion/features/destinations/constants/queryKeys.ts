@@ -8,6 +8,11 @@ export const destinationKeys = {
 	versions: (type: string) =>
 		[...destinationKeys.all(), "versions", type] as const,
 	// Separate root — not nested under destinationKeys.all() so destination mutations never invalidate it
-	spec: (type: string, version: string) =>
-		["spec", "destinations", type, version] as const,
+	spec: (
+		type: string,
+		version: string,
+		sourceType: string = "",
+		sourceVersion: string = "",
+	) =>
+		["spec", "destinations", type, version, sourceType, sourceVersion] as const,
 }

@@ -42,7 +42,7 @@ export default [
 				{
 					patterns: [
 						{
-							group: ["../../../*"],
+							group: ["../../../**"],
 							message:
 								"Relative imports beyond 2 levels are not allowed. Use @/ alias instead.",
 						},

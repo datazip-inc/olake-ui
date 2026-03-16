@@ -36,7 +36,7 @@ export const useDestinationSpec = (
 	sourceVersion: string = "",
 ) => {
 	return useQuery({
-		queryKey: destinationKeys.spec(type, version),
+		queryKey: destinationKeys.spec(type, version, sourceType, sourceVersion),
 		queryFn: ({ signal }) =>
 			destinationService.getDestinationSpec(
 				type,

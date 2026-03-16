@@ -10,7 +10,7 @@ import { destinationService } from "../../services"
 
 export const useCreateDestination = () => {
 	return useMutation({
-		mutationKey: destinationKeys.lists(),
+		mutationKey: destinationKeys.all(),
 		mutationFn: (destination: Omit<EntityBase, "id" | "createdAt">) =>
 			destinationService.createDestination(destination),
 	})
@@ -18,7 +18,7 @@ export const useCreateDestination = () => {
 
 export const useUpdateDestination = (id: string) => {
 	return useMutation({
-		mutationKey: destinationKeys.lists(),
+		mutationKey: destinationKeys.all(),
 		mutationFn: (destination: EntityBase) =>
 			destinationService.updateDestination(id, destination),
 	})
@@ -26,7 +26,7 @@ export const useUpdateDestination = (id: string) => {
 
 export const useDeleteDestination = () => {
 	return useMutation({
-		mutationKey: destinationKeys.lists(),
+		mutationKey: destinationKeys.all(),
 		mutationFn: (id: string) => {
 			const numericId = typeof id === "string" ? parseInt(id, 10) : id
 			return destinationService.deleteDestination(numericId)

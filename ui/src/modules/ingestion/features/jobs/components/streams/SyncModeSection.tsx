@@ -56,7 +56,7 @@ const SyncModeSection = () => {
 				)
 			}
 		}
-	}, [stream])
+	}, [stream?.stream.name, stream?.stream.namespace])
 
 	if (!stream || !selectedStream) return null
 

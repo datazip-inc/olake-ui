@@ -10,21 +10,21 @@ import { sourceService } from "../../services"
 
 export const useCreateSource = () => {
 	return useMutation({
-		mutationKey: sourceKeys.lists(),
+		mutationKey: sourceKeys.all(),
 		mutationFn: (source: EntityBase) => sourceService.createSource(source),
 	})
 }
 
 export const useUpdateSource = (id: string) => {
 	return useMutation({
-		mutationKey: sourceKeys.lists(),
+		mutationKey: sourceKeys.all(),
 		mutationFn: (source: EntityBase) => sourceService.updateSource(id, source),
 	})
 }
 
 export const useDeleteSource = () => {
 	return useMutation({
-		mutationKey: sourceKeys.lists(),
+		mutationKey: sourceKeys.all(),
 		mutationFn: (id: string) => sourceService.deleteSource(id),
 	})
 }

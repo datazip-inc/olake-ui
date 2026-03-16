@@ -73,6 +73,7 @@ const JobSettings: React.FC = () => {
 	// The query will still update when job mutations succeed because they invalidate the job queries.
 	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
 		staleTime: Infinity,
+		refetchOnMount: "always",
 	})
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
 		useClearDestinationStatus(jobId || "")
