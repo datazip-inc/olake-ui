@@ -1,12 +1,10 @@
 linters-settings:
   depguard:
-    list-type: blacklist
-    packages:
-      # logging is allowed only by logutils.Log, logrus
-      # is allowed to use only in logutils package
-      - github.com/sirupsen/logrus
-    packages-with-error-message:
-      - github.com/sirupsen/logrus: "logging is allowed only by beego logger"
+    rules:
+      main:
+        deny:
+          - pkg: "github.com/sirupsen/logrus"
+            desc: "logging is allowed only by beego logger"
   dupl:
     threshold: 100
   exhaustive:
@@ -15,7 +13,10 @@ linters-settings:
     lines: 100
     statements: 50
   gci:
-    local-prefixes: github.com/golangci/golangci-lint
+    sections:
+      - standard
+      - default
+      - prefix(github.com/golangci/golangci-lint)
   goconst:
     min-len: 2
     min-occurrences: 2
@@ -55,7 +56,6 @@ linters-settings:
     settings:
       exclude: -G204
   govet:
-    check-shadowing: false
     settings:
       printf:
         funcs:
@@ -137,6 +137,11 @@ linters:
   # - wsl
 
 issues:
+  exclude-dirs:
+    - test/testdata_etc
+    - internal/cache
+    - internal/renameio
+    - internal/robustio
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
     - path: _test\.go
@@ -149,16 +154,4 @@ issues:
       text: "unnecessaryDefer:"
 
 run:
-  skip-dirs:
-    - test/testdata_etc
-    - internal/cache
-    - internal/renameio
-    - internal/robustio
   timeout: 5m
-
-# golangci.com configuration
-# https://github.com/golangci/golangci/wiki/Configuration
-service:
-  golangci-lint-version: 1.45.2 # use the fixed version to not introduce new linters unexpectedly
-  prepare:
-    - echo "here I can run custom commands, but no preparation needed for this repo"
