@@ -714,3 +714,9 @@ func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
 
 	return filename, nil
 }
+
+// NormalizeString converts a string to lowercase, trims leading and trailing spaces and replaces spaces with underscores
+func NormalizeString(s string) string {
+	words := strings.Fields(strings.ToLower(s))
+	return strings.Join(words, "_")
+}
