@@ -9,5 +9,6 @@ export const mapGetCatalogsResponseToCatalogs = (
 		name: catalog.name,
 		type: catalog.type.toUpperCase(),
 		databases: catalog.databases,
+		createdOn: catalog.created_on,
 	}))
 }

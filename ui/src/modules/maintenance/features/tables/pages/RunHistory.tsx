@@ -13,7 +13,7 @@ import type { ColumnDef } from "@/common/components"
 import { RunMetricsSidebar } from "../components"
 import { runLogsStatusConfig } from "../constants"
 import { useTableRuns } from "../hooks"
-import type { TableRun } from "../types"
+import type { RunMetricRow, TableRun } from "../types"
 
 type RunsFilter = "all" | "failed"
 
@@ -31,7 +31,7 @@ const RunHistory: React.FC = () => {
 	const [searchTerm, setSearchTerm] = useState("")
 	const [activeFilter, setActiveFilter] = useState<RunsFilter>("all")
 	const [metricsSidebarOpen, setMetricsSidebarOpen] = useState(false)
-	const [metricsPayload, setMetricsPayload] = useState<unknown>(null)
+	const [metricsRows, setMetricsRows] = useState<RunMetricRow[]>([])
 	const [selectedRunId, setSelectedRunId] = useState<string>("")
 	const {
 		data: runs = [],
@@ -54,7 +54,7 @@ const RunHistory: React.FC = () => {
 	const handleMetricsClick = (row: TableRun) => {
 		setSelectedRunId(row.runId)
 		setMetricsSidebarOpen(true)
-		setMetricsPayload(row.metrics)
+		setMetricsRows(row.metrics)
 	}
 	const getRunLogsPath = (runId: string) =>
 		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
@@ -217,7 +217,7 @@ const RunHistory: React.FC = () => {
 			<RunMetricsSidebar
 				open={metricsSidebarOpen}
 				onClose={() => setMetricsSidebarOpen(false)}
-				payload={metricsPayload}
+				rows={metricsRows}
 				loading={false}
 				runId={selectedRunId}
 			/>

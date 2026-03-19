@@ -79,12 +79,20 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 			</div>
 
 			<div className="mt-5 min-h-0 flex-1 border-t border-olake-border">
-				<Virtuoso
-					key={selectedSourceKey}
-					style={{ height: "100%" }}
-					data={filteredLogs}
-					itemContent={(_index, row) => <RunLogRow row={row} />}
-				/>
+				{filteredLogs.length === 0 ? (
+					<div className="px-6 py-8 font-sans text-sm font-normal leading-5 text-olake-text-tertiary">
+						{logs.length === 0
+							? "No logs are available for this selection."
+							: "No logs match your search criteria."}
+					</div>
+				) : (
+					<Virtuoso
+						key={selectedSourceKey}
+						style={{ height: "100%" }}
+						data={filteredLogs}
+						itemContent={(_index, row) => <RunLogRow row={row} />}
+					/>
+				)}
 			</div>
 		</div>
 	)

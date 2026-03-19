@@ -38,20 +38,8 @@ type ActiveModal =
 	| "catalogSuccess"
 
 const getCatalogNameFromFormData = (data: CatalogFormData): string => {
-	const candidates = [
-		data.name,
-		data.catalogName,
-		data.catalog_name,
-		data.catalog,
-	]
-	return (
-		candidates
-			.find(
-				(value): value is string =>
-					typeof value === "string" && value.trim().length > 0,
-			)
-			?.trim() ?? ""
-	)
+	const { catalog_name } = (data as { writer: { catalog_name: string } }).writer
+	return catalog_name.trim()
 }
 
 const CatalogModal: React.FC<CatalogModalProps> = ({
@@ -216,7 +204,6 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				centered
 				destroyOnHidden
 			>
-				{/* Form content - RJSF renders schema fields */}
 				<div className="min-h-[280px]">
 					{isEditMode && isDetailsError ? (
 						<div className="flex min-h-[280px] flex-col items-center justify-center gap-1 text-center">
@@ -270,7 +257,6 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 					)}
 				</div>
 
-				{/* Footer per Figma: 80px height, border-top, buttons left 33px, Connect first */}
 				<div className="flex items-center pt-5">
 					<div className="flex gap-3">
 						<Button
@@ -315,7 +301,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			/>
 			<SpecFailedModal
 				open={open && activeModal === "specFailed"}
-				onClose={() => setActiveModal(null)}
+				onClose={handleCancel}
 				connectionType="catalog"
 				error={specError ?? ""}
 				onTryAgain={refetchSpec}

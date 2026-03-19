@@ -6,6 +6,11 @@ export interface RunMetrics {
 	[key: string]: string | number | null | undefined
 }
 
+export interface RunMetricRow {
+	label: string
+	value: string
+}
+
 export interface FusionCompactionRun {
 	"last-run": string
 	status: RunStatus
@@ -85,7 +90,7 @@ export interface TableRun {
 	type: RunType
 	startTime: string
 	duration: string
-	metrics: RunMetrics
+	metrics: RunMetricRow[]
 }
 
 export interface TableCronApiModel {

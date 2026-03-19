@@ -110,8 +110,10 @@ const Catalogs: React.FC = () => {
 			key: "createdOn",
 			header: "Created on",
 			width: 18,
-			render: () => (
-				<span className="text-sm leading-6 text-olake-text">-</span>
+			render: row => (
+				<span className="text-sm leading-6 text-olake-text">
+					{row.createdOn}
+				</span>
 			),
 		},
 	]

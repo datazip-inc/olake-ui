@@ -115,37 +115,45 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 				<div className="flex gap-4 pl-2">
 					<div className="w-px bg-olake-border" />
 					<div className="space-y-3">
-						{filteredSubtasks.map(source => {
-							const isSelected = selectedSourceKey === source.key
+						{filteredSubtasks.length === 0 ? (
+							<p className="px-2 font-sans text-sm font-normal leading-[22px] text-olake-text-tertiary">
+								{taskSources.length === 0
+									? "No subtask logs are available for this run."
+									: "No subtasks match your search criteria."}
+							</p>
+						) : (
+							filteredSubtasks.map(source => {
+								const isSelected = selectedSourceKey === source.key
 
-							return (
-								<button
-									key={source.key}
-									type="button"
-									onClick={() => onSelectSource(source.key)}
-									className={`flex h-6 items-center gap-2 rounded-md px-2 ${
-										isSelected ? "bg-olake-surface-subtle" : "bg-transparent"
-									}`}
-								>
-									{source.hasError && (
-										<WarningCircleIcon
-											size={14}
-											weight="fill"
-											className="text-olake-error"
-										/>
-									)}
-									<span
-										className={`font-sans text-sm font-normal leading-[22px] ${
-											source.hasError
-												? "text-olake-error"
-												: "text-olake-text-secondary"
+								return (
+									<button
+										key={source.key}
+										type="button"
+										onClick={() => onSelectSource(source.key)}
+										className={`flex h-6 items-center gap-2 rounded-md px-2 ${
+											isSelected ? "bg-olake-surface-subtle" : "bg-transparent"
 										}`}
 									>
-										{source.label}
-									</span>
-								</button>
-							)
-						})}
+										{source.hasError && (
+											<WarningCircleIcon
+												size={14}
+												weight="fill"
+												className="text-olake-error"
+											/>
+										)}
+										<span
+											className={`font-sans text-sm font-normal leading-[22px] ${
+												source.hasError
+													? "text-olake-error"
+													: "text-olake-text-secondary"
+											}`}
+										>
+											{source.label}
+										</span>
+									</button>
+								)
+							})
+						)}
 					</div>
 				</div>
 			</div>

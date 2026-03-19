@@ -1,7 +1,7 @@
 import { XIcon } from "@phosphor-icons/react"
 import { Modal, Spin } from "antd"
 
-import { formatUtcTimestamp } from "@/common/utils"
+import { formatTimestampToUtcDateTime } from "@/common/utils"
 
 import { useTableMetrics } from "../../hooks"
 
@@ -93,7 +93,9 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 								</p>
 								<p className="text-xl font-medium leading-[28px] text-olake-text">
 									{tableMetrics
-										? formatUtcTimestamp(tableMetrics["last-commit-time"])
+										? formatTimestampToUtcDateTime(
+												tableMetrics["last-commit-time"],
+											)
 										: "--"}
 								</p>
 							</div>

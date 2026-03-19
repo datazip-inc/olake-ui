@@ -182,26 +182,22 @@ export const formatDate = (dateString: string): string => {
 }
 
 // Format epoch milliseconds to UTC date-time string: YYYY-MM-DD HH:mm:ss
-export const formatUtcTimestamp = (timestamp: number): string => {
+const getUtcIsoString = (timestamp: number): string | null => {
 	const date = new Date(timestamp)
-	if (Number.isNaN(date.getTime())) return "--"
-	const year = date.getUTCFullYear()
-	const month = String(date.getUTCMonth() + 1).padStart(2, "0")
-	const day = String(date.getUTCDate()).padStart(2, "0")
-	const hours = String(date.getUTCHours()).padStart(2, "0")
-	const minutes = String(date.getUTCMinutes()).padStart(2, "0")
-	const seconds = String(date.getUTCSeconds()).padStart(2, "0")
-	return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+	return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+export const formatTimestampToUtcDateTime = (timestamp: number): string => {
+	const isoString = getUtcIsoString(timestamp)
+	if (!isoString) return "--"
+	return isoString.slice(0, 19).replace("T", " ")
 }
 
 // Format epoch milliseconds to UTC time string: HH:mm:ss
-export const formatUtcTime = (timestamp: number): string => {
-	const date = new Date(timestamp)
-	if (Number.isNaN(date.getTime())) return "--"
-	const hours = String(date.getUTCHours()).padStart(2, "0")
-	const minutes = String(date.getUTCMinutes()).padStart(2, "0")
-	const seconds = String(date.getUTCSeconds()).padStart(2, "0")
-	return `${hours}:${minutes}:${seconds}`
+export const formatTimestampToUtcTime = (timestamp: number): string => {
+	const isoString = getUtcIsoString(timestamp)
+	if (!isoString) return "--"
+	return isoString.slice(11, 19)
 }
 
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields

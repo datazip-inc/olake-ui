@@ -11,6 +11,7 @@ export interface FusionCatalog {
 	name: string
 	type: string
 	databases: string[]
+	created_on: string
 }
 
 export type GetCatalogsResponse = {
@@ -50,5 +51,6 @@ export interface Catalog {
 	id: string
 	name: string
 	type: string
+	createdOn: string
 	databases: string[]
 }

@@ -1,62 +1,23 @@
 import { XIcon } from "@phosphor-icons/react"
 import { Button, Drawer, Spin } from "antd"
-import { useMemo } from "react"
+
+import type { RunMetricRow } from "../types"
 
 type RunMetricsSidebarProps = {
 	open: boolean
 	onClose: () => void
-	payload: unknown
+	rows: RunMetricRow[]
 	loading?: boolean
 	runId?: string
-}
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === "object" && value !== null && !Array.isArray(value)
-
-const normalizeKey = (key: string): string =>
-	key
-		.split(/[_-]+/)
-		.filter(Boolean)
-		.map(part => part.charAt(0).toUpperCase() + part.slice(1))
-		.join(" ")
-
-const toDisplayValue = (value: unknown): string => {
-	if (value === null || value === undefined || value === "") return "--"
-	if (typeof value === "boolean") return value ? "True" : "False"
-	if (typeof value === "object") return JSON.stringify(value)
-	return String(value)
-}
-
-const extractMetricsObject = (payload: unknown): Record<string, unknown> => {
-	if (!isRecord(payload)) return {}
-
-	const data = payload.data
-	if (isRecord(data)) {
-		const nestedMetrics = data.metrics
-		if (isRecord(nestedMetrics)) return nestedMetrics
-	}
-
-	const rootMetrics = payload.metrics
-	if (isRecord(rootMetrics)) return rootMetrics
-
-	return payload
 }
 
 const RunMetricsSidebar: React.FC<RunMetricsSidebarProps> = ({
 	open,
 	onClose,
-	payload,
+	rows,
 	loading = false,
 	runId,
 }) => {
-	const rows = useMemo(() => {
-		const metricsObj = extractMetricsObject(payload)
-		return Object.entries(metricsObj).map(([key, value]) => ({
-			label: normalizeKey(key),
-			value: toDisplayValue(value),
-		}))
-	}, [payload])
-
 	return (
 		<Drawer
 			placement="right"
