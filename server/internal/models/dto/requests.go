@@ -133,3 +133,21 @@ type UpdateSyncTelemetryRequest struct {
 type UpdateStateFileRequest struct {
 	StateFile string `json:"state_file" validate:"required"`
 }
+
+type ApplyCLIBundleOverlay struct {
+	ApplyIdentity      string `json:"apply_identity,omitempty"`
+	JobName            string `json:"job_name,omitempty"`
+	SourceName         string `json:"source_name,omitempty"`
+	SourceType         string `json:"source_type,omitempty"`
+	SourceVersion      string `json:"source_version,omitempty"`
+	DestinationName    string `json:"destination_name,omitempty"`
+	DestinationType    string `json:"destination_type,omitempty"`
+	DestinationVersion string `json:"destination_version,omitempty"`
+	Frequency          string `json:"frequency,omitempty"`
+	Activate           *bool  `json:"activate,omitempty"`
+}
+
+type ApplyCLIBundleOptions struct {
+	DryRun bool
+	Prune  bool
+}

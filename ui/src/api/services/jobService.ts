@@ -1,6 +1,7 @@
 import api from "../axios"
 import { API_CONFIG } from "../config"
 import {
+	ApplyCLIBundleResponse,
 	Job,
 	JobBase,
 	JobTask,
@@ -206,6 +207,51 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error clearing destination:", error)
+			throw error
+		}
+	},
+	previewCLIBundleApply: async (
+		file: File,
+	): Promise<ApplyCLIBundleResponse> => {
+		const formData = new FormData()
+		formData.append("bundle", file)
+
+		try {
+			const response = await api.post<ApplyCLIBundleResponse>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/apply-cli-bundle?dry_run=true`,
+				formData,
+				{
+					headers: {
+						"Content-Type": "multipart/form-data",
+					},
+					timeout: 0,
+				},
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error previewing CLI bundle apply:", error)
+			throw error
+		}
+	},
+	applyCLIBundle: async (file: File): Promise<ApplyCLIBundleResponse> => {
+		const formData = new FormData()
+		formData.append("bundle", file)
+
+		try {
+			const response = await api.post<ApplyCLIBundleResponse>(
+				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/apply-cli-bundle`,
+				formData,
+				{
+					headers: {
+						"Content-Type": "multipart/form-data",
+					},
+					timeout: 0,
+					showNotification: true,
+				},
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error applying CLI bundle:", error)
 			throw error
 		}
 	},

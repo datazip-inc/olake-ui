@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button, Tabs, Empty, message, Spin } from "antd"
-import { GitCommitIcon, PlusIcon } from "@phosphor-icons/react"
+import {
+	GitCommitIcon,
+	PlusIcon,
+	UploadSimpleIcon,
+} from "@phosphor-icons/react"
 
 import { useAppStore } from "../../../store"
 import { jobService } from "../../../api"
@@ -10,6 +14,7 @@ import { JobStatus } from "../../../types/jobTypes"
 import { JOB_STATUS } from "../../../utils/constants"
 import JobTable from "../components/JobTable"
 import JobEmptyState from "../components/JobEmptyState"
+import ApplyCLIBundleModal from "../components/ApplyCLIBundleModal"
 import DeleteJobModal from "../../common/Modals/DeleteJobModal"
 import { AnalyticsEvent } from "../../../api/enums"
 
@@ -17,6 +22,7 @@ const Jobs: React.FC = () => {
 	const [activeTab, setActiveTab] = useState<JobStatus>(
 		JOB_STATUS.ACTIVE as JobStatus,
 	)
+	const [showApplyBundleModal, setShowApplyBundleModal] = useState(false)
 	const navigate = useNavigate()
 	const {
 		jobs,
@@ -182,13 +188,23 @@ const Jobs: React.FC = () => {
 					<GitCommitIcon className="mr-2 size-6" />
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
-				<button
-					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
-					onClick={handleCreateJob}
-				>
-					<PlusIcon className="size-4 text-white" />
-					Create Job
-				</button>
+				<div className="flex items-center gap-3">
+					<Button
+						type="default"
+						onClick={() => setShowApplyBundleModal(true)}
+						className="flex items-center justify-center gap-1"
+					>
+						<UploadSimpleIcon className="size-4" />
+						Apply CLI Bundle
+					</Button>
+					<button
+						className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
+						onClick={handleCreateJob}
+					>
+						<PlusIcon className="size-4 text-white" />
+						Create Job
+					</button>
+				</div>
 			</div>
 
 			<p className="mb-6 text-gray-600">
@@ -231,6 +247,13 @@ const Jobs: React.FC = () => {
 				}))}
 			/>
 			<DeleteJobModal />
+			<ApplyCLIBundleModal
+				open={showApplyBundleModal}
+				onClose={() => setShowApplyBundleModal(false)}
+				onApplied={async () => {
+					await fetchJobs()
+				}}
+			/>
 		</div>
 	)
 }

@@ -59,6 +59,48 @@ export interface JobTask {
 	job_type: JobType
 }
 
+export type ApplyPlanAction =
+	| "created"
+	| "updated"
+	| "unchanged"
+	| "preserved"
+
+export interface ApplyCLIBundleEffective {
+	apply_identity: string
+	job_name: string
+	source_name: string
+	source_type: string
+	source_version: string
+	destination_name: string
+	destination_type: string
+	destination_version: string
+	frequency: string
+	activate: boolean
+}
+
+export interface ApplyCLIBundleResourcePlan {
+	action: ApplyPlanAction
+	id?: number
+	name: string
+	fields?: string[]
+}
+
+export interface ApplyCLIBundleStatePlan {
+	action: ApplyPlanAction
+	fields?: string[]
+}
+
+export interface ApplyCLIBundleResponse {
+	dry_run: boolean
+	prune: boolean
+	bundle: string
+	effective: ApplyCLIBundleEffective
+	source: ApplyCLIBundleResourcePlan
+	destination: ApplyCLIBundleResourcePlan
+	job: ApplyCLIBundleResourcePlan
+	state: ApplyCLIBundleStatePlan
+}
+
 export interface TaskLogsResponse {
 	logs: LogEntry[]
 	older_cursor: number

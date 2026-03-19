@@ -44,6 +44,8 @@ type Source struct {
 	ID        int    `json:"id" orm:"column(id);pk;auto"`
 	Name      string `json:"name"`
 	ProjectID string `json:"project_id" orm:"column(project_id)"`
+	ManagedBy string `json:"managed_by,omitempty" orm:"column(managed_by);size(64);null"`
+	ApplyID   string `json:"apply_id,omitempty" orm:"column(apply_id);size(255);null"`
 	Config    string `json:"config" orm:"type(jsonb)"`
 	Version   string `json:"version"`
 	CreatedBy *User  `json:"created_by" orm:"rel(fk)"`
@@ -61,6 +63,8 @@ type Destination struct {
 	ID        int    `json:"id" orm:"column(id);pk;auto"`
 	Name      string `json:"name"`
 	ProjectID string `json:"project_id" orm:"column(project_id)"`
+	ManagedBy string `json:"managed_by,omitempty" orm:"column(managed_by);size(64);null"`
+	ApplyID   string `json:"apply_id,omitempty" orm:"column(apply_id);size(255);null"`
 	DestType  string `json:"type"`
 	Version   string `json:"version"`
 	Config    string `json:"config" orm:"type(jsonb)"`
@@ -81,6 +85,8 @@ type Job struct {
 	DestID           *Destination `json:"dest_id" orm:"column(dest_id);rel(fk)"`
 	Active           bool         `json:"active"`
 	Frequency        string       `json:"frequency"`
+	ManagedBy        string       `json:"managed_by,omitempty" orm:"column(managed_by);size(64);null"`
+	ApplyID          string       `json:"apply_id,omitempty" orm:"column(apply_id);size(255);null"`
 	StreamsConfig    string       `json:"streams_config" orm:"type(jsonb)"`
 	State            string       `json:"state" orm:"type(jsonb)"`
 	AdvancedSettings *string      `json:"advanced_settings" orm:"column(advanced_settings);type(jsonb);null"`

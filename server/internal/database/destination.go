@@ -85,6 +85,54 @@ func (db *Database) GetDestinationByID(id int) (*models.Destination, error) {
 	return &destination, nil
 }
 
+func (db *Database) GetDestinationByProjectIDAndName(projectID, name string) (*models.Destination, error) {
+	var destination models.Destination
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).
+		Filter("project_id", projectID).
+		Filter("name", name).
+		RelatedSel().
+		One(&destination)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get destination project_id[%s] name[%s]: %s", projectID, name, err)
+	}
+
+	dConfig, err := utils.Decrypt(destination.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt destination config id[%d]: %s", destination.ID, err)
+	}
+	destination.Config = dConfig
+	return &destination, nil
+}
+
+func (db *Database) GetDestinationByProjectIDAndApplyID(projectID, applyID string) (*models.Destination, error) {
+	if applyID == "" {
+		return nil, nil
+	}
+
+	var destination models.Destination
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.DestinationTable]).
+		Filter("project_id", projectID).
+		Filter("apply_id", applyID).
+		RelatedSel().
+		One(&destination)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get destination project_id[%s] apply_id[%s]: %s", projectID, applyID, err)
+	}
+
+	dConfig, err := utils.Decrypt(destination.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt destination config id[%d]: %s", destination.ID, err)
+	}
+	destination.Config = dConfig
+	return &destination, nil
+}
+
 func (db *Database) UpdateDestination(destination *models.Destination) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(destination.Config)

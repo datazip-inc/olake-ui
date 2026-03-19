@@ -85,6 +85,7 @@ func Init(h *handlers.Handler) {
 	// Job routes
 	web.Router("/api/v1/project/:projectid/jobs", h, "get:ListJobs")
 	web.Router("/api/v1/project/:projectid/jobs", h, "post:CreateJob")
+	web.Router("/api/v1/project/:projectid/jobs/apply-cli-bundle", h, "post:ApplyCLIBundle")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "get:GetJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "put:UpdateJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "delete:DeleteJob")

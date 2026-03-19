@@ -138,6 +138,42 @@ func (db *Database) GetJobByID(id int, decrypt bool) (*models.Job, error) {
 	return job, nil
 }
 
+func (db *Database) GetJobByProjectIDAndName(projectID, name string, decrypt bool) (*models.Job, error) {
+	var job models.Job
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
+		Filter("project_id", projectID).
+		Filter("name", name).
+		One(&job)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get job project_id[%s] name[%s]: %s", projectID, name, err)
+	}
+
+	return db.GetJobByID(job.ID, decrypt)
+}
+
+func (db *Database) GetJobByProjectIDAndApplyID(projectID, applyID string, decrypt bool) (*models.Job, error) {
+	if applyID == "" {
+		return nil, nil
+	}
+
+	var job models.Job
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.JobTable]).
+		Filter("project_id", projectID).
+		Filter("apply_id", applyID).
+		One(&job)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get job project_id[%s] apply_id[%s]: %s", projectID, applyID, err)
+	}
+
+	return db.GetJobByID(job.ID, decrypt)
+}
+
 func (db *Database) GetJobsBySourceID(sourceIDs []int) ([]*models.Job, error) {
 	var jobs []*models.Job
 	if len(sourceIDs) == 0 {
