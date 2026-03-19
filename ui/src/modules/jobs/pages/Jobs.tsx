@@ -90,6 +90,16 @@ const Jobs: React.FC = () => {
 		navigate(`/jobs/${id}/edit`)
 	}
 
+	const handleExportJob = async (id: string) => {
+		try {
+			await jobService.exportCLIBundle(id)
+			message.success("Bundle download started")
+		} catch (error) {
+			console.error("Error exporting job bundle:", error)
+			message.error("Failed to export CLI bundle")
+		}
+	}
+
 	const handlePauseJob = async (id: string, checked: boolean) => {
 		await jobService.activateJob(id, !checked)
 		await fetchJobs()
@@ -239,6 +249,7 @@ const Jobs: React.FC = () => {
 							jobType={activeTab}
 							onSync={handleSyncJob}
 							onEdit={handleEditJob}
+							onExport={handleExportJob}
 							onPause={handlePauseJob}
 							onDelete={handleDeleteJob}
 							onCancelJob={handleCancelJob}

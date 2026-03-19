@@ -137,6 +137,7 @@ export interface JobTableProps {
 	jobType: JobStatus
 	onSync: (id: string) => void
 	onEdit: (id: string) => void
+	onExport: (id: string) => void
 	onPause: (id: string, checked: boolean) => void
 	onDelete: (id: string) => void
 	onCancelJob: (id: string) => void

@@ -5,6 +5,7 @@ import { Table, Input, Button, Dropdown, Pagination } from "antd"
 import {
 	ArrowsClockwiseIcon,
 	ClockCounterClockwiseIcon,
+	DownloadSimpleIcon,
 	DotsThreeIcon,
 	GearIcon,
 	PauseIcon,
@@ -43,6 +44,7 @@ const JobTable: React.FC<JobTableProps> = ({
 	jobType,
 	onSync,
 	onEdit,
+	onExport,
 	onPause,
 	onDelete,
 	onCancelJob,
@@ -100,6 +102,12 @@ const JobTable: React.FC<JobTableProps> = ({
 									label: "Edit Streams",
 									disabled: !record.activate,
 									onClick: () => onEdit(record.id.toString()),
+								},
+								{
+									key: "export",
+									icon: <DownloadSimpleIcon className="size-4" />,
+									label: "Export CLI Bundle",
+									onClick: () => onExport(record.id.toString()),
 								},
 								{
 									key: "pause",

@@ -255,6 +255,28 @@ export const jobService = {
 			throw error
 		}
 	},
+	exportCLIBundle: async (
+		jobId: string,
+		options: { includeState?: boolean; format?: "zip" | "tar.gz" } = {},
+	): Promise<void> => {
+		const params = new URLSearchParams({
+			format: options.format ?? "zip",
+		})
+
+		if (options.includeState) {
+			params.set("include_state", "true")
+		}
+
+		const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/export-cli-bundle?${params.toString()}`
+
+		const link = document.createElement("a")
+		link.href = url
+		link.style.display = "none"
+		link.setAttribute("download", "")
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
+	},
 	getClearDestinationStatus: async (
 		jobId: string,
 	): Promise<{ running: boolean }> => {
