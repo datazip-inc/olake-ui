@@ -256,6 +256,47 @@ func (h *Handler) ApplyCLIBundle() {
 	utils.SuccessResponse(&h.Controller, message, response)
 }
 
+// @Summary Export a declarative CLI bundle
+// @Tags Jobs
+// @Description Export an existing OLake UI job back into a declarative CLI bundle.
+// @Param   projectid      path    string  true   "project id (default is 123)"
+// @Param   id             path    int     true   "job id"
+// @Param   include_state  query   bool    false  "include state.json in the export"
+// @Param   format         query   string  false  "zip (default) or tar.gz"
+// @Success 200 {file} binary "CLI bundle archive"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to export bundle"
+// @Router /api/v1/project/{projectid}/jobs/{id}/export-cli-bundle [get]
+func (h *Handler) ExportCLIBundle() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	includeState := parseBoolParam(h.GetString("include_state"))
+	format := h.GetString("format")
+
+	logger.Infof("Export CLI bundle initiated project_id[%s] job_id[%d] include_state[%t] format[%s]", projectID, jobID, includeState, format)
+
+	data, filename, contentType, err := h.etl.ExportCLIBundle(projectID, jobID, includeState, format)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to export bundle: %s", err), err)
+		return
+	}
+
+	h.Ctx.Output.Header("Content-Type", contentType)
+	h.Ctx.Output.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	h.Ctx.Output.Body(data)
+}
+
 // @Summary Delete a job
 // @Tags Jobs
 // @Description Permanently delete a specified job.

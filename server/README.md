@@ -73,6 +73,8 @@ make create-user username=admin password=yourpassword email=admin@example.com
 
 All API Endpoints: [Postman](https://solar-capsule-662043.postman.co/workspace/Olake-Server~ad9c900c-0376-42e2-adf2-e3137b92b325/collection/24907154-6eaf11b3-4e36-4ec3-a05a-3fa3720125ee?action=share&creator=24907154&active-environment=24907154-dcc91e95-6699-48cb-bbe0-e0e92b9800bd)
 
+Declarative bundle docs and examples: [../docs/declarative-cli-bundles.md](/home/sabino/Downloads/olake-ui-fork/docs/declarative-cli-bundles.md)
+
 ### Authentication
 
 - POST `/login` - User login
@@ -97,8 +99,10 @@ All API Endpoints: [Postman](https://solar-capsule-662043.postman.co/workspace/O
 
 - GET `/jobs` - Get all jobs
 - POST `/jobs` - Create a new job
+- POST `/jobs/apply-cli-bundle` - Preview or apply a declarative CLI bundle
 - PUT `/jobs/:id` - Update a job
 - DELETE `/jobs/:id` - Delete a job
+- GET `/jobs/:id/export-cli-bundle` - Export a job back into a CLI bundle
 
 ### Users
 

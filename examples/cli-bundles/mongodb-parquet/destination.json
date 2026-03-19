@@ -1,0 +1,11 @@
+{
+  "type": "PARQUET",
+  "writer": {
+    "s3_bucket": "bronze",
+    "s3_region": "us-east-1",
+    "s3_path": "/orders",
+    "s3_access_key": "minioadmin",
+    "s3_secret_key": "minioadmin",
+    "s3_endpoint": "http://minio:9000"
+  }
+}

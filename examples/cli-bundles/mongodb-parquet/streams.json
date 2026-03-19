@@ -1,0 +1,48 @@
+{
+  "selected_streams": {
+    "orders": [
+      {
+        "stream_name": "orders",
+        "partition_regex": "",
+        "normalization": true,
+        "append_mode": false
+      }
+    ]
+  },
+  "streams": [
+    {
+      "stream": {
+        "name": "orders",
+        "namespace": "orders",
+        "type_schema": {
+          "properties": {
+            "_id": {
+              "type": [
+                "string"
+              ],
+              "destination_column_name": "_id"
+            },
+            "updated_at": {
+              "type": [
+                "timestamp_milli",
+                "null"
+              ],
+              "destination_column_name": "updated_at"
+            }
+          }
+        },
+        "supported_sync_modes": [
+          "cdc",
+          "full_refresh"
+        ],
+        "source_defined_primary_key": [
+          "_id"
+        ],
+        "available_cursor_fields": [
+          "updated_at"
+        ],
+        "sync_mode": "cdc"
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "apply_identity": "mongodb-parquet-example",
+  "job_name": "mongodb-orders-cdc",
+  "source_name": "mongodb-orders-source",
+  "source_type": "mongodb",
+  "source_version": "v0.5.1",
+  "destination_name": "parquet-minio-local",
+  "destination_type": "parquet",
+  "destination_version": "v0.5.1",
+  "frequency": "0 * * * *",
+  "activate": true
+}

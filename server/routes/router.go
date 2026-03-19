@@ -89,6 +89,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "get:GetJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "put:UpdateJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id", h, "delete:DeleteJob")
+	web.Router("/api/v1/project/:projectid/jobs/:id/export-cli-bundle", h, "get:ExportCLIBundle")
 	web.Router("/api/v1/project/:projectid/jobs/:id/sync", h, "post:SyncJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/activate", h, "post:ActivateJob")
 	web.Router("/api/v1/project/:projectid/jobs/:id/tasks", h, "get:GetJobTasks")
