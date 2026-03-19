@@ -1,0 +1,7 @@
+{
+  "apply_identity": "orders-zeus-cdc",
+  "source_type": "mongodb",
+  "source_version": "0.1.30",
+  "destination_type": "local",
+  "destination_version": "0.1.20"
+}

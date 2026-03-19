@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { ChangeEvent, useEffect, useRef, useState } from "react"
 import {
 	Alert,
 	Button,
@@ -6,19 +6,36 @@ import {
 	Modal,
 	Tag,
 	Typography,
-	Upload,
 	message,
 } from "antd"
-import type { UploadFile, UploadProps } from "antd"
-import { UploadSimpleIcon } from "@phosphor-icons/react"
+import {
+	FileArrowUpIcon,
+	FolderOpenIcon,
+	FilesIcon,
+	TrashIcon,
+} from "@phosphor-icons/react"
 
 import { jobService } from "../../../api"
 import { ApplyCLIBundleResponse, ApplyPlanAction } from "../../../types"
+import {
+	REQUIRED_BUNDLE_FILES,
+	StagedCLIBundle,
+	materializeBundleFile,
+	mergeStagedBundles,
+	stageArchiveFiles,
+	stageStructuredFiles,
+} from "./cliBundleFiles"
 
 interface ApplyCLIBundleModalProps {
 	open: boolean
 	onClose: () => void
 	onApplied: () => Promise<void> | void
+}
+
+interface BundlePreviewResult {
+	bundle: StagedCLIBundle
+	response?: ApplyCLIBundleResponse
+	error?: string
 }
 
 const actionColor: Record<ApplyPlanAction, string> = {
@@ -28,86 +45,175 @@ const actionColor: Record<ApplyPlanAction, string> = {
 	preserved: "gold",
 }
 
+const getBundleStatus = (bundle: StagedCLIBundle) => {
+	if (bundle.duplicateFiles.length > 0) {
+		return {
+			label: "invalid",
+			color: "red",
+		}
+	}
+
+	if (bundle.missingRequiredFiles.length > 0) {
+		return {
+			label: "incomplete",
+			color: "gold",
+		}
+	}
+
+	return {
+		label: "ready",
+		color: "green",
+	}
+}
+
 const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 	open,
 	onClose,
 	onApplied,
 }) => {
-	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const [preview, setPreview] = useState<ApplyCLIBundleResponse | null>(null)
+	const archiveInputRef = useRef<HTMLInputElement | null>(null)
+	const jsonInputRef = useRef<HTMLInputElement | null>(null)
+	const folderInputRef = useRef<HTMLInputElement | null>(null)
+	const [stagedBundles, setStagedBundles] = useState<StagedCLIBundle[]>([])
+	const [previewResults, setPreviewResults] = useState<BundlePreviewResult[]>([])
 	const [previewLoading, setPreviewLoading] = useState(false)
 	const [applyLoading, setApplyLoading] = useState(false)
 
 	useEffect(() => {
 		if (!open) {
-			setSelectedFile(null)
-			setPreview(null)
+			setStagedBundles([])
+			setPreviewResults([])
 			setPreviewLoading(false)
 			setApplyLoading(false)
 		}
 	}, [open])
 
-	const uploadProps: UploadProps = {
-		maxCount: 1,
-		accept: ".zip,.tar.gz,.tgz",
-		beforeUpload: file => {
-			setSelectedFile(file)
-			setPreview(null)
-			return false
-		},
-		onRemove: () => {
-			setSelectedFile(null)
-			setPreview(null)
-			return true
-		},
-		fileList: selectedFile
-			? [
-					{
-						uid: selectedFile.name,
-						name: selectedFile.name,
-						status: "done",
-					} satisfies UploadFile,
-			  ]
-			: [],
+	const previewableBundles = stagedBundles.filter(
+		bundle =>
+			bundle.duplicateFiles.length === 0 &&
+			bundle.missingRequiredFiles.length === 0,
+	)
+	const hasInvalidBundles = previewableBundles.length !== stagedBundles.length
+
+	const addBundles = (incomingBundles: StagedCLIBundle[]) => {
+		if (incomingBundles.length === 0) {
+			message.warning("No supported bundle files were selected")
+			return
+		}
+
+		setStagedBundles(currentBundles =>
+			mergeStagedBundles(currentBundles, incomingBundles),
+		)
+		setPreviewResults([])
 	}
 
-	const handlePreview = async () => {
-		if (!selectedFile) {
-			message.warning("Select a bundle first")
+	const handleArchiveSelection = (event: ChangeEvent<HTMLInputElement>) => {
+		const selectedFiles = Array.from(event.target.files || [])
+		addBundles(stageArchiveFiles(selectedFiles))
+		event.target.value = ""
+	}
+
+	const handleJSONSelection = (event: ChangeEvent<HTMLInputElement>) => {
+		const selectedFiles = Array.from(event.target.files || [])
+		addBundles(stageStructuredFiles(selectedFiles, "json-files"))
+		event.target.value = ""
+	}
+
+	const handleFolderSelection = (event: ChangeEvent<HTMLInputElement>) => {
+		const selectedFiles = Array.from(event.target.files || [])
+		addBundles(stageStructuredFiles(selectedFiles, "folder"))
+		event.target.value = ""
+	}
+
+	const removeBundle = (bundleId: string) => {
+		setStagedBundles(currentBundles =>
+			currentBundles.filter(bundle => bundle.id !== bundleId),
+		)
+		setPreviewResults(currentResults =>
+			currentResults.filter(result => result.bundle.id !== bundleId),
+		)
+	}
+
+	const clearBundles = () => {
+		setStagedBundles([])
+		setPreviewResults([])
+	}
+
+	const runBundleAction = async (
+		action: "preview" | "apply",
+		setLoading: (value: boolean) => void,
+	) => {
+		if (stagedBundles.length === 0) {
+			message.warning("Select at least one bundle, folder, or JSON set first")
+			return
+		}
+
+		if (previewableBundles.length === 0) {
+			message.warning("Remove incomplete bundles before continuing")
+			return
+		}
+
+		if (hasInvalidBundles) {
+			message.warning("Only ready bundles can be applied")
 			return
 		}
 
 		try {
-			setPreviewLoading(true)
-			const response = await jobService.previewCLIBundleApply(selectedFile)
-			setPreview(response)
+			setLoading(true)
+			const nextResults: BundlePreviewResult[] = []
+
+			for (const bundle of previewableBundles) {
+				try {
+					const bundleFile = await materializeBundleFile(bundle)
+					const response =
+						action === "preview"
+							? await jobService.previewCLIBundleApply(bundleFile)
+							: await jobService.applyCLIBundle(bundleFile)
+					nextResults.push({
+						bundle,
+						response,
+					})
+				} catch (error) {
+					nextResults.push({
+						bundle,
+						error:
+							error instanceof Error ? error.message : "Failed to process bundle",
+					})
+				}
+			}
+
+			setPreviewResults(nextResults)
+
+			if (action === "apply") {
+				const appliedCount = nextResults.filter(result => result.response).length
+				if (appliedCount > 0) {
+					await onApplied()
+				}
+
+				if (appliedCount === previewableBundles.length) {
+					message.success(
+						`Applied ${appliedCount} bundle${appliedCount === 1 ? "" : "s"}`,
+					)
+				} else {
+					message.warning(
+						`Applied ${appliedCount} of ${previewableBundles.length} bundles`,
+					)
+				}
+			}
 		} finally {
-			setPreviewLoading(false)
+			setLoading(false)
 		}
 	}
 
-	const handleApply = async () => {
-		if (!selectedFile) {
-			message.warning("Select a bundle first")
-			return
-		}
-
-		try {
-			setApplyLoading(true)
-			const response = await jobService.applyCLIBundle(selectedFile)
-			setPreview(response)
-			await onApplied()
-		} finally {
-			setApplyLoading(false)
-		}
-	}
+	const footerActionLabel =
+		previewableBundles.length === 1 ? "Bundle" : "Bundles"
 
 	return (
 		<Modal
 			open={open}
 			onCancel={onClose}
-			title="Apply CLI Bundle"
-			width={840}
+			title="Apply CLI Bundles"
+			width={960}
 			footer={[
 				<Button
 					key="close"
@@ -116,21 +222,28 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 					Close
 				</Button>,
 				<Button
-					key="preview"
-					onClick={handlePreview}
-					loading={previewLoading}
-					disabled={!selectedFile}
+					key="clear"
+					onClick={clearBundles}
+					disabled={stagedBundles.length === 0}
 				>
-					Preview Apply
+					Clear Selection
+				</Button>,
+				<Button
+					key="preview"
+					onClick={() => runBundleAction("preview", setPreviewLoading)}
+					loading={previewLoading}
+					disabled={previewableBundles.length === 0 || hasInvalidBundles}
+				>
+					Preview {footerActionLabel}
 				</Button>,
 				<Button
 					key="apply"
 					type="primary"
-					onClick={handleApply}
+					onClick={() => runBundleAction("apply", setApplyLoading)}
 					loading={applyLoading}
-					disabled={!selectedFile}
+					disabled={previewableBundles.length === 0 || hasInvalidBundles}
 				>
-					Apply Bundle
+					Apply {footerActionLabel}
 				</Button>,
 			]}
 		>
@@ -138,74 +251,256 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 				<Alert
 					type="info"
 					showIcon
-					message="The bundle must contain source.json, destination.json, and streams.json. Add olake-ui.json when the server cannot infer connector metadata such as source_type, source_version, and destination_version."
+					message="Each bundle must contain source.json, destination.json, and streams.json. Add olake-ui.json when connector metadata must be preserved. You can add folders repeatedly to queue batch imports."
 				/>
 
-				<Upload.Dragger {...uploadProps}>
-					<div className="flex flex-col items-center gap-2 py-4">
-						<UploadSimpleIcon className="size-8 text-primary" />
-						<Typography.Text strong>
-							Drop a CLI bundle here or click to select one
+				<div className="rounded-md border border-dashed border-gray-300 p-4">
+					<div className="flex flex-wrap gap-3">
+						<Button
+							icon={<FolderOpenIcon className="size-4" />}
+							onClick={() => folderInputRef.current?.click()}
+							data-testid="cli-bundle-add-folder"
+						>
+							Add Folder
+						</Button>
+						<Button
+							icon={<FilesIcon className="size-4" />}
+							onClick={() => jsonInputRef.current?.click()}
+							data-testid="cli-bundle-add-json"
+						>
+							Add JSON Files
+						</Button>
+						<Button
+							icon={<FileArrowUpIcon className="size-4" />}
+							onClick={() => archiveInputRef.current?.click()}
+							data-testid="cli-bundle-add-archive"
+						>
+							Add Bundle Archives
+						</Button>
+					</div>
+
+					<Typography.Text
+						type="secondary"
+						className="mt-3 block"
+					>
+						Folder import can be repeated to build a batch. If you select a
+						parent directory with multiple job folders, the modal stages each
+						subfolder separately.
+					</Typography.Text>
+
+					<input
+						ref={archiveInputRef}
+						type="file"
+						accept=".zip,.tar.gz,.tgz"
+						multiple
+						className="hidden"
+						onChange={handleArchiveSelection}
+						data-testid="cli-bundle-archive-input"
+					/>
+					<input
+						ref={jsonInputRef}
+						type="file"
+						accept=".json"
+						multiple
+						className="hidden"
+						onChange={handleJSONSelection}
+						data-testid="cli-bundle-json-input"
+					/>
+					<input
+						ref={input => {
+							folderInputRef.current = input
+							if (input) {
+								input.setAttribute("webkitdirectory", "")
+								input.setAttribute("directory", "")
+							}
+						}}
+						type="file"
+						multiple
+						className="hidden"
+						onChange={handleFolderSelection}
+						data-testid="cli-bundle-folder-input"
+					/>
+				</div>
+
+				<div className="flex items-center justify-between gap-3">
+					<Typography.Text strong>
+						Queued Imports ({stagedBundles.length})
+					</Typography.Text>
+					{hasInvalidBundles && stagedBundles.length > 0 && (
+						<Typography.Text type="warning">
+							Remove incomplete bundles before previewing or applying them.
 						</Typography.Text>
+					)}
+				</div>
+
+				{stagedBundles.length === 0 ? (
+					<div className="rounded-md border border-gray-200 p-4">
 						<Typography.Text type="secondary">
-							Supported formats: .zip, .tar.gz, .tgz
+							No bundles queued yet.
 						</Typography.Text>
 					</div>
-				</Upload.Dragger>
+				) : (
+					<div className="flex flex-col gap-3">
+						{stagedBundles.map(bundle => {
+							const status = getBundleStatus(bundle)
+							return (
+								<div
+									key={bundle.id}
+									className="rounded-md border border-gray-200 p-4"
+									data-testid={`cli-bundle-stage-${bundle.archiveRoot}`}
+								>
+									<div className="mb-3 flex items-start justify-between gap-3">
+										<div>
+											<div className="flex items-center gap-2">
+												<Typography.Text strong>
+													{bundle.name}
+												</Typography.Text>
+												<Tag color={status.color}>{status.label}</Tag>
+											</div>
+											<Typography.Text type="secondary">
+												{bundle.sourceLabel}: {bundle.displayName}
+											</Typography.Text>
+										</div>
+										<Button
+											type="text"
+											icon={<TrashIcon className="size-4" />}
+											onClick={() => removeBundle(bundle.id)}
+											aria-label={`Remove ${bundle.name}`}
+										/>
+									</div>
 
-				{preview && (
+									<div className="grid gap-3 md:grid-cols-2">
+										<Descriptions
+											column={1}
+											size="small"
+											bordered
+										>
+											<Descriptions.Item label="Detected files">
+												{bundle.fileNames.length > 0
+													? bundle.fileNames.join(", ")
+													: "None"}
+											</Descriptions.Item>
+											<Descriptions.Item label="Required files">
+												{REQUIRED_BUNDLE_FILES.join(", ")}
+											</Descriptions.Item>
+											<Descriptions.Item label="Ignored files">
+												{bundle.ignoredFileCount}
+											</Descriptions.Item>
+										</Descriptions>
+
+										<div className="flex flex-col gap-2">
+											{bundle.missingRequiredFiles.length > 0 && (
+												<Alert
+													type="warning"
+													showIcon
+													message={`Missing required files: ${bundle.missingRequiredFiles.join(", ")}`}
+												/>
+											)}
+											{bundle.duplicateFiles.length > 0 && (
+												<Alert
+													type="error"
+													showIcon
+													message={`Duplicate files detected: ${bundle.duplicateFiles.join(", ")}`}
+												/>
+											)}
+											{bundle.missingRequiredFiles.length === 0 &&
+												bundle.duplicateFiles.length === 0 && (
+													<Alert
+														type="success"
+														showIcon
+														message="This bundle is ready to preview or apply."
+													/>
+												)}
+										</div>
+									</div>
+								</div>
+							)
+						})}
+					</div>
+				)}
+
+				{previewResults.length > 0 && (
 					<div className="flex flex-col gap-4">
-						<Descriptions
-							column={2}
-							size="small"
-							bordered
-						>
-							<Descriptions.Item label="Bundle">
-								{preview.bundle}
-							</Descriptions.Item>
-							<Descriptions.Item label="Apply Identity">
-								{preview.effective.apply_identity}
-							</Descriptions.Item>
-							<Descriptions.Item label="Job">
-								{preview.effective.job_name}
-							</Descriptions.Item>
-							<Descriptions.Item label="Frequency">
-								{preview.effective.frequency || "manual only"}
-							</Descriptions.Item>
-							<Descriptions.Item label="Source">
-								{preview.effective.source_name}
-							</Descriptions.Item>
-							<Descriptions.Item label="Destination">
-								{preview.effective.destination_name}
-							</Descriptions.Item>
-						</Descriptions>
+						<Typography.Text strong>Preview Results</Typography.Text>
 
-						<div className="grid gap-3 md:grid-cols-2">
-							<PlanCard
-								title="Source"
-								action={preview.source.action}
-								name={preview.source.name}
-								fields={preview.source.fields}
-							/>
-							<PlanCard
-								title="Destination"
-								action={preview.destination.action}
-								name={preview.destination.name}
-								fields={preview.destination.fields}
-							/>
-							<PlanCard
-								title="Job"
-								action={preview.job.action}
-								name={preview.job.name}
-								fields={preview.job.fields}
-							/>
-							<PlanCard
-								title="State"
-								action={preview.state.action}
-								name="state.json"
-								fields={preview.state.fields}
-							/>
-						</div>
+						{previewResults.map(result => (
+							<div
+								key={result.bundle.id}
+								className="rounded-md border border-gray-200 p-4"
+								data-testid={`cli-bundle-preview-${result.bundle.archiveRoot}`}
+							>
+								<div className="mb-3 flex items-center justify-between gap-3">
+									<Typography.Text strong>{result.bundle.name}</Typography.Text>
+									<Tag color={result.error ? "red" : "blue"}>
+										{result.error ? "error" : "preview"}
+									</Tag>
+								</div>
+
+								{result.error ? (
+									<Alert
+										type="error"
+										showIcon
+										message={result.error}
+									/>
+								) : (
+									result.response && (
+										<div className="flex flex-col gap-4">
+											<Descriptions
+												column={2}
+												size="small"
+												bordered
+											>
+												<Descriptions.Item label="Bundle">
+													{result.response.bundle}
+												</Descriptions.Item>
+												<Descriptions.Item label="Apply Identity">
+													{result.response.effective.apply_identity}
+												</Descriptions.Item>
+												<Descriptions.Item label="Job">
+													{result.response.effective.job_name}
+												</Descriptions.Item>
+												<Descriptions.Item label="Frequency">
+													{result.response.effective.frequency || "manual only"}
+												</Descriptions.Item>
+												<Descriptions.Item label="Source">
+													{result.response.effective.source_name}
+												</Descriptions.Item>
+												<Descriptions.Item label="Destination">
+													{result.response.effective.destination_name}
+												</Descriptions.Item>
+											</Descriptions>
+
+											<div className="grid gap-3 md:grid-cols-2">
+												<PlanCard
+													title="Source"
+													action={result.response.source.action}
+													name={result.response.source.name}
+													fields={result.response.source.fields}
+												/>
+												<PlanCard
+													title="Destination"
+													action={result.response.destination.action}
+													name={result.response.destination.name}
+													fields={result.response.destination.fields}
+												/>
+												<PlanCard
+													title="Job"
+													action={result.response.job.action}
+													name={result.response.job.name}
+													fields={result.response.job.fields}
+												/>
+												<PlanCard
+													title="State"
+													action={result.response.state.action}
+													name="state.json"
+													fields={result.response.state.fields}
+												/>
+											</div>
+										</div>
+									)
+								)}
+							</div>
+						))}
 					</div>
 				)}
 			</div>

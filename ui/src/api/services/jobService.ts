@@ -259,8 +259,9 @@ export const jobService = {
 		jobId: string,
 		options: { includeState?: boolean; format?: "zip" | "tar.gz" } = {},
 	): Promise<void> => {
+		const format = options.format ?? "zip"
 		const params = new URLSearchParams({
-			format: options.format ?? "zip",
+			format,
 		})
 
 		if (options.includeState) {
@@ -272,7 +273,10 @@ export const jobService = {
 		const link = document.createElement("a")
 		link.href = url
 		link.style.display = "none"
-		link.setAttribute("download", "")
+		link.setAttribute(
+			"download",
+			`job-${jobId}-cli-bundle.${format === "tar.gz" ? "tar.gz" : "zip"}`,
+		)
 		document.body.appendChild(link)
 		link.click()
 		document.body.removeChild(link)
