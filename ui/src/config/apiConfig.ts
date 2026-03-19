@@ -14,6 +14,18 @@ export const API_CONFIG = {
 		SOURCES: (projectId: string) => `/api/v1/project/${projectId}/sources`,
 		JOBS: (projectId: string) => `/api/v1/project/${projectId}/jobs`,
 		SETTINGS: (projectId: string) => `/api/v1/project/${projectId}/settings`,
+		// Optimization / Fusion APIs
+		FUSION_CATALOGS: `/api/v1/fusion/catalogs`,
+		FUSION_CATALOG: (catalogName?: string) =>
+			catalogName
+				? `/api/v1/fusion/catalog/${encodeURIComponent(catalogName)}`
+				: `/api/v1/fusion/catalog`,
+		FUSION_TABLE: (catalog: string, database: string, tableName?: string) =>
+			tableName
+				? `/api/v1/fusion/tables/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/${encodeURIComponent(tableName)}`
+				: `/api/v1/fusion/tables/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}`,
+		FUSION_PROCESS_LOGS: (runId: string) =>
+			`/api/v1/fusion/logs/process/${encodeURIComponent(runId)}/`,
 		PLATFORM: `/api/v1/platform`,
 	},
 }

@@ -18,6 +18,12 @@ import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import {
+	SpecFailedModal,
+	TestConnectionFailureModal,
+	TestConnectionModal,
+	TestConnectionSuccessModal,
+} from "@/common/components/modals"
+import {
 	transformErrors,
 	TEST_CONNECTION_STATUS,
 	OLAKE_LATEST_VERSION_URL,
@@ -31,11 +37,7 @@ import {
 import { trimFormDataStrings } from "@/common/utils"
 import {
 	DeleteModal,
-	TestConnectionSuccessModal,
-	TestConnectionFailureModal,
-	TestConnectionModal,
 	EntityEditModal,
-	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"

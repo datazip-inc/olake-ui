@@ -181,6 +181,29 @@ export const formatDate = (dateString: string): string => {
 	}
 }
 
+// Format epoch milliseconds to UTC date-time string: YYYY-MM-DD HH:mm:ss
+export const formatUtcTimestamp = (timestamp: number): string => {
+	const date = new Date(timestamp)
+	if (Number.isNaN(date.getTime())) return "--"
+	const year = date.getUTCFullYear()
+	const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+	const day = String(date.getUTCDate()).padStart(2, "0")
+	const hours = String(date.getUTCHours()).padStart(2, "0")
+	const minutes = String(date.getUTCMinutes()).padStart(2, "0")
+	const seconds = String(date.getUTCSeconds()).padStart(2, "0")
+	return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+}
+
+// Format epoch milliseconds to UTC time string: HH:mm:ss
+export const formatUtcTime = (timestamp: number): string => {
+	const date = new Date(timestamp)
+	if (Number.isNaN(date.getTime())) return "--"
+	const hours = String(date.getUTCHours()).padStart(2, "0")
+	const minutes = String(date.getUTCMinutes()).padStart(2, "0")
+	const seconds = String(date.getUTCSeconds()).padStart(2, "0")
+	return `${hours}:${minutes}:${seconds}`
+}
+
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
 export const trimFormDataStrings = (data: any): any => {
 	if (data === null || data === undefined) {

@@ -8,12 +8,14 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { v4 as uuidv4 } from "uuid"
 
+import {
+	TestConnectionFailureModal,
+	TestConnectionModal,
+	TestConnectionSuccessModal,
+} from "@/common/components/modals"
 import { TEST_CONNECTION_STATUS } from "@/common/constants"
 import type { TestConnectionError } from "@/common/types"
 import {
-	TestConnectionModal,
-	TestConnectionSuccessModal,
-	TestConnectionFailureModal,
 	EntitySavedModal,
 	EntityCancelModal,
 } from "@/modules/ingestion/common/components"
