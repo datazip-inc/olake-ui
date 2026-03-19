@@ -768,6 +768,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/project/{projectid}/jobs/apply-cli-bundle": {
+            "post": {
+                "description": "Preview or apply a declarative OLake CLI bundle to a running OLake UI project.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Apply a declarative CLI bundle",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "preview only",
+                        "name": "dry_run",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "reserved for future prune support",
+                        "name": "prune",
+                        "in": "query"
+                    },
+                    {
+                        "type": "file",
+                        "description": "CLI bundle (.zip or .tar.gz)",
+                        "name": "bundle",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.ApplyCLIBundleResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to apply bundle",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/project/{projectid}/jobs/{id}": {
             "get": {
                 "description": "Retrieve details of a specific job identified by its unique ID.",
@@ -1154,6 +1229,69 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "failed to trigger clear destination",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project/{projectid}/jobs/{id}/export-cli-bundle": {
+            "get": {
+                "description": "Export an existing OLake UI job back into a declarative CLI bundle.",
+                "tags": [
+                    "Jobs"
+                ],
+                "summary": "Export a declarative CLI bundle",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "project id (default is 123)",
+                        "name": "projectid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "job id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "include state.json in the export",
+                        "name": "include_state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "zip (default) or tar.gz",
+                        "name": "format",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CLI bundle archive",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to export bundle",
                         "schema": {
                             "$ref": "#/definitions/dto.Error500Response"
                         }
@@ -2672,6 +2810,128 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.AdvancedSettings": {
+            "type": "object",
+            "properties": {
+                "max_discover_threads": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
+        "dto.ApplyCLIBundleEffective": {
+            "type": "object",
+            "properties": {
+                "activate": {
+                    "type": "boolean"
+                },
+                "apply_identity": {
+                    "type": "string"
+                },
+                "destination_name": {
+                    "type": "string"
+                },
+                "destination_type": {
+                    "type": "string"
+                },
+                "destination_version": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "type": "string"
+                },
+                "job_name": {
+                    "type": "string"
+                },
+                "source_name": {
+                    "type": "string"
+                },
+                "source_type": {
+                    "type": "string"
+                },
+                "source_version": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ApplyCLIBundleResourcePlan": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/dto.ApplyPlanAction"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ApplyCLIBundleResponse": {
+            "type": "object",
+            "properties": {
+                "bundle": {
+                    "type": "string"
+                },
+                "destination": {
+                    "$ref": "#/definitions/dto.ApplyCLIBundleResourcePlan"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "effective": {
+                    "$ref": "#/definitions/dto.ApplyCLIBundleEffective"
+                },
+                "job": {
+                    "$ref": "#/definitions/dto.ApplyCLIBundleResourcePlan"
+                },
+                "prune": {
+                    "type": "boolean"
+                },
+                "source": {
+                    "$ref": "#/definitions/dto.ApplyCLIBundleResourcePlan"
+                },
+                "state": {
+                    "$ref": "#/definitions/dto.ApplyCLIBundleStatePlan"
+                }
+            }
+        },
+        "dto.ApplyCLIBundleStatePlan": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "$ref": "#/definitions/dto.ApplyPlanAction"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dto.ApplyPlanAction": {
+            "type": "string",
+            "enum": [
+                "created",
+                "updated",
+                "unchanged",
+                "preserved"
+            ],
+            "x-enum-varnames": [
+                "ApplyPlanCreated",
+                "ApplyPlanUpdated",
+                "ApplyPlanUnchanged",
+                "ApplyPlanPreserved"
+            ]
+        },
         "dto.CheckUniqueJobNameResponse": {
             "type": "object",
             "properties": {
@@ -2752,6 +3012,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3045,6 +3308,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "created_at": {
                     "type": "string",
@@ -3390,6 +3656,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "my-sync-job"
                 },
+                "max_discover_threads": {
+                    "type": "integer",
+                    "example": 50
+                },
                 "name": {
                     "type": "string",
                     "example": "my-postgres-source"
@@ -3498,6 +3768,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
