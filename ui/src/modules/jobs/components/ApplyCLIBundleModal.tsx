@@ -192,11 +192,11 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 
 				if (appliedCount === previewableBundles.length) {
 					message.success(
-						`Applied ${appliedCount} bundle${appliedCount === 1 ? "" : "s"}`,
+						`Imported ${appliedCount} bundle${appliedCount === 1 ? "" : "s"}`,
 					)
 				} else {
 					message.warning(
-						`Applied ${appliedCount} of ${previewableBundles.length} bundles`,
+						`Imported ${appliedCount} of ${previewableBundles.length} bundles`,
 					)
 				}
 			}
@@ -212,7 +212,7 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 		<Modal
 			open={open}
 			onCancel={onClose}
-			title="Apply CLI Bundles"
+			title="Import Bundles"
 			width={960}
 			footer={[
 				<Button
@@ -234,7 +234,7 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 					loading={previewLoading}
 					disabled={previewableBundles.length === 0 || hasInvalidBundles}
 				>
-					Preview {footerActionLabel}
+					Preview Import
 				</Button>,
 				<Button
 					key="apply"
@@ -243,7 +243,7 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 					loading={applyLoading}
 					disabled={previewableBundles.length === 0 || hasInvalidBundles}
 				>
-					Apply {footerActionLabel}
+					Import {footerActionLabel}
 				</Button>,
 			]}
 		>
@@ -251,7 +251,7 @@ const ApplyCLIBundleModal: React.FC<ApplyCLIBundleModalProps> = ({
 				<Alert
 					type="info"
 					showIcon
-					message="Each bundle must contain source.json, destination.json, and streams.json. Add olake-ui.json when connector metadata must be preserved. You can add folders repeatedly to queue batch imports."
+					message="Import a CLI-compatible declarative bundle into OLake UI. This compatibility layer can create or update resources from bundles produced by the CLI or exported from the UI. Each bundle must contain source.json, destination.json, and streams.json. Add olake-ui.json when connector metadata must be preserved."
 				/>
 
 				<div className="rounded-md border border-dashed border-gray-300 p-4">

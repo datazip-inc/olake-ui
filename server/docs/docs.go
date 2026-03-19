@@ -770,11 +770,11 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/jobs/apply-cli-bundle": {
             "post": {
-                "description": "Preview or apply a declarative OLake CLI bundle to a running OLake UI project.",
+                "description": "Import a CLI-compatible declarative bundle into OLake UI. This compatibility layer creates or updates OLake UI resources from bundles produced by the CLI or exported from the UI.",
                 "tags": [
                     "Jobs"
                 ],
-                "summary": "Apply a declarative CLI bundle",
+                "summary": "Import a declarative bundle",
                 "parameters": [
                     {
                         "type": "string",
@@ -797,7 +797,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "file",
-                        "description": "CLI bundle (.zip or .tar.gz)",
+                        "description": "CLI-compatible declarative bundle (.zip or .tar.gz)",
                         "name": "bundle",
                         "in": "formData",
                         "required": true
@@ -1238,11 +1238,11 @@ const docTemplate = `{
         },
         "/api/v1/project/{projectid}/jobs/{id}/export-cli-bundle": {
             "get": {
-                "description": "Export an existing OLake UI job back into a declarative CLI bundle.",
+                "description": "Export an OLake UI job as a CLI-compatible declarative bundle for backup, migration, or Git-based workflows.",
                 "tags": [
                     "Jobs"
                 ],
-                "summary": "Export a declarative CLI bundle",
+                "summary": "Export a declarative bundle",
                 "parameters": [
                     {
                         "type": "string",
@@ -1273,7 +1273,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "CLI bundle archive",
+                        "description": "CLI-compatible declarative bundle archive",
                         "schema": {
                             "type": "file"
                         }

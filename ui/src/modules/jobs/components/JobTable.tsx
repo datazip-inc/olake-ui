@@ -106,7 +106,7 @@ const JobTable: React.FC<JobTableProps> = ({
 								{
 									key: "export",
 									icon: <DownloadSimpleIcon className="size-4" />,
-									label: "Export CLI Bundle",
+									label: "Export Bundle",
 									onClick: () => onExport(record.id.toString()),
 								},
 								{

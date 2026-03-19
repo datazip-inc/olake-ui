@@ -96,7 +96,7 @@ const Jobs: React.FC = () => {
 			message.success("Bundle download started")
 		} catch (error) {
 			console.error("Error exporting job bundle:", error)
-			message.error("Failed to export CLI bundle")
+			message.error("Failed to export bundle")
 		}
 	}
 
@@ -205,7 +205,7 @@ const Jobs: React.FC = () => {
 						className="flex items-center justify-center gap-1"
 					>
 						<UploadSimpleIcon className="size-4" />
-						Apply CLI Bundle
+						Import Bundle
 					</Button>
 					<button
 						className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"

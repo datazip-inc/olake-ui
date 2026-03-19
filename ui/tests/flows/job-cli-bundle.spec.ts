@@ -134,7 +134,7 @@ test.describe("CLI bundle jobs UI", () => {
 		await jobsPage.goto()
 		await jobsPage.expectJobsPageVisible()
 
-		await page.getByRole("button", { name: "Apply CLI Bundle" }).click()
+		await page.getByRole("button", { name: "Import Bundle" }).click()
 		await expect(page.getByText("Queued Imports (0)")).toBeVisible()
 
 		const folderInput = page.getByTestId("cli-bundle-folder-input")
@@ -153,7 +153,7 @@ test.describe("CLI bundle jobs UI", () => {
 		).toBeVisible()
 		await expect(page.getByText("Queued Imports (2)")).toBeVisible()
 
-		await page.getByRole("button", { name: "Preview Bundles" }).click()
+		await page.getByRole("button", { name: "Preview Import" }).click()
 		await expect.poll(() => previewCalls).toBe(2)
 		await expect(
 			page.getByTestId("cli-bundle-preview-orders-zeus-cdc"),
@@ -162,9 +162,9 @@ test.describe("CLI bundle jobs UI", () => {
 			page.getByTestId("cli-bundle-preview-store-bodega-cdc"),
 		).toBeVisible()
 
-		await page.getByRole("button", { name: "Apply Bundles" }).click()
+		await page.getByRole("button", { name: "Import Bundles" }).click()
 		await expect.poll(() => applyCalls).toBe(2)
-		await expect(page.getByText("Applied 2 bundles")).toBeVisible()
+		await expect(page.getByText("Imported 2 bundles")).toBeVisible()
 	})
 
 	test("flags incomplete folder imports before any API call", async ({
@@ -188,7 +188,7 @@ test.describe("CLI bundle jobs UI", () => {
 		await jobsPage.goto()
 		await jobsPage.expectJobsPageVisible()
 
-		await page.getByRole("button", { name: "Apply CLI Bundle" }).click()
+		await page.getByRole("button", { name: "Import Bundle" }).click()
 
 		await page
 			.getByTestId("cli-bundle-folder-input")
@@ -246,7 +246,7 @@ test.describe("CLI bundle jobs UI", () => {
 
 		await page.getByTestId("job-orders-zeus-cdc").click()
 		const downloadPromise = page.waitForEvent("download")
-		await page.getByText("Export CLI Bundle").click()
+		await page.getByText("Export Bundle").click()
 		const download = await downloadPromise
 
 		expect(download.suggestedFilename()).toBe("job-7-cli-bundle.zip")

@@ -198,13 +198,13 @@ func (h *Handler) UpdateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
 }
 
-// @Summary Apply a declarative CLI bundle
+// @Summary Import a declarative bundle
 // @Tags Jobs
-// @Description Preview or apply a declarative OLake CLI bundle to a running OLake UI project.
+// @Description Import a CLI-compatible declarative bundle into OLake UI. This compatibility layer creates or updates OLake UI resources from bundles produced by the CLI or exported from the UI.
 // @Param   projectid     path      string  true   "project id (default is 123)"
 // @Param   dry_run       query     bool    false  "preview only"
 // @Param   prune         query     bool    false  "reserved for future prune support"
-// @Param   bundle        formData  file    true   "CLI bundle (.zip or .tar.gz)"
+// @Param   bundle        formData  file    true   "CLI-compatible declarative bundle (.zip or .tar.gz)"
 // @Success 200 {object} dto.JSONResponse{data=dto.ApplyCLIBundleResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
@@ -256,14 +256,14 @@ func (h *Handler) ApplyCLIBundle() {
 	utils.SuccessResponse(&h.Controller, message, response)
 }
 
-// @Summary Export a declarative CLI bundle
+// @Summary Export a declarative bundle
 // @Tags Jobs
-// @Description Export an existing OLake UI job back into a declarative CLI bundle.
+// @Description Export an OLake UI job as a CLI-compatible declarative bundle for backup, migration, or Git-based workflows.
 // @Param   projectid      path    string  true   "project id (default is 123)"
 // @Param   id             path    int     true   "job id"
 // @Param   include_state  query   bool    false  "include state.json in the export"
 // @Param   format         query   string  false  "zip (default) or tar.gz"
-// @Success 200 {file} binary "CLI bundle archive"
+// @Success 200 {file} binary "CLI-compatible declarative bundle archive"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
 // @Failure 500 {object} dto.Error500Response "failed to export bundle"
