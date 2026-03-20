@@ -12,9 +12,7 @@ export class SourcesPage extends BasePage {
 
 	constructor(page: Page) {
 		super(page)
-		this.createSourceButton = page.getByRole("button", {
-			name: "Create Source",
-		})
+		this.createSourceButton = page.getByTestId("create-source-button")
 		this.sourcesTitle = page.locator("h1", { hasText: "Sources" })
 		this.sourcesLink = page.getByRole("link", { name: "Sources" })
 		this.activeTab = page.getByRole("tab", { name: "Active" })

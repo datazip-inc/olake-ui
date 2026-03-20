@@ -101,6 +101,7 @@ const Sources: React.FC = () => {
 					<h1 className="text-2xl font-bold">Sources</h1>
 				</div>
 				<button
+					data-testid="create-source-button"
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 					onClick={handleCreateSource}
 				>
