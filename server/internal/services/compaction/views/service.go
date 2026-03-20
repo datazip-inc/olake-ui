@@ -3,6 +3,7 @@ package aggregator
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
@@ -73,8 +74,14 @@ func (s *Service) GetCatalogsWithDatabases(ctx context.Context) (*models.Catalog
 			catalogData.Databases = append(catalogData.Databases, dbName)
 		}
 
+		sort.Strings(catalogData.Databases)
+
 		response.Catalogs = append(response.Catalogs, catalogData)
 	}
+
+	sort.Slice(response.Catalogs, func(i, j int) bool {
+		return response.Catalogs[i].Name < response.Catalogs[j].Name
+	})
 
 	return response, nil
 }
