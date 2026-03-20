@@ -1,5 +1,5 @@
 import { DotOutlineIcon } from "@phosphor-icons/react"
-import { Modal, Radio, Input, Button, message } from "antd"
+import { Modal, Radio, Input, Button, Tooltip, message } from "antd"
 import { useState, useEffect } from "react"
 
 import { validateAlphanumericUnderscore } from "@/common/utils"
@@ -157,7 +157,11 @@ const DestinationDatabaseModal = ({
 					<div className="rounded-md bg-blue-50 p-3">
 						<div className="text-sm">
 							All Tables are saved in one {labels.folderType} folder as{" "}
-							<span className="font-medium">{databaseName}</span>
+							<Tooltip title={databaseName}>
+								<span className="inline-block max-w-full truncate align-bottom font-medium">
+									{databaseName}
+								</span>
+							</Tooltip>
 						</div>
 					</div>
 				)}
@@ -176,13 +180,15 @@ const DestinationDatabaseModal = ({
 								{previewDatabases.map((db, index) => (
 									<div
 										key={index}
-										className="flex items-center text-sm"
+										className="flex min-w-0 items-center text-sm"
 									>
 										<DotOutlineIcon
 											size={24}
 											weight="fill"
 										/>
-										{db}
+										<Tooltip title={db}>
+											<span className="min-w-0 truncate">{db}</span>
+										</Tooltip>
 									</div>
 								))}
 							</div>

@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, ArrowRightIcon } from "@phosphor-icons/react"
-import { message } from "antd"
+import { Button, message } from "antd"
 import clsx from "clsx"
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link, useParams } from "react-router-dom"
@@ -456,30 +456,26 @@ const JobEdit: React.FC = () => {
 			{/* Footer */}
 			<div className="flex justify-between border-t border-gray-200 bg-white p-4">
 				<div>
-					<button
-						className="rounded-md border border-gray-400 px-4 py-1 font-light hover:bg-[#ebebeb]"
+					<Button
+						type="default"
 						onClick={handleBack}
 						disabled={isBackDisabled}
-						style={{
-							opacity: isBackDisabled ? 0.5 : 1,
-							cursor: isBackDisabled ? "not-allowed" : "pointer",
-						}}
 					>
 						Back
-					</button>
+					</Button>
 				</div>
 				<div className="mr-[4%] flex gap-2 transition-[margin] duration-500 ease-in-out">
 					{currentStep === JOB_CREATION_STEPS.CONFIG && jobId && (
-						<button
-							className="flex items-center justify-center gap-2 rounded-md border border-primary px-4 py-1 font-light text-primary hover:bg-primary-50"
+						<Button
+							type="default"
 							onClick={() => handleJobSubmit(null)}
 							disabled={isSubmitting || isDiscovering}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
-						</button>
+						</Button>
 					)}
-					<button
-						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
+					<Button
+						type="primary"
 						onClick={handleNext}
 						disabled={isSubmitting || isDiscovering}
 					>
@@ -489,9 +485,9 @@ const JobEdit: React.FC = () => {
 								: "Finish"
 							: "Next"}
 						{currentStep !== JOB_CREATION_STEPS.STREAMS && (
-							<ArrowRightIcon className="size-4 text-white" />
+							<ArrowRightIcon size={16} />
 						)}
-					</button>
+					</Button>
 				</div>
 			</div>
 			<ResetStreamsModal onConfirm={handleConfirmResetStreams} />

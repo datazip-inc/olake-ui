@@ -1,14 +1,9 @@
-import { InfoIcon, ArrowLeftIcon } from "@phosphor-icons/react"
 import {
-	Input,
-	Button,
-	Switch,
-	message,
-	Select,
-	Radio,
-	Tooltip,
-	Spin,
-} from "antd"
+	ArrowLeftIcon,
+	ArrowSquareOutIcon,
+	InfoIcon,
+} from "@phosphor-icons/react"
+import { Input, Button, message, Select, Radio, Tooltip, Spin } from "antd"
 import parser from "cron-parser"
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
@@ -26,7 +21,6 @@ import { DAYS, FREQUENCY_OPTIONS } from "../constants"
 import {
 	useJobDetails,
 	useClearDestinationStatus,
-	useActivateJob,
 	useUpdateJob,
 } from "../hooks"
 import { useJobConfigurationStore, useJobStore } from "../stores"
@@ -78,7 +72,6 @@ const JobSettings: React.FC = () => {
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
 		useClearDestinationStatus(jobId || "")
 	const selectedClearDestinationRunning = clearDestStatus?.running ?? false
-	const { mutateAsync: activateJobMutation } = useActivateJob()
 	const { mutateAsync: updateJobMutation } = useUpdateJob()
 
 	// Set selected job from route param (source of truth is the URL)
@@ -97,16 +90,6 @@ const JobSettings: React.FC = () => {
 	useEffect(() => {
 		if (isJobError) navigate("/jobs")
 	}, [isJobError])
-
-	const [pauseJob, setPauseJob] = useState(job ? !job.activate : true)
-	const [isPauseLoading, setIsPauseLoading] = useState(false)
-
-	// Sync local pauseJob state with job data when job changes
-	useEffect(() => {
-		if (job) {
-			setPauseJob(!job.activate)
-		}
-	}, [job])
 
 	const getParsedDate = (value: Date) => value.toUTCString()
 
@@ -158,28 +141,10 @@ const JobSettings: React.FC = () => {
 			updateNextRuns(job.frequency)
 		}
 		if (job) {
-			setPauseJob(!job.activate)
 			setJobName(job.name)
 			setAdvancedSettings(job.advanced_settings ?? null)
 		}
 	}, [job])
-
-	const handlePauseJob = async (jobId: string, checked: boolean) => {
-		// Optimistic update - immediately update UI
-		setPauseJob(checked)
-		setIsPauseLoading(true)
-
-		try {
-			await activateJobMutation({ jobId, activate: !checked })
-			// Cache auto-invalidated by useActivateJob onSuccess
-		} catch (error) {
-			console.error("Error toggling job status:", error)
-			// Revert optimistic update on error
-			setPauseJob(!checked)
-		} finally {
-			setIsPauseLoading(false)
-		}
-	}
 
 	// Unified handler for all cron expression updates
 	const updateCronExpression = (
@@ -481,26 +446,29 @@ const JobSettings: React.FC = () => {
 									</div>
 								</div>
 								<AdvancedSettingsCard />
-
-								<div className="mt-6 flex items-center justify-between rounded-xl border border-[#D9D9D9] px-6 py-4">
-									<span className="font-medium">Pause your job</span>
-									<Switch
-										checked={pauseJob}
-										onChange={newlyChecked => {
-											if (job?.id) {
-												handlePauseJob(job.id.toString(), newlyChecked)
-											}
-										}}
-										className={pauseJob ? "bg-blue-600" : ""}
-										loading={isPauseLoading}
-									/>
-								</div>
 							</div>
 							<div className="mb-6 rounded-xl border border-gray-200 bg-white px-6 pb-2">
 								<div className="border-gray-200 pt-4">
 									<div className="mb-2 flex items-center justify-between">
 										<div className="flex flex-col gap-2">
-											<div className="font-medium">Clear Destination</div>
+											<div className="flex items-center gap-1 font-medium">
+												<span>Clear Destination</span>
+												<Tooltip title="This action cannot be undone once started.">
+													<InfoIcon
+														size={14}
+														className="cursor-help text-text-tertiary"
+													/>
+												</Tooltip>
+												<a
+													href="https://olake.io/docs/getting-started/job-level-properties/#6-clear-destination"
+													target="_blank"
+													rel="noopener noreferrer"
+													aria-label="Open clear destination docs"
+													className="inline-flex text-text-tertiary hover:text-primary"
+												>
+													<ArrowSquareOutIcon size={14} />
+												</a>
+											</div>
 											<div className="text-sm text-text-tertiary">
 												This will erase all data that was synced by this job in
 												the destination.
@@ -508,7 +476,7 @@ const JobSettings: React.FC = () => {
 										</div>
 										<button
 											onClick={handleClearDestination}
-											className="rounded-md border px-4 py-1 font-light disabled:cursor-not-allowed disabled:opacity-50"
+											className="rounded-md border bg-danger px-4 py-1 font-light text-white hover:bg-danger-dark disabled:cursor-not-allowed disabled:opacity-50"
 											disabled={
 												selectedClearDestinationRunning || !job?.activate
 											}

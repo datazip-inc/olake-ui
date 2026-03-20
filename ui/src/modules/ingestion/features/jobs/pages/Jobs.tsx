@@ -7,7 +7,13 @@ import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 
 import { JobTable, JobEmptyState, DeleteJobModal } from "../components"
 import { JOB_STATUS } from "../constants"
-import { useJobs, useSyncJob, useActivateJob, useCancelJob } from "../hooks"
+import {
+	useJobs,
+	useJobsWithNotification,
+	useSyncJob,
+	useActivateJob,
+	useCancelJob,
+} from "../hooks"
 import { savedJobsService } from "../services"
 import { useJobStore } from "../stores"
 import { Job, JobStatus, SavedJobDraft } from "../types"
@@ -24,6 +30,8 @@ const Jobs: React.FC = () => {
 		error: jobsError,
 		refetch: refetchJobs,
 	} = useJobs()
+	const { refetch: refetchJobsWithNotification, isFetching: isRefreshingJobs } =
+		useJobsWithNotification()
 	const { mutateAsync: syncJob } = useSyncJob()
 	const { mutateAsync: activateJob } = useActivateJob()
 	const { mutateAsync: cancelJob } = useCancelJob()
@@ -31,6 +39,10 @@ const Jobs: React.FC = () => {
 	const handleCreateJob = () => {
 		trackEvent(AnalyticsEvent.CreateJobClicked)
 		navigate("/jobs/new")
+	}
+
+	const handleRefreshJobs = async () => {
+		await refetchJobsWithNotification()
 	}
 
 	const handleSyncJob = async (id: string) => {
@@ -43,7 +55,6 @@ const Jobs: React.FC = () => {
 				},
 			}) // navigate to job history so that user can see the tasks running
 		} catch (error) {
-			message.error(error as string)
 			console.error("Error syncing job:", error)
 		}
 	}
@@ -171,7 +182,7 @@ const Jobs: React.FC = () => {
 							/>
 						</div>
 					) : tab.key === JOB_STATUS.ACTIVE && showEmpty ? (
-						<JobEmptyState handleCreateJob={handleCreateJob} />
+						<JobEmptyState />
 					) : filteredJobs.length === 0 ? (
 						<Empty
 							image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -181,8 +192,9 @@ const Jobs: React.FC = () => {
 					) : (
 						<JobTable
 							jobs={filteredJobs}
-							loading={isLoadingJobs}
+							loading={isLoadingJobs || isRefreshingJobs}
 							jobType={activeTab}
+							onRefresh={handleRefreshJobs}
 							onSync={handleSyncJob}
 							onEdit={handleEditJob}
 							onPause={handlePauseJob}

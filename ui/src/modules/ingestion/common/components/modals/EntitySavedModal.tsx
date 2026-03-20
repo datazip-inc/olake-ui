@@ -4,7 +4,7 @@ import {
 	PathIcon,
 	LinktreeLogoIcon,
 } from "@phosphor-icons/react"
-import { Button, Modal } from "antd"
+import { Button, Modal, Tooltip } from "antd"
 import { useNavigate } from "react-router-dom"
 
 import { EntitySavedModalProps } from "@/modules/ingestion/common/types"
@@ -21,6 +21,9 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 	const isSource = type === "source"
 	const isDestination = type === "destination"
 	const isJob = type === "streams"
+	const displayEntityName =
+		entityName ||
+		(isSource ? "Source-Name" : isJob ? "Job-Name" : "Destination-Name")
 
 	return (
 		<Modal
@@ -48,7 +51,7 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 							: "Your job is created successfully"}
 				</div>
 				<div className="mb-4 flex w-full items-center justify-between gap-3 rounded-xl border border-[#D9D9D9] px-4 py-2">
-					<div className="flex items-center gap-1">
+					<div className="flex min-w-0 flex-1 items-center gap-1">
 						{isSource ? (
 							<LinktreeLogoIcon className="size-5" />
 						) : isJob ? (
@@ -56,14 +59,9 @@ const EntitySavedModal: React.FC<EntitySavedModalProps> = ({
 						) : (
 							<PathIcon className="size-5" />
 						)}
-						<span>
-							{entityName ||
-								(isSource
-									? "Source-Name"
-									: isJob
-										? "Job-Name"
-										: "Destination-Name")}
-						</span>
+						<Tooltip title={displayEntityName}>
+							<span className="block truncate">{displayEntityName}</span>
+						</Tooltip>
 					</div>
 					<div className="flex gap-1 rounded-xl bg-[#f6ffed] px-2 py-1">
 						<CheckIcon className="size-5 text-success" />

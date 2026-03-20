@@ -10,6 +10,14 @@ export const useJobs = () => {
 	})
 }
 
+export const useJobsWithNotification = () => {
+	return useQuery({
+		queryKey: jobsKeys.lists(),
+		queryFn: () => jobService.getJobs(true),
+		enabled: false,
+	})
+}
+
 export const useJobDetails = (
 	id: string,
 	options?: {

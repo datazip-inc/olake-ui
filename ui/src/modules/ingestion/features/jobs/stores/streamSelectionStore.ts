@@ -109,8 +109,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 		})),
 
 	setDiscovering: loading => set({ isDiscovering: loading }),
-	setDiscoverError: error =>
-		set({ discoverError: error, isDiscovering: false }),
+	setDiscoverError: error => set({ discoverError: error }),
 
 	toggleStream: (streamName, namespace, checked, ingestionMode) =>
 		set(state => {

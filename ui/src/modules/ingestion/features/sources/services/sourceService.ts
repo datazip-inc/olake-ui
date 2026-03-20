@@ -1,3 +1,5 @@
+import { AxiosError } from "axios"
+
 import { SpecResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
@@ -119,14 +121,27 @@ export const sourceService = {
 			return {
 				success: false,
 				message:
-					error instanceof Error ? error.message : "Unknown error occurred",
+					error instanceof AxiosError
+						? error.response?.data.message
+						: "Unknown error occurred",
 				data: {
 					connection_result: {
 						message:
-							error instanceof Error ? error.message : "Unknown error occurred",
+							error instanceof AxiosError
+								? error.response?.data.message
+								: "Unknown error occurred",
 						status: "FAILED",
 					},
-					logs: [],
+					logs: [
+						{
+							level: "error",
+							time: new Date().toISOString(),
+							message:
+								error instanceof AxiosError
+									? error.response?.data.message
+									: "Unknown error occurred",
+						},
+					],
 				},
 			}
 		}
@@ -180,6 +195,7 @@ export const sourceService = {
 		job_name: string,
 		job_id?: number,
 		max_discover_threads?: number | null,
+		signal?: AbortSignal,
 	) => {
 		try {
 			const response = await api.post<StreamsDataStructure>(
@@ -193,7 +209,7 @@ export const sourceService = {
 					config,
 					max_discover_threads,
 				},
-				{ timeout: 0 },
+				{ timeout: 0, signal },
 			)
 			return response.data
 		} catch (error) {
