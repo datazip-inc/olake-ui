@@ -173,7 +173,7 @@ func getDockerHubImageTags(ctx context.Context, imageName string) ([]string, err
 		return nil, fmt.Errorf("failed to create request: %s", err)
 	}
 	// Make the HTTP request
-	resp, err := http.DefaultClient.Do(req) // #nosec G704 -- URL is built from a compile-time constant (dockerHubTagsURLTemplate)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch tags from Docker Hub: %s", err)
 	}
