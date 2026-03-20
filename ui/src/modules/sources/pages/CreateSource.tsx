@@ -205,8 +205,15 @@ const CreateSource = forwardRef<CreateSourceHandle, CreateSourceProps>(
 						resetVersionState()
 					}
 				} catch (error) {
-					resetVersionState()
-					console.error("Error fetching versions:", error)
+					// Fallback: use initialVersion or "latest" so users can proceed
+					// in air-gapped environments where version fetch fails (#340)
+					const fallback = initialVersion || "v0.2.0"
+					setVersions([fallback])
+					setSelectedVersion(fallback)
+					if (onVersionChange) {
+						onVersionChange(fallback)
+					}
+					console.warn("Version fetch failed (air-gapped?), using fallback:", fallback)
 				} finally {
 					setLoadingVersions(false)
 				}

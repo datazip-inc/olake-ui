@@ -10,6 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -247,7 +248,8 @@ func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string
 
 	versions, _, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
-		return dto.VersionsResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
+		logger.Warnf("failed to get driver image tags (air-gapped?): %s — returning fallback", err)
+		return dto.VersionsResponse{Version: []string{constants.DefaultSpecVersion}}, nil
 	}
 
 	return dto.VersionsResponse{Version: versions}, nil
