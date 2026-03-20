@@ -10,6 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
 
@@ -271,7 +272,8 @@ func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
-		return dto.VersionsResponse{}, fmt.Errorf("failed to get Docker versions: %s", err)
+		logger.Warnf("failed to get Docker versions for %s (air-gapped?): %s — returning fallback", sourceType, err)
+		return dto.VersionsResponse{Version: []string{constants.DefaultSpecVersion}}, nil
 	}
 
 	return dto.VersionsResponse{Version: versions}, nil
