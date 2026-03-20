@@ -119,6 +119,19 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 		return fmt.Errorf("destination name '%s' is not unique", req.Name)
 	}
 
+	// Verify connection before persisting anything
+	if err := s.verifyDestinationConnection(ctx, req.Type, req.Version, req.Config); err != nil {
+		return fmt.Errorf("destination connection check failed: %s", err)
+	}
+
+	// If compaction is enabled and type is iceberg, create catalog first
+	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
+		c := catalog.NewService(s.compaction)
+		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, false); err != nil {
+			return fmt.Errorf("failed to create catalog in compaction for destination %s: %s", req.Name, err)
+		}
+	}
+
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -134,14 +147,6 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 		return fmt.Errorf("failed to create destination: %s", err)
 	}
 
-	// add the catalog to Fusion
-	c := catalog.NewService(s.compaction)
-	if strings.EqualFold(req.Type, "iceberg") {
-		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, true); err != nil {
-			logger.Errorf("Failed to sync catalog to Amoro for destination %s: %v", req.Name, err)
-		}
-	}
-
 	telemetry.TrackDestinationCreation(ctx, destination)
 	return nil
 }
@@ -150,6 +155,19 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to get destination: %s", err)
+	}
+
+	// Verify connection before persisting anything
+	if err := s.verifyDestinationConnection(ctx, req.Type, req.Version, req.Config); err != nil {
+		return fmt.Errorf("destination connection check failed: %s", err)
+	}
+
+	// If compaction is enabled and type is iceberg, update catalog first
+	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
+		c := catalog.NewService(s.compaction)
+		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, true); err != nil {
+			return fmt.Errorf("failed to update catalog in compaction for destination %s: %s", req.Name, err)
+		}
 	}
 
 	existingDest.Name = req.Name
@@ -171,14 +189,6 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 
 	if err := s.db.UpdateDestination(existingDest); err != nil {
 		return fmt.Errorf("failed to update destination: %s", err)
-	}
-
-	// just in case of edits in olake_destination, the catalog in fusion will be udpated automatically
-	c := catalog.NewService(s.compaction)
-	if strings.ToLower(req.Type) == "iceberg" {
-		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, true); err != nil {
-			logger.Errorf("Failed to sync catalog to Amoro for destination %s: %v", req.Name, err)
-		}
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
@@ -212,8 +222,37 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 		return nil, fmt.Errorf("failed to delete destination: %s", err)
 	}
 
+	// delete the catalog from Fusion (only if compaction is enabled)
+	if s.compaction != nil && strings.EqualFold(dest.DestType, "iceberg") {
+		c := catalog.NewService(s.compaction)
+		if _, err := c.DeleteCatalog(ctx, dest.Name); err != nil {
+			logger.Errorf("Failed to delete catalog from Amoro for destination %s: %v", dest.Name, err)
+		}
+	}
+
 	telemetry.TrackDestinationsStatus(ctx)
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
+}
+
+// verifyDestinationConnection runs the Temporal credential check without reading logs.
+// It is used internally before persisting a destination to fail-fast on bad configs.
+func (s Service) verifyDestinationConnection(ctx context.Context, destType, version, config string) error {
+	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
+	if err != nil {
+		return fmt.Errorf("failed to get driver image tags: %s", err)
+	}
+
+	encryptedConfig, err := utils.Encrypt(config)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt config: %s", err)
+	}
+
+	workflowID := fmt.Sprintf("test-connection-%s-%d", destType, time.Now().Unix())
+	_, err = s.temporal.VerifyDriverCredentials(ctx, workflowID, "destination", driver, version, encryptedConfig)
+	if err != nil {
+		return fmt.Errorf("connection test failed: %s", err)
+	}
+	return nil
 }
 
 func (s Service) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {

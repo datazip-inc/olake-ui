@@ -8,6 +8,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
+	olake "github.com/datazip-inc/olake/destination/iceberg"
 )
 
 type Service struct {
@@ -44,6 +45,15 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 	return &result, nil
 }
 
+func (s *Service) GetCatalogAsOLakeConfig(ctx context.Context, catalogName string) (*olake.Config, error) {
+	catalog, err := s.GetCatalog(ctx, catalogName)
+	if err != nil {
+		return nil, err
+	}
+
+	return MapCompactionCatalogToOLakeConfig(catalog)
+}
+
 // creates a new catalog
 func (s *Service) CreateCatalog(ctx context.Context, req *models.CatalogRequest) (*models.CatalogResponse, error) {
 	if err := validateCatalog(req); err != nil {
@@ -64,6 +74,15 @@ func (s *Service) CreateCatalog(ctx context.Context, req *models.CatalogRequest)
 	}, nil
 }
 
+func (s *Service) CreateCatalogFromOLakeConfig(ctx context.Context, configJSON string) (*models.CatalogResponse, error) {
+	catalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map OLake config to catalog: %w", err)
+	}
+
+	return s.CreateCatalog(ctx, catalogReq)
+}
+
 // updates an existing catalog
 func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *models.CatalogRequest) (*models.CatalogResponse, error) {
 	if err := validateCatalog(req); err != nil {
@@ -80,6 +99,15 @@ func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *mo
 		Success: true,
 		Message: fmt.Sprintf("Successfully updated catalog %s", catalogName),
 	}, nil
+}
+
+func (s *Service) UpdateCatalogFromOLakeConfig(ctx context.Context, configJSON string) (*models.CatalogResponse, error) {
+	catalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
+	if err != nil {
+		return nil, fmt.Errorf("failed to map OLake config to catalog: %w", err)
+	}
+
+	return s.UpdateCatalog(ctx, catalogReq.Name, catalogReq)
 }
 
 // DeleteCatalog deletes a catalog from Amoro

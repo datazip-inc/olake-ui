@@ -10,10 +10,13 @@ import (
 )
 
 func (s *Service) SyncCatalogToFusion(ctx context.Context, destinationName, _, configJSON string, isUpdate bool) error {
-	amoroCatalogReq, err := MapOLakeConfigToCompactionCatalog(destinationName, configJSON)
+	amoroCatalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
 	if err != nil {
 		return fmt.Errorf("failed to map OLake config to Amoro catalog: %w", err)
 	}
+
+	// using destination name from etl as catalog name in name compaction
+	amoroCatalogReq.Name = destinationName
 
 	logger.Infof("Syncing catalog to Amoro: name=%s, type=%s, isUpdate=%v", amoroCatalogReq.Name, amoroCatalogReq.Type, isUpdate)
 
@@ -34,18 +37,25 @@ func (s *Service) SyncCatalogToFusion(ctx context.Context, destinationName, _, c
 	return nil
 }
 
-func (s *Service) createCatalogInAmoro(ctx context.Context, req *models.CatalogRequest) error {
-	catalogExists, err := s.checkCatalogExists(ctx, req.Name)
+func (s *Service) UpsertCatalogInFusion(ctx context.Context, destinationName, configJSON string) error {
+	amoroCatalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
 	if err != nil {
-		logger.Warnf("Failed to check if catalog exists in Amoro: %v", err)
+		return fmt.Errorf("failed to map OLake config to Amoro catalog: %w", err)
+	}
+	amoroCatalogReq.Name = destinationName
+
+	exists, err := s.checkCatalogExists(ctx, destinationName)
+	if err != nil {
+		logger.Warnf("Failed to check catalog existence for %s: %v", destinationName, err)
 	}
 
-	// in case the user had earlier created a catalog of the same name in fusion, and tries to import
-	// a destination config from OLake of the same name to fusion
-	if catalogExists {
-		return fmt.Errorf("catalog with the same name already exists")
+	if exists {
+		return s.updateCatalogInAmoro(ctx, amoroCatalogReq)
 	}
+	return s.createCatalogInAmoro(ctx, amoroCatalogReq)
+}
 
+func (s *Service) createCatalogInAmoro(ctx context.Context, req *models.CatalogRequest) error {
 	resp, err := s.CreateCatalog(ctx, req)
 	if err != nil {
 		return err

@@ -115,30 +115,33 @@ func Init(h *handlers.Handler) {
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
 	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
 
-	compactionHandler := h.Compaction
+	// Register compaction routes only if compaction is enabled
+	if h.Compaction != nil {
+		compactionHandler := h.Compaction
 
-	// catalog
-	web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
-	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "get:GetCatalog")
-	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "put:UpdateCatalog")
-	web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "delete:DeleteCatalog")
-	web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
+		// catalog
+		web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
+		web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "get:GetCatalog")
+		web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "put:UpdateCatalog")
+		web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "delete:DeleteCatalog")
+		web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
 
-	// table
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/metrics", compactionHandler, "get:GetTableMetrics")
+		// table
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/metrics", compactionHandler, "get:GetTableMetrics")
 
-	// cron
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "put:SetCompactionCronConfig")
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "get:GetCompactionCronConfig")
+		// cron
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "put:SetCompactionCronConfig")
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "get:GetCompactionCronConfig")
 
-	// runs
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs", compactionHandler, "get:GetCompactionRuns")
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs/:processid/cancel", compactionHandler, "post:CancelCompactionProcess")
+		// runs
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs", compactionHandler, "get:GetCompactionRuns")
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs/:processid/cancel", compactionHandler, "post:CancelCompactionProcess")
 
-	// Compaction table properties routes
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")
-	web.Router("/api/v1/fusion/tables/:catalog/:database/:table/disable-optimizing", compactionHandler, "post:DisableSelfOptimizing")
+		// Compaction table properties routes
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/disable-optimizing", compactionHandler, "post:DisableSelfOptimizing")
 
-	// table listing route
-	web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
+		// table listing route
+		web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
+	}
 }

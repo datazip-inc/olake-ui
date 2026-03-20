@@ -27,6 +27,7 @@ type CatalogWithDatabases struct {
 	Name      string   `json:"name"`
 	Type      string   `json:"type"`
 	Databases []string `json:"databases"`
+	CreatedAt string   `json:"created_at,omitempty"`
 }
 
 // TablesResponse represents tables with full details for a specific catalog/database
@@ -37,13 +38,14 @@ type TablesResponse struct {
 }
 
 type TableInfo struct {
-	Name      string            `json:"name"`
-	TotalSize string            `json:"totalSize,omitempty"`
-	ByOLake   bool              `json:"byOLake"`
-	Major     *OptimizationInfo `json:"major"`
-	Minor     *OptimizationInfo `json:"minor"`
-	Full      *OptimizationInfo `json:"full"`
-	Enabled   bool              `json:"enabled"`
+	Name        string            `json:"name"`
+	TotalSize   string            `json:"totalSize,omitempty"`
+	ByOLake     bool              `json:"byOLake"`
+	Major       *OptimizationInfo `json:"major"`
+	Minor       *OptimizationInfo `json:"minor"`
+	Full        *OptimizationInfo `json:"full"`
+	Enabled     bool              `json:"enabled"`
+	HealthScore int               `json:"healthScore,omitempty"`
 }
 
 type OptimizationInfo struct {

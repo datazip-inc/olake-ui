@@ -53,6 +53,12 @@ func (s *Service) GetCatalogsWithDatabases(ctx context.Context) (*models.Catalog
 			Databases: make([]string, 0),
 		}
 
+		if properties, ok := catalogMap["properties"].(map[string]interface{}); ok {
+			if createdAt, ok := properties["created_at"].(string); ok {
+				catalogData.CreatedAt = createdAt
+			}
+		}
+
 		databasesResult, err := s.table.GetDatabases(ctx, catalogName, "")
 		if err != nil {
 			fmt.Printf("failed to get databases for catalog %s: %v\n", catalogName, err)
@@ -88,12 +94,12 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 	tablesList, ok := tablesResult.([]interface{})
 	if !ok {
-		return response, nil
+		return nil, fmt.Errorf("unexpected tables result format for %s.%s: got %T", catalog, databaseName, tablesResult)
 	}
 
 	// Fetch catalog metadata once to get table properties
 	var catalogMeta *models.CatalogRequest
-	catalogMeta, err = s.getCatalogMetadata(ctx, catalog)
+	catalogMeta, err = s.catalog.GetCatalog(ctx, catalog)
 	if err != nil {
 		fmt.Printf("Failed to get catalog metadata for %s: %v\n", catalog, err)
 	}
@@ -105,50 +111,68 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 			continue
 		}
 
-		tableName, _ := tableMap["name"].(string)
+		fmt.Printf("✅ Type: %T\nValue: %#v\n", tableMap, tableMap)
 
-		if tableName != "" {
-			tableInfo := models.TableInfo{
-				Name:    tableName,
-				ByOLake: false,
-				Enabled: false,
-			}
+		tableName := tableMap["name"].(string)
+		tableInfo := models.TableInfo{
+			Name:    tableName,
+			ByOLake: false,
+			Enabled: false,
+		}
 
-			// Check if table is managed by OLake
-			isManagedByOLake, err := db.CheckTableManagedByOLake(catalog, databaseName, tableName)
-			if err != nil {
-				fmt.Printf("Failed to check if table %s.%s.%s is managed by OLake: %v\n", catalog, databaseName, tableName, err)
-			} else {
-				tableInfo.ByOLake = isManagedByOLake
-			}
+		// check if table is managed by OLake
+		isManagedByOLake, err := db.CheckTableManagedByOLake(catalog, databaseName, tableName)
+		if err != nil {
+			fmt.Printf("failed to check if table %s.%s.%s is managed by OLake: %v\n", catalog, databaseName, tableName, err)
+		} else {
+			tableInfo.ByOLake = isManagedByOLake
+		}
 
-			// Get enabled/disabled status from catalog table properties
-			if catalogMeta != nil {
-				tableInfo.Enabled = s.getTableEnabledStatus(catalogMeta, databaseName, tableName)
-			}
+		// get enabled/disabled status from catalog table properties
+		if catalogMeta != nil {
+			tableInfo.Enabled = s.getTableEnabledStatus(catalogMeta, databaseName, tableName)
+		}
 
-			// Fetch table details to get totalSize
-			tableDetails, err := s.table.GetTableDetails(ctx, catalog, databaseName, tableName)
-			if err != nil {
-				fmt.Printf("Failed to get details for table %s.%s.%s: %v\n", catalog, databaseName, tableName, err)
-			} else {
-				// Extract totalSize from baseMetrics
-				if detailsMap, ok := tableDetails.(map[string]interface{}); ok {
-					if baseMetrics, ok := detailsMap["baseMetrics"].(map[string]interface{}); ok {
-						if totalSize, ok := baseMetrics["totalSize"].(string); ok {
-							tableInfo.TotalSize = totalSize
-						}
+		// Fetch table details to get totalSize and healthScore
+		tableDetails, err := s.table.GetTableDetails(ctx, catalog, databaseName, tableName)
+		if err != nil {
+			fmt.Printf("Failed to get details for table %s.%s.%s: %v\n", catalog, databaseName, tableName, err)
+		} else {
+			// Extract totalSize from baseMetrics and healthScore from tableSummary
+			if detailsMap, ok := tableDetails.(map[string]interface{}); ok {
+				if baseMetrics, ok := detailsMap["baseMetrics"].(map[string]interface{}); ok {
+					if totalSize, ok := baseMetrics["totalSize"].(string); ok {
+						tableInfo.TotalSize = totalSize
+					}
+				}
+				if tableSummary, ok := detailsMap["tableSummary"].(map[string]interface{}); ok {
+					if healthScore, ok := tableSummary["healthScore"].(float64); ok {
+						tableInfo.HealthScore = int(healthScore)
 					}
 				}
 			}
-
-			// Fetch latest optimizing processes for each type using API parameters
-			tableInfo.Minor = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MINOR")
-			tableInfo.Major = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MAJOR")
-			tableInfo.Full = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "FULL")
-
-			response.Tables = append(response.Tables, tableInfo)
 		}
+
+		// Fetch latest optimizing processes for each type using API parameters
+		res, err := s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MINOR")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest minor process info: %s", err)
+		}
+		tableInfo.Minor = res
+
+		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MAJOR")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest major process info: %s", err)
+		}
+		tableInfo.Major = res
+
+		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "FULL")
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest full process info: %s", err)
+		}
+		tableInfo.Full = res
+
+		response.Tables = append(response.Tables, tableInfo)
 	}
 
 	return response, nil

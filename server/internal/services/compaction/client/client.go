@@ -10,12 +10,15 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
+// is this the right place to have this struct?
 type Compaction struct {
 	baseURL   string
 	apiKey    string
@@ -23,14 +26,19 @@ type Compaction struct {
 	client    *http.Client
 }
 
-func NewClient() *Compaction {
-	baseURL := os.Getenv("")
-	if baseURL == "" {
-		baseURL = ""
+func NewClient() (*Compaction, error) {
+	baseURL, err := web.AppConfig.String(constants.ConfCompactionBaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get compaction base URL: %s", err)
 	}
 
-	apiKey := os.Getenv("")
-	apiSecret := os.Getenv("")
+	username, _ := web.AppConfig.String(constants.ConfCompactionUsername)
+	password, _ := web.AppConfig.String(constants.ConfCompactionPassword)
+
+	apiKey, apiSecret, err := generateToken(baseURL, username, password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token: %s", err)
+	}
 
 	return &Compaction{
 		baseURL:   baseURL,
@@ -39,7 +47,7 @@ func NewClient() *Compaction {
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-	}
+	}, nil
 }
 
 // for compaction authentication: calculating md5: apiKey + encryptString + secret
@@ -53,6 +61,7 @@ func (c *Compaction) calculateSignature(params url.Values) string {
 }
 
 func (c *Compaction) generateEncryptString(params url.Values) string {
+	// Filter out apiKey and signature
 	filtered := make(url.Values)
 	for k, v := range params {
 		if k != "apiKey" && k != "signature" {
@@ -60,16 +69,14 @@ func (c *Compaction) generateEncryptString(params url.Values) string {
 		}
 	}
 
-	if len(filtered) == 0 {
-		return time.Now().UTC().Format("20060102")
-	}
-
+	// Sort keys
 	keys := make([]string, 0, len(filtered))
 	for k := range filtered {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
+	// Build param string
 	var parts []string
 	for _, k := range keys {
 		values := filtered[k]
@@ -82,7 +89,7 @@ func (c *Compaction) generateEncryptString(params url.Values) string {
 		}
 	}
 
-	// If all values were empty, return date
+	// If no valid parameters, return current date in yyyyMMdd format
 	if len(parts) == 0 {
 		return time.Now().UTC().Format("20060102")
 	}
@@ -137,4 +144,49 @@ func (c *Compaction) DoRequest(ctx context.Context, method, path string, queryPa
 	}
 
 	return respBody, nil
+}
+
+func generateToken(baseURL, username, password string) (string, string, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	loginPayload := map[string]string{"user": username, "password": password}
+	loginBody, _ := json.Marshal(loginPayload)
+
+	loginReq, _ := http.NewRequest("POST", baseURL+"/api/ams/v1/login", bytes.NewReader(loginBody))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginReq.Header.Set("X-Request-Source", "Web")
+
+	loginResp, err := client.Do(loginReq)
+	if err != nil {
+		return "", "", fmt.Errorf("login failed: %w", err)
+	}
+	defer loginResp.Body.Close()
+
+	cookies := loginResp.Cookies()
+
+	tokenReq, _ := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", nil)
+	tokenReq.Header.Set("Content-Type", "application/json")
+	tokenReq.Header.Set("X-Request-Source", "Web")
+	for _, cookie := range cookies {
+		tokenReq.AddCookie(cookie)
+	}
+
+	tokenResp, err := client.Do(tokenReq)
+	if err != nil {
+		return "", "", fmt.Errorf("token creation failed: %w", err)
+	}
+	defer tokenResp.Body.Close()
+
+	var result struct {
+		Result struct {
+			APIKey string `json:"apikey"`
+			Secret string `json:"secret"`
+		} `json:"result"`
+	}
+
+	if err := json.NewDecoder(tokenResp.Body).Decode(&result); err != nil {
+		return "", "", fmt.Errorf("failed to parse token response: %w", err)
+	}
+
+	return result.Result.APIKey, result.Result.Secret, nil
 }

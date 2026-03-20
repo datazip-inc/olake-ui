@@ -24,4 +24,5 @@ func NewHandler(s *compaction.Service) *Handler {
 
 func (h *Handler) Prepare() {
 	h.compaction = compactionService
+	h.db = compactionService.GetDB()
 }

@@ -50,6 +50,11 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
+	ConfEnableCompaction      = "ENABLE_COMPACTION"
+	ConfCompactionBaseURL     = "COMPACTION_BASE_URL"
+	ConfCompactionUsername    = "COMPACTION_USERNAME"
+	ConfCompactionPassword    = "COMPACTION_PASSWORD"
+
 	// database keys
 	ConfPostgresDB            = "postgresdb"
 	ConfOLakePostgresUser     = "OLAKE_POSTGRES_USER"
@@ -118,6 +123,7 @@ func Init() {
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
+	viper.SetDefault(ConfEnableCompaction, false)
 
 	checkForRequiredVariables(RequiredConfigVariable)
 

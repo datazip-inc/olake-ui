@@ -9,14 +9,10 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
-func (s *Service) getCatalogMetadata(ctx context.Context, catalog string) (*models.CatalogRequest, error) {
-	return s.catalog.GetCatalog(ctx, catalog)
-}
-
 // getTableEnabledStatus extracts enabled/disabled status from catalog table properties
 // Format: <db>:<tbl> → <enabled>,<minor>,<major>,<full>
 func (s *Service) getTableEnabledStatus(catalogMeta *models.CatalogRequest, database, table string) bool {
-	if catalogMeta == nil || catalogMeta.TableProperties == nil {
+	if catalogMeta.TableProperties == nil {
 		return false
 	}
 
@@ -29,28 +25,33 @@ func (s *Service) getTableEnabledStatus(catalogMeta *models.CatalogRequest, data
 	// Parse format: <enabled>,<minor>,<major>,<full>
 	parts := strings.Split(configStr, ",")
 	if len(parts) < 1 {
-		return true
+		return false
 	}
 
 	return parts[0] == "true"
 }
 
 // fetchLatestProcessInfo fetches the latest optimizing process info for a specific type
-func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) *models.OptimizationInfo {
+func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) (*models.OptimizationInfo, error) {
 	result, err := s.table.GetLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("")
 	}
 
 	processList, ok := result["list"].([]interface{})
-	if !ok || len(processList) == 0 {
-		return nil
+	if !ok {
+		return nil, fmt.Errorf("failed to fetch compaction process info")
+	}
+
+	// Return nil if no processes exist
+	if len(processList) == 0 {
+		return nil, nil
 	}
 
 	// Get the first (latest) process
 	process, ok := processList[0].(map[string]interface{})
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("invalid process format")
 	}
 
 	finishTime, _ := process["finishTime"].(float64)
@@ -89,5 +90,5 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	return &models.OptimizationInfo{
 		LastRun: lastRun,
 		Status:  status,
-	}
+	}, nil
 }

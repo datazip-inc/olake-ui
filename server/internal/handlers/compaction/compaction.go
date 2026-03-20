@@ -2,6 +2,7 @@ package compaction
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -22,11 +23,8 @@ func (h *Handler) GetCatalogsWithDatabases() {
 }
 
 func (h *Handler) GetTablesWithDetails() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-
-	if catalog == "" || database == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog and database parameters are required", nil)
+	catalog, database, ok := h.requiredCatalogAndDatabase()
+	if !ok {
 		return
 	}
 
@@ -41,63 +39,48 @@ func (h *Handler) GetTablesWithDetails() {
 	utils.SuccessResponse(&h.Controller, "Successfully fetched tables with details", tables)
 }
 
-// EnableSelfOptimizing enables self-optimizing for a specific table
+// EnableSelfOptimizing enables self-optimizing for a table.
 func (h *Handler) EnableSelfOptimizing() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog, database, and table parameters are required", nil)
-		return
-	}
-
-	logger.Debugf("Enable self-optimizing initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
-
-	result, err := h.compaction.Table.EnableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
-
-	// update catalog table property with format: <db>:<tbl> → <enabled>,<minor>,<major>,<full>
-	if err == nil && result.Success {
-		// if earlier enabled and then disabled, update the chron config again
-		configValue := "true,-1,-1,-1"
-		if _, catalogErr := h.compaction.Catalog.SetCatalogTableProperty(h.Ctx.Request.Context(), catalog, database, table, "", configValue); catalogErr != nil {
-			logger.Warnf("Failed to update catalog table property for %s.%s.%s: %v", catalog, database, table, catalogErr)
-		}
-	}
-
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to enable self-optimizing", err)
-		return
-	}
-
-	utils.SuccessResponse(&h.Controller, result.Message, result)
+	h.toggleSelfOptimizing(true)
 }
 
+// DisableSelfOptimizing disables self-optimizing for a table.
 func (h *Handler) DisableSelfOptimizing() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
+	h.toggleSelfOptimizing(false)
+}
 
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog, database, and table parameters are required", nil)
+func (h *Handler) toggleSelfOptimizing(enable bool) {
+	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
+	if !ok {
 		return
 	}
 
-	logger.Debugf("Disable self-optimizing initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
+	action := "disable"
+	service := h.compaction.Table.DisableSelfOptimizing
+	configValue := selfOptimizingDisabledConfig
+	errorMessage := "failed to disable self-optimizing"
 
-	result, err := h.compaction.Table.DisableSelfOptimizing(h.Ctx.Request.Context(), catalog, database, table)
+	if enable {
+		action = "enable"
+		service = h.compaction.Table.EnableSelfOptimizing
+		configValue = selfOptimizingEnabledConfig
+		errorMessage = "failed to enable self-optimizing"
+	}
 
-	// update catalog table property with format: <db>:<tbl> → <enabled>,<minor>,<major>,<full>
-	if err == nil && result.Success {
-		configValue := "false,-1,-1,-1"
-		if _, catalogErr := h.compaction.Catalog.SetCatalogTableProperty(h.Ctx.Request.Context(), catalog, database, table, "", configValue); catalogErr != nil {
+	logger.Debugf("%s self-optimizing initiated catalog[%s] database[%s] table[%s]", strings.Title(action), catalog, database, table)
+
+	ctx := h.Ctx.Request.Context()
+	result, err := service(ctx, catalog, database, table)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, internalServerErrorStatusCode, errorMessage, err)
+		return
+	}
+
+	if result.Success {
+		// Keep catalog table property aligned with the current self-optimizing state.
+		if _, catalogErr := h.compaction.Catalog.SetCatalogTableProperty(ctx, catalog, database, table, "", configValue); catalogErr != nil {
 			logger.Warnf("Failed to update catalog table property for %s.%s.%s: %v", catalog, database, table, catalogErr)
 		}
-	}
-
-	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to disable self-optimizing", err)
-		return
 	}
 
 	utils.SuccessResponse(&h.Controller, result.Message, result)
@@ -105,12 +88,8 @@ func (h *Handler) DisableSelfOptimizing() {
 
 // fetches detailed file metrics for a specific table
 func (h *Handler) GetTableMetrics() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "catalog, database, and table parameters are required", nil)
+	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
+	if !ok {
 		return
 	}
 
@@ -127,24 +106,19 @@ func (h *Handler) GetTableMetrics() {
 
 // SetCompactionCronConfig stores compaction cron configuration in catalog properties
 func (h *Handler) SetCompactionCronConfig() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog, database, and table parameters are required", nil)
+	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
+	if !ok {
 		return
 	}
 
-	var config models.CompactionCronConfigRequest
-	if err := h.Ctx.BindJSON(&config); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request body", err)
+	var req models.CompactionCronConfigRequest
+	if !h.bindJSON(&req) {
 		return
 	}
 
 	logger.Debugf("Set compaction cron config initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
 
-	result, err := h.compaction.Optimization.SetCompactionCronConfig(h.Ctx.Request.Context(), catalog, database, table, config)
+	result, err := h.compaction.Optimization.SetCompactionCronConfig(h.Ctx.Request.Context(), catalog, database, table, req)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set compaction cron configuration", err)
 		return
@@ -155,12 +129,8 @@ func (h *Handler) SetCompactionCronConfig() {
 
 // GetCompactionCronConfig retrieves compaction cron configuration from catalog properties
 func (h *Handler) GetCompactionCronConfig() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog, database, and table parameters are required", nil)
+	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
+	if !ok {
 		return
 	}
 
@@ -177,18 +147,12 @@ func (h *Handler) GetCompactionCronConfig() {
 
 // fetches the list of compaction runs/processes for a particular table
 func (h *Handler) GetCompactionRuns() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-
-	if catalog == "" || database == "" || table == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog, database, and table parameters are required", nil)
+	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
+	if !ok {
 		return
 	}
 
-	// pagination
-	page, _ := h.GetInt("page", 1)
-	pageSize, _ := h.GetInt("pageSize", 1000)
+	page, pageSize := h.pagination(defaultCompactionRunsPage, defaultCompactionRunsPageSize)
 
 	logger.Debugf("Get compaction runs initiated catalog[%s] database[%s] table[%s] page[%d] pageSize[%d]", catalog, database, table, page, pageSize)
 
@@ -202,33 +166,47 @@ func (h *Handler) GetCompactionRuns() {
 }
 
 func (h *Handler) GetCatalog() {
-	catalogName := h.Ctx.Input.Param(":catalog")
-	if catalogName == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "catalog name is required", nil)
+	catalogName, ok := h.requiredCatalog()
+	if !ok {
 		return
 	}
 
 	logger.Debugf("Get catalog details initiated catalog[%s]", catalogName)
 
-	catalog, err := h.compaction.Catalog.GetCatalog(h.Ctx.Request.Context(), catalogName)
+	// Get catalog in Olake config format
+	olakeConfig, err := h.compaction.Catalog.GetCatalogAsOLakeConfig(h.Ctx.Request.Context(), catalogName)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to get catalog details", err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, "successfully fetched catalog details", catalog)
+	// Return only the config data without wrapper
+	h.Controller.Ctx.Output.SetStatus(http.StatusOK)
+	h.Controller.Data["json"] = olakeConfig
+	_ = h.Controller.ServeJSON()
 }
 
 func (h *Handler) CreateCatalog() {
-	var req models.CatalogRequest
-	if err := h.Ctx.BindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "invalid request body", err)
+	var req map[string]interface{}
+	if !h.bindJSON(&req) {
 		return
 	}
 
-	logger.Debugf("Create catalog initiated name[%s]", req.Name)
+	if req == nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required", nil)
+		return
+	}
 
-	result, err := h.compaction.Catalog.CreateCatalog(h.Ctx.Request.Context(), &req)
+	logger.Debugf("Create catalog initiated")
+
+	// Convert config to JSON string
+	configJSON, err := utils.ToJSON(req)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format", err)
+		return
+	}
+
+	result, err := h.compaction.Catalog.CreateCatalogFromOLakeConfig(h.Ctx.Request.Context(), configJSON)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to create catalog", err)
 		return
@@ -239,21 +217,31 @@ func (h *Handler) CreateCatalog() {
 
 // updates an existing catalog
 func (h *Handler) UpdateCatalog() {
-	catalogName := h.Ctx.Input.Param(":catalog")
-	if catalogName == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "catalog name is required", nil)
+	catalogName, ok := h.requiredCatalog()
+	if !ok {
 		return
 	}
 
-	var req models.CatalogRequest
-	if err := h.Ctx.BindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Invalid request body", err)
+	var req map[string]interface{}
+	if !h.bindJSON(&req) {
+		return
+	}
+
+	if req == nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required", nil)
 		return
 	}
 
 	logger.Debugf("Update catalog initiated catalog[%s]", catalogName)
 
-	result, err := h.compaction.Catalog.UpdateCatalog(h.Ctx.Request.Context(), catalogName, &req)
+	// Convert config to JSON string
+	configJSON, err := utils.ToJSON(req)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format", err)
+		return
+	}
+
+	result, err := h.compaction.Catalog.UpdateCatalogFromOLakeConfig(h.Ctx.Request.Context(), configJSON)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update catalog", err)
 		return
@@ -264,9 +252,8 @@ func (h *Handler) UpdateCatalog() {
 
 // deletes a catalog
 func (h *Handler) DeleteCatalog() {
-	catalogName := h.Ctx.Input.Param(":catalog")
-	if catalogName == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog name is required", nil)
+	catalogName, ok := h.requiredCatalog()
+	if !ok {
 		return
 	}
 
@@ -283,13 +270,15 @@ func (h *Handler) DeleteCatalog() {
 
 // cancels a running compaction process
 func (h *Handler) CancelCompactionProcess() {
-	catalog := h.Ctx.Input.Param(":catalog")
-	database := h.Ctx.Input.Param(":database")
-	table := h.Ctx.Input.Param(":table")
-	processID := h.Ctx.Input.Param(":processid")
+	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
+	if !ok {
+		return
+	}
 
-	if catalog == "" || database == "" || table == "" || processID == "" {
-		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Catalog, database, table, and process ID are required", nil)
+	// need to check this
+	processID := h.param(":processid", ":processId", ":processID")
+	if processID == "" {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "process ID is required", nil)
 		return
 	}
 

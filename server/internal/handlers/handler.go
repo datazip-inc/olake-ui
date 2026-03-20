@@ -14,8 +14,13 @@ type Handler struct {
 }
 
 func NewHandler(appSvc *services.AppService) *Handler {
-	return &Handler{
-		ETL:        etl.NewHandler(appSvc.ETL()),
-		Compaction: compaction.NewHandler(appSvc.Compaction()),
+	h := &Handler{
+		ETL: etl.NewHandler(appSvc.ETL()),
 	}
+
+	if appSvc.IsCompactionEnabled() {
+		h.Compaction = compaction.NewHandler(appSvc.Compaction())
+	}
+
+	return h
 }

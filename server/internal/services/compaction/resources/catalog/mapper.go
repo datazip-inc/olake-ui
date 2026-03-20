@@ -4,22 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	olake "github.com/datazip-inc/olake/destination/iceberg"
 )
 
-func MapOLakeConfigToCompactionCatalog(destinationName, configJSON string) (*models.CatalogRequest, error) {
+func MapOLakeConfigToCompactionCatalog(configJSON string) (*models.CatalogRequest, error) {
 	var config olake.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse OLake config: %w", err)
 	}
 
-	catalogType := normalizeCatalogType(string(config.CatalogType))
+	if config.CatalogName == "" {
+		return nil, fmt.Errorf("catalog_name is required in config")
+	}
 
+	catalogType := normalizeCatalogType(string(config.CatalogType))
 	compactionReq := &models.CatalogRequest{
-		Name:            destinationName,
+		Name:            config.CatalogName,
 		Type:            catalogType,
 		OptimizerGroup:  models.OptimizerGroup,
 		TableFormatList: []string{"ICEBERG"},
@@ -33,6 +37,8 @@ func MapOLakeConfigToCompactionCatalog(destinationName, configJSON string) (*mod
 
 	mapAuthConfig(&config, compactionReq.AuthConfig, compactionReq.StorageConfig)
 	mapCatalogProperties(&config, compactionReq.Properties, string(config.CatalogType))
+
+	compactionReq.Properties["created_at"] = time.Now().Format("02 Jan 2006")
 
 	return compactionReq, nil
 }
@@ -76,10 +82,13 @@ func mapCatalogProperties(olakeConfig *olake.Config, properties map[string]strin
 		}
 	case "jdbc":
 		properties["warehouse"] = warehouse
+		properties["catalog-impl"] = "org.apache.iceberg.jdbc.JdbcCatalog"
 		utils.SetIfNotEmpty(properties, "uri", olakeConfig.JDBCUrl)
 		utils.SetIfNotEmpty(properties, "jdbc.user", olakeConfig.JDBCUsername)
 		utils.SetIfNotEmpty(properties, "jdbc.password", olakeConfig.JDBCPassword)
-		properties["catalog-impl"] = "org.apache.iceberg.jdbc.JdbcCatalog"
+		utils.SetIfNotEmpty(properties, "endpoint", olakeConfig.S3Endpoint)
+		utils.SetIfNotEmpty(properties, "access-key-id", olakeConfig.AccessKey)
+		utils.SetIfNotEmpty(properties, "secret-access-key", olakeConfig.SecretKey)
 
 	case "hive":
 		utils.SetIfNotEmpty(properties, "warehouse", warehouse)
@@ -101,5 +110,99 @@ func mapCatalogProperties(olakeConfig *olake.Config, properties map[string]strin
 			utils.SetIfNotEmpty(properties, "rest.signing-name", olakeConfig.RestSigningName)
 			utils.SetIfNotEmpty(properties, "rest.signing-region", olakeConfig.RestSigningRegion)
 		}
+	}
+}
+
+func MapCompactionCatalogToOLakeConfig(catalog *models.CatalogRequest) (*olake.Config, error) {
+	config := &olake.Config{}
+
+	// Map catalog name
+	config.CatalogName = catalog.Name
+
+	// Map catalog type back to OLake format
+	config.CatalogType = mapCompactionTypeToOLake(catalog.Type)
+
+	// Map storage and auth config
+	if catalog.StorageConfig != nil {
+		config.Region = catalog.StorageConfig["storage.s3.region"]
+		config.S3Endpoint = catalog.StorageConfig["storage.s3.endpoint"]
+	}
+
+	if catalog.AuthConfig != nil {
+		config.AccessKey = catalog.AuthConfig["auth.ak_sk.access_key"]
+		config.SecretKey = catalog.AuthConfig["auth.ak_sk.secret_key"]
+	}
+
+	// Map properties based on catalog type
+	if catalog.Properties != nil {
+		config.IcebergS3Path = catalog.Properties["warehouse"]
+
+		// Map S3 properties from catalog properties (for JDBC catalogs)
+		if catalog.Properties["endpoint"] != "" {
+			config.S3Endpoint = catalog.Properties["endpoint"]
+		}
+		if catalog.Properties["access-key-id"] != "" {
+			config.AccessKey = catalog.Properties["access-key-id"]
+		}
+		if catalog.Properties["secret-access-key"] != "" {
+			config.SecretKey = catalog.Properties["secret-access-key"]
+		}
+
+		switch strings.ToLower(string(config.CatalogType)) {
+		case "glue":
+			config.GlueCatalogID = catalog.Properties["glue.id"]
+			config.GlueEndpoint = catalog.Properties["glue.endpoint"]
+			config.GlueRegion = catalog.Properties["client.region"]
+			if config.GlueCatalogID != "" || config.GlueEndpoint != "" {
+				config.UseGlueAdditionalConfig = true
+			}
+
+		case "jdbc":
+			config.JDBCUrl = catalog.Properties["uri"]
+			config.JDBCUsername = catalog.Properties["jdbc.user"]
+			config.JDBCPassword = catalog.Properties["jdbc.password"]
+
+		case "hive":
+			config.HiveURI = catalog.Properties["uri"]
+			if clientsStr := catalog.Properties["clients"]; clientsStr != "" {
+				fmt.Sscanf(clientsStr, "%d", &config.HiveClients)
+			}
+
+		case "rest":
+			config.RestCatalogURL = catalog.Properties["uri"]
+			config.RestToken = catalog.Properties["token"]
+			config.RestOAuthURI = catalog.Properties["oauth2-server-uri"]
+			config.RestAuthType = catalog.Properties["rest.auth.type"]
+			config.RestCredential = catalog.Properties["credential"]
+			config.RestScope = catalog.Properties["scope"]
+			if catalog.Properties["rest.sigv4-enabled"] == "true" {
+				config.RestSigningV4 = true
+				config.RestSigningName = catalog.Properties["rest.signing-name"]
+				config.RestSigningRegion = catalog.Properties["rest.signing-region"]
+			}
+		}
+	}
+
+	// Set S3 flags - these are always true for S3 storage
+	if config.S3Endpoint != "" {
+		config.S3UseSSL = false
+		config.S3PathStyle = true
+	}
+
+	return config, nil
+}
+
+func mapCompactionTypeToOLake(compactionType string) olake.CatalogType {
+	switch strings.ToLower(compactionType) {
+	case "custom":
+		return "jdbc"
+	case "glue":
+		return "glue"
+	case "rest":
+		return "rest"
+	case "hive":
+		return "hive"
+	default:
+		return olake.CatalogType(compactionType)
 	}
 }

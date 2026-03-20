@@ -26,6 +26,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/beego/beego/v2/client/orm"
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -49,12 +51,18 @@ func main() {
 	}
 
 	// Initialize unified AppService
-	appSvc, err := services.InitAppService(db)
+	enableCompaction := web.AppConfig.DefaultBool(constants.ConfEnableCompaction, false)
+	appSvc, err := services.InitAppService(db, enableCompaction)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
-	logger.Info("Application services initialized successfully")
+	if enableCompaction {
+		logger.Info("Application services initialized successfully (compaction enabled)")
+		go appSvc.Compaction().SyncAllDestinations(context.Background())
+	} else {
+		logger.Info("Application services initialized successfully (compaction disabled)")
+	}
 	telemetry.InitTelemetry(db)
 
 	// Set Swagger Info version to match the application's runtime version.
