@@ -268,25 +268,18 @@ func (h *Handler) DeleteCatalog() {
 	utils.SuccessResponse(&h.Controller, result.Message, nil)
 }
 
-// cancels a running compaction process
+// cancels a running compaction process by fetching the latest process and validating its status
 func (h *Handler) CancelCompactionProcess() {
 	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
 	if !ok {
 		return
 	}
 
-	// need to check this
-	processID := h.param(":processid", ":processId", ":processID")
-	if processID == "" {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "process ID is required", nil)
-		return
-	}
+	logger.Debugf("Cancel compaction process initiated for catalog[%s] database[%s] table[%s]", catalog, database, table)
 
-	logger.Debugf("Cancel compaction process initiated catalog[%s] database[%s] table[%s] processID[%s]", catalog, database, table, processID)
-
-	err := h.compaction.Optimization.CancelCompactionProcess(h.Ctx.Request.Context(), catalog, database, table, processID)
+	processID, err := h.compaction.Optimization.CancelLatestCompactionProcess(h.Ctx.Request.Context(), catalog, database, table)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to cancel compaction process", err)
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "Failed to cancel compaction process", err)
 		return
 	}
 

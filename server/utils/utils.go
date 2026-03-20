@@ -39,6 +39,14 @@ func ToMapOfInterface(structure any) map[string]interface{} {
 	return output
 }
 
+func ToJSON(v interface{}) (string, error) {
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
 func RespondJSON(ctx *web.Controller, status int, success bool, message string, data interface{}) {
 	ctx.Ctx.Output.SetStatus(status)
 	ctx.Data["json"] = dto.JSONResponse{

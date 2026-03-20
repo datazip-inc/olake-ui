@@ -208,6 +208,42 @@ func parseInt64FromString(s string) (int64, error) {
 	return result, err
 }
 
+// CancelLatestCompactionProcess fetches the latest compaction process and cancels it if the status allows
+func (s *Service) CancelLatestCompactionProcess(ctx context.Context, catalog, database, table string) (string, error) {
+	// Fetch the latest process using page=1, pageSize=1
+	latestRun, err := s.GetCompactionRuns(ctx, catalog, database, table, 1, 1)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch latest compaction process: %w", err)
+	}
+
+	if len(latestRun.Runs) == 0 {
+		return "", fmt.Errorf("no compaction process found for table %s.%s.%s", catalog, database, table)
+	}
+
+	latestProcess := latestRun.Runs[0]
+	processID := latestProcess.RunID
+	status := latestProcess.Status
+
+	// based on Amoro's validTransition logic, only these statuses can be canceled:
+	cancelableStatuses := map[string]bool{
+		"UNKNOWN":   true,
+		"SUBMITTED": true,
+		"RUNNING":   true,
+		"PENDING":   true,
+	}
+
+	if !cancelableStatuses[status] {
+		return "", fmt.Errorf("cannot cancel process with status '%s'. Only processes with status UNKNOWN, SUBMITTED, RUNNING, or PENDING can be canceled", status)
+	}
+
+	// cancel the process
+	if err := s.CancelCompactionProcess(ctx, catalog, database, table, processID); err != nil {
+		return "", fmt.Errorf("failed to cancel process %s: %w", processID, err)
+	}
+
+	return processID, nil
+}
+
 // CancelCompactionProcess cancels a running compaction process for a table
 func (s *Service) CancelCompactionProcess(ctx context.Context, catalog, database, table, processID string) error {
 	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes/%s/cancel",

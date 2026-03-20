@@ -135,7 +135,7 @@ func Init(h *handlers.Handler) {
 
 		// runs
 		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs", compactionHandler, "get:GetCompactionRuns")
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs/:processid/cancel", compactionHandler, "post:CancelCompactionProcess")
+		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cancel", compactionHandler, "post:CancelCompactionProcess")
 
 		// Compaction table properties routes
 		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")
