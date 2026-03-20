@@ -1,10 +1,11 @@
 module github.com/datazip-inc/olake-ui/server
 
-go 1.24.13
+go 1.25.8
 
 require github.com/beego/beego/v2 v2.3.8
 
 require (
+	cloud.google.com/go/artifactregistry v1.20.0
 	github.com/apache/spark-connect-go/v35 v35.0.0-20250317154112-ffd832059443
 	github.com/aws/aws-sdk-go-v2/config v1.32.7
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.55.1
@@ -21,6 +22,7 @@ require (
 	go.temporal.io/sdk v1.39.0
 	golang.org/x/crypto v0.47.0
 	golang.org/x/mod v0.32.0
+	google.golang.org/api v0.265.0
 )
 
 require (
@@ -40,7 +42,6 @@ require (
 
 require (
 	cloud.google.com/go v0.123.0 // indirect
-	cloud.google.com/go/artifactregistry v1.20.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -129,7 +130,6 @@ require (
 	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
 	golang.org/x/tools v0.41.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/api v0.265.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 )
 

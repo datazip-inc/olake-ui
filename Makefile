@@ -1,8 +1,9 @@
 GOPATH = $(shell go env GOPATH)
+GO_VERSION = $(shell awk '/^go / {print "go"$$2; exit}' server/go.mod)
 
 ## Lint check.
 golangci:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest;
+	GOTOOLCHAIN=$(GO_VERSION) go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest;
 	cd server; $(GOPATH)/bin/golangci-lint run
 
 frontend-lint:
@@ -36,7 +37,7 @@ trivy:
 	trivy fs  --vuln-type  os,library --severity HIGH,CRITICAL .
 
 swagger:
-	go install github.com/swaggo/swag/cmd/swag@v1.16.4
+	go install github.com/swaggo/swag/cmd/swag@v1.16.6
 	cd server; $(GOPATH)/bin/swag init -g main.go --parseDependency --parseInternal --outputTypes json,go
 
 # Variables
