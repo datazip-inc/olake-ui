@@ -57,13 +57,11 @@ func (h *Handler) toggleSelfOptimizing(enable bool) {
 
 	action := "disable"
 	service := h.compaction.Table.DisableSelfOptimizing
-	configValue := selfOptimizingDisabledConfig
 	errorMessage := "failed to disable self-optimizing"
 
 	if enable {
 		action = "enable"
 		service = h.compaction.Table.EnableSelfOptimizing
-		configValue = selfOptimizingEnabledConfig
 		errorMessage = "failed to enable self-optimizing"
 	}
 
@@ -74,13 +72,6 @@ func (h *Handler) toggleSelfOptimizing(enable bool) {
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, internalServerErrorStatusCode, errorMessage, err)
 		return
-	}
-
-	if result.Success {
-		// Keep catalog table property aligned with the current self-optimizing state.
-		if _, catalogErr := h.compaction.Catalog.SetCatalogTableProperty(ctx, catalog, database, table, "", configValue); catalogErr != nil {
-			logger.Warnf("Failed to update catalog table property for %s.%s.%s: %v", catalog, database, table, catalogErr)
-		}
 	}
 
 	utils.SuccessResponse(&h.Controller, result.Message, result)

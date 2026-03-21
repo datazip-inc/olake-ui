@@ -159,7 +159,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 			tableInfo.Enabled = enabled.(string) == "true"
 		}
 
-		if _, ok := properties["olake.2pc"]; ok {
+		if _, ok := properties["olake_2pc"]; ok {
 			tableInfo.ByOLake = true
 		}
 

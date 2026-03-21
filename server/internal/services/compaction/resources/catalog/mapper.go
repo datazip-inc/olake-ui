@@ -7,11 +7,10 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	olake "github.com/datazip-inc/olake/destination/iceberg"
 )
 
 func MapOLakeConfigToCompactionCatalog(configJSON string) (*models.CatalogRequest, error) {
-	var config olake.Config
+	var config models.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse OLake config: %w", err)
 	}
@@ -53,7 +52,7 @@ func normalizeCatalogType(olakeCatalogType string) string {
 	}
 }
 
-func mapAuthConfig(olakeConfig *olake.Config, authConfig, cmpStorageConfig map[string]string) {
+func mapAuthConfig(olakeConfig *models.Config, authConfig, cmpStorageConfig map[string]string) {
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.region", olakeConfig.Region)
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.endpoint", olakeConfig.S3Endpoint)
 
@@ -67,7 +66,7 @@ func mapAuthConfig(olakeConfig *olake.Config, authConfig, cmpStorageConfig map[s
 }
 
 // TODO: test for each and every catalog and map the keys to respsective values
-func mapCatalogProperties(olakeConfig *olake.Config, properties map[string]string, olakeCatalogType string) {
+func mapCatalogProperties(olakeConfig *models.Config, properties map[string]string, olakeCatalogType string) {
 	warehouse := olakeConfig.IcebergS3Path
 
 	switch strings.ToLower(olakeCatalogType) {
@@ -112,8 +111,8 @@ func mapCatalogProperties(olakeConfig *olake.Config, properties map[string]strin
 	}
 }
 
-func MapCompactionCatalogToOLakeConfig(catalog *models.CatalogRequest) (*olake.Config, error) {
-	config := &olake.Config{}
+func MapCompactionCatalogToOLakeConfig(catalog *models.CatalogRequest) (*models.Config, error) {
+	config := &models.Config{}
 
 	// Map catalog name
 	config.CatalogName = catalog.Name
@@ -191,7 +190,7 @@ func MapCompactionCatalogToOLakeConfig(catalog *models.CatalogRequest) (*olake.C
 	return config, nil
 }
 
-func mapCompactionTypeToOLake(compactionType string) olake.CatalogType {
+func mapCompactionTypeToOLake(compactionType string) models.CatalogType {
 	switch strings.ToLower(compactionType) {
 	case "custom":
 		return "jdbc"
@@ -202,6 +201,6 @@ func mapCompactionTypeToOLake(compactionType string) olake.CatalogType {
 	case "hive":
 		return "hive"
 	default:
-		return olake.CatalogType(compactionType)
+		return models.CatalogType(compactionType)
 	}
 }

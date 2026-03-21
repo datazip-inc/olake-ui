@@ -21,6 +21,16 @@ func (s *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 	fullInterval := parseIntervalValue(config.FullTriggerInterval)
 	properties["self-optimizing.full.trigger.interval"] = fullInterval
 
+	if config.TargetFileSize != "" {
+		size, err := parseIntFromString(config.TargetFileSize)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse given target file size")
+		}
+		
+		targetFileSize := ConvertMBToBytes(int64(size))
+		properties["write.target-file-size-bytes"] = targetFileSize
+	}
+
 	// sql query
 	sqlResult, err := s.table.SetTableProperties(ctx, models.SetTablePropertiesRequest{
 		Catalog:    catalog,
@@ -66,19 +76,6 @@ func (s *Service) GetCompactionCronConfig(ctx context.Context, catalog, database
 		}, nil
 	}
 
-	enabled := false
-	if enabledVal, ok := properties["self-optimizing.enabled"]; ok {
-		enabled = enabledVal.(string) == "true"
-	}
-
-	if !enabled {
-		return &models.CompactionCronConfigRequest{
-			MinorTriggerInterval: "-1",
-			MajorTriggerInterval: "-1",
-			FullTriggerInterval:  "-1",
-		}, nil
-	}
-
 	minorInterval := "-1"
 	if val, ok := properties["self-optimizing.minor.trigger.interval"]; ok {
 		if strVal, ok := val.(string); ok {
@@ -110,7 +107,7 @@ func (s *Service) GetCompactionCronConfig(ctx context.Context, catalog, database
 // parseIntervalValue converts user input to milliseconds or -1 for "never"
 func parseIntervalValue(interval string) string {
 	// never
-	if strings.EqualFold(interval, "never") || interval == "" {
+	if strings.EqualFold(interval, "never") || interval == "-1" || interval == "" {
 		return "-1"
 	}
 
@@ -120,3 +117,9 @@ func parseIntervalValue(interval string) string {
 
 	return "-1"
 }
+
+func ConvertMBToBytes(sizeMB int64) string {
+	const bytesPerMB = 1024 * 1024
+	sizeBytes := sizeMB * bytesPerMB
+	return strconv.FormatInt(sizeBytes, 10)
+ }

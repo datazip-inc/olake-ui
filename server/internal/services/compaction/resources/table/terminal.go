@@ -115,11 +115,11 @@ func (s *Service) DisableSelfOptimizing(ctx context.Context, catalog, database, 
 	})
 }
 
-// pollForCompletion polls the Amoro server for SQL execution completion
+// pollForCompletion polls the Compaction server for SQL execution completion
 func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*LogInfo, error) {
 	const (
 		pollInterval = 1500 * time.Millisecond
-		maxTimeout   = 5 * time.Minute
+		maxTimeout   = 30 * time.Second
 	)
 
 	path := fmt.Sprintf("%sterminal/%s/logs", models.APIBase, sessionID)

@@ -9,53 +9,32 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-func (s *Service) SyncCatalogToFusion(ctx context.Context, destinationName, _, configJSON string, isUpdate bool) error {
-	amoroCatalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
+func (s *Service) SyncCatalogToFusion(ctx context.Context, configJSON string, isUpdate bool) error {
+	CompactionCatalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
 	if err != nil {
-		return fmt.Errorf("failed to map OLake config to Amoro catalog: %w", err)
+		return fmt.Errorf("failed to map OLake config to Compaction catalog: %w", err)
 	}
 
-	// using destination name from etl as catalog name in name compaction
-	amoroCatalogReq.Name = destinationName
-
-	logger.Infof("Syncing catalog to Amoro: name=%s, type=%s, isUpdate=%v", amoroCatalogReq.Name, amoroCatalogReq.Type, isUpdate)
+	logger.Infof("Syncing catalog to Compaction: name=%s, type=%s, isUpdate=%v", CompactionCatalogReq.Name, CompactionCatalogReq.Type, isUpdate)
 
 	if isUpdate {
-		if err := s.updateCatalogInAmoro(ctx, amoroCatalogReq); err != nil {
-			logger.Errorf("Failed to update catalog in Amoro: %v", err)
-			return fmt.Errorf("failed to update catalog in Amoro: %w", err)
+		if err := s.updateCatalogInCompaction(ctx, CompactionCatalogReq); err != nil {
+			logger.Errorf("Failed to update catalog in Compaction: %v", err)
+			return fmt.Errorf("failed to update catalog in Compaction: %w", err)
 		}
-		logger.Infof("Successfully updated catalog %s in Amoro", amoroCatalogReq.Name)
+		logger.Infof("Successfully updated catalog %s in Compaction", CompactionCatalogReq.Name)
 	} else {
-		if err := s.createCatalogInAmoro(ctx, amoroCatalogReq); err != nil {
-			logger.Errorf("Failed to create catalog in Amoro: %v", err)
-			return fmt.Errorf("failed to create catalog in Amoro: %w", err)
+		if err := s.createCatalogInCompaction(ctx, CompactionCatalogReq); err != nil {
+			logger.Errorf("Failed to create catalog in Compaction: %v", err)
+			return fmt.Errorf("failed to create catalog in Compaction: %w", err)
 		}
-		logger.Infof("Successfully created catalog %s in Amoro", amoroCatalogReq.Name)
+		logger.Infof("Successfully created catalog %s in Compaction", CompactionCatalogReq.Name)
 	}
 
 	return nil
 }
 
-func (s *Service) UpsertCatalogInFusion(ctx context.Context, destinationName, configJSON string) error {
-	amoroCatalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
-	if err != nil {
-		return fmt.Errorf("failed to map OLake config to Amoro catalog: %w", err)
-	}
-	amoroCatalogReq.Name = destinationName
-
-	exists, err := s.checkCatalogExists(ctx, destinationName)
-	if err != nil {
-		logger.Warnf("Failed to check catalog existence for %s: %v", destinationName, err)
-	}
-
-	if exists {
-		return s.updateCatalogInAmoro(ctx, amoroCatalogReq)
-	}
-	return s.createCatalogInAmoro(ctx, amoroCatalogReq)
-}
-
-func (s *Service) createCatalogInAmoro(ctx context.Context, req *models.CatalogRequest) error {
+func (s *Service) createCatalogInCompaction(ctx context.Context, req *models.CatalogRequest) error {
 	resp, err := s.CreateCatalog(ctx, req)
 	if err != nil {
 		return err
@@ -68,10 +47,10 @@ func (s *Service) createCatalogInAmoro(ctx context.Context, req *models.CatalogR
 	return nil
 }
 
-func (s *Service) updateCatalogInAmoro(ctx context.Context, req *models.CatalogRequest) error {
-	catalogExists, err := s.checkCatalogExists(ctx, req.Name)
+func (s *Service) updateCatalogInCompaction(ctx context.Context, req *models.CatalogRequest) error {
+	catalogExists, err := s.CheckCatalogExists(ctx, req.Name)
 	if err != nil {
-		logger.Warnf("Failed to check if catalog exists in Amoro: %v", err)
+		logger.Warnf("Failed to check if catalog exists in Compaction: %v", err)
 	}
 
 	if !catalogExists {
@@ -90,7 +69,7 @@ func (s *Service) updateCatalogInAmoro(ctx context.Context, req *models.CatalogR
 	return nil
 }
 
-func (s *Service) checkCatalogExists(ctx context.Context, catalogName string) (bool, error) {
+func (s *Service) CheckCatalogExists(ctx context.Context, catalogName string) (bool, error) {
 	catalogs, err := s.GetCatalogs(ctx)
 	if err != nil {
 		return false, err

@@ -224,7 +224,7 @@ func (s *Service) CancelLatestCompactionProcess(ctx context.Context, catalog, da
 	processID := latestProcess.RunID
 	status := latestProcess.Status
 
-	// based on Amoro's validTransition logic, only these statuses can be canceled:
+	// based on Compaction's validTransition logic, only these statuses can be canceled:
 	cancelableStatuses := map[string]bool{
 		"UNKNOWN":   true,
 		"SUBMITTED": true,

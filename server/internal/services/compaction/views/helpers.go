@@ -20,7 +20,6 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 		return nil, fmt.Errorf("failed to fetch compaction process info")
 	}
 
-	// Return nil if no processes exist
 	if len(processList) == 0 {
 		return nil, nil
 	}
@@ -54,12 +53,19 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 			} else {
 				lastRun = fmt.Sprintf("%d minutes ago", minutes)
 			}
-		default:
+		case duration < 24*time.Hour:
 			hours := int(duration.Hours())
 			if hours == 1 {
 				lastRun = "1 hour ago"
 			} else {
 				lastRun = fmt.Sprintf("%d hours ago", hours)
+			}
+		default:
+			days := int(duration.Hours() / 24)
+			if days == 1 {
+				lastRun = "1 day ago"
+			} else {
+				lastRun = fmt.Sprintf("%d days ago", days)
 			}
 		}
 	}

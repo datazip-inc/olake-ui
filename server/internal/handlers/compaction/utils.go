@@ -2,7 +2,6 @@ package compaction
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
@@ -10,8 +9,6 @@ import (
 const (
 	defaultCompactionRunsPage     = 1
 	defaultCompactionRunsPageSize = 1000
-	selfOptimizingEnabledConfig   = "true,-1,-1,-1"
-	selfOptimizingDisabledConfig  = "false,-1,-1,-1"
 	internalServerErrorStatusCode = http.StatusInternalServerError
 	badRequestStatusCode          = http.StatusBadRequest
 )
@@ -56,15 +53,6 @@ func (h *Handler) bindJSON(dst interface{}) bool {
 		return false
 	}
 	return true
-}
-
-func (h *Handler) param(names ...string) string {
-	for _, name := range names {
-		if value := strings.TrimSpace(h.Ctx.Input.Param(name)); value != "" {
-			return value
-		}
-	}
-	return ""
 }
 
 func (h *Handler) pagination(defaultPage, defaultPageSize int) (int, int) {

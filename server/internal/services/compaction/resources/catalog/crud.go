@@ -9,7 +9,6 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
-	olake "github.com/datazip-inc/olake/destination/iceberg"
 )
 
 type Service struct {
@@ -46,7 +45,7 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 	return &result, nil
 }
 
-func (s *Service) GetCatalogAsOLakeConfig(ctx context.Context, catalogName string) (*olake.Config, error) {
+func (s *Service) GetCatalogAsOLakeConfig(ctx context.Context, catalogName string) (*models.Config, error) {
 	catalog, err := s.GetCatalog(ctx, catalogName)
 	if err != nil {
 		return nil, err
@@ -62,7 +61,7 @@ func (s *Service) CreateCatalog(ctx context.Context, req *models.CatalogRequest)
 	}
 
 	// Set default table properties for Iceberg tables
-	setDefaultTableProperties(req)
+	setDefaultProperties(req)
 
 	path := fmt.Sprintf("%scatalogs", models.APIBase)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
@@ -111,7 +110,7 @@ func (s *Service) UpdateCatalogFromOLakeConfig(ctx context.Context, configJSON s
 	return s.UpdateCatalog(ctx, catalogReq.Name, catalogReq)
 }
 
-// DeleteCatalog deletes a catalog from Amoro
+// DeleteCatalog deletes a catalog from Compaction
 func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (*models.CatalogResponse, error) {
 	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalogName)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodDelete, path, url.Values{}, nil); err != nil {
@@ -152,7 +151,7 @@ func validateCatalog(req *models.CatalogRequest) error {
 	return nil
 }
 
-func setDefaultTableProperties(req *models.CatalogRequest) {
+func setDefaultProperties(req *models.CatalogRequest) {
 	if req.Properties == nil {
 		req.Properties = make(map[string]string)
 	}
@@ -160,24 +159,5 @@ func setDefaultTableProperties(req *models.CatalogRequest) {
 	req.Properties["table.self-optimizing.enabled"] = "false"
 	req.Properties["table.self-optimizing.quota"] = "0.1"
 	req.Properties["created-at"] = time.Now().Format("02 Jan 2006")
-}
-
-// SetCatalogTableProperty sets a table property in the catalog's tableProperties map
-// The key format is: <database>:<table>
-// The value format is: <enabled>,<minor_interval>,<major_interval>,<full_interval>
-func (s *Service) SetCatalogTableProperty(ctx context.Context, catalogName, database, table, _, value string) (*models.CatalogResponse, error) {
-	catalogReq, err := s.GetCatalog(ctx, catalogName)
-	if err != nil {
-		return nil, err
-	}
-
-	if catalogReq.TableProperties == nil {
-		catalogReq.TableProperties = make(map[string]string)
-	}
-
-	// Use <database>:<table> as the key
-	tableKey := fmt.Sprintf("%s:%s", database, table)
-	catalogReq.TableProperties[tableKey] = value
-
-	return s.UpdateCatalog(ctx, catalogName, catalogReq)
+	req.Properties["cache-enabled"] = "false"
 }

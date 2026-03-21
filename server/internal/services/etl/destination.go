@@ -2,6 +2,7 @@ package etl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	compactionModels "github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalog"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -127,7 +129,7 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 	// If compaction is enabled and type is iceberg, create catalog first
 	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
 		c := catalog.NewService(s.compaction)
-		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, false); err != nil {
+		if err := c.SyncCatalogToFusion(ctx, req.Config, false); err != nil {
 			return fmt.Errorf("failed to create catalog in compaction for destination %s: %s", req.Name, err)
 		}
 	}
@@ -165,7 +167,7 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 	// If compaction is enabled and type is iceberg, update catalog first
 	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
 		c := catalog.NewService(s.compaction)
-		if err := c.SyncCatalogToFusion(ctx, req.Name, req.Type, req.Config, true); err != nil {
+		if err := c.SyncCatalogToFusion(ctx, req.Config, true); err != nil {
 			return fmt.Errorf("failed to update catalog in compaction for destination %s: %s", req.Name, err)
 		}
 	}
@@ -224,9 +226,14 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 
 	// delete the catalog from Fusion (only if compaction is enabled)
 	if s.compaction != nil && strings.EqualFold(dest.DestType, "iceberg") {
-		c := catalog.NewService(s.compaction)
-		if _, err := c.DeleteCatalog(ctx, dest.Name); err != nil {
-			logger.Errorf("Failed to delete catalog from Amoro for destination %s: %v", dest.Name, err)
+		catalogName, err := extractCatalogNameFromConfig(dest.Config)
+		if err != nil {
+			logger.Errorf("Failed to extract catalog_name from destination %s config: %v", dest.Name, err)
+		} else {
+			c := catalog.NewService(s.compaction)
+			if _, err := c.DeleteCatalog(ctx, catalogName); err != nil {
+				logger.Errorf("Failed to delete catalog %s from Compaction for destination %s: %v", catalogName, dest.Name, err)
+			}
 		}
 	}
 
@@ -326,4 +333,18 @@ func (s Service) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (
 		Type:    req.Type,
 		Spec:    specOut.Spec,
 	}, nil
+}
+
+// extractCatalogNameFromConfig extracts the catalog_name field from the config JSON
+func extractCatalogNameFromConfig(configJSON string) (string, error) {
+	var config compactionModels.Config
+	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
+		return "", fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	if config.CatalogName == "" {
+		return "", fmt.Errorf("catalog_name is required in config")
+	}
+
+	return config.CatalogName, nil
 }
