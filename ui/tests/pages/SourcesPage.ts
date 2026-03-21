@@ -29,7 +29,21 @@ export class SourcesPage extends BasePage {
 	}
 
 	async clickCreateSource() {
-		await this.createSourceButton.click()
+		// Wait until the sources query has finished — the modal only mounts after
+		// loading completes, so any earlier check is a race condition.
+		await this.page
+			.locator('[data-testid="sources-page"][data-loaded="true"]')
+			.waitFor({ timeout: 60_000 })
+
+		const onboardingCta = this.page.getByTestId(
+			"onboarding-create-source-button",
+		)
+		if (await onboardingCta.isVisible()) {
+			await onboardingCta.click()
+		} else {
+			await this.createSourceButton.click()
+		}
+		await this.page.waitForURL(/\/sources\/new/)
 	}
 
 	async expectSourcesPageVisible() {

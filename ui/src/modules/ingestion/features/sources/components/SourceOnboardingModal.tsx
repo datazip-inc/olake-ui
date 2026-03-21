@@ -114,6 +114,8 @@ const SourceOnboardingModal = ({
 							What&apos;s Next: Create your first source
 						</p>
 						<button
+							type="button"
+							data-testid="onboarding-create-source-button"
 							onClick={handleCreateSource}
 							className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-brand-blue px-4 text-base text-white shadow-[0px_2px_0px_0px_rgba(5,145,255,0.01)] transition-opacity hover:opacity-95"
 						>

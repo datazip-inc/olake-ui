@@ -94,7 +94,11 @@ const Sources: React.FC = () => {
 	}
 
 	return (
-		<div className="p-6">
+		<div
+			className="p-6"
+			data-testid="sources-page"
+			data-loaded={!isLoadingSources ? "true" : "false"}
+		>
 			<div className="mb-4 flex items-center justify-between">
 				<div className="flex items-center">
 					<LinktreeLogoIcon className="mr-2 size-6" />

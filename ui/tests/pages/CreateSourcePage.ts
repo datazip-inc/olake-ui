@@ -32,7 +32,7 @@ export class CreateSourcePage extends BasePage {
 		this.createButton = page.getByRole("button", { name: "Create" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
 		this.backToSourcesLink = page.getByRole("link").first()
-		this.pageTitle = page.locator("text=Create source")
+		this.pageTitle = page.getByTestId("create-source-page-title")
 		this.testConnectionButton = page.getByRole("button", {
 			name: "Test Connection",
 		})
@@ -48,6 +48,7 @@ export class CreateSourcePage extends BasePage {
 	}
 
 	async expectCreateSourcePageVisible() {
+		await expect(this.page).toHaveURL(/\/sources\/new/)
 		await this.expectVisible(this.pageTitle)
 		await this.expectVisible(this.sourceNameInput)
 		await this.expectVisible(this.createButton)
