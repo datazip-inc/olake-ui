@@ -2,7 +2,10 @@ import { useQuery } from "@tanstack/react-query"
 
 import { catalogKeys } from "../../constants"
 import { catalogService } from "../../services"
-import { mapGetCatalogsResponseToCatalogs } from "../../utils"
+import {
+	mapGetCatalogResponseToFormData,
+	mapGetCatalogsResponseToCatalogs,
+} from "../../utils"
 
 const CATALOG_TYPE = "iceberg"
 
@@ -20,6 +23,7 @@ export const useCatalogDetails = (catalogName: string) => {
 	return useQuery({
 		queryKey: catalogKeys.detail(catalogName),
 		queryFn: () => catalogService.getCatalog(catalogName),
+		select: mapGetCatalogResponseToFormData,
 		enabled: !!catalogName,
 		refetchOnWindowFocus: false,
 	})

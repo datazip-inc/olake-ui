@@ -7,7 +7,7 @@ import {
 import { Button, Dropdown, Spin, Switch } from "antd"
 import type { MenuProps } from "antd/es/menu"
 
-import type { ColumnDef } from "@/common/components"
+import { Tag, type ColumnDef } from "@/common/components"
 
 import { RunStatusCell } from "../components"
 import type { Table } from "../types"
@@ -96,11 +96,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			render: row => (
 				<div className="flex items-center gap-2">
 					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
-					{row.byOLake && (
-						<span className="inline-flex h-5 items-center rounded-[20px] bg-olake-primary-bg px-2 text-[10px] font-medium leading-5 text-olake-primary">
-							OLake
-						</span>
-					)}
+					{row.byOLake && <Tag>OLake</Tag>}
 				</div>
 			),
 		},
@@ -112,7 +108,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 				<span
 					className={`text-sm leading-6 ${getHealthScoreColor(row.healthScore)}`}
 				>
-					{row.healthScore}
+					{row.healthScore}%
 				</span>
 			),
 		},

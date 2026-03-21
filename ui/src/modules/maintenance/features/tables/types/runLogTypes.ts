@@ -1,11 +1,4 @@
 export type RunLogLevel =
-	| "debug"
-	| "info"
-	| "warning"
-	| "warn"
-	| "error"
-	| "fatal"
-	// API returns uppercase
 	| "DEBUG"
 	| "INFO"
 	| "WARNING"

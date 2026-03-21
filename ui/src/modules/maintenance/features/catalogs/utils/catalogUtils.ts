@@ -1,4 +1,37 @@
-import type { Catalog, GetCatalogsResponse } from "../types"
+import type { Catalog, CatalogFormData, GetCatalogsResponse } from "../types"
+
+/** RJSF / spec expect `type` + nested `writer`; GET catalog returns the writer body only. */
+const CATALOG_FORM_TYPE_ICEBERG = "ICEBERG"
+
+/**
+ * Normalizes GET /fusion/catalog/:name payload for the form.
+ * Pass-through when `writer` is already nested; otherwise wraps flat writer fields.
+ */
+export const mapGetCatalogResponseToFormData = (
+	data: CatalogFormData,
+): CatalogFormData => {
+	if (data == null || typeof data !== "object" || Array.isArray(data)) {
+		return {
+			type: CATALOG_FORM_TYPE_ICEBERG,
+			writer: {},
+		}
+	}
+
+	const writer = (data as { writer?: unknown }).writer
+	if (
+		writer !== null &&
+		writer !== undefined &&
+		typeof writer === "object" &&
+		!Array.isArray(writer)
+	) {
+		return data
+	}
+
+	return {
+		type: CATALOG_FORM_TYPE_ICEBERG,
+		writer: { ...(data as Record<string, unknown>) },
+	}
+}
 
 // Converts GetCatalogsResponse into Catalog rows, uppercasing the type and attaching a stable row id.
 export const mapGetCatalogsResponseToCatalogs = (
@@ -9,6 +42,7 @@ export const mapGetCatalogsResponseToCatalogs = (
 		name: catalog.name,
 		type: catalog.type.toUpperCase(),
 		databases: catalog.databases,
-		createdOn: catalog.created_on,
+		createdOn: catalog.created_at,
+		byOlake: catalog.olake_created,
 	}))
 }

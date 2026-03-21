@@ -1,4 +1,4 @@
-import { CaretUpIcon, InfoIcon, TableIcon } from "@phosphor-icons/react"
+import { CaretUpIcon, QuestionIcon, TableIcon } from "@phosphor-icons/react"
 import { Button, Input, Modal, Select, Spin } from "antd"
 import { useEffect, useState } from "react"
 
@@ -38,9 +38,10 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 				<span className="text-base font-medium leading-6 text-olake-text">
 					{title}
 				</span>
-				<InfoIcon
+				{/* TODO: Add tooltip text */}
+				<QuestionIcon
 					size={14}
-					className="text-olake-text-tertiary"
+					className="cursor-help text-olake-text-tertiary"
 				/>
 			</div>
 

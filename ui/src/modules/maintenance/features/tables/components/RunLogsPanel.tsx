@@ -3,15 +3,16 @@ import {
 	DownloadSimpleIcon,
 	MagnifyingGlassIcon,
 } from "@phosphor-icons/react"
-import { Button, Input } from "antd"
+import { Button, Input, message } from "antd"
 import { useEffect, useMemo, useState } from "react"
 import { Virtuoso } from "react-virtuoso"
 
 import { getLogLevelClass, getLogTextColor } from "@/common/utils/utils"
 
 import { DRIVER_SOURCE_KEY } from "../constants"
-import { useProcessLogs } from "../hooks"
+import { useDownloadProcessLogFile, useProcessLogs } from "../hooks"
 import type { RunLogEntry } from "../types"
+import { getProcessLogFileId } from "../utils"
 
 type RunLogsPanelProps = {
 	runId: string
@@ -23,6 +24,7 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 	selectedSourceKey,
 }) => {
 	const { data, isFetching, refetch } = useProcessLogs(runId)
+	const downloadLogFile = useDownloadProcessLogFile()
 
 	const logs = data?.logsBySource[selectedSourceKey] ?? []
 
@@ -74,7 +76,23 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 						loading={isFetching}
 						onClick={() => refetch()}
 					/>
-					<Button icon={<DownloadSimpleIcon size={14} />}>Download Logs</Button>
+					<Button
+						icon={<DownloadSimpleIcon size={14} />}
+						loading={downloadLogFile.isPending}
+						onClick={() =>
+							downloadLogFile.mutate(
+								{
+									processId: runId,
+									fileId: getProcessLogFileId(selectedSourceKey),
+								},
+								{
+									onSuccess: () => message.success("Downloading logs..."),
+								},
+							)
+						}
+					>
+						Download Logs
+					</Button>
 				</div>
 			</div>
 
@@ -99,7 +117,7 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 }
 
 const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
-	const levelLabel = row.level.charAt(0).toUpperCase() + row.level.slice(1)
+	const levelKey = row.level.toLowerCase()
 
 	return (
 		<div className="grid h-10 grid-cols-[87px_92px_79px_minmax(0,1fr)] items-center border-b border-olake-border pl-[30px] pr-5">
@@ -111,13 +129,13 @@ const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
 			</span>
 			<span>
 				<span
-					className={`inline-flex h-5 items-center rounded-[20px] px-2 font-sans text-[10px] font-medium leading-5 ${getLogLevelClass(row.level)}`}
+					className={`inline-flex h-5 items-center rounded-[20px] px-2 font-sans text-[10px] font-medium leading-5 ${getLogLevelClass(levelKey)}`}
 				>
-					{levelLabel}
+					{row.level}
 				</span>
 			</span>
 			<span
-				className={`truncate font-mono text-[10px] font-medium leading-[17px] ${getLogTextColor(row.level)}`}
+				className={`truncate font-mono text-[10px] font-medium leading-[17px] ${getLogTextColor(levelKey)}`}
 			>
 				{row.message}
 			</span>

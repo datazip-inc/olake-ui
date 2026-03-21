@@ -27,12 +27,13 @@ import {
 	useUpdateCatalog,
 } from "../hooks"
 import type { CatalogModalProps, CatalogFormData } from "../types"
-import CatalogAddedSuccessModal from "./CatalogAddedSuccessModal"
+import CatalogSuccessModal from "./CatalogSuccessModal"
 
 type ActiveModal =
 	| null
 	| "testing"
 	| "testSuccess"
+	| "pendingCatalogSave"
 	| "testFailure"
 	| "specFailed"
 	| "catalogSuccess"
@@ -40,6 +41,17 @@ type ActiveModal =
 const getCatalogNameFromFormData = (data: CatalogFormData): string => {
 	const { catalog_name } = (data as { writer: { catalog_name: string } }).writer
 	return catalog_name.trim()
+}
+
+/** API expects the writer object only, not `{ type, writer }`. */
+const getCatalogWriterPayload = (
+	data: CatalogFormData,
+): Record<string, unknown> => {
+	const writer = (data as { writer?: Record<string, unknown> }).writer
+	if (!writer || typeof writer !== "object") {
+		throw new Error("Missing catalog writer configuration")
+	}
+	return writer
 }
 
 const CatalogModal: React.FC<CatalogModalProps> = ({
@@ -138,7 +150,6 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			const testResult = await testCatalogMutation.mutateAsync({
 				catalog: testCatalogData,
 			})
-			setActiveModal(null)
 
 			if (
 				testResult.data?.connection_result.status ===
@@ -146,16 +157,18 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			) {
 				setActiveModal("testSuccess")
 				setTimeout(async () => {
-					setActiveModal(null)
+					setActiveModal("pendingCatalogSave")
 					if (isEditMode) {
 						await updateCatalogMutation.mutateAsync({
 							catalogName: catalogName!,
-							config: formData,
+							config: getCatalogWriterPayload(formData) as CatalogFormData,
 						})
-						onClose()
-						onSuccess?.()
+						setCreatedCatalogName(catalogName!)
+						setActiveModal("catalogSuccess")
 					} else {
-						await createCatalogMutation.mutateAsync(formData)
+						await createCatalogMutation.mutateAsync(
+							getCatalogWriterPayload(formData) as CatalogFormData,
+						)
 						setCreatedCatalogName(getCatalogNameFromFormData(formData))
 						setActiveModal("catalogSuccess")
 					}
@@ -271,8 +284,9 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				</div>
 			</Modal>
 
-			<CatalogAddedSuccessModal
+			<CatalogSuccessModal
 				open={open && activeModal === "catalogSuccess"}
+				isEditMode={isEditMode}
 				onClose={handleViewCatalogs}
 				onViewCatalogs={handleViewCatalogs}
 				onViewTables={() => {

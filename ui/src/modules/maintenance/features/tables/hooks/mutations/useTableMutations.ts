@@ -41,3 +41,22 @@ export const useCancelTableRun = () => {
 			tableService.cancelTableRun(catalog, database, tableName),
 	})
 }
+
+export const useDownloadProcessLogFile = () => {
+	return useMutation({
+		mutationFn: ({
+			processId,
+			fileId,
+		}: {
+			processId: string
+			fileId: string
+		}) => tableService.downloadProcessLogFile(processId, fileId),
+	})
+}
+
+export const useDownloadProcessLogsArchive = () => {
+	return useMutation({
+		mutationFn: (processId: string) =>
+			tableService.downloadProcessLogsArchive(processId),
+	})
+}

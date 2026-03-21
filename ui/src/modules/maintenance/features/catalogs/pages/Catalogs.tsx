@@ -9,7 +9,7 @@ import { Button, Dropdown, Input } from "antd"
 import type { MenuProps } from "antd/es/menu"
 import { useMemo, useState } from "react"
 
-import { DataTable, PageErrorState } from "@/common/components"
+import { DataTable, PageErrorState, Tag } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 
 import { CatalogModal } from "../components"
@@ -95,7 +95,10 @@ const Catalogs: React.FC = () => {
 			header: "Catalog Name",
 			width: 32,
 			render: row => (
-				<span className="text-sm leading-6 text-olake-text">{row.name}</span>
+				<div className="flex items-center gap-2">
+					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
+					{row.byOlake && <Tag>OLake</Tag>}
+				</div>
 			),
 		},
 		{

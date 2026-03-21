@@ -44,9 +44,6 @@ const RunMetricsSidebar: React.FC<RunMetricsSidebarProps> = ({
 						Run Metrics for{" "}
 						<span className="text-olake-primary">Run ID {runId ?? "--"}</span>
 					</h2>
-					<p className="mt-1 font-sans text-base font-normal leading-normal text-olake-text">
-						View run metrics for the last run 2 days ago
-					</p>
 				</div>
 
 				{loading ? (

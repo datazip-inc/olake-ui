@@ -6,4 +6,6 @@ export type {
 	DataTableProps,
 	PaginationConfig,
 } from "./DataTable"
+export { Tag } from "./Tag"
+export type { TagColor, TagProps } from "./Tag"
 export { default as PageErrorState } from "./PageErrorState"

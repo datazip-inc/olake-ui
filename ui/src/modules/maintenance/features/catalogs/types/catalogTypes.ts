@@ -11,7 +11,8 @@ export interface FusionCatalog {
 	name: string
 	type: string
 	databases: string[]
-	created_on: string
+	created_at: string
+	olake_created: boolean
 }
 
 export type GetCatalogsResponse = {
@@ -53,4 +54,5 @@ export interface Catalog {
 	type: string
 	createdOn: string
 	databases: string[]
+	byOlake: boolean
 }

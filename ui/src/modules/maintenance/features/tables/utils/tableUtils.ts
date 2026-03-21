@@ -32,9 +32,10 @@ export const mapFusionTableToTable = (
 export const mapGetTablesResponseToTables = (tables: FusionTable[]): Table[] =>
 	tables.map(mapFusionTableToTable)
 
-const formatRunDuration = (durationSeconds: number): string => {
-	if (durationSeconds <= 0) return "--"
-	const totalSeconds = Math.floor(durationSeconds)
+const formatRunDuration = (durationMs: number): string => {
+	if (durationMs <= 0) return "--"
+	const totalSeconds = Math.floor(durationMs / 1000)
+	if (totalSeconds < 1) return "<1s"
 	const days = Math.floor(totalSeconds / 86_400)
 	const hours = Math.floor((totalSeconds % 86_400) / 3_600)
 	const minutes = Math.floor((totalSeconds % 3_600) / 60)

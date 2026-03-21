@@ -42,7 +42,9 @@ export const catalogService = {
 	},
 
 	deleteCatalog: async (catalogName: string) => {
-		await api.delete(API_CONFIG.ENDPOINTS.FUSION_CATALOG(catalogName))
+		await api.delete(API_CONFIG.ENDPOINTS.FUSION_CATALOG(catalogName), {
+			showNotification: true,
+		})
 		return
 	},
 

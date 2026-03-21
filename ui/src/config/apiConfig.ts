@@ -24,8 +24,8 @@ export const API_CONFIG = {
 			tableName
 				? `/api/v1/fusion/tables/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/${encodeURIComponent(tableName)}`
 				: `/api/v1/fusion/tables/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}`,
-		FUSION_PROCESS_LOGS: (runId: string) =>
-			`/api/v1/fusion/logs/process/${encodeURIComponent(runId)}/`,
+		FUSION_PROCESS: (processId: string) =>
+			`/api/v1/fusion/logs/process/${encodeURIComponent(processId)}`,
 		PLATFORM: `/api/v1/platform`,
 	},
 }

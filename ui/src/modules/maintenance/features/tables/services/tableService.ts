@@ -36,6 +36,7 @@ export const tableService = {
 	) => {
 		const response = await api.get<GetTableRunsApiResponse>(
 			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/runs`,
+			{ showNotification: true },
 		)
 		return response.data
 	},
@@ -47,6 +48,8 @@ export const tableService = {
 	) => {
 		const response = await api.post(
 			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/runs/cancel`,
+			undefined,
+			{ showNotification: true },
 		)
 		return response.data
 	},
@@ -88,8 +91,60 @@ export const tableService = {
 	},
 	getProcessLogs: async (runId: string) => {
 		const response = await api.get<GetProcessLogsApiResponse>(
-			API_CONFIG.ENDPOINTS.FUSION_PROCESS_LOGS(runId),
+			API_CONFIG.ENDPOINTS.FUSION_PROCESS(runId),
+			{ showNotification: true },
 		)
 		return response.data
+	},
+
+	downloadProcessLogFile: async (
+		processId: string,
+		fileId: string,
+	): Promise<void> => {
+		const path = `${API_CONFIG.ENDPOINTS.FUSION_PROCESS(processId)}/file/${encodeURIComponent(fileId)}`
+		const url = `${API_CONFIG.BASE_URL}${path}`
+
+		try {
+			// Pre-flight check to verify endpoint is accessible
+			// Check endpoint with minimal data transfer
+			await api.get(url, {
+				headers: { Range: "bytes=0-0" },
+				responseType: "blob",
+			})
+
+			// if successful, trigger download
+			const link = document.createElement("a")
+			link.href = url
+			link.style.display = "none"
+			document.body.appendChild(link)
+			link.click()
+			document.body.removeChild(link)
+		} catch (error) {
+			throw error
+		}
+	},
+
+	downloadProcessLogsArchive: async (processId: string): Promise<void> => {
+		const path = `${API_CONFIG.ENDPOINTS.FUSION_PROCESS(processId)}/download`
+		const url = `${API_CONFIG.BASE_URL}${path}`
+
+		try {
+			// Pre-flight check to verify endpoint is accessible
+			// Check endpoint with minimal data transfer
+			await api.get(url, {
+				headers: { Range: "bytes=0-0" },
+				responseType: "blob",
+			})
+
+			// if successful, trigger download
+			const link = document.createElement("a")
+			link.href = url
+			link.style.display = "none"
+			document.body.appendChild(link)
+			link.click()
+			document.body.removeChild(link)
+		} catch (error) {
+			throw error
+		}
 	},
 }

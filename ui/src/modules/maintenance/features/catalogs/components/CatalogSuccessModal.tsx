@@ -4,6 +4,7 @@ import SuccessIcon from "@/assets/success-icon.svg"
 
 type CatalogAddedSuccessModalProps = {
 	open: boolean
+	isEditMode?: boolean
 	onClose: () => void
 	onViewTables: () => void
 	onViewCatalogs: () => void
@@ -11,6 +12,7 @@ type CatalogAddedSuccessModalProps = {
 
 const CatalogAddedSuccessModal: React.FC<CatalogAddedSuccessModalProps> = ({
 	open,
+	isEditMode = false,
 	onClose,
 	onViewTables,
 	onViewCatalogs,
@@ -35,11 +37,15 @@ const CatalogAddedSuccessModal: React.FC<CatalogAddedSuccessModalProps> = ({
 				/>
 
 				<div className="mb-5 flex w-64 flex-col items-center gap-1 text-center">
-					<p className="text-xl font-medium leading-7 text-olake-text">
-						Catalog Added Successfully
+					<p className="whitespace-nowrap text-xl font-medium leading-7 text-olake-text">
+						{isEditMode
+							? "Catalog Updated Successfully"
+							: "Catalog Added Successfully"}
 					</p>
-					<p className="text-sm leading-[22px] text-olake-text-secondary">
-						You can start optimising tables
+					<p className="whitespace-nowrap text-sm leading-[22px] text-olake-text-secondary">
+						{isEditMode
+							? "Your changes have been saved"
+							: "You can start optimising tables"}
 					</p>
 				</div>
 

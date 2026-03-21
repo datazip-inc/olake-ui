@@ -1,6 +1,8 @@
 import { CaretLeftIcon } from "@phosphor-icons/react"
 import clsx from "clsx"
 
+import { Tag } from "@/common/components"
+
 import type { NavModule } from "../nav-config"
 import SidebarNavItem from "./SidebarNavItem"
 
@@ -24,11 +26,7 @@ const SidebarModuleGroup: React.FC<{
 						className={mod.iconClassName}
 					/>
 					<span>{mod.moduleLabel}</span>
-					{mod.badge && (
-						<span className="rounded-full bg-[#f3f5fd] px-2 text-xs text-[#193AE6]">
-							{mod.badge}
-						</span>
-					)}
+					{mod.badge && <Tag>{mod.badge}</Tag>}
 				</div>
 				<CaretLeftIcon
 					className={clsx(

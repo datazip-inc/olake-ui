@@ -1,2 +1,2 @@
-export { default as CatalogAddedSuccessModal } from "./CatalogAddedSuccessModal"
+export { default as CatalogSuccessModal } from "./CatalogSuccessModal"
 export { default as CatalogModal } from "./CatalogModal"

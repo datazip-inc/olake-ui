@@ -12,11 +12,12 @@ const mapProcessEntry = (
 	index: number,
 	sourceKey: string,
 ): RunLogEntry => {
+	const { time: timestamp, level, message } = entry
 	let date = ""
 	let time = ""
 
-	if (entry.time) {
-		const d = new Date(entry.time)
+	if (timestamp) {
+		const d = new Date(timestamp)
 		date = d.toLocaleDateString()
 		time = d.toLocaleTimeString("en-US", {
 			timeZone: "UTC",
@@ -28,8 +29,8 @@ const mapProcessEntry = (
 		id: `${sourceKey}-${index}`,
 		date,
 		time,
-		level: entry.level.toLowerCase() as RunLogEntry["level"],
-		message: entry.message,
+		level: level.toUpperCase() as RunLogEntry["level"],
+		message,
 	}
 }
 
@@ -45,9 +46,7 @@ export const mapProcessLogsResponse = (response: GetProcessLogsApiResponse) => {
 	const taskSources: RunLogSource[] = (taskLogs ?? []).map(task => ({
 		key: `task-${task.taskId}`,
 		label: `Subtask ${task.taskId}`,
-		hasError: (task.content ?? []).some(
-			entry => entry.level.toLowerCase() === "error",
-		),
+		hasError: (task.content ?? []).some(entry => entry.level === "ERROR"),
 	}))
 
 	const logsBySource: Record<string, RunLogEntry[]> = {
@@ -63,4 +62,13 @@ export const mapProcessLogsResponse = (response: GetProcessLogsApiResponse) => {
 	}
 
 	return { driverLogs, taskSources, logsBySource }
+}
+
+/** Maps UI source keys to API `file` segment (`driver` or numeric task id). */
+export const getProcessLogFileId = (selectedSourceKey: string): string => {
+	if (selectedSourceKey === DRIVER_SOURCE_KEY) return DRIVER_SOURCE_KEY
+	if (selectedSourceKey.startsWith("task-")) {
+		return selectedSourceKey.slice("task-".length)
+	}
+	return selectedSourceKey
 }
