@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -38,7 +37,7 @@ func MapOLakeConfigToCompactionCatalog(configJSON string) (*models.CatalogReques
 	mapAuthConfig(&config, compactionReq.AuthConfig, compactionReq.StorageConfig)
 	mapCatalogProperties(&config, compactionReq.Properties, string(config.CatalogType))
 
-	compactionReq.Properties["created_at"] = time.Now().Format("02 Jan 2006")
+	compactionReq.Properties["olake_created"] = "true"
 
 	return compactionReq, nil
 }

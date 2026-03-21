@@ -24,10 +24,11 @@ type CatalogsResponse struct {
 }
 
 type CatalogWithDatabases struct {
-	Name      string   `json:"name"`
-	Type      string   `json:"type"`
-	Databases []string `json:"databases"`
-	CreatedAt string   `json:"created_at,omitempty"`
+	Name         string   `json:"name"`
+	Type         string   `json:"type"`
+	Databases    []string `json:"databases"`
+	CreatedAt    string   `json:"created_at"`
+	OLakeCreated bool     `json:"olake_created"`
 }
 
 // TablesResponse represents tables with full details for a specific catalog/database
@@ -64,7 +65,6 @@ type SetTablePropertiesRequest struct {
 // CompactionCronConfigRequest represents the request to set compaction cron configuration
 // TriggerInterval values are in milliseconds. Use "never" to disable a specific compaction type.
 type CompactionCronConfigRequest struct {
-	Enabled              bool   `json:"enabled"`
 	MinorTriggerInterval string `json:"minorTriggerInterval"`
 	MajorTriggerInterval string `json:"majorTriggerInterval"`
 	FullTriggerInterval  string `json:"fullTriggerInterval"`

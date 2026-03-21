@@ -3,39 +3,16 @@ package aggregator
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 )
 
-// getTableEnabledStatus extracts enabled/disabled status from catalog table properties
-// Format: <db>:<tbl> → <enabled>,<minor>,<major>,<full>
-func (s *Service) getTableEnabledStatus(catalogMeta *models.CatalogRequest, database, table string) bool {
-	if catalogMeta.TableProperties == nil {
-		return false
-	}
-
-	tableKey := fmt.Sprintf("%s:%s", database, table)
-	configStr, ok := catalogMeta.TableProperties[tableKey]
-	if !ok || configStr == "" {
-		return false
-	}
-
-	// Parse format: <enabled>,<minor>,<major>,<full>
-	parts := strings.Split(configStr, ",")
-	if len(parts) < 1 {
-		return false
-	}
-
-	return parts[0] == "true"
-}
-
 // fetchLatestProcessInfo fetches the latest optimizing process info for a specific type
 func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) (*models.OptimizationInfo, error) {
 	result, err := s.table.GetLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
 	if err != nil {
-		return nil, fmt.Errorf("")
+		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %w", processType, catalog, database, table, err)
 	}
 
 	processList, ok := result["list"].([]interface{})

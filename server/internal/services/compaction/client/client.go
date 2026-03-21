@@ -18,7 +18,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
-// is this the right place to have this struct?
 type Compaction struct {
 	baseURL   string
 	apiKey    string
@@ -26,14 +25,13 @@ type Compaction struct {
 	client    *http.Client
 }
 
+// Token Expiration: There is "no" expiration logic for compaction
+// https://github.com/datazip-inc/olake-fusion/blob/master/amoro-ams/src/main/java/org/apache/amoro/server/dashboard/controller/ApiTokenController.java
 func NewClient() (*Compaction, error) {
-	baseURL, err := web.AppConfig.String(constants.ConfCompactionBaseURL)
+	baseURL, username, password, err := getCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get compaction base URL: %s", err)
+		return nil, fmt.Errorf("failed to create client: %s", err)
 	}
-
-	username, _ := web.AppConfig.String(constants.ConfCompactionUsername)
-	password, _ := web.AppConfig.String(constants.ConfCompactionPassword)
 
 	apiKey, apiSecret, err := generateToken(baseURL, username, password)
 	if err != nil {
@@ -150,9 +148,15 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
 
 	loginPayload := map[string]string{"user": username, "password": password}
-	loginBody, _ := json.Marshal(loginPayload)
+	loginBody, err := json.Marshal(loginPayload)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to marshal login payload: %w", err)
+	}
 
-	loginReq, _ := http.NewRequest("POST", baseURL+"/api/ams/v1/login", bytes.NewReader(loginBody))
+	loginReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/login", bytes.NewReader(loginBody))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create login request: %w", err)
+	}
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginReq.Header.Set("X-Request-Source", "Web")
 
@@ -164,7 +168,10 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 
 	cookies := loginResp.Cookies()
 
-	tokenReq, _ := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", nil)
+	tokenReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", nil)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create token request: %w", err)
+	}
 	tokenReq.Header.Set("Content-Type", "application/json")
 	tokenReq.Header.Set("X-Request-Source", "Web")
 	for _, cookie := range cookies {
@@ -189,4 +196,23 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 	}
 
 	return result.Result.APIKey, result.Result.Secret, nil
+}
+
+func getCredentials() (string, string, string, error) {
+	baseURL, err := web.AppConfig.String(constants.ConfCompactionBaseURL)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get compaction base URL: %s", err)
+	}
+
+	username, err := web.AppConfig.String(constants.ConfCompactionUsername)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get compaction username creds: %s", err)
+	}
+
+	password, err := web.AppConfig.String(constants.ConfCompactionPassword)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to get compaction password creds: %s", err)
+	}
+
+	return baseURL, username, password, nil
 }

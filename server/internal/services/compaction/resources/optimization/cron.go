@@ -3,8 +3,6 @@ package optimization
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -15,20 +13,13 @@ func (s *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 	properties := make(map[string]string)
 
 	minorInterval := parseIntervalValue(config.MinorTriggerInterval)
-	if minorInterval != "-1" {
-		properties["self-optimizing.minor.trigger.interval"] = minorInterval
-	}
+	properties["self-optimizing.minor.trigger.interval"] = minorInterval
 
 	majorInterval := parseIntervalValue(config.MajorTriggerInterval)
-	if majorInterval != "-1" {
-		// TODO: recheck this
-		properties["self-optimizing.minor.trigger.interval"] = majorInterval
-	}
+	properties["self-optimizing.major.trigger.interval"] = majorInterval
 
 	fullInterval := parseIntervalValue(config.FullTriggerInterval)
-	if fullInterval != "-1" {
-		properties["self-optimizing.full.trigger.interval"] = fullInterval
-	}
+	properties["self-optimizing.full.trigger.interval"] = fullInterval
 
 	// sql query
 	sqlResult, err := s.table.SetTableProperties(ctx, models.SetTablePropertiesRequest{
@@ -48,51 +39,71 @@ func (s *Service) SetCompactionCronConfig(ctx context.Context, catalog, database
 		}, nil
 	}
 
-	// store in catalog properties
-	if err := s.storeCatalogTableProperty(ctx, catalog, database, table, config); err != nil {
-		return nil, fmt.Errorf("failed to store catalog table property: %w", err)
-	}
-
 	return &models.CompactionCronConfigResponse{
 		Success: true,
 		Message: fmt.Sprintf("Successfully configured compaction for %s.%s.%s", catalog, database, table),
 	}, nil
 }
 
-// retrieves the compaction cron configuration from catalog properties
+// retrieves the compaction cron configuration from table details properties
 func (s *Service) GetCompactionCronConfig(ctx context.Context, catalog, database, table string) (*models.CompactionCronConfigRequest, error) {
-	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
-
-	var catalogMeta map[string]interface{}
-	if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
-		return nil, fmt.Errorf("failed to get catalog: %w", err)
+	tableDetails, err := s.table.GetTableDetails(ctx, catalog, database, table)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get table details for %s.%s.%s: %w", catalog, database, table, err)
 	}
 
-	tableProperties, _ := catalogMeta["tableProperties"].(map[string]interface{})
+	detailsMap, ok := tableDetails.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid tableDetails type: expected map[string]interface{}, got %T", tableDetails)
+	}
 
-	tableKey := fmt.Sprintf("%s:%s", database, table)
-	configStr, ok := tableProperties[tableKey].(string)
-	if !ok || configStr == "" {
+	properties, ok := detailsMap["properties"].(map[string]interface{})
+	if !ok {
 		return &models.CompactionCronConfigRequest{
-			MinorTriggerInterval: "never",
-			MajorTriggerInterval: "never",
-			FullTriggerInterval:  "never",
+			MinorTriggerInterval: "-1",
+			MajorTriggerInterval: "-1",
+			FullTriggerInterval:  "-1",
 		}, nil
 	}
 
-	// parse the config string: <enabled>,<minor>,<major>,<full>
-	parts := strings.Split(configStr, ",")
-	if len(parts) != 4 {
-		return nil, fmt.Errorf("invalid config format: expected 4 parts, got %d", len(parts))
+	enabled := false
+	if enabledVal, ok := properties["self-optimizing.enabled"]; ok {
+		enabled = enabledVal.(string) == "true"
 	}
 
-	enabled := parts[0] == "true"
+	if !enabled {
+		return &models.CompactionCronConfigRequest{
+			MinorTriggerInterval: "-1",
+			MajorTriggerInterval: "-1",
+			FullTriggerInterval:  "-1",
+		}, nil
+	}
+
+	minorInterval := "-1"
+	if val, ok := properties["self-optimizing.minor.trigger.interval"]; ok {
+		if strVal, ok := val.(string); ok {
+			minorInterval = strVal
+		}
+	}
+
+	majorInterval := "-1"
+	if val, ok := properties["self-optimizing.major.trigger.interval"]; ok {
+		if strVal, ok := val.(string); ok {
+			majorInterval = strVal
+		}
+	}
+
+	fullInterval := "-1"
+	if val, ok := properties["self-optimizing.full.trigger.interval"]; ok {
+		if strVal, ok := val.(string); ok {
+			fullInterval = strVal
+		}
+	}
 
 	return &models.CompactionCronConfigRequest{
-		Enabled:              enabled,
-		MinorTriggerInterval: parts[1],
-		MajorTriggerInterval: parts[2],
-		FullTriggerInterval:  parts[3],
+		MinorTriggerInterval: minorInterval,
+		MajorTriggerInterval: majorInterval,
+		FullTriggerInterval:  fullInterval,
 	}, nil
 }
 
@@ -108,41 +119,4 @@ func parseIntervalValue(interval string) string {
 	}
 
 	return "-1"
-}
-
-// storeCatalogTableProperty stores the configuration in catalog table properties
-func (s *Service) storeCatalogTableProperty(ctx context.Context, catalog, database, table string, config models.CompactionCronConfigRequest) error {
-	path := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
-
-	var catalogMeta map[string]interface{}
-	if err := s.compaction.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &catalogMeta); err != nil {
-		return fmt.Errorf("failed to get catalog: %w", err)
-	}
-
-	// Get or create table properties map
-	var tableProperties map[string]interface{}
-	if props, ok := catalogMeta["tableProperties"].(map[string]interface{}); ok {
-		tableProperties = props
-	} else {
-		tableProperties = make(map[string]interface{})
-		catalogMeta["tableProperties"] = tableProperties
-	}
-
-	// Store config with key: <database>:<table>, value: <enabled>,<minor>,<major>,<full>
-	tableKey := fmt.Sprintf("%s:%s", database, table)
-	enabledStr := "false"
-	if config.Enabled {
-		enabledStr = "true"
-	}
-	configValue := fmt.Sprintf("%s,%s,%s,%s",
-		enabledStr,
-		parseIntervalValue(config.MinorTriggerInterval),
-		parseIntervalValue(config.MajorTriggerInterval),
-		parseIntervalValue(config.FullTriggerInterval),
-	)
-	tableProperties[tableKey] = configValue
-
-	// Update catalog
-	updatePath := fmt.Sprintf("%scatalogs/%s", models.APIBase, catalog)
-	return s.compaction.DoAndValidate(ctx, http.MethodPut, updatePath, url.Values{}, catalogMeta)
 }

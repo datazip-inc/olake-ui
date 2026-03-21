@@ -141,7 +141,7 @@ func Init(h *handlers.Handler) {
 		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")
 		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/disable-optimizing", compactionHandler, "post:DisableSelfOptimizing")
 
-		// table listing route
+		// view: table listing route
 		web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
 	}
 }

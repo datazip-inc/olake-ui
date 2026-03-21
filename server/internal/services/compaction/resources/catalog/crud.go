@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
@@ -158,6 +159,7 @@ func setDefaultTableProperties(req *models.CatalogRequest) {
 
 	req.Properties["table.self-optimizing.enabled"] = "false"
 	req.Properties["table.self-optimizing.quota"] = "0.1"
+	req.Properties["created-at"] = time.Now().Format("02 Jan 2006")
 }
 
 // SetCatalogTableProperty sets a table property in the catalog's tableProperties map
