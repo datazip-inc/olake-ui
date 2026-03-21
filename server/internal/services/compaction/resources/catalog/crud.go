@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
@@ -61,7 +60,7 @@ func (s *Service) CreateCatalog(ctx context.Context, req *models.CatalogRequest)
 	}
 
 	// Set default table properties for Iceberg tables
-	setDefaultProperties(req)
+	setDefaultCatalogProperties(req)
 
 	path := fmt.Sprintf("%scatalogs", models.APIBase)
 	if err := s.compaction.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
@@ -75,7 +74,7 @@ func (s *Service) CreateCatalog(ctx context.Context, req *models.CatalogRequest)
 }
 
 func (s *Service) CreateCatalogFromOLakeConfig(ctx context.Context, configJSON string) (*models.CatalogResponse, error) {
-	catalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
+	catalogReq, err := MapETLConfigToCompactionCatalog(configJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to map OLake config to catalog: %w", err)
 	}
@@ -102,7 +101,7 @@ func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *mo
 }
 
 func (s *Service) UpdateCatalogFromOLakeConfig(ctx context.Context, configJSON string) (*models.CatalogResponse, error) {
-	catalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
+	catalogReq, err := MapETLConfigToCompactionCatalog(configJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to map OLake config to catalog: %w", err)
 	}
@@ -149,15 +148,4 @@ func validateCatalog(req *models.CatalogRequest) error {
 	}
 
 	return nil
-}
-
-func setDefaultProperties(req *models.CatalogRequest) {
-	if req.Properties == nil {
-		req.Properties = make(map[string]string)
-	}
-
-	req.Properties["table.self-optimizing.enabled"] = "false"
-	req.Properties["table.self-optimizing.quota"] = "0.1"
-	req.Properties["created-at"] = time.Now().Format("02 Jan 2006")
-	req.Properties["cache-enabled"] = "false"
 }

@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-func MapOLakeConfigToCompactionCatalog(configJSON string) (*models.CatalogRequest, error) {
+func MapETLConfigToCompactionCatalog(configJSON string) (*models.CatalogRequest, error) {
 	var config models.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse OLake config: %w", err)
@@ -36,7 +37,7 @@ func MapOLakeConfigToCompactionCatalog(configJSON string) (*models.CatalogReques
 	mapAuthConfig(&config, compactionReq.AuthConfig, compactionReq.StorageConfig)
 	mapCatalogProperties(&config, compactionReq.Properties, string(config.CatalogType))
 
-	compactionReq.Properties["olake_created"] = "true"
+	setDefaultCatalogProperties(compactionReq)
 
 	return compactionReq, nil
 }
@@ -202,5 +203,25 @@ func mapCompactionTypeToOLake(compactionType string) models.CatalogType {
 		return "hive"
 	default:
 		return models.CatalogType(compactionType)
+	}
+}
+
+// setDefaultCatalogProperties sets required default properties for all catalogs
+func setDefaultCatalogProperties(req *models.CatalogRequest) {
+	if req.Properties == nil {
+		req.Properties = make(map[string]string)
+	}
+
+	if _, exists := req.Properties["table.self-optimizing.enabled"]; !exists {
+		req.Properties["table.self-optimizing.enabled"] = "false"
+	}
+	if _, exists := req.Properties["table.self-optimizing.quota"]; !exists {
+		req.Properties["table.self-optimizing.quota"] = "0.1"
+	}
+	if _, exists := req.Properties["cache-enabled"]; !exists {
+		req.Properties["cache-enabled"] = "false"
+	}
+	if _, exists := req.Properties["created-at"]; !exists {
+		req.Properties["created-at"] = time.Now().Format("02 Jan 2006")
 	}
 }

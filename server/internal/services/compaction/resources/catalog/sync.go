@@ -10,10 +10,16 @@ import (
 )
 
 func (s *Service) SyncCatalogToFusion(ctx context.Context, configJSON string, isUpdate bool) error {
-	CompactionCatalogReq, err := MapOLakeConfigToCompactionCatalog(configJSON)
+	CompactionCatalogReq, err := MapETLConfigToCompactionCatalog(configJSON)
 	if err != nil {
 		return fmt.Errorf("failed to map OLake config to Compaction catalog: %w", err)
 	}
+
+	// Mark this catalog as created from ETL
+	if CompactionCatalogReq.Properties == nil {
+		CompactionCatalogReq.Properties = make(map[string]string)
+	}
+	CompactionCatalogReq.Properties["olake_created"] = "true"
 
 	logger.Infof("Syncing catalog to Compaction: name=%s, type=%s, isUpdate=%v", CompactionCatalogReq.Name, CompactionCatalogReq.Type, isUpdate)
 
