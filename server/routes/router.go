@@ -115,7 +115,6 @@ func Init(h *handlers.Handler) {
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
 	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
 
-	// Register compaction routes only if compaction is enabled
 	if h.Compaction != nil {
 		compactionHandler := h.Compaction
 

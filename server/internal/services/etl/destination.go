@@ -121,12 +121,6 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 		return fmt.Errorf("destination name '%s' is not unique", req.Name)
 	}
 
-	// Verify connection before persisting anything
-	if err := s.verifyDestinationConnection(ctx, req.Type, req.Version, req.Config); err != nil {
-		return fmt.Errorf("destination connection check failed: %s", err)
-	}
-
-	// If compaction is enabled and type is iceberg, create catalog first
 	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
 		c := catalog.NewService(s.compaction)
 		if err := c.SyncCatalogToFusion(ctx, req.Config, false); err != nil {
@@ -159,12 +153,6 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 		return fmt.Errorf("failed to get destination: %s", err)
 	}
 
-	// Verify connection before persisting anything
-	if err := s.verifyDestinationConnection(ctx, req.Type, req.Version, req.Config); err != nil {
-		return fmt.Errorf("destination connection check failed: %s", err)
-	}
-
-	// If compaction is enabled and type is iceberg, update catalog first
 	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
 		c := catalog.NewService(s.compaction)
 		if err := c.SyncCatalogToFusion(ctx, req.Config, true); err != nil {
@@ -239,27 +227,6 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 
 	telemetry.TrackDestinationsStatus(ctx)
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
-}
-
-// verifyDestinationConnection runs the Temporal credential check without reading logs.
-// It is used internally before persisting a destination to fail-fast on bad configs.
-func (s Service) verifyDestinationConnection(ctx context.Context, destType, version, config string) error {
-	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
-	if err != nil {
-		return fmt.Errorf("failed to get driver image tags: %s", err)
-	}
-
-	encryptedConfig, err := utils.Encrypt(config)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt config: %s", err)
-	}
-
-	workflowID := fmt.Sprintf("test-connection-%s-%d", destType, time.Now().Unix())
-	_, err = s.temporal.VerifyDriverCredentials(ctx, workflowID, "destination", driver, version, encryptedConfig)
-	if err != nil {
-		return fmt.Errorf("connection test failed: %s", err)
-	}
-	return nil
 }
 
 func (s Service) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
