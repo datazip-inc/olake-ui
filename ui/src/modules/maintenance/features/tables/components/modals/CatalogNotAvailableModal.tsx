@@ -4,13 +4,13 @@ import { Button, Modal } from "antd"
 type CatalogNotAvailableModalProps = {
 	open: boolean
 	onClose: () => void
-	catalogName?: string
+	catalogName: string
 }
 
 const CatalogNotAvailableModal: React.FC<CatalogNotAvailableModalProps> = ({
 	open,
 	onClose,
-	catalogName = "Skyline Data Vault",
+	catalogName,
 }) => {
 	return (
 		<Modal

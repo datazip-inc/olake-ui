@@ -87,6 +87,12 @@ const Tables: React.FC = () => {
 	const showPageError = isCatalogsError || isTablesError
 	const showCatalogEmptyState =
 		!isCatalogsPending && !isCatalogsError && catalogs.length === 0
+	const showDatabaseEmptyState =
+		!isCatalogsPending &&
+		!isCatalogsError &&
+		catalogs.length > 0 &&
+		!!selectedCatalog &&
+		!selectedDatabase
 
 	const getTableRunsPath = (tableName: string) =>
 		`/maintenance/tables/${encodeURIComponent(selectedCatalog ?? "")}/${encodeURIComponent(selectedDatabase ?? "")}/${encodeURIComponent(tableName)}/runs`
@@ -149,11 +155,18 @@ const Tables: React.FC = () => {
 		<div className="flex h-56 items-center justify-center">
 			<div className="text-center">
 				<p className="text-xl font-medium leading-7 text-olake-heading-strong">
-					No Tables Found.
+					{tables.length === 0 ? "No Tables" : "No Tables Found."}
 				</p>
-				<p className="mt-1 text-sm leading-[22px] text-olake-body">
-					Try a different search or filter.
-				</p>
+				{tables.length > 0 && (
+					<p className="mt-1 text-sm leading-[22px] text-olake-body">
+						Try a different search or filter.
+					</p>
+				)}
+				{tables.length === 0 && (
+					<p className="mt-1 text-sm leading-[22px] text-olake-body">
+						There are no tables in the selected catalog.
+					</p>
+				)}
 				<Button
 					type="primary"
 					className="mt-4"
@@ -195,31 +208,40 @@ const Tables: React.FC = () => {
 							selectedCatalog={selectedCatalog}
 							selectedDatabase={selectedDatabase}
 							loading={loading}
+							isRefreshDisabled={showDatabaseEmptyState}
 							onCatalogChange={handleCatalogChange}
 							onDatabaseChange={setSelectedDatabase}
 							onRefresh={refetchTables}
 						/>
 						<div className="mt-8 w-full">
-							<div className="flex flex-col gap-6">
-								<TableFilterBar
-									searchTerm={searchTerm}
-									onSearchChange={setSearchTerm}
-									activeFilter={activeFilter}
-									onFilterChange={setActiveFilter}
+							{showDatabaseEmptyState ? (
+								<PageErrorState
+									title="No Database Found"
+									description="There are no databases in the selected catalog."
+									onRetry={() => void refetchCatalogs()}
 								/>
-								<DataTable
-									columns={columns}
-									rows={paginatedRows}
-									rowKey={row => row.id}
-									loading={loading}
-									emptyState={emptySearchState}
-									pagination={{
-										currentPage,
-										totalPages,
-										onPageChange: setCurrentPage,
-									}}
-								/>
-							</div>
+							) : (
+								<div className="flex flex-col gap-6">
+									<TableFilterBar
+										searchTerm={searchTerm}
+										onSearchChange={setSearchTerm}
+										activeFilter={activeFilter}
+										onFilterChange={setActiveFilter}
+									/>
+									<DataTable
+										columns={columns}
+										rows={paginatedRows}
+										rowKey={row => row.id}
+										loading={loading}
+										emptyState={emptySearchState}
+										pagination={{
+											currentPage,
+											totalPages,
+											onPageChange: setCurrentPage,
+										}}
+									/>
+								</div>
+							)}
 						</div>
 					</>
 				)}
@@ -243,12 +265,12 @@ const Tables: React.FC = () => {
 			<CatalogNotAvailableModal
 				open={catalogNotAvailableOpen}
 				onClose={handleUnavailableSelectionClose}
-				catalogName={catalogParam}
+				catalogName={catalogParam ?? ""}
 			/>
 			<DatabaseNotAvailableModal
 				open={databaseNotAvailableOpen}
 				onClose={handleUnavailableSelectionClose}
-				databaseName={databaseParam}
+				databaseName={databaseParam ?? ""}
 			/>
 		</>
 	)

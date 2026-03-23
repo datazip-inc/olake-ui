@@ -55,7 +55,7 @@ const UpdateNotification: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
 			<p className="text-[12px] leading-4 text-[#383838]">
 				{hasNewUpdates
 					? `You have ${newUpdatesCount} new update${newUpdatesCount !== 1 ? "s" : ""}.`
-					: "We have made fixes to our ingestion flow & new UI is implemented"}
+					: "You're all up to date!"}
 			</p>
 		</button>
 	)

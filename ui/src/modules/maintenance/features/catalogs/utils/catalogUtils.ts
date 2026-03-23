@@ -1,3 +1,5 @@
+import type { SpecResponse } from "@/common/types"
+
 import type { Catalog, CatalogFormData, GetCatalogsResponse } from "../types"
 
 /** RJSF / spec expect `type` + nested `writer`; GET catalog returns the writer body only. */
@@ -45,4 +47,40 @@ export const mapGetCatalogsResponseToCatalogs = (
 		createdOn: catalog.created_at,
 		byOlake: catalog.olake_created,
 	}))
+}
+
+// Parses spec.uischema and (in edit mode) disables writer.catalog_name so the catalog name can't be changed while editing the spec.
+
+export const mapCatalogSpecResponse = (
+	data: SpecResponse,
+	isEditMode: boolean,
+): SpecResponse => {
+	if (!data?.spec?.uischema) return data
+
+	try {
+		const uiSchema = JSON.parse(data.spec.uischema)
+		if (isEditMode) {
+			const finalUiSchema = {
+				...uiSchema,
+				writer: {
+					...(uiSchema.writer || {}),
+					catalog_name: {
+						...(uiSchema.writer?.catalog_name || {}),
+						"ui:disabled": true,
+					},
+				},
+			}
+			return {
+				...data,
+				spec: {
+					...data.spec,
+					uischema: JSON.stringify(finalUiSchema),
+				},
+			}
+		}
+	} catch (e) {
+		console.error("Failed to parse uiSchema in mapCatalogSpecResponse", e)
+	}
+
+	return data
 }

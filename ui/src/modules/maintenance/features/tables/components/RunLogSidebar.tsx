@@ -1,5 +1,5 @@
 import {
-	CaretLeftIcon,
+	ArrowLeftIcon,
 	DownloadSimpleIcon,
 	HardDrivesIcon,
 	ListBulletsIcon,
@@ -49,8 +49,8 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 				onClick={onBack}
 				className="mb-2 inline-flex items-center gap-1 font-sans text-sm font-normal leading-[22px] text-olake-text-secondary"
 			>
-				<CaretLeftIcon size={12} />
-				<span>{`Run Logs <${tableName}>`}</span>
+				<ArrowLeftIcon size={14} />
+				<span>{`Run Logs / ${tableName} `}</span>
 			</button>
 
 			<h1 className="font-sans text-xl font-medium leading-7 text-olake-text">
@@ -77,6 +77,7 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 				</div>
 				<Button
 					size="small"
+					className="!h-8"
 					icon={<DownloadSimpleIcon size={14} />}
 					loading={downloadArchive.isPending}
 					onClick={() =>

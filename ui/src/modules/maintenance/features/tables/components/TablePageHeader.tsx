@@ -12,6 +12,7 @@ type Props = {
 	onCatalogChange: (catalog: string) => void
 	onDatabaseChange: (database: string) => void
 	onRefresh: () => void
+	isRefreshDisabled?: boolean
 }
 
 const TablePageHeader: React.FC<Props> = ({
@@ -23,6 +24,7 @@ const TablePageHeader: React.FC<Props> = ({
 	onCatalogChange,
 	onDatabaseChange,
 	onRefresh,
+	isRefreshDisabled,
 }) => {
 	const catalogOptions = catalogs.map(c => ({ label: c.name, value: c.name }))
 
@@ -38,7 +40,7 @@ const TablePageHeader: React.FC<Props> = ({
 				Tables
 			</h1>
 			<p className="mt-1 text-sm leading-[22px] text-olake-heading-strong">
-				Select Catalog &amp; Database to view tables &amp; run maintenance
+				Select Catalog &amp; Database to view tables &amp; run optimization
 			</p>
 			<div className="mt-4 flex items-center gap-4">
 				<Select
@@ -62,6 +64,7 @@ const TablePageHeader: React.FC<Props> = ({
 					icon={<ArrowsClockwiseIcon size={16} />}
 					loading={loading}
 					onClick={onRefresh}
+					disabled={isRefreshDisabled}
 				>
 					Refresh Tables
 				</Button>

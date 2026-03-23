@@ -93,9 +93,9 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 								</p>
 								<p className="text-xl font-medium leading-[28px] text-olake-text">
 									{tableMetrics
-										? formatTimestampToUtcDateTime(
+										? `${formatTimestampToUtcDateTime(
 												tableMetrics["last-commit-time"],
-											)
+											)} UTC`
 										: "--"}
 								</p>
 							</div>

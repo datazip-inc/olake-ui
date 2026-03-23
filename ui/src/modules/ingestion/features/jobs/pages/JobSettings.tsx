@@ -325,7 +325,7 @@ const JobSettings: React.FC = () => {
 
 	return (
 		<>
-			<div className="flex h-screen flex-col">
+			<div className="flex h-full flex-col">
 				<div className="flex-1 overflow-hidden">
 					<div className="px-6 pb-4 pt-6">
 						<div className="flex items-center justify-between">

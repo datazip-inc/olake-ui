@@ -239,7 +239,7 @@ const JobLogs: React.FC = () => {
 	}
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className="flex h-full flex-col">
 			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="mb-2 flex items-center">

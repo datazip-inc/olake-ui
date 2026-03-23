@@ -120,7 +120,7 @@ const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
 	const levelKey = row.level.toLowerCase()
 
 	return (
-		<div className="grid h-10 grid-cols-[87px_92px_79px_minmax(0,1fr)] items-center border-b border-olake-border pl-[30px] pr-5">
+		<div className="grid grid-cols-[87px_92px_79px_minmax(0,1fr)] items-start border-b border-olake-border py-2 pl-[30px] pr-5">
 			<span className="font-mono text-[10px] font-medium leading-[17px] text-olake-body">
 				{row.date}
 			</span>
@@ -135,7 +135,7 @@ const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
 				</span>
 			</span>
 			<span
-				className={`truncate font-mono text-[10px] font-medium leading-[17px] ${getLogTextColor(levelKey)}`}
+				className={`whitespace-normal break-words font-mono text-[10px] font-medium leading-[17px] ${getLogTextColor(levelKey)}`}
 			>
 				{row.message}
 			</span>

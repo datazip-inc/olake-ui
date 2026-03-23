@@ -33,6 +33,9 @@ export type DataTableProps<TRow> = {
 	/** Omit to disable pagination. */
 	pagination?: PaginationConfig
 
+	/** The expected number of rows per page, used to fix the table's minimum height. Defaults to 6. */
+	pageSize?: number
+
 	className?: string
 }
 
@@ -47,7 +50,38 @@ const TablePagination: React.FC<PaginationConfig> = ({
 	totalPages,
 	onPageChange,
 }) => {
-	const pageNumbers = Array.from({ length: totalPages }, (_, i) => i + 1)
+	const getVisiblePages = () => {
+		if (totalPages <= 7)
+			return Array.from({ length: totalPages }, (_, i) => i + 1)
+
+		if (currentPage <= 4) {
+			return [1, 2, 3, 4, 5, "...", totalPages]
+		}
+
+		if (currentPage >= totalPages - 3) {
+			return [
+				1,
+				"...",
+				totalPages - 4,
+				totalPages - 3,
+				totalPages - 2,
+				totalPages - 1,
+				totalPages,
+			]
+		}
+
+		return [
+			1,
+			"...",
+			currentPage - 1,
+			currentPage,
+			currentPage + 1,
+			"...",
+			totalPages,
+		]
+	}
+
+	const visiblePages = getVisiblePages()
 
 	return (
 		<div className="flex items-center gap-2 py-3 text-sm leading-5 text-olake-body-secondary">
@@ -61,20 +95,28 @@ const TablePagination: React.FC<PaginationConfig> = ({
 				<span>Previous</span>
 			</button>
 
-			{pageNumbers.map(page => (
-				<button
-					key={page}
-					type="button"
-					className={`h-6 w-6 rounded-md border border-olake-border text-sm leading-5 ${
-						currentPage === page
-							? "bg-olake-surface-muted text-olake-body-secondary"
-							: "bg-white text-olake-body-secondary"
-					}`}
-					onClick={() => onPageChange(page)}
-				>
-					{page}
-				</button>
-			))}
+			{visiblePages.map((page, index) => {
+				const isEllipsis = page === "..."
+				return (
+					<button
+						key={index}
+						type="button"
+						className={`h-6 min-w-[24px] rounded-md border text-sm leading-5 ${
+							isEllipsis
+								? "border-transparent bg-transparent text-olake-body-secondary"
+								: currentPage === page
+									? "border-olake-border bg-olake-surface-muted text-olake-body-secondary"
+									: "border-olake-border bg-white text-olake-body-secondary hover:bg-gray-50"
+						}`}
+						onClick={() =>
+							!isEllipsis ? onPageChange(page as number) : undefined
+						}
+						disabled={isEllipsis}
+					>
+						{page}
+					</button>
+				)
+			})}
 
 			<button
 				type="button"
@@ -94,9 +136,10 @@ function DataTable<TRow>({
 	rows,
 	rowKey,
 	loading = false,
-	loadingRowCount = 6,
+	loadingRowCount = 10,
 	emptyState,
 	pagination,
+	pageSize = 10,
 	className,
 }: DataTableProps<TRow>) {
 	const getAlignmentClass = (align: ColumnAlignment = "left") => {
@@ -111,61 +154,72 @@ function DataTable<TRow>({
 
 	const gridStyle: React.CSSProperties = { gridTemplateColumns }
 
+	// Calculate fixed height: 48px header + (pageSize * 56px per row) + 2px borders
+	const tableMinHeight = 48 + pageSize * 56 + 2
+
 	return (
-		<>
-			<div
-				className={`overflow-hidden rounded-lg border border-olake-border ${className ?? ""}`}
-			>
-				{/* Header */}
+		<div className="flex flex-col">
+			<div style={{ minHeight: `${tableMinHeight}px` }}>
 				<div
-					className="grid h-12 items-center gap-4 bg-olake-surface-subtle px-6 text-xs font-medium leading-5 text-olake-text-secondary"
-					style={gridStyle}
+					className={`overflow-hidden rounded-lg border border-olake-border ${className ?? ""}`}
 				>
-					{columns.map(col => (
-						<div
-							key={col.key}
-							className={getAlignmentClass(col.align)}
-						>
-							{col.header}
-						</div>
-					))}
+					{/* Header */}
+					<div
+						className="grid h-12 items-center gap-4 bg-olake-surface-subtle px-6 text-xs font-medium leading-5 text-olake-text-secondary"
+						style={gridStyle}
+					>
+						{columns.map(col => (
+							<div
+								key={col.key}
+								className={getAlignmentClass(col.align)}
+							>
+								{col.header}
+							</div>
+						))}
+					</div>
+
+					{/* Loading skeleton */}
+					{loading &&
+						Array.from({ length: loadingRowCount }).map((_, idx) => (
+							<div
+								key={idx} // skeleton rows have no data identity; index is acceptable
+								className="h-14 border-t border-olake-border bg-white"
+							/>
+						))}
+
+					{/* Data rows */}
+					{!loading &&
+						rows.map(row => (
+							<div
+								key={rowKey(row)}
+								className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text"
+								style={gridStyle}
+							>
+								{columns.map(col => (
+									<div
+										key={col.key}
+										className={getAlignmentClass(col.align)}
+									>
+										{col.render(row)}
+									</div>
+								))}
+							</div>
+						))}
+
+					{/* Empty state */}
+					{!loading &&
+						rows.length === 0 &&
+						(emptyState ?? <DefaultEmptyState />)}
 				</div>
-
-				{/* Loading skeleton */}
-				{loading &&
-					Array.from({ length: loadingRowCount }).map((_, idx) => (
-						<div
-							key={idx} // skeleton rows have no data identity; index is acceptable
-							className="h-14 border-t border-olake-border bg-white"
-						/>
-					))}
-
-				{/* Data rows */}
-				{!loading &&
-					rows.map(row => (
-						<div
-							key={rowKey(row)}
-							className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text"
-							style={gridStyle}
-						>
-							{columns.map(col => (
-								<div
-									key={col.key}
-									className={getAlignmentClass(col.align)}
-								>
-									{col.render(row)}
-								</div>
-							))}
-						</div>
-					))}
-
-				{/* Empty state */}
-				{!loading && rows.length === 0 && (emptyState ?? <DefaultEmptyState />)}
 			</div>
 
 			{/* Pagination */}
-			{pagination && <TablePagination {...pagination} />}
-		</>
+			{pagination && (
+				<div className="mt-4 flex justify-end">
+					<TablePagination {...pagination} />
+				</div>
+			)}
+		</div>
 	)
 }
 

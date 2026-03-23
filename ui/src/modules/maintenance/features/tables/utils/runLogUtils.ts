@@ -43,11 +43,23 @@ export const mapProcessLogsResponse = (response: GetProcessLogsApiResponse) => {
 	)
 
 	// Each task log maps to a sidebar source entry keyed by task-{taskId}.
-	const taskSources: RunLogSource[] = (taskLogs ?? []).map(task => ({
+	const taskSourcesWithIndex = (taskLogs ?? []).map((task, index) => ({
+		index,
 		key: `task-${task.taskId}`,
 		label: `Subtask ${task.taskId}`,
 		hasError: (task.content ?? []).some(entry => entry.level === "ERROR"),
 	}))
+
+	// Ensure subtasks with errors appear first; keep API ordering within each group.
+	const taskSources: RunLogSource[] = taskSourcesWithIndex
+		.sort(
+			(a, b) => Number(b.hasError) - Number(a.hasError) || a.index - b.index,
+		)
+		.map(task => ({
+			key: task.key,
+			label: task.label,
+			hasError: task.hasError,
+		}))
 
 	const logsBySource: Record<string, RunLogEntry[]> = {
 		[DRIVER_SOURCE_KEY]: driverLogs,

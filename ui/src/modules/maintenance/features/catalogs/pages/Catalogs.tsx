@@ -7,7 +7,7 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Dropdown, Input } from "antd"
 import type { MenuProps } from "antd/es/menu"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 import { DataTable, PageErrorState, Tag } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
@@ -40,6 +40,20 @@ const Catalogs: React.FC = () => {
 			row.name.toLowerCase().includes(normalizedQuery),
 		)
 	}, [catalogRows, searchText])
+
+	const [currentPage, setCurrentPage] = useState(1)
+	const PAGE_SIZE = 10
+
+	useEffect(() => {
+		setCurrentPage(1)
+	}, [searchText])
+
+	const paginatedRows = useMemo(() => {
+		const start = (currentPage - 1) * PAGE_SIZE
+		return rows.slice(start, start + PAGE_SIZE)
+	}, [rows, currentPage])
+
+	const totalPages = Math.ceil(rows.length / PAGE_SIZE)
 
 	const getMenuItems = (row: Catalog): MenuProps["items"] => [
 		{
@@ -93,7 +107,7 @@ const Catalogs: React.FC = () => {
 		{
 			key: "name",
 			header: "Catalog Name",
-			width: 32,
+			width: 60,
 			render: row => (
 				<div className="flex items-center gap-2">
 					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
@@ -112,7 +126,7 @@ const Catalogs: React.FC = () => {
 		{
 			key: "createdOn",
 			header: "Created on",
-			width: 18,
+			width: 10,
 			render: row => (
 				<span className="text-sm leading-6 text-olake-text">
 					{row.createdOn}
@@ -169,12 +183,36 @@ const Catalogs: React.FC = () => {
 				) : (
 					<DataTable
 						columns={columns}
-						rows={rows}
+						rows={paginatedRows}
 						rowKey={row => row.id}
 						loading={isLoading}
+						pagination={
+							totalPages > 1
+								? {
+										currentPage,
+										totalPages,
+										onPageChange: setCurrentPage,
+									}
+								: undefined
+						}
 						emptyState={
-							<div className="flex h-24 items-center justify-center px-8 text-sm text-olake-text-tertiary">
-								No catalogs found.
+							<div className="flex min-h-64 flex-col items-center justify-center px-8 text-center">
+								<div className="flex flex-col items-center justify-center gap-[3px] not-italic">
+									<p className="text-[20px] font-medium leading-[28px] text-olake-heading-strong">
+										No Catalogs Available.
+									</p>
+									<p className="text-[14px] leading-[22px] text-olake-body">
+										Create a new Catalog to view tables for optimizations
+									</p>
+								</div>
+
+								<Button
+									type="primary"
+									className="mt-6 h-8 rounded-[6px] px-6 text-[14px]"
+									onClick={() => setModalOpen(true)}
+								>
+									New Catalog
+								</Button>
 							</div>
 						}
 					/>

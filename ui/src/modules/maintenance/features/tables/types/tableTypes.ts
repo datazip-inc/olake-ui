@@ -69,7 +69,7 @@ export interface UpdateTableCronApiRequest {
 // Frontend Domain Types
 export type FilterKey = "all" | "olake" | "external"
 export type CompactionRun = FusionCompactionRun | null
-export type CompactionScheduleTitle = "Minor" | "Major" | "Full"
+export type CompactionScheduleTitle = "Lite" | "Medium" | "Full"
 
 export interface Table {
 	id: string
@@ -130,4 +130,5 @@ export interface ScheduleSectionProps {
 	value: CronConfigOption
 	onChange: (next: CronConfigOption) => void
 	isFirst?: boolean
+	tooltip?: string
 }

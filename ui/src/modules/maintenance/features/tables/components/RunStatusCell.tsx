@@ -18,7 +18,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 				color="muted"
 				className="text-xs"
 			>
-				Not Optimised
+				Not Optimized
 			</Tag>
 		)
 	}
@@ -26,7 +26,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 	const tags = (
 		<div className="flex items-center justify-center gap-1">
 			{compactionSlots.map(slot => {
-				const run = runs[slot.key]
+				const run = runs[slot.key] ?? null
 				if (!run) {
 					return (
 						<div
@@ -47,6 +47,25 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 				}
 
 				const cfg = runStatusConfig[run.status]
+				if (!cfg) {
+					return (
+						<div
+							key={slot.key}
+							className="inline-flex items-center gap-1 rounded-[20px] bg-olake-surface-muted px-2 py-px"
+							aria-label={`${slot.name} — unknown status`}
+						>
+							<CircleDashedIcon
+								size={16}
+								weight="regular"
+								className="text-olake-text-disabled"
+							/>
+							<span className="text-xs font-medium leading-5 text-olake-text-tertiary">
+								{slot.tag}
+							</span>
+						</div>
+					)
+				}
+
 				return (
 					<div
 						key={slot.key}

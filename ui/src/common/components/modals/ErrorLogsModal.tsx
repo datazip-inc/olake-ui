@@ -4,33 +4,25 @@ import { Button, Modal } from "antd"
 import { ErrorIcon } from "@/assets"
 import { copyToClipboard } from "@/common/utils"
 
-const SpecFailedModal = ({
+const ErrorLogsModal = ({
 	open,
 	onClose,
-	fromSource,
-	connectionType,
+	title,
+	subtitle = "Please check your connection and try again",
 	error,
-	onTryAgain,
+	onAction,
+	actionButtonText = "Try Again",
 }: {
 	open: boolean
 	onClose: () => void
-	fromSource?: boolean
-	connectionType?: "source" | "destination" | "catalog"
+	title: string
+	subtitle?: React.ReactNode
 	error: string
-	onTryAgain: () => void
+	onAction?: () => void
+	actionButtonText?: string
 }) => {
-	const resolvedConnectionType =
-		connectionType ?? (fromSource ? "source" : "destination")
-	const labelMap = {
-		source: "Source",
-		destination: "Destination",
-		catalog: "Catalog",
-	} as const
-	const label = labelMap[resolvedConnectionType]
-
-	const handleTryAgain = () => {
-		onClose()
-		onTryAgain()
+	const handleAction = () => {
+		onAction?.()
 	}
 
 	const handleCopyLogs = async () => {
@@ -61,30 +53,33 @@ const SpecFailedModal = ({
 			}}
 		>
 			<div className="flex max-h-[calc(100vh-64px)] min-h-[560px] flex-col bg-white">
-				<div className="mt-12 flex w-[261px] shrink-0 flex-col items-center gap-3 self-center text-center">
+				<div className="mt-12 flex w-full max-w-[80%] shrink-0 flex-col items-center gap-x-3 gap-y-1 self-center px-4 text-center">
 					<img
 						src={ErrorIcon}
 						alt="Error"
 					/>
-					<p className="text-sm leading-[22px] text-olake-text-tertiary">
-						Failed
-					</p>
 					<h2 className="text-xl font-medium leading-7 text-olake-text">
-						{label} Spec Load Failed
+						{title}
 					</h2>
+					{subtitle && (
+						<p className="text-sm leading-[22px] text-olake-text-tertiary">
+							{subtitle}
+						</p>
+					)}
 				</div>
 
 				<div className="mt-4 flex min-h-0 w-[573px] flex-1 flex-col self-center overflow-hidden rounded-lg bg-olake-surface-muted">
-					<div className="flex h-[73px] shrink-0 items-start justify-between px-4 pb-0 pt-4">
+					<div className="flex shrink-0 items-start justify-between px-4 py-4">
 						<div className="text-sm font-bold leading-[22px] text-olake-text">
 							Error
 						</div>
 						<button
 							type="button"
 							onClick={handleCopyLogs}
-							className="text-olake-text-secondary"
+							className="flex items-center gap-1 text-xs font-medium leading-5 text-olake-text-secondary"
 						>
-							<CopySimpleIcon className="size-[14px] flex-shrink-0" />
+							<CopySimpleIcon size={16} />
+							<span>Copy Error</span>
 						</button>
 					</div>
 
@@ -95,18 +90,20 @@ const SpecFailedModal = ({
 					</div>
 				</div>
 
-				<div className="mb-6 mt-6 flex w-[573px] shrink-0 items-center gap-2 self-center">
+				<div className="mb-6 mt-6 flex w-[573px] shrink-0 items-center justify-start gap-2 self-center">
+					{onAction && (
+						<Button
+							type="primary"
+							onClick={handleAction}
+						>
+							{actionButtonText}
+						</Button>
+					)}
 					<Button onClick={handleClose}>Close</Button>
-					<Button
-						type="primary"
-						onClick={handleTryAgain}
-					>
-						Try Again
-					</Button>
 				</div>
 			</div>
 		</Modal>
 	)
 }
 
-export default SpecFailedModal
+export default ErrorLogsModal

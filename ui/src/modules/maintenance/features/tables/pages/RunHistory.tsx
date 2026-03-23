@@ -143,7 +143,16 @@ const RunHistory: React.FC = () => {
 		<div className="min-h-full bg-white px-6 pt-6">
 			<button
 				type="button"
-				onClick={() => navigate("/maintenance/tables")}
+				onClick={() => {
+					if (!decodedCatalog || !decodedDatabase) {
+						navigate("/maintenance/tables")
+						return
+					}
+
+					navigate(
+						`/maintenance/tables?catalog=${encodeURIComponent(decodedCatalog)}&database=${encodeURIComponent(decodedDatabase)}`,
+					)
+				}}
 				className="mb-2 inline-flex items-center gap-1.5 text-sm leading-[22px] text-olake-text-secondary"
 			>
 				<CaretLeftIcon size={12} />

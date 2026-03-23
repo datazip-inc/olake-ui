@@ -1,10 +1,11 @@
 import {
 	ClockCounterClockwiseIcon,
 	DotsThreeIcon,
+	QuestionIcon,
 	SpinnerIcon,
 	TrashIcon,
 } from "@phosphor-icons/react"
-import { Button, Dropdown, Spin, Switch } from "antd"
+import { Button, Dropdown, Spin, Switch, Tooltip } from "antd"
 import type { MenuProps } from "antd/es/menu"
 
 import { Tag, type ColumnDef } from "@/common/components"
@@ -102,15 +103,33 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 		},
 		{
 			key: "healthScore",
-			header: "Health Score",
-			width: 12,
-			render: row => (
-				<span
-					className={`text-sm leading-6 ${getHealthScoreColor(row.healthScore)}`}
-				>
-					{row.healthScore}%
-				</span>
+			header: (
+				<div className="flex items-center gap-1">
+					<span>Health Score</span>
+					<Tooltip title="Overall table efficiency based on small files and deletes. Higher is better.">
+						<QuestionIcon
+							size={14}
+							className="cursor-help text-olake-text-secondary"
+						/>
+					</Tooltip>
+				</div>
 			),
+			width: 12,
+			render: row =>
+				row.healthScore < 0 ? (
+					<Tag
+						color="muted"
+						className="text-xs"
+					>
+						Not determined
+					</Tag>
+				) : (
+					<span
+						className={`text-sm leading-6 ${getHealthScoreColor(row.healthScore)}`}
+					>
+						{row.healthScore}%
+					</span>
+				),
 		},
 		{
 			key: "lastRunStatus",
@@ -149,7 +168,17 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 		},
 		{
 			key: "status",
-			header: "Status",
+			header: (
+				<div className="flex items-center justify-center gap-1">
+					<span>Status</span>
+					<Tooltip title="Enables or disables all optimization runs.">
+						<QuestionIcon
+							size={14}
+							className="cursor-help text-olake-text-secondary"
+						/>
+					</Tooltip>
+				</div>
+			),
 			align: "center",
 			render: row => {
 				if (isTogglePendingFor(row.name)) {
@@ -164,6 +193,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					<Switch
 						size="small"
 						checked={row.enabled}
+						className={row.enabled ? "!bg-olake-success" : undefined}
 						onChange={checked => actions.onToggleOptimizing(row, checked)}
 					/>
 				)

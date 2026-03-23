@@ -1,5 +1,5 @@
 import { CaretUpIcon, QuestionIcon, TableIcon } from "@phosphor-icons/react"
-import { Button, Input, Modal, Select, Spin } from "antd"
+import { Button, Input, Modal, Select, Spin, Tooltip } from "antd"
 import { useEffect, useState } from "react"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
@@ -26,6 +26,7 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	value,
 	onChange,
 	isFirst = false,
+	tooltip,
 }) => {
 	const nextRuns = getNextRuns(getCronFromConfig(value))
 
@@ -38,11 +39,14 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 				<span className="text-base font-medium leading-6 text-olake-text">
 					{title}
 				</span>
-				{/* TODO: Add tooltip text */}
-				<QuestionIcon
-					size={14}
-					className="cursor-help text-olake-text-tertiary"
-				/>
+				{tooltip && (
+					<Tooltip title={tooltip}>
+						<QuestionIcon
+							size={14}
+							className="cursor-help text-olake-text-tertiary"
+						/>
+					</Tooltip>
+				)}
 			</div>
 
 			{/* Form row */}
@@ -231,18 +235,21 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 						) : (
 							<>
 								<ScheduleSection
-									title="Minor"
+									title="Lite"
+									tooltip="Converts equality deletes to position deletes."
 									value={minorCron}
 									onChange={setMinorCron}
 									isFirst
 								/>
 								<ScheduleSection
-									title="Major"
+									title="Medium"
+									tooltip="Merges small files into larger ones."
 									value={majorCron}
 									onChange={setMajorCron}
 								/>
 								<ScheduleSection
 									title="Full"
+									tooltip="Rewrites all data and applies deletes, creating files of the target size."
 									value={fullCron}
 									onChange={setFullCron}
 								/>
@@ -265,9 +272,17 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 
 									{advancedOpen && (
 										<div className="flex items-center justify-between pb-8">
-											<span className="text-base leading-6 text-olake-text">
-												Target file size
-											</span>
+											<div className="flex items-center justify-center gap-x-2">
+												<span className="text-base leading-6 text-olake-text">
+													Target file size
+												</span>
+												<Tooltip title="Desired file size after compaction; full optimization creates files of this size.">
+													<QuestionIcon
+														size={14}
+														className="cursor-help text-olake-text-tertiary"
+													/>
+												</Tooltip>
+											</div>
 											<Input
 												value={
 													targetFileSize === 0 ? "" : String(targetFileSize)

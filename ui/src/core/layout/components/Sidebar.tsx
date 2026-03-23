@@ -5,7 +5,7 @@ import { Link, NavLink, useLocation } from "react-router-dom"
 
 import { OLake, OlakeLogo } from "@/assets"
 
-import { NAV_MODULES, NAV_SECTIONS, SYSTEM_ITEMS } from "../nav-config"
+import { NavModule, SYSTEM_ITEMS } from "../nav-config"
 import SidebarModuleGroup from "./SidebarModuleGroup"
 import SidebarNavItem from "./SidebarNavItem"
 import UpdateNotification from "./UpdateNotification"
@@ -15,12 +15,13 @@ const Sidebar: React.FC<{
 	onToggle: () => void
 	onLogout: () => void
 	onOpenUpdates: () => void
-}> = ({ collapsed, onToggle, onLogout, onOpenUpdates }) => {
+	navModules: NavModule[]
+}> = ({ collapsed, onToggle, onLogout, onOpenUpdates, navModules }) => {
 	const { pathname } = useLocation()
 
 	const [openModules, setOpenModules] = useState<Record<string, boolean>>(() =>
 		Object.fromEntries(
-			NAV_MODULES.map(m => [
+			navModules.map(m => [
 				m.key,
 				m.items.some(item => pathname.startsWith(item.path)),
 			]),
@@ -30,20 +31,22 @@ const Sidebar: React.FC<{
 	useEffect(() => {
 		setOpenModules(
 			Object.fromEntries(
-				NAV_MODULES.map(m => [
+				navModules.map(m => [
 					m.key,
 					m.items.some(item => pathname.startsWith(item.path)),
 				]),
 			),
 		)
-	}, [pathname])
+	}, [pathname, navModules])
 
 	const toggleModule = (key: string) =>
 		setOpenModules(prev =>
 			Object.fromEntries(
-				NAV_MODULES.map(m => [m.key, m.key === key ? !prev[key] : false]),
+				navModules.map(m => [m.key, m.key === key ? !prev[key] : false]),
 			),
 		)
+
+	const navSections = [...new Set(navModules.map(m => m.section))]
 
 	return (
 		<div
@@ -94,7 +97,7 @@ const Sidebar: React.FC<{
 				{collapsed ? (
 					<div className="flex h-full flex-col items-center px-0 pb-6 pt-1">
 						<div className="flex flex-col items-center gap-4">
-							{NAV_MODULES.map(mod => {
+							{navModules.map(mod => {
 								const ModIcon = mod.icon
 								const moduleActive = mod.items.some(item =>
 									pathname.startsWith(item.path),
@@ -147,20 +150,22 @@ const Sidebar: React.FC<{
 					</div>
 				) : (
 					<>
-						{NAV_SECTIONS.map(section => (
+						{navSections.map(section => (
 							<div key={section}>
 								<p className="mb-2 text-[12px] font-medium leading-5 text-olake-icon-muted">
 									{section}
 								</p>
 
-								{NAV_MODULES.filter(m => m.section === section).map(mod => (
-									<SidebarModuleGroup
-										key={mod.key}
-										mod={mod}
-										isOpen={openModules[mod.key] ?? false}
-										onToggle={() => toggleModule(mod.key)}
-									/>
-								))}
+								{navModules
+									.filter(m => m.section === section)
+									.map(mod => (
+										<SidebarModuleGroup
+											key={mod.key}
+											mod={mod}
+											isOpen={openModules[mod.key] ?? false}
+											onToggle={() => toggleModule(mod.key)}
+										/>
+									))}
 							</div>
 						))}
 

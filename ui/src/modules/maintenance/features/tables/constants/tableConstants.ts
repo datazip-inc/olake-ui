@@ -7,7 +7,7 @@ import type { ElementType } from "react"
 
 import type { RunStatus } from "../types"
 
-export const PAGE_SIZE = 6
+export const PAGE_SIZE = 10
 
 export const runStatusConfig: Record<
 	RunStatus,
@@ -70,10 +70,10 @@ export const runLogsStatusConfig: Record<
 
 export const compactionSlots: Array<{
 	key: "minor" | "major" | "full"
-	tag: "Q" | "S" | "D"
+	tag: "L" | "M" | "F"
 	name: string
 }> = [
-	{ key: "minor", tag: "Q", name: "Quick" },
-	{ key: "major", tag: "S", name: "Standard" },
-	{ key: "full", tag: "D", name: "Deep" },
+	{ key: "minor", tag: "L", name: "Lite" },
+	{ key: "major", tag: "M", name: "Medium" },
+	{ key: "full", tag: "F", name: "Full" },
 ]

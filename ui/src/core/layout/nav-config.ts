@@ -33,30 +33,40 @@ export type NavModule = {
 // To add a new module: create a nav.ts in the module folder and add one import
 // + one spread entry below. Nothing else in the layout needs to change.
 
-export const NAV_MODULES: NavModule[] = [
-	ingestionNavModule,
-	maintenanceNavModule,
+const ALWAYS_ON_MODULES: NavModule[] = [ingestionNavModule]
+const FEATURE_GATED_MODULES: Record<string, NavModule> = {
+	maintenance: maintenanceNavModule,
+}
+
+export const getNavModules = (enabledFeatures: Set<string>): NavModule[] => [
+	...ALWAYS_ON_MODULES,
+	...Object.entries(FEATURE_GATED_MODULES)
+		.filter(([key]) => enabledFeatures.has(key))
+		.map(([, mod]) => mod),
 ]
 
 export const SYSTEM_ITEMS: NavItem[] = [
 	{ path: "/settings", label: "Settings", icon: SlidersIcon },
 ]
 
-/** Unique section names, preserved in declaration order */
-export const NAV_SECTIONS = [...new Set(NAV_MODULES.map(m => m.section))]
+// ─── Breadcrumb utils (fully driven by navModules — no manual edits needed) ──
 
-// ─── Breadcrumb utils (fully driven by NAV_MODULES — no manual edits needed) ──
-
-export const getBreadcrumbModuleLabel = (pathname: string): string => {
-	const mod = NAV_MODULES.find(m =>
+export const getBreadcrumbModuleLabel = (
+	pathname: string,
+	modules: NavModule[],
+): string => {
+	const mod = modules.find(m =>
 		m.items.some(item => pathname.startsWith(item.path)),
 	)
 	return mod?.moduleLabel ?? "System"
 }
 
 /** Returns breadcrumb segments after the module label, e.g. ["Tables", "Run Logs <foo>"] */
-export const getBreadcrumbTrail = (pathname: string): string[] => {
-	for (const mod of NAV_MODULES) {
+export const getBreadcrumbTrail = (
+	pathname: string,
+	modules: NavModule[],
+): string[] => {
+	for (const mod of modules) {
 		const trail = mod.getBreadcrumbTrail?.(pathname)
 		if (trail) return trail
 		const item = mod.items.find(i => pathname.startsWith(i.path))

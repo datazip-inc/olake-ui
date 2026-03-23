@@ -18,14 +18,14 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
 		crumbs: match => {
 			const tableName = decodeURIComponent(match[3] ?? "")
 			const runId = decodeURIComponent(match[4] ?? "")
-			return ["Tables", `Run Logs <${tableName}>`, `Logs: Run ID ${runId}`]
+			return ["Tables", "Run Logs", tableName, `Logs: Run ID ${runId}`]
 		},
 	},
 	{
 		pattern: /^\/maintenance\/tables\/([^/]+)\/([^/]+)\/([^/]+)\/runs$/,
 		crumbs: match => {
 			const tableName = decodeURIComponent(match[3] ?? "")
-			return ["Tables", `Run Logs <${tableName}>`]
+			return ["Tables", "Run Logs", tableName]
 		},
 	},
 ]

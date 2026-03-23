@@ -57,15 +57,16 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 			<div className="flex h-[808px] flex-col items-center bg-white pt-[280px]">
 				{/* Icon + title group */}
 				<div className="flex flex-col items-center gap-6">
+					<p className="whitespace-nowrap text-[30px] font-medium leading-[38px] text-olake-success-strong">
+						Configuration Successful
+					</p>
+					<p>Enable the table to run its first optimization</p>
 					<img
 						src={ConfigSuccessIcon}
 						alt=""
 						aria-hidden
 						className="h-14 w-28"
 					/>
-					<p className="whitespace-nowrap text-[30px] font-medium leading-[38px] text-olake-success-strong">
-						Configuration Successful
-					</p>
 				</div>
 
 				{/* First run section */}

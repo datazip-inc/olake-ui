@@ -45,7 +45,7 @@ const CatalogAddedSuccessModal: React.FC<CatalogAddedSuccessModalProps> = ({
 					<p className="whitespace-nowrap text-sm leading-[22px] text-olake-text-secondary">
 						{isEditMode
 							? "Your changes have been saved"
-							: "You can start optimising tables"}
+							: "You can start optimizing tables"}
 					</p>
 				</div>
 

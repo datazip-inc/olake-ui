@@ -29,7 +29,9 @@ export const catalogService = {
 	},
 
 	createCatalog: async (config: CatalogFormData) => {
-		await api.post<void>(API_CONFIG.ENDPOINTS.FUSION_CATALOG(), config)
+		await api.post<void>(API_CONFIG.ENDPOINTS.FUSION_CATALOG(), config, {
+			disableErrorNotification: true,
+		})
 		return
 	},
 

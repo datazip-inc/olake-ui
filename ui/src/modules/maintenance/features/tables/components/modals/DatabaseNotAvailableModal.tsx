@@ -4,13 +4,13 @@ import { Button, Modal } from "antd"
 type DatabaseNotAvailableModalProps = {
 	open: boolean
 	onClose: () => void
-	databaseName?: string
+	databaseName: string
 }
 
 const DatabaseNotAvailableModal: React.FC<DatabaseNotAvailableModalProps> = ({
 	open,
 	onClose,
-	databaseName = "Skyline Data Vault",
+	databaseName,
 }) => {
 	return (
 		<Modal

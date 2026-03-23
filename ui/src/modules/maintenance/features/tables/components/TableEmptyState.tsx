@@ -35,10 +35,10 @@ const TableEmptyState: React.FC = () => {
 			<div className="max-w-[1127px]">
 				<div className="mb-10 max-w-[530px]">
 					<p className="mb-3 text-xl leading-7 text-olake-body">
-						Launching Optimisation
+						Launching Optimization
 					</p>
 					<p className="mb-3 text-[30px] font-medium leading-[38px] text-olake-heading-strong">
-						Optimise your tables for a faster queries &amp; less storage.
+						Optimize your tables for faster queries &amp; less storage
 					</p>
 				</div>
 
@@ -49,22 +49,22 @@ const TableEmptyState: React.FC = () => {
 					<div className="space-y-4">
 						<StepCard
 							title="Add Catalogs"
-							description="Create and manage your catalogs efficiently."
+							description="Create and manage your catalogs efficiently"
 							icon={<FolderSimpleIcon size={24} />}
 						/>
 						<StepCard
 							title="View tables"
-							description="Choose your catalogs & database to explore the available tables."
+							description="Choose your catalogs & database to explore the available tables"
 							icon={<TableIcon size={24} />}
 						/>
 						<StepCard
 							title="Configure & Run Maintenance"
-							description="Set up maintenance."
+							description="Set up maintenance"
 							icon={<ToggleRightIcon size={24} />}
 						/>
 						<StepCard
 							title="View Logs & Metrics"
-							description="Access logs and metrics for detailed insights."
+							description="Access logs and metrics for detailed insights"
 							icon={<ChartDonutIcon size={24} />}
 						/>
 					</div>

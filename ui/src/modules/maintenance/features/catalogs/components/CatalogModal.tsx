@@ -9,7 +9,7 @@ import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import {
-	SpecFailedModal,
+	ErrorLogsModal,
 	TestConnectionFailureModal,
 	TestConnectionModal,
 	TestConnectionSuccessModal,
@@ -29,14 +29,15 @@ import {
 import type { CatalogModalProps, CatalogFormData } from "../types"
 import CatalogSuccessModal from "./CatalogSuccessModal"
 
-type ActiveModal =
-	| null
-	| "testing"
-	| "testSuccess"
-	| "pendingCatalogSave"
-	| "testFailure"
-	| "specFailed"
-	| "catalogSuccess"
+enum ActiveModal {
+	TESTING = "testing",
+	TEST_SUCCESS = "testSuccess",
+	PENDING_CATALOG_SAVE = "pendingCatalogSave",
+	TEST_FAILURE = "testFailure",
+	SPEC_FAILED = "specFailed",
+	CREATION_FAILED = "creationFailed",
+	CATALOG_SUCCESS = "catalogSuccess",
+}
 
 const getCatalogNameFromFormData = (data: CatalogFormData): string => {
 	const { catalog_name } = (data as { writer: { catalog_name: string } }).writer
@@ -66,11 +67,21 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	const [formData, setFormData] = useState<CatalogFormData>({})
 	const [schema, setSchema] = useState<any>(null)
 	const [uiSchema, setUiSchema] = useState<any>(null)
-	const [activeModal, setActiveModal] = useState<ActiveModal>(null)
+	const [activeModal, setActiveModal] = useState<ActiveModal | null>(null)
 	const [specError, setSpecError] = useState<string | null>(null)
+	const [creationError, setCreationError] = useState<string | null>(null)
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
 	const [createdCatalogName, setCreatedCatalogName] = useState("")
+	const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+	useEffect(() => {
+		return () => {
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current)
+			}
+		}
+	}, [])
 
 	const navigate = useNavigate()
 	const { data: versionsData, isLoading: loadingVersions } =
@@ -83,7 +94,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 		isLoading: loadingSpec,
 		error: specQueryError,
 		refetch: refetchSpec,
-	} = useCatalogSpec(latestVersion, open)
+	} = useCatalogSpec(latestVersion, isEditMode, open)
 
 	const {
 		data: catalogDetails,
@@ -111,7 +122,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 					? specQueryError.message
 					: "Failed to fetch spec. Please try again."
 			setSpecError(errMsg)
-			setActiveModal("specFailed")
+			setActiveModal(ActiveModal.SPEC_FAILED)
 		}
 	}, [specQueryError])
 
@@ -133,7 +144,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			return formRef.current.validateForm()
 		}
 
-		return true
+		return false
 	}
 
 	const handleConnect = async () => {
@@ -145,7 +156,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			config: JSON.stringify(formData),
 		}
 
-		setActiveModal("testing")
+		setActiveModal(ActiveModal.TESTING)
 		try {
 			const testResult = await testCatalogMutation.mutateAsync({
 				catalog: testCatalogData,
@@ -155,22 +166,33 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				testResult.data?.connection_result.status ===
 				TEST_CONNECTION_STATUS.SUCCEEDED
 			) {
-				setActiveModal("testSuccess")
-				setTimeout(async () => {
-					setActiveModal("pendingCatalogSave")
-					if (isEditMode) {
-						await updateCatalogMutation.mutateAsync({
-							catalogName: catalogName!,
-							config: getCatalogWriterPayload(formData) as CatalogFormData,
-						})
-						setCreatedCatalogName(catalogName!)
-						setActiveModal("catalogSuccess")
-					} else {
-						await createCatalogMutation.mutateAsync(
-							getCatalogWriterPayload(formData) as CatalogFormData,
+				setActiveModal(ActiveModal.TEST_SUCCESS)
+				timeoutRef.current = setTimeout(async () => {
+					setActiveModal(ActiveModal.PENDING_CATALOG_SAVE)
+					try {
+						if (isEditMode) {
+							await updateCatalogMutation.mutateAsync({
+								catalogName: catalogName!,
+								config: getCatalogWriterPayload(formData) as CatalogFormData,
+							})
+							setCreatedCatalogName(catalogName!)
+							setActiveModal(ActiveModal.CATALOG_SUCCESS)
+						} else {
+							await createCatalogMutation.mutateAsync(
+								getCatalogWriterPayload(formData) as CatalogFormData,
+							)
+							setCreatedCatalogName(getCatalogNameFromFormData(formData))
+							setActiveModal(ActiveModal.CATALOG_SUCCESS)
+						}
+					} catch (e: any) {
+						setCreationError(
+							e?.response?.data?.message ||
+								e?.message ||
+								(isEditMode
+									? "Failed to update the catalog"
+									: "Failed to create the catalog"),
 						)
-						setCreatedCatalogName(getCatalogNameFromFormData(formData))
-						setActiveModal("catalogSuccess")
+						setActiveModal(ActiveModal.CREATION_FAILED)
 					}
 				}, 1000)
 			} else {
@@ -178,7 +200,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 					message: testResult.data?.connection_result.message || "",
 					logs: testResult.data?.logs || [],
 				})
-				setActiveModal("testFailure")
+				setActiveModal(ActiveModal.TEST_FAILURE)
 			}
 		} catch {
 			setActiveModal(null)
@@ -285,7 +307,7 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			</Modal>
 
 			<CatalogSuccessModal
-				open={open && activeModal === "catalogSuccess"}
+				open={open && activeModal === ActiveModal.CATALOG_SUCCESS}
 				isEditMode={isEditMode}
 				onClose={handleViewCatalogs}
 				onViewCatalogs={handleViewCatalogs}
@@ -299,26 +321,43 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 			/>
 
 			<TestConnectionModal
-				open={open && activeModal === "testing"}
+				open={open && activeModal === ActiveModal.TESTING}
 				connectionType="catalog"
 			/>
 			<TestConnectionSuccessModal
-				open={open && activeModal === "testSuccess"}
+				open={open && activeModal === ActiveModal.TEST_SUCCESS}
 				connectionType="catalog"
 			/>
 			<TestConnectionFailureModal
-				open={open && activeModal === "testFailure"}
+				open={open && activeModal === ActiveModal.TEST_FAILURE}
 				onClose={handleCancel}
 				onEdit={() => setActiveModal(null)}
 				connectionType="catalog"
 				testConnectionError={testConnectionError}
 			/>
-			<SpecFailedModal
-				open={open && activeModal === "specFailed"}
+			<ErrorLogsModal
+				open={open && activeModal === ActiveModal.SPEC_FAILED}
 				onClose={handleCancel}
-				connectionType="catalog"
+				title="Catalog Spec Load Failed"
 				error={specError ?? ""}
-				onTryAgain={refetchSpec}
+				onAction={() => {
+					setActiveModal(null)
+					refetchSpec()
+				}}
+				actionButtonText="Try Again"
+			/>
+			<ErrorLogsModal
+				open={open && activeModal === ActiveModal.CREATION_FAILED}
+				onClose={handleCancel}
+				title={
+					isEditMode ? "Failed to Update Catalog" : "Failed to Create Catalog"
+				}
+				error={creationError ?? ""}
+				onAction={() => {
+					setActiveModal(null)
+					handleConnect()
+				}}
+				actionButtonText="Edit Catalog"
 			/>
 		</>
 	)

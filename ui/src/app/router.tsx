@@ -8,6 +8,7 @@ import {
 
 import { useAuthStore } from "@/core/auth/stores/authStore"
 import Layout from "@/core/layout"
+import { CompactionGate } from "@/core/platform/components"
 import { ErrorBoundary } from "@/modules/ingestion/common/components/ErrorBoundary"
 import { ingestionRoutes } from "@/modules/ingestion/route"
 import { maintenanceRoutes } from "@/modules/maintenance/route"
@@ -82,7 +83,7 @@ const protectedRoutes = [
 				),
 			},
 			...ingestionRoutes,
-			...maintenanceRoutes,
+			{ element: <CompactionGate />, children: maintenanceRoutes },
 			{
 				path: "settings",
 				element: <lazyComponents.SystemSettings />,
