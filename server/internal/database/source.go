@@ -86,6 +86,54 @@ func (db *Database) GetSourceByID(id int) (*models.Source, error) {
 	return &source, nil
 }
 
+func (db *Database) GetSourceByProjectIDAndName(projectID, name string) (*models.Source, error) {
+	var source models.Source
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Filter("project_id", projectID).
+		Filter("name", name).
+		RelatedSel().
+		One(&source)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get source project_id[%s] name[%s]: %s", projectID, name, err)
+	}
+
+	dConfig, err := utils.Decrypt(source.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
+	}
+	source.Config = dConfig
+	return &source, nil
+}
+
+func (db *Database) GetSourceByProjectIDAndApplyID(projectID, applyID string) (*models.Source, error) {
+	if applyID == "" {
+		return nil, nil
+	}
+
+	var source models.Source
+	err := db.ormer.QueryTable(constants.TableNameMap[constants.SourceTable]).
+		Filter("project_id", projectID).
+		Filter("apply_id", applyID).
+		RelatedSel().
+		One(&source)
+	if err != nil {
+		if err == orm.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get source project_id[%s] apply_id[%s]: %s", projectID, applyID, err)
+	}
+
+	dConfig, err := utils.Decrypt(source.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt source config id[%d]: %s", source.ID, err)
+	}
+	source.Config = dConfig
+	return &source, nil
+}
+
 func (db *Database) UpdateSource(source *models.Source) error {
 	// Encrypt config before saving
 	eConfig, err := utils.Encrypt(source.Config)

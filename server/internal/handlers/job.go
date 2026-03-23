@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -196,6 +198,105 @@ func (h *Handler) UpdateJob() {
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
 }
 
+// @Summary Import a declarative bundle
+// @Tags Jobs
+// @Description Import a CLI-compatible declarative bundle into OLake UI. This compatibility layer creates or updates OLake UI resources from bundles produced by the CLI or exported from the UI.
+// @Param   projectid     path      string  true   "project id (default is 123)"
+// @Param   dry_run       query     bool    false  "preview only"
+// @Param   prune         query     bool    false  "reserved for future prune support"
+// @Param   bundle        formData  file    true   "CLI-compatible declarative bundle (.zip or .tar.gz)"
+// @Success 200 {object} dto.JSONResponse{data=dto.ApplyCLIBundleResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to apply bundle"
+// @Router /api/v1/project/{projectid}/jobs/apply-cli-bundle [post]
+func (h *Handler) ApplyCLIBundle() {
+	userID := GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		return
+	}
+
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	file, header, err := h.GetFile("bundle")
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, "bundle file is required", err)
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to read bundle: %s", err), err)
+		return
+	}
+
+	opts := dto.ApplyCLIBundleOptions{
+		DryRun: parseBoolParam(h.GetString("dry_run")),
+		Prune:  parseBoolParam(h.GetString("prune")),
+	}
+
+	logger.Infof("Apply CLI bundle initiated project_id[%s] bundle[%s] dry_run[%t] user_id[%v]", projectID, header.Filename, opts.DryRun, userID)
+
+	response, err := h.etl.ApplyCLIBundle(h.Ctx.Request.Context(), projectID, header.Filename, fileBytes, opts, userID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to apply bundle: %s", err), err)
+		return
+	}
+
+	message := fmt.Sprintf("bundle '%s' applied successfully", header.Filename)
+	if opts.DryRun {
+		message = fmt.Sprintf("bundle '%s' preview generated successfully", header.Filename)
+	}
+	utils.SuccessResponse(&h.Controller, message, response)
+}
+
+// @Summary Export a declarative bundle
+// @Tags Jobs
+// @Description Export an OLake UI job as a CLI-compatible declarative bundle for backup, migration, or Git-based workflows.
+// @Param   projectid      path    string  true   "project id (default is 123)"
+// @Param   id             path    int     true   "job id"
+// @Param   include_state  query   bool    false  "include state.json in the export"
+// @Param   format         query   string  false  "zip (default) or tar.gz"
+// @Success 200 {file} binary "CLI-compatible declarative bundle archive"
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to export bundle"
+// @Router /api/v1/project/{projectid}/jobs/{id}/export-cli-bundle [get]
+func (h *Handler) ExportCLIBundle() {
+	projectID, err := GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	jobID, err := GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	includeState := parseBoolParam(h.GetString("include_state"))
+	format := h.GetString("format")
+
+	logger.Infof("Export CLI bundle initiated project_id[%s] job_id[%d] include_state[%t] format[%s]", projectID, jobID, includeState, format)
+
+	data, filename, contentType, err := h.etl.ExportCLIBundle(projectID, jobID, includeState, format)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to export bundle: %s", err), err)
+		return
+	}
+
+	h.Ctx.Output.Header("Content-Type", contentType)
+	h.Ctx.Output.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	h.Ctx.Output.Body(data)
+}
+
 // @Summary Delete a job
 // @Tags Jobs
 // @Description Permanently delete a specified job.
@@ -221,6 +322,15 @@ func (h *Handler) DeleteJob() {
 		return
 	}
 	utils.SuccessResponse(&h.Controller, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
+}
+
+func parseBoolParam(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 // @Summary Check name uniqueness

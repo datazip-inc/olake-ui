@@ -197,3 +197,48 @@ type TelemetryIDResponse struct {
 	TelemetryUserID string `json:"user_id" example:"1234567890abcdef1234567890abcdef"`
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
 }
+
+type ApplyPlanAction string
+
+const (
+	ApplyPlanCreated   ApplyPlanAction = "created"
+	ApplyPlanUpdated   ApplyPlanAction = "updated"
+	ApplyPlanUnchanged ApplyPlanAction = "unchanged"
+	ApplyPlanPreserved ApplyPlanAction = "preserved"
+)
+
+type ApplyCLIBundleEffective struct {
+	ApplyIdentity      string `json:"apply_identity"`
+	JobName            string `json:"job_name"`
+	SourceName         string `json:"source_name"`
+	SourceType         string `json:"source_type"`
+	SourceVersion      string `json:"source_version"`
+	DestinationName    string `json:"destination_name"`
+	DestinationType    string `json:"destination_type"`
+	DestinationVersion string `json:"destination_version"`
+	Frequency          string `json:"frequency"`
+	Activate           bool   `json:"activate"`
+}
+
+type ApplyCLIBundleResourcePlan struct {
+	Action ApplyPlanAction `json:"action"`
+	ID     *int            `json:"id,omitempty"`
+	Name   string          `json:"name"`
+	Fields []string        `json:"fields,omitempty"`
+}
+
+type ApplyCLIBundleStatePlan struct {
+	Action ApplyPlanAction `json:"action"`
+	Fields []string        `json:"fields,omitempty"`
+}
+
+type ApplyCLIBundleResponse struct {
+	DryRun    bool                       `json:"dry_run"`
+	Prune     bool                       `json:"prune"`
+	Bundle    string                     `json:"bundle"`
+	Effective ApplyCLIBundleEffective    `json:"effective"`
+	Source    ApplyCLIBundleResourcePlan `json:"source"`
+	Dest      ApplyCLIBundleResourcePlan `json:"destination"`
+	Job       ApplyCLIBundleResourcePlan `json:"job"`
+	State     ApplyCLIBundleStatePlan    `json:"state"`
+}

@@ -724,9 +724,76 @@ http://localhost:8080
   }
   ```
 
+### Apply Declarative CLI Bundle
 
+- **Endpoint**: `/api/v1/project/:projectid/jobs/apply-cli-bundle`
+- **Method**: POST
+- **Description**: Preview or apply a declarative OLake CLI bundle into the current project
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Params**:
+  - `dry_run=true|false`
+  - `prune=true|false` (reserved for future prune behavior)
+- **Request Body**: `multipart/form-data`
+  - `bundle`: `.zip` or `.tar.gz` archive containing `source.json`, `destination.json`, `streams.json`, and optional `state.json` / `olake-ui.json`
+- **Response**:
 
+  ```json
+  {
+    "success": true,
+    "message": "bundle preview generated successfully",
+    "data": {
+      "dry_run": true,
+      "prune": false,
+      "bundle": "mongodb-orders",
+      "effective": {
+        "apply_identity": "mongodb-orders",
+        "job_name": "mongodb-orders-cdc",
+        "source_name": "mongodb-orders-source",
+        "source_type": "mongodb",
+        "source_version": "v0.5.1",
+        "destination_name": "parquet-minio-local",
+        "destination_type": "parquet",
+        "destination_version": "v0.5.1",
+        "frequency": "0 * * * *",
+        "activate": true
+      },
+      "source": {
+        "action": "updated",
+        "name": "mongodb-orders-source",
+        "fields": ["config"]
+      },
+      "destination": {
+        "action": "unchanged",
+        "name": "parquet-minio-local"
+      },
+      "job": {
+        "action": "created",
+        "name": "mongodb-orders-cdc",
+        "fields": ["name", "source", "destination", "frequency", "activate", "streams_config"]
+      },
+      "state": {
+        "action": "preserved"
+      }
+    }
+  }
+  ```
 
+### Export Declarative CLI Bundle
+
+- **Endpoint**: `/api/v1/project/:projectid/jobs/:id/export-cli-bundle`
+- **Method**: GET
+- **Description**: Export an existing UI job into a declarative CLI bundle archive
+- **Headers**: `Authorization: Bearer <token>`
+- **Query Params**:
+  - `format=zip|tar.gz` (default `zip`)
+  - `include_state=true|false` (default `false`)
+- **Response**:
+  - binary archive download with:
+    - `source.json`
+    - `destination.json`
+    - `streams.json`
+    - `olake-ui.json`
+    - optional `state.json`
 
 ### Delete Job
 

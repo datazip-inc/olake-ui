@@ -26,6 +26,7 @@ Olake-UI offers an intuitive web interface to configure, monitor, and manage you
 - [Server Readme](/server/README.md)
 - [UI Figma Design](https://www.figma.com/design/FwLnU97I8LjtYNREPyYofc/Olake-Design-Community?node-id=1-46&p=f&t=y3BIsLTUaXhHwYLG-0)
 - [API Contracts](/api-contract.md)
+- [Declarative CLI Bundles](/home/sabino/Downloads/olake-ui-fork/docs/declarative-cli-bundles.md)
 
 ## Running with Docker Compose
 
@@ -120,6 +121,15 @@ curl -sSL https://raw.githubusercontent.com/datazip-inc/olake-ui/master/docker-c
 ### Upgrading from legacy `docker-compose.yml`
 
 To upgrade from legacy `docker-compose.yml` that was used before **Jan 30th 2026** , follow this [documentation](https://olake.io/docs/install/olake-ui/#:~:text=To%20move%20from,Legacy%20Setup.).
+
+## Declarative apply and export
+
+OLake UI can now consume a declarative CLI bundle and export an existing UI job back into the same bundle shape.
+
+- apply endpoint: `POST /api/v1/project/{projectid}/jobs/apply-cli-bundle`
+- export endpoint: `GET /api/v1/project/{projectid}/jobs/{id}/export-cli-bundle`
+
+The bundle contract and examples are documented in [docs/declarative-cli-bundles.md](/home/sabino/Downloads/olake-ui-fork/docs/declarative-cli-bundles.md).
 
 ## Contributing
 

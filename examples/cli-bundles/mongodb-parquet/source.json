@@ -1,0 +1,10 @@
+{
+  "hosts": ["mongo:27017"],
+  "username": "olake",
+  "password": "olake",
+  "authdb": "admin",
+  "replica_set": "rs0",
+  "srv": false,
+  "database": "orders",
+  "use_iam": false
+}

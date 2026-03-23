@@ -2,6 +2,7 @@ package temporal
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/serviceerror"
 	"go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"
 )
@@ -60,18 +62,25 @@ func (t *Temporal) WorkflowAndScheduleID(projectID string, jobID int) (string, s
 	return workflowID, fmt.Sprintf("schedule-%s", workflowID)
 }
 
+func buildScheduleSpec(frequency string) client.ScheduleSpec {
+	if frequency == "" {
+		return client.ScheduleSpec{}
+	}
+
+	return client.ScheduleSpec{
+		CronExpressions: []string{utils.ToCron(frequency)},
+	}
+}
+
 // createSchedule creates a new schedule
 func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
-	cronExpression := utils.ToCron(job.Frequency)
 
 	req := buildExecutionReqForSync(job, workflowID)
 
 	_, err := t.Client.ScheduleClient().Create(ctx, client.ScheduleOptions{
-		ID: scheduleID,
-		Spec: client.ScheduleSpec{
-			CronExpressions: []string{cronExpression},
-		},
+		ID:   scheduleID,
+		Spec: buildScheduleSpec(job.Frequency),
 		Action: &client.ScheduleWorkflowAction{
 			ID:        workflowID,
 			Workflow:  RunSyncWorkflow,
@@ -84,6 +93,22 @@ func (t *Temporal) CreateSchedule(ctx context.Context, job *models.Job) error {
 	return err
 }
 
+func (t *Temporal) EnsureSchedule(ctx context.Context, job *models.Job) error {
+	workflowID, scheduleID := t.WorkflowAndScheduleID(job.ProjectID, job.ID)
+
+	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
+	_, err := handle.Describe(ctx)
+	if err != nil {
+		var notFound *serviceerror.NotFound
+		if !errors.As(err, &notFound) {
+			return err
+		}
+		return t.CreateSchedule(ctx, job)
+	}
+
+	return t.UpdateSchedule(ctx, job.Frequency, job.ProjectID, job.ID, buildExecutionReqForSync(job, workflowID))
+}
+
 // UpdateScheduleSpec updates an existing schedule's spec
 func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID string, jobID int, args *ExecutionRequest) error {
 	_, scheduleID := t.WorkflowAndScheduleID(projectID, jobID)
@@ -91,12 +116,8 @@ func (t *Temporal) UpdateSchedule(ctx context.Context, frequency, projectID stri
 	handle := t.Client.ScheduleClient().GetHandle(ctx, scheduleID)
 	return handle.Update(ctx, client.ScheduleUpdateOptions{
 		DoUpdate: func(input client.ScheduleUpdateInput) (*client.ScheduleUpdate, error) {
-			if frequency != "" {
-				cronExpression := utils.ToCron(frequency)
-				input.Description.Schedule.Spec = &client.ScheduleSpec{
-					CronExpressions: []string{cronExpression},
-				}
-			}
+			spec := buildScheduleSpec(frequency)
+			input.Description.Schedule.Spec = &spec
 
 			// update schedule action
 			if args != nil {
