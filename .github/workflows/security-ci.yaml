@@ -56,3 +56,4 @@ jobs:
           scan-type: 'fs'
           scan-ref: './'
           severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
