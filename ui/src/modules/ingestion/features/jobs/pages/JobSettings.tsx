@@ -86,6 +86,11 @@ const JobSettings: React.FC = () => {
 		}
 	}, [clearDestStatus?.running])
 
+	// reset modal state on unmount
+	useEffect(() => {
+		return () => setShowStreamEditDisabledModal(false)
+	}, [])
+
 	useEffect(() => {
 		if (!jobId) {
 			setClearDestStatus(null)

@@ -165,6 +165,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			discoverMutation.cancel()
 			discoverMutation.reset()
 			useStreamSelectionStore.getState().reset()
+			setShowStreamEditDisabledModal(false)
 		}
 	}, [])
 
