@@ -1,4 +1,4 @@
-package client
+package optimisation
 
 import (
 	"context"
@@ -10,13 +10,13 @@ import (
 )
 
 // (flexible parsing): performs an HTTP request and parses the response returning raw result as interface{}
-func (c *Compaction) Do(ctx context.Context, method, path string, queryParams url.Values, body interface{}) (interface{}, error) {
+func (c *Service) Do(ctx context.Context, method, path string, queryParams url.Values, body interface{}) (interface{}, error) {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp dto.CompactionResponse
+	var resp dto.OptimisationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %s", err)
 	}
@@ -34,13 +34,13 @@ func (c *Compaction) Do(ctx context.Context, method, path string, queryParams ur
 }
 
 // (type-safe parsing): performs an HTTP request and parses the response returning raw result into the provided result pointer
-func (c *Compaction) DoInto(ctx context.Context, method, path string, queryParams url.Values, body, result interface{}) error {
+func (c *Service) DoInto(ctx context.Context, method, path string, queryParams url.Values, body, result interface{}) error {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return err
 	}
 
-	var resp dto.CompactionResponse
+	var resp dto.OptimisationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return fmt.Errorf("failed to parse response: %s", err)
 	}
@@ -57,13 +57,13 @@ func (c *Compaction) DoInto(ctx context.Context, method, path string, queryParam
 }
 
 // (no-result data): performs an HTTP request and validates the response
-func (c *Compaction) DoAndValidate(ctx context.Context, method, path string, queryParams url.Values, body interface{}) error {
+func (c *Service) DoAndValidate(ctx context.Context, method, path string, queryParams url.Values, body interface{}) error {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return err
 	}
 
-	var resp dto.CompactionResponse
+	var resp dto.OptimisationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return fmt.Errorf("failed to parse response: %w", err)
 	}

@@ -76,10 +76,10 @@ func Init(h *handlers.Handler) {
 
 	// Destination routes
 	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "get:ListDestinations")
-	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "post:CreateDestination")
+	web.Router("/api/v1/project/:projectid/destinations", h, "post:CreateDestinationAndCatalog")
 	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "get:GetDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "put:UpdateDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "delete:DeleteDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", h, "put:UpdateDestinationAndCatalog")
+	web.Router("/api/v1/project/:projectid/destinations/:id", h, "delete:DeleteDestinationAndCatalog")
 	web.Router("/api/v1/project/:projectid/destinations/test", etlHandler, "post:TestDestinationConnection")
 	web.Router("/api/v1/project/:projectid/destinations/versions", etlHandler, "get:GetDestinationVersions")
 	web.Router("/api/v1/project/:projectid/destinations/spec", etlHandler, "post:GetDestinationSpec")
@@ -109,38 +109,28 @@ func Init(h *handlers.Handler) {
 
 	// platform routes
 	web.Router("/api/v1/platform/releases", etlHandler, "get:GetReleaseUpdates")
+	web.Router("/api/v1/platform/optimisation/status", h, "get:GetoptimisationStatus")
 
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", etlHandler, "post:UpdateSyncTelemetry")
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
 	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
 
-	if h.Compaction != nil {
-		compactionHandler := h.Compaction
+	if h.Optimisation != nil {
+		optHandler := h.Optimisation
 
-		// catalog
-		web.Router("/api/v1/fusion/catalogs", compactionHandler, "get:GetCatalogsWithDatabases")
-		web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "get:GetCatalog")
-		web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "put:UpdateCatalog")
-		web.Router("/api/v1/fusion/catalog/:catalog", compactionHandler, "delete:DeleteCatalog")
-		web.Router("/api/v1/fusion/catalog", compactionHandler, "post:CreateCatalog")
+		// catalogs: crud, (delete in piggy-backing)
+		web.Router("/api/ams/v1/catalog", optHandler, "post:CreateCatalog")
+		web.Router("/api/ams/v1/catalog/:catalog", optHandler, "get:GetCatalog")
+		web.Router("/api/ams/v1/catalog/:catalog", optHandler, "put:UpdateCatalog")
 
-		// table
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/metrics", compactionHandler, "get:GetTableMetrics")
+		// terminal: cron, enable/disable optimisation
+		web.Router("/api/ams/v1/:catalog/:database/:table/set", optHandler, "put:SetProperties")
 
-		// cron
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "put:SetCompactionCronConfig")
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cron", compactionHandler, "get:GetCompactionCronConfig")
+		// tables: view
+		web.Router("/api/ams/v1/:catalog/:database/tables", optHandler, "get:GetTablesWithDetails")
 
-		// runs
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/runs", compactionHandler, "get:GetCompactionRuns")
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/cancel", compactionHandler, "post:CancelCompactionProcess")
-
-		// Compaction table properties routes
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/enable-optimizing", compactionHandler, "post:EnableSelfOptimizing")
-		web.Router("/api/v1/fusion/tables/:catalog/:database/:table/disable-optimizing", compactionHandler, "post:DisableSelfOptimizing")
-
-		// view: table listing route
-		web.Router("/api/v1/fusion/tables/:catalog/:database", compactionHandler, "get:GetTablesWithDetails")
+		// piggy backing
+		web.Router("/api/ams/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking;patch:PiggyBacking")
 	}
 }

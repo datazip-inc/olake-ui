@@ -200,9 +200,43 @@ type TelemetryIDResponse struct {
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
 }
 
-// check if the repo has a constant Response
-type CompactionResponse struct {
+type OptimisationResponse struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Result  json.RawMessage `json:"result"`
+}
+
+// CatalogResponse represents the response from catalog operations
+type CatalogResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// optimisationCronConfigResponse represents the response from setting cron configuration
+type SQLResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// TablesResponse represents tables with full details for a specific catalog/database
+type TablesResponse struct {
+	Catalog  string      `json:"catalog"`
+	Database string      `json:"database"`
+	Tables   []TableInfo `json:"tables"`
+}
+
+type TableInfo struct {
+	Name        string            `json:"name"`
+	TotalSize   string            `json:"totalSize,omitempty"`
+	ByOLake     bool              `json:"byOLake"`
+	Major       *OptimizationInfo `json:"major"`
+	Minor       *OptimizationInfo `json:"minor"`
+	Full        *OptimizationInfo `json:"full"`
+	Enabled     bool              `json:"enabled"`
+	HealthScore int               `json:"healthScore,omitempty"`
+}
+
+type OptimizationInfo struct {
+	LastRun string `json:"last-run,omitempty"`
+	Status  string `json:"status,omitempty"`
 }

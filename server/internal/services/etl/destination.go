@@ -2,21 +2,27 @@ package etl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	compactionModels "github.com/datazip-inc/olake-ui/server/internal/services/compaction/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/services/compaction/resources/catalog"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
 )
+
+// Destination-related methods on AppService
+
+// GetDestinationByID returns a destination model by ID (for internal use)
+func (s Service) GetDestinationByID(id int) (*models.Destination, error) {
+	destination, err := s.db.GetDestinationByID(id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get destination: %s", err)
+	}
+	return destination, nil
+}
 
 // GetDestination returns a single destination by ID with its associated jobs.
 func (s Service) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
@@ -121,13 +127,6 @@ func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinati
 		return fmt.Errorf("destination name '%s' is not unique", req.Name)
 	}
 
-	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
-		c := catalog.NewService(s.compaction)
-		if err := c.SyncCatalogToFusion(ctx, req.Config, false); err != nil {
-			return fmt.Errorf("failed to create catalog in compaction for destination %s: %s", req.Name, err)
-		}
-	}
-
 	destination := &models.Destination{
 		Name:      req.Name,
 		DestType:  req.Type,
@@ -151,13 +150,6 @@ func (s Service) UpdateDestination(ctx context.Context, id int, projectID string
 	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to get destination: %s", err)
-	}
-
-	if s.compaction != nil && strings.EqualFold(req.Type, "iceberg") {
-		c := catalog.NewService(s.compaction)
-		if err := c.SyncCatalogToFusion(ctx, req.Config, true); err != nil {
-			return fmt.Errorf("failed to update catalog in compaction for destination %s: %s", req.Name, err)
-		}
 	}
 
 	existingDest.Name = req.Name
@@ -210,19 +202,6 @@ func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDest
 
 	if err := s.db.DeleteDestination(id); err != nil {
 		return nil, fmt.Errorf("failed to delete destination: %s", err)
-	}
-
-	// delete the catalog from Fusion (only if compaction is enabled)
-	if s.compaction != nil && strings.EqualFold(dest.DestType, "iceberg") {
-		catalogName, err := extractCatalogNameFromConfig(dest.Config)
-		if err != nil {
-			logger.Errorf("Failed to extract catalog_name from destination %s config: %v", dest.Name, err)
-		} else {
-			c := catalog.NewService(s.compaction)
-			if _, err := c.DeleteCatalog(ctx, catalogName); err != nil {
-				logger.Errorf("Failed to delete catalog %s from Compaction for destination %s: %v", catalogName, dest.Name, err)
-			}
-		}
 	}
 
 	telemetry.TrackDestinationsStatus(ctx)
@@ -300,18 +279,4 @@ func (s Service) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (
 		Type:    req.Type,
 		Spec:    specOut.Spec,
 	}, nil
-}
-
-// extractCatalogNameFromConfig extracts the catalog_name field from the config JSON
-func extractCatalogNameFromConfig(configJSON string) (string, error) {
-	var config compactionModels.Config
-	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
-		return "", fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	if config.CatalogName == "" {
-		return "", fmt.Errorf("catalog_name is required in config")
-	}
-
-	return config.CatalogName, nil
 }

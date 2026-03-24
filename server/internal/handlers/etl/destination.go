@@ -90,7 +90,7 @@ func (h *Handler) CreateDestination() {
 	}
 
 	var req dto.CreateDestinationRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -142,7 +142,7 @@ func (h *Handler) UpdateDestination() {
 	}
 
 	var req dto.UpdateDestinationRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -203,7 +203,7 @@ func (h *Handler) DeleteDestination() {
 func (h *Handler) TestDestinationConnection() {
 	// need to remove sourceVersion from request
 	var req dto.DestinationTestConnectionRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -273,7 +273,7 @@ func (h *Handler) GetDestinationSpec() {
 	}
 
 	var req dto.SpecRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}

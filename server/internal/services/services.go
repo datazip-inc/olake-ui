@@ -1,59 +1,76 @@
 package services
 
 import (
-	"fmt"
+	"context"
+	"strings"
 
+	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	"github.com/datazip-inc/olake-ui/server/internal/services/compaction"
-	cmpClient "github.com/datazip-inc/olake-ui/server/internal/services/compaction/client"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/services/optimisation"
+	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 type AppService struct {
-	db         *database.Database
-	etl        *etl.Service
-	compaction *compaction.Service
+	db  *database.Database
+	etl *etl.Service
+	opt *optimisation.Service
 }
 
-func InitAppService(db *database.Database, enableCompaction bool) (*AppService, error) {
-	var compactionClient *cmpClient.Compaction
-	var compactionSvc *compaction.Service
-	var err error
+func InitAppService(db *database.Database) (*AppService, error) {
+	// Initialize ETL service
+	etlSvc, err := etl.InitService(db)
+	if err != nil {
+		return nil, err
+	}
 
-	if enableCompaction {
-		compactionClient, err = cmpClient.NewClient()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create compaction client: %s", err)
-		}
-
-		// Initialize Compaction service
-		compactionSvc, err = compaction.InitService(db, compactionClient)
+	var optSvc *optimisation.Service
+	enableOptimisation := web.AppConfig.DefaultBool(constants.ConfEnableOptimisation, false)
+	if enableOptimisation {
+		optSvc, err = optimisation.InitService()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Initialize ETL service
-	etlSvc, err := etl.InitService(db, compactionClient)
-	if err != nil {
-		return nil, err
+	appSvc := &AppService{
+		db:  db,
+		etl: etlSvc,
+		opt: optSvc,
 	}
 
-	return &AppService{
-		db:         db,
-		etl:        etlSvc,
-		compaction: compactionSvc,
-	}, nil
+	if enableOptimisation {
+		appSvc.CreateAllDestAsCatalogs(context.Background())
+	}
+
+	return appSvc, nil
 }
 
 func (s *AppService) ETL() *etl.Service {
 	return s.etl
 }
 
-func (s *AppService) Compaction() *compaction.Service {
-	return s.compaction
+func (s *AppService) Optimisation() *optimisation.Service {
+	return s.opt
 }
 
-func (s *AppService) IsCompactionEnabled() bool {
-	return s.compaction != nil
+func (s *AppService) CreateAllDestAsCatalogs(ctx context.Context) {
+	destinations, err := s.db.ListDestinations()
+	if err != nil {
+		logger.Errorf("Failed to list destinations for optimisation sync: %v", err)
+		return
+	}
+
+	for _, dest := range destinations {
+		if !strings.EqualFold(dest.DestType, "iceberg") {
+			continue
+		}
+
+		if _, err := s.opt.CreateCatalogFromOLakeConfig(ctx, dest.Config); err != nil {
+			logger.Errorf("Failed to create catalog: %s", err)
+		} else {
+			logger.Infof("Catalog created successfully")
+		}
+	}
 }

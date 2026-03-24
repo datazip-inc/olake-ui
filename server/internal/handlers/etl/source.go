@@ -94,7 +94,7 @@ func (h *Handler) CreateSource() {
 	}
 
 	var req dto.CreateSourceRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -147,7 +147,7 @@ func (h *Handler) UpdateSource() {
 	}
 
 	var req dto.UpdateSourceRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -216,7 +216,7 @@ func (h *Handler) DeleteSource() {
 // @Router /api/v1/project/{projectid}/sources/test [post]
 func (h *Handler) TestSourceConnection() {
 	var req dto.SourceTestConnectionRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -252,7 +252,7 @@ func (h *Handler) TestSourceConnection() {
 // @Router /api/v1/project/{projectid}/sources/streams [post]
 func (h *Handler) GetSourceCatalog() {
 	var req dto.StreamsRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -322,7 +322,7 @@ func (h *Handler) GetSourceSpec() {
 	}
 
 	var req dto.SpecRequest
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}

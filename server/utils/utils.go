@@ -39,14 +39,6 @@ func ToMapOfInterface(structure any) map[string]interface{} {
 	return output
 }
 
-func ToJSON(v interface{}) (string, error) {
-	bytes, err := json.Marshal(v)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
 func RespondJSON(ctx *web.Controller, status int, success bool, message string, data interface{}) {
 	ctx.Ctx.Output.SetStatus(status)
 	ctx.Data["json"] = dto.JSONResponse{
@@ -144,12 +136,6 @@ func Ternary(cond bool, a, b any) any {
 		return a
 	}
 	return b
-}
-
-func SetIfNotEmpty(m map[string]string, key, value string) {
-	if value != "" {
-		m[key] = value
-	}
 }
 
 // ExtractJobIDFromWorkflowID extracts the JobID from Temporal workflow IDs created by this system.
@@ -727,4 +713,18 @@ func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
 	filename := fmt.Sprintf("job-%d-logs-%s.tar.gz", jobID, syncTimestamp)
 
 	return filename, nil
+}
+
+func ToJSON(v interface{}) (string, error) {
+	bytes, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func SetIfNotEmpty(m map[string]string, key, value string) {
+	if value != "" {
+		m[key] = value
+	}
 }

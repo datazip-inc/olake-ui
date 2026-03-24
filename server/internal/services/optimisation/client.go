@@ -1,4 +1,4 @@
-package client
+package optimisation
 
 import (
 	"bytes"
@@ -18,16 +18,16 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
-type Compaction struct {
+type Service struct {
 	baseURL   string
 	apiKey    string
 	apiSecret string
 	client    *http.Client
 }
 
-// Token Expiration: There is "no" expiration logic for compaction
+// Token Expiration: There is "no" expiration logic for optimisation
 // https://github.com/datazip-inc/olake-fusion/blob/master/amoro-ams/src/main/java/org/apache/amoro/server/dashboard/controller/ApiTokenController.java
-func NewClient() (*Compaction, error) {
+func NewClient() (*Service, error) {
 	baseURL, username, password, err := getCredentials()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client: %s", err)
@@ -38,7 +38,7 @@ func NewClient() (*Compaction, error) {
 		return nil, fmt.Errorf("failed to create token: %s", err)
 	}
 
-	return &Compaction{
+	return &Service{
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		apiSecret: apiSecret,
@@ -48,8 +48,8 @@ func NewClient() (*Compaction, error) {
 	}, nil
 }
 
-// for compaction authentication: calculating md5: apiKey + encryptString + secret
-func (c *Compaction) calculateSignature(params url.Values) string {
+// for optimisation authentication: calculating md5: apiKey + encryptString + secret
+func (c *Service) calculateSignature(params url.Values) string {
 	encryptString := c.generateEncryptString(params)
 	plainText := fmt.Sprintf("%s%s%s", c.apiKey, encryptString, c.apiSecret)
 	hash := md5.Sum([]byte(plainText))
@@ -58,7 +58,7 @@ func (c *Compaction) calculateSignature(params url.Values) string {
 	return signature
 }
 
-func (c *Compaction) generateEncryptString(params url.Values) string {
+func (c *Service) generateEncryptString(params url.Values) string {
 	// Filter out apiKey and signature
 	filtered := make(url.Values)
 	for k, v := range params {
@@ -95,7 +95,7 @@ func (c *Compaction) generateEncryptString(params url.Values) string {
 	return strings.Join(parts, "")
 }
 
-func (c *Compaction) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
+func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
 	signature := c.calculateSignature(queryParams)
 	queryParams.Set("apiKey", c.apiKey)
 	queryParams.Set("signature", signature)
@@ -199,19 +199,19 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 }
 
 func getCredentials() (string, string, string, error) {
-	baseURL, err := web.AppConfig.String(constants.ConfCompactionBaseURL)
+	baseURL, err := web.AppConfig.String(constants.ConfOptimisationBaseURL)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get compaction base URL: %s", err)
+		return "", "", "", fmt.Errorf("failed to get optimisation base URL: %s", err)
 	}
 
-	username, err := web.AppConfig.String(constants.ConfCompactionUsername)
+	username, err := web.AppConfig.String(constants.ConfOptimisationUsername)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get compaction username creds: %s", err)
+		return "", "", "", fmt.Errorf("failed to get optimisation username creds: %s", err)
 	}
 
-	password, err := web.AppConfig.String(constants.ConfCompactionPassword)
+	password, err := web.AppConfig.String(constants.ConfOptimisationPassword)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get compaction password creds: %s", err)
+		return "", "", "", fmt.Errorf("failed to get optimisation password creds: %s", err)
 	}
 
 	return baseURL, username, password, nil

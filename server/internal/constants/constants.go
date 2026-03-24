@@ -50,10 +50,11 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
-	ConfEnableCompaction      = "ENABLE_COMPACTION"
-	ConfCompactionBaseURL     = "COMPACTION_BASE_URL"
-	ConfCompactionUsername    = "COMPACTION_USERNAME"
-	ConfCompactionPassword    = "COMPACTION_PASSWORD"
+	ConfEnableOptimisation    = "ENABLE_OPTIMISATION"
+	ConfOptimisationBaseURL   = "OPTIMISATION_BASE_URL"
+	ConfOptimisationUsername  = "OPTIMISATION_USERNAME"
+	ConfOptimisationPassword  = "OPTIMISATION_PASSWORD"
+	ConfOptimisationGroup     = "OPTIMISATION_GROUP"
 
 	// database keys
 	ConfPostgresDB            = "postgresdb"
@@ -63,6 +64,8 @@ var (
 	ConfOLakePostgresPort     = "OLAKE_POSTGRES_PORT"
 	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
+
+	FusionAPIBase = "/api/ams/v1/"
 
 	// logs config
 	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
@@ -123,7 +126,7 @@ func Init() {
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
-	viper.SetDefault(ConfEnableCompaction, false)
+	viper.SetDefault(ConfEnableOptimisation, false)
 
 	checkForRequiredVariables(RequiredConfigVariable)
 

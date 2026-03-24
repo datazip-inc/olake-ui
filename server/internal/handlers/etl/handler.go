@@ -23,3 +23,8 @@ func NewHandler(s *services.Service) *Handler {
 func (h *Handler) Prepare() {
 	h.etl = etl
 }
+
+// GetService returns the underlying ETL service for cross-service orchestration
+func (h *Handler) GetService() *services.Service {
+	return h.etl
+}

@@ -49,17 +49,12 @@ func main() {
 	}
 
 	// Initialize unified AppService
-	enableCompaction := web.AppConfig.DefaultBool(constants.ConfEnableCompaction, false)
-	appSvc, err := services.InitAppService(db, enableCompaction)
+	appSvc, err := services.InitAppService(db)
 	if err != nil {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
-	if enableCompaction {
-		logger.Info("Application services initialized successfully (compaction enabled)")
-	} else {
-		logger.Info("Application services initialized successfully (compaction disabled)")
-	}
+	logger.Info("Application services initialized successfully")
 	telemetry.InitTelemetry(db)
 
 	// Set Swagger Info version to match the application's runtime version.

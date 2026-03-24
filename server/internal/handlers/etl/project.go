@@ -54,7 +54,7 @@ func (h *Handler) UpsertProjectSettings() {
 
 	var req dto.UpsertProjectSettingsRequest
 
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}

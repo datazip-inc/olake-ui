@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
@@ -21,7 +22,7 @@ import (
 // @Router /api/v1/users [post]
 func (h *Handler) CreateUser() {
 	var req models.User
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -79,7 +80,7 @@ func (h *Handler) UpdateUser() {
 	}
 
 	var req models.User
-	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
