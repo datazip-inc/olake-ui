@@ -258,11 +258,8 @@ const JobTable: React.FC<JobTableProps> = ({
 		},
 	]
 
-	const filteredJobs = jobs.filter(
-		job =>
-			job.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			job.source?.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			job.destination?.name.toLowerCase().includes(searchText.toLowerCase()),
+	const filteredJobs = jobs.filter(job =>
+		job.name.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
 	const startIndex = (currentPage - 1) * PAGE_SIZE

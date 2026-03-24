@@ -23,10 +23,7 @@ const ClearDestinationModal = () => {
 		clearDestination(selectedJobId, {
 			onSuccess: () => {
 				setShowClearDestinationModal(false)
-				// wait for 1 second before navigating to avoid fetching old state
-				setTimeout(() => {
-					navigate(`/jobs/${selectedJobId}/history`)
-				}, 1000)
+				navigate(`/jobs/${selectedJobId}/history`)
 			},
 			onError: (error: Error) => {
 				message.error(`Failed to clear destination: ${error.message}`)

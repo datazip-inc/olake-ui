@@ -106,7 +106,7 @@ const JobCreation: React.FC = () => {
 			)
 			if (source) setSelectedSource(source)
 		}
-	}, [initialData.sourceId, sourcesData, selectedSource, setSelectedSource])
+	}, [initialData.sourceId, sourcesData])
 
 	// Pre-fill full destination entity from URL param ID once destinations load
 	useEffect(() => {
@@ -116,12 +116,7 @@ const JobCreation: React.FC = () => {
 			)
 			if (dest) setSelectedDestination(dest)
 		}
-	}, [
-		initialData.destinationId,
-		destinationsData,
-		selectedDestination,
-		setSelectedDestination,
-	])
+	}, [initialData.destinationId, destinationsData])
 
 	const { setShowResetStreamsModal } = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)

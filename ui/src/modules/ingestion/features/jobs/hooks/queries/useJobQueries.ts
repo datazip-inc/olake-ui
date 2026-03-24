@@ -55,10 +55,20 @@ export const useClearDestinationStatus = (
 	jobId: string,
 	options?: { refetchOnWindowFocus?: boolean },
 ) => {
-	return useQuery({
+	const query = useQuery({
 		queryKey: jobsKeys.clearDestination(jobId),
 		queryFn: () => jobService.getClearDestinationStatus(jobId),
 		enabled: !!jobId,
 		refetchOnWindowFocus: options?.refetchOnWindowFocus,
+		refetchOnMount: "always",
+		staleTime: 0,
+		gcTime: 0,
 	})
+
+	return {
+		...query,
+		// TanStack Query's SWR behavior serves cached data while refetching in the background.
+		// `isFetchedAfterMount` suppresses stale values until the first fresh response is confirmed.
+		data: query.isFetchedAfterMount ? query.data : undefined,
+	}
 }

@@ -43,8 +43,7 @@ const SyncModeSection = () => {
 		setCursorField(initialCursorField)
 		// Auto-select first available cursor field if default sync mode is incremental and no cursor field is set
 		if (initialApiSyncMode === "incremental" && !initialCursorField) {
-			const availableCursorFields = stream.stream.available_cursor_fields || []
-			const cursor = availableCursorFields[0]
+			const cursor = getColumnOptionsForCursor()[0]?.value
 			if (cursor) {
 				setCursorField(getCursorFieldValues(cursor).primary)
 				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
@@ -74,8 +73,7 @@ const SyncModeSection = () => {
 
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
-			const availableCursorFields = stream.stream.available_cursor_fields || []
-			const cursor = cursorField || availableCursorFields[0]
+			const cursor = cursorField || getColumnOptionsForCursor()[0]?.value
 			if (cursor) {
 				setCursorField(getCursorFieldValues(cursor).primary)
 				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
