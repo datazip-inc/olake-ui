@@ -47,6 +47,7 @@ export interface SchemaConfigurationProps {
 	destinationType?: string
 	jobName: string
 	advancedSettings?: AdvancedSettings | null
+	isJobFetching?: boolean
 }
 
 export interface GroupedStreamsCollapsibleListProps {

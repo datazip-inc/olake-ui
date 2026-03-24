@@ -24,7 +24,7 @@ import {
 	JOB_STEP_NUMBERS,
 	STREAM_DEFAULTS,
 } from "../constants"
-import { useJobDetails, useUpdateJob } from "../hooks"
+import { useUpdateJob } from "../hooks"
 import { jobService } from "../services"
 import {
 	useJobStore,
@@ -48,19 +48,40 @@ const JobEdit: React.FC = () => {
 	} = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
 	const streamsData = useStreamSelectionStore(state => state.streamsData)
-	// Always fetch fresh job data when entering the edit page so we never work with stale state.
-	// gcTime: 0 ensures the cache is cleared on unmount, and refetchOnMount: 'always' forces a
-	// network request every time the component mounts, regardless of staleness.
-	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
-		refetchOnMount: "always",
-		gcTime: 0,
-	})
+	const [job, setJob] = useState<Job | null>(null)
+	const [isJobError, setIsJobError] = useState(false)
+	const [isJobLoading, setIsJobLoading] = useState(false)
 
 	const { mutateAsync: updateJob } = useUpdateJob()
 
 	// Set selected job from route param (source of truth is the URL)
 	useEffect(() => {
 		if (jobId) setSelectedJobId(jobId)
+	}, [jobId])
+
+	useEffect(() => {
+		if (!jobId) {
+			setJob(null)
+			setIsJobError(false)
+			setIsJobLoading(false)
+			return
+		}
+
+		const fetchJob = async () => {
+			setIsJobLoading(true)
+			try {
+				const response = await jobService.getJob(jobId)
+				setJob(response)
+				setIsJobError(false)
+			} catch {
+				setJob(null)
+				setIsJobError(true)
+			} finally {
+				setIsJobLoading(false)
+			}
+		}
+
+		void fetchJob()
 	}, [jobId])
 
 	const [currentStep, setCurrentStep] = useState<JobCreationSteps>(
@@ -446,6 +467,7 @@ const JobEdit: React.FC = () => {
 									}
 									jobName={jobName}
 									advancedSettings={advancedSettings}
+									isJobFetching={isJobLoading}
 								/>
 							</div>
 						)}
@@ -469,7 +491,7 @@ const JobEdit: React.FC = () => {
 						<Button
 							type="default"
 							onClick={() => handleJobSubmit(null)}
-							disabled={isSubmitting || isDiscovering}
+							disabled={isSubmitting || isDiscovering || isJobLoading}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
 						</Button>
@@ -477,7 +499,7 @@ const JobEdit: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleNext}
-						disabled={isSubmitting || isDiscovering}
+						disabled={isSubmitting || isDiscovering || isJobLoading}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS
 							? isSubmitting

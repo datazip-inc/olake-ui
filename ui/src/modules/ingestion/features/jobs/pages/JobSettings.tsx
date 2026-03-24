@@ -18,11 +18,8 @@ import {
 	AdvancedSettingsCard,
 } from "../components"
 import { DAYS, FREQUENCY_OPTIONS } from "../constants"
-import {
-	useJobDetails,
-	useClearDestinationStatus,
-	useUpdateJob,
-} from "../hooks"
+import { useJobDetails, useUpdateJob } from "../hooks"
+import { jobService } from "../services"
 import { useJobConfigurationStore, useJobStore } from "../stores"
 import {
 	parseCronExpression,
@@ -69,8 +66,11 @@ const JobSettings: React.FC = () => {
 		staleTime: Infinity,
 		refetchOnMount: "always",
 	})
-	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
-		useClearDestinationStatus(jobId || "")
+	const [clearDestStatus, setClearDestStatus] = useState<{
+		running: boolean
+	} | null>(null)
+	const [isClearDestinationStatusLoading, setIsClearDestinationStatusLoading] =
+		useState(false)
 	const selectedClearDestinationRunning = clearDestStatus?.running ?? false
 	const { mutateAsync: updateJobMutation } = useUpdateJob()
 
@@ -85,6 +85,28 @@ const JobSettings: React.FC = () => {
 			setShowStreamEditDisabledModal(true)
 		}
 	}, [clearDestStatus?.running])
+
+	useEffect(() => {
+		if (!jobId) {
+			setClearDestStatus(null)
+			setIsClearDestinationStatusLoading(false)
+			return
+		}
+
+		const fetchClearDestinationStatus = async () => {
+			setIsClearDestinationStatusLoading(true)
+			try {
+				const status = await jobService.getClearDestinationStatus(jobId)
+				setClearDestStatus(status)
+			} catch {
+				setClearDestStatus(null)
+			} finally {
+				setIsClearDestinationStatusLoading(false)
+			}
+		}
+
+		fetchClearDestinationStatus()
+	}, [jobId])
 
 	// Navigate on error
 	useEffect(() => {
