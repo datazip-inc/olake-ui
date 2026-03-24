@@ -4,7 +4,7 @@ import {
 	PencilSimpleIcon,
 } from "@phosphor-icons/react"
 import { useIsFetching } from "@tanstack/react-query"
-import { Input, Empty, Spin, Tooltip } from "antd"
+import { Input, Empty, Spin, Tooltip, Button } from "antd"
 import clsx from "clsx"
 import React, { useEffect, useState, useMemo } from "react"
 import { useShallow } from "zustand/react/shallow"
@@ -54,6 +54,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	const streamsData = useStreamSelectionStore(selectStreamsData)
 	const isDiscovering = useStreamSelectionStore(selectIsDiscovering)
+	const discoverError = useStreamSelectionStore(state => state.discoverError)
 	const initialStreamsSnapshot = useStreamSelectionStore(
 		selectInitialStreamsSnapshot,
 	)
@@ -79,8 +80,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		"All tables",
 	])
 
-	// Discovery / initialization effect
-	useEffect(() => {
+	const triggerStreamsDiscovery = () => {
 		if (
 			!sourceConfig ||
 			!sourceConnector ||
@@ -93,6 +93,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		const { setDiscovering, initializeFromDiscovery, setDiscoverError } =
 			useStreamSelectionStore.getState()
 		setDiscovering(true)
+		setDiscoverError(null)
 
 		discoverMutation.mutate(
 			{
@@ -117,10 +118,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					initializeFromDiscovery(data)
 				},
 				onError: error => {
+					setDiscovering(false)
 					setDiscoverError(error)
 				},
 			},
 		)
+	}
+
+	// Discovery / initialization effect
+	useEffect(() => {
+		triggerStreamsDiscovery()
 	}, [sourceName, sourceConnector, sourceVersion, sourceConfig, jobName])
 
 	// Reset selectedFilters to "All tables" when all filters are deselected
@@ -133,13 +140,22 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	// Reset store on unmount
 	useEffect(() => {
 		return () => {
+			discoverMutation.cancel()
 			discoverMutation.reset()
 			useStreamSelectionStore.getState().reset()
 		}
 	}, [])
 
 	const isLoading =
-		isJobFetching || isDiscovering || isClearDestinationStatusLoading
+		isJobFetching ||
+		isDiscovering ||
+		isClearDestinationStatusLoading ||
+		(!!sourceConfig &&
+			!!sourceConnector &&
+			!!sourceVersion &&
+			!!jobName &&
+			!discoverError &&
+			!streamsData?.streams)
 
 	const activeStreamData = useStreamSelectionStore(selectActiveStreamData)
 	// useShallow: selector returns a new object literal each time; shallow comparison
@@ -213,8 +229,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				</div>
 				<div className="flex w-4/5 justify-between gap-2">
 					{destinationDatabase && (
-						<div className="flex w-1/2 items-center justify-start gap-1">
-							<div className="group relative rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200">
+						<div className="flex w-1/2 min-w-0 items-center justify-start gap-1">
+							<div className="group relative w-full min-w-0 rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200">
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
@@ -223,18 +239,22 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 									</Tooltip>
 								</div>
 
-								<div className="flex items-center">
-									<div className="font-medium text-gray-700">
+								<div className="flex min-w-0 items-center">
+									<div className="shrink-0 whitespace-nowrap font-medium text-gray-700">
 										{destinationType === DESTINATION_INTERNAL_TYPES.S3
 											? "S3 Folder"
 											: "Iceberg DB"}
 									</div>
 
-									<span className="px-1">:</span>
+									<span className="shrink-0 px-1">:</span>
 
-									<div className="text-gray-600">{destinationDatabase}</div>
+									<Tooltip title={destinationDatabase}>
+										<div className="min-w-0 truncate text-gray-600">
+											{destinationDatabase}
+										</div>
+									</Tooltip>
 
-									<div className="ml-1 flex items-center space-x-1 border-l border-gray-200 pl-1">
+									<div className="ml-1 flex shrink-0 items-center space-x-1 border-l border-gray-200 pl-1">
 										<Tooltip
 											title="Edit"
 											placement="top"
@@ -295,7 +315,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 							<Spin size="large" />
 						</div>
 					) : (
-						<Empty className="flex h-full flex-col items-center justify-center" />
+						<div className="flex h-full flex-col items-center justify-center gap-3 py-8">
+							<Empty />
+							{!!discoverError && (
+								<Button
+									type="primary"
+									onClick={triggerStreamsDiscovery}
+									loading={discoverMutation.isPending}
+								>
+									Retry
+								</Button>
+							)}
+						</div>
 					)}
 				</div>
 

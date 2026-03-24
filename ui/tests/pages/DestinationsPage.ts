@@ -12,9 +12,7 @@ export class DestinationsPage extends BasePage {
 
 	constructor(page: Page) {
 		super(page)
-		this.createDestinationButton = page.getByRole("button", {
-			name: "Create Destination",
-		})
+		this.createDestinationButton = page.getByTestId("create-destination-button")
 		this.destinationsTitle = page.locator("h1", { hasText: "Destinations" })
 		this.destinationsLink = page.getByRole("link", { name: "Destinations" })
 		this.activeTab = page.getByRole("tab", { name: "Active" })

@@ -12,9 +12,7 @@ export class SourcesPage extends BasePage {
 
 	constructor(page: Page) {
 		super(page)
-		this.createSourceButton = page.getByRole("button", {
-			name: "Create Source",
-		})
+		this.createSourceButton = page.getByTestId("create-source-button")
 		this.sourcesTitle = page.locator("h1", { hasText: "Sources" })
 		this.sourcesLink = page.getByRole("link", { name: "Sources" })
 		this.activeTab = page.getByRole("tab", { name: "Active" })
@@ -31,7 +29,21 @@ export class SourcesPage extends BasePage {
 	}
 
 	async clickCreateSource() {
-		await this.createSourceButton.click()
+		// Wait until the sources query has finished — the modal only mounts after
+		// loading completes, so any earlier check is a race condition.
+		await this.page
+			.locator('[data-testid="sources-page"][data-loaded="true"]')
+			.waitFor({ timeout: 60_000 })
+
+		const onboardingCta = this.page.getByTestId(
+			"onboarding-create-source-button",
+		)
+		if (await onboardingCta.isVisible()) {
+			await onboardingCta.click()
+		} else {
+			await this.createSourceButton.click()
+		}
+		await this.page.waitForURL(/\/sources\/new/)
 	}
 
 	async expectSourcesPageVisible() {
