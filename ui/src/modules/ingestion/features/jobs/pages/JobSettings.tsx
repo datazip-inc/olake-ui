@@ -18,8 +18,11 @@ import {
 	AdvancedSettingsCard,
 } from "../components"
 import { DAYS, FREQUENCY_OPTIONS } from "../constants"
-import { useJobDetails, useUpdateJob } from "../hooks"
-import { jobService } from "../services"
+import {
+	useClearDestinationStatus,
+	useJobDetails,
+	useUpdateJob,
+} from "../hooks"
 import { useJobConfigurationStore, useJobStore } from "../stores"
 import {
 	parseCronExpression,
@@ -62,15 +65,16 @@ const JobSettings: React.FC = () => {
 
 	// Keep job data permanently fresh to prevent refetches (e.g., on tab focus) that could overwrite in-progress edits.
 	// The query will still update when job mutations succeed because they invalidate the job queries.
-	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
+	const {
+		data: job,
+		isLoading: isJobLoading,
+		isError: isJobError,
+	} = useJobDetails(jobId || "", {
 		staleTime: Infinity,
 		refetchOnMount: "always",
 	})
-	const [clearDestStatus, setClearDestStatus] = useState<{
-		running: boolean
-	} | null>(null)
-	const [isClearDestinationStatusLoading, setIsClearDestinationStatusLoading] =
-		useState(false)
+	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
+		useClearDestinationStatus(jobId ? parseInt(jobId) : -1)
 	const selectedClearDestinationRunning = clearDestStatus?.running ?? false
 	const { mutateAsync: updateJobMutation } = useUpdateJob()
 
@@ -90,28 +94,6 @@ const JobSettings: React.FC = () => {
 	useEffect(() => {
 		return () => setShowStreamEditDisabledModal(false)
 	}, [])
-
-	useEffect(() => {
-		if (!jobId) {
-			setClearDestStatus(null)
-			setIsClearDestinationStatusLoading(false)
-			return
-		}
-
-		const fetchClearDestinationStatus = async () => {
-			setIsClearDestinationStatusLoading(true)
-			try {
-				const status = await jobService.getClearDestinationStatus(jobId)
-				setClearDestStatus(status)
-			} catch {
-				setClearDestStatus(null)
-			} finally {
-				setIsClearDestinationStatusLoading(false)
-			}
-		}
-
-		fetchClearDestinationStatus()
-	}, [jobId])
 
 	// Navigate on error
 	useEffect(() => {
@@ -304,7 +286,7 @@ const JobSettings: React.FC = () => {
 		}
 	}
 
-	if (isClearDestinationStatusLoading) {
+	if (isJobLoading || isClearDestinationStatusLoading) {
 		return (
 			<div className="flex h-screen w-full items-center justify-center">
 				<Spin

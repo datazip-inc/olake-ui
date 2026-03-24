@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 
+import { useFreshQuery } from "@/common/hooks"
+
 import { jobsKeys } from "../../constants"
 import { jobService } from "../../services"
 
@@ -51,5 +53,21 @@ export const useJobTasks = (
 		queryFn: () => jobService.getJobTasks(jobId),
 		enabled: !!jobId,
 		refetchInterval: options?.refetchInterval,
+	})
+}
+
+export const useClearDestinationStatus = (jobId: number) => {
+	return useFreshQuery({
+		queryKey: jobsKeys.clearDestination(jobId.toString()),
+		queryFn: () => jobService.getClearDestinationStatus(jobId.toString()),
+		enabled: jobId >= 0,
+	})
+}
+
+export const useJobDetailsFresh = (jobId: string | undefined) => {
+	return useFreshQuery({
+		queryKey: jobsKeys.detail(jobId ?? ""),
+		queryFn: () => jobService.getJob(jobId!),
+		enabled: !!jobId,
 	})
 }

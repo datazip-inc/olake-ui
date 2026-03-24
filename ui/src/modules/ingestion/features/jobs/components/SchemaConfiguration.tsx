@@ -3,6 +3,7 @@ import {
 	InfoIcon,
 	PencilSimpleIcon,
 } from "@phosphor-icons/react"
+import { useIsFetching } from "@tanstack/react-query"
 import { Input, Empty, Spin, Tooltip, Button } from "antd"
 import clsx from "clsx"
 import React, { useEffect, useState, useMemo } from "react"
@@ -16,8 +17,8 @@ import {
 } from "@/modules/ingestion/common/types"
 import { useDiscoverSourceStreams } from "@/modules/ingestion/features/sources/hooks"
 
-import { DESTINATATION_DATABASE_TOOLTIP_TEXT } from "../constants"
-import { jobService } from "../services"
+import { DESTINATATION_DATABASE_TOOLTIP_TEXT, jobsKeys } from "../constants"
+import { useClearDestinationStatus } from "../hooks"
 import { useJobStore, useStreamSelectionStore } from "../stores"
 import {
 	selectActiveStreamData,
@@ -47,7 +48,6 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	destinationType,
 	jobName,
 	advancedSettings,
-	isJobFetching = false,
 }) => {
 	const { setShowDestinationDatabaseModal, setShowStreamEditDisabledModal } =
 		useJobStore()
@@ -61,35 +61,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 
 	const discoverMutation = useDiscoverSourceStreams()
 
-	const [clearDestStatus, setClearDestStatus] = useState<{
-		running: boolean
-	} | null>(null)
-	const [isClearDestinationStatusLoading, setIsClearDestinationStatusLoading] =
-		useState(false)
+	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
+		useClearDestinationStatus(jobId)
 
-	useEffect(() => {
-		if (jobId < 0) {
-			setClearDestStatus(null)
-			setIsClearDestinationStatusLoading(false)
-			return
-		}
-
-		const fetchClearDestinationStatus = async () => {
-			setIsClearDestinationStatusLoading(true)
-			try {
-				const status = await jobService.getClearDestinationStatus(
-					jobId.toString(),
-				)
-				setClearDestStatus(status)
-			} catch {
-				setClearDestStatus(null)
-			} finally {
-				setIsClearDestinationStatusLoading(false)
-			}
-		}
-
-		fetchClearDestinationStatus()
-	}, [jobId])
+	const isJobFetching =
+		useIsFetching({ queryKey: jobsKeys.detail(jobId.toString()) }) > 0
 
 	// Show stream-edit-disabled modal when clear destination is running
 	useEffect(() => {
