@@ -1,0 +1,45 @@
+/**
+ * AuthService handles authentication-related API calls and localStorage management.
+ */
+import {
+	LOCALSTORAGE_TOKEN_KEY,
+	LOCALSTORAGE_USERNAME_KEY,
+} from "@/common/constants"
+import { api } from "@/core/api"
+
+import { LoginArgs, LoginResponse } from "../types"
+
+export const authService = {
+	login: async ({ username, password }: LoginArgs) => {
+		try {
+			const response = await api.post<LoginResponse>(
+				"/login",
+				{
+					username,
+					password,
+				},
+				{
+					headers: {
+						"Content-Type": "application/json",
+					},
+					disableErrorNotification: true,
+				},
+			)
+
+			localStorage.setItem(LOCALSTORAGE_USERNAME_KEY, response.data.username)
+			localStorage.setItem(LOCALSTORAGE_TOKEN_KEY, "authenticated")
+			return response.data
+		} catch (error: any) {
+			throw error
+		}
+	},
+
+	logout: () => {
+		localStorage.removeItem(LOCALSTORAGE_TOKEN_KEY)
+		localStorage.removeItem(LOCALSTORAGE_USERNAME_KEY)
+	},
+
+	isLoggedIn: () => {
+		return !!localStorage.getItem(LOCALSTORAGE_TOKEN_KEY)
+	},
+}
