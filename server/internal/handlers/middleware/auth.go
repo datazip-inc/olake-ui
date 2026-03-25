@@ -12,7 +12,6 @@ import (
 func AuthMiddleware(ctx *context.Context) {
 	if web.BConfig.WebConfig.Session.SessionOn {
 		if userID := ctx.Input.Session(constants.SessionUserID); userID == nil {
-			// Send unauthorized response
 			ctx.Output.SetStatus(401)
 			_ = ctx.Output.JSON(dto.JSONResponse{
 				Message: "Unauthorized, try login again",

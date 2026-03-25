@@ -11,19 +11,9 @@ type Handler struct {
 	opt *services.Service
 }
 
-// opt holds the singleton service instance injected at startup.
-var opt *services.Service
-
 // NewHandler initializes the optimisation handler with its service dependency.
 func NewHandler(s *services.Service) *Handler {
-	opt = s
 	return &Handler{opt: s}
-}
-
-// Prepare runs before each action; Beego constructs a fresh controller per request,
-// so we assign the shared service here to avoid nil dereferences.
-func (h *Handler) Prepare() {
-	h.opt = opt
 }
 
 // GetService returns the underlying optimisation service for cross-service orchestration

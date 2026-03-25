@@ -51,6 +51,8 @@ func Init(h *handlers.Handler) {
 
 	// Apply auth middleware to protected routes
 	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
+	// Optimisation / Fusion proxy (same session as main API)
+	web.InsertFilter("/api/opt/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", etlHandler, "post:Login")
 	web.Router("/signup", etlHandler, "post:Signup")

@@ -13,7 +13,7 @@ import (
 func (c *Service) Do(ctx context.Context, method, path string, queryParams url.Values, body interface{}) (interface{}, error) {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("optimisation request: %s", err)
 	}
 
 	var resp dto.OptimisationResponse
@@ -37,7 +37,7 @@ func (c *Service) Do(ctx context.Context, method, path string, queryParams url.V
 func (c *Service) DoInto(ctx context.Context, method, path string, queryParams url.Values, body, result interface{}) error {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
-		return err
+		return fmt.Errorf("optimisation request: %s", err)
 	}
 
 	var resp dto.OptimisationResponse
@@ -60,7 +60,7 @@ func (c *Service) DoInto(ctx context.Context, method, path string, queryParams u
 func (c *Service) DoAndValidate(ctx context.Context, method, path string, queryParams url.Values, body interface{}) error {
 	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
-		return err
+		return fmt.Errorf("optimisation request: %s", err)
 	}
 
 	var resp dto.OptimisationResponse

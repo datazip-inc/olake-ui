@@ -48,7 +48,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 		tableDetails, err := s.GetTableDetails(ctx, catalog, databaseName, tableName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %v\n", catalog, databaseName, tableName, err)
+			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %s", catalog, databaseName, tableName, err)
 		}
 
 		detailsMap, ok := tableDetails.(map[string]interface{})
@@ -74,7 +74,14 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		}
 
 		if enabled, ok := properties["self-optimizing.enabled"]; ok {
-			tableInfo.Enabled = enabled.(string) == "true"
+			switch v := enabled.(type) {
+			case string:
+				tableInfo.Enabled = v == "true"
+			case bool:
+				tableInfo.Enabled = v
+			default:
+				tableInfo.Enabled = fmt.Sprint(v) == "true"
+			}
 		}
 
 		if _, ok := properties["olake-2pc"]; ok {

@@ -6,15 +6,16 @@ import (
 	"net/url"
 )
 
-func (s *Service) Proxy(ctx context.Context, method, path string, queryParams url.Values, body json.RawMessage) (json.RawMessage, error) {
+// Proxy forwards a request to AMS and returns the upstream HTTP status and raw body.
+func (s *Service) Proxy(ctx context.Context, method, path string, queryParams url.Values, body json.RawMessage) (httpStatus int, raw json.RawMessage, err error) {
 	var bodyArg interface{}
 	if len(body) > 0 {
 		bodyArg = body
 	}
 
-	data, err := s.DoRequest(ctx, method, path, queryParams, bodyArg)
+	status, data, err := s.executeAMS(ctx, method, path, queryParams, bodyArg)
 	if err != nil {
-		return nil, err
+		return 0, nil, err
 	}
-	return json.RawMessage(data), nil
+	return status, json.RawMessage(data), nil
 }

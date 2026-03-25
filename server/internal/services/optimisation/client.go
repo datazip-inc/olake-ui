@@ -18,11 +18,34 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 )
 
+const maxUpstreamErrorBodyLog = 2048
+
 type Service struct {
 	baseURL   string
 	apiKey    string
 	apiSecret string
 	client    *http.Client
+}
+
+func cloneURLValues(v url.Values) url.Values {
+	if v == nil {
+		return url.Values{}
+	}
+	out := make(url.Values, len(v))
+	for k, vals := range v {
+		cp := make([]string, len(vals))
+		copy(cp, vals)
+		out[k] = cp
+	}
+	return out
+}
+
+func truncateForLog(b []byte) string {
+	s := string(b)
+	if len(s) > maxUpstreamErrorBodyLog {
+		return s[:maxUpstreamErrorBodyLog] + "...(truncated)"
+	}
+	return s
 }
 
 // Token Expiration: There is "no" expiration logic for optimisation
@@ -39,7 +62,7 @@ func NewClient() (*Service, error) {
 	}
 
 	return &Service{
-		baseURL:   baseURL,
+		baseURL:   strings.TrimRight(baseURL, "/"),
 		apiKey:    apiKey,
 		apiSecret: apiSecret,
 		client: &http.Client{
@@ -95,21 +118,22 @@ func (c *Service) generateEncryptString(params url.Values) string {
 	return strings.Join(parts, "")
 }
 
-func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
-	signature := c.calculateSignature(queryParams)
-	queryParams.Set("apiKey", c.apiKey)
-	queryParams.Set("signature", signature)
+func (c *Service) executeAMS(ctx context.Context, method, path string, queryParams url.Values, body interface{}) (int, []byte, error) {
+	qp := cloneURLValues(queryParams)
+	signature := c.calculateSignature(qp)
+	qp.Set("apiKey", c.apiKey)
+	qp.Set("signature", signature)
 
 	fullURL := c.baseURL + path
-	if len(queryParams) > 0 {
-		fullURL += "?" + queryParams.Encode()
+	if len(qp) > 0 {
+		fullURL += "?" + qp.Encode()
 	}
 
 	var bodyReader io.Reader
 	if body != nil {
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %s", err)
+			return 0, nil, fmt.Errorf("failed to marshal request body: %s", err)
 		}
 
 		bodyReader = bytes.NewReader(bodyBytes)
@@ -117,7 +141,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %s", err)
+		return 0, nil, fmt.Errorf("failed to create request: %s", err)
 	}
 
 	if body != nil {
@@ -126,7 +150,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %s", err)
+		return 0, nil, fmt.Errorf("failed to send request: %s", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -134,18 +158,27 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %s", err)
+		return 0, nil, fmt.Errorf("failed to read response body: %s", err)
 	}
 
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
-	}
+	return resp.StatusCode, respBody, nil
+}
 
+// DoRequest calls AMS and returns the response body for HTTP 2xx.
+func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
+	status, respBody, err := c.executeAMS(ctx, method, path, queryParams, body)
+	if err != nil {
+		return nil, err
+	}
+	if status >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s", status, truncateForLog(respBody))
+	}
 	return respBody, nil
 }
 
 func generateToken(baseURL, username, password string) (string, string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
+	base := strings.TrimRight(baseURL, "/")
 
 	loginPayload := map[string]string{"user": username, "password": password}
 	loginBody, err := json.Marshal(loginPayload)
@@ -153,7 +186,7 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 		return "", "", fmt.Errorf("failed to marshal login payload: %s", err)
 	}
 
-	loginReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/login", bytes.NewReader(loginBody))
+	loginReq, err := http.NewRequest("POST", base+"/api/ams/v1/login", bytes.NewReader(loginBody))
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create login request: %s", err)
 	}
@@ -166,9 +199,17 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 	}
 	defer loginResp.Body.Close()
 
+	loginBodyBytes, err := io.ReadAll(loginResp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read login response: %s", err)
+	}
+	if loginResp.StatusCode < 200 || loginResp.StatusCode >= 300 {
+		return "", "", fmt.Errorf("login HTTP %d: %s", loginResp.StatusCode, truncateForLog(loginBodyBytes))
+	}
+
 	cookies := loginResp.Cookies()
 
-	tokenReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", nil)
+	tokenReq, err := http.NewRequest("POST", base+"/api/ams/v1/api/token/create", nil)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create token request: %s", err)
 	}
@@ -184,6 +225,14 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 	}
 	defer tokenResp.Body.Close()
 
+	tokenBodyBytes, err := io.ReadAll(tokenResp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read token response: %s", err)
+	}
+	if tokenResp.StatusCode < 200 || tokenResp.StatusCode >= 300 {
+		return "", "", fmt.Errorf("token HTTP %d: %s", tokenResp.StatusCode, truncateForLog(tokenBodyBytes))
+	}
+
 	var result struct {
 		Result struct {
 			APIKey string `json:"apikey"`
@@ -191,8 +240,12 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 		} `json:"result"`
 	}
 
-	if err := json.NewDecoder(tokenResp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(tokenBodyBytes, &result); err != nil {
 		return "", "", fmt.Errorf("failed to parse token response: %s", err)
+	}
+
+	if result.Result.APIKey == "" || result.Result.Secret == "" {
+		return "", "", fmt.Errorf("empty apikey or secret in token response")
 	}
 
 	return result.Result.APIKey, result.Result.Secret, nil
