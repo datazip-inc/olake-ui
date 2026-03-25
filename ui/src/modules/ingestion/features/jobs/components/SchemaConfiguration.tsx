@@ -17,7 +17,7 @@ import {
 } from "@/modules/ingestion/common/types"
 import { useDiscoverSourceStreams } from "@/modules/ingestion/features/sources/hooks"
 
-import { jobsKeys, DESTINATATION_DATABASE_TOOLTIP_TEXT } from "../constants"
+import { DESTINATATION_DATABASE_TOOLTIP_TEXT, jobsKeys } from "../constants"
 import { useClearDestinationStatus } from "../hooks"
 import { useJobStore, useStreamSelectionStore } from "../stores"
 import {
@@ -62,13 +62,11 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const discoverMutation = useDiscoverSourceStreams()
 
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
-		useClearDestinationStatus(jobId >= 0 ? jobId.toString() : "", {
-			refetchOnWindowFocus: false,
-		})
+		useClearDestinationStatus(jobId)
+
 	const isJobFetching =
-		useIsFetching({
-			queryKey: jobsKeys.detail(jobId >= 0 ? jobId.toString() : ""),
-		}) > 0
+		useIsFetching({ queryKey: jobsKeys.detail(jobId.toString()) }) > 0
+
 	// Show stream-edit-disabled modal when clear destination is running
 	useEffect(() => {
 		if (clearDestStatus?.running) {
@@ -143,6 +141,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			discoverMutation.cancel()
 			discoverMutation.reset()
 			useStreamSelectionStore.getState().reset()
+			setShowStreamEditDisabledModal(false)
 		}
 	}, [])
 

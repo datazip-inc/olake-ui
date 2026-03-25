@@ -118,28 +118,24 @@ export const sourceService = {
 			}
 		} catch (error) {
 			console.error("Error testing source connection:", error)
+			const errorMessage =
+				error instanceof AxiosError
+					? (error.response?.data?.message ??
+						"Network error - please check your connection")
+					: "Unknown error occurred"
 			return {
 				success: false,
-				message:
-					error instanceof AxiosError
-						? error.response?.data.message
-						: "Unknown error occurred",
+				message: errorMessage,
 				data: {
 					connection_result: {
-						message:
-							error instanceof AxiosError
-								? error.response?.data.message
-								: "Unknown error occurred",
+						message: errorMessage,
 						status: "FAILED",
 					},
 					logs: [
 						{
 							level: "error",
 							time: new Date().toISOString(),
-							message:
-								error instanceof AxiosError
-									? error.response?.data.message
-									: "Unknown error occurred",
+							message: errorMessage,
 						},
 					],
 				},

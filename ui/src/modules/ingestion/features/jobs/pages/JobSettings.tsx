@@ -19,8 +19,8 @@ import {
 } from "../components"
 import { DAYS, FREQUENCY_OPTIONS } from "../constants"
 import {
-	useJobDetails,
 	useClearDestinationStatus,
+	useJobDetails,
 	useUpdateJob,
 } from "../hooks"
 import { useJobConfigurationStore, useJobStore } from "../stores"
@@ -65,12 +65,16 @@ const JobSettings: React.FC = () => {
 
 	// Keep job data permanently fresh to prevent refetches (e.g., on tab focus) that could overwrite in-progress edits.
 	// The query will still update when job mutations succeed because they invalidate the job queries.
-	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
+	const {
+		data: job,
+		isLoading: isJobLoading,
+		isError: isJobError,
+	} = useJobDetails(jobId || "", {
 		staleTime: Infinity,
 		refetchOnMount: "always",
 	})
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
-		useClearDestinationStatus(jobId || "")
+		useClearDestinationStatus(jobId ? parseInt(jobId) : -1)
 	const selectedClearDestinationRunning = clearDestStatus?.running ?? false
 	const { mutateAsync: updateJobMutation } = useUpdateJob()
 
@@ -85,6 +89,11 @@ const JobSettings: React.FC = () => {
 			setShowStreamEditDisabledModal(true)
 		}
 	}, [clearDestStatus?.running])
+
+	// reset modal state on unmount
+	useEffect(() => {
+		return () => setShowStreamEditDisabledModal(false)
+	}, [])
 
 	// Navigate on error
 	useEffect(() => {
@@ -277,7 +286,7 @@ const JobSettings: React.FC = () => {
 		}
 	}
 
-	if (isClearDestinationStatusLoading) {
+	if (isJobLoading || isClearDestinationStatusLoading) {
 		return (
 			<div className="flex h-screen w-full items-center justify-center">
 				<Spin

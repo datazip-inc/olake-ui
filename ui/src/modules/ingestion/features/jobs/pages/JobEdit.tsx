@@ -24,7 +24,7 @@ import {
 	JOB_STEP_NUMBERS,
 	STREAM_DEFAULTS,
 } from "../constants"
-import { useJobDetails, useUpdateJob } from "../hooks"
+import { useJobDetailsFresh, useUpdateJob } from "../hooks"
 import { jobService } from "../services"
 import {
 	useJobStore,
@@ -48,13 +48,11 @@ const JobEdit: React.FC = () => {
 	} = useJobStore()
 	const isDiscovering = useStreamSelectionStore(state => state.isDiscovering)
 	const streamsData = useStreamSelectionStore(state => state.streamsData)
-	// Always fetch fresh job data when entering the edit page so we never work with stale state.
-	// gcTime: 0 ensures the cache is cleared on unmount, and refetchOnMount: 'always' forces a
-	// network request every time the component mounts, regardless of staleness.
-	const { data: job, isError: isJobError } = useJobDetails(jobId || "", {
-		refetchOnMount: "always",
-		gcTime: 0,
-	})
+	const {
+		data: job,
+		isLoading: isJobLoading,
+		isError: isJobError,
+	} = useJobDetailsFresh(jobId)
 
 	const { mutateAsync: updateJob } = useUpdateJob()
 
@@ -469,7 +467,7 @@ const JobEdit: React.FC = () => {
 						<Button
 							type="default"
 							onClick={() => handleJobSubmit(null)}
-							disabled={isSubmitting || isDiscovering}
+							disabled={isSubmitting || isDiscovering || isJobLoading}
 						>
 							{isSubmitting ? "Saving..." : "Save"}
 						</Button>
@@ -477,7 +475,7 @@ const JobEdit: React.FC = () => {
 					<Button
 						type="primary"
 						onClick={handleNext}
-						disabled={isSubmitting || isDiscovering}
+						disabled={isSubmitting || isDiscovering || isJobLoading}
 					>
 						{currentStep === JOB_CREATION_STEPS.STREAMS
 							? isSubmitting

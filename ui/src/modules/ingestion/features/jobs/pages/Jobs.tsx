@@ -29,7 +29,7 @@ const Jobs: React.FC = () => {
 		isLoading: isLoadingJobs,
 		error: jobsError,
 		refetch: refetchJobs,
-	} = useJobs()
+	} = useJobs({ refetchInterval: 5000 })
 	const { refetch: refetchJobsWithNotification, isFetching: isRefreshingJobs } =
 		useJobsWithNotification()
 	const { mutateAsync: syncJob } = useSyncJob()
