@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	cmpModels "github.com/datazip-inc/olake-ui/server/internal/services/optimisation/models"
-	optModels "github.com/datazip-inc/olake-ui/server/internal/services/optimisation/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-func MapoptimisationCatalogToOLakeConfig(catalog *optModels.CatalogRequest) (*models.Config, error) {
+func MapoptimisationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.Config, error) {
 	config := &models.Config{}
 
 	// Map catalog name
@@ -117,11 +116,7 @@ func normalizeCatalogType(olakeCatalogType string) string {
 }
 
 // setDefaultCatalogProperties sets required default properties for all catalogs
-func setDefaultCatalogProperties(req *cmpModels.CatalogRequest) {
-	if req.Properties == nil {
-		req.Properties = make(map[string]string)
-	}
-
+func setDefaultCatalogProperties(req *dto.CatalogRequest) {
 	if _, exists := req.Properties["table.self-optimizing.enabled"]; !exists {
 		req.Properties["table.self-optimizing.enabled"] = "false"
 	}

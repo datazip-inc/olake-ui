@@ -22,7 +22,7 @@ func (c *Service) Do(ctx context.Context, method, path string, queryParams url.V
 	}
 
 	if resp.Code != 200 {
-		return nil, fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
+		return nil, fmt.Errorf("optimisation error (code %d): %s", resp.Code, resp.Message)
 	}
 
 	var result interface{}
@@ -46,11 +46,11 @@ func (c *Service) DoInto(ctx context.Context, method, path string, queryParams u
 	}
 
 	if resp.Code != 200 {
-		return fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
+		return fmt.Errorf("optimisation error (code %d): %s", resp.Code, resp.Message)
 	}
 
 	if err := json.Unmarshal(resp.Result, result); err != nil {
-		return fmt.Errorf("failed to parse result: %w", err)
+		return fmt.Errorf("failed to parse result: %s", err)
 	}
 
 	return nil
@@ -65,11 +65,11 @@ func (c *Service) DoAndValidate(ctx context.Context, method, path string, queryP
 
 	var resp dto.OptimisationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return fmt.Errorf("failed to parse response: %w", err)
+		return fmt.Errorf("failed to parse response: %s", err)
 	}
 
 	if resp.Code != 200 {
-		return fmt.Errorf("fusion error (code %d): %s", resp.Code, resp.Message)
+		return fmt.Errorf("optimisation error (code %d): %s", resp.Code, resp.Message)
 	}
 
 	return nil

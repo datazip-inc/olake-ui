@@ -17,17 +17,13 @@ func (h *Handler) GetCatalog() {
 
 	logger.Debugf("Get catalog details initiated catalog[%s]", catalogName)
 
-	// Get catalog in Olake config format
 	olakeConfig, err := h.opt.GetCatalogAsOLakeConfig(h.Ctx.Request.Context(), catalogName)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to get catalog details", err)
 		return
 	}
 
-	// Return only the config data without wrapper
-	h.Controller.Ctx.Output.SetStatus(http.StatusOK)
-	h.Controller.Data["json"] = olakeConfig
-	_ = h.Controller.ServeJSON()
+	utils.SuccessResponse(&h.Controller, "catalog details retrieved successfully", olakeConfig)
 }
 
 func (h *Handler) CreateCatalog() {
@@ -50,7 +46,7 @@ func (h *Handler) CreateCatalog() {
 		return
 	}
 
-	result, err := h.opt.CreateCatalogFromOLakeConfig(h.Ctx.Request.Context(), configJSON)
+	result, err := h.opt.CreateCatalogFromOLakeConfig(h.Ctx.Request.Context(), configJSON, false)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to create catalog", err)
 		return

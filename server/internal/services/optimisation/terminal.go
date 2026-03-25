@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/services/optimisation/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
 
-func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config models.SQLInput) (*models.SetTablePropertiesResponse, error) {
+func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.SetTablePropertiesResponse, error) {
 	properties := make(map[string]string)
 
 	if config.MinorTriggerInterval != "" {
@@ -39,21 +39,21 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	}
 
 	// sql query
-	sqlResult, err := s.SetTableProperties(ctx, models.SetTablePropertiesRequest{
+	sqlResult, err := s.SetTableProperties(ctx, dto.SetTablePropertiesRequest{
 		Catalog:    catalog,
 		Database:   database,
 		Table:      table,
 		Properties: properties,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute SQL for table properties: %w", err)
+		return nil, fmt.Errorf("failed to execute SQL for table properties: %s", err)
 	}
 
 	return sqlResult, nil
 }
 
 // sets table properties using the SQL query
-func (s *Service) SetTableProperties(ctx context.Context, req models.SetTablePropertiesRequest) (*models.SetTablePropertiesResponse, error) {
+func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTablePropertiesRequest) (*dto.SetTablePropertiesResponse, error) {
 	var propsSQL []string
 	for key, value := range req.Properties {
 		propsSQL = append(propsSQL, fmt.Sprintf("'%s' = '%s'", key, value))
@@ -67,20 +67,20 @@ func (s *Service) SetTableProperties(ctx context.Context, req models.SetTablePro
 	)
 
 	// Execute via Terminal API
-	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", constants.FusionAPIBase, req.Catalog)
-	requestBody := models.TerminalExecuteRequest{
+	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", constants.OptimisationAPIBase, req.Catalog)
+	requestBody := dto.TerminalExecuteRequest{
 		SQL: sql,
 	}
 
-	var sessionResult models.TerminalSessionResponse
+	var sessionResult dto.TerminalSessionResponse
 	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
-		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", req.Catalog, req.Database, req.Table, err)
+		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %s", req.Catalog, req.Database, req.Table, err)
 	}
 
 	// Poll for execution completion
 	logInfo, err := s.pollForCompletion(ctx, req.Catalog, sessionResult.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to poll for completion: %w", err)
+		return nil, fmt.Errorf("failed to poll for completion: %s", err)
 	}
 
 	// Determine success based on status
@@ -92,7 +92,7 @@ func (s *Service) SetTableProperties(ctx context.Context, req models.SetTablePro
 		message = fmt.Sprintf("ALTER TABLE command failed with status: %s. Session ID: %s", logInfo.LogStatus, sessionResult.SessionID)
 	}
 
-	return &models.SetTablePropertiesResponse{
+	return &dto.SetTablePropertiesResponse{
 		SessionID: sessionResult.SessionID,
 		Status:    logInfo.LogStatus,
 		Success:   success,
@@ -102,13 +102,13 @@ func (s *Service) SetTableProperties(ctx context.Context, req models.SetTablePro
 }
 
 // pollForCompletion polls the terminal API for SQL execution completion
-func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*models.LogInfo, error) {
+func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*dto.LogInfo, error) {
 	const (
 		pollInterval = 1500 * time.Millisecond
 		maxTimeout   = 30 * time.Second
 	)
 
-	path := fmt.Sprintf("%sterminal/%s/logs", constants.FusionAPIBase, sessionID)
+	path := fmt.Sprintf("%sterminal/%s/logs", constants.OptimisationAPIBase, sessionID)
 	timeoutCtx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 
@@ -120,9 +120,9 @@ func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 		case <-timeoutCtx.Done():
 			return nil, fmt.Errorf("timeout waiting for SQL execution to complete")
 		case <-ticker.C:
-			var logInfo models.LogInfo
+			var logInfo dto.LogInfo
 			if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &logInfo); err != nil {
-				return nil, fmt.Errorf("failed to get logs for session %s: %w", sessionID, err)
+				return nil, fmt.Errorf("failed to get logs for session %s: %s", sessionID, err)
 			}
 
 			// Check if execution is complete

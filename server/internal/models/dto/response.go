@@ -240,3 +240,17 @@ type OptimizationInfo struct {
 	LastRun string `json:"last-run,omitempty"`
 	Status  string `json:"status,omitempty"`
 }
+
+// SetTablePropertiesResponse represents the response from setting table properties
+type SetTablePropertiesResponse struct {
+	SessionID string   `json:"sessionId"`
+	Status    string   `json:"status"`
+	Success   bool     `json:"success"`
+	Message   string   `json:"message"`
+	Logs      []string `json:"logs,omitempty"`
+}
+
+// TerminalSessionResponse represents the response from terminal execute
+type TerminalSessionResponse struct {
+	SessionID string `json:"sessionId"`
+}

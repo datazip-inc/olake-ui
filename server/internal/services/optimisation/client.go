@@ -109,7 +109,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 	if body != nil {
 		bodyBytes, err := json.Marshal(body)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+			return nil, fmt.Errorf("failed to marshal request body: %s", err)
 		}
 
 		bodyReader = bytes.NewReader(bodyBytes)
@@ -117,7 +117,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %s", err)
 	}
 
 	if body != nil {
@@ -126,7 +126,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
+		return nil, fmt.Errorf("failed to send request: %s", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
@@ -134,7 +134,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("failed to read response body: %s", err)
 	}
 
 	if resp.StatusCode >= 400 {
@@ -150,19 +150,19 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 	loginPayload := map[string]string{"user": username, "password": password}
 	loginBody, err := json.Marshal(loginPayload)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to marshal login payload: %w", err)
+		return "", "", fmt.Errorf("failed to marshal login payload: %s", err)
 	}
 
 	loginReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/login", bytes.NewReader(loginBody))
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create login request: %w", err)
+		return "", "", fmt.Errorf("failed to create login request: %s", err)
 	}
 	loginReq.Header.Set("Content-Type", "application/json")
 	loginReq.Header.Set("X-Request-Source", "Web")
 
 	loginResp, err := client.Do(loginReq)
 	if err != nil {
-		return "", "", fmt.Errorf("login failed: %w", err)
+		return "", "", fmt.Errorf("login failed: %s", err)
 	}
 	defer loginResp.Body.Close()
 
@@ -170,7 +170,7 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 
 	tokenReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", nil)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create token request: %w", err)
+		return "", "", fmt.Errorf("failed to create token request: %s", err)
 	}
 	tokenReq.Header.Set("Content-Type", "application/json")
 	tokenReq.Header.Set("X-Request-Source", "Web")
@@ -180,7 +180,7 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 
 	tokenResp, err := client.Do(tokenReq)
 	if err != nil {
-		return "", "", fmt.Errorf("token creation failed: %w", err)
+		return "", "", fmt.Errorf("token creation failed: %s", err)
 	}
 	defer tokenResp.Body.Close()
 
@@ -192,7 +192,7 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 	}
 
 	if err := json.NewDecoder(tokenResp.Body).Decode(&result); err != nil {
-		return "", "", fmt.Errorf("failed to parse token response: %w", err)
+		return "", "", fmt.Errorf("failed to parse token response: %s", err)
 	}
 
 	return result.Result.APIKey, result.Result.Secret, nil

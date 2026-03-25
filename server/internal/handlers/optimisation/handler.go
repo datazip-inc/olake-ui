@@ -5,13 +5,16 @@ import (
 	services "github.com/datazip-inc/olake-ui/server/internal/services/optimisation"
 )
 
+// encapsulates optimisation-specific request
 type Handler struct {
 	web.Controller
 	opt *services.Service
 }
 
+// opt holds the singleton service instance injected at startup.
 var opt *services.Service
 
+// NewHandler initializes the optimisation handler with its service dependency.
 func NewHandler(s *services.Service) *Handler {
 	opt = s
 	return &Handler{opt: s}

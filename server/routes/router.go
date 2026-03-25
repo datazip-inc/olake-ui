@@ -120,17 +120,17 @@ func Init(h *handlers.Handler) {
 		optHandler := h.Optimisation
 
 		// catalogs: crud, (delete in piggy-backing)
-		web.Router("/api/ams/v1/catalog", optHandler, "post:CreateCatalog")
-		web.Router("/api/ams/v1/catalog/:catalog", optHandler, "get:GetCatalog")
-		web.Router("/api/ams/v1/catalog/:catalog", optHandler, "put:UpdateCatalog")
+		web.Router("/api/opt/v1/catalog", optHandler, "post:CreateCatalog")
+		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "get:GetCatalog")
+		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "put:UpdateCatalog")
 
 		// terminal: cron, enable/disable optimisation
-		web.Router("/api/ams/v1/:catalog/:database/:table/set", optHandler, "put:SetProperties")
+		web.Router("/api/opt/v1/:catalog/:database/:table/config", optHandler, "put:SetProperties")
 
 		// tables: view
-		web.Router("/api/ams/v1/:catalog/:database/tables", optHandler, "get:GetTablesWithDetails")
+		web.Router("/api/opt/v1/:catalog/:database/tables", optHandler, "get:GetTablesWithDetails")
 
-		// piggy backing
-		web.Router("/api/ams/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking;patch:PiggyBacking")
+		// piggy backing 
+		web.Router("/api/opt/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking;patch:PiggyBacking")
 	}
 }

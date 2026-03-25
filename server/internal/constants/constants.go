@@ -65,7 +65,7 @@ var (
 	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
 
-	FusionAPIBase = "/api/ams/v1/"
+	OptimisationAPIBase = "/api/ams/v1/"
 
 	// logs config
 	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
@@ -83,6 +83,13 @@ var (
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
 	ExecutorEnvironment = "docker"
+
+	// TableFormatList defines supported table formats for catalogs
+	TableFormatList = []string{"ICEBERG"}
+
+	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimisation
+	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
+	DefaultStroageType = "S3"
 )
 
 // Supported database/source types

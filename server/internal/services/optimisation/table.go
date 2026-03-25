@@ -21,7 +21,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 	tablesResult, err := s.GetTables(ctx, catalog, databaseName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %w", catalog, databaseName, err)
+		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %s", catalog, databaseName, err)
 	}
 
 	tablesList, ok := tablesResult.([]interface{})
@@ -77,7 +77,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 			tableInfo.Enabled = enabled.(string) == "true"
 		}
 
-		if _, ok := properties["olake_2pc"]; ok {
+		if _, ok := properties["olake-2pc"]; ok {
 			tableInfo.ByOLake = true
 		}
 
@@ -120,7 +120,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 // GetTables returns the list of tables for a given catalog and database
 func (s *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
-	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", constants.FusionAPIBase, catalog, database)
+	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", constants.OptimisationAPIBase, catalog, database)
 
 	params := url.Values{}
 	if keywords != "" {
@@ -132,7 +132,7 @@ func (s *Service) GetTables(ctx context.Context, catalog, database, keywords str
 
 // returns the details of a specific table including size information
 func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", constants.FusionAPIBase, catalog, database, table)
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", constants.OptimisationAPIBase, catalog, database, table)
 
 	return s.Do(ctx, http.MethodGet, path, url.Values{}, nil)
 }
@@ -141,7 +141,7 @@ func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table 
 func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) (*dto.OptimizationInfo, error) {
 	result, err := s.GetLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %w", processType, catalog, database, table, err)
+		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %s", processType, catalog, database, table, err)
 	}
 
 	processList, ok := result["list"].([]interface{})
@@ -207,7 +207,7 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 
 // returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
 func (s *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", constants.FusionAPIBase, catalog, database, table)
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", constants.OptimisationAPIBase, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("type", processType)
@@ -216,7 +216,7 @@ func (s *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog,
 
 	var result map[string]interface{}
 	if err := s.DoInto(ctx, http.MethodGet, path, params, nil, &result); err != nil {
-		return nil, fmt.Errorf("failed to get latest %s process for %s.%s.%s: %w", processType, catalog, database, table, err)
+		return nil, fmt.Errorf("failed to get latest %s process for %s.%s.%s: %s", processType, catalog, database, table, err)
 	}
 
 	return result, nil

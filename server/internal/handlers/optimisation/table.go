@@ -3,7 +3,7 @@ package optimisation
 import (
 	"net/http"
 
-	"github.com/datazip-inc/olake-ui/server/internal/services/optimisation/models"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
@@ -32,7 +32,7 @@ func (h *Handler) SetProperties() {
 		return
 	}
 
-	var req models.SQLInput
+	var req dto.SQLInput
 	if !h.bindJSON(&req) {
 		return
 	}

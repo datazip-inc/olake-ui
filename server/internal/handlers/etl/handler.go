@@ -5,14 +5,16 @@ import (
 	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
 )
 
+// encapsulates ETL-specific request handling and business logic.
 type Handler struct {
 	web.Controller
 	etl *services.Service
 }
 
-// appService holds the singleton service instance injected at startup.
+// etl holds the singleton service instance injected at startup.
 var etl *services.Service
 
+// NewHandler initializes the ETL handler with its service dependency.
 func NewHandler(s *services.Service) *Handler {
 	etl = s
 	return &Handler{etl: s}

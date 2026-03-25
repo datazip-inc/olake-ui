@@ -9,28 +9,26 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	cmpConstants "github.com/datazip-inc/olake-ui/server/internal/handlers/optimisation/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	cmpModels "github.com/datazip-inc/olake-ui/server/internal/services/optimisation/models"
 )
 
-func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*cmpModels.CatalogRequest, error) {
+func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*dto.CatalogRequest, error) {
 	if catalogName == "" {
 		return nil, fmt.Errorf("catalog name is required")
 	}
 
-	path := fmt.Sprintf("%scatalogs/%s", constants.FusionAPIBase, catalogName)
-	var result cmpModels.CatalogRequest
+	path := fmt.Sprintf("%scatalogs/%s", constants.OptimisationAPIBase, catalogName)
+	var result dto.CatalogRequest
 	if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result); err != nil {
-		return nil, fmt.Errorf("failed to get catalog %s: %w", catalogName, err)
+		return nil, fmt.Errorf("failed to get catalog %s: %s", catalogName, err)
 	}
 
 	return &result, nil
 }
 
 // creates a new catalog
-func (s *Service) CreateCatalog(ctx context.Context, req *cmpModels.CatalogRequest) (*dto.CatalogResponse, error) {
+func (s *Service) CreateCatalog(ctx context.Context, req *dto.CatalogRequest) (*dto.CatalogResponse, error) {
 	if err := validateCatalog(req); err != nil {
 		return nil, err
 	}
@@ -38,9 +36,9 @@ func (s *Service) CreateCatalog(ctx context.Context, req *cmpModels.CatalogReque
 	// Set default table properties for Iceberg tables
 	setDefaultCatalogProperties(req)
 
-	path := fmt.Sprintf("%scatalogs", constants.FusionAPIBase)
+	path := fmt.Sprintf("%scatalogs", constants.OptimisationAPIBase)
 	if err := s.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
-		return nil, fmt.Errorf("failed to create catalog %s: %w", req.Name, err)
+		return nil, fmt.Errorf("failed to create catalog %s: %s", req.Name, err)
 	}
 
 	return &dto.CatalogResponse{
@@ -50,15 +48,15 @@ func (s *Service) CreateCatalog(ctx context.Context, req *cmpModels.CatalogReque
 }
 
 // updates an existing catalog
-func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *cmpModels.CatalogRequest) (*dto.CatalogResponse, error) {
+func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *dto.CatalogRequest) (*dto.CatalogResponse, error) {
 	if err := validateCatalog(req); err != nil {
 		return nil, err
 	}
 
 	req.Name = catalogName
-	path := fmt.Sprintf("%scatalogs/%s", constants.FusionAPIBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", constants.OptimisationAPIBase, catalogName)
 	if err := s.DoAndValidate(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
-		return nil, fmt.Errorf("failed to update catalog %s: %w", req.Name, err)
+		return nil, fmt.Errorf("failed to update catalog %s: %s", req.Name, err)
 	}
 
 	return &dto.CatalogResponse{
@@ -68,12 +66,10 @@ func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *cm
 }
 
 func (s *Service) UpdateCatalogFromOLakeConfig(ctx context.Context, configJSON string) (*dto.CatalogResponse, error) {
-	catalogReq, err := MapETLConfigTooptimisationCatalog(configJSON)
+	catalogReq, err := CreateOptimizationConfig(configJSON, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to map OLake config to catalog: %w", err)
+		return nil, fmt.Errorf("failed to map OLake config to catalog: %s", err)
 	}
-
-	// check if exists or not
 
 	return s.UpdateCatalog(ctx, catalogReq.Name, catalogReq)
 }
@@ -87,10 +83,16 @@ func (s *Service) GetCatalogAsOLakeConfig(ctx context.Context, catalogName strin
 	return MapoptimisationCatalogToOLakeConfig(catalog)
 }
 
-func (s *Service) CreateCatalogFromOLakeConfig(ctx context.Context, configJSON string) (*dto.CatalogResponse, error) {
-	catalogReq, err := MapETLConfigTooptimisationCatalog(configJSON)
+func (s *Service) CreateCatalogFromOLakeConfig(ctx context.Context, configJSON string, byETL bool) (*dto.CatalogResponse, error) {
+	catalogReq, err := CreateOptimizationConfig(configJSON, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to map OLake config to catalog: %w", err)
+		return nil, fmt.Errorf("failed to map OLake config to catalog: %s", err)
+	}
+
+	if byETL {
+		catalogReq.Properties["byOLake"] = "true"
+	} else {
+		catalogReq.Properties["byOLake"] = "false"
 	}
 
 	return s.CreateCatalog(ctx, catalogReq)
@@ -100,7 +102,7 @@ func (s *Service) CreateCatalogFromOLakeConfig(ctx context.Context, configJSON s
 func ExtractCatalogNameFromConfig(configJSON string) (string, error) {
 	var config models.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
-		return "", fmt.Errorf("failed to parse config: %w", err)
+		return "", fmt.Errorf("failed to parse config: %s", err)
 	}
 
 	if config.CatalogName == "" {
@@ -110,10 +112,10 @@ func ExtractCatalogNameFromConfig(configJSON string) (string, error) {
 	return config.CatalogName, nil
 }
 
-func MapETLConfigTooptimisationCatalog(configJSON string) (*cmpModels.CatalogRequest, error) {
+func CreateOptimizationConfig(configJSON string, update bool) (*dto.CatalogRequest, error) {
 	var config models.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
-		return nil, fmt.Errorf("failed to parse OLake config: %w", err)
+		return nil, fmt.Errorf("failed to parse OLake config: %s", err)
 	}
 
 	if config.CatalogName == "" {
@@ -126,23 +128,24 @@ func MapETLConfigTooptimisationCatalog(configJSON string) (*cmpModels.CatalogReq
 	}
 
 	catalogType := normalizeCatalogType(string(config.CatalogType))
-	optimisationReq := &cmpModels.CatalogRequest{
+	optimisationReq := &dto.CatalogRequest{
 		Name:            config.CatalogName,
 		Type:            catalogType,
 		OptimizerGroup:  og,
-		TableFormatList: cmpConstants.TableFormatList,
+		TableFormatList: constants.TableFormatList,
 		StorageConfig:   make(map[string]string),
 		AuthConfig:      make(map[string]string),
 		Properties:      make(map[string]string),
 		TableProperties: make(map[string]string),
 	}
 
-	optimisationReq.StorageConfig["storage.type"] = cmpConstants.DefaultStroageType
+	optimisationReq.StorageConfig["storage.type"] = constants.DefaultStroageType
 
 	mapAuthConfig(&config, optimisationReq.AuthConfig, optimisationReq.StorageConfig)
 	mapCatalogProperties(&config, optimisationReq.Properties, string(config.CatalogType))
-
-	setDefaultCatalogProperties(optimisationReq)
+	if update == false {
+		setDefaultCatalogProperties(optimisationReq)
+	}
 
 	return optimisationReq, nil
 }
@@ -153,9 +156,9 @@ func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (*dto.C
 		return nil, fmt.Errorf("catalog name is required")
 	}
 
-	path := fmt.Sprintf("%scatalogs/%s", constants.FusionAPIBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", constants.OptimisationAPIBase, catalogName)
 	if err := s.DoAndValidate(ctx, http.MethodDelete, path, url.Values{}, nil); err != nil {
-		return nil, fmt.Errorf("failed to delete catalog %s: %w", catalogName, err)
+		return nil, fmt.Errorf("failed to delete catalog %s: %s", catalogName, err)
 	}
 
 	return &dto.CatalogResponse{
@@ -165,7 +168,7 @@ func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (*dto.C
 }
 
 // validates the necessary requirements for creating or updating a catalog
-func validateCatalog(req *cmpModels.CatalogRequest) error {
+func validateCatalog(req *dto.CatalogRequest) error {
 	if req.Name == "" {
 		return fmt.Errorf("catalog name is required")
 	}
