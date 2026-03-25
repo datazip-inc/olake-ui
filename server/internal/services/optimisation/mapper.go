@@ -165,6 +165,10 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		utils.SetIfNotEmpty(properties, "endpoint", olakeConfig.S3Endpoint)
 		utils.SetIfNotEmpty(properties, "access-key-id", olakeConfig.AccessKey)
 		utils.SetIfNotEmpty(properties, "secret-access-key", olakeConfig.SecretKey)
+		if olakeConfig.S3PathStyle{
+			utils.SetIfNotEmpty(properties, "io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
+			utils.SetIfNotEmpty(properties, "s3.path-style-access", "true")
+		}
 
 	case "hive":
 		utils.SetIfNotEmpty(properties, "warehouse", warehouse)
