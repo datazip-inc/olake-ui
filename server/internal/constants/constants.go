@@ -66,6 +66,13 @@ var (
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
 
 	OptimisationAPIBase = "/api/ams/v1/"
+	// app env
+	EnvAppEnvironment    = "APP_ENV"
+	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
+
+	// App environment supported values: production/development
+	AppEnvProduction  = "production"
+	AppEnvDevelopment = "development"
 
 	// logs config
 	// LogReadChunkSize is the number of bytes read per chunk when scanning log files.
@@ -126,6 +133,7 @@ func Init() {
 	viper.AutomaticEnv()
 	viper.SetDefault(EnvLogFormat, "console")
 	viper.SetDefault(EnvLogLevel, "info")
+	viper.SetDefault(EnvAppEnvironment, AppEnvProduction)
 	viper.SetDefault("PORT", defaultPort)
 	viper.SetDefault("BUILD", version)
 	viper.SetDefault("COMMITSHA", commitsha)

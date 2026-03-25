@@ -1,9 +1,13 @@
 import { Page, Locator, expect } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import { BasePage } from "./BasePage"
-import { SourceFormConfig } from "../types/PageConfig.types"
-import { selectConnector } from "../utils/page-utils"
 import { SourceConnector } from "../enums"
+import { SourceFormConfig } from "../types/PageConfig.types"
+import {
+	expectTestConnectionModalVisible,
+	assertTestConnectionOutcome,
+} from "../utils/modal-utils"
+import { selectConnector } from "../utils/page-utils"
 
 export class CreateSourcePage extends BasePage {
 	readonly sourceNameInput: Locator
@@ -28,7 +32,7 @@ export class CreateSourcePage extends BasePage {
 		this.createButton = page.getByRole("button", { name: "Create" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
 		this.backToSourcesLink = page.getByRole("link").first()
-		this.pageTitle = page.locator("text=Create source")
+		this.pageTitle = page.getByTestId("create-source-page-title")
 		this.testConnectionButton = page.getByRole("button", {
 			name: "Test Connection",
 		})
@@ -44,6 +48,7 @@ export class CreateSourcePage extends BasePage {
 	}
 
 	async expectCreateSourcePageVisible() {
+		await expect(this.page).toHaveURL(/\/sources\/new/)
 		await this.expectVisible(this.pageTitle)
 		await this.expectVisible(this.sourceNameInput)
 		await this.expectVisible(this.createButton)
@@ -147,38 +152,23 @@ export class CreateSourcePage extends BasePage {
 	}
 
 	async expectTestConnectionModal() {
-		// Wait for the modal with "Testing your connection" text to appear
-		await this.page.waitForSelector("text=Testing your connection", {
-			state: "visible",
-		})
-
-		// Check if the text exists (more reliable than checking modal visibility)
-		await expect(this.page.getByText("Testing your connection")).toHaveCount(1)
+		await expectTestConnectionModalVisible(this.page, "Source")
 	}
 
 	async expectSuccessModal() {
-		await this.page.waitForSelector("text=Connection successful", {
-			state: "visible",
-		})
-		await expect(this.page.getByText("Connection successful")).toBeVisible()
+		await this.page.waitForSelector(
+			"text=Source test connection is successful",
+			{
+				state: "visible",
+			},
+		)
+		await expect(
+			this.page.getByText("Source test connection is successful"),
+		).toBeVisible()
 	}
 
 	async assertTestConnectionSucceeded() {
-		const failure = this.page
-			.waitForSelector("text=Your test connection has failed", {
-				state: "visible",
-				timeout: TIMEOUTS.LONG,
-			})
-			.then(() => "failure")
-		const success = this.page
-			.waitForSelector("text=Connection successful", {
-				state: "visible",
-				timeout: TIMEOUTS.LONG,
-			})
-			.then(() => "success")
-
-		const outcome = await Promise.race([failure, success])
-		expect(outcome, "Test connection failed").toBe("success")
+		await assertTestConnectionOutcome(this.page, "Source")
 	}
 
 	async expectEntitySavedModal() {
