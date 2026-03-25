@@ -161,6 +161,7 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 
 	finishTime, _ := process["finishTime"].(float64)
 	status, _ := process["status"].(string)
+	runID, _ := process["processId"].(string)
 
 	var lastRun string
 	if finishTime > 0 {
@@ -202,6 +203,7 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	return &dto.OptimizationInfo{
 		LastRun: lastRun,
 		Status:  status,
+		RunID: runID,
 	}, nil
 }
 

@@ -239,6 +239,7 @@ type TableInfo struct {
 type OptimizationInfo struct {
 	LastRun string `json:"last-run,omitempty"`
 	Status  string `json:"status,omitempty"`
+	RunID   string `json:"runID,omitempty"`
 }
 
 // SetTablePropertiesResponse represents the response from setting table properties
