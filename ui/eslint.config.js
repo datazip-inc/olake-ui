@@ -1,10 +1,11 @@
-import globals from "globals"
-import reactHooks from "eslint-plugin-react-hooks"
-import reactRefresh from "eslint-plugin-react-refresh"
 import tseslint from "@typescript-eslint/eslint-plugin"
 import tsParser from "@typescript-eslint/parser"
-import react from "eslint-plugin-react"
+import importPlugin from "eslint-plugin-import"
 import eslintPluginPrettier from "eslint-plugin-prettier"
+import react from "eslint-plugin-react"
+import reactHooks from "eslint-plugin-react-hooks"
+import reactRefresh from "eslint-plugin-react-refresh"
+import globals from "globals"
 
 export default [
 	{
@@ -20,6 +21,7 @@ export default [
 			"@typescript-eslint": tseslint,
 			react,
 			prettier: eslintPluginPrettier,
+			import: importPlugin,
 		},
 		rules: {
 			...(reactRefresh.configs ? reactRefresh.configs.recommended.rules : {}),
@@ -34,6 +36,43 @@ export default [
 			"react-refresh/only-export-components": [
 				"warn",
 				{ allowConstantExport: true },
+			],
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: ["../../../**"],
+							message:
+								"Relative imports beyond 2 levels are not allowed. Use @/ alias instead.",
+						},
+					],
+				},
+			],
+			"import/order": [
+				"error",
+				{
+					groups: [
+						"builtin",
+						"external",
+						"internal",
+						["parent", "sibling", "index"],
+						"object",
+					],
+					pathGroups: [
+						{
+							pattern: "@/**",
+							group: "internal",
+							position: "before",
+						},
+					],
+					pathGroupsExcludedImportTypes: ["builtin"],
+					"newlines-between": "always",
+					alphabetize: {
+						order: "asc",
+						caseInsensitive: true,
+					},
+				},
 			],
 		},
 		settings: {
