@@ -727,6 +727,8 @@ func SetIfNotEmpty(m map[string]string, key, value string) {
 	if value != "" {
 		m[key] = value
 	}
+}
+
 // NormalizeString converts a string to lowercase, trims leading and trailing spaces and replaces spaces with underscores
 func NormalizeString(s string) string {
 	words := strings.Fields(strings.ToLower(s))
