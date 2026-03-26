@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-// PiggyBacking forwards any /api/opt/v1/* request to optimisation service.
+// PiggyBacking forwards any /api/opt/v1/* request to optimization service.
 // Returns standardized JSON response format for consistency with other APIs.
 func (h *Handler) PiggyBacking() {
 	req := h.Ctx.Request

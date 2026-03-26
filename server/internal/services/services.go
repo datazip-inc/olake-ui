@@ -9,14 +9,14 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
-	"github.com/datazip-inc/olake-ui/server/internal/services/optimisation"
+	"github.com/datazip-inc/olake-ui/server/internal/services/optimization"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 type AppService struct {
 	db  *database.Database
 	etl *etl.Service
-	opt *optimisation.Service
+	opt *optimization.Service
 }
 
 func InitAppService(db *database.Database) (*AppService, error) {
@@ -26,15 +26,14 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		return nil, err
 	}
 
-
 	appSvc := &AppService{
 		db:  db,
 		etl: etlSvc,
 		opt: nil,
 	}
-	enableOptimisation := web.AppConfig.DefaultBool(constants.ConfEnableOptimisation, false)
-	if enableOptimisation {
-		optSvc, err := optimisation.InitService()
+	enableOptimization := web.AppConfig.DefaultBool(constants.ConfEnableOptimization, false)
+	if enableOptimization {
+		optSvc, err := optimization.InitService()
 		if err != nil {
 			return nil, err
 		}
@@ -50,14 +49,14 @@ func (s *AppService) ETL() *etl.Service {
 	return s.etl
 }
 
-func (s *AppService) Optimisation() *optimisation.Service {
+func (s *AppService) Optimization() *optimization.Service {
 	return s.opt
 }
 
 func (s *AppService) SyncCatalog(ctx context.Context) {
 	destinations, err := s.db.ListDestinations()
 	if err != nil {
-		logger.Errorf("Failed to list destinations for optimisation sync: %s", err)
+		logger.Errorf("Failed to list destinations for optimization sync: %s", err)
 		return
 	}
 
@@ -74,7 +73,7 @@ func (s *AppService) SyncCatalog(ctx context.Context) {
 			continue
 		}
 
-		catalogName, _ := optimisation.ExtractCatalogNameFromConfig(dest.Config)
+		catalogName, _ := optimization.ExtractCatalogNameFromConfig(dest.Config)
 		logger.Debugf("Creating catalog for destination[%s] catalog[%s]", dest.Name, catalogName)
 
 		if _, err := s.opt.CreateCatalogFromOLakeConfig(ctx, dest.Config, true); err != nil {

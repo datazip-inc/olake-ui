@@ -3,7 +3,7 @@ package handlers
 import (
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
-	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimisation"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimization"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
@@ -12,27 +12,27 @@ import (
 type Handler struct {
 	web.Controller
 	ETL          *etl.Handler
-	Optimisation *optimisation.Handler
+	Optimization *optimization.Handler
 }
 
 // NewHandler creates the orchestration handler by composing domain handlers.
-// It conditionally initializes optimisation support based on service availability.
+// It conditionally initializes optimization support based on service availability.
 func NewHandler(appSvc *services.AppService) *Handler {
 	h := &Handler{
 		ETL: etl.NewHandler(appSvc.ETL()),
 	}
-	if appSvc.Optimisation() != nil {
-		h.Optimisation = optimisation.NewHandler(appSvc.Optimisation())
+	if appSvc.Optimization() != nil {
+		h.Optimization = optimization.NewHandler(appSvc.Optimization())
 	}
 
 	return h
 }
 
-// GetoptimisationStatus reports whether optimisation features are enabled.
-func (h *Handler) GetoptimisationStatus() {
+// GetoptimizationStatus reports whether optimization features are enabled.
+func (h *Handler) GetoptimizationStatus() {
 	response := map[string]interface{}{
-		"enabled": h.Optimisation != nil,
+		"enabled": h.Optimization != nil,
 	}
 
-	utils.SuccessResponse(&h.Controller, "optimisation status retrieved successfully", response)
+	utils.SuccessResponse(&h.Controller, "optimization status retrieved successfully", response)
 }

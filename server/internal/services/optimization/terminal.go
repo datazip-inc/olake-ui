@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"context"
@@ -34,8 +34,8 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 		properties["write.target-file-size-bytes"] = targetFileSize
 	}
 
-	if config.EnabledForOptimisation != "" {
-		properties["self-optimizing.enabled"] = config.EnabledForOptimisation
+	if config.EnabledForOptimization != "" {
+		properties["self-optimizing.enabled"] = config.EnabledForOptimization
 	}
 
 	// sql query
@@ -67,7 +67,7 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 	)
 
 	// Execute via Terminal API
-	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", constants.OptimisationAPIBase, req.Catalog)
+	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", constants.OptimizationAPIBase, req.Catalog)
 	requestBody := dto.TerminalExecuteRequest{
 		SQL: sql,
 	}
@@ -108,7 +108,7 @@ func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 		maxTimeout   = 30 * time.Second
 	)
 
-	path := fmt.Sprintf("%sterminal/%s/logs", constants.OptimisationAPIBase, sessionID)
+	path := fmt.Sprintf("%sterminal/%s/logs", constants.OptimizationAPIBase, sessionID)
 	timeoutCtx, cancel := context.WithTimeout(ctx, maxTimeout)
 	defer cancel()
 

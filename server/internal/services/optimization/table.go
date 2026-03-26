@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"context"
@@ -120,7 +120,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 // GetTables returns the list of tables for a given catalog and database
 func (s *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
-	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", constants.OptimisationAPIBase, catalog, database)
+	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", constants.OptimizationAPIBase, catalog, database)
 
 	params := url.Values{}
 	if keywords != "" {
@@ -132,7 +132,7 @@ func (s *Service) GetTables(ctx context.Context, catalog, database, keywords str
 
 // returns the details of a specific table including size information
 func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", constants.OptimisationAPIBase, catalog, database, table)
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", constants.OptimizationAPIBase, catalog, database, table)
 
 	return s.Do(ctx, http.MethodGet, path, url.Values{}, nil)
 }
@@ -146,7 +146,7 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 
 	processList, ok := result["list"].([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("failed to fetch optimisation process info")
+		return nil, fmt.Errorf("failed to fetch optimization process info")
 	}
 
 	if len(processList) == 0 {
@@ -203,13 +203,13 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	return &dto.OptimizationInfo{
 		LastRun: lastRun,
 		Status:  status,
-		RunID: runID,
+		RunID:   runID,
 	}, nil
 }
 
 // returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
 func (s *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", constants.OptimisationAPIBase, catalog, database, table)
+	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", constants.OptimizationAPIBase, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("type", processType)

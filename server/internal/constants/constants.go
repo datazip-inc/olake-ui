@@ -50,11 +50,11 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
-	ConfEnableOptimisation    = "ENABLE_OPTIMISATION"
-	ConfOptimisationBaseURL   = "OPTIMISATION_BASE_URL"
-	ConfOptimisationUsername  = "OPTIMISATION_USERNAME"
-	ConfOptimisationPassword  = "OPTIMISATION_PASSWORD"
-	ConfOptimisationGroup     = "OPTIMISATION_GROUP"
+	ConfEnableOptimization    = "ENABLE_OPTIMISATION"
+	ConfOptimizationBaseURL   = "OPTIMISATION_BASE_URL"
+	ConfOptimizationUsername  = "OPTIMISATION_USERNAME"
+	ConfOptimizationPassword  = "OPTIMISATION_PASSWORD"
+	ConfOptimizationGroup     = "OPTIMISATION_GROUP"
 
 	// database keys
 	ConfPostgresDB            = "postgresdb"
@@ -65,7 +65,7 @@ var (
 	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
 
-	OptimisationAPIBase = "/api/ams/v1/"
+	OptimizationAPIBase = "/api/ams/v1/"
 	// app env
 	EnvAppEnvironment    = "APP_ENV"
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"
@@ -94,7 +94,7 @@ var (
 	// TableFormatList defines supported table formats for catalogs
 	TableFormatList = []string{"ICEBERG"}
 
-	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimisation
+	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
 	DefaultStroageType = "S3"
 )
@@ -141,7 +141,7 @@ func Init() {
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
-	viper.SetDefault(ConfEnableOptimisation, false)
+	viper.SetDefault(ConfEnableOptimization, false)
 
 	checkForRequiredVariables(RequiredConfigVariable)
 

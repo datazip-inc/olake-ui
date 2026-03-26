@@ -1,11 +1,11 @@
-package optimisation
+package optimization
 
 import (
 	"github.com/beego/beego/v2/server/web"
-	services "github.com/datazip-inc/olake-ui/server/internal/services/optimisation"
+	services "github.com/datazip-inc/olake-ui/server/internal/services/optimization"
 )
 
-// encapsulates optimisation-specific request
+// encapsulates optimization-specific request
 type Handler struct {
 	web.Controller
 	opt *services.Service
@@ -14,7 +14,7 @@ type Handler struct {
 // opt holds the singleton service instance injected at startup.
 var opt *services.Service
 
-// NewHandler initializes the optimisation handler with its service dependency.
+// NewHandler initializes the optimization handler with its service dependency.
 func NewHandler(s *services.Service) *Handler {
 	opt = s
 	return &Handler{opt: s}
@@ -26,7 +26,7 @@ func (h *Handler) Prepare() {
 	h.opt = opt
 }
 
-// GetService returns the underlying optimisation service for cross-service orchestration
+// GetService returns the underlying optimization service for cross-service orchestration
 func (h *Handler) GetService() *services.Service {
 	return h.opt
 }

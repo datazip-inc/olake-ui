@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*dto.Cata
 		return nil, fmt.Errorf("catalog name is required")
 	}
 
-	path := fmt.Sprintf("%scatalogs/%s", constants.OptimisationAPIBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", constants.OptimizationAPIBase, catalogName)
 	var result dto.CatalogRequest
 	if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result); err != nil {
 		return nil, fmt.Errorf("failed to get catalog %s: %s", catalogName, err)
@@ -36,7 +36,7 @@ func (s *Service) CreateCatalog(ctx context.Context, req *dto.CatalogRequest) (*
 	// Set default table properties for Iceberg tables
 	setDefaultCatalogProperties(req)
 
-	path := fmt.Sprintf("%scatalogs", constants.OptimisationAPIBase)
+	path := fmt.Sprintf("%scatalogs", constants.OptimizationAPIBase)
 	if err := s.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
 		return nil, fmt.Errorf("failed to create catalog %s: %s", req.Name, err)
 	}
@@ -54,7 +54,7 @@ func (s *Service) UpdateCatalog(ctx context.Context, catalogName string, req *dt
 	}
 
 	req.Name = catalogName
-	path := fmt.Sprintf("%scatalogs/%s", constants.OptimisationAPIBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", constants.OptimizationAPIBase, catalogName)
 	if err := s.DoAndValidate(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
 		return nil, fmt.Errorf("failed to update catalog %s: %s", req.Name, err)
 	}
@@ -80,7 +80,7 @@ func (s *Service) GetCatalogAsOLakeConfig(ctx context.Context, catalogName strin
 		return nil, err
 	}
 
-	return MapoptimisationCatalogToOLakeConfig(catalog)
+	return MapoptimizationCatalogToOLakeConfig(catalog)
 }
 
 func (s *Service) CreateCatalogFromOLakeConfig(ctx context.Context, configJSON string, byETL bool) (*dto.CatalogResponse, error) {
@@ -122,13 +122,13 @@ func CreateOptimizationConfig(configJSON string, update bool) (*dto.CatalogReque
 		return nil, fmt.Errorf("catalog_name is required in config")
 	}
 
-	og, err := web.AppConfig.String(constants.ConfOptimisationGroup)
+	og, err := web.AppConfig.String(constants.ConfOptimizationGroup)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get optimisation group")
+		return nil, fmt.Errorf("failed to get optimization group")
 	}
 
 	catalogType := normalizeCatalogType(string(config.CatalogType))
-	optimisationReq := &dto.CatalogRequest{
+	optimizationReq := &dto.CatalogRequest{
 		Name:            config.CatalogName,
 		Type:            catalogType,
 		OptimizerGroup:  og,
@@ -139,15 +139,15 @@ func CreateOptimizationConfig(configJSON string, update bool) (*dto.CatalogReque
 		TableProperties: make(map[string]string),
 	}
 
-	optimisationReq.StorageConfig["storage.type"] = constants.DefaultStroageType
+	optimizationReq.StorageConfig["storage.type"] = constants.DefaultStroageType
 
-	mapAuthConfig(&config, optimisationReq.AuthConfig, optimisationReq.StorageConfig)
-	mapCatalogProperties(&config, optimisationReq.Properties, string(config.CatalogType))
+	mapAuthConfig(&config, optimizationReq.AuthConfig, optimizationReq.StorageConfig)
+	mapCatalogProperties(&config, optimizationReq.Properties, string(config.CatalogType))
 	if update == false {
-		setDefaultCatalogProperties(optimisationReq)
+		setDefaultCatalogProperties(optimizationReq)
 	}
 
-	return optimisationReq, nil
+	return optimizationReq, nil
 }
 
 // deletes an existing catalog
@@ -156,7 +156,7 @@ func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (*dto.C
 		return nil, fmt.Errorf("catalog name is required")
 	}
 
-	path := fmt.Sprintf("%scatalogs/%s", constants.OptimisationAPIBase, catalogName)
+	path := fmt.Sprintf("%scatalogs/%s", constants.OptimizationAPIBase, catalogName)
 	if err := s.DoAndValidate(ctx, http.MethodDelete, path, url.Values{}, nil); err != nil {
 		return nil, fmt.Errorf("failed to delete catalog %s: %s", catalogName, err)
 	}

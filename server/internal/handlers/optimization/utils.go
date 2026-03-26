@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import "github.com/datazip-inc/olake-ui/server/utils"
 

@@ -168,5 +168,5 @@ type SQLInput struct {
 	MajorTriggerInterval   string `json:"majorTriggerInterval"`
 	FullTriggerInterval    string `json:"fullTriggerInterval"`
 	TargetFileSize         int64  `json:"targetFileSize"`
-	EnabledForOptimisation string `json:"enabledForOptimisation"`
+	EnabledForOptimization string `json:"enabledForOptimization"`
 }

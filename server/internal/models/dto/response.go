@@ -200,7 +200,7 @@ type TelemetryIDResponse struct {
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
 }
 
-type OptimisationResponse struct {
+type OptimizationResponse struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Result  json.RawMessage `json:"result"`
@@ -212,7 +212,7 @@ type CatalogResponse struct {
 	Message string `json:"message"`
 }
 
-// optimisationCronConfigResponse represents the response from setting cron configuration
+// optimizationCronConfigResponse represents the response from setting cron configuration
 type SQLResponse struct {
 	Success bool   `json:"success"`
 	Message string `json:"message"`

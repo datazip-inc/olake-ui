@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"net/http"

@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"fmt"
@@ -10,14 +10,14 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-func MapoptimisationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.Config, error) {
+func MapoptimizationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.Config, error) {
 	config := &models.Config{}
 
 	// Map catalog name
 	config.CatalogName = catalog.Name
 
 	// Map catalog type back to OLake format
-	config.CatalogType = mapoptimisationTypeToOLake(catalog.Type)
+	config.CatalogType = mapoptimizationTypeToOLake(catalog.Type)
 
 	// Map storage and auth config
 	if catalog.StorageConfig != nil {
@@ -89,8 +89,8 @@ func MapoptimisationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.C
 	return config, nil
 }
 
-func mapoptimisationTypeToOLake(optimisationType string) models.CatalogType {
-	switch strings.ToLower(optimisationType) {
+func mapoptimizationTypeToOLake(optimizationType string) models.CatalogType {
+	switch strings.ToLower(optimizationType) {
 	case "custom":
 		return "jdbc"
 	case "glue":
@@ -100,7 +100,7 @@ func mapoptimisationTypeToOLake(optimisationType string) models.CatalogType {
 	case "hive":
 		return "hive"
 	default:
-		return models.CatalogType(optimisationType)
+		return models.CatalogType(optimizationType)
 	}
 }
 
@@ -165,7 +165,7 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		utils.SetIfNotEmpty(properties, "endpoint", olakeConfig.S3Endpoint)
 		utils.SetIfNotEmpty(properties, "access-key-id", olakeConfig.AccessKey)
 		utils.SetIfNotEmpty(properties, "secret-access-key", olakeConfig.SecretKey)
-		if olakeConfig.S3PathStyle{
+		if olakeConfig.S3PathStyle {
 			utils.SetIfNotEmpty(properties, "io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
 			utils.SetIfNotEmpty(properties, "s3.path-style-access", "true")
 		}

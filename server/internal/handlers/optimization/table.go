@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"net/http"
@@ -25,7 +25,7 @@ func (h *Handler) GetTablesWithDetails() {
 	utils.SuccessResponse(&h.Controller, "Successfully fetched tables with details", tables)
 }
 
-// SetoptimisationCronConfig stores optimisation cron configuration in catalog properties
+// SetoptimizationCronConfig stores optimization cron configuration in catalog properties
 func (h *Handler) SetProperties() {
 	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
 	if !ok {
@@ -37,11 +37,11 @@ func (h *Handler) SetProperties() {
 		return
 	}
 
-	logger.Debugf("Set optimisation cron config initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
+	logger.Debugf("Set optimization cron config initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
 
 	result, err := h.opt.SetProperties(h.Ctx.Request.Context(), catalog, database, table, req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set optimisation cron configuration", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set optimization cron configuration", err)
 		return
 	}
 

@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"bytes"
@@ -25,7 +25,7 @@ type Service struct {
 	client    *http.Client
 }
 
-// Token Expiration: There is "no" expiration logic for optimisation
+// Token Expiration: There is "no" expiration logic for optimization
 // https://github.com/datazip-inc/olake-fusion/blob/master/amoro-ams/src/main/java/org/apache/amoro/server/dashboard/controller/ApiTokenController.java
 func NewClient() (*Service, error) {
 	baseURL, username, password, err := getCredentials()
@@ -48,7 +48,7 @@ func NewClient() (*Service, error) {
 	}, nil
 }
 
-// for optimisation authentication: calculating md5: apiKey + encryptString + secret
+// for optimization authentication: calculating md5: apiKey + encryptString + secret
 func (c *Service) calculateSignature(params url.Values) string {
 	encryptString := c.generateEncryptString(params)
 	plainText := fmt.Sprintf("%s%s%s", c.apiKey, encryptString, c.apiSecret)
@@ -199,19 +199,19 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 }
 
 func getCredentials() (string, string, string, error) {
-	baseURL, err := web.AppConfig.String(constants.ConfOptimisationBaseURL)
+	baseURL, err := web.AppConfig.String(constants.ConfOptimizationBaseURL)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimisation base URL: %s", err)
+		return "", "", "", fmt.Errorf("failed to get optimization base URL: %s", err)
 	}
 
-	username, err := web.AppConfig.String(constants.ConfOptimisationUsername)
+	username, err := web.AppConfig.String(constants.ConfOptimizationUsername)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimisation username creds: %s", err)
+		return "", "", "", fmt.Errorf("failed to get optimization username creds: %s", err)
 	}
 
-	password, err := web.AppConfig.String(constants.ConfOptimisationPassword)
+	password, err := web.AppConfig.String(constants.ConfOptimizationPassword)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimisation password creds: %s", err)
+		return "", "", "", fmt.Errorf("failed to get optimization password creds: %s", err)
 	}
 
 	return baseURL, username, password, nil

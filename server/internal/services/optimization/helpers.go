@@ -1,4 +1,4 @@
-package optimisation
+package optimization
 
 import (
 	"context"
@@ -16,13 +16,13 @@ func (c *Service) Do(ctx context.Context, method, path string, queryParams url.V
 		return nil, err
 	}
 
-	var resp dto.OptimisationResponse
+	var resp dto.OptimizationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %s", err)
 	}
 
 	if resp.Code != 200 {
-		return nil, fmt.Errorf("optimisation error (code %d): %s", resp.Code, resp.Message)
+		return nil, fmt.Errorf("optimization error (code %d): %s", resp.Code, resp.Message)
 	}
 
 	var result interface{}
@@ -40,13 +40,13 @@ func (c *Service) DoInto(ctx context.Context, method, path string, queryParams u
 		return err
 	}
 
-	var resp dto.OptimisationResponse
+	var resp dto.OptimizationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return fmt.Errorf("failed to parse response: %s", err)
 	}
 
 	if resp.Code != 200 {
-		return fmt.Errorf("optimisation error (code %d): %s", resp.Code, resp.Message)
+		return fmt.Errorf("optimization error (code %d): %s", resp.Code, resp.Message)
 	}
 
 	if err := json.Unmarshal(resp.Result, result); err != nil {
@@ -63,13 +63,13 @@ func (c *Service) DoAndValidate(ctx context.Context, method, path string, queryP
 		return err
 	}
 
-	var resp dto.OptimisationResponse
+	var resp dto.OptimizationResponse
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		return fmt.Errorf("failed to parse response: %s", err)
 	}
 
 	if resp.Code != 200 {
-		return fmt.Errorf("optimisation error (code %d): %s", resp.Code, resp.Message)
+		return fmt.Errorf("optimization error (code %d): %s", resp.Code, resp.Message)
 	}
 
 	return nil
