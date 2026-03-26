@@ -50,11 +50,11 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
-	ConfEnableOptimization    = "ENABLE_OPTIMISATION"
-	ConfOptimizationBaseURL   = "OPTIMISATION_BASE_URL"
-	ConfOptimizationUsername  = "OPTIMISATION_USERNAME"
-	ConfOptimizationPassword  = "OPTIMISATION_PASSWORD"
-	ConfOptimizationGroup     = "OPTIMISATION_GROUP"
+	ConfEnableOptimization    = "ENABLE_OPTIMIZATION"
+	ConfOptimizationBaseURL   = "OPTIMIZATION_BASE_URL"
+	ConfOptimizationUsername  = "OPTIMIZATION_USERNAME"
+	ConfOptimizationPassword  = "OPTIMIZATION_PASSWORD"
+	ConfOptimizationGroup     = "OPTIMIZATION_GROUP"
 
 	// database keys
 	ConfPostgresDB            = "postgresdb"
