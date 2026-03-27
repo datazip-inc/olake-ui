@@ -123,7 +123,7 @@ export interface TableCronApiModel {
 	minorTriggerInterval: string
 	majorTriggerInterval: string
 	fullTriggerInterval: string
-	enabledForOptimisation: boolean
+	enabledForOptimization: boolean
 	targetFileSize?: number
 }
 

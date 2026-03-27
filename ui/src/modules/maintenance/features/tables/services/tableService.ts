@@ -74,7 +74,7 @@ export const tableService = {
 	) => {
 		const response = await api.put(
 			`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
-			{ enabledForOptimisation: enabled.toString() },
+			{ enabledForOptimization: enabled.toString() },
 		)
 		return response.data
 	},
