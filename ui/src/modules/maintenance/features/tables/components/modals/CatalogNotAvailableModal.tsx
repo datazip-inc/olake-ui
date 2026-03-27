@@ -1,6 +1,8 @@
 import { FolderDashedIcon } from "@phosphor-icons/react"
 import { Button, Modal } from "antd"
 
+import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
+
 type CatalogNotAvailableModalProps = {
 	open: boolean
 	onClose: () => void
@@ -21,16 +23,7 @@ const CatalogNotAvailableModal: React.FC<CatalogNotAvailableModalProps> = ({
 			centered
 			width={632}
 			destroyOnHidden
-			styles={{
-				content: {
-					padding: 0,
-					overflow: "hidden",
-					borderRadius: 20,
-				},
-				body: {
-					padding: 0,
-				},
-			}}
+			styles={DEFAULT_TABLE_MODAL_STYLES}
 		>
 			<div className="flex h-[360px] flex-col items-center bg-white pt-20">
 				<div className="flex w-[520px] max-w-full flex-col items-center gap-[14px] px-6 text-center">

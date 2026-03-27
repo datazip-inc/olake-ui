@@ -20,6 +20,16 @@ export const useCatalogs = (enabled = true) => {
 	})
 }
 
+export const useCatalogDatabases = (catalogName: string) => {
+	return useQuery({
+		queryKey: catalogKeys.databases(catalogName),
+		queryFn: () => catalogService.getCatalogDatabases(catalogName),
+		enabled: !!catalogName,
+		refetchOnWindowFocus: false,
+		select: data => data.result ?? [],
+	})
+}
+
 export const useCatalogDetails = (catalogName: string) => {
 	return useQuery({
 		queryKey: catalogKeys.detail(catalogName),

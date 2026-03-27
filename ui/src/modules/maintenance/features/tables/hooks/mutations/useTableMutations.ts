@@ -37,8 +37,8 @@ export const useUpdateTableCronConfig = (
 export const useCancelTableRun = () => {
 	return useMutation({
 		mutationKey: tableKeys.all(),
-		mutationFn: ({ catalog, database, tableName }: CancelRunRequest) =>
-			tableService.cancelTableRun(catalog, database, tableName),
+		mutationFn: ({ catalog, database, tableName, runId }: CancelRunRequest) =>
+			tableService.cancelTableRun(catalog, database, tableName, runId),
 	})
 }
 

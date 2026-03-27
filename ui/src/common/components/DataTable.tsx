@@ -1,3 +1,4 @@
+import clsx from "clsx"
 import type React from "react"
 
 export type ColumnAlignment = "left" | "center" | "right"
@@ -101,13 +102,14 @@ const TablePagination: React.FC<PaginationConfig> = ({
 					<button
 						key={index}
 						type="button"
-						className={`h-6 min-w-[24px] rounded-md border text-sm leading-5 ${
+						className={clsx(
+							"h-6 min-w-[24px] rounded-md border text-sm leading-5",
 							isEllipsis
 								? "border-transparent bg-transparent text-olake-body-secondary"
 								: currentPage === page
 									? "border-olake-border bg-olake-surface-muted text-olake-body-secondary"
-									: "border-olake-border bg-white text-olake-body-secondary hover:bg-gray-50"
-						}`}
+									: "border-olake-border bg-white text-olake-body-secondary hover:bg-gray-50",
+						)}
 						onClick={() =>
 							!isEllipsis ? onPageChange(page as number) : undefined
 						}
@@ -143,13 +145,25 @@ function DataTable<TRow>({
 	className,
 }: DataTableProps<TRow>) {
 	const getAlignmentClass = (align: ColumnAlignment = "left") => {
-		if (align === "center") return "text-center"
-		if (align === "right") return "text-right"
-		return "text-left"
+		switch (align) {
+			case "center":
+				return "text-center"
+			case "right":
+				return "text-right"
+			case "left":
+			default:
+				return "text-left"
+		}
 	}
 
 	const gridTemplateColumns = columns
-		.map(col => (col.width !== undefined ? `${col.width}%` : "1fr"))
+		.map(col => {
+			// default to 1fr if width is invalid or not set
+			if (col.width === undefined) return "1fr"
+			if (col.width <= 0 || col.width > 100) return "1fr"
+
+			return `${col.width}%`
+		})
 		.join(" ")
 
 	const gridStyle: React.CSSProperties = { gridTemplateColumns }
@@ -161,7 +175,10 @@ function DataTable<TRow>({
 		<div className="flex flex-col">
 			<div style={{ minHeight: `${tableMinHeight}px` }}>
 				<div
-					className={`overflow-hidden rounded-lg border border-olake-border ${className ?? ""}`}
+					className={clsx(
+						"overflow-hidden rounded-lg border border-olake-border",
+						className,
+					)}
 				>
 					{/* Header */}
 					<div
@@ -170,7 +187,7 @@ function DataTable<TRow>({
 					>
 						{columns.map(col => (
 							<div
-								key={col.key}
+								key={`header-${col.key}`}
 								className={getAlignmentClass(col.align)}
 							>
 								{col.header}
@@ -182,7 +199,7 @@ function DataTable<TRow>({
 					{loading &&
 						Array.from({ length: loadingRowCount }).map((_, idx) => (
 							<div
-								key={idx} // skeleton rows have no data identity; index is acceptable
+								key={`loading-${idx}`} // skeleton rows have no data identity; index is acceptable
 								className="h-14 border-t border-olake-border bg-white"
 							/>
 						))}
@@ -192,12 +209,12 @@ function DataTable<TRow>({
 						rows.map(row => (
 							<div
 								key={rowKey(row)}
-								className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text"
+								className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text hover:bg-olake-surface-subtle/50"
 								style={gridStyle}
 							>
 								{columns.map(col => (
 									<div
-										key={col.key}
+										key={`cell-${col.key}`}
 										className={getAlignmentClass(col.align)}
 									>
 										{col.render(row)}

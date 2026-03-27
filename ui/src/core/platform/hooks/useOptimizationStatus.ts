@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query"
 
 import { platformService } from "../services"
 
-export const useCompactionStatus = () => {
+export const useOptimizationStatus = () => {
 	return useQuery({
-		queryKey: ["platform", "compaction-status"],
-		queryFn: () => platformService.getCompactionStatus(),
+		queryKey: ["platform", "optimization-status"],
+		queryFn: () => platformService.getOptmizationStatus(),
 		staleTime: Infinity,
 		refetchOnWindowFocus: false,
 		retry: 1,

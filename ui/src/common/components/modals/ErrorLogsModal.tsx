@@ -76,9 +76,12 @@ const ErrorLogsModal = ({
 						<button
 							type="button"
 							onClick={handleCopyLogs}
-							className="flex items-center gap-1 text-xs font-medium leading-5 text-olake-text-secondary"
+							className="group flex items-center gap-1 text-xs font-medium leading-5 text-olake-text-secondary"
 						>
-							<CopySimpleIcon size={16} />
+							<CopySimpleIcon
+								className="group-hover:scale-105 group-active:scale-95"
+								size={16}
+							/>
 							<span>Copy Error</span>
 						</button>
 					</div>

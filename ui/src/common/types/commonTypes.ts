@@ -1,5 +1,7 @@
 import type { IconProps } from "@phosphor-icons/react"
 
+import { LogEntry } from "./errorTypes"
+
 export interface NavItem {
 	path: string
 	label: string
@@ -7,3 +9,11 @@ export interface NavItem {
 }
 
 export type TestConnectionStatus = "FAILED" | "SUCCEEDED"
+
+export interface TestResponse {
+	connection_result: {
+		message: string
+		status: TestConnectionStatus
+	}
+	logs: LogEntry[]
+}

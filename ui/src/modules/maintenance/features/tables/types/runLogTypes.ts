@@ -12,6 +12,7 @@ export interface RunLogEntry {
 	time: string
 	level: RunLogLevel
 	message: string
+	stackTrace?: string
 }
 
 export interface RunLogSource {
@@ -28,6 +29,7 @@ export interface ProcessLogEntry {
 	taskId: string
 	logger: string
 	message: string
+	stackTrace?: string
 }
 
 export interface ProcessDriverLog {
@@ -42,8 +44,10 @@ export interface ProcessTaskLog {
 }
 
 export interface GetProcessLogsApiResponse {
-	processId: string
-	exists: boolean
-	driverLog: ProcessDriverLog
-	taskLogs: ProcessTaskLog[]
+	result?: {
+		processId: string
+		exists: boolean
+		driverLog: ProcessDriverLog
+		taskLogs: ProcessTaskLog[]
+	}
 }

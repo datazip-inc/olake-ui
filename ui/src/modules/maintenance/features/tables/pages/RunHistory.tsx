@@ -4,11 +4,12 @@ import {
 	MagnifyingGlassIcon,
 } from "@phosphor-icons/react"
 import { Button, Input } from "antd"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
+import { usePaginatedSearch } from "@/common/hooks"
 
 import { RunMetricsSidebar } from "../components"
 import { runLogsStatusConfig } from "../constants"
@@ -16,6 +17,86 @@ import { useTableRuns } from "../hooks"
 import type { RunMetricRow, TableRun } from "../types"
 
 type RunsFilter = "all" | "failed"
+
+const getColumns = (
+	handleMetricsClick: (row: TableRun) => void,
+	handleLogsClick: (runId: string) => void,
+): ColumnDef<TableRun>[] => [
+	{
+		key: "runId",
+		header: "Run ID",
+		width: 12,
+		render: row => row.runId,
+	},
+	{
+		key: "status",
+		header: "Status",
+		align: "center",
+		width: 16,
+		render: row => {
+			const cfg = runLogsStatusConfig[row.status]
+			return (
+				<span
+					className={`inline-flex h-5 items-center gap-1 rounded-[20px] px-2 ${cfg.bgClass}`}
+				>
+					<cfg.Icon
+						size={12}
+						className={`${cfg.textClass}`}
+					/>
+					<span className={`text-xs font-medium leading-5 ${cfg.textClass}`}>
+						{cfg.label}
+					</span>
+				</span>
+			)
+		},
+	},
+	{
+		key: "type",
+		header: "Type",
+		width: 10,
+		render: row => row.type,
+	},
+	{
+		key: "startTime",
+		header: "Start Time",
+		width: 14,
+		render: row => row.startTime,
+	},
+	{
+		key: "duration",
+		header: "Duration",
+		width: 12,
+		render: row => row.duration,
+	},
+	{
+		key: "metrics",
+		header: "Metrics",
+		width: 10,
+		align: "center",
+		render: row => (
+			<Button
+				size="small"
+				onClick={() => handleMetricsClick(row)}
+			>
+				View
+			</Button>
+		),
+	},
+	{
+		key: "logs",
+		header: "Logs",
+		width: 10,
+		align: "center",
+		render: row => (
+			<Button
+				size="small"
+				onClick={() => handleLogsClick(row.runId)}
+			>
+				View
+			</Button>
+		),
+	},
+]
 
 const RunHistory: React.FC = () => {
 	const navigate = useNavigate()
@@ -28,8 +109,6 @@ const RunHistory: React.FC = () => {
 	const decodedCatalog = decodeURIComponent(catalog ?? "")
 	const decodedDatabase = decodeURIComponent(database ?? "")
 
-	const [searchTerm, setSearchTerm] = useState("")
-	const [activeFilter, setActiveFilter] = useState<RunsFilter>("all")
 	const [metricsSidebarOpen, setMetricsSidebarOpen] = useState(false)
 	const [metricsRows, setMetricsRows] = useState<RunMetricRow[]>([])
 	const [selectedRunId, setSelectedRunId] = useState<string>("")
@@ -40,16 +119,23 @@ const RunHistory: React.FC = () => {
 		refetch,
 	} = useTableRuns(decodedCatalog, decodedDatabase, decodedTableName)
 
-	const filteredRuns = useMemo(() => {
-		return runs.filter(run => {
-			const matchesSearch = run.runId
-				.toLowerCase()
-				.includes(searchTerm.toLowerCase())
-			const matchesFilter =
-				activeFilter === "all" ? true : run.status === "FAILED"
-			return matchesSearch && matchesFilter
-		})
-	}, [runs, searchTerm, activeFilter])
+	const {
+		searchTerm,
+		setSearchTerm,
+		activeFilter,
+		setActiveFilter,
+		currentPage,
+		setCurrentPage,
+		filteredRows,
+		paginatedRows,
+		totalPages,
+	} = usePaginatedSearch<TableRun, RunsFilter>({
+		rows: runs,
+		initialFilter: "all",
+		searchFn: (run, term) => run.runId.toLowerCase().includes(term),
+		filterFn: (run, filter) =>
+			filter === "all" ? true : run.status === "FAILED",
+	})
 
 	const handleMetricsClick = (row: TableRun) => {
 		setSelectedRunId(row.runId)
@@ -59,85 +145,9 @@ const RunHistory: React.FC = () => {
 	const getRunLogsPath = (runId: string) =>
 		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
 
-	const columns: ColumnDef<TableRun>[] = [
-		{
-			key: "runId",
-			header: "Run ID",
-			width: 12,
-			render: row => row.runId,
-		},
-		{
-			key: "status",
-			header: "Status",
-			align: "center",
-			width: 16,
-			render: row => {
-				const cfg = runLogsStatusConfig[row.status]
-				return (
-					<span
-						className={`inline-flex h-5 items-center gap-1 rounded-[20px] px-2 ${cfg.bgClass}`}
-					>
-						<cfg.Icon
-							size={12}
-							className={`${cfg.textClass}`}
-						/>
-						<span className={`text-xs font-medium leading-5 ${cfg.textClass}`}>
-							{cfg.label}
-						</span>
-					</span>
-				)
-			},
-		},
-		{
-			key: "type",
-			header: "Type",
-			width: 10,
-			render: row =>
-				row.type.toLowerCase().replace(/^./, ch => ch.toUpperCase()),
-		},
-		{
-			key: "startTime",
-			header: "Start Time",
-			width: 14,
-			render: row => row.startTime,
-		},
-		{
-			key: "duration",
-			header: "Duration",
-			width: 12,
-			render: row => row.duration,
-		},
-		{
-			key: "metrics",
-			header: "Metrics",
-			width: 10,
-			align: "center",
-			render: row => (
-				<Button
-					size="small"
-					onClick={() => handleMetricsClick(row)}
-				>
-					View
-				</Button>
-			),
-		},
-		{
-			key: "logs",
-			header: "Logs",
-			width: 10,
-			align: "center",
-			render: row => {
-				return (
-					<Button
-						size="small"
-						onClick={() => navigate(getRunLogsPath(row.runId))}
-					>
-						View
-					</Button>
-				)
-			},
-		},
-	]
+	const columns = getColumns(handleMetricsClick, runId =>
+		navigate(getRunLogsPath(runId)),
+	)
 
 	return (
 		<div className="min-h-full bg-white px-6 pt-6">
@@ -217,9 +227,20 @@ const RunHistory: React.FC = () => {
 			<div className="mt-4">
 				<DataTable
 					columns={columns}
-					rows={filteredRuns}
+					rows={paginatedRows}
 					rowKey={row => row.id}
 					loading={isLoading || isFetching}
+					pagination={{
+						currentPage,
+						totalPages,
+						onPageChange: setCurrentPage,
+					}}
+					pageSize={10}
+					emptyState={
+						filteredRows.length === 0
+							? undefined
+							: "No runs on this page. Try another page."
+					}
 				/>
 			</div>
 

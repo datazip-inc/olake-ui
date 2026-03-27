@@ -3,7 +3,9 @@ import { Modal, Spin } from "antd"
 
 import { formatTimestampToUtcDateTime } from "@/common/utils"
 
-import { useTableMetrics } from "../../hooks"
+import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
+import { useTableDetails, useTableMetrics } from "../../hooks"
+import { buildTableMetricsModalData } from "../../utils"
 
 type TableMetricsModalProps = {
 	open: boolean
@@ -20,15 +22,20 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 	database,
 	tableName,
 }) => {
-	const { data: metrics, isLoading } = useTableMetrics(
+	const { data: details, isLoading: isDetailsLoading } = useTableDetails(
 		catalog,
 		database,
 		tableName,
 		open,
 	)
-
-	const tableMetrics = metrics?.["table-metrics"]
-	const fileCount = tableMetrics?.["file-count"]
+	const { data: metrics, isLoading: isMetricsLoading } = useTableMetrics(
+		catalog,
+		database,
+		tableName,
+		open,
+	)
+	const isLoading = isDetailsLoading || isMetricsLoading
+	const displayMetrics = buildTableMetricsModalData(details, metrics)
 
 	return (
 		<Modal
@@ -44,16 +51,7 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 					className="text-olake-text-tertiary"
 				/>
 			}
-			styles={{
-				content: {
-					padding: 0,
-					overflow: "hidden",
-					borderRadius: 20,
-				},
-				body: {
-					padding: 0,
-				},
-			}}
+			styles={DEFAULT_TABLE_MODAL_STYLES}
 		>
 			<div className="bg-white">
 				<div className="px-8 pb-5 pt-10">
@@ -74,7 +72,7 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 									File Count
 								</p>
 								<p className="text-xl font-medium leading-[28px] text-olake-text">
-									{fileCount?.total ?? "--"}
+									{displayMetrics.fileCount ?? "--"}
 								</p>
 							</div>
 
@@ -83,7 +81,7 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 									Average File Size
 								</p>
 								<p className="text-xl font-medium leading-[28px] text-olake-text">
-									{tableMetrics?.["average-file-size"] || "--"}
+									{displayMetrics.averageFileSize || "--"}
 								</p>
 							</div>
 
@@ -92,10 +90,8 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 									Last Commit Time
 								</p>
 								<p className="text-xl font-medium leading-[28px] text-olake-text">
-									{tableMetrics
-										? `${formatTimestampToUtcDateTime(
-												tableMetrics["last-commit-time"],
-											)} UTC`
+									{displayMetrics.lastCommitTime
+										? `${formatTimestampToUtcDateTime(displayMetrics.lastCommitTime)} UTC`
 										: "--"}
 								</p>
 							</div>
@@ -105,7 +101,7 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 									Data Files
 								</p>
 								<span className="inline-flex h-8 items-center rounded-md border border-olake-border px-3 text-sm leading-[22px] text-olake-text-secondary">
-									{fileCount?.["data-files"] ?? "--"}
+									{displayMetrics.dataFiles ?? "--"}
 								</span>
 							</div>
 
@@ -114,7 +110,7 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 									Delete Files
 								</p>
 								<span className="inline-flex h-8 items-center rounded-md border border-olake-border px-3 text-sm leading-[22px] text-olake-text-secondary">
-									{fileCount?.["delete-files"] ?? "--"}
+									{displayMetrics.deleteFiles ?? "--"}
 								</span>
 							</div>
 						</div>

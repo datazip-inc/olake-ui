@@ -7,17 +7,20 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Dropdown, Input } from "antd"
 import type { MenuProps } from "antd/es/menu"
-import { useMemo, useState, useEffect } from "react"
+import { useState } from "react"
 
 import { DataTable, PageErrorState, Tag } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
+import { usePaginatedSearch } from "@/common/hooks"
 
 import { CatalogModal } from "../components"
 import { useCatalogs, useDeleteCatalog } from "../hooks"
 import type { Catalog } from "../types"
 
+const catalogSearchFn = (row: Catalog, term: string): boolean =>
+	row.name.toLowerCase().includes(term)
+
 const Catalogs: React.FC = () => {
-	const [searchText, setSearchText] = useState("")
 	const [openActionRow, setOpenActionRow] = useState<string | null>(null)
 	const [modalOpen, setModalOpen] = useState(false)
 	const [activeCatalogName, setActiveCatalogName] = useState<
@@ -31,29 +34,17 @@ const Catalogs: React.FC = () => {
 	}
 	const { data: catalogRows = [], isLoading, isError, refetch } = useCatalogs()
 
-	const rows = useMemo<Catalog[]>(() => {
-		const normalizedQuery = searchText.trim().toLowerCase()
-		if (!normalizedQuery) {
-			return catalogRows
-		}
-		return catalogRows.filter(row =>
-			row.name.toLowerCase().includes(normalizedQuery),
-		)
-	}, [catalogRows, searchText])
-
-	const [currentPage, setCurrentPage] = useState(1)
-	const PAGE_SIZE = 10
-
-	useEffect(() => {
-		setCurrentPage(1)
-	}, [searchText])
-
-	const paginatedRows = useMemo(() => {
-		const start = (currentPage - 1) * PAGE_SIZE
-		return rows.slice(start, start + PAGE_SIZE)
-	}, [rows, currentPage])
-
-	const totalPages = Math.ceil(rows.length / PAGE_SIZE)
+	const {
+		searchTerm,
+		setSearchTerm,
+		currentPage,
+		setCurrentPage,
+		paginatedRows,
+		totalPages,
+	} = usePaginatedSearch<Catalog>({
+		rows: catalogRows,
+		searchFn: catalogSearchFn,
+	})
 
 	const getMenuItems = (row: Catalog): MenuProps["items"] => [
 		{
@@ -111,7 +102,7 @@ const Catalogs: React.FC = () => {
 			render: row => (
 				<div className="flex items-center gap-2">
 					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
-					{row.byOlake && <Tag>OLake</Tag>}
+					{row.olakeCreated && <Tag>OLake</Tag>}
 				</div>
 			),
 		},
@@ -150,8 +141,8 @@ const Catalogs: React.FC = () => {
 				<div className="mt-6 flex h-9 items-center gap-6">
 					<div className="flex h-9 w-[479px] overflow-hidden rounded-md border border-olake-border">
 						<Input
-							value={searchText}
-							onChange={e => setSearchText(e.target.value)}
+							value={searchTerm}
+							onChange={e => setSearchTerm(e.target.value)}
 							placeholder="Search Catalogs"
 						/>
 						<Button

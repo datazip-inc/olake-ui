@@ -29,6 +29,9 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 }) => {
 	const { data } = useProcessLogs(runId)
 	const downloadArchive = useDownloadProcessLogsArchive()
+	const hasAnyLogs = Object.values(data?.logsBySource ?? {}).some(
+		logEntries => logEntries.length > 0,
+	)
 
 	const taskSources = data?.taskSources ?? []
 
@@ -80,6 +83,7 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 					className="!h-8"
 					icon={<DownloadSimpleIcon size={14} />}
 					loading={downloadArchive.isPending}
+					disabled={!hasAnyLogs}
 					onClick={() =>
 						downloadArchive.mutate(runId, {
 							onSuccess: () => message.success("Downloading logs..."),

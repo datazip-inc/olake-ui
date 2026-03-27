@@ -3,8 +3,8 @@ import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { useAuthStore } from "@/core/auth/stores"
+import { useActiveModuleKeys } from "@/core/modules/registry"
 import { UpdatesModal } from "@/core/platform/components"
-import { useCompactionStatus } from "@/core/platform/hooks/useCompactionStatus"
 import { usePlatformStore } from "@/core/platform/stores"
 
 import Sidebar from "./components/Sidebar"
@@ -23,11 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 	const navigate = useNavigate()
 	const location = useLocation()
 
-	const { data: compactionStatus } = useCompactionStatus()
-
-	const enabledFeatures = new Set<string>(
-		compactionStatus?.enabled ? ["maintenance"] : [],
-	)
+	const enabledFeatures = useActiveModuleKeys()
 	const navModules = getNavModules(enabledFeatures)
 
 	const breadcrumbItems = getBreadcrumbTrail(location.pathname, navModules)

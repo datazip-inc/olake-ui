@@ -28,6 +28,6 @@ export interface ReleasesResponse {
 	[ReleaseType.FEATURES]?: ReleaseTypeData
 }
 
-export interface CompactionStatusResponse {
+export interface OptimizationStatusResponse {
 	enabled: boolean
 }

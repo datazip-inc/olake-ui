@@ -1,13 +1,18 @@
+import { useIsFetching } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
+import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
+import { useCatalogDatabases } from "@/modules/maintenance/features/catalogs/hooks"
 import type { Catalog } from "@/modules/maintenance/features/catalogs/types"
 
 type UseCatalogDatabaseSelectionReturn = {
 	selectedCatalog: string | undefined
 	selectedDatabase: string | undefined
+	databaseOptions: string[]
 	setSelectedDatabase: (db: string | undefined) => void
 	handleCatalogChange: (catalogName: string) => void
+	handleDatabaseChange: (database: string) => void
 	catalogParam: string | undefined
 	databaseParam: string | undefined
 	catalogNotAvailableOpen: boolean
@@ -19,7 +24,6 @@ type UseCatalogDatabaseSelectionReturn = {
 /** Syncs catalog/database selection with URL query params and validates them against loaded catalog data. */
 export function useCatalogDatabaseSelection(
 	catalogs: Catalog[],
-	isCatalogsPending: boolean,
 ): UseCatalogDatabaseSelectionReturn {
 	const [searchParams, setSearchParams] = useSearchParams()
 	const catalogParam = searchParams.get("catalog") ?? undefined
@@ -35,13 +39,21 @@ export function useCatalogDatabaseSelection(
 	const [databaseNotAvailableOpen, setDatabaseNotAvailableOpen] =
 		useState(false)
 
-	// URL params → state: validate against loaded catalogs, auto-select when no params
+	const isCatalogsPending = useIsFetching({ queryKey: catalogKeys.list() }) > 0
+
+	const catalogName = selectedCatalog ?? catalogParam ?? catalogs[0]?.name ?? ""
+
+	const { data: databaseOptions = [], isPending: isDatabasesPending } =
+		useCatalogDatabases(catalogName)
+
+	// URL params → state: validate against loaded catalogs, auto-select when no params.
+	// When auto-selecting (no catalogParam), also writes catalog to URL
 	useEffect(() => {
 		if (isCatalogsPending || catalogs.length === 0) return
 
 		if (!catalogParam) {
 			setSelectedCatalog(catalogs[0].name)
-			setSelectedDatabase(catalogs[0].databases[0])
+			setSearchParams({ catalog: catalogs[0].name }, { replace: true })
 			return
 		}
 
@@ -52,40 +64,61 @@ export function useCatalogDatabaseSelection(
 		}
 
 		setSelectedCatalog(foundCatalog.name)
+	}, [catalogs, isCatalogsPending, catalogParam, setSearchParams])
+
+	// Once databases for the selected catalog are loaded, validate / default the database.
+	// When auto-selecting (no databaseParam), also writes database to URL
+	useEffect(() => {
+		if (!selectedCatalog || isDatabasesPending) return
 
 		if (!databaseParam) {
-			setSelectedDatabase(foundCatalog.databases[0])
+			const firstDb = databaseOptions[0]
+			setSelectedDatabase(firstDb)
+			if (firstDb) {
+				setSearchParams(
+					{ catalog: selectedCatalog, database: firstDb },
+					{ replace: true },
+				)
+			}
 			return
 		}
 
-		const foundDb = foundCatalog.databases.find(db => db === databaseParam)
+		const foundDb = databaseOptions.find(db => db === databaseParam)
 		if (!foundDb) {
 			setDatabaseNotAvailableOpen(true)
 			return
 		}
 
 		setSelectedDatabase(foundDb)
-	}, [catalogs, isCatalogsPending, catalogParam, databaseParam])
-
-	// state → URL params (skip until a catalog is selected)
-	useEffect(() => {
-		if (!selectedCatalog) return
-		const params: Record<string, string> = { catalog: selectedCatalog }
-		if (selectedDatabase) params.database = selectedDatabase
-		setSearchParams(params, { replace: true })
-	}, [selectedCatalog, selectedDatabase, setSearchParams])
+	}, [
+		selectedCatalog,
+		isDatabasesPending,
+		databaseParam,
+		databaseOptions,
+		setSearchParams,
+	])
 
 	const handleCatalogChange = (catalogName: string) => {
 		setSelectedCatalog(catalogName)
-		const catalog = catalogs.find(c => c.name === catalogName)
-		setSelectedDatabase(catalog?.databases[0])
+		setSelectedDatabase(undefined)
+		setSearchParams({ catalog: catalogName }, { replace: true })
+	}
+
+	const handleDatabaseChange = (database: string) => {
+		setSelectedDatabase(database)
+		setSearchParams(
+			{ catalog: selectedCatalog ?? "", database },
+			{ replace: true },
+		)
 	}
 
 	return {
 		selectedCatalog,
 		selectedDatabase,
+		databaseOptions,
 		setSelectedDatabase,
 		handleCatalogChange,
+		handleDatabaseChange,
 		catalogParam,
 		databaseParam,
 		catalogNotAvailableOpen,

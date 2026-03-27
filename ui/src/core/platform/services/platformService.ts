@@ -1,12 +1,12 @@
 import { API_CONFIG } from "@/config/apiConfig"
 import { api } from "@/core/api"
 
-import { CompactionStatusResponse, ReleasesResponse } from "../types"
+import { OptimizationStatusResponse, ReleasesResponse } from "../types"
 
 export const platformService = {
-	getCompactionStatus: async (): Promise<CompactionStatusResponse> => {
-		const response = await api.get<CompactionStatusResponse>(
-			`${API_CONFIG.ENDPOINTS.PLATFORM}/compaction/status`,
+	getOptmizationStatus: async (): Promise<OptimizationStatusResponse> => {
+		const response = await api.get<OptimizationStatusResponse>(
+			`${API_CONFIG.ENDPOINTS.PLATFORM}/opt/status`,
 			{ disableErrorNotification: true },
 		)
 		return response.data

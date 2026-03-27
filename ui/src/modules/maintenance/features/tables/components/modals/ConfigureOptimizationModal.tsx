@@ -4,7 +4,8 @@ import { useEffect, useState } from "react"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import { CRON_FREQUENCY_OPTIONS, DEFAULT_CRON_CONFIG } from "../../constants"
-import { useTableCronFormConfig, useUpdateTableCronConfig } from "../../hooks"
+import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
+import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
 import type {
 	CronConfigOption,
 	ScheduleSectionProps,
@@ -88,12 +89,10 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 						Next 3 Runs
 					</span>
 					<div className="flex items-center gap-2">
-						{nextRuns.map((run, i) => (
+						{nextRuns.map(run => (
 							<span
 								key={`${title}-${run}`}
-								className={`rounded-[6px] bg-olake-surface-muted px-2 py-1 text-sm leading-[22px] text-olake-text-secondary ${
-									i === 0 ? "w-48" : "w-48"
-								}`}
+								className="w-48 rounded-[6px] bg-olake-surface-muted px-2 py-1 text-sm leading-[22px] text-olake-text-secondary"
 							>
 								{run}
 							</span>
@@ -130,7 +129,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		isLoading: isConfigLoading,
 		isError: isConfigError,
 		refetch: refetchConfig,
-	} = useTableCronFormConfig(catalog, database, tableName)
+	} = useTableDetails(catalog, database, tableName)
 	const { mutate: updateTableCronConfig, isPending: isSaveLoading } =
 		useUpdateTableCronConfig(catalog, database, tableName)
 
@@ -146,6 +145,12 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		}
 	}, [tableCronConfig])
 
+	useEffect(() => {
+		if (!open) {
+			setActiveModal(null)
+		}
+	}, [open])
+
 	const handleSave = () => {
 		if (!catalog || !database || !tableName) return
 
@@ -153,7 +158,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 			minorTriggerInterval: getCronFromConfig(minorCron),
 			majorTriggerInterval: getCronFromConfig(majorCron),
 			fullTriggerInterval: getCronFromConfig(fullCron),
-			targetFileSize,
+			targetFileSize: targetFileSize,
 		}
 
 		updateTableCronConfig(payload, {
@@ -181,10 +186,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 				centered
 				width={696}
 				destroyOnHidden
-				styles={{
-					content: { padding: 0, borderRadius: 20, overflow: "hidden" },
-					body: { padding: 0 },
-				}}
+				styles={DEFAULT_TABLE_MODAL_STYLES}
 			>
 				<div className="flex h-[808px] flex-col overflow-hidden bg-white">
 					{/* Header */}

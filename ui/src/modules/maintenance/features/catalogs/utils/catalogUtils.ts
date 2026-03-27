@@ -12,13 +12,6 @@ const CATALOG_FORM_TYPE_ICEBERG = "ICEBERG"
 export const mapGetCatalogResponseToFormData = (
 	data: CatalogFormData,
 ): CatalogFormData => {
-	if (data == null || typeof data !== "object" || Array.isArray(data)) {
-		return {
-			type: CATALOG_FORM_TYPE_ICEBERG,
-			writer: {},
-		}
-	}
-
 	const writer = (data as { writer?: unknown }).writer
 	if (
 		writer !== null &&
@@ -39,18 +32,20 @@ export const mapGetCatalogResponseToFormData = (
 export const mapGetCatalogsResponseToCatalogs = (
 	response: GetCatalogsResponse,
 ): Catalog[] => {
-	return response.catalogs.map((catalog, idx) => ({
-		id: `${catalog.name}-${idx}`,
-		name: catalog.name,
-		type: catalog.type.toUpperCase(),
-		databases: catalog.databases,
-		createdOn: catalog.created_at,
-		byOlake: catalog.olake_created,
-	}))
+	return response.result.map((catalog, idx) => {
+		const props = catalog.catalogProperties ?? {}
+
+		return {
+			id: `${catalog.catalogName}-${idx}`,
+			name: catalog.catalogName,
+			type: catalog.catalogType.toUpperCase(),
+			createdOn: props["created-at"] ?? props["created_at"] ?? "",
+			olakeCreated: props["olake_created"] === "true",
+		}
+	})
 }
 
 // Parses spec.uischema and (in edit mode) disables writer.catalog_name so the catalog name can't be changed while editing the spec.
-
 export const mapCatalogSpecResponse = (
 	data: SpecResponse,
 	isEditMode: boolean,
@@ -80,6 +75,7 @@ export const mapCatalogSpecResponse = (
 		}
 	} catch (e) {
 		console.error("Failed to parse uiSchema in mapCatalogSpecResponse", e)
+		throw new Error("Failed to parse uiSchema")
 	}
 
 	return data

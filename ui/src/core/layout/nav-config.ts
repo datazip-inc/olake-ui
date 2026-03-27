@@ -1,7 +1,6 @@
 import { SlidersIcon } from "@phosphor-icons/react"
 
-import { ingestionNavModule } from "@/modules/ingestion/nav"
-import { maintenanceNavModule } from "@/modules/maintenance/nav"
+import { moduleRegistry } from "@/core/modules/registry"
 
 export type NavItem = {
 	path: string
@@ -29,21 +28,14 @@ export type NavModule = {
 	getBreadcrumbTrail?: (pathname: string) => string[] | null
 }
 
-// ─── Module registry ──────────────────────────────────────────────────────────
-// To add a new module: create a nav.ts in the module folder and add one import
-// + one spread entry below. Nothing else in the layout needs to change.
+// Boundary-safe route prefix matcher: exact match or `path/` prefix
+export const matchesPath = (pathname: string, path: string) =>
+	pathname === path || pathname.startsWith(path + "/")
 
-const ALWAYS_ON_MODULES: NavModule[] = [ingestionNavModule]
-const FEATURE_GATED_MODULES: Record<string, NavModule> = {
-	maintenance: maintenanceNavModule,
-}
-
-export const getNavModules = (enabledFeatures: Set<string>): NavModule[] => [
-	...ALWAYS_ON_MODULES,
-	...Object.entries(FEATURE_GATED_MODULES)
-		.filter(([key]) => enabledFeatures.has(key))
-		.map(([, mod]) => mod),
-]
+export const getNavModules = (enabledFeatures: Set<string>): NavModule[] =>
+	moduleRegistry
+		.filter(m => !m.gate || enabledFeatures.has(m.nav.key))
+		.map(m => m.nav)
 
 export const SYSTEM_ITEMS: NavItem[] = [
 	{ path: "/settings", label: "Settings", icon: SlidersIcon },
@@ -56,7 +48,7 @@ export const getBreadcrumbModuleLabel = (
 	modules: NavModule[],
 ): string => {
 	const mod = modules.find(m =>
-		m.items.some(item => pathname.startsWith(item.path)),
+		m.items.some(item => matchesPath(pathname, item.path)),
 	)
 	return mod?.moduleLabel ?? "System"
 }
@@ -69,9 +61,11 @@ export const getBreadcrumbTrail = (
 	for (const mod of modules) {
 		const trail = mod.getBreadcrumbTrail?.(pathname)
 		if (trail) return trail
-		const item = mod.items.find(i => pathname.startsWith(i.path))
+		const item = mod.items.find(i => matchesPath(pathname, i.path))
 		if (item) return [item.label]
 	}
-	const sysItem = SYSTEM_ITEMS.find(i => i.path && pathname.startsWith(i.path))
+	const sysItem = SYSTEM_ITEMS.find(
+		i => i.path && matchesPath(pathname, i.path),
+	)
 	return sysItem ? [sysItem.label] : []
 }

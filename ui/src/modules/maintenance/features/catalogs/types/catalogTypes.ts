@@ -1,5 +1,3 @@
-import type { TestConnectionStatus } from "@/common/types"
-
 // Backend API Types
 export interface CatalogPayload {
 	name: string
@@ -8,15 +6,15 @@ export interface CatalogPayload {
 }
 
 export interface FusionCatalog {
-	name: string
-	type: string
-	databases: string[]
-	created_at: string
-	olake_created: boolean
+	catalogName: string
+	catalogType: string
+	catalogProperties: Record<string, string>
 }
 
 export type GetCatalogsResponse = {
-	catalogs: FusionCatalog[]
+	code: number
+	message: string
+	result: FusionCatalog[]
 }
 
 export interface CatalogTestRequest {
@@ -24,18 +22,8 @@ export interface CatalogTestRequest {
 	config: string
 }
 
-export interface CatalogLogEntry {
-	level: string
-	time: string
-	message: string
-}
-
-export interface CatalogTestResponse {
-	connection_result: {
-		message: string
-		status: TestConnectionStatus
-	}
-	logs: CatalogLogEntry[]
+export interface GetCatalogDatabasesResponse {
+	result: string[]
 }
 
 // Frontend Domain Types
@@ -53,6 +41,5 @@ export interface Catalog {
 	name: string
 	type: string
 	createdOn: string
-	databases: string[]
-	byOlake: boolean
+	olakeCreated: boolean
 }

@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react"
 
 import ConfigSuccessIcon from "@/assets/config-success-icon.svg"
 
+import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
+
 type ConfigurationSuccessModalProps = {
 	open: boolean
 	onClose: () => void
@@ -49,10 +51,7 @@ const ConfigurationSuccessModal: React.FC<ConfigurationSuccessModalProps> = ({
 			centered
 			width={696}
 			destroyOnHidden
-			styles={{
-				content: { padding: 0, borderRadius: 20, overflow: "hidden" },
-				body: { padding: 0 },
-			}}
+			styles={DEFAULT_TABLE_MODAL_STYLES}
 		>
 			<div className="flex h-[808px] flex-col items-center bg-white pt-[280px]">
 				{/* Icon + title group */}

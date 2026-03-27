@@ -29,30 +29,30 @@ const UpdateNotification: React.FC<{ onOpen: () => void }> = ({ onOpen }) => {
 	return (
 		<button
 			onClick={handleOpenModal}
-			className="h-[102px] w-full rounded-lg border border-[#efefef] bg-white p-3 text-left hover:bg-neutral-50"
+			className="h-[102px] w-full rounded-lg border border-[#efefef] bg-olake-surface p-3 text-left hover:bg-neutral-50"
 		>
-			<div className="mb-[8px] flex items-center justify-between">
+			<div className="mb-2 flex items-center justify-between">
 				<div className="flex items-center gap-2">
 					<InfoIcon
 						size={14}
 						weight="fill"
-						color="#193AE6"
+						className="text-olake-primary"
 					/>
-					<span className="text-[12px] font-medium text-[#193AE6]">
+					<span className="text-[12px] font-medium text-olake-primary">
 						New Update
 					</span>
 				</div>
 				<div className="relative">
 					{hasNewUpdates && !hasSeenUpdates && (
-						<span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500" />
+						<span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-olake-error" />
 					)}
 					<ArrowsOutSimpleIcon
 						size={14}
-						color="#383838"
+						className="text-gray-900"
 					/>
 				</div>
 			</div>
-			<p className="text-[12px] leading-4 text-[#383838]">
+			<p className="text-xs leading-4 text-gray-900">
 				{hasNewUpdates
 					? `You have ${newUpdatesCount} new update${newUpdatesCount !== 1 ? "s" : ""}.`
 					: "You're all up to date!"}

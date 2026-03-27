@@ -1,8 +1,11 @@
+import { useIsFetching } from "@tanstack/react-query"
 import { Button } from "antd"
 import { useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { DataTable, PageErrorState } from "@/common/components"
+import { usePaginatedSearch } from "@/common/hooks"
+import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
 import { useCatalogs } from "@/modules/maintenance/features/catalogs/hooks"
 
 import {
@@ -14,16 +17,28 @@ import {
 	TableMetricsModal,
 	TablePageHeader,
 } from "../components"
+import { PAGE_SIZE } from "../constants"
 import {
 	useCancelTableRun,
 	useCatalogDatabaseSelection,
-	useFilteredTables,
 	useTables,
 	useToggleTableOptimizing,
 } from "../hooks"
 import type { Table } from "../types"
 import type { TableActions } from "../utils"
-import { getTableColumns } from "../utils"
+import { getCancelRunID, getTableColumns } from "../utils"
+
+const tableSearchFn = (row: Table, term: string): boolean =>
+	row.name.toLowerCase().includes(term)
+
+const tableFilterFn = (
+	row: Table,
+	filter: "all" | "olake" | "external",
+): boolean => {
+	if (filter === "all") return true
+	if (filter === "olake") return row.byOLake
+	return !row.byOLake
+}
 
 const Tables: React.FC = () => {
 	const navigate = useNavigate()
@@ -44,22 +59,36 @@ const Tables: React.FC = () => {
 	const {
 		selectedCatalog,
 		selectedDatabase,
-		setSelectedDatabase,
+		databaseOptions,
 		handleCatalogChange,
+		handleDatabaseChange,
 		catalogParam,
 		databaseParam,
 		catalogNotAvailableOpen,
 		setCatalogNotAvailableOpen,
 		databaseNotAvailableOpen,
 		setDatabaseNotAvailableOpen,
-	} = useCatalogDatabaseSelection(catalogs, isCatalogsPending)
+	} = useCatalogDatabaseSelection(catalogs)
+
+	const catalogName = selectedCatalog ?? catalogs[0]?.name ?? ""
+	const isDatabasesPending =
+		useIsFetching({
+			queryKey: catalogKeys.databases(catalogName),
+		}) > 0
+
+	// Fetch tables only after databases load and a valid catalog/database pair is resolved.
+	const canFetchTables =
+		!!selectedCatalog &&
+		!isDatabasesPending &&
+		!!selectedDatabase &&
+		databaseOptions.includes(selectedDatabase)
 
 	const {
 		data: tables = [],
 		isFetching: isTablesFetching,
 		isError: isTablesError,
 		refetch: refetchTables,
-	} = useTables(selectedCatalog ?? "", selectedDatabase ?? "")
+	} = useTables(selectedCatalog ?? "", selectedDatabase ?? "", canFetchTables)
 
 	const {
 		searchTerm,
@@ -70,7 +99,13 @@ const Tables: React.FC = () => {
 		setCurrentPage,
 		paginatedRows,
 		totalPages,
-	} = useFilteredTables(tables)
+	} = usePaginatedSearch<Table, "all" | "olake" | "external">({
+		rows: tables,
+		pageSize: PAGE_SIZE,
+		searchFn: tableSearchFn,
+		filterFn: tableFilterFn,
+		initialFilter: "all",
+	})
 
 	const {
 		mutate: toggleTableOptimizing,
@@ -83,16 +118,17 @@ const Tables: React.FC = () => {
 		variables: cancelTableRunVariables,
 	} = useCancelTableRun()
 
-	const loading = isCatalogsPending || isTablesFetching
+	const loading = isCatalogsPending || isDatabasesPending || isTablesFetching
 	const showPageError = isCatalogsError || isTablesError
 	const showCatalogEmptyState =
 		!isCatalogsPending && !isCatalogsError && catalogs.length === 0
 	const showDatabaseEmptyState =
 		!isCatalogsPending &&
 		!isCatalogsError &&
+		!isDatabasesPending &&
 		catalogs.length > 0 &&
 		!!selectedCatalog &&
-		!selectedDatabase
+		databaseOptions.length === 0
 
 	const getTableRunsPath = (tableName: string) =>
 		`/maintenance/tables/${encodeURIComponent(selectedCatalog ?? "")}/${encodeURIComponent(selectedDatabase ?? "")}/${encodeURIComponent(tableName)}/runs`
@@ -108,12 +144,16 @@ const Tables: React.FC = () => {
 
 		const actions: TableActions = {
 			onViewLogs: row => navigate(getTableRunsPath(row.name)),
-			onCancelRun: row =>
+			onCancelRun: row => {
+				const runId = getCancelRunID(row)
+				if (!runId) return
 				cancelTableRun({
 					catalog: selectedCatalog ?? "",
 					database: selectedDatabase ?? "",
 					tableName: row.name,
-				}),
+					runId,
+				})
+			},
 			onToggleOptimizing: (row, enabled) =>
 				toggleTableOptimizing({
 					catalog: selectedCatalog ?? "",
@@ -178,15 +218,25 @@ const Tables: React.FC = () => {
 		</div>
 	)
 
-	const handleUnavailableSelectionClose = () => {
+	const handleCatalogUnavailableClose = () => {
 		setCatalogNotAvailableOpen(false)
-		setDatabaseNotAvailableOpen(false)
 		window.location.assign(location.pathname)
 	}
 
+	const handleDatabaseUnavailableClose = () => {
+		setDatabaseNotAvailableOpen(false)
+		const validCatalog = catalogParam ?? selectedCatalog ?? ""
+		window.location.assign(
+			`${location.pathname}?catalog=${encodeURIComponent(validCatalog)}`,
+		)
+	}
+
 	const handleRetry = () => {
-		void refetchCatalogs()
-		void refetchTables()
+		if (isCatalogsError) {
+			void refetchCatalogs()
+		} else {
+			void refetchTables()
+		}
 	}
 
 	return (
@@ -194,7 +244,11 @@ const Tables: React.FC = () => {
 			<div className="min-h-full bg-white px-6 pt-6">
 				{showPageError ? (
 					<PageErrorState
-						title="Failed to load tables"
+						title={
+							isCatalogsError
+								? "Failed to load catalogs"
+								: "Failed to load tables"
+						}
 						description="Please check your connection and try again."
 						onRetry={handleRetry}
 					/>
@@ -205,12 +259,13 @@ const Tables: React.FC = () => {
 						<TablePageHeader
 							catalogs={catalogs}
 							isCatalogsPending={isCatalogsPending}
+							databaseOptions={databaseOptions}
 							selectedCatalog={selectedCatalog}
 							selectedDatabase={selectedDatabase}
 							loading={loading}
 							isRefreshDisabled={showDatabaseEmptyState}
 							onCatalogChange={handleCatalogChange}
-							onDatabaseChange={setSelectedDatabase}
+							onDatabaseChange={handleDatabaseChange}
 							onRefresh={refetchTables}
 						/>
 						<div className="mt-8 w-full">
@@ -264,12 +319,12 @@ const Tables: React.FC = () => {
 			/>
 			<CatalogNotAvailableModal
 				open={catalogNotAvailableOpen}
-				onClose={handleUnavailableSelectionClose}
+				onClose={handleCatalogUnavailableClose}
 				catalogName={catalogParam ?? ""}
 			/>
 			<DatabaseNotAvailableModal
 				open={databaseNotAvailableOpen}
-				onClose={handleUnavailableSelectionClose}
+				onClose={handleDatabaseUnavailableClose}
 				databaseName={databaseParam ?? ""}
 			/>
 		</>

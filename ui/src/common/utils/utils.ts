@@ -181,12 +181,13 @@ export const formatDate = (dateString: string): string => {
 	}
 }
 
-// Format epoch milliseconds to UTC date-time string: YYYY-MM-DD HH:mm:ss
+// Format epoch milliseconds to UTC ISO string (or null if invalid)
 const getUtcIsoString = (timestamp: number): string | null => {
 	const date = new Date(timestamp)
 	return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+// Format epoch milliseconds to UTC date-time string: YYYY-MM-DD HH:mm:ss
 export const formatTimestampToUtcDateTime = (timestamp: number): string => {
 	const isoString = getUtcIsoString(timestamp)
 	if (!isoString) return "--"
@@ -198,6 +199,20 @@ export const formatTimestampToUtcTime = (timestamp: number): string => {
 	const isoString = getUtcIsoString(timestamp)
 	if (!isoString) return "--"
 	return isoString.slice(11, 19)
+}
+
+const BYTES_IN_MB = 1024 * 1024
+
+// Converts bytes to MB rounded to nearest whole number.
+export const bytesToMb = (bytes: number): number => {
+	if (!Number.isFinite(bytes) || bytes <= 0) return 0
+	return Math.round(bytes / BYTES_IN_MB)
+}
+
+// Converts MB to bytes rounded to nearest whole number.
+export const mbToBytes = (mb: number): number => {
+	if (!Number.isFinite(mb) || mb <= 0) return 0
+	return Math.round(mb * BYTES_IN_MB)
 }
 
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields

@@ -79,6 +79,7 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 					<Button
 						icon={<DownloadSimpleIcon size={14} />}
 						loading={downloadLogFile.isPending}
+						disabled={logs.length === 0}
 						onClick={() =>
 							downloadLogFile.mutate(
 								{
@@ -118,6 +119,9 @@ const RunLogsPanel: React.FC<RunLogsPanelProps> = ({
 
 const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
 	const levelKey = row.level.toLowerCase()
+	const normalizedStackTrace = row.stackTrace
+		? row.stackTrace.replace(/\\n/g, "\n").replace(/\\t/g, "\t")
+		: null
 
 	return (
 		<div className="grid grid-cols-[87px_92px_79px_minmax(0,1fr)] items-start border-b border-olake-border py-2 pl-[30px] pr-5">
@@ -138,6 +142,11 @@ const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
 				className={`whitespace-normal break-words font-mono text-[10px] font-medium leading-[17px] ${getLogTextColor(levelKey)}`}
 			>
 				{row.message}
+				{normalizedStackTrace && (
+					<pre className="mt-1 overflow-x-auto whitespace-pre-wrap font-mono text-[10px] font-medium leading-[17px] text-olake-body">
+						{normalizedStackTrace}
+					</pre>
+				)}
 			</span>
 		</div>
 	)

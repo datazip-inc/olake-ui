@@ -12,6 +12,7 @@ import { Tag, type ColumnDef } from "@/common/components"
 
 import { RunStatusCell } from "../components"
 import type { Table } from "../types"
+import { getCancelRunID } from "./tableUtils"
 
 const getHealthScoreColor = (score: number) =>
 	score > 70 ? "text-olake-success" : "text-olake-warning"
@@ -64,8 +65,9 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 				<TrashIcon size={20} />
 			),
 			label: <span className="text-sm leading-[22px]">Cancel Run</span>,
-			disabled: isCancelPendingFor(row.name),
+			disabled: isCancelPendingFor(row.name) || !getCancelRunID(row),
 			onClick: () => {
+				if (!getCancelRunID(row)) return
 				setOpenActionRow(null)
 				actions.onCancelRun(row)
 			},

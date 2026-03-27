@@ -1,14 +1,12 @@
 import { TEST_CONNECTION_STATUS } from "@/common/constants"
+import { TestResponse } from "@/common/types"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
-import {
-	EntityTestRequest,
-	EntityTestResponse,
-} from "@/modules/ingestion/common/types"
+import { EntityTestRequest } from "@/modules/ingestion/common/types"
 
 export const trackTestConnection = async (
 	isSource: boolean,
 	req: EntityTestRequest,
-	response: EntityTestResponse,
+	response: TestResponse,
 	isExisting: boolean = false,
 ) => {
 	let catalogType

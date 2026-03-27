@@ -5,7 +5,8 @@ import { tableService } from "../../services"
 import {
 	mapGetTablesResponseToTables,
 	mapGetTableRunsResponseToTableRuns,
-	mapTableCronApiModelToTableCronFormModel,
+	mapTableDetailsResponseToTableDetailsViewModel,
+	mapTableMetricsResponseToFileSummary,
 	mapProcessLogsResponse,
 } from "../../utils"
 
@@ -23,6 +24,21 @@ export const useTables = (
 	})
 }
 
+export const useTableDetails = (
+	catalog: string,
+	database: string,
+	tableName: string,
+	enabled = true,
+) => {
+	return useQuery({
+		queryKey: tableKeys.details(catalog, database, tableName),
+		queryFn: () => tableService.getTableDetails(catalog, database, tableName),
+		select: mapTableDetailsResponseToTableDetailsViewModel,
+		enabled: enabled && !!catalog && !!database && !!tableName,
+		refetchOnWindowFocus: false,
+	})
+}
+
 export const useTableMetrics = (
 	catalog: string,
 	database: string,
@@ -32,6 +48,7 @@ export const useTableMetrics = (
 	return useQuery({
 		queryKey: tableKeys.metrics(catalog, database, tableName),
 		queryFn: () => tableService.getTableMetrics(catalog, database, tableName),
+		select: mapTableMetricsResponseToFileSummary,
 		enabled: enabled && !!catalog && !!database && !!tableName,
 		refetchOnWindowFocus: false,
 	})
@@ -45,22 +62,7 @@ export const useTableRuns = (
 	return useQuery({
 		queryKey: tableKeys.runs(catalog, database, tableName),
 		queryFn: () => tableService.getTableRuns(catalog, database, tableName),
-		select: data => mapGetTableRunsResponseToTableRuns(data.runs),
-		enabled: !!catalog && !!database && !!tableName,
-		refetchOnWindowFocus: false,
-	})
-}
-
-export const useTableCronFormConfig = (
-	catalog: string,
-	database: string,
-	tableName: string,
-) => {
-	return useQuery({
-		queryKey: tableKeys.cron(catalog, database, tableName),
-		queryFn: () =>
-			tableService.getTableCronConfig(catalog, database, tableName),
-		select: mapTableCronApiModelToTableCronFormModel,
+		select: mapGetTableRunsResponseToTableRuns,
 		enabled: !!catalog && !!database && !!tableName,
 		refetchOnWindowFocus: false,
 	})

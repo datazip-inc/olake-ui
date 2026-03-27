@@ -1,4 +1,4 @@
-import { LogEntry } from "@/modules/ingestion/common/types"
+import { LogEntry } from "@/common/types"
 
 export interface Job {
 	id: number

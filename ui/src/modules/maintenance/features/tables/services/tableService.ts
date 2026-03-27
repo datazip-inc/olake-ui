@@ -4,16 +4,27 @@ import { api } from "@/core/api"
 import type {
 	GetProcessLogsApiResponse,
 	GetTableRunsApiResponse,
+	TableDetailsApiResponse,
 	GetTablesApiResponse,
-	TableCronApiModel,
-	TableMetrics,
+	TableMetricsApiResponse,
 	UpdateTableCronApiRequest,
 } from "../types"
 
 export const tableService = {
 	getTables: async (catalog: string, database: string) => {
 		const response = await api.get<GetTablesApiResponse>(
-			API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database),
+			API_CONFIG.ENDPOINTS.OPT.TABLES(catalog, database),
+		)
+		return response.data
+	},
+
+	getTableDetails: async (
+		catalog: string,
+		database: string,
+		tableName: string,
+	) => {
+		const response = await api.get<TableDetailsApiResponse>(
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/details`,
 		)
 		return response.data
 	},
@@ -23,8 +34,8 @@ export const tableService = {
 		database: string,
 		tableName: string,
 	) => {
-		const response = await api.get<TableMetrics>(
-			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/metrics`,
+		const response = await api.get<TableMetricsApiResponse>(
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/snapshots?page=1&pageSize=1`,
 		)
 		return response.data
 	},
@@ -35,7 +46,7 @@ export const tableService = {
 		tableName: string,
 	) => {
 		const response = await api.get<GetTableRunsApiResponse>(
-			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/runs`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes`,
 			{ showNotification: true },
 		)
 		return response.data
@@ -45,9 +56,10 @@ export const tableService = {
 		catalog: string,
 		database: string,
 		tableName: string,
+		runId: string,
 	) => {
 		const response = await api.post(
-			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/runs/cancel`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes/${encodeURIComponent(runId)}/cancel`,
 			undefined,
 			{ showNotification: true },
 		)
@@ -60,19 +72,9 @@ export const tableService = {
 		tableName: string,
 		enabled: boolean,
 	) => {
-		const response = await api.post(
-			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/${enabled ? "enable-optimizing" : "disable-optimizing"}`,
-		)
-		return response.data
-	},
-
-	getTableCronConfig: async (
-		catalog: string,
-		database: string,
-		tableName: string,
-	) => {
-		const response = await api.get<TableCronApiModel>(
-			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/cron`,
+		const response = await api.put(
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
+			{ enabledForOptimisation: enabled.toString() },
 		)
 		return response.data
 	},
@@ -84,14 +86,14 @@ export const tableService = {
 		payload: UpdateTableCronApiRequest,
 	) => {
 		const response = await api.put(
-			`${API_CONFIG.ENDPOINTS.FUSION_TABLE(catalog, database, tableName)}/cron`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
 			payload,
 		)
 		return response.data
 	},
 	getProcessLogs: async (runId: string) => {
 		const response = await api.get<GetProcessLogsApiResponse>(
-			API_CONFIG.ENDPOINTS.FUSION_PROCESS(runId),
+			API_CONFIG.ENDPOINTS.OPT.PROCESS(runId),
 			{ showNotification: true },
 		)
 		return response.data
@@ -101,7 +103,7 @@ export const tableService = {
 		processId: string,
 		fileId: string,
 	): Promise<void> => {
-		const path = `${API_CONFIG.ENDPOINTS.FUSION_PROCESS(processId)}/file/${encodeURIComponent(fileId)}`
+		const path = `${API_CONFIG.ENDPOINTS.OPT.PROCESS(processId)}/file/${encodeURIComponent(fileId)}`
 		const url = `${API_CONFIG.BASE_URL}${path}`
 
 		try {
@@ -125,7 +127,7 @@ export const tableService = {
 	},
 
 	downloadProcessLogsArchive: async (processId: string): Promise<void> => {
-		const path = `${API_CONFIG.ENDPOINTS.FUSION_PROCESS(processId)}/download`
+		const path = `${API_CONFIG.ENDPOINTS.OPT.PROCESS(processId)}/download`
 		const url = `${API_CONFIG.BASE_URL}${path}`
 
 		try {

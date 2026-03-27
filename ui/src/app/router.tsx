@@ -8,10 +8,9 @@ import {
 
 import { useAuthStore } from "@/core/auth/stores/authStore"
 import Layout from "@/core/layout"
-import { CompactionGate } from "@/core/platform/components"
+import { buildProtectedChildren } from "@/core/modules/buildRoutes"
+import { moduleRegistry } from "@/core/modules/registry"
 import { ErrorBoundary } from "@/modules/ingestion/common/components/ErrorBoundary"
-import { ingestionRoutes } from "@/modules/ingestion/route"
-import { maintenanceRoutes } from "@/modules/maintenance/route"
 
 // eslint-disable-next-line react-refresh/only-export-components
 const RootHandler = () => {
@@ -82,8 +81,7 @@ const protectedRoutes = [
 					/>
 				),
 			},
-			...ingestionRoutes,
-			{ element: <CompactionGate />, children: maintenanceRoutes },
+			...buildProtectedChildren(moduleRegistry),
 			{
 				path: "settings",
 				element: <lazyComponents.SystemSettings />,

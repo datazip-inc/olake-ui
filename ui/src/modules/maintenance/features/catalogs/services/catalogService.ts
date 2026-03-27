@@ -1,4 +1,4 @@
-import { SpecResponse } from "@/common/types"
+import { SpecResponse, TestResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -7,7 +7,7 @@ import type {
 	CatalogFormData,
 	CatalogPayload,
 	CatalogTestRequest,
-	CatalogTestResponse,
+	GetCatalogDatabasesResponse,
 	GetCatalogsResponse,
 } from "../types"
 
@@ -16,20 +16,29 @@ const DESTINATION_TYPE = "iceberg"
 export const catalogService = {
 	getCatalogs: async () => {
 		const response = await api.get<GetCatalogsResponse>(
-			API_CONFIG.ENDPOINTS.FUSION_CATALOGS,
+			API_CONFIG.ENDPOINTS.OPT.CATALOGS(),
+		)
+		return response.data
+	},
+
+	getCatalogDatabases: async (
+		catalogName: string,
+	): Promise<GetCatalogDatabasesResponse> => {
+		const response = await api.get<GetCatalogDatabasesResponse>(
+			`${API_CONFIG.ENDPOINTS.OPT.CATALOGS(catalogName)}/databases`,
 		)
 		return response.data
 	},
 
 	getCatalog: async (catalogName: string) => {
 		const response = await api.get<CatalogFormData>(
-			API_CONFIG.ENDPOINTS.FUSION_CATALOG(catalogName),
+			API_CONFIG.ENDPOINTS.OPT.CATALOG(catalogName),
 		)
 		return response.data
 	},
 
 	createCatalog: async (config: CatalogFormData) => {
-		await api.post<void>(API_CONFIG.ENDPOINTS.FUSION_CATALOG(), config, {
+		await api.post<void>(API_CONFIG.ENDPOINTS.OPT.CATALOG(), config, {
 			disableErrorNotification: true,
 		})
 		return
@@ -37,14 +46,14 @@ export const catalogService = {
 
 	updateCatalog: async (catalogName: string, config: CatalogFormData) => {
 		const response = await api.put<CatalogPayload>(
-			API_CONFIG.ENDPOINTS.FUSION_CATALOG(catalogName),
+			API_CONFIG.ENDPOINTS.OPT.CATALOG(catalogName),
 			config,
 		)
 		return response.data
 	},
 
 	deleteCatalog: async (catalogName: string) => {
-		await api.delete(API_CONFIG.ENDPOINTS.FUSION_CATALOG(catalogName), {
+		await api.delete(API_CONFIG.ENDPOINTS.OPT.CATALOG(catalogName), {
 			showNotification: true,
 		})
 		return
@@ -55,8 +64,8 @@ export const catalogService = {
 		existing: boolean = false,
 	) => {
 		try {
-			const response = await api.post<CatalogTestResponse>(
-				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
+			const response = await api.post<TestResponse>(
+				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: DESTINATION_TYPE,
 					version: catalog.version,
@@ -96,7 +105,7 @@ export const catalogService = {
 
 	getCatalogVersions: async () => {
 		const response = await api.get<{ version: string[] }>(
-			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${DESTINATION_TYPE}`,
+			`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${DESTINATION_TYPE}`,
 			{
 				timeout: 0,
 			},
@@ -107,7 +116,7 @@ export const catalogService = {
 	getCatalogSpec: async (version: string, signal?: AbortSignal) => {
 		try {
 			const response = await api.post<SpecResponse>(
-				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
+				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: DESTINATION_TYPE,
 					version: version,

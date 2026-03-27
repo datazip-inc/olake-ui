@@ -1,9 +1,9 @@
 import { Navigate, Outlet } from "react-router-dom"
 
-import { useCompactionStatus } from "../hooks/useCompactionStatus"
+import { useOptimizationStatus } from "@/core/platform/hooks/useOptimizationStatus"
 
 const CompactionGate: React.FC = () => {
-	const { data, isLoading } = useCompactionStatus()
+	const { data, isLoading } = useOptimizationStatus()
 
 	// While loading, render nothing to avoid a flash redirect
 	if (isLoading) return null

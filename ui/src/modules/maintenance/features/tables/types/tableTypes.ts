@@ -14,6 +14,7 @@ export interface RunMetricRow {
 export interface FusionCompactionRun {
 	"last-run": string
 	status: RunStatus
+	runID?: string
 }
 
 export interface FusionTable {
@@ -45,18 +46,43 @@ export interface TableMetrics {
 	}
 }
 
+export interface TableDetailsApiResponse {
+	result: {
+		baseMetrics?: {
+			averageFileSize?: string
+			fileCount?: number
+			lastCommitTime?: number
+		}
+		properties?: Record<string, string>
+	}
+}
+
+export interface TableMetricsApiResponse {
+	result: {
+		list: Array<{
+			filesSummaryForChart?: {
+				"data-files"?: string
+				"delete-files"?: string
+			}
+		}>
+		total: number
+	}
+}
+
 export interface FusionRun {
-	"run-id": string
+	processId: string
 	status: RunStatus
-	type: RunType
-	"start-time": number
+	optimizingType: RunType
+	startTime: number
 	duration: number
-	metrics: RunMetrics
+	summary?: RunMetrics
 }
 
 export interface GetTableRunsApiResponse {
-	runs: FusionRun[]
-	total: number
+	result?: {
+		list?: FusionRun[]
+		total?: number
+	}
 }
 
 export interface UpdateTableCronApiRequest {
@@ -69,7 +95,7 @@ export interface UpdateTableCronApiRequest {
 // Frontend Domain Types
 export type FilterKey = "all" | "olake" | "external"
 export type CompactionRun = FusionCompactionRun | null
-export type CompactionScheduleTitle = "Lite" | "Medium" | "Full"
+export type RunTypeLabel = "Lite" | "Medium" | "Full"
 
 export interface Table {
 	id: string
@@ -87,7 +113,7 @@ export interface TableRun {
 	id: string
 	runId: string
 	status: RunStatus
-	type: RunType
+	type: RunTypeLabel
 	startTime: string
 	duration: string
 	metrics: RunMetricRow[]
@@ -97,7 +123,29 @@ export interface TableCronApiModel {
 	minorTriggerInterval: string
 	majorTriggerInterval: string
 	fullTriggerInterval: string
+	enabledForOptimisation: boolean
 	targetFileSize?: number
+}
+
+export interface TableDetailsApiModel extends TableCronApiModel {
+	averageFileSize: string
+	fileCount: number
+	lastCommitTime: number
+}
+
+export type TableDetailsViewModel = TableDetailsApiModel & TableCronFormModel
+
+export interface TableMetricsFileSummary {
+	"data-files": number
+	"delete-files": number
+}
+
+export interface TableMetricsModalData {
+	fileCount?: number
+	averageFileSize?: string
+	lastCommitTime?: number
+	dataFiles?: number
+	deleteFiles?: number
 }
 
 export interface CronConfigOption {
@@ -123,10 +171,11 @@ export interface CancelRunRequest {
 	catalog: string
 	database: string
 	tableName: string
+	runId: string
 }
 
 export interface ScheduleSectionProps {
-	title: CompactionScheduleTitle
+	title: RunTypeLabel
 	value: CronConfigOption
 	onChange: (next: CronConfigOption) => void
 	isFirst?: boolean

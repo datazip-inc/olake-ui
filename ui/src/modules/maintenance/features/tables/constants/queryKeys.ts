@@ -12,6 +12,8 @@ export const tableKeys = {
 		[...tableKeys.table(catalog, database, tableName), "runs"] as const,
 	cron: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.table(catalog, database, tableName), "cron"] as const,
+	details: (catalog: string, database: string, tableName: string) =>
+		[...tableKeys.table(catalog, database, tableName), "details"] as const,
 	metrics: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.table(catalog, database, tableName), "metrics"] as const,
 	processLogs: (runId: string) =>

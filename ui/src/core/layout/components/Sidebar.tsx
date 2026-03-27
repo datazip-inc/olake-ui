@@ -5,10 +5,21 @@ import { Link, NavLink, useLocation } from "react-router-dom"
 
 import { OLake, OlakeLogo } from "@/assets"
 
-import { NavModule, SYSTEM_ITEMS } from "../nav-config"
+import { matchesPath, NavModule, SYSTEM_ITEMS } from "../nav-config"
 import SidebarModuleGroup from "./SidebarModuleGroup"
 import SidebarNavItem from "./SidebarNavItem"
 import UpdateNotification from "./UpdateNotification"
+
+const getOpenModules = (
+	navModules: NavModule[],
+	pathname: string,
+): Record<string, boolean> =>
+	Object.fromEntries(
+		navModules.map(m => [
+			m.key,
+			m.items.some(item => matchesPath(pathname, item.path)),
+		]),
+	)
 
 const Sidebar: React.FC<{
 	collapsed: boolean
@@ -20,23 +31,11 @@ const Sidebar: React.FC<{
 	const { pathname } = useLocation()
 
 	const [openModules, setOpenModules] = useState<Record<string, boolean>>(() =>
-		Object.fromEntries(
-			navModules.map(m => [
-				m.key,
-				m.items.some(item => pathname.startsWith(item.path)),
-			]),
-		),
+		getOpenModules(navModules, pathname),
 	)
 
 	useEffect(() => {
-		setOpenModules(
-			Object.fromEntries(
-				navModules.map(m => [
-					m.key,
-					m.items.some(item => pathname.startsWith(item.path)),
-				]),
-			),
-		)
+		setOpenModules(getOpenModules(navModules, pathname))
 	}, [pathname, navModules])
 
 	const toggleModule = (key: string) =>
@@ -97,27 +96,30 @@ const Sidebar: React.FC<{
 				{collapsed ? (
 					<div className="flex h-full flex-col items-center px-0 pb-6 pt-1">
 						<div className="flex flex-col items-center gap-4">
-							{navModules.map(mod => {
-								const ModIcon = mod.icon
-								const moduleActive = mod.items.some(item =>
-									pathname.startsWith(item.path),
-								)
-								const targetPath = mod.items[0]?.path ?? "/"
-								return (
-									<NavLink
-										key={mod.key}
-										to={targetPath}
-										className={clsx(
-											"flex items-center justify-center rounded-md p-1",
-											moduleActive
-												? "bg-olake-surface-muted text-olake-heading-strong"
-												: "text-olake-body hover:bg-olake-surface-muted",
-										)}
-									>
-										<ModIcon size={20} />
-									</NavLink>
-								)
-							})}
+							{navModules.map((mod, moduleIndex) => (
+								<div
+									key={mod.key}
+									className={clsx(
+										"flex flex-col items-center gap-4",
+										moduleIndex > 0 && "mt-1 pt-2",
+									)}
+								>
+									{mod.items.map(({ path, icon: Icon }) => (
+										<NavLink
+											key={path}
+											to={path}
+											className={clsx(
+												"flex items-center justify-center rounded-md p-1",
+												matchesPath(pathname, path)
+													? "bg-olake-surface-muted text-olake-heading-strong"
+													: "text-olake-body hover:bg-olake-surface-muted",
+											)}
+										>
+											<Icon size={20} />
+										</NavLink>
+									))}
+								</div>
+							))}
 
 							{SYSTEM_ITEMS.map(({ path, icon: Icon }) => (
 								<NavLink

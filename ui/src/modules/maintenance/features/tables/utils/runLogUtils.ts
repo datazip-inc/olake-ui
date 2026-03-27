@@ -12,7 +12,7 @@ const mapProcessEntry = (
 	index: number,
 	sourceKey: string,
 ): RunLogEntry => {
-	const { time: timestamp, level, message } = entry
+	const { time: timestamp, level, message, stackTrace } = entry
 	let date = ""
 	let time = ""
 
@@ -31,14 +31,16 @@ const mapProcessEntry = (
 		time,
 		level: level.toUpperCase() as RunLogEntry["level"],
 		message,
+		stackTrace,
 	}
 }
 
 // Transforms the raw process logs API response into three domain objects: driver logs, task log sources for the sidebar, and a keyed map of log entries per source.
 export const mapProcessLogsResponse = (response: GetProcessLogsApiResponse) => {
-	const { driverLog, taskLogs } = response
+	const driverLog = response.result?.driverLog
+	const taskLogs = response.result?.taskLogs ?? []
 
-	const driverLogs: RunLogEntry[] = (driverLog.content ?? []).map(
+	const driverLogs: RunLogEntry[] = (driverLog?.content ?? []).map(
 		(entry, index) => mapProcessEntry(entry, index, DRIVER_SOURCE_KEY),
 	)
 

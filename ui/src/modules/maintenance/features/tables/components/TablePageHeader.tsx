@@ -1,11 +1,14 @@
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react"
+import { useIsFetching } from "@tanstack/react-query"
 import { Button, Select } from "antd"
 
+import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
 import type { Catalog } from "@/modules/maintenance/features/catalogs/types"
 
 type Props = {
 	catalogs: Catalog[]
 	isCatalogsPending: boolean
+	databaseOptions: string[]
 	selectedCatalog: string | undefined
 	selectedDatabase: string | undefined
 	loading: boolean
@@ -18,6 +21,7 @@ type Props = {
 const TablePageHeader: React.FC<Props> = ({
 	catalogs,
 	isCatalogsPending,
+	databaseOptions,
 	selectedCatalog,
 	selectedDatabase,
 	loading,
@@ -26,10 +30,16 @@ const TablePageHeader: React.FC<Props> = ({
 	onRefresh,
 	isRefreshDisabled,
 }) => {
-	const catalogOptions = catalogs.map(c => ({ label: c.name, value: c.name }))
+	const catalogNameForDatabasesQuery =
+		selectedCatalog ?? catalogs[0]?.name ?? ""
 
-	const selectedCatalogRow = catalogs.find(c => c.name === selectedCatalog)
-	const databaseOptions = (selectedCatalogRow?.databases ?? []).map(db => ({
+	const isDatabasesPending =
+		useIsFetching({
+			queryKey: catalogKeys.databases(catalogNameForDatabasesQuery),
+		}) > 0
+
+	const catalogOptions = catalogs.map(c => ({ label: c.name, value: c.name }))
+	const databaseSelectOptions = databaseOptions.map(db => ({
 		label: db,
 		value: db,
 	}))
@@ -56,8 +66,9 @@ const TablePageHeader: React.FC<Props> = ({
 					value={selectedDatabase}
 					onChange={onDatabaseChange}
 					className="w-72"
-					options={databaseOptions}
-					disabled={!selectedCatalog || databaseOptions.length === 0}
+					options={databaseSelectOptions}
+					loading={isDatabasesPending}
+					disabled={!selectedCatalog || databaseSelectOptions.length === 0}
 				/>
 				<Button
 					type="primary"
