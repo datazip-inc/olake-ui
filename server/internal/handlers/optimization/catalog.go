@@ -90,6 +90,24 @@ func (h *Handler) UpdateCatalog() {
 	utils.SuccessResponse(&h.Controller, result.Message, nil)
 }
 
+// deletes a catalog
+func (h *Handler) DeleteCatalog() {
+	catalogName, ok := h.requiredCatalog()
+	if !ok {
+		return
+	}
+
+	logger.Debugf("Delete catalog initiated catalog[%s]", catalogName)
+
+	result, err := h.opt.DeleteCatalog(h.Ctx.Request.Context(), catalogName)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete catalog", err)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, result.Message, nil)
+}
+
 func (h *Handler) requiredCatalog() (string, bool) {
 	catalog := h.Ctx.Input.Param(":catalog")
 	if catalog == "" {
@@ -97,4 +115,12 @@ func (h *Handler) requiredCatalog() (string, bool) {
 		return "", false
 	}
 	return catalog, true
+}
+
+func (h *Handler) bindJSON(dst interface{}) bool {
+	if err := h.Ctx.BindJSON(dst); err != nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
+		return false
+	}
+	return true
 }

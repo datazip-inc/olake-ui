@@ -41,7 +41,7 @@ func (h *Handler) SetProperties() {
 
 	result, err := h.opt.SetProperties(h.Ctx.Request.Context(), catalog, database, table, req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set optimization cron configuration", err)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set configuration", err)
 		return
 	}
 

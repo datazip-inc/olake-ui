@@ -25,8 +25,3 @@ func NewHandler(s *services.Service) *Handler {
 func (h *Handler) Prepare() {
 	h.opt = opt
 }
-
-// GetService returns the underlying optimization service for cross-service orchestration
-func (h *Handler) GetService() *services.Service {
-	return h.opt
-}

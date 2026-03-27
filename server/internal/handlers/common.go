@@ -1,109 +1,150 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
-
-	optService "github.com/datazip-inc/olake-ui/server/internal/services/optimization"
 )
 
-// CreateDestinationAndCatalog orchestrates ETL destination creation with optional catalog creation.
-// This cross-cutting concern requires access to both ETL and optimization handlers.
+// @Summary Create a new destination in ETL & catalog in Optimization (if enabled)
+// @Tags Destinations
+// @Description Create a new destination for a project
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   body          body    dto.CreateDestinationRequest true "destination data"
+// @Success 200 {object} dto.JSONResponse{data=dto.CreateDestinationRequest}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to create destination"
+// @Router /api/v1/project/{projectid}/destinations [post]
 func (h *Handler) CreateDestinationAndCatalog() {
-	var configJSON string
-	if h.Optimization != nil {
-		var req dto.CreateDestinationRequest
-		if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err == nil {
-			configJSON = req.Config
-		}
-	}
-
-	h.ETL.Controller = h.Controller
-	h.ETL.CreateDestination()
-
-	if h.Ctx.ResponseWriter.Status >= 400 {
+	userID := etl.GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
-	if h.Optimization != nil && configJSON != "" {
-		catalogName, _ := optService.ExtractCatalogNameFromConfig(configJSON)
-		logger.Debugf("Creating catalog[%s] from destination config", catalogName)
-
-		if _, err := h.Optimization.GetService().CreateCatalogFromOLakeConfig(h.Ctx.Request.Context(), configJSON, true); err != nil {
-			logger.Errorf("Failed to create catalog[%s]: %s", catalogName, err)
-			// Return warning in response - destination created but catalog failed
-			utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination created but catalog creation failed", err)
-			return
-		}
-		logger.Infof("Catalog[%s] created successfully", catalogName)
+	projectID, err := etl.GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
 	}
+
+	var req dto.CreateDestinationRequest
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := dto.ValidateDestinationType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Create destination initiated project_id[%s] destination_type[%s] destination_name[%s] user_id[%v]",
+		projectID, req.Type, req.Name, userID)
+
+	result, err := h.appSvc.CreateDestinationWithCatalog(h.Ctx.Request.Context(), projectID, &req, userID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
+		return
+	}
+	if result.CatalogErr != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination created but catalog creation failed", result.CatalogErr)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 
-// UpdateDestinationAndCatalog orchestrates ETL destination updates with catalog synchronization.
-// This ensures catalog configs stay in sync when destinations are modified.
+// @Summary Update a destination in ETL & catalog in Optimization (if enabled)
+// @Tags Destinations
+// @Description Update the configuration details of an existing destination.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "destination id"
+// @Param   body          body    dto.UpdateDestinationRequest true "destination data"
+// @Success 200 {object} dto.JSONResponse{data=dto.UpdateDestinationRequest}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to update destination"
+// @Router /api/v1/project/{projectid}/destinations/{id} [put]
 func (h *Handler) UpdateDestinationAndCatalog() {
-	var configJSON string
-	if h.Optimization != nil {
-		var req dto.UpdateDestinationRequest
-		if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err == nil {
-			configJSON = req.Config
-		}
-	}
-
-	h.ETL.Controller = h.Controller
-	h.ETL.UpdateDestination()
-
-	if h.Ctx.ResponseWriter.Status >= 400 {
+	userID := etl.GetUserIDFromSession(&h.Controller)
+	if userID == nil {
+		utils.ErrorResponse(&h.Controller, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
-	if h.Optimization != nil && configJSON != "" {
-		catalogName, _ := optService.ExtractCatalogNameFromConfig(configJSON)
-		logger.Debugf("Updating catalog[%s] from destination config", catalogName)
-
-		if _, err := h.Optimization.GetService().UpdateCatalogFromOLakeConfig(h.Ctx.Request.Context(), configJSON); err != nil {
-			logger.Errorf("Failed to update catalog[%s]: %s", catalogName, err)
-			// Return warning - destination updated but catalog sync failed
-			utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination updated but catalog sync failed", err)
-			return
-		}
-		logger.Infof("Catalog[%s] updated successfully", catalogName)
+	id, err := etl.GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
 	}
+
+	projectID, err := etl.GetProjectIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	var req dto.UpdateDestinationRequest
+	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	if err := dto.ValidateDestinationType(req.Type); err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		return
+	}
+
+	logger.Debugf("Update destination initiated project_id[%s] destination_id[%d] destination_type[%s] user_id[%v]",
+		projectID, id, req.Type, userID)
+
+	result, err := h.appSvc.UpdateDestinationWithCatalog(h.Ctx.Request.Context(), id, projectID, &req, userID)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
+		return
+	}
+	if result.CatalogErr != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination updated but catalog updation failed", result.CatalogErr)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
-// DeleteDestinationAndCatalog orchestrates ETL destination deletion with catalog cleanup.
-// This prevents orphaned catalogs when their corresponding destinations are removed.
+// @Summary Delete a destination in ETL & catalog in Optimization (if enabled)
+// @Tags Destinations
+// @Description Permanently delete a specified destination.
+// @Param   projectid     path    string  true    "project id (default is 123)"
+// @Param   id            path    int     true    "destination id"
+// @Success 200 {object} dto.JSONResponse{data=dto.DeleteDestinationResponse}
+// @Failure 400 {object} dto.Error400Response "failed to validate request"
+// @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 500 {object} dto.Error500Response "failed to delete destination"
+// @Router /api/v1/project/{projectid}/destinations/{id} [delete]
 func (h *Handler) DeleteDestinationAndCatalog() {
-	var catalogName string
-	if h.Optimization != nil {
-		id, err := etl.GetIDFromPath(&h.Controller)
-		if err == nil {
-			if destination, err := h.ETL.GetService().GetDestinationByID(id); err == nil {
-				catalogName, _ = optService.ExtractCatalogNameFromConfig(destination.Config)
-			}
-		}
-	}
-
-	h.ETL.Controller = h.Controller
-	h.ETL.DeleteDestination()
-
-	if h.Ctx.ResponseWriter.Status >= 400 {
+	id, err := etl.GetIDFromPath(&h.Controller)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	if h.Optimization != nil && catalogName != "" {
-		logger.Debugf("Deleting catalog[%s]", catalogName)
+	logger.Debugf("Delete destination initiated destination_id[%d]", id)
 
-		if _, err := h.Optimization.GetService().DeleteCatalog(h.Ctx.Request.Context(), catalogName); err != nil {
-			logger.Errorf("Failed to delete catalog[%s]: %s", catalogName, err)
-			// Log warning but don't fail the entire operation - destination already deleted
-			logger.Warnf("Destination deleted successfully but catalog[%s] cleanup failed - may need manual cleanup", catalogName)
-		} else {
-			logger.Infof("Catalog[%s] deleted successfully", catalogName)
-		}
+	resp, result, err := h.appSvc.DeleteDestinationWithCatalog(h.Ctx.Request.Context(), id)
+	if err != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
+		return
 	}
+	if result.CatalogErr != nil {
+		utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination deleted but catalog deletion failed", result.CatalogErr)
+		return
+	}
+
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s deleted successfully as well as catalog", resp.Name), resp)
 }

@@ -52,8 +52,8 @@ var (
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
 	ConfEnableOptimization    = "ENABLE_OPTIMIZATION"
 	ConfOptimizationBaseURL   = "OPTIMIZATION_BASE_URL"
-	ConfOptimizationUsername  = "OPTIMIZATION_USERNAME"
-	ConfOptimizationPassword  = "OPTIMIZATION_PASSWORD"
+	ConfOptimizationUsername  = "USERNAME"
+	ConfOptimizationPassword  = "PASSWORD"
 	ConfOptimizationGroup     = "OPTIMIZATION_GROUP"
 
 	// database keys

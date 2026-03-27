@@ -8,18 +8,24 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-// acts as the orchestration layer that composes domain-specific handlers.
+// acts as the orchestration layer for: ETL & Optimization handlers
 type Handler struct {
 	web.Controller
+	// for cross-service api calls, the orchestration handler
+	// has app service access
+	appSvc       *services.AppService
 	ETL          *etl.Handler
 	Optimization *optimization.Handler
 }
 
-// NewHandler creates the orchestration handler by composing domain handlers.
-// It conditionally initializes optimization support based on service availability.
+var app *services.AppService
+
+// domain-specific handler
 func NewHandler(appSvc *services.AppService) *Handler {
+	app = appSvc
 	h := &Handler{
-		ETL: etl.NewHandler(appSvc.ETL()),
+		appSvc: appSvc,
+		ETL:    etl.NewHandler(appSvc.ETL()),
 	}
 	if appSvc.Optimization() != nil {
 		h.Optimization = optimization.NewHandler(appSvc.Optimization())
@@ -28,10 +34,15 @@ func NewHandler(appSvc *services.AppService) *Handler {
 	return h
 }
 
-// GetoptimizationStatus reports whether optimization features are enabled.
+// Prepare runs before each action; Beego constructs a fresh controller per request,
+// so we assign the shared AppService here to avoid nil dereferences.
+func (h *Handler) Prepare() {
+	h.appSvc = app
+}
+
 func (h *Handler) GetoptimizationStatus() {
 	response := map[string]interface{}{
-		"enabled": h.Optimization != nil,
+		"enabled": h.appSvc.Optimization() != nil,
 	}
 
 	utils.SuccessResponse(&h.Controller, "optimization status retrieved successfully", response)

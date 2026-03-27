@@ -109,7 +109,7 @@ func Init(h *handlers.Handler) {
 
 	// platform routes
 	web.Router("/api/v1/platform/releases", etlHandler, "get:GetReleaseUpdates")
-	web.Router("/api/v1/platform/optimization/status", h, "get:GetoptimizationStatus")
+	web.Router("/api/v1/platform/opt/status", h, "get:GetoptimizationStatus")
 
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", etlHandler, "post:UpdateSyncTelemetry")
@@ -119,10 +119,11 @@ func Init(h *handlers.Handler) {
 	if h.Optimization != nil {
 		optHandler := h.Optimization
 
-		// catalogs: crud, (delete in piggy-backing)
+		// catalogs: crud
 		web.Router("/api/opt/v1/catalog", optHandler, "post:CreateCatalog")
 		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "get:GetCatalog")
 		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "put:UpdateCatalog")
+		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "delete:DeleteCatalog")
 
 		// terminal: cron, enable/disable optimization
 		web.Router("/api/opt/v1/:catalog/:database/:table/config", optHandler, "put:SetProperties")
@@ -131,6 +132,6 @@ func Init(h *handlers.Handler) {
 		web.Router("/api/opt/v1/:catalog/:database/tables", optHandler, "get:GetTablesWithDetails")
 
 		// piggy backing
-		web.Router("/api/opt/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking;patch:PiggyBacking")
+		web.Router("/api/opt/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking")
 	}
 }
