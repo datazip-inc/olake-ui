@@ -7,6 +7,7 @@ import {
 } from "@phosphor-icons/react"
 import { Button, Dropdown, Spin, Switch, Tooltip } from "antd"
 import type { MenuProps } from "antd/es/menu"
+import clsx from "clsx"
 
 import { Tag, type ColumnDef } from "@/common/components"
 
@@ -127,7 +128,10 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 					</Tag>
 				) : (
 					<span
-						className={`text-sm leading-6 ${getHealthScoreColor(row.healthScore)}`}
+						className={clsx(
+							"text-sm leading-6",
+							getHealthScoreColor(row.healthScore),
+						)}
 					>
 						{row.healthScore}%
 					</span>

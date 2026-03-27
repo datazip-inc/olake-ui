@@ -1,3 +1,4 @@
+import { Button } from "antd"
 import clsx from "clsx"
 import type React from "react"
 
@@ -19,6 +20,18 @@ export type PaginationConfig = {
 	onPageChange: (page: number) => void
 }
 
+export type EmptyStateConfig = {
+	title: string
+	subtitle?: string
+	onRefetch?: () => void
+	refetchLabel?: string
+}
+
+const DEFAULT_EMPTY_STATE_CONFIG: EmptyStateConfig = {
+	title: "No Data",
+	subtitle: "Try adjusting your search or filters.",
+}
+
 export type DataTableProps<TRow> = {
 	columns: ColumnDef<TRow>[]
 	rows: TRow[]
@@ -28,8 +41,8 @@ export type DataTableProps<TRow> = {
 	/** Number of skeleton rows to show while loading. Defaults to 6. */
 	loadingRowCount?: number
 
-	/** Shown when rows are empty and not loading. Defaults to built-in "No Data". */
-	emptyState?: React.ReactNode
+	/**  empty State COnfiguration for table. Optional. */
+	emptyStateConfig?: EmptyStateConfig
 
 	/** Omit to disable pagination. */
 	pagination?: PaginationConfig
@@ -40,9 +53,32 @@ export type DataTableProps<TRow> = {
 	className?: string
 }
 
-const DefaultEmptyState: React.FC = () => (
-	<div className="flex h-24 items-center justify-center px-6 text-sm text-olake-text-tertiary">
-		No Data
+const EmptyState: React.FC<EmptyStateConfig> = ({
+	title,
+	subtitle,
+	onRefetch,
+	refetchLabel = "Refetch",
+}) => (
+	<div className="flex h-56 items-center justify-center px-6">
+		<div className="text-center">
+			<p className="text-xl font-medium leading-7 text-olake-heading-strong">
+				{title}
+			</p>
+			{subtitle && (
+				<p className="mt-1 text-sm leading-[22px] text-olake-body">
+					{subtitle}
+				</p>
+			)}
+			{onRefetch && (
+				<Button
+					type="primary"
+					className="mt-4"
+					onClick={onRefetch}
+				>
+					{refetchLabel}
+				</Button>
+			)}
+		</div>
 	</div>
 )
 
@@ -139,7 +175,7 @@ function DataTable<TRow>({
 	rowKey,
 	loading = false,
 	loadingRowCount = 6,
-	emptyState,
+	emptyStateConfig,
 	pagination,
 	pageSize = 6,
 	className,
@@ -224,9 +260,9 @@ function DataTable<TRow>({
 						))}
 
 					{/* Empty state */}
-					{!loading &&
-						rows.length === 0 &&
-						(emptyState ?? <DefaultEmptyState />)}
+					{!loading && rows.length === 0 && (
+						<EmptyState {...(emptyStateConfig ?? DEFAULT_EMPTY_STATE_CONFIG)} />
+					)}
 				</div>
 			</div>
 

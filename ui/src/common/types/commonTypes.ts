@@ -10,7 +10,7 @@ export interface NavItem {
 
 export type TestConnectionStatus = "FAILED" | "SUCCEEDED"
 
-export interface TestResponse {
+export interface TestConnectionResponse {
 	connection_result: {
 		message: string
 		status: TestConnectionStatus

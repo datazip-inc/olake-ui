@@ -1,5 +1,4 @@
 import { useIsFetching } from "@tanstack/react-query"
-import { Button } from "antd"
 import { useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
@@ -191,33 +190,6 @@ const Tables: React.FC = () => {
 		toggleTableOptimizing,
 	])
 
-	const emptySearchState = (
-		<div className="flex h-56 items-center justify-center">
-			<div className="text-center">
-				<p className="text-xl font-medium leading-7 text-olake-heading-strong">
-					{tables.length === 0 ? "No Tables" : "No Tables Found."}
-				</p>
-				{tables.length > 0 && (
-					<p className="mt-1 text-sm leading-[22px] text-olake-body">
-						Try a different search or filter.
-					</p>
-				)}
-				{tables.length === 0 && (
-					<p className="mt-1 text-sm leading-[22px] text-olake-body">
-						There are no tables in the selected catalog.
-					</p>
-				)}
-				<Button
-					type="primary"
-					className="mt-4"
-					onClick={() => navigate("/maintenance/catalogs")}
-				>
-					Add Catalog
-				</Button>
-			</div>
-		</div>
-	)
-
 	const handleCatalogUnavailableClose = () => {
 		setCatalogNotAvailableOpen(false)
 		window.location.assign(location.pathname)
@@ -288,7 +260,16 @@ const Tables: React.FC = () => {
 										rows={paginatedRows}
 										rowKey={row => row.id}
 										loading={loading}
-										emptyState={emptySearchState}
+										emptyStateConfig={{
+											title:
+												tables.length === 0 ? "No Tables" : "No Tables Found.",
+											subtitle:
+												tables.length > 0
+													? "Try a different search or filter."
+													: "There are no tables in the selected catalog.",
+											onRefetch: () => navigate("/maintenance/catalogs"),
+											refetchLabel: "Add Catalog",
+										}}
 										pagination={{
 											currentPage,
 											totalPages,

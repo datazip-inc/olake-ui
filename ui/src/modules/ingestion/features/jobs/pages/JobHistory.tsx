@@ -49,13 +49,14 @@ const JobHistory: React.FC = () => {
 	const retryCountRef = useRef(0)
 
 	const {
-		data: jobTasks = [],
+		data: jobTasksData,
 		isLoading: isLoadingJobTasks,
 		error: jobTasksErrorObj,
 		refetch: refetchJobTasks,
 	} = useJobTasks(jobId || "", {
 		refetchInterval: isPolling ? POLL_INTERVAL : false,
 	})
+	const jobTasks = Array.isArray(jobTasksData) ? jobTasksData : []
 
 	// Stop polling when sync is found or retries exhausted
 	useEffect(() => {

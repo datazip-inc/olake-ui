@@ -4,6 +4,7 @@ import {
 	MagnifyingGlassIcon,
 } from "@phosphor-icons/react"
 import { Button, Input } from "antd"
+import clsx from "clsx"
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
@@ -37,13 +38,18 @@ const getColumns = (
 			const cfg = getRunLogsStatusConfig(row.status)
 			return (
 				<span
-					className={`inline-flex h-5 items-center gap-1 rounded-[20px] px-2 ${cfg.bgClass}`}
+					className={clsx(
+						"inline-flex h-5 items-center gap-1 rounded-[20px] px-2",
+						cfg.bgClass,
+					)}
 				>
 					<cfg.Icon
 						size={12}
-						className={`${cfg.textClass}`}
+						className={clsx(cfg.textClass)}
 					/>
-					<span className={`text-xs font-medium leading-5 ${cfg.textClass}`}>
+					<span
+						className={clsx("text-xs font-medium leading-5", cfg.textClass)}
+					>
 						{cfg.label}
 					</span>
 				</span>
@@ -211,11 +217,12 @@ const RunHistory: React.FC = () => {
 								key={filter.key}
 								type="button"
 								onClick={() => setActiveFilter(filter.key as RunsFilter)}
-								className={`h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px] ${
+								className={clsx(
+									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
 									active
 										? "bg-olake-surface-muted text-olake-text-secondary"
-										: "bg-white text-olake-text-secondary"
-								}`}
+										: "bg-white text-olake-text-secondary",
+								)}
 							>
 								{filter.label}
 							</button>
@@ -236,10 +243,19 @@ const RunHistory: React.FC = () => {
 						onPageChange: setCurrentPage,
 					}}
 					pageSize={10}
-					emptyState={
+					emptyStateConfig={
 						filteredRows.length === 0
-							? undefined
-							: "No runs on this page. Try another page."
+							? {
+									title: "No runs found",
+									subtitle: "Try a different search or filter.",
+									onRefetch: () => void refetch(),
+									refetchLabel: "Refresh",
+								}
+							: {
+									title: "No runs found for this table",
+									subtitle:
+										"No runs are available yet. Configure optimization to view run history here.",
+								}
 					}
 				/>
 			</div>

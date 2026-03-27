@@ -216,7 +216,7 @@ export const mbToBytes = (mb: number): number => {
 }
 
 // Converts a string to start case (first letter uppercase, rest lowercase).
-export const toStartCase = (value: string): string => {
+export const toSentenceCase = (value: string): string => {
 	const normalized = value.trim()
 	if (!normalized) return ""
 	return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase()

@@ -192,7 +192,8 @@ const Jobs: React.FC = () => {
 					) : (
 						<JobTable
 							jobs={filteredJobs}
-							loading={isLoadingJobs || isRefreshingJobs}
+							loading={isLoadingJobs}
+							refreshLoading={isRefreshingJobs}
 							jobType={activeTab}
 							onRefresh={handleRefreshJobs}
 							onSync={handleSyncJob}

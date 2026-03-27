@@ -48,6 +48,13 @@ const Sources: React.FC = () => {
 		handleCreateSource()
 	}
 
+	const handleOnboardingClose = () => {
+		if (typeof window !== "undefined") {
+			sessionStorage.setItem(SOURCE_ONBOARDING_DISMISSED_SESSION_KEY, "true")
+		}
+		setIsOnboardingDismissed(true)
+	}
+
 	const handleEditSource = (id: string) => {
 		navigate(`/sources/${id}`)
 	}
@@ -151,6 +158,7 @@ const Sources: React.FC = () => {
 			<SourceOnboardingModal
 				open={activeTab === "active" && showEmpty && !isOnboardingDismissed}
 				handleCreateSource={handleOnboardingCreateSource}
+				onClose={handleOnboardingClose}
 			/>
 		</div>
 	)

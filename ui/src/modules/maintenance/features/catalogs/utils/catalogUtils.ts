@@ -13,12 +13,7 @@ export const mapGetCatalogResponseToFormData = (
 	data: CatalogFormData,
 ): CatalogFormData => {
 	const writer = (data as { writer?: unknown }).writer
-	if (
-		writer !== null &&
-		writer !== undefined &&
-		typeof writer === "object" &&
-		!Array.isArray(writer)
-	) {
+	if (writer !== null && writer !== undefined && typeof writer === "object") {
 		return data
 	}
 

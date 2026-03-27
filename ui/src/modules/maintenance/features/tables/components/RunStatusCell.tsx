@@ -52,14 +52,19 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 				return (
 					<div
 						key={slot.key}
-						className={`inline-flex items-center gap-1 rounded-[20px] px-2 py-px ${cfg.bgClass}`}
+						className={clsx(
+							"inline-flex items-center gap-1 rounded-[20px] px-2 py-px",
+							cfg.bgClass,
+						)}
 						aria-label={`${slot.name} — ${cfg.label}`}
 					>
 						<cfg.Icon
 							size={16}
 							className={clsx(cfg.textClass, cfg.iconClass)}
 						/>
-						<span className={`text-xs font-medium leading-5 ${cfg.textClass}`}>
+						<span
+							className={clsx("text-xs font-medium leading-5", cfg.textClass)}
+						>
 							{slot.tag}
 						</span>
 					</div>

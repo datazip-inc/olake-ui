@@ -111,6 +111,7 @@ export interface SavedJobDraft {
 export interface JobTableProps {
 	jobs: (Job | SavedJobDraft)[]
 	loading: boolean
+	refreshLoading?: boolean
 	jobType: JobStatus
 	onRefresh: () => void
 	onSync: (id: string) => void

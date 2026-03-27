@@ -49,13 +49,14 @@ const CatalogNotAvailableModal: React.FC<CatalogNotAvailableModalProps> = ({
 						weight="regular"
 						className="text-olake-icon-muted"
 					/>
+					{/* TODO: Truncate the name fields wherever the name can overflow the UI */}
 					<span className="whitespace-nowrap text-sm leading-[22px] text-olake-text-secondary">
 						{catalogName}
 					</span>
 				</div>
 
 				<div className="mt-[49px]">
-					<Button onClick={onClose}>Understood</Button>
+					<Button onClick={onClose}>Close</Button>
 				</div>
 			</div>
 		</Modal>

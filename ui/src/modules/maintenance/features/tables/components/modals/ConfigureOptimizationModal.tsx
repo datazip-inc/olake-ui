@@ -1,5 +1,6 @@
 import { CaretUpIcon, QuestionIcon, TableIcon } from "@phosphor-icons/react"
 import { Button, Input, Modal, Select, Spin, Tooltip } from "antd"
+import clsx from "clsx"
 import { useEffect, useState } from "react"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
@@ -33,7 +34,10 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
 	return (
 		<div
-			className={`flex flex-col gap-4 py-8 ${!isFirst ? "border-t border-olake-border-secondary" : ""}`}
+			className={clsx(
+				"flex flex-col gap-4 py-8",
+				!isFirst && "border-t border-olake-border-secondary",
+			)}
 		>
 			{/* Section heading */}
 			<div className="flex items-center gap-1">
@@ -140,7 +144,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		setMinorCron(config.minorCron)
 		setMajorCron(config.majorCron)
 		setFullCron(config.fullCron)
-		if (config.targetFileSize !== undefined) {
+		if (config.targetFileSize !== undefined && config.targetFileSize > 0) {
 			setTargetFileSize(config.targetFileSize)
 		}
 	}, [tableCronConfig])
@@ -268,7 +272,10 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 										</span>
 										<CaretUpIcon
 											size={16}
-											className={`text-olake-text-tertiary transition-transform ${advancedOpen ? "" : "rotate-180"}`}
+											className={clsx(
+												"text-olake-text-tertiary transition-transform",
+												!advancedOpen && "rotate-180",
+											)}
 										/>
 									</button>
 

@@ -4,6 +4,7 @@ import {
 	MagnifyingGlassIcon,
 } from "@phosphor-icons/react"
 import { Button, Input, message } from "antd"
+import clsx from "clsx"
 import { useEffect, useMemo, useState } from "react"
 import { Virtuoso } from "react-virtuoso"
 
@@ -133,13 +134,19 @@ const RunLogRow: React.FC<{ row: RunLogEntry }> = ({ row }) => {
 			</span>
 			<span>
 				<span
-					className={`inline-flex h-5 items-center rounded-[20px] px-2 font-sans text-[10px] font-medium leading-5 ${getLogLevelClass(levelKey)}`}
+					className={clsx(
+						"inline-flex h-5 items-center rounded-[20px] px-2 font-sans text-[10px] font-medium leading-5",
+						getLogLevelClass(levelKey),
+					)}
 				>
 					{row.level}
 				</span>
 			</span>
 			<span
-				className={`whitespace-normal break-words font-mono text-[10px] font-medium leading-[17px] ${getLogTextColor(levelKey)}`}
+				className={clsx(
+					"whitespace-normal break-words font-mono text-[10px] font-medium leading-[17px]",
+					getLogTextColor(levelKey),
+				)}
 			>
 				{row.message}
 				{normalizedStackTrace && (

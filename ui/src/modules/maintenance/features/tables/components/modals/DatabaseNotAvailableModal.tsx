@@ -55,7 +55,7 @@ const DatabaseNotAvailableModal: React.FC<DatabaseNotAvailableModalProps> = ({
 				</div>
 
 				<div className="mt-[49px]">
-					<Button onClick={onClose}>Understood</Button>
+					<Button onClick={onClose}>Close</Button>
 				</div>
 			</div>
 		</Modal>

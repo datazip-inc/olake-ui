@@ -59,6 +59,7 @@ export function useCatalogDatabaseSelection(
 
 		const foundCatalog = catalogs.find(c => c.name === catalogParam)
 		if (!foundCatalog) {
+			setSelectedCatalog(undefined)
 			setCatalogNotAvailableOpen(true)
 			return
 		}

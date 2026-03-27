@@ -3,6 +3,7 @@ import {
 	GitCommitIcon,
 	LinktreeLogoIcon,
 	PathIcon,
+	XIcon,
 } from "@phosphor-icons/react"
 import type { ReactNode } from "react"
 
@@ -19,7 +20,7 @@ const StepCard = ({
 	icon: ReactNode
 	iconContainerClassName: string
 }) => (
-	<div className="h-24 w-full rounded-2xl border border-[#d9d9d9] bg-white p-[7px]">
+	<div className="h-24 w-full rounded-2xl border border-olake-border bg-white p-[7px]">
 		<div className="flex h-full items-center gap-5">
 			<div
 				className={`flex size-20 shrink-0 items-center justify-center rounded-xl ${iconContainerClassName}`}
@@ -27,13 +28,15 @@ const StepCard = ({
 				{icon}
 			</div>
 			<div className="flex min-w-0 flex-col gap-1">
-				<p className="text-xs font-medium tracking-wide text-[#9f9f9f]">
+				<p className="text-xs font-medium tracking-wide text-text-placeholder">
 					STEP {step}
 				</p>
 				<p className="text-[18px] font-medium leading-[22px] text-black">
 					{title}
 				</p>
-				<p className="text-sm leading-[normal] text-[#0a0a0a]">{description}</p>
+				<p className="text-sm leading-[normal] text-text-primary">
+					{description}
+				</p>
 			</div>
 		</div>
 	</div>
@@ -42,9 +45,11 @@ const StepCard = ({
 const SourceOnboardingModal = ({
 	open,
 	handleCreateSource,
+	onClose,
 }: {
 	open: boolean
 	handleCreateSource: () => void
+	onClose: () => void
 }) => {
 	if (!open) {
 		return null
@@ -52,15 +57,23 @@ const SourceOnboardingModal = ({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(47,47,47,0.33)] p-4">
-			<div className="h-[670px] w-full max-w-[894px] rounded-2xl bg-white">
+			<div className="relative h-[670px] w-full max-w-[894px] rounded-2xl bg-white">
+				<button
+					type="button"
+					onClick={onClose}
+					aria-label="Close onboarding modal"
+					className="absolute right-6 top-6 flex size-8 items-center justify-center rounded-md text-olake-icon-muted transition-colors hover:bg-olake-surface-muted hover:text-olake-body"
+				>
+					<XIcon size={18} />
+				</button>
 				<div className="px-10 pt-12">
 					<div className="w-[540px]">
 						<p className="text-sm font-medium text-brand-blue">Hello User !</p>
 						<div className="mt-3 flex flex-col gap-1">
-							<h2 className="text-2xl font-bold leading-8 text-[#0a0a0a]">
+							<h2 className="text-2xl font-bold leading-8 text-text-primary">
 								Welcome to OLake
 							</h2>
-							<p className="text-base leading-[normal] text-[#0a0a0a]">
+							<p className="text-base leading-[normal] text-text-primary">
 								Get started by following these simple steps to set up your first
 								data pipeline
 							</p>

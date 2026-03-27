@@ -7,6 +7,7 @@ import {
 	WarningCircleIcon,
 } from "@phosphor-icons/react"
 import { Button, Input, message } from "antd"
+import clsx from "clsx"
 import { useMemo, useState } from "react"
 
 import { DRIVER_SOURCE_KEY } from "../constants"
@@ -99,11 +100,12 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 					<button
 						type="button"
 						onClick={() => onSelectSource(DRIVER_SOURCE_KEY)}
-						className={`flex h-7 w-full items-center gap-[9px] rounded-md px-2 ${
+						className={clsx(
+							"flex h-7 w-full items-center gap-[9px] rounded-md px-2",
 							selectedSourceKey === DRIVER_SOURCE_KEY
 								? "bg-olake-surface-muted"
-								: "bg-transparent"
-						}`}
+								: "bg-transparent",
+						)}
 					>
 						<HardDrivesIcon
 							size={16}
@@ -142,9 +144,10 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 										key={source.key}
 										type="button"
 										onClick={() => onSelectSource(source.key)}
-										className={`flex h-6 w-full items-center gap-2 rounded-md px-2 ${
-											isSelected ? "bg-olake-surface-subtle" : "bg-transparent"
-										}`}
+										className={clsx(
+											"flex h-6 w-full items-center gap-2 rounded-md px-2",
+											isSelected ? "bg-olake-surface-subtle" : "bg-transparent",
+										)}
 									>
 										{source.hasError && (
 											<WarningCircleIcon
@@ -154,11 +157,12 @@ const RunLogSidebar: React.FC<RunLogSidebarProps> = ({
 											/>
 										)}
 										<span
-											className={`font-sans text-sm font-normal leading-[22px] ${
+											className={clsx(
+												"font-sans text-sm font-normal leading-[22px]",
 												source.hasError
 													? "text-olake-error"
-													: "text-olake-text-secondary"
-											}`}
+													: "text-olake-text-secondary",
+											)}
 										>
 											{source.label}
 										</span>

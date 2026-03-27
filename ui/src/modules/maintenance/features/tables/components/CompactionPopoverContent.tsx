@@ -1,3 +1,5 @@
+import clsx from "clsx"
+
 import { compactionSlots } from "../constants"
 import type { CompactionRun } from "../types"
 import { getRunStatusConfig } from "../utils"
@@ -39,10 +41,13 @@ const CompactionPopoverContent: React.FC<Props> = ({ minor, major, full }) => {
 								<div className="flex items-center gap-1">
 									<cfg.Icon
 										size={12}
-										className={`${cfg.textClass} ${cfg.iconClass ?? ""}`}
+										className={clsx(cfg.textClass, cfg.iconClass)}
 									/>
 									<span
-										className={`text-xs font-medium leading-5 ${cfg.textClass}`}
+										className={clsx(
+											"text-xs font-medium leading-5",
+											cfg.textClass,
+										)}
 									>
 										{cfg.label}
 									</span>

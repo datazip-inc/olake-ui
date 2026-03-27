@@ -4,7 +4,7 @@ import { api } from "@/core/api"
 import { OptimizationStatusResponse, ReleasesResponse } from "../types"
 
 export const platformService = {
-	getOptmizationStatus: async (): Promise<OptimizationStatusResponse> => {
+	getOptimizationStatus: async (): Promise<OptimizationStatusResponse> => {
 		const response = await api.get<OptimizationStatusResponse>(
 			`${API_CONFIG.ENDPOINTS.PLATFORM}/opt/status`,
 			{ disableErrorNotification: true },

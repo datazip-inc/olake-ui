@@ -7,7 +7,7 @@ import {
 import {
 	bytesToMb,
 	formatTimestampToUtcTime,
-	toStartCase,
+	toSentenceCase,
 } from "@/common/utils"
 
 import { KNOWN_CRON_TRIGGER_INTERVALS } from "../constants"
@@ -67,7 +67,7 @@ export const getRunStatusConfig = (status?: string) => {
 		default:
 			return {
 				...DEFAULT_RUN_STATUS_CONFIG,
-				label: toStartCase(status || "Unknown"),
+				label: toSentenceCase(status || "Unknown"),
 			}
 	}
 }
@@ -101,7 +101,7 @@ export const getRunLogsStatusConfig = (status?: string) => {
 		default:
 			return {
 				...DEFAULT_RUN_STATUS_CONFIG,
-				label: toStartCase(status || "Unknown"),
+				label: toSentenceCase(status || "Unknown"),
 			}
 	}
 }

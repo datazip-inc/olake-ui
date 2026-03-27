@@ -186,26 +186,13 @@ const Catalogs: React.FC = () => {
 									}
 								: undefined
 						}
-						emptyState={
-							<div className="flex min-h-64 flex-col items-center justify-center px-8 text-center">
-								<div className="flex flex-col items-center justify-center gap-[3px] not-italic">
-									<p className="text-[20px] font-medium leading-[28px] text-olake-heading-strong">
-										No Catalogs Available.
-									</p>
-									<p className="text-[14px] leading-[22px] text-olake-body">
-										Create a new Catalog to view tables for optimizations
-									</p>
-								</div>
-
-								<Button
-									type="primary"
-									className="mt-6 h-8 rounded-[6px] px-6 text-[14px]"
-									onClick={() => setModalOpen(true)}
-								>
-									New Catalog
-								</Button>
-							</div>
-						}
+						emptyStateConfig={{
+							title: "No Catalogs Available",
+							subtitle:
+								"Create a new catalog to view tables for optimizations.",
+							onRefetch: () => setModalOpen(true),
+							refetchLabel: "New Catalog",
+						}}
 					/>
 				)}
 			</div>

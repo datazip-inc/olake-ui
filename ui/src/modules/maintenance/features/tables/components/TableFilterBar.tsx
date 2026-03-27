@@ -1,5 +1,6 @@
 import { MagnifyingGlassIcon } from "@phosphor-icons/react"
 import { Input } from "antd"
+import clsx from "clsx"
 
 import type { FilterKey } from "../types"
 
@@ -46,11 +47,12 @@ const TableFilterBar: React.FC<Props> = ({
 						key={filter.key}
 						type="button"
 						onClick={() => onFilterChange(filter.key)}
-						className={`h-9 whitespace-nowrap rounded-md border border-olake-border px-3 text-sm leading-5 ${
+						className={clsx(
+							"h-9 whitespace-nowrap rounded-md border border-olake-border px-3 text-sm leading-5",
 							active
 								? "bg-olake-surface-muted text-olake-text-secondary"
-								: "bg-white text-olake-body-secondary"
-						}`}
+								: "bg-white text-olake-body-secondary",
+						)}
 					>
 						{filter.label}
 					</button>

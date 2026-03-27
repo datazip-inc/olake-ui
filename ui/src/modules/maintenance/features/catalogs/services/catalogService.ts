@@ -1,4 +1,4 @@
-import { SpecResponse, TestResponse } from "@/common/types"
+import { SpecResponse, TestConnectionResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -64,7 +64,7 @@ export const catalogService = {
 		existing: boolean = false,
 	) => {
 		try {
-			const response = await api.post<TestResponse>(
+			const response = await api.post<TestConnectionResponse>(
 				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: DESTINATION_TYPE,
