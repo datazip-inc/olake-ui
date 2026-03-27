@@ -1,5 +1,6 @@
-import { compactionSlots, runStatusConfig } from "../constants"
+import { compactionSlots } from "../constants"
 import type { CompactionRun } from "../types"
+import { getRunStatusConfig } from "../utils"
 
 type Props = {
 	minor: CompactionRun
@@ -14,7 +15,7 @@ const CompactionPopoverContent: React.FC<Props> = ({ minor, major, full }) => {
 		<div className="w-60">
 			{compactionSlots.map((slot, idx) => {
 				const run = runs[slot.key]
-				const cfg = run ? runStatusConfig[run.status] : null
+				const cfg = run ? getRunStatusConfig(run.status) : null
 
 				return (
 					<div key={slot.key}>

@@ -4,8 +4,9 @@ import clsx from "clsx"
 
 import { Tag } from "@/common/components"
 
-import { compactionSlots, runStatusConfig } from "../constants"
+import { compactionSlots } from "../constants"
 import type { Table } from "../types"
+import { getRunStatusConfig } from "../utils"
 import CompactionPopoverContent from "./CompactionPopoverContent"
 
 const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
@@ -46,25 +47,7 @@ const RunStatusCell: React.FC<{ row: Table }> = ({ row }) => {
 					)
 				}
 
-				const cfg = runStatusConfig[run.status]
-				if (!cfg) {
-					return (
-						<div
-							key={slot.key}
-							className="inline-flex items-center gap-1 rounded-[20px] bg-olake-surface-muted px-2 py-px"
-							aria-label={`${slot.name} — unknown status`}
-						>
-							<CircleDashedIcon
-								size={16}
-								weight="regular"
-								className="text-olake-text-disabled"
-							/>
-							<span className="text-xs font-medium leading-5 text-olake-text-tertiary">
-								{slot.tag}
-							</span>
-						</div>
-					)
-				}
+				const cfg = getRunStatusConfig(run.status)
 
 				return (
 					<div

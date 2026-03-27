@@ -1,4 +1,14 @@
-import { bytesToMb, formatTimestampToUtcTime } from "@/common/utils"
+import {
+	CheckCircleIcon,
+	SpinnerIcon,
+	WarningCircleIcon,
+} from "@phosphor-icons/react"
+
+import {
+	bytesToMb,
+	formatTimestampToUtcTime,
+	toStartCase,
+} from "@/common/utils"
 
 import { KNOWN_CRON_TRIGGER_INTERVALS } from "../constants"
 import type {
@@ -19,6 +29,82 @@ import type {
 	TableMetricsModalData,
 	TableRun,
 } from "../types"
+
+const DEFAULT_RUN_STATUS_CONFIG = {
+	Icon: WarningCircleIcon,
+	bgClass: "bg-olake-surface-muted",
+	textClass: "text-olake-text-tertiary",
+	label: "Unknown",
+	iconClass: undefined,
+}
+
+export const getRunStatusConfig = (status?: string) => {
+	switch (status) {
+		case "SUCCESS":
+			return {
+				Icon: CheckCircleIcon,
+				bgClass: "bg-olake-success-bg",
+				textClass: "text-olake-success",
+				label: "Success",
+				iconClass: undefined,
+			}
+		case "RUNNING":
+			return {
+				Icon: SpinnerIcon,
+				bgClass: "bg-olake-warning-bg",
+				textClass: "text-olake-warning",
+				label: "Running",
+				iconClass: undefined,
+			}
+		case "FAILED":
+			return {
+				Icon: WarningCircleIcon,
+				bgClass: "bg-olake-error-bg",
+				textClass: "text-olake-error",
+				label: "Failed",
+				iconClass: undefined,
+			}
+		default:
+			return {
+				...DEFAULT_RUN_STATUS_CONFIG,
+				label: toStartCase(status || "Unknown"),
+			}
+	}
+}
+
+export const getRunLogsStatusConfig = (status?: string) => {
+	switch (status) {
+		case "SUCCESS":
+			return {
+				Icon: CheckCircleIcon,
+				bgClass: "bg-olake-success-bg",
+				textClass: "text-olake-success",
+				label: "Success",
+				iconClass: undefined,
+			}
+		case "RUNNING":
+			return {
+				Icon: SpinnerIcon,
+				bgClass: "bg-olake-warning-bg",
+				textClass: "text-olake-warning",
+				label: "Running",
+				iconClass: undefined,
+			}
+		case "FAILED":
+			return {
+				Icon: WarningCircleIcon,
+				bgClass: "bg-olake-error-bg",
+				textClass: "text-olake-error-alt",
+				label: "Failed",
+				iconClass: undefined,
+			}
+		default:
+			return {
+				...DEFAULT_RUN_STATUS_CONFIG,
+				label: toStartCase(status || "Unknown"),
+			}
+	}
+}
 
 // Converts a FusionTable into a Table, attaching a stable row id derived from name + index.
 export const mapFusionTableToTable = (
@@ -191,7 +277,7 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 	)
 
 	return {
-		enabledForOptimisation:
+		enabledForOptimization:
 			(properties["self-optimizing.enabled"] ?? "").toLowerCase() === "true",
 		minorTriggerInterval:
 			properties["self-optimizing.minor.trigger.interval"] ?? "",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 
-export const DEFAULT_PAGE_SIZE = 10
+export const DEFAULT_PAGE_SIZE = 6
 
 type UsePaginatedSearchOptions<T, F extends string = string> = {
 	// Full row dataset to process

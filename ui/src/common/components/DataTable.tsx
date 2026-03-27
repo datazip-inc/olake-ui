@@ -138,10 +138,10 @@ function DataTable<TRow>({
 	rows,
 	rowKey,
 	loading = false,
-	loadingRowCount = 10,
+	loadingRowCount = 6,
 	emptyState,
 	pagination,
-	pageSize = 10,
+	pageSize = 6,
 	className,
 }: DataTableProps<TRow>) {
 	const getAlignmentClass = (align: ColumnAlignment = "left") => {

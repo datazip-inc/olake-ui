@@ -215,6 +215,13 @@ export const mbToBytes = (mb: number): number => {
 	return Math.round(mb * BYTES_IN_MB)
 }
 
+// Converts a string to start case (first letter uppercase, rest lowercase).
+export const toStartCase = (value: string): string => {
+	const normalized = value.trim()
+	if (!normalized) return ""
+	return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase()
+}
+
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
 export const trimFormDataStrings = (data: any): any => {
 	if (data === null || data === undefined) {

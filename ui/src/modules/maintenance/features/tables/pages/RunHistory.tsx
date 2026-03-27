@@ -12,9 +12,9 @@ import type { ColumnDef } from "@/common/components"
 import { usePaginatedSearch } from "@/common/hooks"
 
 import { RunMetricsSidebar } from "../components"
-import { runLogsStatusConfig } from "../constants"
 import { useTableRuns } from "../hooks"
 import type { RunMetricRow, TableRun } from "../types"
+import { getRunLogsStatusConfig } from "../utils"
 
 type RunsFilter = "all" | "failed"
 
@@ -34,7 +34,7 @@ const getColumns = (
 		align: "center",
 		width: 16,
 		render: row => {
-			const cfg = runLogsStatusConfig[row.status]
+			const cfg = getRunLogsStatusConfig(row.status)
 			return (
 				<span
 					className={`inline-flex h-5 items-center gap-1 rounded-[20px] px-2 ${cfg.bgClass}`}
