@@ -109,7 +109,7 @@ func (c *Service) generateEncryptString(params url.Values) string {
 	return strings.Join(parts, "")
 }
 
-func (c *Service) sendRequest(ctx context.Context, method, path string, queryParams url.Values, bodyBytes []byte) ([]byte, int, error) {
+func (c *Service) sendRequest(ctx context.Context, method, path string, queryParams url.Values, bodyBytes []byte) ([]byte, int, http.Header, error) {
 	signature := c.calculateSignature(queryParams)
 	queryParams.Set("apiKey", c.apiKey)
 	queryParams.Set("signature", signature)
@@ -126,7 +126,7 @@ func (c *Service) sendRequest(ctx context.Context, method, path string, queryPar
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create request: %s", err)
+		return nil, 0, nil, fmt.Errorf("failed to create request: %s", err)
 	}
 	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
@@ -134,16 +134,16 @@ func (c *Service) sendRequest(ctx context.Context, method, path string, queryPar
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to send request: %s", err)
+		return nil, 0, nil, fmt.Errorf("failed to send request: %s", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("failed to read response body: %s", err)
+		return nil, resp.StatusCode, resp.Header, fmt.Errorf("failed to read response body: %s", err)
 	}
 
-	return respBody, resp.StatusCode, nil
+	return respBody, resp.StatusCode, resp.Header, nil
 }
 
 func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
@@ -156,7 +156,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 		}
 	}
 
-	respBody, statusCode, err := c.sendRequest(ctx, method, path, queryParams, bodyBytes)
+	respBody, statusCode, _, err := c.sendRequest(ctx, method, path, queryParams, bodyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 		if err := c.refreshToken(); err != nil {
 			return nil, fmt.Errorf("token refresh failed: %s", err)
 		}
-		respBody, statusCode, err = c.sendRequest(ctx, method, path, queryParams, bodyBytes)
+		respBody, statusCode, _, err = c.sendRequest(ctx, method, path, queryParams, bodyBytes)
 		if err != nil {
 			return nil, err
 		}

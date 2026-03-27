@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
@@ -26,9 +27,30 @@ func (h *Handler) PiggyBacking() {
 
 	transformedPath := transformOptPathToAMS(req.URL.Path)
 
-	data, err := h.opt.Proxy(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
+	data, headers, err := h.opt.ProxyWithHeaders(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadGateway, "upstream request failed", err)
+		return
+	}
+
+	// Check if response is a file download
+	contentType := headers.Get("Content-Type")
+	contentDisposition := headers.Get("Content-Disposition")
+
+	isFileDownload := strings.Contains(contentDisposition, "attachment") ||
+		strings.Contains(contentType, "application/octet-stream") ||
+		strings.Contains(contentType, "application/x-tar") ||
+		strings.Contains(contentType, "application/gzip")
+
+	if isFileDownload {
+		// Stream file directly without JSON wrapping
+		if contentType != "" {
+			h.Ctx.Output.Header("Content-Type", contentType)
+		}
+		if contentDisposition != "" {
+			h.Ctx.Output.Header("Content-Disposition", contentDisposition)
+		}
+		h.Ctx.Output.Body(data)
 		return
 	}
 
