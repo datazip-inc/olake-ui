@@ -41,3 +41,6 @@ export const OLAKE_LATEST_VERSION_URL = "https://olake.io/docs/release/overview"
 export const LOCALSTORAGE_TOKEN_KEY = "token"
 
 export const LOCALSTORAGE_USERNAME_KEY = "username"
+
+export const SOURCE_ONBOARDING_DISMISSED_SESSION_KEY =
+	"source_onboarding_modal_dismissed"

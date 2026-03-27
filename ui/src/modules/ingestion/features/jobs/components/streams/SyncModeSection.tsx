@@ -1,4 +1,4 @@
-import { PlusIcon, InfoIcon } from "@phosphor-icons/react"
+import { ArrowSquareOutIcon, InfoIcon, PlusIcon } from "@phosphor-icons/react"
 import { Radio, Select, Tooltip, Button } from "antd"
 import { useEffect, useState } from "react"
 
@@ -43,8 +43,7 @@ const SyncModeSection = () => {
 		setCursorField(initialCursorField)
 		// Auto-select first available cursor field if default sync mode is incremental and no cursor field is set
 		if (initialApiSyncMode === "incremental" && !initialCursorField) {
-			const availableCursorFields = stream.stream.available_cursor_fields || []
-			const cursor = availableCursorFields[0]
+			const cursor = getColumnOptionsForCursor()[0]?.value
 			if (cursor) {
 				setCursorField(getCursorFieldValues(cursor).primary)
 				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
@@ -74,8 +73,7 @@ const SyncModeSection = () => {
 
 		// Auto-select first available cursor field for incremental mode
 		if (selectedRadioValue === "incremental") {
-			const availableCursorFields = stream.stream.available_cursor_fields || []
-			const cursor = cursorField || availableCursorFields[0]
+			const cursor = cursorField || getColumnOptionsForCursor()[0]?.value
 			if (cursor) {
 				setCursorField(getCursorFieldValues(cursor).primary)
 				setFallBackCursorField(getCursorFieldValues(cursor).fallback)
@@ -173,9 +171,18 @@ const SyncModeSection = () => {
 	return (
 		<>
 			<div className="mb-4">
-				<label className="mb-3 block w-full font-medium text-neutral-text">
-					Sync mode:
-				</label>
+				<div className="mb-3 flex w-full items-center gap-1 font-medium text-neutral-text">
+					<label>Sync mode:</label>
+					<a
+						href="https://olake.io/docs/understanding/terminologies/olake/#2-sync-modes"
+						target="_blank"
+						rel="noopener noreferrer"
+						aria-label="Open sync modes docs"
+						className="inline-flex text-text-tertiary hover:text-primary"
+					>
+						<ArrowSquareOutIcon size={14} />
+					</a>
+				</div>
 				<Radio.Group
 					className="mb-4 grid grid-cols-2 gap-4"
 					value={syncMode}

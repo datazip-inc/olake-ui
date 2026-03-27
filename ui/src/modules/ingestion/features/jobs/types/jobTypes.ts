@@ -112,6 +112,7 @@ export interface JobTableProps {
 	jobs: (Job | SavedJobDraft)[]
 	loading: boolean
 	jobType: JobStatus
+	onRefresh: () => void
 	onSync: (id: string) => void
 	onEdit: (id: string) => void
 	onPause: (id: string, checked: boolean) => void

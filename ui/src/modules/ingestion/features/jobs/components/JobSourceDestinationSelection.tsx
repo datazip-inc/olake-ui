@@ -3,7 +3,7 @@ import {
 	PencilSimpleIcon,
 	GitCommitIcon,
 } from "@phosphor-icons/react"
-import { Select, Button, Spin } from "antd"
+import { Select, Button, Spin, Tooltip } from "antd"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -37,6 +37,11 @@ const JobSourceDestinationSelection: React.FC = () => {
 	const { data: sourcesData, isLoading: isLoadingSources } = useSources()
 	const { data: destinationsData, isLoading: isLoadingDestinations } =
 		useDestinations()
+	const getLabelWithTooltip = (name: string) => (
+		<Tooltip title={name}>
+			<span className="block truncate">{name}</span>
+		</Tooltip>
+	)
 
 	const sourceOptions = (sourcesData ?? [])
 		.filter((s: any) => {
@@ -45,7 +50,7 @@ const JobSourceDestinationSelection: React.FC = () => {
 		})
 		.map((s: any) => ({
 			value: s.id,
-			label: s.name,
+			label: getLabelWithTooltip(s.name),
 		}))
 
 	const destinationOptions = (destinationsData ?? [])
@@ -55,7 +60,7 @@ const JobSourceDestinationSelection: React.FC = () => {
 		})
 		.map((d: any) => ({
 			value: d.id,
-			label: d.name,
+			label: getLabelWithTooltip(d.name),
 		}))
 
 	// Pre-fill local source connector dropdown state if a source is already selected
@@ -90,14 +95,14 @@ const JobSourceDestinationSelection: React.FC = () => {
 			</div>
 			<div className="flex gap-4 gap-x-6">
 				{/* Source Selection */}
-				<div className="flex w-full flex-col items-end gap-y-3 border-r pr-6">
-					<div className="flex w-full gap-3">
-						<div className="flex-1">
+				<div className="flex min-w-0 flex-1 flex-col items-end gap-y-3 border-r pr-6">
+					<div className="grid w-full grid-cols-2 gap-3">
+						<div className="min-w-0">
 							<label className="mb-2 block text-sm font-medium">
 								Source Connector:<span className="text-red-500">*</span>
 							</label>
 							<Select
-								className="w-full"
+								className="w-full [&_.ant-select-selection-item]:truncate"
 								value={sourceConnector ?? undefined}
 								onChange={val => {
 									setSourceConnector(val)
@@ -109,7 +114,7 @@ const JobSourceDestinationSelection: React.FC = () => {
 								disabled={isEditMode}
 							/>
 						</div>
-						<div className="flex-1">
+						<div className="min-w-0">
 							<div className="items-between mb-2 flex justify-between text-sm font-medium">
 								<div className="inline-flex items-center">
 									Select existing source:
@@ -122,7 +127,7 @@ const JobSourceDestinationSelection: React.FC = () => {
 								</div>
 							) : (
 								<Select
-									className="w-full"
+									className="w-full [&_.ant-select-selection-item]:truncate"
 									value={selectedSource?.id ?? undefined}
 									onChange={val => {
 										const source = sourcesData?.find((s: any) => s.id === val)
@@ -161,14 +166,14 @@ const JobSourceDestinationSelection: React.FC = () => {
 				</div>
 
 				{/* Destination Selection */}
-				<div className="flex w-full flex-col items-end gap-3">
-					<div className="flex w-full gap-3">
-						<div className="flex-1">
+				<div className="flex min-w-0 flex-1 flex-col items-end gap-3">
+					<div className="grid w-full grid-cols-2 gap-3">
+						<div className="min-w-0">
 							<label className="mb-2 block text-sm font-medium">
 								Destination Connector:<span className="text-red-500">*</span>
 							</label>
 							<Select
-								className="w-full"
+								className="w-full [&_.ant-select-selection-item]:truncate"
 								value={destinationConnector ?? undefined}
 								onChange={val => {
 									setDestinationConnector(val)
@@ -180,7 +185,7 @@ const JobSourceDestinationSelection: React.FC = () => {
 								disabled={isEditMode}
 							/>
 						</div>
-						<div className="flex-1">
+						<div className="min-w-0">
 							<div className="items-between mb-2 flex justify-between text-sm font-medium">
 								<div className="inline-flex items-center">
 									Select existing destination:
@@ -193,7 +198,7 @@ const JobSourceDestinationSelection: React.FC = () => {
 								</div>
 							) : (
 								<Select
-									className="w-full"
+									className="w-full [&_.ant-select-selection-item]:truncate"
 									value={selectedDestination?.id ?? undefined}
 									onChange={val => {
 										const dest = destinationsData?.find(

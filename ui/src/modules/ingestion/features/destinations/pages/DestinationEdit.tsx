@@ -49,7 +49,10 @@ import {
 	DISPLAYED_JOBS_COUNT,
 } from "@/modules/ingestion/common/constants"
 import { Entity, EntityType } from "@/modules/ingestion/common/types"
-import { getConnectorImage } from "@/modules/ingestion/common/utils"
+import {
+	getConnectorImage,
+	getConnectorInLowerCase,
+} from "@/modules/ingestion/common/utils"
 import { TAB_TYPES } from "@/modules/ingestion/features/jobs/constants"
 import { useActivateJob } from "@/modules/ingestion/features/jobs/hooks"
 
@@ -93,16 +96,12 @@ const DestinationEdit: React.FC = () => {
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
 
-	// Derived constants from current state.
-	const internalConnectorType =
-		connector === CONNECTOR_TYPES.APACHE_ICEBERG
-			? DESTINATION_INTERNAL_TYPES.ICEBERG
-			: DESTINATION_INTERNAL_TYPES.S3
-
 	// Data fetching and mutation hooks.
 	const queryClient = useQueryClient()
 	const { data: destination, isLoading: isLoadingDestination } =
 		useDestinationDetails(destinationId ?? "")
+	const internalConnectorType =
+		destination?.type ?? getConnectorInLowerCase(connector)
 	const { data: versionsData, isLoading: loadingVersions } =
 		useDestinationVersions(internalConnectorType)
 	const versions = versionsData?.version ?? []

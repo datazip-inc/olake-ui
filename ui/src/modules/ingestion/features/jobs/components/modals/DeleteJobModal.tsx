@@ -40,12 +40,10 @@ const DeleteJobModal = ({
 						onClick={async () => {
 							setShowDeleteJobModal(false)
 							if (selectedJobId) {
-								await deleteJob(parseInt(selectedJobId, 10))
+								deleteJob(parseInt(selectedJobId, 10))
 							}
 							if (fromJobSettings) {
-								setTimeout(() => {
-									navigate("/jobs")
-								}, 500)
+								navigate("/jobs")
 							}
 						}}
 					>

@@ -1,4 +1,10 @@
-import { LightningIcon, PlusIcon, XIcon, InfoIcon } from "@phosphor-icons/react"
+import {
+	ArrowSquareOutIcon,
+	InfoIcon,
+	LightningIcon,
+	PlusIcon,
+	XIcon,
+} from "@phosphor-icons/react"
 import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useRef, useState } from "react"
@@ -331,7 +337,24 @@ const DataFilterSection = () => {
 				)}
 			>
 				<div className="flex items-center justify-between !p-3">
-					<label>Data Filter</label>
+					<div className="flex items-center gap-1">
+						<label>Data Filter</label>
+						<Tooltip title="Filters the stream to include only records that match conditions on specific columns.">
+							<InfoIcon
+								size={14}
+								className="cursor-help text-text-tertiary"
+							/>
+						</Tooltip>
+						<a
+							href="https://olake.io/docs/understanding/terminologies/olake/#3-data-filter"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="Open data filter docs"
+							className="inline-flex text-text-tertiary hover:text-primary"
+						>
+							<ArrowSquareOutIcon size={14} />
+						</a>
+					</div>
 					<Switch
 						checked={fullLoadFilter}
 						onChange={handleFullLoadFilterChange}

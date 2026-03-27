@@ -3,7 +3,7 @@ import {
 	PencilSimpleLineIcon,
 	TrashIcon,
 } from "@phosphor-icons/react"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
+import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import { useState } from "react"
 
 import { DeleteModal } from "@/modules/ingestion/common/components"
@@ -34,7 +34,7 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 		{
 			title: () => <span className="font-medium">Actions</span>,
 			key: "actions",
-			width: 80,
+			width: 100,
 			render: (_: any, record: Entity) => (
 				<Dropdown
 					menu={{
@@ -75,7 +75,12 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 			title: () => <span className="font-medium">Name</span>,
 			dataIndex: "name",
 			key: "name",
-			render: (text: string) => <div className="flex items-center">{text}</div>,
+			width: 240,
+			render: (text: string) => (
+				<Tooltip title={text}>
+					<div className="truncate">{text}</div>
+				</Tooltip>
+			),
 		},
 		{
 			title: () => <span className="font-medium">Destination</span>,
@@ -147,6 +152,8 @@ const DestinationTable: React.FC<DestinationTableProps> = ({
 					rowKey="id"
 					loading={loading}
 					pagination={false}
+					tableLayout="fixed"
+					scroll={{ x: 1100 }}
 					className="overflow-hidden rounded-xl"
 					rowClassName="no-hover"
 				/>

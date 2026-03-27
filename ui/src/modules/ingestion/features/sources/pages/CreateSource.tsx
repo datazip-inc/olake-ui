@@ -452,7 +452,12 @@ const CreateSource: React.FC = () => {
 					>
 						<ArrowLeftIcon className="mr-1 size-5" />
 					</Link>
-					<div className="text-lg font-bold">Create source</div>
+					<div
+						className="text-lg font-bold"
+						data-testid="create-source-page-title"
+					>
+						Create source
+					</div>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">

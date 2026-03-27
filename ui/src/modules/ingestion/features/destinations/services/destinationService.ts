@@ -1,3 +1,5 @@
+import { AxiosError } from "axios"
+
 import { SpecResponse, TestResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
@@ -123,14 +125,17 @@ export const destinationService = {
 			}
 		} catch (error) {
 			console.error("Error testing destination connection:", error)
+			const errorMessage =
+				error instanceof AxiosError
+					? (error.response?.data?.message ??
+						"Network error - please check your connection")
+					: "Unknown error occurred"
 			return {
 				success: false,
-				message:
-					error instanceof Error ? error.message : "Unknown error occurred",
+				message: errorMessage,
 				data: {
 					connection_result: {
-						message:
-							error instanceof Error ? error.message : "Unknown error occurred",
+						message: errorMessage,
 						status: "FAILED",
 					},
 					logs: [],

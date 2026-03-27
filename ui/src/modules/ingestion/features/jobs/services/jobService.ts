@@ -1,5 +1,3 @@
-import { AxiosError } from "axios"
-
 import { API_CONFIG } from "@/config/apiConfig"
 import { api } from "@/core/api"
 import { StreamsDataStructure } from "@/modules/ingestion/common/types"
@@ -15,11 +13,11 @@ import {
 } from "../types"
 
 export const jobService = {
-	getJobs: async (): Promise<Job[]> => {
+	getJobs: async (showNotification?: boolean): Promise<Job[]> => {
 		try {
 			const response = await api.get<Job[]>(
 				API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID),
-				{ timeout: 0 },
+				{ timeout: 0, showNotification: showNotification },
 			)
 
 			const jobs = response.data.map(job => ({
@@ -120,9 +118,7 @@ export const jobService = {
 			return response.data
 		} catch (error) {
 			console.error("Error syncing job:", error)
-			throw error instanceof AxiosError && error.response?.data.message
-				? error.response?.data.message
-				: "Failed to sync job"
+			throw error
 		}
 	},
 

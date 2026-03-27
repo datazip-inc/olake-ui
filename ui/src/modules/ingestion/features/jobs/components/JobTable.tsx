@@ -9,7 +9,7 @@ import {
 	TrashIcon,
 	XIcon,
 } from "@phosphor-icons/react"
-import { Table, Input, Button, Dropdown, Pagination } from "antd"
+import { Table, Input, Button, Dropdown, Pagination, Tooltip } from "antd"
 import { formatDistanceToNow } from "date-fns"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
@@ -38,6 +38,7 @@ const JobTable: React.FC<JobTableProps> = ({
 	jobs,
 	loading,
 	jobType,
+	onRefresh,
 	onSync,
 	onEdit,
 	onPause,
@@ -62,7 +63,7 @@ const JobTable: React.FC<JobTableProps> = ({
 		{
 			title: "Actions",
 			key: "actions",
-			width: 80,
+			width: 100,
 			render: (_: unknown, record: Job | SavedJobDraft) => {
 				const menuItems =
 					jobType === "saved"
@@ -165,44 +166,57 @@ const JobTable: React.FC<JobTableProps> = ({
 			title: "Job ID",
 			dataIndex: "id",
 			key: "id",
+			width: 100,
 		},
 		{
 			title: "Job Name",
 			dataIndex: "name",
 			key: "name",
+			width: 180,
+			render: (name: string) => (
+				<Tooltip title={name}>
+					<div className="truncate">{name}</div>
+				</Tooltip>
+			),
 		},
 		{
 			title: "Source",
 			dataIndex: "source",
 			key: "source",
+			width: 180,
 			render: (text: { name: string; type: string }) => (
-				<div className="flex items-center">
-					{text?.name && (
-						<img
-							src={getConnectorImage(text.type)}
-							className="mr-2 h-5 w-5"
-							alt={`${text.name} connector`}
-						/>
-					)}
-					{text?.name}
-				</div>
+				<Tooltip title={text?.name}>
+					<div className="flex min-w-0 items-center">
+						{text?.name && (
+							<img
+								src={getConnectorImage(text.type)}
+								className="mr-2 h-5 w-5 shrink-0"
+								alt={`${text.name} connector`}
+							/>
+						)}
+						<span className="min-w-0 flex-1 truncate">{text?.name}</span>
+					</div>
+				</Tooltip>
 			),
 		},
 		{
 			title: "Destination",
 			dataIndex: "destination",
 			key: "destination",
+			width: 180,
 			render: (text: { name: string; type: string }) => (
-				<div className="flex items-center">
-					{text?.name && (
-						<img
-							src={getConnectorImage(text.type)}
-							className="mr-2 h-5 w-5"
-							alt={`${text.name} connector`}
-						/>
-					)}
-					{text?.name}
-				</div>
+				<Tooltip title={text?.name}>
+					<div className="flex min-w-0 items-center">
+						{text?.name && (
+							<img
+								src={getConnectorImage(text.type)}
+								className="mr-2 h-5 w-5 shrink-0"
+								alt={`${text.name} connector`}
+							/>
+						)}
+						<span className="min-w-0 flex-1 truncate">{text?.name}</span>
+					</div>
+				</Tooltip>
 			),
 		},
 		{
@@ -244,11 +258,8 @@ const JobTable: React.FC<JobTableProps> = ({
 		},
 	]
 
-	const filteredJobs = jobs.filter(
-		job =>
-			job.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			job.source?.name.toLowerCase().includes(searchText.toLowerCase()) ||
-			job.destination?.name.toLowerCase().includes(searchText.toLowerCase()),
+	const filteredJobs = jobs.filter(job =>
+		job.name.toLowerCase().includes(searchText.toLowerCase()),
 	)
 
 	const startIndex = (currentPage - 1) * PAGE_SIZE
@@ -258,7 +269,7 @@ const JobTable: React.FC<JobTableProps> = ({
 	return (
 		<>
 			<div>
-				<div className="mb-4">
+				<div className="mb-4 flex gap-2">
 					<Input.Search
 						placeholder="Search Jobs"
 						allowClear
@@ -266,6 +277,15 @@ const JobTable: React.FC<JobTableProps> = ({
 						value={searchText}
 						onChange={e => setSearchText(e.target.value)}
 					/>
+
+					<Tooltip title="Click to refetch">
+						<Button
+							icon={<ArrowsClockwiseIcon size={16} />}
+							loading={loading}
+							onClick={onRefresh}
+							className="flex items-center"
+						/>
+					</Tooltip>
 				</div>
 
 				<div className="overflow-x-auto">
@@ -275,7 +295,8 @@ const JobTable: React.FC<JobTableProps> = ({
 						rowKey="id"
 						loading={loading}
 						pagination={false}
-						className="min-w-[1200px]"
+						tableLayout="fixed"
+						scroll={{ x: 1200 }}
 						rowClassName="no-hover"
 					/>
 				</div>

@@ -7,6 +7,7 @@ import { validateAlphanumericUnderscore } from "@/common/utils"
 import StepTitle from "@/modules/ingestion/common/components/StepTitle"
 
 import { DAYS, FREQUENCY_OPTIONS } from "../constants"
+import { useJobConfigurationStore } from "../stores"
 import { JobConfigurationProps } from "../types"
 import {
 	generateCronExpression,
@@ -15,7 +16,6 @@ import {
 } from "../utils"
 import AdvancedSettingsCard from "./AdvancedSettingsCard"
 import JobSourceDestinationSelection from "./JobSourceDestinationSelection"
-import { useJobConfigurationStore } from "../stores"
 
 const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	stepNumber = 1,
