@@ -22,6 +22,8 @@ type Service struct {
 	baseURL   string
 	apiKey    string
 	apiSecret string
+	username  string
+	password  string
 	client    *http.Client
 }
 
@@ -42,10 +44,22 @@ func NewClient() (*Service, error) {
 		baseURL:   baseURL,
 		apiKey:    apiKey,
 		apiSecret: apiSecret,
+		username:  username,
+		password:  password,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}, nil
+}
+
+func (c *Service) refreshToken() error {
+	apiKey, apiSecret, err := generateToken(c.baseURL, c.username, c.password)
+	if err != nil {
+		return err
+	}
+	c.apiKey = apiKey
+	c.apiSecret = apiSecret
+	return nil
 }
 
 // for optimization authentication: calculating md5: apiKey + encryptString + secret
@@ -95,7 +109,7 @@ func (c *Service) generateEncryptString(params url.Values) string {
 	return strings.Join(parts, "")
 }
 
-func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
+func (c *Service) sendRequest(ctx context.Context, method, path string, queryParams url.Values, bodyBytes []byte) ([]byte, int, error) {
 	signature := c.calculateSignature(queryParams)
 	queryParams.Set("apiKey", c.apiKey)
 	queryParams.Set("signature", signature)
@@ -106,39 +120,59 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 	}
 
 	var bodyReader io.Reader
-	if body != nil {
-		bodyBytes, err := json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %s", err)
-		}
-
+	if bodyBytes != nil {
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %s", err)
+		return nil, 0, fmt.Errorf("failed to create request: %s", err)
 	}
-
-	if body != nil {
+	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %s", err)
+		return nil, 0, fmt.Errorf("failed to send request: %s", err)
 	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %s", err)
+		return nil, resp.StatusCode, fmt.Errorf("failed to read response body: %s", err)
 	}
 
-	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+	return respBody, resp.StatusCode, nil
+}
+
+func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
+	var bodyBytes []byte
+	if body != nil {
+		var err error
+		bodyBytes, err = json.Marshal(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %s", err)
+		}
+	}
+
+	respBody, statusCode, err := c.sendRequest(ctx, method, path, queryParams, bodyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	if statusCode == http.StatusUnauthorized {
+		if err := c.refreshToken(); err != nil {
+			return nil, fmt.Errorf("token refresh failed: %s", err)
+		}
+		respBody, statusCode, err = c.sendRequest(ctx, method, path, queryParams, bodyBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if statusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s", statusCode, string(respBody))
 	}
 
 	return respBody, nil
