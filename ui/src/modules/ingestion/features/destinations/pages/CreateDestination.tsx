@@ -510,7 +510,7 @@ const CreateDestination: React.FC = () => {
 					>
 						<ArrowLeftIcon className="mr-1 size-5" />
 					</Link>
-					<div className="text-lg font-bold">Create destination</div>
+					<div className="text-lg font-bold" data-testid="create-destination-page-title">Create destination</div>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
