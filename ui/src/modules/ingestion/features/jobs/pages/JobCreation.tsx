@@ -340,7 +340,12 @@ const JobCreation: React.FC = () => {
 							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold"> Create Job</div>
+						<div
+							className="text-2xl font-bold"
+							data-testid="create-job-page-title"
+						>
+							Create Job
+						</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
@@ -406,6 +411,8 @@ const JobCreation: React.FC = () => {
 						</button>
 					)}
 					<button
+						type="button"
+						data-testid="create-job-wizard-submit"
 						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>

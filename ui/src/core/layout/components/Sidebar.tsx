@@ -1,4 +1,5 @@
 import { InfoIcon, SidebarSimpleIcon, SignOutIcon } from "@phosphor-icons/react"
+import { Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useState } from "react"
 import { Link, NavLink, useLocation } from "react-router-dom"
@@ -104,38 +105,48 @@ const Sidebar: React.FC<{
 										moduleIndex > 0 && "mt-1 pt-2",
 									)}
 								>
-									{mod.items.map(({ path, icon: Icon }) => (
-										<NavLink
+									{mod.items.map(({ path, label, icon: Icon }) => (
+										<Tooltip
 											key={path}
-											to={path}
-											className={clsx(
-												"flex items-center justify-center rounded-md p-1",
-												matchesPath(pathname, path)
-													? "bg-olake-surface-muted text-olake-heading-strong"
-													: "text-olake-body hover:bg-olake-surface-muted",
-											)}
+											title={label}
+											placement="right"
 										>
-											<Icon size={20} />
-										</NavLink>
+											<NavLink
+												to={path}
+												className={clsx(
+													"flex items-center justify-center rounded-md p-1",
+													matchesPath(pathname, path)
+														? "bg-olake-surface-muted text-olake-heading-strong"
+														: "text-olake-body hover:bg-olake-surface-muted",
+												)}
+											>
+												<Icon size={20} />
+											</NavLink>
+										</Tooltip>
 									))}
 								</div>
 							))}
 
-							{SYSTEM_ITEMS.map(({ path, icon: Icon }) => (
-								<NavLink
+							{SYSTEM_ITEMS.map(({ path, label, icon: Icon }) => (
+								<Tooltip
 									key={path}
-									to={path}
-									className={({ isActive }) =>
-										clsx(
-											"flex items-center justify-center rounded-md p-1",
-											isActive
-												? "bg-olake-surface-muted text-olake-heading-strong"
-												: "text-olake-body hover:bg-olake-surface-muted",
-										)
-									}
+									title={label}
+									placement="right"
 								>
-									<Icon size={20} />
-								</NavLink>
+									<NavLink
+										to={path}
+										className={({ isActive }) =>
+											clsx(
+												"flex items-center justify-center rounded-md p-1",
+												isActive
+													? "bg-olake-surface-muted text-olake-heading-strong"
+													: "text-olake-body hover:bg-olake-surface-muted",
+											)
+										}
+									>
+										<Icon size={20} />
+									</NavLink>
+								</Tooltip>
 							))}
 						</div>
 

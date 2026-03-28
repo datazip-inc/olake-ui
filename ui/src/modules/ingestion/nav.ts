@@ -16,19 +16,19 @@ interface BreadcrumbRoute {
 const breadcrumbRoutes: BreadcrumbRoute[] = [
 	{
 		pattern: /^\/jobs\/([^/]+)\/history\/([^/]+)\/logs$/,
-		crumbs: () => ["Jobs", "History", "Logs"],
+		crumbs: match => ["Jobs", match[1], "History", "Logs"],
 	},
 	{
 		pattern: /^\/jobs\/([^/]+)\/history$/,
-		crumbs: () => ["Jobs", "History"],
+		crumbs: match => ["Jobs", match[1], "History"],
 	},
 	{
 		pattern: /^\/jobs\/([^/]+)\/settings$/,
-		crumbs: () => ["Jobs", "Settings"],
+		crumbs: match => ["Jobs", match[1], "Settings"],
 	},
 	{
 		pattern: /^\/jobs\/([^/]+)\/edit$/,
-		crumbs: () => ["Jobs", "Edit Job"],
+		crumbs: match => ["Jobs", match[1], "Edit Job"],
 	},
 	{
 		pattern: /^\/jobs\/new$/,
@@ -40,7 +40,7 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
 	},
 	{
 		pattern: /^\/sources\/([^/]+)$/,
-		crumbs: () => ["Sources", "Edit Source"],
+		crumbs: match => ["Sources", match[1], "Edit Source"],
 	},
 	{
 		pattern: /^\/destinations\/new$/,
@@ -48,7 +48,7 @@ const breadcrumbRoutes: BreadcrumbRoute[] = [
 	},
 	{
 		pattern: /^\/destinations\/([^/]+)$/,
-		crumbs: () => ["Destinations", "Edit Destination"],
+		crumbs: match => ["Destinations", match[1], "Edit Destination"],
 	},
 ]
 

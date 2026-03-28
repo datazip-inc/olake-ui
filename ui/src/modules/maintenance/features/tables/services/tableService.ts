@@ -47,7 +47,6 @@ export const tableService = {
 	) => {
 		const response = await api.get<GetTableRunsApiResponse>(
 			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes`,
-			{ showNotification: true },
 		)
 		return response.data
 	},
