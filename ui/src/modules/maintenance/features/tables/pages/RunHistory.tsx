@@ -132,7 +132,6 @@ const RunHistory: React.FC = () => {
 		setActiveFilter,
 		currentPage,
 		setCurrentPage,
-		filteredRows,
 		paginatedRows,
 		totalPages,
 	} = usePaginatedSearch<TableRun, RunsFilter>({
@@ -244,7 +243,7 @@ const RunHistory: React.FC = () => {
 					}}
 					pageSize={10}
 					emptyStateConfig={
-						filteredRows.length === 0
+						runs.length > 0
 							? {
 									title: "No runs found",
 									subtitle: "Try a different search or filter.",
@@ -255,6 +254,8 @@ const RunHistory: React.FC = () => {
 									title: "No runs found for this table",
 									subtitle:
 										"No runs are available yet. Configure optimization to view run history here.",
+									onRefetch: () => void refetch(),
+									refetchLabel: "Refresh",
 								}
 					}
 				/>

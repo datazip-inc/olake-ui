@@ -12,6 +12,7 @@ interface BreadcrumbRoute {
 	crumbs: (match: RegExpMatchArray) => string[]
 }
 
+// TODO: Make breadcrumbs links clickable for navigation
 const breadcrumbRoutes: BreadcrumbRoute[] = [
 	{
 		pattern: /^\/jobs\/([^/]+)\/history\/([^/]+)\/logs$/,

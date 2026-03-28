@@ -30,9 +30,9 @@ export type NavModule = {
 
 // Boundary-safe route prefix matcher: exact match or `path/` prefix
 export const matchesPath = (pathname: string, path: string) => {
-	const a = pathname.toLowerCase()
-	const b = path.toLowerCase()
-	return a === b || a.startsWith(b + "/")
+	const pathA = pathname.toLowerCase()
+	const pathB = path.toLowerCase()
+	return pathA === pathB || pathA.startsWith(pathB + "/")
 }
 
 export const getNavModules = (enabledFeatures: Set<string>): NavModule[] =>
