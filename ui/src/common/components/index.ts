@@ -9,3 +9,4 @@ export type {
 export { Tag } from "./Tag"
 export type { TagColor, TagProps } from "./Tag"
 export { default as PageErrorState } from "./PageErrorState"
+export * from "./ErrorBoundary"
