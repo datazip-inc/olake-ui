@@ -138,7 +138,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		useUpdateTableCronConfig(catalog, database, tableName)
 
 	useEffect(() => {
-		if (!tableCronConfig) return
+		if (!tableCronConfig || !open) return
 
 		const config = tableCronConfig
 		setMinorCron(config.minorCron)
@@ -147,7 +147,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		if (config.targetFileSize !== undefined && config.targetFileSize > 0) {
 			setTargetFileSize(config.targetFileSize)
 		}
-	}, [tableCronConfig])
+	}, [tableCronConfig, open])
 
 	useEffect(() => {
 		if (!open) {
@@ -159,10 +159,10 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		if (!catalog || !database || !tableName) return
 
 		const payload: UpdateTableCronApiRequest = {
-			minorTriggerInterval: getCronFromConfig(minorCron),
-			majorTriggerInterval: getCronFromConfig(majorCron),
-			fullTriggerInterval: getCronFromConfig(fullCron),
-			targetFileSize: targetFileSize,
+			minor_cron: getCronFromConfig(minorCron),
+			major_cron: getCronFromConfig(majorCron),
+			full_cron: getCronFromConfig(fullCron),
+			target_file_size: targetFileSize,
 		}
 
 		updateTableCronConfig(payload, {

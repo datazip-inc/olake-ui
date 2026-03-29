@@ -6,13 +6,17 @@ import {
 
 import {
 	bytesToMb,
+	formatDuration,
 	formatTimestampToUtcTime,
+	getRelativeTimeString,
 	toSentenceCase,
 } from "@/common/utils"
 
 import { KNOWN_CRON_TRIGGER_INTERVALS } from "../constants"
 import type {
 	CronConfigOption,
+	FusionCompactionRun,
+	CompactionRun,
 	FusionRun,
 	FusionTable,
 	RunType,
@@ -106,6 +110,15 @@ export const getRunLogsStatusConfig = (status?: string) => {
 	}
 }
 
+const mapCompactionRun = (run: FusionCompactionRun | null): CompactionRun => {
+	if (!run) return null
+	return {
+		status: run.status,
+		runID: run.runID,
+		lastRun: getRelativeTimeString(run.finish_time),
+	}
+}
+
 // Converts a FusionTable into a Table, attaching a stable row id derived from name + index.
 export const mapFusionTableToTable = (
 	table: FusionTable,
@@ -115,10 +128,10 @@ export const mapFusionTableToTable = (
 	name: table.name,
 	totalSize: table.totalSize,
 	healthScore: table.healthScore,
-	byOLake: table.byOLake,
-	minor: table.minor,
-	major: table.major,
-	full: table.full,
+	olakeCreated: table.olake_created,
+	minor: mapCompactionRun(table.minor),
+	major: mapCompactionRun(table.major),
+	full: mapCompactionRun(table.full),
 	enabled: table.enabled,
 })
 
@@ -128,29 +141,10 @@ export const mapGetTablesResponseToTables = (tables: FusionTable[]): Table[] =>
 
 // Returns the run id only when one of full/minor/major is currently RUNNING.
 export const getCancelRunID = (table: Table): string | null => {
-	const runs: Array<FusionTable["full"]> = [
-		table.full,
-		table.minor,
-		table.major,
-	]
+	const runs: Array<CompactionRun> = [table.full, table.minor, table.major]
 	const running = runs.find(run => run?.status === "RUNNING")
 	const runId = running?.runID
 	return typeof runId === "string" && runId.trim() ? runId : null
-}
-
-const formatRunDuration = (durationMs: number): string => {
-	if (durationMs <= 0) return "--"
-	const totalSeconds = Math.floor(durationMs / 1000)
-	if (totalSeconds < 1) return "<1s"
-	const days = Math.floor(totalSeconds / 86_400)
-	const hours = Math.floor((totalSeconds % 86_400) / 3_600)
-	const minutes = Math.floor((totalSeconds % 3_600) / 60)
-	const seconds = totalSeconds % 60
-
-	if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`
-	if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
-	if (minutes > 0) return `${minutes}m ${seconds}s`
-	return `${seconds}s`
 }
 
 const runTypeToLabel: Record<RunType, TableRun["type"]> = {
@@ -169,7 +163,7 @@ export const mapGetTableRunsResponseToTableRuns = (
 		status: run.status,
 		type: runTypeToLabel[run.optimizingType],
 		startTime: formatTimestampToUtcTime(run.startTime),
-		duration: formatRunDuration(run.duration),
+		duration: formatDuration(run.duration),
 		metrics: mapRunMetricsPayloadToRows(run.summary ?? {}),
 	}))
 }
@@ -232,6 +226,10 @@ export const mapRunMetricsPayloadToRows = (
 export const mapTriggerIntervalToCronConfigOption = (
 	triggerInterval: string,
 ): CronConfigOption => {
+	if (triggerInterval === "") {
+		return { frequency: "never", customCron: "" }
+	}
+
 	if (KNOWN_CRON_TRIGGER_INTERVALS.has(triggerInterval)) {
 		return {
 			frequency: triggerInterval,
@@ -254,13 +252,13 @@ export const mapTableCronApiModelToTableCronFormModel = (
 	config: TableCronApiModel,
 ): TableCronFormModel => ({
 	minorCron: mapTriggerIntervalToCronConfigOption(
-		config.minorTriggerInterval.trim() || LITE_DEFAULT_TRIGGER_INTERVAL,
+		config.minorTriggerInterval?.trim() ?? LITE_DEFAULT_TRIGGER_INTERVAL,
 	),
 	majorCron: mapTriggerIntervalToCronConfigOption(
-		config.majorTriggerInterval.trim() || MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+		config.majorTriggerInterval?.trim() ?? MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	),
 	fullCron: mapTriggerIntervalToCronConfigOption(
-		config.fullTriggerInterval.trim() || FULL_DEFAULT_TRIGGER_INTERVAL,
+		config.fullTriggerInterval?.trim() ?? FULL_DEFAULT_TRIGGER_INTERVAL,
 	),
 	targetFileSize: config.targetFileSize,
 })
@@ -279,12 +277,9 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 	return {
 		enabledForOptimization:
 			(properties["self-optimizing.enabled"] ?? "").toLowerCase() === "true",
-		minorTriggerInterval:
-			properties["self-optimizing.minor.trigger.interval"] ?? "",
-		majorTriggerInterval:
-			properties["self-optimizing.major.trigger.interval"] ?? "",
-		fullTriggerInterval:
-			properties["self-optimizing.full.trigger.interval"] ?? "",
+		minorTriggerInterval: properties["self-optimizing.minor.trigger.cron"],
+		majorTriggerInterval: properties["self-optimizing.major.trigger.cron"],
+		fullTriggerInterval: properties["self-optimizing.full.trigger.cron"],
 		targetFileSize: targFileSizeInMB,
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,

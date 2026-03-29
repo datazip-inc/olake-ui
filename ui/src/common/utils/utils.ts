@@ -181,6 +181,47 @@ export const formatDate = (dateString: string): string => {
 	}
 }
 
+// Formats an epoch millisecond timestamp into a human-readable relative string, e.g. "5m ago", "2h ago", "just now"
+export const getRelativeTimeString = (timestamp: number): string => {
+	if (!timestamp || timestamp <= 0) return ""
+
+	const now = Date.now()
+	const diffInSeconds = Math.floor((now - timestamp) / 1000)
+
+	if (diffInSeconds < 60) return "just now"
+
+	const diffInMinutes = Math.floor(diffInSeconds / 60)
+	if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+
+	const diffInHours = Math.floor(diffInMinutes / 60)
+	if (diffInHours < 24) return `${diffInHours}h ago`
+
+	const diffInDays = Math.floor(diffInHours / 24)
+	if (diffInDays < 30) return `${diffInDays}d ago`
+
+	const diffInMonths = Math.floor(diffInDays / 30)
+	if (diffInMonths < 12) return `${diffInMonths}mo ago`
+
+	const diffInYears = Math.floor(diffInDays / 365)
+	return `${diffInYears}y ago`
+}
+
+// Formats a duration in milliseconds into a human-readable string, e.g. "5m 30s", "2h 15m 0s", "<1s"
+export const formatDuration = (durationMs: number): string => {
+	if (durationMs <= 0) return ""
+	const totalSeconds = Math.floor(durationMs / 1000)
+	if (totalSeconds < 1) return "<1s"
+	const days = Math.floor(totalSeconds / 86_400)
+	const hours = Math.floor((totalSeconds % 86_400) / 3_600)
+	const minutes = Math.floor((totalSeconds % 3_600) / 60)
+	const seconds = totalSeconds % 60
+
+	if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`
+	if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+	if (minutes > 0) return `${minutes}m ${seconds}s`
+	return `${seconds}s`
+}
+
 // Format epoch milliseconds to UTC ISO string (or null if invalid)
 const getUtcIsoString = (timestamp: number): string | null => {
 	const date = new Date(timestamp)

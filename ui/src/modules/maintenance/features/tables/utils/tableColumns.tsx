@@ -100,7 +100,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 			render: row => (
 				<div className="flex items-center gap-2">
 					<p className="text-sm leading-6 text-olake-text">{row.name}</p>
-					{row.byOLake && <Tag>OLake</Tag>}
+					{row.olakeCreated && <Tag>OLake</Tag>}
 				</div>
 			),
 		},

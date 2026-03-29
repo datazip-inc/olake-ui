@@ -12,7 +12,7 @@ export interface RunMetricRow {
 }
 
 export interface FusionCompactionRun {
-	"last-run": string
+	finish_time: number
 	status: RunStatus
 	runID?: string
 }
@@ -21,7 +21,7 @@ export interface FusionTable {
 	name: string
 	totalSize: string
 	healthScore: number
-	byOLake: boolean
+	olake_created: boolean
 	major: FusionCompactionRun | null
 	minor: FusionCompactionRun | null
 	full: FusionCompactionRun | null
@@ -86,15 +86,20 @@ export interface GetTableRunsApiResponse {
 }
 
 export interface UpdateTableCronApiRequest {
-	minorTriggerInterval: string
-	majorTriggerInterval: string
-	fullTriggerInterval: string
-	targetFileSize?: number
+	minor_cron?: string
+	major_cron?: string
+	full_cron?: string
+	enabled_for_optimization?: string
+	target_file_size?: number
 }
 
 // Frontend Domain Types
 export type FilterKey = "all" | "olake" | "external"
-export type CompactionRun = FusionCompactionRun | null
+export type CompactionRun = {
+	lastRun: string
+	status: RunStatus
+	runID?: string
+} | null
 export type RunTypeLabel = "Lite" | "Medium" | "Full"
 
 export interface Table {
@@ -102,7 +107,7 @@ export interface Table {
 	name: string
 	totalSize: string
 	healthScore: number
-	byOLake: boolean
+	olakeCreated: boolean
 	minor: CompactionRun
 	major: CompactionRun
 	full: CompactionRun
@@ -120,9 +125,9 @@ export interface TableRun {
 }
 
 export interface TableCronApiModel {
-	minorTriggerInterval: string
-	majorTriggerInterval: string
-	fullTriggerInterval: string
+	minorTriggerInterval?: string
+	majorTriggerInterval?: string
+	fullTriggerInterval?: string
 	enabledForOptimization: boolean
 	targetFileSize?: number
 }

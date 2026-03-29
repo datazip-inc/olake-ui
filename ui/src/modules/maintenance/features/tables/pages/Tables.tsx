@@ -35,8 +35,8 @@ const tableFilterFn = (
 	filter: "all" | "olake" | "external",
 ): boolean => {
 	if (filter === "all") return true
-	if (filter === "olake") return row.byOLake
-	return !row.byOLake
+	if (filter === "olake") return row.olakeCreated
+	return !row.olakeCreated
 }
 
 const Tables: React.FC = () => {

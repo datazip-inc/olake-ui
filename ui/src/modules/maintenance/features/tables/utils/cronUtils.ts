@@ -2,8 +2,12 @@ import parser from "cron-parser"
 
 import type { CronConfigOption } from "../types"
 
-export const getCronFromConfig = (config: CronConfigOption) =>
-	config.frequency === "custom" ? config.customCron.trim() : config.frequency
+export const getCronFromConfig = (config: CronConfigOption) => {
+	if (config.frequency === "never") return ""
+	return config.frequency === "custom"
+		? config.customCron.trim()
+		: config.frequency
+}
 
 export const isValidCronExpression = (cron: string): boolean => {
 	const parts = cron.trim().split(" ")
