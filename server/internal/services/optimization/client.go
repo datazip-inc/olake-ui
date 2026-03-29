@@ -16,6 +16,7 @@ import (
 
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/spf13/viper"
 )
 
 type Service struct {
@@ -32,12 +33,12 @@ type Service struct {
 func NewClient() (*Service, error) {
 	baseURL, username, password, err := getCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %s", err)
+		return nil, fmt.Errorf("failed to get credentials: %s", err)
 	}
 
 	apiKey, apiSecret, err := generateToken(baseURL, username, password)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create token: %s", err)
+		return nil, fmt.Errorf("failed to generate token: %s", err)
 	}
 
 	return &Service{
@@ -47,7 +48,7 @@ func NewClient() (*Service, error) {
 		username:  username,
 		password:  password,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: constants.OptMaxTimeout,
 		},
 	}, nil
 }
@@ -59,6 +60,7 @@ func (c *Service) refreshToken() error {
 	}
 	c.apiKey = apiKey
 	c.apiSecret = apiSecret
+
 	return nil
 }
 
@@ -238,14 +240,14 @@ func getCredentials() (string, string, string, error) {
 		return "", "", "", fmt.Errorf("failed to get optimization base URL: %s", err)
 	}
 
-	username, err := web.AppConfig.String(constants.ConfOptimizationUsername)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimization username creds: %s", err)
+	username := viper.GetString(constants.ConfOptimizationUsername)
+	if username == "" {
+		return "", "", "", fmt.Errorf("failed to get optimization username: USERNAME environment variable not set")
 	}
 
-	password, err := web.AppConfig.String(constants.ConfOptimizationPassword)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimization password creds: %s", err)
+	password := viper.GetString(constants.ConfOptimizationPassword)
+	if password == "" {
+		return "", "", "", fmt.Errorf("failed to get optimization password: PASSWORD environment variable not set")
 	}
 
 	return baseURL, username, password, nil

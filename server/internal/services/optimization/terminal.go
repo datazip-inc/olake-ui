@@ -11,31 +11,21 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.SetTablePropertiesResponse, error) {
+func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
 	properties := make(map[string]string)
 
-	if config.MinorTriggerInterval != "" {
-		properties["self-optimizing.minor.trigger.interval"] = config.MinorTriggerInterval
-	}
-
-	if config.MajorTriggerInterval != "" {
-		properties["self-optimizing.major.trigger.interval"] = config.MajorTriggerInterval
-	}
-
-	if config.FullTriggerInterval != "" {
-		properties["self-optimizing.full.trigger.interval"] = config.FullTriggerInterval
-	}
+	utils.SetIfNotEmpty(properties, constants.OptMinorCron, config.MinorCron)
+	utils.SetIfNotEmpty(properties, constants.OptMajorCron, config.MajorCron)
+	utils.SetIfNotEmpty(properties, constants.OptFullCron, config.FullCron)
+	utils.SetIfNotEmpty(properties, constants.OptEnableOptimization, config.EnabledForOptimization)
 
 	if config.TargetFileSize > 0 {
 		size := config.TargetFileSize
 		targetFileSize := ConvertMBToBytes(int64(size))
-		properties["write.target-file-size-bytes"] = targetFileSize
-	}
-
-	if config.EnabledForOptimization != "" {
-		properties["self-optimizing.enabled"] = config.EnabledForOptimization
+		properties[constants.OptTargetFileSize] = targetFileSize
 	}
 
 	// sql query
@@ -45,29 +35,25 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 		Table:      table,
 		Properties: properties,
 	})
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute SQL for table properties: %s", err)
+		return nil, fmt.Errorf("failed to set optimization properties: %s", err)
 	}
 
 	return sqlResult, nil
 }
 
 // sets table properties using the SQL query
-func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTablePropertiesRequest) (*dto.SetTablePropertiesResponse, error) {
+func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTablePropertiesRequest) (*dto.TableProperties, error) {
 	var propsSQL []string
 	for key, value := range req.Properties {
 		propsSQL = append(propsSQL, fmt.Sprintf("'%s' = '%s'", key, value))
 	}
 
-	sql := fmt.Sprintf(
-		"ALTER TABLE %s.%s SET TBLPROPERTIES (%s)",
-		req.Database,
-		req.Table,
-		strings.Join(propsSQL, ", "),
-	)
+	sql := fmt.Sprintf(constants.OptSQLCommand, req.Database, req.Table, strings.Join(propsSQL, ", "))
 
-	// Execute via Terminal API
-	path := fmt.Sprintf("%sterminal/catalogs/%s/execute", constants.OptimizationAPIBase, req.Catalog)
+	// execute via Terminal API
+	path := fmt.Sprintf(constants.OptPathTerminalExecute, req.Catalog)
 	requestBody := dto.TerminalExecuteRequest{
 		SQL: sql,
 	}
@@ -87,12 +73,12 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 	success := logInfo.LogStatus == "Finished"
 	var message string
 	if success {
-		message = fmt.Sprintf("ALTER TABLE command completed successfully. Session ID: %s", sessionResult.SessionID)
+		message = fmt.Sprintf("optimization sql command completed successfully. Session ID: %s", sessionResult.SessionID)
 	} else {
-		message = fmt.Sprintf("ALTER TABLE command failed with status: %s. Session ID: %s", logInfo.LogStatus, sessionResult.SessionID)
+		message = fmt.Sprintf("optimization sql command failed with status: %s. Session ID: %s", logInfo.LogStatus, sessionResult.SessionID)
 	}
 
-	return &dto.SetTablePropertiesResponse{
+	return &dto.TableProperties{
 		SessionID: sessionResult.SessionID,
 		Status:    logInfo.LogStatus,
 		Success:   success,
@@ -103,16 +89,11 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 
 // pollForCompletion polls the terminal API for SQL execution completion
 func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*dto.LogInfo, error) {
-	const (
-		pollInterval = 1500 * time.Millisecond
-		maxTimeout   = 30 * time.Second
-	)
-
-	path := fmt.Sprintf("%sterminal/%s/logs", constants.OptimizationAPIBase, sessionID)
-	timeoutCtx, cancel := context.WithTimeout(ctx, maxTimeout)
+	path := fmt.Sprintf(constants.OptPathTerminalLogs, sessionID)
+	timeoutCtx, cancel := context.WithTimeout(ctx, constants.OptMaxTimeout)
 	defer cancel()
 
-	ticker := time.NewTicker(pollInterval)
+	ticker := time.NewTicker(constants.PollInterval)
 	defer ticker.Stop()
 
 	for {

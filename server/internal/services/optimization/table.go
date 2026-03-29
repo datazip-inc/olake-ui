@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -41,9 +40,9 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		}
 
 		tableInfo := dto.TableInfo{
-			Name:    tableName,
-			Enabled: false,
-			ByOLake: false,
+			Name:         tableName,
+			Enabled:      false,
+			OLakeCreated: false,
 		}
 
 		tableDetails, err := s.GetTableDetails(ctx, catalog, databaseName, tableName)
@@ -77,8 +76,8 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 			tableInfo.Enabled = enabled.(string) == "true"
 		}
 
-		if _, ok := properties["olake-2pc"]; ok {
-			tableInfo.ByOLake = true
+		if _, ok := properties["olake_2pc"]; ok {
+			tableInfo.OLakeCreated = true
 		}
 
 		tableSummary, ok := detailsMap["tableSummary"].(map[string]interface{})
@@ -120,7 +119,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 // GetTables returns the list of tables for a given catalog and database
 func (s *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
-	path := fmt.Sprintf("%scatalogs/%s/databases/%s/tables", constants.OptimizationAPIBase, catalog, database)
+	path := fmt.Sprintf(constants.OptPathCatalogTables, catalog, database)
 
 	params := url.Values{}
 	if keywords != "" {
@@ -132,7 +131,7 @@ func (s *Service) GetTables(ctx context.Context, catalog, database, keywords str
 
 // returns the details of a specific table including size information
 func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/details", constants.OptimizationAPIBase, catalog, database, table)
+	path := fmt.Sprintf(constants.OptPathTableDetails, catalog, database, table)
 
 	return s.Do(ctx, http.MethodGet, path, url.Values{}, nil)
 }
@@ -153,7 +152,7 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 		return nil, nil
 	}
 
-	// Get the first (latest) process
+	// get the first (latest) process
 	process, ok := processList[0].(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("invalid process format")
@@ -163,53 +162,16 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	status, _ := process["status"].(string)
 	runID, _ := process["processId"].(string)
 
-	var lastRun string
-	if finishTime > 0 {
-		timestamp := time.Unix(0, int64(finishTime)*int64(time.Millisecond))
-		duration := time.Since(timestamp)
-
-		switch {
-		case duration < time.Minute:
-			seconds := int(duration.Seconds())
-			if seconds == 1 {
-				lastRun = "1 sec ago"
-			} else {
-				lastRun = fmt.Sprintf("%d secs ago", seconds)
-			}
-		case duration < time.Hour:
-			minutes := int(duration.Minutes())
-			if minutes == 1 {
-				lastRun = "1 minute ago"
-			} else {
-				lastRun = fmt.Sprintf("%d minutes ago", minutes)
-			}
-		case duration < 24*time.Hour:
-			hours := int(duration.Hours())
-			if hours == 1 {
-				lastRun = "1 hour ago"
-			} else {
-				lastRun = fmt.Sprintf("%d hours ago", hours)
-			}
-		default:
-			days := int(duration.Hours() / 24)
-			if days == 1 {
-				lastRun = "1 day ago"
-			} else {
-				lastRun = fmt.Sprintf("%d days ago", days)
-			}
-		}
-	}
-
 	return &dto.OptimizationInfo{
-		LastRun: lastRun,
-		Status:  status,
-		RunID:   runID,
+		FinishTime: int64(finishTime),
+		Status:     status,
+		RunID:      runID,
 	}, nil
 }
 
 // returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
 func (s *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
-	path := fmt.Sprintf("%stables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes", constants.OptimizationAPIBase, catalog, database, table)
+	path := fmt.Sprintf(constants.OptPathTableOptimizingProcesses, catalog, database, table)
 
 	params := url.Values{}
 	params.Set("type", processType)

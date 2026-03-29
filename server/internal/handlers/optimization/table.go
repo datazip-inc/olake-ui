@@ -5,7 +5,6 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 func (h *Handler) GetTablesWithDetails() {
@@ -13,8 +12,6 @@ func (h *Handler) GetTablesWithDetails() {
 	if !ok {
 		return
 	}
-
-	logger.Debugf("Get tables with details initiated catalog[%s] database[%s]", catalog, database)
 
 	tables, err := h.opt.GetTablesWithDetails(h.Ctx.Request.Context(), catalog, database)
 	if err != nil {
@@ -36,8 +33,6 @@ func (h *Handler) SetProperties() {
 	if !h.bindJSON(&req) {
 		return
 	}
-
-	logger.Debugf("Set optimization cron config initiated catalog[%s] database[%s] table[%s]", catalog, database, table)
 
 	result, err := h.opt.SetProperties(h.Ctx.Request.Context(), catalog, database, table, req)
 	if err != nil {

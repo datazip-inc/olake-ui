@@ -226,24 +226,24 @@ type TablesResponse struct {
 }
 
 type TableInfo struct {
-	Name        string            `json:"name"`
-	TotalSize   string            `json:"totalSize,omitempty"`
-	ByOLake     bool              `json:"byOLake"`
-	Major       *OptimizationInfo `json:"major"`
-	Minor       *OptimizationInfo `json:"minor"`
-	Full        *OptimizationInfo `json:"full"`
-	Enabled     bool              `json:"enabled"`
-	HealthScore int               `json:"healthScore,omitempty"`
+	Name         string            `json:"name"`
+	TotalSize    string            `json:"total_size,omitempty"`
+	OLakeCreated bool              `json:"olake_created"`
+	Major        *OptimizationInfo `json:"major"`
+	Minor        *OptimizationInfo `json:"minor"`
+	Full         *OptimizationInfo `json:"full"`
+	Enabled      bool              `json:"enabled"`
+	HealthScore  int               `json:"health_score,omitempty"`
 }
 
 type OptimizationInfo struct {
-	LastRun string `json:"last-run,omitempty"`
-	Status  string `json:"status,omitempty"`
-	RunID   string `json:"runID,omitempty"`
+	FinishTime int64 `json:"finish-time,omitempty"`
+	Status     string `json:"status,omitempty"`
+	RunID      string `json:"runID,omitempty"`
 }
 
-// SetTablePropertiesResponse represents the response from setting table properties
-type SetTablePropertiesResponse struct {
+// TableProperties represents the response from setting table properties
+type TableProperties struct {
 	SessionID string   `json:"sessionId"`
 	Status    string   `json:"status"`
 	Success   bool     `json:"success"`

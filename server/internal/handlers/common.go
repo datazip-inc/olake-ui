@@ -7,7 +7,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
 // @Summary Create a new destination in ETL & catalog in Optimization (if enabled)
@@ -44,20 +43,13 @@ func (h *Handler) CreateDestinationAndCatalog() {
 		return
 	}
 
-	logger.Debugf("Create destination initiated project_id[%s] destination_type[%s] destination_name[%s] user_id[%v]",
-		projectID, req.Type, req.Name, userID)
-
-	result, err := h.appSvc.CreateDestinationWithCatalog(h.Ctx.Request.Context(), projectID, &req, userID)
+	err = h.appSvc.CreateDestinationWithCatalog(h.Ctx.Request.Context(), projectID, &req, userID)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
-		return
-	}
-	if result.CatalogErr != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination created but catalog creation failed", result.CatalogErr)
+		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to create destination & catalog: %s", err), err)
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s created successfully", req.Name), req)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("destination %s and catalog created successfully", req.Name), req)
 }
 
 // @Summary Update a destination in ETL & catalog in Optimization (if enabled)
@@ -101,16 +93,9 @@ func (h *Handler) UpdateDestinationAndCatalog() {
 		return
 	}
 
-	logger.Debugf("Update destination initiated project_id[%s] destination_id[%d] destination_type[%s] user_id[%v]",
-		projectID, id, req.Type, userID)
-
-	result, err := h.appSvc.UpdateDestinationWithCatalog(h.Ctx.Request.Context(), id, projectID, &req, userID)
+	err = h.appSvc.UpdateDestinationWithCatalog(h.Ctx.Request.Context(), id, projectID, &req, userID)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
-		return
-	}
-	if result.CatalogErr != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination updated but catalog updation failed", result.CatalogErr)
 		return
 	}
 
@@ -134,15 +119,9 @@ func (h *Handler) DeleteDestinationAndCatalog() {
 		return
 	}
 
-	logger.Debugf("Delete destination initiated destination_id[%d]", id)
-
-	resp, result, err := h.appSvc.DeleteDestinationWithCatalog(h.Ctx.Request.Context(), id)
+	resp, err := h.appSvc.DeleteDestinationWithCatalog(h.Ctx.Request.Context(), id)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
-		return
-	}
-	if result.CatalogErr != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusPartialContent, "destination deleted but catalog deletion failed", result.CatalogErr)
 		return
 	}
 

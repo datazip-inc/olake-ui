@@ -27,9 +27,12 @@ func (h *Handler) PiggyBacking() {
 
 	transformedPath := transformOptPathToAMS(req.URL.Path)
 
-	data, headers, err := h.opt.ProxyWithHeaders(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
+	data, statusCode, headers, err := h.opt.ProxyWithHeaders(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusBadGateway, "upstream request failed", err)
+		if statusCode == 0 {
+			statusCode = http.StatusBadGateway
+		}
+		utils.ErrorResponse(&h.Controller, statusCode, "upstream request failed", err)
 		return
 	}
 
@@ -50,6 +53,7 @@ func (h *Handler) PiggyBacking() {
 		if contentDisposition != "" {
 			h.Ctx.Output.Header("Content-Disposition", contentDisposition)
 		}
+		h.Ctx.Output.SetStatus(statusCode)
 		h.Ctx.Output.Body(data)
 		return
 	}
@@ -61,6 +65,7 @@ func (h *Handler) PiggyBacking() {
 		return
 	}
 
+	h.Ctx.Output.SetStatus(statusCode)
 	utils.SuccessResponse(&h.Controller, "request forwarded successfully", upstreamResponse)
 }
 

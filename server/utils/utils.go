@@ -715,7 +715,7 @@ func GetLogArchiveFilename(jobID int, filePath string) (string, error) {
 	return filename, nil
 }
 
-func ToJSON(v interface{}) (string, error) {
+func MarshalToString(v interface{}) (string, error) {
 	bytes, err := json.Marshal(v)
 	if err != nil {
 		return "", err

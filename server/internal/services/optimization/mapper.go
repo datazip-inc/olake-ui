@@ -10,13 +10,11 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-func MapoptimizationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.Config, error) {
+// maps optimization catalog details to ETL Destination Configuration
+func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 	config := &models.Config{}
 
-	// Map catalog name
 	config.CatalogName = catalog.Name
-
-	// Map catalog type back to OLake format
 	config.CatalogType = mapoptimizationTypeToOLake(catalog.Type)
 
 	// Map storage and auth config
@@ -34,7 +32,6 @@ func MapoptimizationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.C
 	if catalog.Properties != nil {
 		config.IcebergS3Path = catalog.Properties["warehouse"]
 
-		// Map S3 properties from catalog properties (for JDBC catalogs)
 		if catalog.Properties["endpoint"] != "" {
 			config.S3Endpoint = catalog.Properties["endpoint"]
 		}
@@ -82,7 +79,6 @@ func MapoptimizationCatalogToOLakeConfig(catalog *dto.CatalogRequest) (*models.C
 
 	// Set S3 flags - these are always true for S3 storage
 	if config.S3Endpoint != "" {
-		config.S3UseSSL = false
 		config.S3PathStyle = true
 	}
 
@@ -188,7 +184,11 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		if olakeConfig.RestSigningV4 {
 			utils.SetIfNotEmpty(properties, "rest.sigv4-enabled", "true")
 			utils.SetIfNotEmpty(properties, "rest.signing-name", olakeConfig.RestSigningName)
-			utils.SetIfNotEmpty(properties, "rest.signing-region", olakeConfig.RestSigningRegion)
+			signingRegion := olakeConfig.RestSigningRegion
+			if signingRegion == "" {
+				signingRegion = olakeConfig.Region
+			}
+			utils.SetIfNotEmpty(properties, "rest.signing-region", signingRegion)
 		}
 	}
 }

@@ -65,7 +65,26 @@ var (
 	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
 
-	OptimizationAPIBase = "/api/ams/v1/"
+	// Optimization API paths
+	OptPathCatalogs                 = "/api/ams/v1/catalogs"
+	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
+	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
+	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
+	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
+	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
+	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
+
+	OptMaxTimeout = 30 * time.Second
+	PollInterval  = 1500 * time.Millisecond
+
+	OptMinorCron          = "self-optimizing.minor.trigger.cron"
+	OptMajorCron          = "self-optimizing.major.trigger.cron"
+	OptFullCron           = "self-optimizing.full.trigger.cron"
+	OptTargetFileSize     = "write.target-file-size-bytes"
+	OptEnableOptimization = "self-optimizing.enabled"
+
+	OptSQLCommand = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+
 	// app env
 	EnvAppEnvironment    = "APP_ENV"
 	EnvCustomDriverImage = "CUSTOM_DRIVER_VERSION"

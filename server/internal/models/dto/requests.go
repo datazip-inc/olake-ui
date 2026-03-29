@@ -164,9 +164,9 @@ type TerminalExecuteRequest struct {
 }
 
 type SQLInput struct {
-	MinorTriggerInterval   string `json:"minorTriggerInterval"`
-	MajorTriggerInterval   string `json:"majorTriggerInterval"`
-	FullTriggerInterval    string `json:"fullTriggerInterval"`
-	TargetFileSize         int64  `json:"targetFileSize"`
-	EnabledForOptimization string `json:"enabledForOptimization"`
+	MinorCron              string `json:"minor_cron"`
+	MajorCron              string `json:"major_cron"`
+	FullCron               string `json:"full_cron"`
+	TargetFileSize         int64  `json:"target_file_size"`
+	EnabledForOptimization string `json:"enabled_for_optimization"`
 }

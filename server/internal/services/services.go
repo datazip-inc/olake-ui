@@ -36,6 +36,8 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		}
 
 		appSvc.opt = optSvc
+
+		// TODO: define context in main and pass
 		appSvc.SyncCatalogs(context.Background())
 	}
 
