@@ -78,6 +78,15 @@ func (s *Service) UpdateCatalogInOpt(ctx context.Context, catalogName string, re
 		return fmt.Errorf("failed to validate catalog config in optimization: %s", err)
 	}
 
+	existing, err := s.GetCatalogInOpt(ctx, catalogName)
+	if err != nil {
+		return fmt.Errorf("failed to get existing catalog %s for update: %s", catalogName, err)
+	}
+
+	req.Properties = mergeMaps(existing.Properties, req.Properties)
+	req.StorageConfig = mergeMaps(existing.StorageConfig, req.StorageConfig)
+	req.AuthConfig = mergeMaps(existing.AuthConfig, req.AuthConfig)
+
 	req.Name = catalogName
 	path := fmt.Sprintf(constants.OptPathCatalogDetail, catalogName)
 	if err := s.DoAndValidate(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
@@ -130,8 +139,6 @@ func (s *Service) CreateOptConfig(configJSON string, update bool) (*dto.CatalogR
 	if update == false {
 		setDefaultCatalogProperties(optimizationReq)
 	}
-
-	fmt.Println("💀", optimizationReq)
 
 	return optimizationReq, nil
 }

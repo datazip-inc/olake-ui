@@ -127,6 +127,18 @@ func setDefaultCatalogProperties(req *dto.CatalogRequest) {
 	}
 }
 
+// mergeMaps returns a new map with base values overridden by src values
+func mergeMaps(base, src map[string]string) map[string]string {
+	result := make(map[string]string, len(base)+len(src))
+	for k, v := range base {
+		result[k] = v
+	}
+	for k, v := range src {
+		result[k] = v
+	}
+	return result
+}
+
 func mapAuthConfig(olakeConfig *models.Config, authConfig, cmpStorageConfig map[string]string) {
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.region", olakeConfig.Region)
 	utils.SetIfNotEmpty(cmpStorageConfig, "storage.s3.endpoint", olakeConfig.S3Endpoint)
