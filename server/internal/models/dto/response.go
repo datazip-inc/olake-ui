@@ -227,13 +227,13 @@ type TablesResponse struct {
 
 type TableInfo struct {
 	Name         string            `json:"name"`
-	TotalSize    string            `json:"total_size,omitempty"`
+	TotalSize    string            `json:"totalSize"`
 	OLakeCreated bool              `json:"olake_created"`
 	Major        *OptimizationInfo `json:"major"`
 	Minor        *OptimizationInfo `json:"minor"`
 	Full         *OptimizationInfo `json:"full"`
 	Enabled      bool              `json:"enabled"`
-	HealthScore  int               `json:"health_score,omitempty"`
+	HealthScore  int               `json:"healthScore,omitempty"`
 }
 
 type OptimizationInfo struct {
