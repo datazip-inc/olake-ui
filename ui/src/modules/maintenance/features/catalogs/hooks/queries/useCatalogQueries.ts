@@ -26,7 +26,8 @@ export const useCatalogDatabases = (catalogName: string) => {
 		queryFn: () => catalogService.getCatalogDatabases(catalogName),
 		enabled: !!catalogName,
 		refetchOnWindowFocus: false,
-		select: data => data.result ?? [],
+		select: data =>
+			(data.result ?? []).slice().sort((a, b) => a.localeCompare(b)),
 	})
 }
 

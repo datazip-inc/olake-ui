@@ -12,7 +12,12 @@ import {
 	toSentenceCase,
 } from "@/common/utils"
 
-import { KNOWN_CRON_TRIGGER_INTERVALS } from "../constants"
+import {
+	KNOWN_CRON_TRIGGER_INTERVALS,
+	LITE_DEFAULT_TRIGGER_INTERVAL,
+	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+	FULL_DEFAULT_TRIGGER_INTERVAL,
+} from "../constants"
 import type {
 	CronConfigOption,
 	FusionCompactionRun,
@@ -173,9 +178,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const normalizeMetricKey = (key: string): string =>
 	key
-		.split(/[_-]+/)
+		.replace(/([a-z])([A-Z])/g, "$1 $2") // insert space between lower and upper case
+		.split(/[_\-\s]+/)
 		.filter(Boolean)
-		.map(part => part.charAt(0).toUpperCase() + part.slice(1))
+		.map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
 		.join(" ")
 
 // Excludde these fields from the Run Metrics sidebar.
@@ -242,10 +248,6 @@ export const mapTriggerIntervalToCronConfigOption = (
 		customCron: triggerInterval,
 	}
 }
-
-const LITE_DEFAULT_TRIGGER_INTERVAL = "0 * * * *"
-const MEDIUM_DEFAULT_TRIGGER_INTERVAL = "0 */8 * * *"
-const FULL_DEFAULT_TRIGGER_INTERVAL = "never"
 
 // Expands a TableCronApiModel into TableCronFormModel by resolving each trigger interval through mapTriggerIntervalToCronConfigOption.
 export const mapTableCronApiModelToTableCronFormModel = (

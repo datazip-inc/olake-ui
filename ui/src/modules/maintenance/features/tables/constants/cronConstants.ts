@@ -20,3 +20,8 @@ export const DEFAULT_CRON_CONFIG: CronConfigOption = {
 	frequency: "0 0 * * *",
 	customCron: "",
 }
+
+export const LITE_DEFAULT_TRIGGER_INTERVAL = "0 * * * *"
+export const MEDIUM_DEFAULT_TRIGGER_INTERVAL = "0 */8 * * *"
+export const FULL_DEFAULT_TRIGGER_INTERVAL = ""
+export const DEFAULT_TARGET_FILE_SIZE = 512

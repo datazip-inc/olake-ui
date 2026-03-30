@@ -55,16 +55,16 @@ const RunMetricsSidebar: React.FC<RunMetricsSidebarProps> = ({
 						No metrics found.
 					</div>
 				) : (
-					<div>
+					<div className="flex flex-col">
 						{rows.map(item => (
 							<div
 								key={item.label}
-								className="flex h-16 items-center justify-between border-b border-olake-border px-6"
+								className="flex min-h-16 items-center justify-between gap-4 border-b border-olake-border px-6 py-4"
 							>
-								<p className="font-sans text-base font-normal leading-6 text-olake-text">
+								<p className="shrink-0 whitespace-nowrap font-sans text-base font-normal leading-6 text-olake-text">
 									{item.label}
 								</p>
-								<p className="font-sans text-xl font-medium leading-7 text-olake-text">
+								<p className="break-words pl-8 text-right font-sans text-base font-medium leading-6 text-olake-text">
 									{item.value}
 								</p>
 							</div>

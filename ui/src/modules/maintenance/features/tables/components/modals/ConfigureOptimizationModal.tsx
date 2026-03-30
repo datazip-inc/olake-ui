@@ -4,7 +4,11 @@ import clsx from "clsx"
 import { useEffect, useState } from "react"
 
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
-import { CRON_FREQUENCY_OPTIONS, DEFAULT_CRON_CONFIG } from "../../constants"
+import {
+	CRON_FREQUENCY_OPTIONS,
+	DEFAULT_CRON_CONFIG,
+	DEFAULT_TARGET_FILE_SIZE,
+} from "../../constants"
 import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
 import type {
@@ -125,7 +129,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
 	const [fullCron, setFullCron] =
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
-	const [targetFileSize, setTargetFileSize] = useState(100)
+	const [targetFileSize, setTargetFileSize] = useState(DEFAULT_TARGET_FILE_SIZE)
 	const [advancedOpen, setAdvancedOpen] = useState(true)
 	const [activeModal, setActiveModal] = useState<ActiveModal>(null)
 	const {
