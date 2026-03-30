@@ -83,7 +83,7 @@ func (h *Handler) GetDestination(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to create destination"
 // @Router /api/v1/project/{projectid}/destinations [post]
 func (h *Handler) CreateDestination(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
@@ -125,7 +125,7 @@ func (h *Handler) CreateDestination(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [put]
 func (h *Handler) UpdateDestination(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return

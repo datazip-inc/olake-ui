@@ -83,7 +83,7 @@ func (h *Handler) GetSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to create source"
 // @Router /api/v1/project/{projectid}/sources [post]
 func (h *Handler) CreateSource(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
@@ -124,7 +124,7 @@ func (h *Handler) CreateSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update source"
 // @Router /api/v1/project/{projectid}/sources/{id} [put]
 func (h *Handler) UpdateSource(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return

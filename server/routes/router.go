@@ -6,17 +6,17 @@ import (
 )
 
 func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
-	etlHandler := h.ETL
 
-	engine.POST("/login", etlHandler.Login)
-	engine.POST("/signup", etlHandler.Signup)
-	engine.GET("/auth/check", etlHandler.CheckAuth)
-	engine.GET("/telemetry-id", etlHandler.TelemetryID)
-	engine.GET("/swagger/*any", etlHandler.ServeSwagger)
+	engine.POST("/login", h.Login)
+	engine.POST("/signup", h.Signup)
+	engine.GET("/auth/check", h.CheckAuth)
+	engine.GET("/telemetry-id", h.TelemetryID)
+	etlHandler := h.ETL
+	engine.GET("/swagger/*any", h.ServeSwagger)
 
 	etl := engine.Group("/api/v1")
 
-	etl.Use(etlHandler.AuthMiddleware())
+	etl.Use(h.AuthMiddleware())
 
 	// users routes
 	etl.POST("/users", etlHandler.CreateUser)
@@ -76,7 +76,20 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 		opt := engine.Group("/api/opt/v1")
 		opt.Use(h.AuthMiddleware())
 
+		// catalogs: crud
 		opt.POST("/catalog", optHandler.CreateCatalog)
+		opt.GET("/catalog/:catalog", optHandler.GetCatalog)
+		opt.PUT("/catalog/:catalog", optHandler.UpdateCatalog)
+		opt.DELETE("/catalog/:catalog", optHandler.DeleteCatalog)
+
+		// terminal: cron, enable/disable optimization
+		opt.PUT("/:catalog/:database/:table/config", optHandler.SetProperties)
+
+		// tables: view
+		opt.GET("/:catalog/:database/tables", optHandler.GetTablesWithDetails)
+
+		// piggy backing
+		opt.Any("/*any", optHandler.PiggyBacking)
 
 	}
 }

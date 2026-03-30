@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/spf13/viper"
 )
@@ -235,9 +234,10 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 }
 
 func getCredentials() (string, string, string, error) {
-	baseURL, err := web.AppConfig.String(constants.ConfOptimizationBaseURL)
-	if err != nil {
-		return "", "", "", fmt.Errorf("failed to get optimization base URL: %s", err)
+	// TODO BEFORE MERGE
+	baseURL := viper.GetString(constants.ConfOptimizationBaseURL)
+	if baseURL == "" {
+		return "", "", "", fmt.Errorf("failed to get optimization base URL: OPTIMIZATION_BASE_URL environment variable not set")
 	}
 
 	username := viper.GetString(constants.ConfOptimizationUsername)

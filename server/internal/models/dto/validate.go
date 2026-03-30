@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
@@ -25,12 +24,4 @@ func ValidateDestinationType(t string) error {
 		}
 	}
 	return fmt.Errorf("invalid destination type '%s', supported destinations are: %v", t, constants.SupportedDestinationTypes)
-}
-
-// UnmarshalAndValidate unmarshals JSON from request body into the provided struct
-func UnmarshalAndValidate(requestBody []byte, target interface{}) error {
-	if err := json.Unmarshal(requestBody, target); err != nil {
-		return err
-	}
-	return Validate(target)
 }

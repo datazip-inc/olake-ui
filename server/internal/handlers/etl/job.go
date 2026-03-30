@@ -85,7 +85,7 @@ func (h *Handler) GetJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to create job"
 // @Router /api/v1/project/{projectid}/jobs [post]
 func (h *Handler) CreateJob(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
@@ -126,7 +126,7 @@ func (h *Handler) CreateJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [put]
 func (h *Handler) UpdateJob(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
@@ -278,7 +278,7 @@ func (h *Handler) SyncJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to activate job"
 // @Router /api/v1/project/{projectid}/jobs/{id}/activate [post]
 func (h *Handler) ActivateJob(c *gin.Context) {
-	userID := getCurrentUserID(c, h.sessions)
+	userID := getCurrentUserID(c)
 	if userID == nil {
 		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return

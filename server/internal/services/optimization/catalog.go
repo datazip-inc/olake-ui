@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/spf13/viper"
 )
 
 func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.Config, error) {
@@ -116,9 +116,10 @@ func (s *Service) CreateOptConfig(configJSON string, update bool) (*dto.CatalogR
 		return nil, fmt.Errorf("catalog_name is required in config")
 	}
 
-	og, err := web.AppConfig.String(constants.ConfOptimizationGroup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get optimization group")
+	// TODO BEFORE MERGE
+	og := viper.GetString(constants.ConfOptimizationGroup)
+	if og == "" {
+		og = "spark-container"
 	}
 
 	catalogType := normalizeCatalogType(string(config.CatalogType))

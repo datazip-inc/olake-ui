@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimization"
 	"github.com/datazip-inc/olake-ui/server/internal/services"
@@ -14,25 +16,20 @@ type Handler struct {
 	Optimization *optimization.Handler
 }
 
-var app *services.AppService
+func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database.Database) (*Handler, error) {
+	sessionStore, err := newSessionStore(cfg, db)
+	if err != nil {
+		return nil, err
+	}
 
-func NewHandler(appSvc *services.AppService) *Handler {
-	app = appSvc
 	h := &Handler{
-		appSvc: appSvc,
-		ETL:    etl.NewHandler(appSvc.ETL()),
+		appSvc:   appSvc,
+		sessions: sessionStore,
+		ETL:      etl.NewHandler(appSvc.ETL()),
 	}
-	if appSvc.Optimization() != nil {
-		h.Optimization = optimization.NewHandler(appSvc.Optimization())
-	}
-
-	return h
-}
-
-func (h *Handler) GetoptimizationStatus() {
-	response := map[string]interface{}{
-		"enabled": h.appSvc.Optimization() != nil,
+	if opt := appSvc.Optimization(); opt != nil {
+		h.Optimization = optimization.NewHandler(opt)
 	}
 
-	successResponse(c, "optimization status retrieved successfully", response)
+	return h, nil
 }
