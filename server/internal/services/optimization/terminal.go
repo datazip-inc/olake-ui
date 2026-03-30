@@ -73,7 +73,8 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 		return nil, fmt.Errorf("failed to poll for completion: %s", err)
 	}
 
-	// Determine success based on status
+	// TODO: Fusion may return "Finished" even if the query fails (e.g., syntax error).
+	// Solution: validate execution status by checking logs for "Finished" vs "Failed".
 	success := logInfo.LogStatus == "Finished"
 	var message string
 	if success {
