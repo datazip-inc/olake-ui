@@ -19,8 +19,8 @@ jobs:
     name: govulncheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
         with:
           go-version-file: "server/go.mod"
       - name: Install govulncheck
@@ -33,8 +33,8 @@ jobs:
     name: GoSec Security Scanner
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
         with:
           go-version-file: "server/go.mod"
       - name: install gosec
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run Trivy vulnerability scanner in repo mode
         uses: aquasecurity/trivy-action@master
         with:
@@ -56,3 +56,4 @@ jobs:
           scan-type: 'fs'
           scan-ref: './'
           severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true

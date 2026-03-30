@@ -18,17 +18,17 @@ Olake Server is a RESTful API service built with Gin that manages data sources, 
 
 ### 2. Configure Application Settings (Auth only works when session enabled)
 
-Review and update the configuration in `conf/app.yaml` as needed (env vars override this file):
+Review and update the configuration in `conf/app.conf` as needed:
 
 ```bash
-APP_NAME: olake-server
-HTTP_PORT: "8000"
-RUN_MODE: localdev
-COPY_REQUEST_BODY: true
-POSTGRES_DB: postgres://postgres:testing@testing-postgres.postgres.database.azure.com:5432/olakedb
+appname = olake-server
+httpport = 8000
+runmode = dev
+copyrequestbody = true
+postgresdb = postgres://postgres:testing@testing-postgres.postgres.database.azure.com:5432/olakedb
 
 # Session configuration
-SESSION_ON: true
+sessionon = true
 ```
 
 #### If session enabled, then manually run following command on your postgres db
@@ -117,7 +117,7 @@ The application runs in development mode by default, with ORM debugging enabled.
 
 For production deployment:
 
-1. Set `RUN_MODE=prod` in `conf/app.yaml` (or set via environment variables)
+1. Set `runmode = prod` in `conf/app.conf`
 2. Configure a secure database connection
 3. Set up proper CORS settings in `internal/httpserver/server.go`
 4. Enable authentication middleware

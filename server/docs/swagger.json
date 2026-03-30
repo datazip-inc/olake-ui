@@ -48,6 +48,12 @@
                             ]
                         }
                     },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
                     "401": {
                         "description": "unauthorized",
                         "schema": {
@@ -123,12 +129,6 @@
                         "description": "name is not unique",
                         "schema": {
                             "$ref": "#/definitions/dto.Error409Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -253,12 +253,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to create destination",
                         "schema": {
@@ -322,12 +316,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -395,10 +383,10 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "413": {
-                        "description": "payload too large",
+                    "500": {
+                        "description": "failed to test connection",
                         "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
+                            "$ref": "#/definitions/dto.Error500Response"
                         }
                     }
                 }
@@ -521,12 +509,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "destination not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to get destination",
                         "schema": {
@@ -597,18 +579,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "destination not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to update destination",
                         "schema": {
@@ -668,12 +638,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "destination not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -786,12 +750,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to create job",
                         "schema": {
@@ -855,12 +813,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to get job",
                         "schema": {
@@ -919,18 +871,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to update job",
                         "schema": {
@@ -978,12 +918,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1046,18 +980,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to activate job",
                         "schema": {
@@ -1107,12 +1029,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1178,12 +1094,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to get status",
                         "schema": {
@@ -1231,12 +1141,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1375,18 +1279,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to get stream difference",
                         "schema": {
@@ -1436,12 +1328,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1508,12 +1394,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1611,18 +1491,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -1730,12 +1598,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -1860,12 +1722,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to create source",
                         "schema": {
@@ -1929,12 +1785,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2002,12 +1852,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to get source catalog",
                         "schema": {
@@ -2071,12 +1915,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2205,12 +2043,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "404": {
-                        "description": "source not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
                     "500": {
                         "description": "failed to get source",
                         "schema": {
@@ -2285,12 +2117,6 @@
                         "description": "source not found",
                         "schema": {
                             "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2390,7 +2216,7 @@
                                         "type": "object",
                                         "properties": {
                                             "data": {
-                                                "$ref": "#/definitions/dto.UserResponse"
+                                                "$ref": "#/definitions/models.User"
                                             }
                                         }
                                     }
@@ -2431,7 +2257,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateUserRequest"
+                            "$ref": "#/definitions/models.User"
                         }
                     }
                 ],
@@ -2439,19 +2265,7 @@
                     "200": {
                         "description": "user created successfully",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/dto.JSONResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/dto.UserResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/dto.JSONResponse"
                         }
                     },
                     "400": {
@@ -2464,18 +2278,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "409": {
-                        "description": "user already exists",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error409Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2508,7 +2310,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateUserRequest"
+                            "$ref": "#/definitions/models.User"
                         }
                     }
                 ],
@@ -2524,7 +2326,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/dto.UserResponse"
+                                            "$ref": "#/definitions/models.User"
                                         }
                                     }
                                 }
@@ -2541,12 +2343,6 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2652,24 +2448,6 @@
                         "schema": {
                             "$ref": "#/definitions/dto.JSONResponse"
                         }
-                    },
-                    "400": {
-                        "description": "failed to validate request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error400Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "500": {
-                        "description": "internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error500Response"
-                        }
                     }
                 }
             }
@@ -2712,30 +2490,6 @@
                         "schema": {
                             "$ref": "#/definitions/dto.JSONResponse"
                         }
-                    },
-                    "400": {
-                        "description": "failed to validate request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error400Response"
-                        }
-                    },
-                    "404": {
-                        "description": "job not found",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error404Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
-                    "500": {
-                        "description": "internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error500Response"
-                        }
                     }
                 }
             }
@@ -2763,24 +2517,6 @@
                         "description": "sync telemetry updated successfully",
                         "schema": {
                             "$ref": "#/definitions/dto.JSONResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "failed to validate request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error400Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
-                    "500": {
-                        "description": "internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error500Response"
                         }
                     }
                 }
@@ -2835,12 +2571,6 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
-                        }
-                    },
                     "500": {
                         "description": "internal server error",
                         "schema": {
@@ -2864,7 +2594,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateUserRequest"
+                            "$ref": "#/definitions/models.User"
                         }
                     }
                 ],
@@ -2885,12 +2615,6 @@
                         "description": "user already exists",
                         "schema": {
                             "$ref": "#/definitions/dto.Error409Response"
-                        }
-                    },
-                    "413": {
-                        "description": "payload too large",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -3078,28 +2802,6 @@
                 }
             }
         },
-        "dto.CreateUserRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "admin@example.com"
-                },
-                "password": {
-                    "type": "string",
-                    "example": "password"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "admin"
-                }
-            }
-        },
         "dto.DeleteDestinationResponse": {
             "type": "object",
             "properties": {
@@ -3265,19 +2967,6 @@
                 "message": {
                     "type": "string",
                     "example": "Resource already exists"
-                },
-                "success": {
-                    "type": "boolean",
-                    "example": false
-                }
-            }
-        },
-        "dto.Error413Response": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Payload too large"
                 },
                 "success": {
                     "type": "boolean",
@@ -3901,19 +3590,6 @@
                 }
             }
         },
-        "dto.UpdateUserRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "admin@example.com"
-                },
-                "username": {
-                    "type": "string",
-                    "example": "admin"
-                }
-            }
-        },
         "dto.UpsertProjectSettingsRequest": {
             "type": "object",
             "required": [
@@ -3934,23 +3610,6 @@
                 }
             }
         },
-        "dto.UserResponse": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "admin@example.com"
-                },
-                "id": {
-                    "type": "integer",
-                    "example": 1
-                },
-                "username": {
-                    "type": "string",
-                    "example": "admin"
-                }
-            }
-        },
         "dto.VersionsResponse": {
             "type": "object",
             "properties": {
@@ -3965,6 +3624,33 @@
                         "v0.3.13",
                         "v0.3.12"
                     ]
+                }
+            }
+        },
+        "models.User": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "password": {
+                    "description": "Hidden in JSON",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         }
