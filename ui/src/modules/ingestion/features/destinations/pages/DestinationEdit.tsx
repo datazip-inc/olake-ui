@@ -676,6 +676,7 @@ const DestinationEdit: React.FC = () => {
 			<TestConnectionFailureModal
 				open={showFailureModal}
 				onClose={() => setShowFailureModal(false)}
+				onEdit={() => setShowFailureModal(false)}
 				connectionType="destination"
 				testConnectionError={testConnectionError}
 			/>

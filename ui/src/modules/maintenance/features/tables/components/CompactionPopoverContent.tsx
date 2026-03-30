@@ -27,7 +27,11 @@ const CompactionPopoverContent: React.FC<Props> = ({ minor, major, full }) => {
 								<p className="text-xs font-medium leading-4 text-olake-text">
 									{slot.name}
 								</p>
-								{run && run.lastRun ? (
+								{run?.status === "RUNNING" ? (
+									<p className="text-[10px] leading-normal text-olake-text-tertiary">
+										running
+									</p>
+								) : run?.lastRun ? (
 									<p className="text-[10px] leading-normal text-olake-text-tertiary">
 										last run {run.lastRun}
 									</p>

@@ -286,6 +286,7 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,
 		lastCommitTime: baseMetrics.lastCommitTime ?? 0,
+		totalSize: baseMetrics.totalSize ?? "--",
 	}
 }
 
@@ -312,10 +313,7 @@ export const mapTableMetricsResponseToFileSummary = (
 
 // Combines details and snapshots metrics into one modal-friendly object.
 export const buildTableMetricsModalData = (
-	details?: Pick<
-		TableDetailsApiModel,
-		"fileCount" | "averageFileSize" | "lastCommitTime"
-	>,
+	details?: TableDetailsApiModel,
 	metrics?: TableMetricsFileSummary,
 ): TableMetricsModalData => {
 	const dataFiles = metrics?.["data-files"]
@@ -329,6 +327,7 @@ export const buildTableMetricsModalData = (
 		fileCount: details?.fileCount ?? fallbackFileCount,
 		averageFileSize: details?.averageFileSize,
 		lastCommitTime: details?.lastCommitTime,
+		totalSize: details?.totalSize,
 		dataFiles,
 		deleteFiles,
 	}

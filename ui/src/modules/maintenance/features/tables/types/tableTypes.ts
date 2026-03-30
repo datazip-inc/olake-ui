@@ -52,6 +52,7 @@ export interface TableDetailsApiResponse {
 			averageFileSize?: string
 			fileCount?: number
 			lastCommitTime?: number
+			totalSize?: string
 		}
 		properties?: Record<string, string>
 	}
@@ -136,6 +137,7 @@ export interface TableDetailsApiModel extends TableCronApiModel {
 	averageFileSize: string
 	fileCount: number
 	lastCommitTime: number
+	totalSize: string
 }
 
 export type TableDetailsViewModel = TableDetailsApiModel & TableCronFormModel
@@ -151,6 +153,7 @@ export interface TableMetricsModalData {
 	lastCommitTime?: number
 	dataFiles?: number
 	deleteFiles?: number
+	totalSize?: string
 }
 
 export interface CronConfigOption {

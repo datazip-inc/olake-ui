@@ -523,6 +523,7 @@ const CreateSource: React.FC = () => {
 			<TestConnectionFailureModal
 				open={showFailureModal}
 				onClose={() => setShowFailureModal(false)}
+				onEdit={() => setShowFailureModal(false)}
 				connectionType="source"
 				testConnectionError={testConnectionError}
 			/>

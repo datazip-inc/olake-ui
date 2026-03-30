@@ -75,6 +75,14 @@ const TableMetricsModal: React.FC<TableMetricsModalProps> = ({
 									{displayMetrics.fileCount ?? "--"}
 								</p>
 							</div>
+							<div className="flex min-h-14 items-center justify-between">
+								<p className="pr-8 text-base font-normal leading-[24px] text-olake-text">
+									Total Size
+								</p>
+								<p className="text-xl font-medium leading-[28px] text-olake-text">
+									{displayMetrics.totalSize ?? "--"}
+								</p>
+							</div>
 
 							<div className="flex min-h-14 items-center justify-between border-t border-olake-border">
 								<p className="pr-8 text-base font-normal leading-[24px] text-olake-text">
