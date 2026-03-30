@@ -47,7 +47,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 		tableDetails, err := s.GetTableDetails(ctx, catalog, databaseName, tableName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %v\n", catalog, databaseName, tableName, err)
+			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %s", catalog, databaseName, tableName, err)
 		}
 
 		detailsMap, ok := tableDetails.(map[string]interface{})

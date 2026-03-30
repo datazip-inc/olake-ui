@@ -174,7 +174,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 	}
 
 	if statusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d: %s", statusCode, string(respBody))
+		return nil, &HTTPError{StatusCode: statusCode, Body: respBody}
 	}
 
 	return respBody, nil

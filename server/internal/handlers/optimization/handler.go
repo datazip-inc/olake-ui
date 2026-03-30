@@ -1,6 +1,9 @@
 package optimization
 
 import (
+	"errors"
+	"net/http"
+
 	"github.com/beego/beego/v2/server/web"
 	services "github.com/datazip-inc/olake-ui/server/internal/services/optimization"
 )
@@ -24,4 +27,13 @@ func NewHandler(s *services.Service) *Handler {
 // so we assign the shared service here to avoid nil dereferences.
 func (h *Handler) Prepare() {
 	h.opt = opt
+}
+
+// returns the HTTP status code carried by an upstream optimzation
+func upstreamStatus(err error) int {
+	var httpErr *services.HTTPError
+	if errors.As(err, &httpErr) {
+		return httpErr.StatusCode
+	}
+	return http.StatusInternalServerError
 }

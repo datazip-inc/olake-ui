@@ -16,7 +16,7 @@ func (h *Handler) GetCatalog() {
 
 	olakeConfig, err := h.opt.GetCatalog(h.Ctx.Request.Context(), catalogName)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to get catalog details", err)
+		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
@@ -43,7 +43,7 @@ func (h *Handler) CreateCatalog() {
 
 	result, err := h.opt.CreateCatalog(h.Ctx.Request.Context(), configJSON, false)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "failed to create catalog", err)
+		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *Handler) UpdateCatalog() {
 
 	result, err := h.opt.UpdateCatalog(h.Ctx.Request.Context(), configJSON)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to update catalog", err)
+		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
@@ -92,7 +92,7 @@ func (h *Handler) DeleteCatalog() {
 
 	result, err := h.opt.DeleteCatalogInOpt(h.Ctx.Request.Context(), catalogName)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to delete catalog", err)
+		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
 	}
 

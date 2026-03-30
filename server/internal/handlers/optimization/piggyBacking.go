@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
@@ -65,8 +66,13 @@ func (h *Handler) PiggyBacking() {
 		return
 	}
 
-	h.Ctx.Output.SetStatus(statusCode)
-	utils.SuccessResponse(&h.Controller, "request forwarded successfully", upstreamResponse)
+	var optResp dto.OptimizationResponse
+	if jsonErr := json.Unmarshal(data, &optResp); jsonErr == nil && optResp.Code != 0 && optResp.Code != 200 {
+		utils.ErrorResponse(&h.Controller, optResp.Code, optResp.Message, nil)
+		return
+	}
+
+	utils.RespondJSON(&h.Controller, statusCode, true, "request forwarded successfully", upstreamResponse)
 }
 
 func transformOptPathToAMS(path string) string {

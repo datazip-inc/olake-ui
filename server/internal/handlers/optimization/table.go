@@ -1,8 +1,6 @@
 package optimization
 
 import (
-	"net/http"
-
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
@@ -15,7 +13,7 @@ func (h *Handler) GetTablesWithDetails() {
 
 	tables, err := h.opt.GetTablesWithDetails(h.Ctx.Request.Context(), catalog, database)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to get tables with details", err)
+		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
@@ -36,7 +34,7 @@ func (h *Handler) SetProperties() {
 
 	result, err := h.opt.SetProperties(h.Ctx.Request.Context(), catalog, database, table, req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, "Failed to set configuration", err)
+		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
