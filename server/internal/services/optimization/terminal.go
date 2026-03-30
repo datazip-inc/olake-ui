@@ -11,21 +11,25 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
 func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
 	properties := make(map[string]string)
 
-	utils.SetIfNotEmpty(properties, constants.OptMinorCron, config.MinorCron)
-	utils.SetIfNotEmpty(properties, constants.OptMajorCron, config.MajorCron)
-	utils.SetIfNotEmpty(properties, constants.OptFullCron, config.FullCron)
-	utils.SetIfNotEmpty(properties, constants.OptEnableOptimization, config.EnabledForOptimization)
-
-	if config.TargetFileSize > 0 {
-		size := config.TargetFileSize
-		targetFileSize := ConvertMBToBytes(int64(size))
-		properties[constants.OptTargetFileSize] = targetFileSize
+	if config.MinorCron != nil {
+		properties[constants.OptMinorCron] = *config.MinorCron
+	}
+	if config.MajorCron != nil {
+		properties[constants.OptMajorCron] = *config.MajorCron
+	}
+	if config.FullCron != nil {
+		properties[constants.OptFullCron] = *config.FullCron
+	}
+	if config.EnabledForOptimization != nil {
+		properties[constants.OptEnableOptimization] = *config.EnabledForOptimization
+	}
+	if config.TargetFileSize != nil {
+		properties[constants.OptTargetFileSize] = ConvertMBToBytes(*config.TargetFileSize)
 	}
 
 	// sql query

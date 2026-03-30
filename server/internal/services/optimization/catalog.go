@@ -86,6 +86,7 @@ func (s *Service) UpdateCatalogInOpt(ctx context.Context, catalogName string, re
 	req.Properties = mergeMaps(existing.Properties, req.Properties)
 	req.StorageConfig = mergeMaps(existing.StorageConfig, req.StorageConfig)
 	req.AuthConfig = mergeMaps(existing.AuthConfig, req.AuthConfig)
+	req.TableProperties = mergeMaps(existing.TableProperties, req.TableProperties)
 
 	req.Name = catalogName
 	path := fmt.Sprintf(constants.OptPathCatalogDetail, catalogName)

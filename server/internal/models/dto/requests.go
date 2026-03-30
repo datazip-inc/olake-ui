@@ -164,9 +164,9 @@ type TerminalExecuteRequest struct {
 }
 
 type SQLInput struct {
-	MinorCron              string `json:"minor_cron"`
-	MajorCron              string `json:"major_cron"`
-	FullCron               string `json:"full_cron"`
-	TargetFileSize         int64  `json:"target_file_size"`
-	EnabledForOptimization string `json:"enabled_for_optimization"`
+	MinorCron              *string `json:"minor_cron"`
+	MajorCron              *string `json:"major_cron"`
+	FullCron               *string `json:"full_cron"`
+	TargetFileSize         *int64  `json:"target_file_size"`
+	EnabledForOptimization *string `json:"enabled_for_optimization"`
 }
