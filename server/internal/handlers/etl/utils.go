@@ -1,4 +1,4 @@
-package handlers
+package etl
 
 import (
 	"errors"
@@ -29,7 +29,7 @@ func getIDParam(c *gin.Context, key string) (int, error) {
 	return id, nil
 }
 
-func getCurrentUserID(c *gin.Context, sessions *sessionStore) *int {
+func getCurrentUserID(c *gin.Context, sessions *.SessionStore) *int {
 	userID, ok := sessions.GetUserID(c)
 	if !ok {
 		return nil

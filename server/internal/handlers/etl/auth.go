@@ -1,4 +1,4 @@
-package handlers
+package etl
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+	
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,11 +101,23 @@ func (h *Handler) CheckAuth(c *gin.Context) {
 
 	if err := h.etl.ValidateUser(userID); err != nil {
 		errorResponse(c, http.StatusUnauthorized, fmt.Sprintf("Invalid session: %s", err), err)
-		return
 	}
 
-	successResponse(c, "authenticated successfully", nil)
+	utils.SuccessResponse(&h.Controller, "authenticated successfully", nil)
 }
+
+// func (h *Handler) Logout() {
+// 	userID := h.GetSession(constants.SessionUserID)
+// 	logger.Debugf("Logout initiated user_id[%v]", userID)
+
+// 	err := h.DestroySession()
+// 	if err != nil {
+// 		utils.ErrorResponse(&h.Controller, http.StatusInternalServerError, fmt.Sprintf("Failed to destroy session: %s", err), err)
+// 		return
+// 	}
+
+// 	utils.SuccessResponse(&h.Controller, "logout successful", nil)
+// }
 
 // @Summary Get telemetry ID
 // @Tags Internal

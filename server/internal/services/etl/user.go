@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 // User-related methods on AppService
 
-func (s *ETLService) CreateUser(_ context.Context, req *models.User) error {
+func (s *Service) CreateUser(_ context.Context, req *models.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("%w: %v", constants.ErrPasswordProcessing, err)
@@ -29,7 +29,7 @@ func (s *ETLService) CreateUser(_ context.Context, req *models.User) error {
 	return nil
 }
 
-func (s *ETLService) GetAllUsers(_ context.Context) ([]*models.User, error) {
+func (s Service) GetAllUsers(_ context.Context) ([]*models.User, error) {
 	users, err := s.db.ListUsers()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list users: %s", err)
@@ -37,7 +37,7 @@ func (s *ETLService) GetAllUsers(_ context.Context) ([]*models.User, error) {
 	return users, nil
 }
 
-func (s *ETLService) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
+func (s Service) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
 	existingUser, err := s.db.GetUserByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %s", err)
@@ -53,7 +53,7 @@ func (s *ETLService) UpdateUser(_ context.Context, id int, req *models.User) (*m
 	return existingUser, nil
 }
 
-func (s *ETLService) DeleteUser(_ context.Context, id int) error {
+func (s Service) DeleteUser(_ context.Context, id int) error {
 	if err := s.db.DeleteUser(id); err != nil {
 		return fmt.Errorf("failed to delete user: %s", err)
 	}

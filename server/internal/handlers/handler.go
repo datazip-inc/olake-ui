@@ -1,23 +1,38 @@
 package handlers
 
 import (
-	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
-	"github.com/datazip-inc/olake-ui/server/internal/database"
-	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimization"
+	"github.com/datazip-inc/olake-ui/server/internal/services"
 )
 
 type Handler struct {
-	etl      *services.ETLService
-	sessions *sessionStore
+	// for cross-service api calls, the orchestration handler app service access
+	appSvc       *services.AppService
+	ETL          *etl.Handler
+	sessions     *sessionStore
+	Optimization *optimization.Handler
 }
 
-func NewHandler(s *services.ETLService, cfg *appconfig.Config, db *database.Database) (*Handler, error) {
-	sessionStore, err := newSessionStore(cfg, db)
-	if err != nil {
-		return nil, err
+var app *services.AppService
+
+func NewHandler(appSvc *services.AppService) *Handler {
+	app = appSvc
+	h := &Handler{
+		appSvc: appSvc,
+		ETL:    etl.NewHandler(appSvc.ETL()),
 	}
-	return &Handler{
-		etl:      s,
-		sessions: sessionStore,
-	}, nil
+	if appSvc.Optimization() != nil {
+		h.Optimization = optimization.NewHandler(appSvc.Optimization())
+	}
+
+	return h
+}
+
+func (h *Handler) GetoptimizationStatus() {
+	response := map[string]interface{}{
+		"enabled": h.appSvc.Optimization() != nil,
+	}
+
+	successResponse(c, "optimization status retrieved successfully", response)
 }

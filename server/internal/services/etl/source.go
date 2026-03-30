@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 // Source-related methods on AppService
 
 // GetSource returns a single source by ID with its associated jobs.
-func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID int) (*dto.SourceDataItem, error) {
+func (s Service) GetSource(ctx context.Context, projectID string, sourceID int) (*dto.SourceDataItem, error) {
 	source, err := s.db.GetSourceByID(sourceID)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
@@ -60,7 +60,7 @@ func (s *ETLService) GetSource(ctx context.Context, projectID string, sourceID i
 }
 
 // GetAllSources returns all sources for a project with lightweight job summaries.
-func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
+func (s Service) ListSources(ctx context.Context, projectID string) ([]dto.SourceDataItem, error) {
 	sources, err := s.db.ListSourcesByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list sources: %s", err)
@@ -114,7 +114,7 @@ func (s *ETLService) ListSources(ctx context.Context, projectID string) ([]dto.S
 	return items, nil
 }
 
-func (s *ETLService) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
+func (s Service) CreateSource(ctx context.Context, req *dto.CreateSourceRequest, projectID string, userID *int) error {
 	unique, err := s.db.IsSourceNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check source name uniqueness: %s", err)
@@ -145,7 +145,7 @@ func (s *ETLService) CreateSource(ctx context.Context, req *dto.CreateSourceRequ
 	return nil
 }
 
-func (s *ETLService) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
+func (s Service) UpdateSource(ctx context.Context, projectID string, id int, req *dto.UpdateSourceRequest, userID *int) error {
 	existing, err := s.db.GetSourceByID(id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
@@ -180,7 +180,7 @@ func (s *ETLService) UpdateSource(ctx context.Context, projectID string, id int,
 	return nil
 }
 
-func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
+func (s Service) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourceResponse, error) {
 	src, err := s.db.GetSourceByID(id)
 	if err != nil {
 		if errors.Is(err, constants.ErrSourceNotFound) {
@@ -208,7 +208,7 @@ func (s *ETLService) DeleteSource(ctx context.Context, id int) (*dto.DeleteSourc
 	return &dto.DeleteSourceResponse{Name: src.Name}, nil
 }
 
-func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s Service) TestSourceConnection(ctx context.Context, req *dto.SourceTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	if s.temporal == nil {
 		return nil, nil, fmt.Errorf("temporal client not available")
 	}
@@ -242,7 +242,7 @@ func (s *ETLService) TestSourceConnection(ctx context.Context, req *dto.SourceTe
 	return result, logs.Logs, nil
 }
 
-func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
+func (s Service) GetSourceCatalog(ctx context.Context, req *dto.StreamsRequest) (map[string]interface{}, error) {
 	oldStreams := ""
 	if req.JobID >= 0 {
 		job, err := s.db.GetJobByID(req.JobID, true)
@@ -273,7 +273,7 @@ func (s *ETLService) GetSourceCatalog(ctx context.Context, req *dto.StreamsReque
 	return newStreams, nil
 }
 
-func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
+func (s Service) GetSourceVersions(ctx context.Context, sourceType string) (dto.VersionsResponse, error) {
 	imageName := fmt.Sprintf("olakego/source-%s", sourceType)
 	versions, _, err := utils.GetDriverImageTags(ctx, imageName, true)
 	if err != nil {
@@ -284,7 +284,7 @@ func (s *ETLService) GetSourceVersions(ctx context.Context, sourceType string) (
 }
 
 // TODO: cache spec in db for each version
-func (s *ETLService) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
+func (s Service) GetSourceSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	specOut, err := s.temporal.GetDriverSpecs(ctx, "", req.Type, req.Version)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get spec: %s", err)

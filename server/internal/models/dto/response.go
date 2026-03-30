@@ -1,5 +1,7 @@
 package dto
 
+import "encoding/json"
+
 type JSONResponse struct {
 	Success bool        `json:"success" example:"true"`
 	Message string      `json:"message" example:"operation completed successfully"`
@@ -208,4 +210,60 @@ type ReleasesResponse struct {
 type TelemetryIDResponse struct {
 	TelemetryUserID string `json:"user_id" example:"1234567890abcdef1234567890abcdef"`
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
+}
+
+type OptimizationResponse struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Result  json.RawMessage `json:"result"`
+}
+
+// CatalogResponse represents the response from catalog operations
+type CatalogResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// optimizationCronConfigResponse represents the response from setting cron configuration
+type SQLResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// TablesResponse represents tables with full details for a specific catalog/database
+type TablesResponse struct {
+	Catalog  string      `json:"catalog"`
+	Database string      `json:"database"`
+	Tables   []TableInfo `json:"tables"`
+}
+
+type TableInfo struct {
+	Name         string            `json:"name"`
+	TotalSize    string            `json:"totalSize"`
+	OLakeCreated bool              `json:"olake_created"`
+	Major        *OptimizationInfo `json:"major"`
+	Minor        *OptimizationInfo `json:"minor"`
+	Full         *OptimizationInfo `json:"full"`
+	Enabled      bool              `json:"enabled"`
+	HealthScore  int               `json:"healthScore,omitempty"`
+}
+
+type OptimizationInfo struct {
+	FinishTime int64 `json:"finish_time,omitempty"`
+	Status     string `json:"status,omitempty"`
+	RunID      string `json:"runID,omitempty"`
+}
+
+// TableProperties represents the response from setting table properties
+type TableProperties struct {
+	SessionID string   `json:"sessionId"`
+	Status    string   `json:"status"`
+	Success   bool     `json:"success"`
+	Message   string   `json:"message"`
+	Logs      []string `json:"logs,omitempty"`
+}
+
+// TerminalSessionResponse represents the response from terminal execute
+type TerminalSessionResponse struct {
+	SessionID string `json:"sessionId"`
 }
