@@ -40,7 +40,7 @@ func (s *AppService) UpdateDestinationWithCatalog(ctx context.Context, id int, p
 	if s.opt != nil {
 		catalogName, err = s.opt.UpdateCatalog(ctx, extractWriterConfig(req.Config))
 		if err != nil {
-			return fmt.Errorf("failed to create optimization catalog: %s", err)
+			return fmt.Errorf("failed to update optimization catalog: %s", err)
 		}
 	}
 

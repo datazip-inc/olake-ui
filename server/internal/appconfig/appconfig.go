@@ -41,26 +41,7 @@ func Load() Config {
 func loadConfig() Config {
 	v := viper.New()
 
-	// Note: config priority: env variables -> file (app.yaml) -> default values
-
-	// set default values
-	v.SetDefault("APP_NAME", "olake-server")
-	v.SetDefault("HTTP_PORT", "8000")
-	v.SetDefault("RUN_MODE", "dev")
-	v.SetDefault("MAX_MEMORY", int64(67108864))
-	v.SetDefault("MAX_UPLOAD_SIZE", int64(67108864))
-	v.SetDefault("OLAKE_POSTGRES_USER", "temporal")
-	v.SetDefault("OLAKE_POSTGRES_PASSWORD", "temporal")
-	v.SetDefault("OLAKE_POSTGRES_HOST", "postgresql")
-	v.SetDefault("OLAKE_POSTGRES_PORT", "5432")
-	v.SetDefault("OLAKE_POSTGRES_DBNAME", "postgres")
-	v.SetDefault("OLAKE_POSTGRES_SSLMODE", "disable")
-	v.SetDefault("LOGS_DIR", "./logger/logs")
-	v.SetDefault("SESSION_ON", true)
-	v.SetDefault("TEMPORAL_ADDRESS", "temporal:7233")
-	v.SetDefault("CONTAINER_REGISTRY_BASE", "registry-1.docker.io")
-	v.SetDefault("OPTIMIZATION_GROUP", "spark-container")
-
+	// Note: config priority: env variables -> file (app.yaml)
 	v.SetConfigFile("./conf/app.yaml")
 	if err := v.ReadInConfig(); err != nil {
 		panic(err)
