@@ -24,8 +24,8 @@ func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database
 
 	h := &Handler{
 		appSvc:   appSvc,
-		sessions: sessionStore,
 		ETL:      etl.NewHandler(appSvc.ETL()),
+		sessions: sessionStore,
 	}
 	if opt := appSvc.Optimization(); opt != nil {
 		h.Optimization = optimization.NewHandler(opt)

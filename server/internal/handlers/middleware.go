@@ -14,6 +14,7 @@ func (h *Handler) AuthMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+
 		userID, ok := h.sessions.GetUserID(c)
 		if !ok {
 			httpx.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized, try login again", nil)
