@@ -50,7 +50,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/swagger/*", etlHandler, "get:ServeSwagger")
 
 	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
+	web.InsertFilter("/api/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", etlHandler, "post:Login")
 	web.Router("/signup", etlHandler, "post:Signup")
