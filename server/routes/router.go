@@ -14,7 +14,6 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	engine.GET("/swagger/*any", h.ServeSwagger)
 
 	etlHandler := h.ETL
-
 	etl := engine.Group("/api/v1")
 	etl.Use(h.AuthMiddleware())
 
@@ -37,13 +36,15 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 	// destinations routes
 	etl.GET("/project/:projectid/destinations", etlHandler.ListDestinations)
-	etl.POST("/project/:projectid/destinations", etlHandler.CreateDestination)
 	etl.GET("/project/:projectid/destinations/:id", etlHandler.GetDestination)
-	etl.PUT("/project/:projectid/destinations/:id", etlHandler.UpdateDestination)
-	etl.DELETE("/project/:projectid/destinations/:id", etlHandler.DeleteDestination)
 	etl.POST("/project/:projectid/destinations/test", etlHandler.TestDestinationConnection)
 	etl.GET("/project/:projectid/destinations/versions", etlHandler.GetDestinationVersions)
 	etl.POST("/project/:projectid/destinations/spec", etlHandler.GetDestinationSpec)
+
+	// common API for creation, update and deletion of destinations (ETL & Optimization)
+	etl.POST("/project/:projectid/destinations", h.CreateDestinationAndCatalog)
+	etl.DELETE("/project/:projectid/destinations/:id", h.DeleteDestinationAndCatalog)
+	etl.PUT("/project/:projectid/destinations/:id", h.UpdateDestinationAndCatalog)
 
 	// jobs routes
 	etl.GET("/project/:projectid/jobs", etlHandler.ListJobs)
@@ -65,6 +66,9 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	etl.GET("/project/:projectid/settings", etlHandler.GetProjectSettings)
 	etl.POST("/project/:projectid/check-unique", etlHandler.CheckUniqueName)
 	etl.GET("/platform/releases", etlHandler.GetReleaseUpdates)
+
+	// module gate routes
+	etl.GET("/platform/modules/opt/status", h.GetOptimizationStatus)
 
 	// internal routes
 	engine.POST("/internal/worker/callback/sync-telemetry", etlHandler.UpdateSyncTelemetry)

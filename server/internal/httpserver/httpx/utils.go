@@ -1,4 +1,4 @@
-package httputil
+package httpx
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ const (
 	ProjectIDParam   = "projectid"
 )
 
-func UserID(c *gin.Context) *int {
+func GetCurrentUserID(c *gin.Context) *int {
 	raw, ok := c.Get(ContextUserIDKey)
 	if !ok {
 		return nil

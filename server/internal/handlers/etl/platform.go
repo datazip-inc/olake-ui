@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/gin-gonic/gin"
 )
@@ -27,8 +28,8 @@ func (h *Handler) GetReleaseUpdates(c *gin.Context) {
 	logger.Debugf("Get release updates initiated limit[%d]", limit)
 	response, err := h.etl.GetAllReleasesResponse(c.Request.Context(), limit)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to fetch release metadata: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to fetch release metadata: %s", err), err)
 		return
 	}
-	successResponse(c, "release metadata fetched successfully", response)
+	httpx.SuccessResponse(c, "release metadata fetched successfully", response)
 }

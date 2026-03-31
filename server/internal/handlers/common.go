@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httputil"
 )
 
 // @Summary Create a new destination in ETL & catalog in Optimization (if enabled)
@@ -21,35 +21,35 @@ import (
 // @Failure 500 {object} dto.Error500Response "failed to create destination"
 // @Router /api/v1/project/{projectid}/destinations [post]
 func (h *Handler) CreateDestinationAndCatalog(c *gin.Context) {
-	userID := httputil.UserID(c)
+	userID := httpx.GetCurrentUserID(c)
 	if userID == nil {
-		httputil.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
-	projectID, err := httputil.GetProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		httputil.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.CreateDestinationRequest
-	if err := httputil.BindAndValidate(c, &req); err != nil {
-		httputil.ErrorResponse(c, httputil.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
-		httputil.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := h.appSvc.CreateDestinationWithCatalog(c.Request.Context(), projectID, &req, userID); err != nil {
-		httputil.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create destination & catalog: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create destination & catalog: %s", err), err)
 		return
 	}
 
-	httputil.SuccessResponse(c, fmt.Sprintf("destination %s and catalog created successfully", req.Name), req)
+	httpx.SuccessResponse(c, fmt.Sprintf("destination %s and catalog created successfully", req.Name), req)
 }
 
 // @Summary Update a destination in ETL & catalog in Optimization (if enabled)
@@ -64,41 +64,41 @@ func (h *Handler) CreateDestinationAndCatalog(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [put]
 func (h *Handler) UpdateDestinationAndCatalog(c *gin.Context) {
-	userID := httputil.UserID(c)
+	userID := httpx.GetCurrentUserID(c)
 	if userID == nil {
-		httputil.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
 
-	id, err := httputil.GetIDParam(c, "id")
+	id, err := httpx.GetIDParam(c, "id")
 	if err != nil {
-		httputil.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
-	projectID, err := httputil.GetProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		httputil.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.UpdateDestinationRequest
-	if err := httputil.BindAndValidate(c, &req); err != nil {
-		httputil.ErrorResponse(c, httputil.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
-		httputil.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if err := h.appSvc.UpdateDestinationWithCatalog(c.Request.Context(), id, projectID, &req, userID); err != nil {
-		httputil.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update destination: %s", err), err)
 		return
 	}
 
-	httputil.SuccessResponse(c, fmt.Sprintf("destination %s updated successfully", req.Name), req)
+	httpx.SuccessResponse(c, fmt.Sprintf("destination %s updated successfully", req.Name), req)
 }
 
 // @Summary Delete a destination in ETL & catalog in Optimization (if enabled)
@@ -112,17 +112,17 @@ func (h *Handler) UpdateDestinationAndCatalog(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete destination"
 // @Router /api/v1/project/{projectid}/destinations/{id} [delete]
 func (h *Handler) DeleteDestinationAndCatalog(c *gin.Context) {
-	id, err := httputil.GetIDParam(c, "id")
+	id, err := httpx.GetIDParam(c, "id")
 	if err != nil {
-		httputil.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	resp, err := h.appSvc.DeleteDestinationWithCatalog(c.Request.Context(), id)
 	if err != nil {
-		httputil.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete destination: %s", err), err)
 		return
 	}
 
-	httputil.SuccessResponse(c, fmt.Sprintf("destination %s deleted successfully as well as catalog", resp.Name), resp)
+	httpx.SuccessResponse(c, fmt.Sprintf("destination %s deleted successfully as well as catalog", resp.Name), resp)
 }

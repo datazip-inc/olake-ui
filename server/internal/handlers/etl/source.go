@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
@@ -22,18 +23,18 @@ import (
 // @Failure 500 {object} dto.Error500Response "failed to retrieve sources"
 // @Router /api/v1/project/{projectid}/sources [get]
 func (h *Handler) ListSources(c *gin.Context) {
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get all sources initiated project_id[%s]", projectID)
 	sources, err := h.etl.ListSources(c.Request.Context(), projectID)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve sources: %s", err), err)
 		return
 	}
-	successResponse(c, "sources listed successfully", sources)
+	httpx.SuccessResponse(c, "sources listed successfully", sources)
 }
 
 // @Summary Get source details
@@ -48,14 +49,14 @@ func (h *Handler) ListSources(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get source"
 // @Router /api/v1/project/{projectid}/sources/{id} [get]
 func (h *Handler) GetSource(c *gin.Context) {
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	sourceID, err := getIDParam(c, "id")
+	sourceID, err := httpx.GetIDParam(c, "id")
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get source initiated project_id[%s] source_id[%d]", projectID, sourceID)
@@ -65,10 +66,10 @@ func (h *Handler) GetSource(c *gin.Context) {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
 		}
-		errorResponse(c, status, fmt.Sprintf("failed to get source: %s", err), err)
+		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to get source: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source '%d' retrieved successfully", sourceID), source)
+	httpx.SuccessResponse(c, fmt.Sprintf("source '%d' retrieved successfully", sourceID), source)
 }
 
 // @Summary Create a new source
@@ -83,31 +84,31 @@ func (h *Handler) GetSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to create source"
 // @Router /api/v1/project/{projectid}/sources [post]
 func (h *Handler) CreateSource(c *gin.Context) {
-	userID := getCurrentUserID(c)
+	userID := httpx.GetCurrentUserID(c)
 	if userID == nil {
-		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.CreateSourceRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Create source initiated project_id[%s] source_type[%s] source_name[%s] user_id[%v]", projectID, req.Type, req.Name, userID)
 	if err := h.etl.CreateSource(c.Request.Context(), &req, projectID, userID); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create source: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create source: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s created successfully", req.Name), req)
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s created successfully", req.Name), req)
 }
 
 // @Summary Update a source
@@ -124,28 +125,28 @@ func (h *Handler) CreateSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update source"
 // @Router /api/v1/project/{projectid}/sources/{id} [put]
 func (h *Handler) UpdateSource(c *gin.Context) {
-	userID := getCurrentUserID(c)
+	userID := httpx.GetCurrentUserID(c)
 	if userID == nil {
-		errorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := getIDParam(c, "id")
+	id, err := httpx.GetIDParam(c, "id")
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.UpdateSourceRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Update source initiated project_id[%s] source_id[%d] source_type[%s] user_id[%v]", projectID, id, req.Type, userID)
@@ -154,10 +155,10 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
 		}
-		errorResponse(c, status, fmt.Sprintf("failed to update source: %s", err), err)
+		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to update source: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s updated successfully", req.Name), req)
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s updated successfully", req.Name), req)
 }
 
 // @Summary Delete a source
@@ -172,9 +173,9 @@ func (h *Handler) UpdateSource(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete source"
 // @Router /api/v1/project/{projectid}/sources/{id} [delete]
 func (h *Handler) DeleteSource(c *gin.Context) {
-	id, err := getIDParam(c, "id")
+	id, err := httpx.GetIDParam(c, "id")
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Delete source initiated source_id[%d]", id)
@@ -184,10 +185,10 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 		if errors.Is(err, constants.ErrSourceNotFound) {
 			status = http.StatusNotFound
 		}
-		errorResponse(c, status, fmt.Sprintf("failed to delete source: %s", err), err)
+		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to delete source: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s deleted successfully", resp.Name), resp)
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s deleted successfully", resp.Name), resp)
 }
 
 // @Summary Test source connection
@@ -203,21 +204,21 @@ func (h *Handler) DeleteSource(c *gin.Context) {
 // @Router /api/v1/project/{projectid}/sources/test [post]
 func (h *Handler) TestSourceConnection(c *gin.Context) {
 	var req dto.SourceTestConnectionRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Test source connection initiated source_type[%s] source_version[%s]", req.Type, req.Version)
 	result, logs, err := h.etl.TestSourceConnection(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to verify credentials: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s connection tested successfully", req.Type), dto.TestConnectionResponse{
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s connection tested successfully", req.Type), dto.TestConnectionResponse{
 		ConnectionResult: result,
 		Logs:             logs,
 	})
@@ -236,21 +237,21 @@ func (h *Handler) TestSourceConnection(c *gin.Context) {
 // @Router /api/v1/project/{projectid}/sources/streams [post]
 func (h *Handler) GetSourceCatalog(c *gin.Context) {
 	var req dto.StreamsRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get source catalog initiated source_type[%s] source_version[%s] job_id[%d]", req.Type, req.Version, req.JobID)
 	catalog, err := h.etl.GetSourceCatalog(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source streams: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s catalog fetched successfully", req.Type), catalog)
 }
 
 // @Summary Get available source versions
@@ -264,23 +265,23 @@ func (h *Handler) GetSourceCatalog(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get versions"
 // @Router /api/v1/project/{projectid}/sources/versions [get]
 func (h *Handler) GetSourceVersions(c *gin.Context) {
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	sourceType := c.Query("type")
 	if sourceType == "" {
-		errorResponse(c, http.StatusBadRequest, "failed to get source versions: source type is required", fmt.Errorf("source type is required"))
+		httpx.ErrorResponse(c, http.StatusBadRequest, "failed to get source versions: source type is required", fmt.Errorf("source type is required"))
 		return
 	}
 	logger.Debugf("Get source versions initiated project_id[%s] source_type[%s]", projectID, sourceType)
 	versions, err := h.etl.GetSourceVersions(c.Request.Context(), sourceType)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source versions: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source versions: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s versions fetched successfully", sourceType), versions)
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s versions fetched successfully", sourceType), versions)
 }
 
 // @Summary Get source UI spec
@@ -295,25 +296,25 @@ func (h *Handler) GetSourceVersions(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get spec"
 // @Router /api/v1/project/{projectid}/sources/spec [post]
 func (h *Handler) GetSourceSpec(c *gin.Context) {
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.SpecRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := dto.ValidateSourceType(req.Type); err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get source spec initiated project_id[%s] source_type[%s] source_version[%s]", projectID, req.Type, req.Version)
 	resp, err := h.etl.GetSourceSpec(c.Request.Context(), &req)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get source spec: %s", err), err)
 		return
 	}
-	successResponse(c, fmt.Sprintf("source %s spec fetched successfully", req.Type), resp)
+	httpx.SuccessResponse(c, fmt.Sprintf("source %s spec fetched successfully", req.Type), resp)
 }

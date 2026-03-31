@@ -193,9 +193,9 @@ func checkForRequiredVariables() {
 		"OLAKE_POSTGRES_SSLMODE":  cfg.OlakePostgresSSLMode,
 	}
 
-	for val, key := range requiredValues {
-		if val == "" {
-			panic("Required config variable not found: " + key)
+	for name, value := range requiredValues {
+		if strings.TrimSpace(value) == "" {
+			panic("Required config variable not found: " + name)
 		}
 	}
 }

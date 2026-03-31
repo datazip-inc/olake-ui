@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
@@ -20,18 +21,18 @@ import (
 // @Failure 500 {object} dto.Error500Response "failed to retrieve project settings"
 // @Router /api/v1/project/{projectid}/settings [get]
 func (h *Handler) GetProjectSettings(c *gin.Context) {
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get project settings initiated project_id[%s]", projectID)
 	settings, err := h.etl.GetProjectSettings(projectID)
 	if err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve project settings by project ID: %s", err), err)
 		return
 	}
-	successResponse(c, "Project Settings fetched successfully", settings)
+	httpx.SuccessResponse(c, "Project Settings fetched successfully", settings)
 }
 
 // @Summary Update project settings
@@ -46,28 +47,28 @@ func (h *Handler) GetProjectSettings(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update project settings"
 // @Router /api/v1/project/{projectid}/settings [put]
 func (h *Handler) UpsertProjectSettings(c *gin.Context) {
-	projectID, err := getProjectID(c)
+	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.UpsertProjectSettingsRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		errorResponse(c, statusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	if req.ProjectID != projectID {
 		err := fmt.Errorf("path project_id '%s' does not match body project_id '%s'", projectID, req.ProjectID)
-		errorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	logger.Debugf("Upsert project settings initiated project_id[%s]", projectID)
 	if err := h.etl.UpsertProjectSettings(req); err != nil {
-		errorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
+		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update project settings: %s", err), err)
 		return
 	}
-	successResponse(c, "Project Settings updated successfully", nil)
+	httpx.SuccessResponse(c, "Project Settings updated successfully", nil)
 }
