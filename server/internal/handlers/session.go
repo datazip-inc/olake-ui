@@ -28,16 +28,12 @@ const (
 	sessionMaxAgeDays = 30
 )
 
-func newSessionStore(cfg *appconfig.Config, db *database.Database) (*sessionStore, error) {
-	store := &sessionStore{
+func newSessionStore(cfg *appconfig.Config, db *database.Database) *sessionStore {
+	return &sessionStore{
 		db:      db,
 		enabled: cfg.SessionOn,
 		secure:  cfg.RunMode != "localdev",
 	}
-	if !store.enabled {
-		return store, nil
-	}
-	return store, nil
 }
 
 func (s *sessionStore) SetUserSession(c *gin.Context, userID int) error {
