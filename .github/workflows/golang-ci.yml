@@ -27,9 +27,10 @@ jobs:
         with:
           install-mode: goinstall
           version: latest
-          install-mode: goinstall
+          working-directory: ./server
+          args: --out-format=colored-line-number
   build-check:
-    name: Build
+    name: Build Olake-UI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
