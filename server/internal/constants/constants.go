@@ -80,7 +80,7 @@ var (
 	OptMinorCron          = "self-optimizing.minor.trigger.cron"
 	OptMajorCron          = "self-optimizing.major.trigger.cron"
 	OptFullCron           = "self-optimizing.full.trigger.cron"
-	OptTargetFileSize     = "write.target-file-size-bytes"
+	OptTargetFileSize     = "self-optimizing.target-size"
 	OptEnableOptimization = "self-optimizing.enabled"
 
 	OptSQLCommand = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
