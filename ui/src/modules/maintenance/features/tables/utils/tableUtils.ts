@@ -271,7 +271,7 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 ): TableDetailsApiModel => {
 	const baseMetrics = data.result?.baseMetrics ?? {}
 	const properties = data.result?.properties ?? {}
-	const targetFileSizeRaw = properties["write.target-file-size-bytes"]
+	const targetFileSizeRaw = properties["self-optimizing.target-size"]
 	const targFileSizeInMB = bytesToMb(
 		Number.parseInt(targetFileSizeRaw ?? "", 10),
 	)
