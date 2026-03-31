@@ -57,12 +57,6 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "400": {
-                        "description": "failed to validate request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.Error400Response"
-                        }
-                    },
                     "401": {
                         "description": "unauthorized",
                         "schema": {
@@ -138,6 +132,12 @@ const docTemplate = `{
                         "description": "name is not unique",
                         "schema": {
                             "$ref": "#/definitions/dto.Error409Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -262,6 +262,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to create destination",
                         "schema": {
@@ -325,6 +331,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -392,10 +404,10 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
-                    "500": {
-                        "description": "failed to test connection",
+                    "413": {
+                        "description": "payload too large",
                         "schema": {
-                            "$ref": "#/definitions/dto.Error500Response"
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     }
                 }
@@ -518,6 +530,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "destination not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to get destination",
                         "schema": {
@@ -588,6 +606,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "destination not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to update destination",
                         "schema": {
@@ -647,6 +677,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "destination not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -759,6 +795,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to create job",
                         "schema": {
@@ -822,6 +864,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to get job",
                         "schema": {
@@ -880,6 +928,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to update job",
                         "schema": {
@@ -927,6 +987,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -989,6 +1055,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to activate job",
                         "schema": {
@@ -1038,6 +1116,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1103,6 +1187,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to get status",
                         "schema": {
@@ -1150,6 +1240,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1288,6 +1384,18 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to get stream difference",
                         "schema": {
@@ -1337,6 +1445,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1403,6 +1517,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {
@@ -1500,6 +1620,18 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -1607,6 +1739,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -1731,6 +1869,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to create source",
                         "schema": {
@@ -1794,6 +1938,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -1861,6 +2011,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to get source catalog",
                         "schema": {
@@ -1924,6 +2080,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2052,6 +2214,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "source not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
                     "500": {
                         "description": "failed to get source",
                         "schema": {
@@ -2126,6 +2294,12 @@ const docTemplate = `{
                         "description": "source not found",
                         "schema": {
                             "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2225,7 +2399,7 @@ const docTemplate = `{
                                         "type": "object",
                                         "properties": {
                                             "data": {
-                                                "$ref": "#/definitions/models.User"
+                                                "$ref": "#/definitions/dto.UserResponse"
                                             }
                                         }
                                     }
@@ -2266,7 +2440,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/dto.CreateUserRequest"
                         }
                     }
                 ],
@@ -2274,7 +2448,19 @@ const docTemplate = `{
                     "200": {
                         "description": "user created successfully",
                         "schema": {
-                            "$ref": "#/definitions/dto.JSONResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.JSONResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -2287,6 +2473,18 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "409": {
+                        "description": "user already exists",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error409Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2319,7 +2517,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/dto.UpdateUserRequest"
                         }
                     }
                 ],
@@ -2335,7 +2533,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/models.User"
+                                            "$ref": "#/definitions/dto.UserResponse"
                                         }
                                     }
                                 }
@@ -2352,6 +2550,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2457,6 +2661,24 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.JSONResponse"
                         }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
                     }
                 }
             }
@@ -2499,6 +2721,30 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.JSONResponse"
                         }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "404": {
+                        "description": "job not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
                     }
                 }
             }
@@ -2526,6 +2772,24 @@ const docTemplate = `{
                         "description": "sync telemetry updated successfully",
                         "schema": {
                             "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "failed to validate request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
                         }
                     }
                 }
@@ -2580,6 +2844,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
+                        }
+                    },
                     "500": {
                         "description": "internal server error",
                         "schema": {
@@ -2603,7 +2873,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.User"
+                            "$ref": "#/definitions/dto.CreateUserRequest"
                         }
                     }
                 ],
@@ -2624,6 +2894,12 @@ const docTemplate = `{
                         "description": "user already exists",
                         "schema": {
                             "$ref": "#/definitions/dto.Error409Response"
+                        }
+                    },
+                    "413": {
+                        "description": "payload too large",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error413Response"
                         }
                     },
                     "500": {
@@ -2811,6 +3087,28 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "password"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
         "dto.DeleteDestinationResponse": {
             "type": "object",
             "properties": {
@@ -2976,6 +3274,19 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "Resource already exists"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "dto.Error413Response": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Payload too large"
                 },
                 "success": {
                     "type": "boolean",
@@ -3599,6 +3910,19 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
         "dto.UpsertProjectSettingsRequest": {
             "type": "object",
             "required": [
@@ -3619,6 +3943,23 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UserResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "username": {
+                    "type": "string",
+                    "example": "admin"
+                }
+            }
+        },
         "dto.VersionsResponse": {
             "type": "object",
             "properties": {
@@ -3633,33 +3974,6 @@ const docTemplate = `{
                         "v0.3.13",
                         "v0.3.12"
                     ]
-                }
-            }
-        },
-        "models.User": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "password": {
-                    "description": "Hidden in JSON",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         }

@@ -13,7 +13,10 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 )
 
-const ContextUserIDKey = "user_id"
+const (
+	ContextUserIDKey = "user_id"
+	ProjectIDParam   = "projectid"
+)
 
 func UserID(c *gin.Context) *int {
 	raw, ok := c.Get(ContextUserIDKey)
@@ -28,7 +31,7 @@ func UserID(c *gin.Context) *int {
 }
 
 func GetProjectID(c *gin.Context) (string, error) {
-	projectID := c.Param("projectid")
+	projectID := c.Param(ProjectIDParam)
 	if projectID == "" {
 		return "", fmt.Errorf("project id is required")
 	}
@@ -76,4 +79,3 @@ func ErrorResponse(c *gin.Context, status int, message string, err error) {
 		Message: message,
 	})
 }
-

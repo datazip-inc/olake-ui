@@ -9,11 +9,11 @@ import (
 )
 
 type Handler struct {
-	// for cross-service api calls, the orchestration handler app service access
+	// for cross-service api calls, the orchestration handler has app service access
 	appSvc       *services.AppService
 	ETL          *etl.Handler
-	sessions     *sessionStore
 	Optimization *optimization.Handler
+	sessions     *sessionStore
 }
 
 func NewHandler(appSvc *services.AppService, cfg *appconfig.Config, db *database.Database) (*Handler, error) {

@@ -46,6 +46,7 @@ import (
 func main() {
 	constants.Init()
 	logger.Init()
+
 	db, err := database.Init()
 	if err != nil {
 		logger.Fatalf("Failed to initialize database: %s", err)
@@ -59,6 +60,7 @@ func main() {
 		return
 	}
 	logger.Info("Application services initialized successfully")
+
 	telemetry.InitTelemetry(db)
 
 	// Set Swagger Info version to match the application's runtime version.
@@ -76,12 +78,12 @@ func main() {
 
 	api, err := handlers.NewHandler(appSvc, &cfg, db)
 	if err != nil {
-		logger.Fatalf("Failed to initialize Gin API: %s", err)
+		logger.Fatalf("Failed to initialize handler: %s", err)
 		return
 	}
 	server := httpserver.New(&cfg, api)
-	logger.Infof("Starting Gin server on port %s", cfg.HTTPPort)
+	logger.Infof("Starting HTTP server on port %s", cfg.HTTPPort)
 	if err := server.Run(ctx); err != nil {
-		logger.Fatalf("Gin server exited with error: %s", err)
+		logger.Fatalf("HTTP server exited with error: %s", err)
 	}
 }

@@ -6,16 +6,16 @@ import (
 )
 
 func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
-
-	engine.POST("/login", h.Login)
+	// core routes
 	engine.POST("/signup", h.Signup)
+	engine.POST("/login", h.Login)
 	engine.GET("/auth/check", h.CheckAuth)
 	engine.GET("/telemetry-id", h.TelemetryID)
-	etlHandler := h.ETL
 	engine.GET("/swagger/*any", h.ServeSwagger)
 
-	etl := engine.Group("/api/v1")
+	etlHandler := h.ETL
 
+	etl := engine.Group("/api/v1")
 	etl.Use(h.AuthMiddleware())
 
 	// users routes

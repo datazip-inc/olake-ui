@@ -35,7 +35,7 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 	configureBaseRoutes(engine)
 
 	if cfg.RunMode == "localdev" {
-		engine.Use(localDevCORSMiddleware())
+		engine.Use(defaultCORSMiddleware())
 	} else {
 		configureStaticFrontend(engine)
 	}
@@ -130,7 +130,7 @@ func configureStaticFrontend(engine *gin.Engine) {
 	})
 }
 
-func localDevCORSMiddleware() gin.HandlerFunc {
+func defaultCORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
 		if origin != "" {
