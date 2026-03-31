@@ -146,14 +146,14 @@ type UpdateStateFileRequest struct {
 }
 
 type CatalogRequest struct {
-	Name            string            `json:"name"`
-	Type            string            `json:"type"`
-	OptimizerGroup  string            `json:"optimizerGroup,omitempty"`
-	TableFormatList []string          `json:"tableFormatList"`
-	StorageConfig   map[string]string `json:"storageConfig"`
-	AuthConfig      map[string]string `json:"authConfig"`
-	Properties      map[string]string `json:"properties"`
-	TableProperties map[string]string `json:"tableProperties"`
+	Name            string            `json:"name" binding:"required"`
+	Type            string            `json:"type" binding:"required"`
+	OptimizerGroup  string            `json:"optimizerGroup" binding:"required"`
+	TableFormatList []string          `json:"tableFormatList" binding:"required"`
+	StorageConfig   map[string]string `json:"storageConfig" binding:"required"`
+	AuthConfig      map[string]string `json:"authConfig" binding:"required"`
+	Properties      map[string]string `json:"properties" binding:"required"`
+	TableProperties map[string]string `json:"tableProperties" binding:"required"`
 }
 
 // LogInfo represents the log information from terminal execution
@@ -163,15 +163,15 @@ type LogInfo struct {
 }
 
 type SetTablePropertiesRequest struct {
-	Catalog    string            `json:"catalog"`
-	Database   string            `json:"database"`
-	Table      string            `json:"table"`
-	Properties map[string]string `json:"properties"`
+	Catalog    string            `json:"catalog" binding:"required"`
+	Database   string            `json:"database" binding:"required"`
+	Table      string            `json:"table" binding:"required"`
+	Properties map[string]string `json:"properties" binding:"required"`
 }
 
 // TerminalExecuteRequest represents the request body for terminal SQL execution
 type TerminalExecuteRequest struct {
-	SQL string `json:"sql"`
+	SQL string `json:"sql" binding:"required"`
 }
 
 type SQLInput struct {

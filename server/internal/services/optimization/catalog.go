@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/spf13/viper"
 )
 
 func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.Config, error) {
@@ -116,8 +116,7 @@ func (s *Service) CreateOptConfig(configJSON string, update bool) (*dto.CatalogR
 		return nil, fmt.Errorf("catalog_name is required in config")
 	}
 
-	// TODO BEFORE MERGE
-	og := viper.GetString(constants.ConfOptimizationGroup)
+	og := appconfig.Load().OptimizationGroup
 	if og == "" {
 		og = "spark-container"
 	}

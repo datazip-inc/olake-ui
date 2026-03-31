@@ -25,6 +25,11 @@ type Config struct {
 	SessionOn             bool
 	TemporalAddress       string
 	ContainerRegistryBase string
+	EnableOptimization    bool
+	OptimizationGroup     string
+	OptimizationBaseURL   string
+	OptimizationUsername  string
+	OptimizationPassword  string
 }
 
 var cfg = loadConfig()
@@ -54,6 +59,7 @@ func loadConfig() Config {
 	v.SetDefault("SESSION_ON", true)
 	v.SetDefault("TEMPORAL_ADDRESS", "temporal:7233")
 	v.SetDefault("CONTAINER_REGISTRY_BASE", "registry-1.docker.io")
+	v.SetDefault("OPTIMIZATION_GROUP", "spark-container")
 
 	v.SetConfigFile("./conf/app.yaml")
 	if err := v.ReadInConfig(); err != nil {
@@ -83,5 +89,11 @@ func loadConfig() Config {
 		OlakePostgresPort:     strings.TrimSpace(v.GetString("OLAKE_POSTGRES_PORT")),
 		OlakePostgresDBName:   strings.TrimSpace(v.GetString("OLAKE_POSTGRES_DBNAME")),
 		OlakePostgresSSLMode:  strings.TrimSpace(v.GetString("OLAKE_POSTGRES_SSLMODE")),
+
+		EnableOptimization:   v.GetBool("ENABLE_OPTIMIZATION"),
+		OptimizationGroup:    strings.TrimSpace(v.GetString("OPTIMIZATION_GROUP")),
+		OptimizationBaseURL:  strings.TrimSpace(v.GetString("OPTIMIZATION_BASE_URL")),
+		OptimizationUsername: strings.TrimSpace(v.GetString("USERNAME")),
+		OptimizationPassword: strings.TrimSpace(v.GetString("PASSWORD")),
 	}
 }

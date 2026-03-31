@@ -73,7 +73,6 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 		return
 	}
 
-	// TODO BEFORE MERGE
 	c.JSON(statusCode, dto.JSONResponse{
 		Success: true,
 		Message: "request forwarded successfully",

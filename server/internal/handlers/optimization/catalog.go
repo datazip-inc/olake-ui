@@ -29,7 +29,8 @@ func (h *Handler) GetCatalog(c *gin.Context) {
 
 func (h *Handler) CreateCatalog(c *gin.Context) {
 	var req map[string]interface{}
-	if !h.bindJSON(c, &req) {
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -62,7 +63,8 @@ func (h *Handler) UpdateCatalog(c *gin.Context) {
 	}
 
 	var req map[string]interface{}
-	if !h.bindJSON(c, &req) {
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -112,10 +114,3 @@ func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
 	return catalog, true
 }
 
-func (h *Handler) bindJSON(c *gin.Context, dst interface{}) bool {
-	if err := httpx.BindAndValidate(c, dst); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
-		return false
-	}
-	return true
-}

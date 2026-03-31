@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
 	"github.com/datazip-inc/olake-ui/server/internal/services/optimization"
@@ -26,9 +27,7 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		etl: etlSvc,
 		opt: nil,
 	}
-	// TODO BEFORE MERGE
-	// enableOptimization := web.AppConfig.DefaultBool(constants.ConfEnableOptimization, false)
-	enableOptimization := true
+	enableOptimization := appconfig.Load().EnableOptimization
 	if enableOptimization {
 		optSvc, err := optimization.InitService()
 		if err != nil {

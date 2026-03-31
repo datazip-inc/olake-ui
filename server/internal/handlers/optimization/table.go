@@ -1,6 +1,8 @@
 package optimization
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
@@ -30,7 +32,8 @@ func (h *Handler) SetProperties(c *gin.Context) {
 	}
 
 	var req dto.SQLInput
-	if !h.bindJSON(c, &req) {
+	if err := httpx.BindAndValidate(c, &req); err != nil {
+		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
