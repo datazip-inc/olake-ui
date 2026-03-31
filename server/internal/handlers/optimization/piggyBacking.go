@@ -28,7 +28,7 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 		body = json.RawMessage(raw)
 	}
 
-	transformedPath := transformOptPathToAMS(req.URL.Path)
+	transformedPath := strings.Replace(req.URL.Path, "/api/opt/v1/", "/api/ams/v1/", 1)
 
 	data, statusCode, headers, err := h.opt.ProxyWithHeaders(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
 	if err != nil {
@@ -79,14 +79,4 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 		Message: "request forwarded successfully",
 		Data:    upstreamResponse,
 	})
-}
-
-func transformOptPathToAMS(path string) string {
-	const optPrefix = "/api/opt/v1/"
-	const amsPrefix = "/api/ams/v1/"
-
-	if len(path) >= len(optPrefix) && path[:len(optPrefix)] == optPrefix {
-		return amsPrefix + path[len(optPrefix):]
-	}
-	return path
 }
