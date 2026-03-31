@@ -93,14 +93,14 @@ func (h *Handler) Signup(c *gin.Context) {
 // @Failure 401 {object} dto.Error401Response "Not authenticated"
 // @Router /auth/check [get]
 func (h *Handler) CheckAuth(c *gin.Context) {
-	userID := httpx.GetCurrentUserID(c)
-	if userID == nil {
+	userID, ok := h.sessions.GetUserID(c)
+	if !ok {
 		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
-	logger.Debugf("Check auth initiated user_id[%v]", *userID)
+	logger.Debugf("Check auth initiated user_id[%v]", userID)
 
-	if err := h.appSvc.ETL().ValidateUser(*userID); err != nil {
+	if err := h.appSvc.ETL().ValidateUser(userID); err != nil {
 		httpx.ErrorResponse(c, http.StatusUnauthorized, fmt.Sprintf("Invalid session: %s", err), err)
 		return
 	}
