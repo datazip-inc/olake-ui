@@ -212,6 +212,8 @@ type TelemetryIDResponse struct {
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
 }
 
+// TODO: convert all optimization struct json-keys to "camel-case" or "snake-case" as required
+
 type OptimizationResponse struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
