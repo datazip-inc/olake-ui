@@ -115,6 +115,6 @@ func (h *Handler) bindJSON(dst interface{}) error {
 	if err := h.Ctx.BindJSON(dst); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
