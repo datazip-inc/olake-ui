@@ -28,6 +28,7 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		etl: etlSvc,
 		opt: nil,
 	}
+
 	enableOptimization := web.AppConfig.DefaultBool(constants.ConfEnableOptimization, false)
 	if enableOptimization {
 		optSvc, err := optimization.InitService()
