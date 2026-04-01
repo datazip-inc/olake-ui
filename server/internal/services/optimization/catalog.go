@@ -124,7 +124,7 @@ func (s *Service) CreateOptConfig(configJSON string, update bool) (*dto.CatalogR
 
 	mapAuthConfig(&config, optimizationReq.AuthConfig, optimizationReq.StorageConfig)
 	mapCatalogProperties(&config, optimizationReq.Properties, string(config.CatalogType))
-	if update == false {
+	if !update {
 		setDefaultCatalogProperties(optimizationReq)
 	}
 

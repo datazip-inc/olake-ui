@@ -60,7 +60,9 @@ func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 		case "hive":
 			config.HiveURI = catalog.Properties["uri"]
 			if clientsStr := catalog.Properties["clients"]; clientsStr != "" {
-				fmt.Sscanf(clientsStr, "%d", &config.HiveClients)
+				if _, err := fmt.Sscanf(clientsStr, "%d", &config.HiveClients); err != nil {
+					return nil, fmt.Errorf("invalid hive clients value %q: %s", clientsStr, err)
+				}
 			}
 
 		case "rest":
@@ -133,7 +135,6 @@ func mergeMaps(base, src map[string]string) map[string]string {
 	result := make(map[string]string, len(base)+len(src))
 	maps.Copy(result, base)
 	maps.Copy(result, src)
-
 	return result
 }
 

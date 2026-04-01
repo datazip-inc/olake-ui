@@ -73,5 +73,5 @@ type Config struct {
 	UseArrowWrites bool `json:"arrow_writes,omitempty"`
 
 	// If the catalog creds are imported from destination
-	OLakeImported  bool `json:"olake_imported"`
+	OLakeImported bool `json:"olake_imported"`
 }

@@ -55,7 +55,7 @@ func (h *Handler) PiggyBacking() {
 			h.Ctx.Output.Header("Content-Disposition", contentDisposition)
 		}
 		h.Ctx.Output.SetStatus(statusCode)
-		h.Ctx.Output.Body(data)
+		_ = h.Ctx.Output.Body(data)
 		return
 	}
 

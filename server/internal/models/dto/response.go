@@ -239,7 +239,7 @@ type TableInfo struct {
 }
 
 type OptimizationInfo struct {
-	FinishTime int64 `json:"finish_time,omitempty"`
+	FinishTime int64  `json:"finish_time,omitempty"`
 	Status     string `json:"status,omitempty"`
 	RunID      string `json:"runID,omitempty"`
 }

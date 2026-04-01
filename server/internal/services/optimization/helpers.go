@@ -21,8 +21,8 @@ func parseResponse(respBody []byte) (*dto.OptimizationResponse, error) {
 }
 
 // (flexible parsing): performs an HTTP request and parses the response returning raw result as interface{}
-func (c *Service) Do(ctx context.Context, method, path string, queryParams url.Values, body interface{}) (interface{}, error) {
-	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
+func (s *Service) Do(ctx context.Context, method, path string, queryParams url.Values, body interface{}) (interface{}, error) {
+	respBody, err := s.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +41,8 @@ func (c *Service) Do(ctx context.Context, method, path string, queryParams url.V
 }
 
 // (type-safe parsing): performs an HTTP request and parses the response returning raw result into the provided result pointer
-func (c *Service) DoInto(ctx context.Context, method, path string, queryParams url.Values, body, result interface{}) error {
-	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
+func (s *Service) DoInto(ctx context.Context, method, path string, queryParams url.Values, body, result interface{}) error {
+	respBody, err := s.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return err
 	}
@@ -60,8 +60,8 @@ func (c *Service) DoInto(ctx context.Context, method, path string, queryParams u
 }
 
 // (no-result): performs an HTTP request expecting no result payload, only checks for success
-func (c *Service) DoExec(ctx context.Context, method, path string, queryParams url.Values, body interface{}) error {
-	respBody, err := c.DoRequest(ctx, method, path, queryParams, body)
+func (s *Service) DoExec(ctx context.Context, method, path string, queryParams url.Values, body interface{}) error {
+	respBody, err := s.DoRequest(ctx, method, path, queryParams, body)
 	if err != nil {
 		return err
 	}

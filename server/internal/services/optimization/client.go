@@ -63,16 +63,16 @@ func refreshToken(baseURL, username, password string) (string, string, error) {
 }
 
 // for optimization authentication: calculating md5: apiKey + encryptString + secret
-func (c *Service) calculateSignature(params url.Values) string {
-	encryptString := c.generateEncryptString(params)
-	plainText := fmt.Sprintf("%s%s%s", c.apiKey, encryptString, c.apiSecret)
+func (s *Service) calculateSignature(params url.Values) string {
+	encryptString := s.generateEncryptString(params)
+	plainText := fmt.Sprintf("%s%s%s", s.apiKey, encryptString, s.apiSecret)
 	hash := md5.Sum([]byte(plainText))
 	signature := hex.EncodeToString(hash[:])
 
 	return signature
 }
 
-func (c *Service) generateEncryptString(params url.Values) string {
+func (s *Service) generateEncryptString(params url.Values) string {
 	// Filter out apiKey and signature
 	filtered := make(url.Values)
 	for k, v := range params {
@@ -109,12 +109,12 @@ func (c *Service) generateEncryptString(params url.Values) string {
 	return strings.Join(parts, "")
 }
 
-func (c *Service) sendRequest(ctx context.Context, method, path string, queryParams url.Values, bodyBytes []byte) ([]byte, int, http.Header, error) {
-	signature := c.calculateSignature(queryParams)
-	queryParams.Set("apiKey", c.apiKey)
+func (s *Service) sendRequest(ctx context.Context, method, path string, queryParams url.Values, bodyBytes []byte) ([]byte, int, http.Header, error) {
+	signature := s.calculateSignature(queryParams)
+	queryParams.Set("apiKey", s.apiKey)
 	queryParams.Set("signature", signature)
 
-	fullURL := c.baseURL + path
+	fullURL := s.baseURL + path
 	if len(queryParams) > 0 {
 		fullURL += "?" + queryParams.Encode()
 	}
@@ -132,7 +132,7 @@ func (c *Service) sendRequest(ctx context.Context, method, path string, queryPar
 		req.Header.Set("Content-Type", "application/json")
 	}
 
-	resp, err := c.client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, 0, nil, fmt.Errorf("failed to send request: %s", err)
 	}
@@ -146,7 +146,7 @@ func (c *Service) sendRequest(ctx context.Context, method, path string, queryPar
 	return respBody, resp.StatusCode, resp.Header, nil
 }
 
-func (c *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
+func (s *Service) DoRequest(ctx context.Context, method, path string, queryParams url.Values, body interface{}) ([]byte, error) {
 	var bodyBytes []byte
 	if body != nil {
 		var err error
@@ -156,7 +156,7 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 		}
 	}
 
-	respBody, statusCode, _, err := c.sendRequest(ctx, method, path, queryParams, bodyBytes)
+	respBody, statusCode, _, err := s.sendRequest(ctx, method, path, queryParams, bodyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -165,14 +165,14 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 		var apiKey string
 		var secretKey string
 		var err error
-		apiKey, secretKey, err = refreshToken(c.baseURL, c.username, c.password)
+		apiKey, secretKey, err = refreshToken(s.baseURL, s.username, s.password)
 		if err != nil {
 			return nil, fmt.Errorf("token refresh failed: %s", err)
 		}
 
-		c.apiKey = apiKey
-		c.apiSecret = secretKey
-		respBody, statusCode, _, err = c.sendRequest(ctx, method, path, queryParams, bodyBytes)
+		s.apiKey = apiKey
+		s.apiSecret = secretKey
+		respBody, statusCode, _, err = s.sendRequest(ctx, method, path, queryParams, bodyBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +209,7 @@ func generateToken(baseURL, username, password string) (string, string, error) {
 
 	cookies := loginResp.Cookies()
 
-	tokenReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", nil)
+	tokenReq, err := http.NewRequest("POST", baseURL+"/api/ams/v1/api/token/create", http.NoBody)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create token request: %s", err)
 	}
