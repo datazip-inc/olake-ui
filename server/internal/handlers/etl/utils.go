@@ -1,12 +1,14 @@
 package etl
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/beego/beego/v2/server/web"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
 
 // get id from path
@@ -36,4 +38,12 @@ func GetUserIDFromSession(c *web.Controller) *int {
 		}
 	}
 	return nil
+}
+
+// UnmarshalAndValidate unmarshals JSON from request body into the provided struct
+func UnmarshalAndValidate(requestBody []byte, target interface{}) error {
+	if err := json.Unmarshal(requestBody, target); err != nil {
+		return err
+	}
+	return dto.Validate(target)
 }

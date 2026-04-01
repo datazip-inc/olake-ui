@@ -25,7 +25,7 @@ import (
 // @Router /login [post]
 func (h *Handler) Login() {
 	var req dto.LoginRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
@@ -105,7 +105,7 @@ func (h *Handler) CheckAuth() {
 // @Router /signup [post]
 func (h *Handler) Signup() {
 	var req models.User
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, constants.ValidationInvalidRequestFormat, err)
 		return
 	}
