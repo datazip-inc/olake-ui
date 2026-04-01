@@ -133,7 +133,7 @@ func mergeMaps(base, src map[string]string) map[string]string {
 	result := make(map[string]string, len(base)+len(src))
 	maps.Copy(result, base)
 	maps.Copy(result, src)
-	
+
 	return result
 }
 
@@ -199,6 +199,8 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		if olakeConfig.RestSigningV4 {
 			utils.SetIfNotEmpty(properties, "rest.sigv4-enabled", "true")
 			utils.SetIfNotEmpty(properties, "rest.signing-name", olakeConfig.RestSigningName)
+			// for rest catalog, optimization requires signing region to be specified
+			// if RestSigningV4 is enabled
 			signingRegion := olakeConfig.RestSigningRegion
 			if signingRegion == "" {
 				signingRegion = olakeConfig.Region

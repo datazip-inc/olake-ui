@@ -138,7 +138,7 @@ type CatalogRequest struct {
 	Name                    string            `json:"name"`
 	Type                    string            `json:"type"`
 	OptimizerGroup          string            `json:"optimizerGroup"`
-	OptimizeTableFormatList []string          `json:"OptimizeTableFormatList"`
+	OptimizeTableFormatList []string          `json:"tableFormatList"`
 	StorageConfig           map[string]string `json:"storageConfig"`
 	AuthConfig              map[string]string `json:"authConfig"`
 	Properties              map[string]string `json:"properties"`
