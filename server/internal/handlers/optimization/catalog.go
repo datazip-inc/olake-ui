@@ -1,6 +1,7 @@
 package optimization
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/datazip-inc/olake-ui/server/utils"
@@ -47,7 +48,7 @@ func (h *Handler) CreateCatalog() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, result, nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("catalog %s created successfully", result), nil)
 }
 
 // updates an existing catalog
@@ -80,7 +81,7 @@ func (h *Handler) UpdateCatalog() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, result, nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("catalog %s updated successfully", result), nil)
 }
 
 // deletes a catalog
@@ -96,7 +97,7 @@ func (h *Handler) DeleteCatalog() {
 		return
 	}
 
-	utils.SuccessResponse(&h.Controller, result, nil)
+	utils.SuccessResponse(&h.Controller, fmt.Sprintf("catalog %s deleted successfully", result), nil)
 }
 
 func (h *Handler) requiredCatalog() (string, bool) {
