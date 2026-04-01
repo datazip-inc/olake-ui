@@ -28,7 +28,8 @@ func (h *Handler) SetProperties() {
 	}
 
 	var req dto.SQLInput
-	if !h.bindJSON(&req) {
+	if err := h.bindJSON(&req); err != nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
 		return
 	}
 

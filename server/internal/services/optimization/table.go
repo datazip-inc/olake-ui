@@ -2,6 +2,7 @@ package optimization
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +10,9 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 )
+
+// when no process records exist for the given type.
+var errNoProcess = errors.New("no optimizing process found")
 
 // GetTablesWithDetails fetches all tables with full details for a specific catalog and database
 func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string) (*dto.TablesResponse, error) {
@@ -94,19 +98,19 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 		// fetch latest optimizing processes for each type
 		res, err := s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MINOR")
-		if err != nil {
+		if err != nil && !errors.Is(err, errNoProcess) {
 			return nil, fmt.Errorf("failed to fetch latest minor process info: %s", err)
 		}
 		tableInfo.Minor = res
 
 		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MAJOR")
-		if err != nil {
+		if err != nil && !errors.Is(err, errNoProcess) {
 			return nil, fmt.Errorf("failed to fetch latest major process info: %s", err)
 		}
 		tableInfo.Major = res
 
 		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "FULL")
-		if err != nil {
+		if err != nil && !errors.Is(err, errNoProcess) {
 			return nil, fmt.Errorf("failed to fetch latest full process info: %s", err)
 		}
 		tableInfo.Full = res
@@ -149,7 +153,7 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	}
 
 	if len(processList) == 0 {
-		return nil, nil
+		return nil, errNoProcess
 	}
 
 	// get the first (latest) process

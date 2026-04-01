@@ -2,6 +2,7 @@ package optimization
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -15,7 +16,7 @@ func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 	config := &models.Config{}
 
 	config.CatalogName = catalog.Name
-	config.CatalogType = mapoptimizationTypeToOLake(catalog.Type)
+	config.CatalogType = mapOptimizationTypeToOlakeType(catalog.Type)
 
 	// Map storage and auth config
 	if catalog.StorageConfig != nil {
@@ -59,7 +60,9 @@ func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 		case "hive":
 			config.HiveURI = catalog.Properties["uri"]
 			if clientsStr := catalog.Properties["clients"]; clientsStr != "" {
-				fmt.Sscanf(clientsStr, "%d", &config.HiveClients)
+				if _, err := fmt.Sscanf(clientsStr, "%d", &config.HiveClients); err != nil {
+					return nil, fmt.Errorf("invalid hive clients value %q: %s", clientsStr, err)
+				}
 			}
 
 		case "rest":
@@ -85,7 +88,7 @@ func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 	return config, nil
 }
 
-func mapoptimizationTypeToOLake(optimizationType string) models.CatalogType {
+func mapOptimizationTypeToOlakeType(optimizationType string) models.CatalogType {
 	switch strings.ToLower(optimizationType) {
 	case "custom":
 		return "jdbc"
@@ -123,19 +126,15 @@ func setDefaultCatalogProperties(req *dto.CatalogRequest) {
 		req.Properties["cache-enabled"] = "false"
 	}
 	if _, exists := req.Properties["created-at"]; !exists {
-		req.Properties["created-at"] = time.Now().Format("02 Jan 2006")
+		req.Properties["created-at"] = time.Now().UTC().Format("02 Jan 2006")
 	}
 }
 
 // mergeMaps returns a new map with base values overridden by src values
 func mergeMaps(base, src map[string]string) map[string]string {
 	result := make(map[string]string, len(base)+len(src))
-	for k, v := range base {
-		result[k] = v
-	}
-	for k, v := range src {
-		result[k] = v
-	}
+	maps.Copy(result, base)
+	maps.Copy(result, src)
 	return result
 }
 
@@ -201,6 +200,8 @@ func mapCatalogProperties(olakeConfig *models.Config, properties map[string]stri
 		if olakeConfig.RestSigningV4 {
 			utils.SetIfNotEmpty(properties, "rest.sigv4-enabled", "true")
 			utils.SetIfNotEmpty(properties, "rest.signing-name", olakeConfig.RestSigningName)
+			// for rest catalog, optimization requires signing region to be specified
+			// if RestSigningV4 is enabled
 			signingRegion := olakeConfig.RestSigningRegion
 			if signingRegion == "" {
 				signingRegion = olakeConfig.Region

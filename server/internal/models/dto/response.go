@@ -200,7 +200,7 @@ type TelemetryIDResponse struct {
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
 }
 
-// TODO: convert all optimization struct json-keys to "camel-case" or "snake-case" as required
+// TODO: convert all optimization struct json-keys to "snake-case" as required
 
 type OptimizationResponse struct {
 	Code    int             `json:"code"`
@@ -239,7 +239,7 @@ type TableInfo struct {
 }
 
 type OptimizationInfo struct {
-	FinishTime int64 `json:"finish_time,omitempty"`
+	FinishTime int64  `json:"finish_time,omitempty"`
 	Status     string `json:"status,omitempty"`
 	RunID      string `json:"runID,omitempty"`
 }
@@ -247,7 +247,6 @@ type OptimizationInfo struct {
 // TableProperties represents the response from setting table properties
 type TableProperties struct {
 	SessionID string   `json:"sessionId"`
-	Status    string   `json:"status"`
 	Success   bool     `json:"success"`
 	Message   string   `json:"message"`
 	Logs      []string `json:"logs,omitempty"`

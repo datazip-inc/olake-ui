@@ -14,7 +14,7 @@ import (
 )
 
 func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.Config, error) {
-	catalog, err := s.GetCatalogInOpt(ctx, catalogName)
+	catalog, err := s.getCatalogInOpt(ctx, catalogName)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +24,7 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 	return MapCatalogToDest(catalog)
 }
 
-func (s *Service) GetCatalogInOpt(ctx context.Context, catalogName string) (*dto.CatalogRequest, error) {
+func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto.CatalogRequest, error) {
 	path := fmt.Sprintf(constants.OptPathCatalogDetail, catalogName)
 
 	var result dto.CatalogRequest
@@ -36,16 +36,11 @@ func (s *Service) GetCatalogInOpt(ctx context.Context, catalogName string) (*dto
 }
 
 func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string, error) {
-	catalogReq, err := s.CreateOptConfig(configJSON, false)
+	req, err := s.CreateOptConfig(configJSON, false)
 	if err != nil {
 		return "", fmt.Errorf("failed to create optimization config: %s", err)
 	}
 
-	return s.CreateCatalogInOpt(ctx, catalogReq)
-}
-
-// creates a new catalog
-func (s *Service) CreateCatalogInOpt(ctx context.Context, req *dto.CatalogRequest) (string, error) {
 	if err := validateCatalog(req); err != nil {
 		return "", fmt.Errorf("failed to validate catalog config in optimization: %s", err)
 	}
@@ -54,7 +49,7 @@ func (s *Service) CreateCatalogInOpt(ctx context.Context, req *dto.CatalogReques
 	setDefaultCatalogProperties(req)
 
 	path := constants.OptPathCatalogs
-	if err := s.DoAndValidate(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
+	if err := s.DoExec(ctx, http.MethodPost, path, url.Values{}, req); err != nil {
 		return "", fmt.Errorf("failed to create catalog %s: %s", req.Name, err)
 	}
 
@@ -62,22 +57,18 @@ func (s *Service) CreateCatalogInOpt(ctx context.Context, req *dto.CatalogReques
 }
 
 func (s *Service) UpdateCatalog(ctx context.Context, configJSON string) (string, error) {
-	catalogReq, err := s.CreateOptConfig(configJSON, true)
+	req, err := s.CreateOptConfig(configJSON, true)
 	if err != nil {
 		return "", fmt.Errorf("failed to create optimization config: %s", err)
 	}
 
-	return catalogReq.Name, s.UpdateCatalogInOpt(ctx, catalogReq.Name, catalogReq)
-}
-
-func (s *Service) UpdateCatalogInOpt(ctx context.Context, catalogName string, req *dto.CatalogRequest) error {
 	if err := validateCatalog(req); err != nil {
-		return fmt.Errorf("failed to validate catalog config in optimization: %s", err)
+		return "", fmt.Errorf("failed to validate catalog config in optimization: %s", err)
 	}
 
-	existing, err := s.GetCatalogInOpt(ctx, catalogName)
+	existing, err := s.getCatalogInOpt(ctx, req.Name)
 	if err != nil {
-		return fmt.Errorf("failed to get existing catalog %s for update: %s", catalogName, err)
+		return "", fmt.Errorf("failed to get existing catalog %s for update: %s", req.Name, err)
 	}
 
 	req.Properties = mergeMaps(existing.Properties, req.Properties)
@@ -85,18 +76,17 @@ func (s *Service) UpdateCatalogInOpt(ctx context.Context, catalogName string, re
 	req.AuthConfig = mergeMaps(existing.AuthConfig, req.AuthConfig)
 	req.TableProperties = mergeMaps(existing.TableProperties, req.TableProperties)
 
-	req.Name = catalogName
-	path := fmt.Sprintf(constants.OptPathCatalogDetail, catalogName)
-	if err := s.DoAndValidate(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
-		return fmt.Errorf("failed to update catalog %s in optimization: %s", req.Name, err)
+	path := fmt.Sprintf(constants.OptPathCatalogDetail, req.Name)
+	if err := s.DoExec(ctx, http.MethodPut, path, url.Values{}, req); err != nil {
+		return "", fmt.Errorf("failed to update catalog %s in optimization: %s", req.Name, err)
 	}
 
-	return nil
+	return req.Name, nil
 }
 
-func (s *Service) DeleteCatalogInOpt(ctx context.Context, catalogName string) (string, error) {
+func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (string, error) {
 	path := fmt.Sprintf(constants.OptPathCatalogDetail, catalogName)
-	if err := s.DoAndValidate(ctx, http.MethodDelete, path, url.Values{}, nil); err != nil {
+	if err := s.DoExec(ctx, http.MethodDelete, path, url.Values{}, nil); err != nil {
 		return "", fmt.Errorf("failed to delete catalog %s: %s", catalogName, err)
 	}
 
@@ -120,21 +110,21 @@ func (s *Service) CreateOptConfig(configJSON string, update bool) (*dto.CatalogR
 
 	catalogType := normalizeCatalogType(string(config.CatalogType))
 	optimizationReq := &dto.CatalogRequest{
-		Name:            config.CatalogName,
-		Type:            catalogType,
-		OptimizerGroup:  og,
-		TableFormatList: constants.TableFormatList,
-		StorageConfig:   make(map[string]string),
-		AuthConfig:      make(map[string]string),
-		Properties:      make(map[string]string),
-		TableProperties: make(map[string]string),
+		Name:                    config.CatalogName,
+		Type:                    catalogType,
+		OptimizerGroup:          og,
+		OptimizeTableFormatList: constants.OptimizeTableFormatList,
+		StorageConfig:           make(map[string]string),
+		AuthConfig:              make(map[string]string),
+		Properties:              make(map[string]string),
+		TableProperties:         make(map[string]string),
 	}
 
-	optimizationReq.StorageConfig["storage.type"] = constants.DefaultStroageType
+	optimizationReq.StorageConfig["storage.type"] = constants.DefaultOptimizationStorageType
 
 	mapAuthConfig(&config, optimizationReq.AuthConfig, optimizationReq.StorageConfig)
 	mapCatalogProperties(&config, optimizationReq.Properties, string(config.CatalogType))
-	if update == false {
+	if !update {
 		setDefaultCatalogProperties(optimizationReq)
 	}
 
@@ -150,8 +140,8 @@ func validateCatalog(req *dto.CatalogRequest) error {
 		return fmt.Errorf("catalog type is required")
 	}
 
-	if len(req.TableFormatList) == 0 {
-		req.TableFormatList = []string{"ICEBERG"}
+	if len(req.OptimizeTableFormatList) == 0 {
+		req.OptimizeTableFormatList = []string{"ICEBERG"}
 	}
 
 	return nil
