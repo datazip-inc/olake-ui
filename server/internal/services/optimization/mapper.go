@@ -153,6 +153,11 @@ func mapAuthConfig(olakeConfig *models.Config, authConfig, cmpStorageConfig map[
 }
 
 func mapCatalogProperties(olakeConfig *models.Config, properties map[string]string, olakeCatalogType string) {
+	// if imported from destination
+	if olakeConfig.OLakeImported {
+		utils.SetIfNotEmpty(properties, "olake_created", "true")
+	}
+
 	warehouse := olakeConfig.IcebergS3Path
 
 	switch strings.ToLower(olakeCatalogType) {

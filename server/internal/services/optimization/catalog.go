@@ -11,7 +11,6 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
 func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.Config, error) {
@@ -36,13 +35,11 @@ func (s *Service) GetCatalogInOpt(ctx context.Context, catalogName string) (*dto
 	return &result, nil
 }
 
-func (s *Service) CreateCatalog(ctx context.Context, configJSON string, byETL bool) (string, error) {
+func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string, error) {
 	catalogReq, err := s.CreateOptConfig(configJSON, false)
 	if err != nil {
 		return "", fmt.Errorf("failed to create optimization config: %s", err)
 	}
-
-	catalogReq.Properties["olake_created"] = utils.Ternary(byETL, "true", "false").(string)
 
 	return s.CreateCatalogInOpt(ctx, catalogReq)
 }

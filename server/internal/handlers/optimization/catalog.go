@@ -41,7 +41,7 @@ func (h *Handler) CreateCatalog() {
 		return
 	}
 
-	result, err := h.opt.CreateCatalog(h.Ctx.Request.Context(), configJSON, false)
+	result, err := h.opt.CreateCatalog(h.Ctx.Request.Context(), configJSON)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return

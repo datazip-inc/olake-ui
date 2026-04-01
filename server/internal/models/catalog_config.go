@@ -71,4 +71,7 @@ type Config struct {
 	RestCredential    string `json:"credential,omitempty"`
 
 	UseArrowWrites bool `json:"arrow_writes,omitempty"`
+
+	// If the catalog creds are imported from destination
+	OLakeImported  bool `json:"olake_imported"`
 }

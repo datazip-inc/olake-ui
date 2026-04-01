@@ -137,7 +137,7 @@ type UpdateStateFileRequest struct {
 type CatalogRequest struct {
 	Name            string            `json:"name"`
 	Type            string            `json:"type"`
-	OptimizerGroup  string            `json:"optimizerGroup,omitempty"`
+	OptimizerGroup  string            `json:"optimizerGroup"`
 	TableFormatList []string          `json:"tableFormatList"`
 	StorageConfig   map[string]string `json:"storageConfig"`
 	AuthConfig      map[string]string `json:"authConfig"`

@@ -76,10 +76,10 @@ func Init(h *handlers.Handler) {
 
 	// Destination routes
 	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "get:ListDestinations")
-	web.Router("/api/v1/project/:projectid/destinations", h, "post:CreateDestinationAndCatalog")
+	web.Router("/api/v1/project/:projectid/destinations", etlHandler, "post:CreateDestination")
 	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "get:GetDestination")
-	web.Router("/api/v1/project/:projectid/destinations/:id", h, "put:UpdateDestinationAndCatalog")
-	web.Router("/api/v1/project/:projectid/destinations/:id", h, "delete:DeleteDestinationAndCatalog")
+	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "put:UpdateDestination")
+	web.Router("/api/v1/project/:projectid/destinations/:id", etlHandler, "delete:DeleteDestination")
 	web.Router("/api/v1/project/:projectid/destinations/test", etlHandler, "post:TestDestinationConnection")
 	web.Router("/api/v1/project/:projectid/destinations/versions", etlHandler, "get:GetDestinationVersions")
 	web.Router("/api/v1/project/:projectid/destinations/spec", etlHandler, "post:GetDestinationSpec")
