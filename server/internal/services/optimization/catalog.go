@@ -36,7 +36,7 @@ func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto
 }
 
 func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string, error) {
-	req, err := s.CreateOptConfig(configJSON, false)
+	req, err := s.createOptConfig(configJSON, false)
 	if err != nil {
 		return "", fmt.Errorf("failed to create optimization config: %s", err)
 	}
@@ -57,7 +57,7 @@ func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string,
 }
 
 func (s *Service) UpdateCatalog(ctx context.Context, configJSON string) (string, error) {
-	req, err := s.CreateOptConfig(configJSON, true)
+	req, err := s.createOptConfig(configJSON, true)
 	if err != nil {
 		return "", fmt.Errorf("failed to create optimization config: %s", err)
 	}
@@ -93,7 +93,7 @@ func (s *Service) DeleteCatalog(ctx context.Context, catalogName string) (string
 	return catalogName, nil
 }
 
-func (s *Service) CreateOptConfig(configJSON string, update bool) (*dto.CatalogRequest, error) {
+func (s *Service) createOptConfig(configJSON string, update bool) (*dto.CatalogRequest, error) {
 	var config models.Config
 	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 		return nil, fmt.Errorf("failed to parse ETL config: %s", err)
