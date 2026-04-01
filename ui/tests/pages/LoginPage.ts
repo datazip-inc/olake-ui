@@ -1,6 +1,7 @@
 import { Page, Locator } from "@playwright/test"
-import { TIMEOUTS } from "../../playwright.config"
+
 import { BasePage } from "./BasePage"
+import { TIMEOUTS } from "../../playwright.config"
 
 export class LoginPage extends BasePage {
 	readonly usernameInput: Locator
