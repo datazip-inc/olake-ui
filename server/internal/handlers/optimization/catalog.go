@@ -26,7 +26,8 @@ func (h *Handler) GetCatalog() {
 
 func (h *Handler) CreateCatalog() {
 	var req map[string]interface{}
-	if !h.bindJSON(&req) {
+	if err := h.bindJSON(&req); err != nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
 		return
 	}
 
@@ -59,7 +60,8 @@ func (h *Handler) UpdateCatalog() {
 	}
 
 	var req map[string]interface{}
-	if !h.bindJSON(&req) {
+	if err := h.bindJSON(&req); err != nil {
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
 		return
 	}
 
@@ -91,7 +93,7 @@ func (h *Handler) DeleteCatalog() {
 		return
 	}
 
-	result, err := h.opt.DeleteCatalogInOpt(h.Ctx.Request.Context(), catalogName)
+	result, err := h.opt.DeleteCatalog(h.Ctx.Request.Context(), catalogName)
 	if err != nil {
 		utils.ErrorResponse(&h.Controller, upstreamStatus(err), err.Error(), err)
 		return
@@ -109,10 +111,10 @@ func (h *Handler) requiredCatalog() (string, bool) {
 	return catalog, true
 }
 
-func (h *Handler) bindJSON(dst interface{}) bool {
+func (h *Handler) bindJSON(dst interface{}) error {
 	if err := h.Ctx.BindJSON(dst); err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
-		return false
+		return err
 	}
-	return true
+	
+	return nil
 }

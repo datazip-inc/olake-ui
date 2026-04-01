@@ -53,15 +53,13 @@ func NewClient() (*Service, error) {
 	}, nil
 }
 
-func (c *Service) refreshToken() error {
-	apiKey, apiSecret, err := generateToken(c.baseURL, c.username, c.password)
+func refreshToken(baseURL, username, password string) (string, string, error) {
+	apiKey, apiSecret, err := generateToken(baseURL, username, password)
 	if err != nil {
-		return err
+		return "", "", err
 	}
-	c.apiKey = apiKey
-	c.apiSecret = apiSecret
 
-	return nil
+	return apiKey, apiSecret, nil
 }
 
 // for optimization authentication: calculating md5: apiKey + encryptString + secret
@@ -164,9 +162,16 @@ func (c *Service) DoRequest(ctx context.Context, method, path string, queryParam
 	}
 
 	if statusCode == http.StatusUnauthorized {
-		if err := c.refreshToken(); err != nil {
+		var apiKey string
+		var secretKey string
+		var err error
+		apiKey, secretKey, err = refreshToken(c.baseURL, c.username, c.password)
+		if err != nil {
 			return nil, fmt.Errorf("token refresh failed: %s", err)
 		}
+
+		c.apiKey = apiKey
+		c.apiSecret = secretKey
 		respBody, statusCode, _, err = c.sendRequest(ctx, method, path, queryParams, bodyBytes)
 		if err != nil {
 			return nil, err

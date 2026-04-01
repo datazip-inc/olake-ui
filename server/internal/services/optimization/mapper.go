@@ -2,6 +2,7 @@ package optimization
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -15,7 +16,7 @@ func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 	config := &models.Config{}
 
 	config.CatalogName = catalog.Name
-	config.CatalogType = mapoptimizationTypeToOLake(catalog.Type)
+	config.CatalogType = mapOptimizationTypeToOlakeType(catalog.Type)
 
 	// Map storage and auth config
 	if catalog.StorageConfig != nil {
@@ -85,7 +86,7 @@ func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 	return config, nil
 }
 
-func mapoptimizationTypeToOLake(optimizationType string) models.CatalogType {
+func mapOptimizationTypeToOlakeType(optimizationType string) models.CatalogType {
 	switch strings.ToLower(optimizationType) {
 	case "custom":
 		return "jdbc"
@@ -123,19 +124,16 @@ func setDefaultCatalogProperties(req *dto.CatalogRequest) {
 		req.Properties["cache-enabled"] = "false"
 	}
 	if _, exists := req.Properties["created-at"]; !exists {
-		req.Properties["created-at"] = time.Now().Format("02 Jan 2006")
+		req.Properties["created-at"] = time.Now().UTC().Format("02 Jan 2006")
 	}
 }
 
 // mergeMaps returns a new map with base values overridden by src values
 func mergeMaps(base, src map[string]string) map[string]string {
 	result := make(map[string]string, len(base)+len(src))
-	for k, v := range base {
-		result[k] = v
-	}
-	for k, v := range src {
-		result[k] = v
-	}
+	maps.Copy(result, base)
+	maps.Copy(result, src)
+	
 	return result
 }
 

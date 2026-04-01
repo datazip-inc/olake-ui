@@ -78,14 +78,13 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 	success := logInfo.LogStatus == "Finished"
 	var message string
 	if success {
-		message = fmt.Sprintf("optimization sql command completed successfully. Session ID: %s", sessionResult.SessionID)
+		message = fmt.Sprintf("optimization sql command completed successfully with session ID: %s", sessionResult.SessionID)
 	} else {
-		message = fmt.Sprintf("optimization sql command failed with status: %s. Session ID: %s", logInfo.LogStatus, sessionResult.SessionID)
+		message = fmt.Sprintf("optimization sql command failed with session ID: %s", sessionResult.SessionID)
 	}
 
 	return &dto.TableProperties{
 		SessionID: sessionResult.SessionID,
-		Status:    logInfo.LogStatus,
 		Success:   success,
 		Message:   message,
 		Logs:      logInfo.Logs,
@@ -98,7 +97,7 @@ func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 	timeoutCtx, cancel := context.WithTimeout(ctx, constants.OptMaxTimeout)
 	defer cancel()
 
-	ticker := time.NewTicker(constants.PollInterval)
+	ticker := time.NewTicker(constants.OptQueryResultPollTime)
 	defer ticker.Stop()
 
 	for {
@@ -111,11 +110,7 @@ func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 				return nil, fmt.Errorf("failed to get logs for session %s: %s", sessionID, err)
 			}
 
-			// Check if execution is complete
-			if logInfo.LogStatus == "Finished" || logInfo.LogStatus == "Failed" ||
-				logInfo.LogStatus == "Canceled" || logInfo.LogStatus == "Expired" {
-				return &logInfo, nil
-			}
+			return &logInfo, nil
 		}
 	}
 }
