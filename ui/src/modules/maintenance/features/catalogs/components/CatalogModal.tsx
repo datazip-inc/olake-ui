@@ -50,13 +50,13 @@ const getCatalogNameFromFormData = (data: CatalogFormData): string => {
 /** API expects the writer object only, not `{ type, writer }`. */
 const getCatalogWriterPayload = (
 	data: CatalogFormData,
-	olake_created?: boolean,
+	olake_imported?: boolean,
 ): Record<string, unknown> => {
 	const writer = (data as { writer?: Record<string, unknown> }).writer
 	if (!writer || typeof writer !== "object") {
 		throw new Error("Missing catalog writer configuration")
 	}
-	if (!olake_created) {
+	if (!olake_imported) {
 		return writer
 	}
 	return {
