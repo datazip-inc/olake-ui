@@ -1,6 +1,11 @@
+import { RUN_STATUS, RUN_TYPE, RUN_TYPE_LABEL } from "../constants"
+
+type ValueOf<T> = T[keyof T]
+
 // Backend API Types
-export type RunStatus = "SUCCESS" | "RUNNING" | "FAILED"
-export type RunType = "MINOR" | "MAJOR" | "FULL"
+export type RunStatus = ValueOf<typeof RUN_STATUS>
+
+export type RunType = ValueOf<typeof RUN_TYPE>
 
 export interface RunMetrics {
 	[key: string]: string | number | null | undefined
@@ -101,7 +106,7 @@ export type CompactionRun = {
 	status: RunStatus
 	runID?: string
 } | null
-export type RunTypeLabel = "Lite" | "Medium" | "Full"
+export type RunTypeLabel = ValueOf<typeof RUN_TYPE_LABEL>
 
 export interface Table {
 	id: string

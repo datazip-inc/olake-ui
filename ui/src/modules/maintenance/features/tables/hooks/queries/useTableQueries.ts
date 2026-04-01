@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 
 import { tableKeys } from "../../constants"
 import { tableService } from "../../services"
@@ -58,12 +58,31 @@ export const useTableRuns = (
 	catalog: string,
 	database: string,
 	tableName: string,
+	page: number,
+	pageSize: number,
+	status?: string,
 ) => {
 	return useQuery({
-		queryKey: tableKeys.runs(catalog, database, tableName),
-		queryFn: () => tableService.getTableRuns(catalog, database, tableName),
+		queryKey: tableKeys.runs(
+			catalog,
+			database,
+			tableName,
+			page,
+			pageSize,
+			status,
+		),
+		queryFn: () =>
+			tableService.getTableRuns(
+				catalog,
+				database,
+				tableName,
+				page,
+				pageSize,
+				status,
+			),
 		select: mapGetTableRunsResponseToTableRuns,
 		enabled: !!catalog && !!database && !!tableName,
+		placeholderData: keepPreviousData,
 		refetchOnWindowFocus: false,
 	})
 }

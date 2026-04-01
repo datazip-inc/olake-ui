@@ -17,6 +17,9 @@ import {
 	LITE_DEFAULT_TRIGGER_INTERVAL,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
+	RUN_STATUS,
+	RUN_TYPE,
+	RUN_TYPE_LABEL,
 } from "../constants"
 import type {
 	CronConfigOption,
@@ -49,7 +52,7 @@ const DEFAULT_RUN_STATUS_CONFIG = {
 
 export const getRunStatusConfig = (status?: string) => {
 	switch (status) {
-		case "SUCCESS":
+		case RUN_STATUS.SUCCESS:
 			return {
 				Icon: CheckCircleIcon,
 				bgClass: "bg-olake-success-bg",
@@ -57,7 +60,23 @@ export const getRunStatusConfig = (status?: string) => {
 				label: "Success",
 				iconClass: undefined,
 			}
-		case "RUNNING":
+		case RUN_STATUS.SKIPPED:
+			return {
+				Icon: WarningCircleIcon,
+				bgClass: "bg-olake-surface-muted",
+				textClass: "text-olake-text-tertiary",
+				label: "Skipped",
+				iconClass: undefined,
+			}
+		case RUN_STATUS.CLOSED:
+			return {
+				Icon: WarningCircleIcon,
+				bgClass: "bg-olake-surface-muted",
+				textClass: "text-olake-text-tertiary",
+				label: "Closed",
+				iconClass: undefined,
+			}
+		case RUN_STATUS.RUNNING:
 			return {
 				Icon: SpinnerIcon,
 				bgClass: "bg-olake-warning-bg",
@@ -65,7 +84,7 @@ export const getRunStatusConfig = (status?: string) => {
 				label: "Running",
 				iconClass: undefined,
 			}
-		case "FAILED":
+		case RUN_STATUS.FAILED:
 			return {
 				Icon: WarningCircleIcon,
 				bgClass: "bg-olake-error-bg",
@@ -83,7 +102,7 @@ export const getRunStatusConfig = (status?: string) => {
 
 export const getRunLogsStatusConfig = (status?: string) => {
 	switch (status) {
-		case "SUCCESS":
+		case RUN_STATUS.SUCCESS:
 			return {
 				Icon: CheckCircleIcon,
 				bgClass: "bg-olake-success-bg",
@@ -91,7 +110,23 @@ export const getRunLogsStatusConfig = (status?: string) => {
 				label: "Success",
 				iconClass: undefined,
 			}
-		case "RUNNING":
+		case RUN_STATUS.SKIPPED:
+			return {
+				Icon: WarningCircleIcon,
+				bgClass: "bg-olake-surface-muted",
+				textClass: "text-olake-text-tertiary",
+				label: "Skipped",
+				iconClass: undefined,
+			}
+		case RUN_STATUS.CLOSED:
+			return {
+				Icon: WarningCircleIcon,
+				bgClass: "bg-olake-surface-muted",
+				textClass: "text-olake-text-tertiary",
+				label: "Closed",
+				iconClass: undefined,
+			}
+		case RUN_STATUS.RUNNING:
 			return {
 				Icon: SpinnerIcon,
 				bgClass: "bg-olake-warning-bg",
@@ -99,7 +134,7 @@ export const getRunLogsStatusConfig = (status?: string) => {
 				label: "Running",
 				iconClass: undefined,
 			}
-		case "FAILED":
+		case RUN_STATUS.FAILED:
 			return {
 				Icon: WarningCircleIcon,
 				bgClass: "bg-olake-error-bg",
@@ -147,30 +182,33 @@ export const mapGetTablesResponseToTables = (tables: FusionTable[]): Table[] =>
 // Returns the run id only when one of full/minor/major is currently RUNNING.
 export const getCancelRunID = (table: Table): string | null => {
 	const runs: Array<CompactionRun> = [table.full, table.minor, table.major]
-	const running = runs.find(run => run?.status === "RUNNING")
+	const running = runs.find(run => run?.status === RUN_STATUS.RUNNING)
 	const runId = running?.runID
 	return typeof runId === "string" && runId.trim() ? runId : null
 }
 
 const runTypeToLabel: Record<RunType, TableRun["type"]> = {
-	MINOR: "Lite",
-	MAJOR: "Medium",
-	FULL: "Full",
+	[RUN_TYPE.MINOR]: RUN_TYPE_LABEL.LITE,
+	[RUN_TYPE.MAJOR]: RUN_TYPE_LABEL.MEDIUM,
+	[RUN_TYPE.FULL]: RUN_TYPE_LABEL.FULL,
 }
 
 export const mapGetTableRunsResponseToTableRuns = (
 	response: GetTableRunsApiResponse,
-): TableRun[] => {
+): { runs: TableRun[]; total: number } => {
 	const runs: FusionRun[] = response.result?.list ?? []
-	return runs.map(run => ({
-		id: run.processId,
-		runId: run.processId,
-		status: run.status,
-		type: runTypeToLabel[run.optimizingType],
-		startTime: formatTimestampToUtcTime(run.startTime),
-		duration: formatDuration(run.duration),
-		metrics: mapRunMetricsPayloadToRows(run.summary ?? {}),
-	}))
+	return {
+		runs: runs.map(run => ({
+			id: run.processId,
+			runId: run.processId,
+			status: run.status,
+			type: runTypeToLabel[run.optimizingType],
+			startTime: formatTimestampToUtcTime(run.startTime),
+			duration: formatDuration(run.duration),
+			metrics: mapRunMetricsPayloadToRows(run.summary ?? {}),
+		})),
+		total: response.result?.total ?? 0,
+	}
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -215,6 +253,19 @@ const extractRunMetricsObject = (payload: unknown): Record<string, unknown> => {
 	return payload
 }
 
+const TYPE_DISPLAY_REGEX = new RegExp(
+	`\\b(${Object.keys(runTypeToLabel).join("|")})\\b`,
+	"g",
+)
+
+const TYPE_REPLACEABLE_KEYS = ["optimizingType", "skipReason"]
+
+const replaceDisplayTypes = (text: string): string =>
+	text.replace(
+		TYPE_DISPLAY_REGEX,
+		match => runTypeToLabel[match as RunType] ?? match,
+	)
+
 // Converts metrics payload from API/run rows into display-ready label/value rows for the sidebar.
 export const mapRunMetricsPayloadToRows = (
 	payload: unknown,
@@ -222,12 +273,19 @@ export const mapRunMetricsPayloadToRows = (
 	const metricsObject = extractRunMetricsObject(payload)
 	return Object.entries(metricsObject)
 		.filter(([key]) => !HIDDEN_RUN_METRIC_KEYS.has(key))
-		.map(([key, value]) => ({
-			label: normalizeMetricKey(key),
-			value: formatMetricValue(value),
-		}))
-}
+		.map(([key, value]) => {
+			const formattedValue = formatMetricValue(value)
+			const shouldReplaceDisplayTypes =
+				TYPE_REPLACEABLE_KEYS.includes(key) && typeof value === "string"
 
+			return {
+				label: normalizeMetricKey(key),
+				value: shouldReplaceDisplayTypes
+					? replaceDisplayTypes(formattedValue)
+					: formattedValue,
+			}
+		})
+}
 // Maps a raw cron string to dropdown state — preset strings become a frequency value, anything else becomes a custom cron entry.
 export const mapTriggerIntervalToCronConfigOption = (
 	triggerInterval: string,

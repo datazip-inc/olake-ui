@@ -8,6 +8,7 @@ import {
 	CRON_FREQUENCY_OPTIONS,
 	DEFAULT_CRON_CONFIG,
 	DEFAULT_TARGET_FILE_SIZE,
+	RUN_TYPE_LABEL,
 } from "../../constants"
 import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
@@ -245,20 +246,20 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 						) : (
 							<>
 								<ScheduleSection
-									title="Lite"
+									title={RUN_TYPE_LABEL.LITE}
 									tooltip="Converts equality deletes to position deletes."
 									value={minorCron}
 									onChange={setMinorCron}
 									isFirst
 								/>
 								<ScheduleSection
-									title="Medium"
+									title={RUN_TYPE_LABEL.MEDIUM}
 									tooltip="Merges small files into larger ones."
 									value={majorCron}
 									onChange={setMajorCron}
 								/>
 								<ScheduleSection
-									title="Full"
+									title={RUN_TYPE_LABEL.FULL}
 									tooltip="Rewrites all data and applies deletes, creating files of the target size."
 									value={fullCron}
 									onChange={setFullCron}

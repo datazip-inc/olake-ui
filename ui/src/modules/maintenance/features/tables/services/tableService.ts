@@ -44,9 +44,20 @@ export const tableService = {
 		catalog: string,
 		database: string,
 		tableName: string,
+		page: number,
+		pageSize: number,
+		status?: string,
 	) => {
+		const searchParams = new URLSearchParams({
+			page: String(page),
+			pageSize: String(pageSize),
+		})
+		if (status) {
+			searchParams.set("status", status)
+		}
+
 		const response = await api.get<GetTableRunsApiResponse>(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes?${searchParams.toString()}`,
 		)
 		return response.data
 	},

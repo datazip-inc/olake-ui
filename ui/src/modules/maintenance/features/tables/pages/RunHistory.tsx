@@ -1,23 +1,24 @@
-import {
-	ArrowsClockwiseIcon,
-	CaretLeftIcon,
-	MagnifyingGlassIcon,
-} from "@phosphor-icons/react"
-import { Button, Input } from "antd"
+import { ArrowsClockwiseIcon, CaretLeftIcon } from "@phosphor-icons/react"
+import { Button } from "antd"
 import clsx from "clsx"
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
-import { usePaginatedSearch } from "@/common/hooks"
 
 import { RunMetricsSidebar } from "../components"
-import { useTableRuns } from "../hooks"
-import type { RunMetricRow, TableRun } from "../types"
+import { RUN_STATUS } from "../constants"
+import { useRunHistoryFilters, useTableRuns } from "../hooks"
+import type { RunMetricRow, TableRun, RunStatus } from "../types"
 import { getRunLogsStatusConfig } from "../utils"
 
 type RunsFilter = "all" | "failed"
+const LOG_VIEWABLE_STATUSES = new Set<RunStatus>([
+	RUN_STATUS.RUNNING,
+	RUN_STATUS.SUCCESS,
+	RUN_STATUS.FAILED,
+])
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
@@ -93,14 +94,15 @@ const getColumns = (
 		header: "Logs",
 		width: 10,
 		align: "center",
-		render: row => (
-			<Button
-				size="small"
-				onClick={() => handleLogsClick(row.runId)}
-			>
-				View
-			</Button>
-		),
+		render: row =>
+			LOG_VIEWABLE_STATUSES.has(row.status) ? (
+				<Button
+					size="small"
+					onClick={() => handleLogsClick(row.runId)}
+				>
+					View
+				</Button>
+			) : null,
 	},
 ]
 
@@ -119,28 +121,26 @@ const RunHistory: React.FC = () => {
 	const [metricsRows, setMetricsRows] = useState<RunMetricRow[]>([])
 	const [selectedRunId, setSelectedRunId] = useState<string>("")
 	const {
-		data: runs = [],
-		isLoading,
-		isFetching,
-		refetch,
-	} = useTableRuns(decodedCatalog, decodedDatabase, decodedTableName)
-
-	const {
-		searchTerm,
-		setSearchTerm,
 		activeFilter,
-		setActiveFilter,
 		currentPage,
 		setCurrentPage,
-		paginatedRows,
-		totalPages,
-	} = usePaginatedSearch<TableRun, RunsFilter>({
-		rows: runs,
-		initialFilter: "all",
-		searchFn: (run, term) => run.runId.toLowerCase().includes(term),
-		filterFn: (run, filter) =>
-			filter === "all" ? true : run.status === "FAILED",
-	})
+		pageSize,
+		status,
+		handleFilterChange,
+	} = useRunHistoryFilters()
+	const { data, isLoading, isFetching, refetch } = useTableRuns(
+		decodedCatalog,
+		decodedDatabase,
+		decodedTableName,
+		currentPage,
+		pageSize,
+		status,
+	)
+
+	const runs = data?.runs ?? []
+	const totalRuns = data?.total ?? 0
+
+	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
 
 	const handleMetricsClick = (row: TableRun) => {
 		setSelectedRunId(row.runId)
@@ -183,20 +183,6 @@ const RunHistory: React.FC = () => {
 			</p>
 
 			<div className="mt-6 flex items-center gap-4">
-				<div className="flex h-8 w-72 overflow-hidden rounded-md border border-olake-border">
-					<Input
-						value={searchTerm}
-						onChange={e => setSearchTerm(e.target.value)}
-						placeholder="Search Run ID"
-						className="h-8 border-0 text-sm"
-					/>
-					<button
-						type="button"
-						className="flex h-8 w-8 items-center justify-center border-l border-olake-border"
-					>
-						<MagnifyingGlassIcon size={14} />
-					</button>
-				</div>
 				<Button
 					icon={<ArrowsClockwiseIcon size={14} />}
 					loading={isFetching}
@@ -215,7 +201,7 @@ const RunHistory: React.FC = () => {
 							<button
 								key={filter.key}
 								type="button"
-								onClick={() => setActiveFilter(filter.key as RunsFilter)}
+								onClick={() => handleFilterChange(filter.key as RunsFilter)}
 								className={clsx(
 									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
 									active
@@ -233,7 +219,7 @@ const RunHistory: React.FC = () => {
 			<div className="mt-4">
 				<DataTable
 					columns={columns}
-					rows={paginatedRows}
+					rows={runs}
 					rowKey={row => row.id}
 					loading={isLoading || isFetching}
 					pagination={{
@@ -241,23 +227,14 @@ const RunHistory: React.FC = () => {
 						totalPages,
 						onPageChange: setCurrentPage,
 					}}
-					pageSize={10}
-					emptyStateConfig={
-						runs.length > 0
-							? {
-									title: "No runs found",
-									subtitle: "Try a different search or filter.",
-									onRefetch: () => void refetch(),
-									refetchLabel: "Refresh",
-								}
-							: {
-									title: "No runs found for this table",
-									subtitle:
-										"No runs are available yet. Configure optimization to view run history here.",
-									onRefetch: () => void refetch(),
-									refetchLabel: "Refresh",
-								}
-					}
+					pageSize={pageSize}
+					emptyStateConfig={{
+						title: "No runs found",
+						subtitle:
+							"No runs are available for the selected filter. Try switching filters or refresh.",
+						onRefetch: () => void refetch(),
+						refetchLabel: "Refresh",
+					}}
 				/>
 			</div>
 

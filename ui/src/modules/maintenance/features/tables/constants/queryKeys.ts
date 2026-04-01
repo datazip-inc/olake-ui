@@ -8,8 +8,19 @@ export const tableKeys = {
 
 	table: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.all(), "table", catalog, database, tableName] as const,
-	runs: (catalog: string, database: string, tableName: string) =>
-		[...tableKeys.table(catalog, database, tableName), "runs"] as const,
+	runs: (
+		catalog: string,
+		database: string,
+		tableName: string,
+		page: number,
+		pageSize: number,
+		status?: string,
+	) =>
+		[
+			...tableKeys.table(catalog, database, tableName),
+			"runs",
+			{ page, pageSize, status },
+		] as const,
 	cron: (catalog: string, database: string, tableName: string) =>
 		[...tableKeys.table(catalog, database, tableName), "cron"] as const,
 	details: (catalog: string, database: string, tableName: string) =>
