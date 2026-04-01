@@ -46,6 +46,7 @@ func Init() (*Database, error) {
 		new(models.Job),
 		new(models.User),
 		new(models.Catalog),
+		new(models.ProjectUserRole),
 	); err != nil {
 		return nil, fmt.Errorf("failed to run automigrate: %s", err)
 	}
@@ -93,4 +94,7 @@ func BuildPostgresURIFromConfig() (string, error) {
 	u.RawQuery = query.Encode()
 
 	return u.String(), nil
+}
+func (d *Database) Conn() *gorm.DB {
+	return d.conn
 }

@@ -48,4 +48,8 @@ func (s *ETLService) DeleteUser(_ context.Context, id int) error {
 	return nil
 }
 
-// removed: duplicate of auth.GetUserByID
+// IsFirstUser returns true if only one user exists in the DB.
+// Used post-signup to auto-assign the global admin role.
+func (s *ETLService) IsFirstUser() (bool, error) {
+	return s.db.IsFirstUser()
+}

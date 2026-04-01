@@ -126,3 +126,18 @@ type Session struct {
 func (s *Session) TableName() string {
 	return constants.TableNameMap[constants.SessionTable]
 }
+
+// ProjectUserRole is the source-of-truth table for project membership.
+// Populated by future member-management APIs; casbin_rule holds the live copy.
+type ProjectUserRole struct {
+	ID        int       `json:"id"         gorm:"column:id;primaryKey;autoIncrement"`
+	ProjectID string    `json:"project_id" gorm:"column:project_id;uniqueIndex:idx_project_user"`
+	UserID    int       `json:"user_id"    gorm:"column:user_id;uniqueIndex:idx_project_user"`
+	Role      string    `json:"role"       gorm:"column:role;not null"`
+	InvitedBy *int      `json:"invited_by,omitempty" gorm:"column:invited_by"`
+	CreatedAt time.Time `json:"created_at" gorm:"column:created_at;autoCreateTime"`
+}
+
+func (p *ProjectUserRole) TableName() string {
+	return constants.TableNameMap[constants.ProjectUserRoleTable]
+}

@@ -11,4 +11,5 @@ const (
 	CatalogTable
 	SessionTable
 	ProjectSettingsTable
+	ProjectUserRoleTable // for future member-management APIs
 )

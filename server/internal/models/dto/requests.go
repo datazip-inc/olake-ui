@@ -133,3 +133,14 @@ type UpdateSyncTelemetryRequest struct {
 type UpdateStateFileRequest struct {
 	StateFile string `json:"state_file" binding:"required"`
 }
+
+// ── RBAC member management DTOs ───────────────────────────────────────────────
+
+type AssignRoleRequest struct {
+	UserID int    `json:"user_id" binding:"required" example:"2"`
+	Role   string `json:"role"    binding:"required,oneof=reader writer" example:"reader"`
+}
+
+type UpdateRoleRequest struct {
+	Role string `json:"role" binding:"required,oneof=reader writer" example:"writer"`
+}

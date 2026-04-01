@@ -37,7 +37,7 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 	}
 
 	if h != nil {
-		routes.RegisterRoutes(engine, h)
+		routes.RegisterRoutes(engine, h, cfg.SessionOn)
 	}
 
 	server := &http.Server{

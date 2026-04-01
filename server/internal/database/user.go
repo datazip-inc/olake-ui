@@ -58,3 +58,11 @@ func (db *Database) DeleteUser(id int) error {
 	}
 	return nil
 }
+
+// IsFirstUser returns true if only one user exists — used post-signup
+// to auto-assign the global admin role.
+func (db *Database) IsFirstUser() (bool, error) {
+	var count int64
+	err := db.conn.Model(&models.User{}).Count(&count).Error
+	return count == 1, err
+}

@@ -59,6 +59,9 @@ var (
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
 	ExecutorEnvironment = "docker"
+
+	// UserIDContextKey is the key for the user ID in the context.
+	UserIDContextKey = "user_id"
 )
 
 // Supported database/source types
@@ -110,6 +113,7 @@ func Init() {
 		CatalogTable:         "olake-$$-catalog",
 		SessionTable:         "session",
 		ProjectSettingsTable: "olake-$$-project-settings",
+		ProjectUserRoleTable: "olake-$$-project-user-role",
 	}
 
 	// replace $$ with the environment

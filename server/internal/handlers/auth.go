@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/datazip-inc/olake-ui/server/internal/auth"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -76,6 +77,15 @@ func (h *Handler) Signup(c *gin.Context) {
 		return
 	}
 
+	// First user ever created becomes the global admin
+	if h.enforcer != nil {
+		if first, err := h.etl.IsFirstUser(); err == nil && first {
+			if err := auth.AssignGlobalAdmin(h.enforcer, req.ID); err != nil {
+				logger.Warnf("failed to assign global admin to first user: %s", err)
+			}
+		}
+	}
+
 	successResponse(c, "user created successfully", map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
@@ -124,11 +134,13 @@ func (h *Handler) AuthMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		if _, ok := h.sessions.GetUserID(c); !ok {
+		userID, ok := h.sessions.GetUserID(c) // was: _, ok
+		if !ok {
 			errorResponse(c, http.StatusUnauthorized, "Unauthorized, try login again", nil)
 			c.Abort()
 			return
 		}
+		c.Set(constants.UserIDContextKey, userID) // ← new line
 		c.Next()
 	}
 }

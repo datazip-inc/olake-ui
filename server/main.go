@@ -32,6 +32,7 @@ import (
 	"syscall"
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
+	"github.com/datazip-inc/olake-ui/server/internal/auth"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
@@ -51,6 +52,14 @@ func main() {
 		logger.Fatalf("Failed to initialize database: %s", err)
 		return
 	}
+	enforcer, err := auth.InitCasbin(db.Conn())
+	if err != nil {
+		logger.Fatalf("Failed to initialize Casbin: %s", err)
+		return
+	}
+	if err := auth.SeedDefaultRoles(enforcer); err != nil {
+		logger.Warnf("Failed to seed default RBAC roles: %s", err)
+	}
 
 	// Initialize unified AppService
 	appSvc, err := services.InitAppService(db)
@@ -58,6 +67,7 @@ func main() {
 		logger.Fatalf("Failed to initialize services: %s", err)
 		return
 	}
+	appSvc.RBAC = services.NewRBACService(database.NewRBACStore(db, enforcer))
 	logger.Info("Application services initialized successfully")
 	telemetry.InitTelemetry(db)
 
@@ -74,7 +84,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	api, err := handlers.NewHandler(appSvc, &cfg)
+	api, err := handlers.NewHandler(appSvc, &cfg, enforcer)
 	if err != nil {
 		logger.Fatalf("Failed to initialize Gin API: %s", err)
 		return
