@@ -1,8 +1,6 @@
 package services
 
 import (
-	"context"
-
 	"github.com/beego/beego/v2/server/web"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
@@ -37,9 +35,6 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		}
 
 		appSvc.opt = optSvc
-
-		// TODO: define context in main and pass
-		appSvc.SyncCatalogs(context.Background())
 	}
 
 	return appSvc, nil

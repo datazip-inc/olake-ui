@@ -72,5 +72,5 @@ func (h *Handler) PiggyBacking() {
 		return
 	}
 
-	utils.RespondJSON(&h.Controller, statusCode, true, "request forwarded successfully", upstreamResponse)
+	utils.RespondJSON(&h.Controller, statusCode, true, "fetched successfully", upstreamResponse)
 }
