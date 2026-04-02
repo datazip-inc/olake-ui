@@ -114,6 +114,9 @@ var (
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
 	DefaultOptimizationStorageType = "S3"
+
+	ContextUserIDKey = "user_id"
+	ProjectIDParam   = "projectid"
 )
 
 // Supported database/source types

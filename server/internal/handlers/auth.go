@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 )
@@ -26,8 +26,8 @@ import (
 // @Router /login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req dto.LoginRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), constants.ValidationInvalidRequestFormat, err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 	logger.Debugf("Login initiated username[%s]", req.Username)
@@ -35,19 +35,19 @@ func (h *Handler) Login(c *gin.Context) {
 	user, err := h.appSvc.ETL().Login(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		if errors.Is(err, constants.ErrUserNotFound) || errors.Is(err, constants.ErrInvalidCredentials) {
-			httpx.ErrorResponse(c, http.StatusUnauthorized, "Invalid credentials", err)
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Invalid credentials", err)
 			return
 		}
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Login failed: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Login failed: %s", err), err)
 		return
 	}
 
 	if err := h.sessions.SetUserSession(c, user.ID); err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Failed to create session: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Failed to create session: %s", err), err)
 		return
 	}
 
-	httpx.SuccessResponse(c, "login successful", dto.LoginResponse{Username: user.Username})
+	utils.SuccessResponse(c, "login successful", dto.LoginResponse{Username: user.Username})
 }
 
 // @Summary User signup
@@ -62,8 +62,8 @@ func (h *Handler) Login(c *gin.Context) {
 // @Router /signup [post]
 func (h *Handler) Signup(c *gin.Context) {
 	var req dto.CreateUserRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), constants.ValidationInvalidRequestFormat, err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), constants.ValidationInvalidRequestFormat, err)
 		return
 	}
 
@@ -71,16 +71,16 @@ func (h *Handler) Signup(c *gin.Context) {
 	if err := h.appSvc.ETL().Signup(c.Request.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, constants.ErrUserAlreadyExists):
-			httpx.ErrorResponse(c, http.StatusConflict, fmt.Sprintf("Username already exists: %s", err), err)
+			utils.ErrorResponse(c, http.StatusConflict, fmt.Sprintf("Username already exists: %s", err), err)
 		case errors.Is(err, constants.ErrPasswordProcessing):
-			httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Failed to process password: %s", err), err)
+			utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("Failed to process password: %s", err), err)
 		default:
-			httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
+			utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create user: %s", err), err)
 		}
 		return
 	}
 
-	httpx.SuccessResponse(c, "user created successfully", map[string]interface{}{
+	utils.SuccessResponse(c, "user created successfully", map[string]interface{}{
 		"email":    req.Email,
 		"username": req.Username,
 	})
@@ -95,17 +95,17 @@ func (h *Handler) Signup(c *gin.Context) {
 func (h *Handler) CheckAuth(c *gin.Context) {
 	userID, ok := h.sessions.GetUserID(c)
 	if !ok {
-		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", errors.New("not authenticated"))
 		return
 	}
 	logger.Debugf("Check auth initiated user_id[%v]", userID)
 
 	if err := h.appSvc.ETL().ValidateUser(userID); err != nil {
-		httpx.ErrorResponse(c, http.StatusUnauthorized, fmt.Sprintf("Invalid session: %s", err), err)
+		utils.ErrorResponse(c, http.StatusUnauthorized, fmt.Sprintf("Invalid session: %s", err), err)
 		return
 	}
 
-	httpx.SuccessResponse(c, "authenticated successfully", nil)
+	utils.SuccessResponse(c, "authenticated successfully", nil)
 }
 
 // @Summary Get telemetry ID
@@ -116,7 +116,7 @@ func (h *Handler) CheckAuth(c *gin.Context) {
 // @Router /telemetry-id [get]
 func (h *Handler) TelemetryID(c *gin.Context) {
 	logger.Info("Get telemetry ID initiated")
-	httpx.SuccessResponse(c, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
+	utils.SuccessResponse(c, "telemetry ID fetched successfully", dto.TelemetryIDResponse{
 		TelemetryUserID: telemetry.GetTelemetryUserID(),
 		OlakeUIVersion:  telemetry.GetVersion(),
 	})

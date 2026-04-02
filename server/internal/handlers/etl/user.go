@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/gin-gonic/gin"
 )
@@ -26,8 +26,8 @@ import (
 // @Router /api/v1/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
 	var req dto.CreateUserRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Create user initiated username[%s] email[%s]", req.Username, req.Email)
@@ -42,11 +42,11 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		if errors.Is(err, constants.ErrUserAlreadyExists) {
 			status = http.StatusConflict
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to create user: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to create user: %s", err), err)
 		return
 	}
 
-	httpx.SuccessResponse(c, "user created successfully", dto.UserResponse{
+	utils.SuccessResponse(c, "user created successfully", dto.UserResponse{
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
@@ -65,7 +65,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 	logger.Info("Get all users initiated")
 	users, err := h.etl.GetAllUsers(c.Request.Context())
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to get users: %s", err), err)
 		return
 	}
 	resp := make([]dto.UserResponse, 0, len(users))
@@ -76,7 +76,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 			Email:    user.Email,
 		})
 	}
-	httpx.SuccessResponse(c, "users listed successfully", resp)
+	utils.SuccessResponse(c, "users listed successfully", resp)
 }
 
 // @Summary Update user details
@@ -91,15 +91,15 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
 	var req dto.UpdateUserRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Update user initiated user_id[%d] username[%s]", id, req.Username)
@@ -109,10 +109,10 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		Email:    req.Email,
 	})
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, "user updated successfully", dto.UserResponse{
+	utils.SuccessResponse(c, "user updated successfully", dto.UserResponse{
 		ID:       updatedUser.ID,
 		Username: updatedUser.Username,
 		Email:    updatedUser.Email,
@@ -129,16 +129,16 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete user"
 // @Router /api/v1/users/{id} [delete]
 func (h *Handler) DeleteUser(c *gin.Context) {
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Infof("Delete user initiated user_id[%d]", id)
 
 	if err := h.etl.DeleteUser(c.Request.Context(), id); err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, "user deleted successfully", nil)
+	utils.SuccessResponse(c, "user deleted successfully", nil)
 }

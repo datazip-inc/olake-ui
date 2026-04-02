@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
@@ -25,18 +24,18 @@ import (
 // @Failure 500 {object} dto.Error500Response "failed to retrieve jobs"
 // @Router /api/v1/project/{projectid}/jobs [get]
 func (h *Handler) ListJobs(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("List jobs initiated project_id[%s]", projectID)
 	jobs, err := h.etl.ListJobs(c.Request.Context(), projectID)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve jobs by project ID: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to retrieve jobs by project ID: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, "jobs listed successfully", jobs)
+	utils.SuccessResponse(c, "jobs listed successfully", jobs)
 }
 
 // @Summary Get job details
@@ -51,14 +50,14 @@ func (h *Handler) ListJobs(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [get]
 func (h *Handler) GetJob(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := httpx.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get job initiated project_id[%s] job_id[%d]", projectID, jobID)
@@ -68,10 +67,10 @@ func (h *Handler) GetJob(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to get job: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get job: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job '%d' retrieved successfully", jobID), job)
+	utils.SuccessResponse(c, fmt.Sprintf("job '%d' retrieved successfully", jobID), job)
 }
 
 // @Summary Create a new job
@@ -86,31 +85,31 @@ func (h *Handler) GetJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to create job"
 // @Router /api/v1/project/{projectid}/jobs [post]
 func (h *Handler) CreateJob(c *gin.Context) {
-	userID := httpx.GetCurrentUserID(c)
+	userID := utils.GetCurrentUserID(c)
 	if userID == nil {
-		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.CreateJobRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Create job initiated project_id[%s] user_id[%v] job_name[%s]", projectID, userID, req.Name)
 	if err := h.etl.CreateJob(c.Request.Context(), &req, projectID, userID); err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create job: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("job '%s' created successfully", req.Name), nil)
 }
 
 // @Summary Update a job
@@ -127,28 +126,28 @@ func (h *Handler) CreateJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to update job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [put]
 func (h *Handler) UpdateJob(c *gin.Context) {
-	userID := httpx.GetCurrentUserID(c)
+	userID := utils.GetCurrentUserID(c)
 	if userID == nil {
-		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := httpx.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.UpdateJobRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if err := validateJobDriverConfig(req.Source, req.Destination); err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 
@@ -158,10 +157,10 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to update job: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update job: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("job '%s' updated successfully", req.Name), nil)
 }
 
 // @Summary Delete a job
@@ -176,9 +175,9 @@ func (h *Handler) UpdateJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to delete job"
 // @Router /api/v1/project/{projectid}/jobs/{id} [delete]
 func (h *Handler) DeleteJob(c *gin.Context) {
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Delete job initiated job_id[%d]", id)
@@ -188,10 +187,10 @@ func (h *Handler) DeleteJob(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to delete job: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to delete job: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("job '%s' deleted successfully", jobName), nil)
 }
 
 // @Summary Check name uniqueness
@@ -207,27 +206,27 @@ func (h *Handler) DeleteJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to check uniqueness"
 // @Router /api/v1/project/{projectid}/check-unique [post]
 func (h *Handler) CheckUniqueName(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.CheckUniqueNameRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Check unique name initiated project_id[%s] entity_type[%s] name[%s]", projectID, req.EntityType, req.Name)
 	unique, err := h.etl.CheckUniqueName(c.Request.Context(), projectID, req)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to check name uniqueness: %s", err), err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to check name uniqueness: %s", err), err)
 		return
 	}
 	if !unique {
-		httpx.ErrorResponse(c, http.StatusConflict, fmt.Sprintf("%s name '%s' is not unique", req.EntityType, req.Name), nil)
+		utils.ErrorResponse(c, http.StatusConflict, fmt.Sprintf("%s name '%s' is not unique", req.EntityType, req.Name), nil)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("%s name '%s' uniqueness checked successfully", req.EntityType, req.Name), dto.CheckUniqueJobNameResponse{Unique: unique})
+	utils.SuccessResponse(c, fmt.Sprintf("%s name '%s' uniqueness checked successfully", req.EntityType, req.Name), dto.CheckUniqueJobNameResponse{Unique: unique})
 }
 
 // @Summary Trigger job sync
@@ -242,14 +241,14 @@ func (h *Handler) CheckUniqueName(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to trigger sync"
 // @Router /api/v1/project/{projectid}/jobs/{id}/sync [post]
 func (h *Handler) SyncJob(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Sync job initiated project_id[%s] job_id[%d]", projectID, id)
@@ -259,10 +258,10 @@ func (h *Handler) SyncJob(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to trigger sync: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to trigger sync: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("sync triggered successfully for job_id[%d]", id), result)
+	utils.SuccessResponse(c, fmt.Sprintf("sync triggered successfully for job_id[%d]", id), result)
 }
 
 // @Summary Pause or resume job
@@ -279,19 +278,19 @@ func (h *Handler) SyncJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to activate job"
 // @Router /api/v1/project/{projectid}/jobs/{id}/activate [post]
 func (h *Handler) ActivateJob(c *gin.Context) {
-	userID := httpx.GetCurrentUserID(c)
+	userID := utils.GetCurrentUserID(c)
 	if userID == nil {
-		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.JobStatusRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Activate job initiated job_id[%d] activate[%t] user_id[%v]", id, req.Activate, userID)
@@ -300,14 +299,14 @@ func (h *Handler) ActivateJob(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to activate job: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to activate job: %s", err), err)
 		return
 	}
 	action := "paused"
 	if req.Activate {
 		action = "resumed"
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job %d %s successfully", id, action), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("job %d %s successfully", id, action), nil)
 }
 
 // @Summary Cancel running job
@@ -322,14 +321,14 @@ func (h *Handler) ActivateJob(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to cancel job run"
 // @Router /api/v1/project/{projectid}/jobs/{id}/cancel [get]
 func (h *Handler) CancelJobRun(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Cancel job run initiated project_id[%s] job_id[%d]", projectID, id)
@@ -338,10 +337,10 @@ func (h *Handler) CancelJobRun(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to cancel job run: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to cancel job run: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("job workflow cancel requested successfully for job_id[%d]", id), nil)
 }
 
 // @Summary Clear destination data
@@ -356,14 +355,14 @@ func (h *Handler) CancelJobRun(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to trigger clear destination"
 // @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [post]
 func (h *Handler) ClearDestination(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Clear destination initiated project_id[%s] job_id[%d]", projectID, id)
@@ -372,10 +371,10 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to trigger clear destination: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("clear destination triggered successfully for job_id[%d]", id), nil)
 }
 
 // @Summary Get stream differences
@@ -392,19 +391,19 @@ func (h *Handler) ClearDestination(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get stream difference"
 // @Router /api/v1/project/{projectid}/jobs/{id}/stream-difference [post]
 func (h *Handler) GetStreamDifference(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.StreamDifferenceRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get stream difference initiated project_id[%s] job_id[%d]", projectID, id)
@@ -414,10 +413,10 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get stream difference: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{
+	utils.SuccessResponse(c, fmt.Sprintf("stream difference retrieved successfully for job_id[%d]", id), dto.StreamDifferenceResponse{
 		DifferenceStreams: diffStreams,
 	})
 }
@@ -434,14 +433,14 @@ func (h *Handler) GetStreamDifference(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get status"
 // @Router /api/v1/project/{projectid}/jobs/{id}/clear-destination [get]
 func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := httpx.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get clear destination status initiated project_id[%s] job_id[%d]", projectID, jobID)
@@ -451,10 +450,10 @@ func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			httpStatus = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, httpStatus, fmt.Sprintf("failed to get clear destination status: %s", err), err)
+		utils.ErrorResponse(c, httpStatus, fmt.Sprintf("failed to get clear destination status: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("clear destination status retrieved successfully for job_id[%d]", jobID), dto.ClearDestinationStatusResponse{Running: status})
+	utils.SuccessResponse(c, fmt.Sprintf("clear destination status retrieved successfully for job_id[%d]", jobID), dto.ClearDestinationStatusResponse{Running: status})
 }
 
 // @Summary List job tasks
@@ -469,14 +468,14 @@ func (h *Handler) GetClearDestinationStatus(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get job tasks"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks [get]
 func (h *Handler) GetJobTasks(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get job tasks initiated project_id[%s] job_id[%d]", projectID, id)
@@ -486,10 +485,10 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to get job tasks: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get job tasks: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
+	utils.SuccessResponse(c, fmt.Sprintf("job tasks listed successfully for job_id[%d]", id), tasks)
 }
 
 // @Summary Get task logs
@@ -510,14 +509,14 @@ func (h *Handler) GetJobTasks(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "failed to get task logs"
 // @Router /api/v1/project/{projectid}/jobs/{id}/tasks/{taskid}/logs [post]
 func (h *Handler) GetTaskLogs(c *gin.Context) {
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.JobTaskRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Get task logs initiated job_id[%d] file_path[%s]", id, req.FilePath)
@@ -542,10 +541,10 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to get task logs: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
+	utils.SuccessResponse(c, fmt.Sprintf("task logs retrieved successfully for job_id[%d]", id), logs)
 }
 
 // @Summary Download task logs
@@ -561,20 +560,20 @@ func (h *Handler) GetTaskLogs(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /api/v1/project/{projectid}/jobs/{id}/logs/download [get]
 func (h *Handler) DownloadTaskLogs(c *gin.Context) {
-	id, err := httpx.GetIDParam(c, "id")
+	id, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	filePath := c.Query("file_path")
 	if filePath == "" {
-		httpx.ErrorResponse(c, http.StatusBadRequest, "file_path query parameter is required", nil)
+		utils.ErrorResponse(c, http.StatusBadRequest, "file_path query parameter is required", nil)
 		return
 	}
 	logger.Debugf("Download task logs initiated job_id[%d] file_path[%s]", id, filePath)
 	filename, err := utils.GetLogArchiveFilename(id, filePath)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
+		utils.ErrorResponse(c, http.StatusNotFound, fmt.Sprintf("failed to prepare log archive: %s", err), err)
 		return
 	}
 
@@ -601,20 +600,20 @@ func (h *Handler) DownloadTaskLogs(c *gin.Context) {
 // @Router /internal/worker/callback/sync-telemetry [post]
 func (h *Handler) UpdateSyncTelemetry(c *gin.Context) {
 	var req dto.UpdateSyncTelemetryRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	if req.JobID == 0 || req.WorkflowID == "" {
-		httpx.ErrorResponse(c, http.StatusBadRequest, "job_id and workflow_id are required", nil)
+		utils.ErrorResponse(c, http.StatusBadRequest, "job_id and workflow_id are required", nil)
 		return
 	}
 	logger.Debugf("Update sync telemetry callback initiated job_id[%d] workflow_id[%s] event[%s]", req.JobID, req.WorkflowID, req.Event)
 	if err := h.etl.UpdateSyncTelemetry(c.Request.Context(), req); err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, "Failed to update sync telemetry", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to update sync telemetry", err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("sync telemetry updated successfully for job_id[%d] workflow_id[%s] event[%s]", req.JobID, req.WorkflowID, req.Event), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("sync telemetry updated successfully for job_id[%d] workflow_id[%s] event[%s]", req.JobID, req.WorkflowID, req.Event), nil)
 }
 
 // RecoverClearDestination handles recovery from stuck clear-destination workflows (internal use only)
@@ -629,14 +628,14 @@ func (h *Handler) UpdateSyncTelemetry(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /internal/project/{projectid}/jobs/{id}/clear-destination/recover [post]
 func (h *Handler) RecoverClearDestination(c *gin.Context) {
-	projectID, err := httpx.GetProjectID(c)
+	projectID, err := utils.GetProjectID(c)
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
-	jobID, err := httpx.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Recover clear destination initiated project_id[%s] job_id[%d]", projectID, jobID)
@@ -645,10 +644,10 @@ func (h *Handler) RecoverClearDestination(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to recover from clear-destination: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to recover from clear-destination: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("successfully recovered from clear-destination and restored sync schedule for job_id[%d]", jobID), nil)
 }
 
 // @Summary (Internal) Update state file
@@ -664,14 +663,14 @@ func (h *Handler) RecoverClearDestination(c *gin.Context) {
 // @Failure 500 {object} dto.Error500Response "internal server error"
 // @Router /internal/project/{projectid}/jobs/{id}/statefile [put]
 func (h *Handler) UpdateStateFile(c *gin.Context) {
-	jobID, err := httpx.GetIDParam(c, "id")
+	jobID, err := utils.GetIDParam(c, "id")
 	if err != nil {
-		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	var req dto.UpdateStateFileRequest
-	if err := httpx.BindAndValidate(c, &req); err != nil {
-		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+	if err := utils.BindAndValidate(c, &req); err != nil {
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
 	logger.Debugf("Update state file callback initiated job_id[%d]", jobID)
@@ -680,10 +679,10 @@ func (h *Handler) UpdateStateFile(c *gin.Context) {
 		if errors.Is(err, constants.ErrJobNotFound) {
 			status = http.StatusNotFound
 		}
-		httpx.ErrorResponse(c, status, fmt.Sprintf("failed to update state file: %s", err), err)
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update state file: %s", err), err)
 		return
 	}
-	httpx.SuccessResponse(c, fmt.Sprintf("state file updated successfully for job_id[%d]", jobID), nil)
+	utils.SuccessResponse(c, fmt.Sprintf("state file updated successfully for job_id[%d]", jobID), nil)
 }
 
 func validateJobDriverConfig(source, destination *dto.DriverConfig) error {

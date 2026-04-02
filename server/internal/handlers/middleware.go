@@ -5,7 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 func (h *Handler) AuthMiddleware() gin.HandlerFunc {
@@ -17,11 +18,11 @@ func (h *Handler) AuthMiddleware() gin.HandlerFunc {
 
 		userID, ok := h.sessions.GetUserID(c)
 		if !ok {
-			httpx.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized, try login again", nil)
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized, try login again", nil)
 			c.Abort()
 			return
 		}
-		c.Set(httpx.ContextUserIDKey, userID)
+		c.Set(constants.ContextUserIDKey, userID)
 		c.Next()
 	}
 }

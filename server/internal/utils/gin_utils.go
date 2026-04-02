@@ -1,4 +1,4 @@
-package httpx
+package utils
 
 import (
 	"errors"
@@ -9,17 +9,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
-const (
-	ContextUserIDKey = "user_id"
-	ProjectIDParam   = "projectid"
-)
-
 func GetCurrentUserID(c *gin.Context) *int {
-	raw, ok := c.Get(ContextUserIDKey)
+	raw, ok := c.Get(constants.ContextUserIDKey)
 	if !ok {
 		return nil
 	}
@@ -31,7 +27,7 @@ func GetCurrentUserID(c *gin.Context) *int {
 }
 
 func GetProjectID(c *gin.Context) (string, error) {
-	projectID := c.Param(ProjectIDParam)
+	projectID := c.Param(constants.ProjectIDParam)
 	if projectID == "" {
 		return "", fmt.Errorf("project id is required")
 	}

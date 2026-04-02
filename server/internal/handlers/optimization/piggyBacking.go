@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 // PiggyBacking forwards any /api/opt/v1/* request to optimization service.
@@ -21,7 +21,7 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 	if req.ContentLength > 0 {
 		raw, err := io.ReadAll(req.Body)
 		if err != nil {
-			httpx.ErrorResponse(c, http.StatusBadRequest, "failed to read request body", err)
+			utils.ErrorResponse(c, http.StatusBadRequest, "failed to read request body", err)
 			return
 		}
 
@@ -35,7 +35,7 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 		if statusCode == 0 {
 			statusCode = http.StatusBadGateway
 		}
-		httpx.ErrorResponse(c, statusCode, "upstream request failed", err)
+		utils.ErrorResponse(c, statusCode, "upstream request failed", err)
 		return
 	}
 
@@ -63,13 +63,13 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 	// Parse upstream response to re-wrap in standard format
 	var upstreamResponse interface{}
 	if err := json.Unmarshal(data, &upstreamResponse); err != nil {
-		httpx.ErrorResponse(c, http.StatusInternalServerError, "failed to parse upstream response", err)
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to parse upstream response", err)
 		return
 	}
 
 	var optResp dto.OptimizationResponse
 	if jsonErr := json.Unmarshal(data, &optResp); jsonErr == nil && optResp.Code != 0 && optResp.Code != 200 {
-		httpx.ErrorResponse(c, optResp.Code, optResp.Message, nil)
+		utils.ErrorResponse(c, optResp.Code, optResp.Message, nil)
 		return
 	}
 
