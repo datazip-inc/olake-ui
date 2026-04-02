@@ -8,19 +8,6 @@ import (
 	"net/url"
 )
 
-func (s *Service) Proxy(ctx context.Context, method, path string, queryParams url.Values, body json.RawMessage) (json.RawMessage, error) {
-	var bodyArg interface{}
-	if len(body) > 0 {
-		bodyArg = body
-	}
-
-	data, err := s.DoRequest(ctx, method, path, queryParams, bodyArg)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(data), nil
-}
-
 func (s *Service) ProxyWithHeaders(ctx context.Context, method, path string, queryParams url.Values, body json.RawMessage) ([]byte, int, http.Header, error) {
 	var bodyBytes []byte
 	if len(body) > 0 {

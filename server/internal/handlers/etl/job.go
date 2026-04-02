@@ -93,7 +93,7 @@ func (h *Handler) CreateJob() {
 	}
 
 	var req dto.CreateJobRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -161,7 +161,7 @@ func (h *Handler) UpdateJob() {
 	}
 
 	var req dto.UpdateJobRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -242,7 +242,7 @@ func (h *Handler) CheckUniqueName() {
 	}
 
 	var req dto.CheckUniqueNameRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -321,7 +321,7 @@ func (h *Handler) ActivateJob() {
 	}
 
 	var req dto.JobStatusRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -421,7 +421,7 @@ func (h *Handler) GetStreamDifference() {
 	}
 
 	var req dto.StreamDifferenceRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -527,7 +527,7 @@ func (h *Handler) GetTaskLogs() {
 	}
 
 	var req dto.JobTaskRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -554,7 +554,7 @@ func (h *Handler) GetTaskLogs() {
 // @Router /internal/worker/callback/sync-telemetry [post]
 func (h *Handler) UpdateSyncTelemetry() {
 	var req dto.UpdateSyncTelemetryRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
@@ -665,7 +665,7 @@ func (h *Handler) UpdateStateFile() {
 	}
 
 	var req dto.UpdateStateFileRequest
-	if err := dto.UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
+	if err := UnmarshalAndValidate(h.Ctx.Input.RequestBody, &req); err != nil {
 		utils.ErrorResponse(&h.Controller, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}

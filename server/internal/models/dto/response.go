@@ -200,24 +200,12 @@ type TelemetryIDResponse struct {
 	OlakeUIVersion  string `json:"version" example:"v0.2.5"`
 }
 
-// TODO: convert all optimization struct json-keys to "snake-case" as required
+// TODO: convert all optimization struct json-keys to "snake-case"
 
 type OptimizationResponse struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Result  json.RawMessage `json:"result"`
-}
-
-// CatalogResponse represents the response from catalog operations
-type CatalogResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-}
-
-// optimizationCronConfigResponse represents the response from setting cron configuration
-type SQLResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
 }
 
 // TablesResponse represents tables with full details for a specific catalog/database
