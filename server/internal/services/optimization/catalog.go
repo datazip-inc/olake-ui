@@ -21,7 +21,7 @@ func (s *Service) GetCatalog(ctx context.Context, catalogName string) (*models.C
 
 	// map the catalog details received from opt
 	// to destination config
-	return MapCatalogToDest(catalog)
+	return mapCatalogToDest(catalog)
 }
 
 func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto.CatalogRequest, error) {

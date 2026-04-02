@@ -14,7 +14,7 @@ import (
 // when no process records exist for the given type.
 var errNoProcess = errors.New("no optimizing process found")
 
-// GetTablesWithDetails fetches all tables with full details for a specific catalog and database
+// fetches all tables with full details for a specific catalog and database
 func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseName string) (*dto.TablesResponse, error) {
 	response := &dto.TablesResponse{
 		Catalog:  catalog,
@@ -22,7 +22,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		Tables:   make([]dto.TableInfo, 0),
 	}
 
-	tablesResult, err := s.GetTables(ctx, catalog, databaseName, "")
+	tablesResult, err := s.getTables(ctx, catalog, databaseName, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %s", catalog, databaseName, err)
 	}
@@ -49,7 +49,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 			OLakeCreated: false,
 		}
 
-		tableDetails, err := s.GetTableDetails(ctx, catalog, databaseName, tableName)
+		tableDetails, err := s.getTableDetails(ctx, catalog, databaseName, tableName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %s", catalog, databaseName, tableName, err)
 		}
@@ -122,7 +122,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 }
 
 // GetTables returns the list of tables for a given catalog and database
-func (s *Service) GetTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
+func (s *Service) getTables(ctx context.Context, catalog, database, keywords string) (interface{}, error) {
 	path := fmt.Sprintf(constants.OptPathCatalogTables, catalog, database)
 
 	params := url.Values{}
@@ -134,7 +134,7 @@ func (s *Service) GetTables(ctx context.Context, catalog, database, keywords str
 }
 
 // returns the details of a specific table including size information
-func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
+func (s *Service) getTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
 	path := fmt.Sprintf(constants.OptPathTableDetails, catalog, database, table)
 
 	return s.Do(ctx, http.MethodGet, path, url.Values{}, nil)

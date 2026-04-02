@@ -12,7 +12,7 @@ import (
 )
 
 // maps optimization catalog details to ETL Destination Configuration
-func MapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
+func mapCatalogToDest(catalog *dto.CatalogRequest) (*models.Config, error) {
 	config := &models.Config{}
 
 	config.CatalogName = catalog.Name

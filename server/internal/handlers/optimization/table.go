@@ -20,7 +20,7 @@ func (h *Handler) GetTablesWithDetails() {
 	utils.SuccessResponse(&h.Controller, "Successfully fetched tables with details", tables)
 }
 
-// SetoptimizationCronConfig stores optimization cron configuration in catalog properties
+// configures table level properties for optimization
 func (h *Handler) SetProperties() {
 	catalog, database, table, ok := h.requiredCatalogDatabaseTable()
 	if !ok {
