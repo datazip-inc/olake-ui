@@ -1,8 +1,6 @@
 package services
 
 import (
-	"context"
-
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
@@ -35,9 +33,6 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		}
 
 		appSvc.opt = optSvc
-
-		// TODO: define context in main and pass
-		appSvc.SyncCatalogs(context.Background())
 	}
 
 	return appSvc, nil

@@ -16,15 +16,6 @@ import (
 
 // Destination-related methods on AppService
 
-// GetDestinationByID returns a destination model by ID (for internal use)
-func (s Service) GetDestinationByID(id int) (*models.Destination, error) {
-	destination, err := s.db.GetDestinationByID(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get destination: %s", err)
-	}
-	return destination, nil
-}
-
 // GetDestination returns a single destination by ID with its associated jobs.
 func (s Service) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
 	destination, err := s.db.GetDestinationByID(destinationID)

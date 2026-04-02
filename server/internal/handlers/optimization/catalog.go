@@ -46,7 +46,7 @@ func (h *Handler) CreateCatalog(c *gin.Context) {
 		return
 	}
 
-	result, err := h.opt.CreateCatalog(c.Request.Context(), configJSON, false)
+	result, err := h.opt.CreateCatalog(c.Request.Context(), configJSON)
 	if err != nil {
 		httpx.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
@@ -86,7 +86,7 @@ func (h *Handler) UpdateCatalog(c *gin.Context) {
 		return
 	}
 
-	httpx.SuccessResponse(c, result, nil)
+	httpx.SuccessResponse(c, fmt.Sprintf("catalog %s updated successfully", result), nil)
 }
 
 // deletes a catalog
@@ -96,13 +96,13 @@ func (h *Handler) DeleteCatalog(c *gin.Context) {
 		return
 	}
 
-	result, err := h.opt.DeleteCatalogInOpt(c.Request.Context(), catalogName)
+	result, err := h.opt.DeleteCatalog(c.Request.Context(), catalogName)
 	if err != nil {
 		httpx.ErrorResponse(c, upstreamStatus(err), err.Error(), err)
 		return
 	}
 
-	httpx.SuccessResponse(c, result, nil)
+	httpx.SuccessResponse(c, fmt.Sprintf("catalog %s deleted successfully", result), nil)
 }
 
 func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
@@ -113,4 +113,3 @@ func (h *Handler) requiredCatalog(c *gin.Context) (string, bool) {
 	}
 	return catalog, true
 }
-

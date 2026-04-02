@@ -89,26 +89,31 @@ func (h *Handler) CreateDestination(c *gin.Context) {
 		httpx.ErrorResponse(c, http.StatusUnauthorized, "Not authenticated", fmt.Errorf("not authenticated"))
 		return
 	}
+
 	projectID, err := httpx.GetProjectID(c)
 	if err != nil {
 		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
+
 	var req dto.CreateDestinationRequest
 	if err := httpx.BindAndValidate(c, &req); err != nil {
 		httpx.ErrorResponse(c, httpx.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
+
 	if err := dto.ValidateDestinationType(req.Type); err != nil {
 		httpx.ErrorResponse(c, http.StatusBadRequest, fmt.Sprintf("failed to validate request: %s", err), err)
 		return
 	}
+
 	logger.Debugf("Create destination initiated project_id[%s] destination_type[%s] destination_name[%s] user_id[%v]",
 		projectID, req.Type, req.Name, userID)
 	if err := h.etl.CreateDestination(c.Request.Context(), &req, projectID, userID); err != nil {
 		httpx.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to create destination: %s", err), err)
 		return
 	}
+
 	httpx.SuccessResponse(c, fmt.Sprintf("destination %s created successfully", req.Name), req)
 }
 

@@ -49,10 +49,6 @@ var (
 	ConfDeploymentMode        = "DEPLOYMENT_MODE"
 	ConfRunMode               = "runmode"
 	ConfContainerRegistryBase = "CONTAINER_REGISTRY_BASE"
-	ConfOptimizationBaseURL   = "OPTIMIZATION_BASE_URL"
-	ConfOptimizationUsername  = "USERNAME"
-	ConfOptimizationPassword  = "PASSWORD"
-	ConfOptimizationGroup     = "OPTIMIZATION_GROUP"
 
 	// database keys
 	ConfPostgresDB            = "postgresdb"
@@ -62,26 +58,6 @@ var (
 	ConfOLakePostgresPort     = "OLAKE_POSTGRES_PORT"
 	ConfOLakePostgresDBname   = "OLAKE_POSTGRES_DBNAME"
 	ConfOLakePostgresSslmode  = "OLAKE_POSTGRES_SSLMODE"
-
-	// Optimization API paths
-	OptPathCatalogs                 = "/api/ams/v1/catalogs"
-	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
-	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
-	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
-	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
-	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
-	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
-
-	OptMaxTimeout = 30 * time.Second
-	PollInterval  = 1500 * time.Millisecond
-
-	OptMinorCron          = "self-optimizing.minor.trigger.cron"
-	OptMajorCron          = "self-optimizing.major.trigger.cron"
-	OptFullCron           = "self-optimizing.full.trigger.cron"
-	OptTargetFileSize     = "self-optimizing.target-size"
-	OptEnableOptimization = "self-optimizing.enabled"
-
-	OptSQLCommand = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
 
 	// app env
 	EnvAppEnvironment    = "APP_ENV"
@@ -108,12 +84,36 @@ var (
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
 	ExecutorEnvironment = "docker"
 
-	// TableFormatList defines supported table formats for catalogs
-	TableFormatList = []string{"ICEBERG"}
+	// Optimization Constants
 
+	// conf keys
+	ConfEnableOptimization   = "ENABLE_OPTIMIZATION"
+	ConfOptimizationBaseURL  = "OPTIMIZATION_BASE_URL"
+	ConfOptimizationUsername = "USERNAME"
+	ConfOptimizationPassword = "PASSWORD"
+	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
+	// api paths
+	OptPathCatalogs                 = "/api/ams/v1/catalogs"
+	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
+	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
+	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
+	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
+	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
+	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
+	// others
+	OptMaxTimeout          = 30 * time.Second
+	OptQueryResultPollTime = 1500 * time.Millisecond
+	OptMinorCron           = "self-optimizing.minor.trigger.cron"
+	OptMajorCron           = "self-optimizing.major.trigger.cron"
+	OptFullCron            = "self-optimizing.full.trigger.cron"
+	OptTargetFileSize      = "self-optimizing.target-size"
+	OptEnableOptimization  = "self-optimizing.enabled"
+	OptSQLCommand          = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// OptimizeTableFormatList defines supported table formats for catalogs
+	OptimizeTableFormatList = []string{"ICEBERG"}
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
 	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
-	DefaultStroageType = "S3"
+	DefaultOptimizationStorageType = "S3"
 )
 
 // Supported database/source types

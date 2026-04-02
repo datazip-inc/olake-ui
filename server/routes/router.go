@@ -36,15 +36,13 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 	// destinations routes
 	etl.GET("/project/:projectid/destinations", etlHandler.ListDestinations)
+	etl.POST("/project/:projectid/destinations", etlHandler.CreateDestination)
+	etl.PUT("/project/:projectid/destinations/:id", etlHandler.UpdateDestination)
 	etl.GET("/project/:projectid/destinations/:id", etlHandler.GetDestination)
+	etl.DELETE("/project/:projectid/destinations/:id", etlHandler.DeleteDestination)
 	etl.POST("/project/:projectid/destinations/test", etlHandler.TestDestinationConnection)
 	etl.GET("/project/:projectid/destinations/versions", etlHandler.GetDestinationVersions)
 	etl.POST("/project/:projectid/destinations/spec", etlHandler.GetDestinationSpec)
-
-	// common API for creation, update and deletion of destinations (ETL & Optimization)
-	etl.POST("/project/:projectid/destinations", h.CreateDestinationAndCatalog)
-	etl.DELETE("/project/:projectid/destinations/:id", h.DeleteDestinationAndCatalog)
-	etl.PUT("/project/:projectid/destinations/:id", h.UpdateDestinationAndCatalog)
 
 	// jobs routes
 	etl.GET("/project/:projectid/jobs", etlHandler.ListJobs)
