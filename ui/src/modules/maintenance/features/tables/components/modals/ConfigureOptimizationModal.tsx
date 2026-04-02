@@ -3,6 +3,8 @@ import { Button, Input, Modal, Select, Spin, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useState } from "react"
 
+import { ErrorLogsModal } from "@/common/components/modals"
+
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import {
 	CRON_FREQUENCY_OPTIONS,
@@ -113,7 +115,7 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	)
 }
 
-type ActiveModal = null | "success"
+type ActiveModal = null | "success" | "error-logs"
 
 const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 	open,
@@ -133,6 +135,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 	const [targetFileSize, setTargetFileSize] = useState(DEFAULT_TARGET_FILE_SIZE)
 	const [advancedOpen, setAdvancedOpen] = useState(true)
 	const [activeModal, setActiveModal] = useState<ActiveModal>(null)
+	const [errorLogs, setErrorLogs] = useState<string[]>([])
 	const {
 		data: tableCronConfig,
 		isLoading: isConfigLoading,
@@ -171,8 +174,13 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		}
 
 		updateTableCronConfig(payload, {
-			onSuccess: () => {
-				setActiveModal("success")
+			onSuccess: result => {
+				if (result.success === false) {
+					setErrorLogs(result.logs ?? [])
+					setActiveModal("error-logs")
+				} else {
+					setActiveModal("success")
+				}
 			},
 		})
 	}
@@ -351,6 +359,18 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 				open={open && activeModal === "success"}
 				onClose={handleClose}
 				firstRunAt={firstRunAt}
+			/>
+
+			<ErrorLogsModal
+				open={open && activeModal === "error-logs"}
+				onClose={() => setActiveModal(null)}
+				title="Failed to update optimization configuration"
+				error={errorLogs.join("\n")}
+				onAction={() => {
+					setActiveModal(null)
+					handleSave()
+				}}
+				actionButtonText="Retry"
 			/>
 		</>
 	)

@@ -187,6 +187,12 @@ export interface CancelRunRequest {
 	runId: string
 }
 
+export interface UpdateTableConfigApiResponse {
+	success: boolean
+	message: string
+	logs?: string[]
+}
+
 export interface ScheduleSectionProps {
 	title: RunTypeLabel
 	value: CronConfigOption

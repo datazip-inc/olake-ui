@@ -52,7 +52,7 @@ const ErrorLogsModal = ({
 				},
 			}}
 		>
-			<div className="flex max-h-[calc(100vh-64px)] min-h-[560px] flex-col bg-white">
+			<div className="flex h-[560px] flex-col bg-white">
 				<div className="mt-12 flex w-full max-w-[80%] shrink-0 flex-col items-center gap-x-3 gap-y-1 self-center px-4 text-center">
 					<img
 						src={ErrorIcon}
