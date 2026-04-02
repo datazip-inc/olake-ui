@@ -22,7 +22,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 func ToMapOfInterface(structure any) map[string]interface{} {

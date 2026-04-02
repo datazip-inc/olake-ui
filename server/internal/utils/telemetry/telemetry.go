@@ -17,7 +17,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 var instance *Telemetry

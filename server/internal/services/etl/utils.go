@@ -10,7 +10,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	commonpb "go.temporal.io/api/common/v1"
 	enumspb "go.temporal.io/api/enums/v1"
 	workflowpb "go.temporal.io/api/workflow/v1"

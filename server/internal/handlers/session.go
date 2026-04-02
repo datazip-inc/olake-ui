@@ -10,7 +10,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 type sessionPayload struct {

@@ -11,8 +11,8 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
-	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 // @Summary List all jobs

@@ -18,7 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 	"github.com/spf13/viper"
 	"golang.org/x/mod/semver"
 	"google.golang.org/api/iterator"

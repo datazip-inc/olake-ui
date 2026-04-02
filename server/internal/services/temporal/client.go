@@ -8,7 +8,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/appconfig"
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	enumspb "go.temporal.io/api/enums/v1"
 	workflowservice "go.temporal.io/api/workflowservice/v1"
 	"go.temporal.io/sdk/client"

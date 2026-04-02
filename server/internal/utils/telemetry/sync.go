@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
 )
 
 type jobDetails struct {

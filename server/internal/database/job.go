@@ -9,7 +9,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 // jobListColumns is the minimal Job projection needed by job list responses.

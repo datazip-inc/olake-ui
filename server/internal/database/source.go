@@ -9,7 +9,7 @@ import (
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 	"golang.org/x/mod/semver"
 )
 

@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/httpserver/httpx"
-	"github.com/datazip-inc/olake-ui/server/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
 )
 
 const badRequestStatusCode = http.StatusBadRequest

@@ -17,9 +17,9 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/services/temporal"
-	"github.com/datazip-inc/olake-ui/server/utils"
-	"github.com/datazip-inc/olake-ui/server/utils/logger"
-	"github.com/datazip-inc/olake-ui/server/utils/telemetry"
+	"github.com/datazip-inc/olake-ui/server/internal/utils"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/logger"
+	"github.com/datazip-inc/olake-ui/server/internal/utils/telemetry"
 	workflowservice "go.temporal.io/api/workflowservice/v1"
 )
 
