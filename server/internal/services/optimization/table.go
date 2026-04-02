@@ -142,7 +142,7 @@ func (s *Service) GetTableDetails(ctx context.Context, catalog, database, table 
 
 // fetchLatestProcessInfo fetches the latest optimizing process info for a specific type
 func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) (*dto.OptimizationInfo, error) {
-	result, err := s.GetLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
+	result, err := s.getLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %s", processType, catalog, database, table, err)
 	}
@@ -173,8 +173,8 @@ func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database,
 	}, nil
 }
 
-// returns the latest optimizing process for a specific type (MAJOR, MINOR, FULL)
-func (s *Service) GetLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
+// returns the latest optimizing process for a specific type
+func (s *Service) getLatestOptimizingProcessByType(ctx context.Context, catalog, database, table, processType string) (map[string]interface{}, error) {
 	path := fmt.Sprintf(constants.OptPathTableOptimizingProcesses, catalog, database, table)
 
 	params := url.Values{}
