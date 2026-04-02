@@ -141,7 +141,7 @@ func validateCatalog(req *dto.CatalogRequest) error {
 	}
 
 	if len(req.OptimizeTableFormatList) == 0 {
-		req.OptimizeTableFormatList = []string{"ICEBERG"}
+		req.OptimizeTableFormatList = constants.OptimizeTableFormatList
 	}
 
 	return nil
