@@ -146,14 +146,14 @@ type UpdateStateFileRequest struct {
 }
 
 type CatalogRequest struct {
-	Name            string            `json:"name" binding:"required"`
-	Type            string            `json:"type" binding:"required"`
-	OptimizerGroup  string            `json:"optimizerGroup" binding:"required"`
-	TableFormatList []string          `json:"tableFormatList" binding:"required"`
-	StorageConfig   map[string]string `json:"storageConfig" binding:"required"`
-	AuthConfig      map[string]string `json:"authConfig" binding:"required"`
-	Properties      map[string]string `json:"properties" binding:"required"`
-	TableProperties map[string]string `json:"tableProperties" binding:"required"`
+	Name                    string            `json:"name" binding:"required"`
+	Type                    string            `json:"type" binding:"required"`
+	OptimizerGroup          string            `json:"optimizerGroup" binding:"required"`
+	OptimizeTableFormatList []string          `json:"tableFormatList"`
+	StorageConfig           map[string]string `json:"storageConfig" binding:"required"`
+	AuthConfig              map[string]string `json:"authConfig" binding:"required"`
+	Properties              map[string]string `json:"properties" binding:"required"`
+	TableProperties         map[string]string `json:"tableProperties" binding:"required"`
 }
 
 // LogInfo represents the log information from terminal execution
