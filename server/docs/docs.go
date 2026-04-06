@@ -2669,9 +2669,64 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/user/credentials": {
+            "put": {
+                "description": "Change the authenticated user's credentials.  User must be logged in via session.",
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Update user credentials",
+                "parameters": [
+                    {
+                        "description": "new username/password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateCredentialsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "credentials updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/dto.JSONResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error400Response"
+                        }
+                    },
+                    "401": {
+                        "description": "not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "500": {
+                        "description": "failed to update credentials",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error500Response"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "dto.AdvancedSettings": {
+            "type": "object",
+            "properties": {
+                "max_discover_threads": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
         "dto.CheckUniqueJobNameResponse": {
             "type": "object",
             "properties": {
@@ -2752,6 +2807,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
@@ -3045,6 +3103,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "created_at": {
                     "type": "string",
@@ -3390,6 +3451,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "my-sync-job"
                 },
+                "max_discover_threads": {
+                    "type": "integer",
+                    "example": 50
+                },
                 "name": {
                     "type": "string",
                     "example": "my-postgres-source"
@@ -3458,6 +3523,23 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateCredentialsRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "username"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "newpassword"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "newadmin"
+                }
+            }
+        },
         "dto.UpdateDestinationRequest": {
             "type": "object",
             "required": [
@@ -3498,6 +3580,9 @@ const docTemplate = `{
                 "activate": {
                     "type": "boolean",
                     "example": true
+                },
+                "advanced_settings": {
+                    "$ref": "#/definitions/dto.AdvancedSettings"
                 },
                 "destination": {
                     "$ref": "#/definitions/dto.DriverConfig"
