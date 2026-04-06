@@ -179,7 +179,7 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 
 		updateTableCronConfig(payload, {
 			onSuccess: result => {
-				if (result.success === false) {
+				if (!result.success) {
 					setErrorLogs(result.logs ?? [])
 					setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
 				} else {

@@ -46,9 +46,8 @@ const RunMetricsSidebar: React.FC<RunMetricsSidebarProps> = ({
 							<span className="text-olake-primary">Run ID {runId ?? "--"}</span>
 						</h2>
 						<Tooltip title="Learn more">
-							{/* TODO: Update link whenever available */}
 							<a
-								href="https://olake.io/docs/maintenance/run-metrics"
+								href="https://olake.io/docs/iceberg-maintenance/metrics/#run-metrics"
 								className="text-olake-icon-muted"
 								target="_blank"
 								rel="noopener noreferrer"

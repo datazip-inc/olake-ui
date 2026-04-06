@@ -18,7 +18,6 @@ export const catalogService = {
 	getIcebergDestinations: async () => {
 		const response = await api.get<DestinationEntity[]>(
 			API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID),
-			{ timeout: 0 },
 		)
 
 		return response.data.filter(

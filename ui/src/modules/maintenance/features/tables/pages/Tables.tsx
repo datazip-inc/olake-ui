@@ -169,7 +169,7 @@ const Tables: React.FC = () => {
 				}
 				toggleTableOptimizing(request, {
 					onSuccess: result => {
-						if (result.success === false) {
+						if (!result.success) {
 							setLastToggleRequest(request)
 							setOptimizationErrorLogs(result.logs ?? [])
 							setOptimizationErrorOpen(true)
