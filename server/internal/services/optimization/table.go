@@ -24,7 +24,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 	tablesResult, err := s.getTables(ctx, catalog, databaseName, "")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %s", catalog, databaseName, err)
+		return nil, fmt.Errorf("failed to get tables for catalog %s, database %s: %w", catalog, databaseName, err)
 	}
 
 	tablesList, ok := tablesResult.([]interface{})
@@ -51,7 +51,7 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 
 		tableDetails, err := s.getTableDetails(ctx, catalog, databaseName, tableName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %s", catalog, databaseName, tableName, err)
+			return nil, fmt.Errorf("failed to get details for table %s.%s.%s: %w", catalog, databaseName, tableName, err)
 		}
 
 		detailsMap, ok := tableDetails.(map[string]interface{})
@@ -99,19 +99,19 @@ func (s *Service) GetTablesWithDetails(ctx context.Context, catalog, databaseNam
 		// fetch latest optimizing processes for each type
 		res, err := s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MINOR")
 		if err != nil && !errors.Is(err, errNoProcess) {
-			return nil, fmt.Errorf("failed to fetch latest minor process info: %s", err)
+			return nil, fmt.Errorf("failed to fetch latest Lite process info: %w", err)
 		}
 		tableInfo.Minor = res
 
 		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "MAJOR")
 		if err != nil && !errors.Is(err, errNoProcess) {
-			return nil, fmt.Errorf("failed to fetch latest major process info: %s", err)
+			return nil, fmt.Errorf("failed to fetch latest Medium process info: %w", err)
 		}
 		tableInfo.Major = res
 
 		res, err = s.fetchLatestProcessInfo(ctx, catalog, databaseName, tableName, "FULL")
 		if err != nil && !errors.Is(err, errNoProcess) {
-			return nil, fmt.Errorf("failed to fetch latest full process info: %s", err)
+			return nil, fmt.Errorf("failed to fetch latest Full process info: %w", err)
 		}
 		tableInfo.Full = res
 
@@ -130,21 +130,23 @@ func (s *Service) getTables(ctx context.Context, catalog, database, keywords str
 		params.Set("keywords", keywords)
 	}
 
-	return s.Do(ctx, http.MethodGet, path, params, nil)
+	var result interface{}
+	return result, s.DoInto(ctx, http.MethodGet, path, params, nil, &result)
 }
 
 // returns the details of a specific table including size information
 func (s *Service) getTableDetails(ctx context.Context, catalog, database, table string) (interface{}, error) {
 	path := fmt.Sprintf(constants.OptPathTableDetails, catalog, database, table)
 
-	return s.Do(ctx, http.MethodGet, path, url.Values{}, nil)
+	var result interface{}
+	return result, s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result)
 }
 
 // fetchLatestProcessInfo fetches the latest optimizing process info for a specific type
 func (s *Service) fetchLatestProcessInfo(ctx context.Context, catalog, database, table, processType string) (*dto.OptimizationInfo, error) {
 	result, err := s.getLatestOptimizingProcessByType(ctx, catalog, database, table, processType)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %s", processType, catalog, database, table, err)
+		return nil, fmt.Errorf("failed to get latest %s optimizing process for %s.%s.%s: %w", processType, catalog, database, table, err)
 	}
 
 	processList, ok := result["list"].([]interface{})
@@ -184,7 +186,7 @@ func (s *Service) getLatestOptimizingProcessByType(ctx context.Context, catalog,
 
 	var result map[string]interface{}
 	if err := s.DoInto(ctx, http.MethodGet, path, params, nil, &result); err != nil {
-		return nil, fmt.Errorf("failed to get latest %s process for %s.%s.%s: %s", processType, catalog, database, table, err)
+		return nil, fmt.Errorf("failed to get latest %s process for %s.%s.%s: %w", processType, catalog, database, table, err)
 	}
 
 	return result, nil
