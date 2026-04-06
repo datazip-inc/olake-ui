@@ -30,11 +30,8 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 
 	transformedPath := strings.Replace(req.URL.Path, "/api/opt/v1/", "/api/ams/v1/", 1)
 
-	data, statusCode, headers, err := h.opt.ProxyWithHeaders(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
+	data, statusCode, headers, err := h.opt.PiggyBacking(req.Context(), req.Method, transformedPath, req.URL.Query(), body)
 	if err != nil {
-		if statusCode == 0 {
-			statusCode = http.StatusBadGateway
-		}
 		utils.ErrorResponse(c, statusCode, "upstream request failed", err)
 		return
 	}
@@ -68,7 +65,10 @@ func (h *Handler) PiggyBacking(c *gin.Context) {
 	}
 
 	var optResp dto.OptimizationResponse
-	if jsonErr := json.Unmarshal(data, &optResp); jsonErr == nil && optResp.Code != 0 && optResp.Code != 200 {
+	if jsonErr := json.Unmarshal(data, &optResp); jsonErr != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "failed to parse upstream response envelope", jsonErr)
+		return
+	} else if optResp.Code != 0 && optResp.Code != 200 {
 		utils.ErrorResponse(c, optResp.Code, optResp.Message, nil)
 		return
 	}

@@ -29,19 +29,19 @@ func (h *Handler) GetCatalog(c *gin.Context) {
 func (h *Handler) CreateCatalog(c *gin.Context) {
 	var req map[string]interface{}
 	if err := utils.BindAndValidate(c, &req); err != nil {
-		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for catalog creation", err)
 		return
 	}
 
 	if req == nil {
-		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required", nil)
+		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required during creation", nil)
 		return
 	}
 
 	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
-		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format", err)
+		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for create catalog", err)
 		return
 	}
 
@@ -63,19 +63,19 @@ func (h *Handler) UpdateCatalog(c *gin.Context) {
 
 	var req map[string]interface{}
 	if err := utils.BindAndValidate(c, &req); err != nil {
-		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for updating catalog", err)
 		return
 	}
 
 	if req == nil {
-		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required", nil)
+		utils.ErrorResponse(c, badRequestStatusCode, "catalog config is required during updation", nil)
 		return
 	}
 
 	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
-		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format", err)
+		utils.ErrorResponse(c, badRequestStatusCode, "invalid config format for updating catalog", err)
 		return
 	}
 

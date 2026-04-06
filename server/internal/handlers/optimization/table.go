@@ -1,8 +1,6 @@
 package optimization
 
 import (
-	"fmt"
-
 	"github.com/gin-gonic/gin"
 
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
@@ -33,7 +31,7 @@ func (h *Handler) SetProperties(c *gin.Context) {
 
 	var req dto.SQLInput
 	if err := utils.BindAndValidate(c, &req); err != nil {
-		utils.ErrorResponse(c, utils.StatusFromBindError(err), fmt.Sprintf("failed to validate request: %s", err), err)
+		utils.ErrorResponse(c, utils.StatusFromBindError(err), "invalid request body for setting config in table properties", err)
 		return
 	}
 

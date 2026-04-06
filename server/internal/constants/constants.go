@@ -109,6 +109,10 @@ var (
 	OptTargetFileSize      = "self-optimizing.target-size"
 	OptEnableOptimization  = "self-optimizing.enabled"
 	OptSQLCommand          = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// properties
+	OptCreatedAt    = "created-at"
+	OptCacheEnabled = "cache-enabled"
+	OptOLakeCreated = "olake_created"
 	// OptimizeTableFormatList defines supported table formats for catalogs
 	OptimizeTableFormatList = []string{"ICEBERG"}
 	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization

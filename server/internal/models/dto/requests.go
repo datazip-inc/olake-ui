@@ -158,7 +158,7 @@ type CatalogRequest struct {
 
 // LogInfo represents the log information from terminal execution
 type LogInfo struct {
-	LogStatus string   `json:"logStatus"`
+	LogStatus string   `json:"logStatus"` // "Finished", "Failed", etc.
 	Logs      []string `json:"logs"`
 }
 

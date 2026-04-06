@@ -2,10 +2,10 @@ package optimization
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 	"time"
 
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
 	"github.com/datazip-inc/olake-ui/server/internal/utils"
@@ -122,20 +122,12 @@ func setDefaultCatalogProperties(req *dto.CatalogRequest) {
 	if _, exists := req.Properties["table.self-optimizing.quota"]; !exists {
 		req.Properties["table.self-optimizing.quota"] = "0.1"
 	}
-	if _, exists := req.Properties["cache-enabled"]; !exists {
-		req.Properties["cache-enabled"] = "false"
+	if _, exists := req.Properties[constants.OptCacheEnabled]; !exists {
+		req.Properties[constants.OptCacheEnabled] = "false"
 	}
-	if _, exists := req.Properties["created-at"]; !exists {
-		req.Properties["created-at"] = time.Now().UTC().Format("02 Jan 2006")
+	if _, exists := req.Properties[constants.OptCreatedAt]; !exists {
+		req.Properties[constants.OptCreatedAt] = time.Now().UTC().Format("02 Jan 2006")
 	}
-}
-
-// mergeMaps returns a new map with base values overridden by src values
-func mergeMaps(base, src map[string]string) map[string]string {
-	result := make(map[string]string, len(base)+len(src))
-	maps.Copy(result, base)
-	maps.Copy(result, src)
-	return result
 }
 
 func mapAuthConfig(olakeConfig *models.Config, authConfig, cmpStorageConfig map[string]string) {
@@ -154,7 +146,7 @@ func mapAuthConfig(olakeConfig *models.Config, authConfig, cmpStorageConfig map[
 func mapCatalogProperties(olakeConfig *models.Config, properties map[string]string, olakeCatalogType string) {
 	// if imported from destination
 	if olakeConfig.OLakeImported {
-		utils.SetIfNotEmpty(properties, "olake_created", "true")
+		utils.SetIfNotEmpty(properties, constants.OptOLakeCreated, "true")
 	}
 
 	warehouse := olakeConfig.IcebergS3Path
