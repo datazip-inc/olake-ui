@@ -734,3 +734,9 @@ func NormalizeString(s string) string {
 	words := strings.Fields(strings.ToLower(s))
 	return strings.Join(words, "_")
 }
+
+func ConvertMBToBytes(sizeMB int64) string {
+	const bytesPerMB = 1024 * 1024
+	sizeBytes := sizeMB * bytesPerMB
+	return strconv.FormatInt(sizeBytes, 10)
+}

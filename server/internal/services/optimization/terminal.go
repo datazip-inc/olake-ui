@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/models/dto"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
 func (s *Service) SetProperties(ctx context.Context, catalog, database, table string, config dto.SQLInput) (*dto.TableProperties, error) {
@@ -29,7 +29,7 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 		properties[constants.OptEnableOptimization] = *config.EnabledForOptimization
 	}
 	if config.TargetFileSize != nil {
-		properties[constants.OptTargetFileSize] = ConvertMBToBytes(*config.TargetFileSize)
+		properties[constants.OptTargetFileSize] = utils.ConvertMBToBytes(*config.TargetFileSize)
 	}
 
 	// sql query
@@ -41,7 +41,7 @@ func (s *Service) SetProperties(ctx context.Context, catalog, database, table st
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to set optimization properties: %s", err)
+		return nil, fmt.Errorf("failed to set optimization properties: %w", err)
 	}
 
 	return sqlResult, nil
@@ -64,13 +64,13 @@ func (s *Service) SetTableProperties(ctx context.Context, req dto.SetTableProper
 
 	var sessionResult dto.TerminalSessionResponse
 	if err := s.DoInto(ctx, http.MethodPost, path, url.Values{}, requestBody, &sessionResult); err != nil {
-		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %s", req.Catalog, req.Database, req.Table, err)
+		return nil, fmt.Errorf("failed to execute ALTER TABLE for %s.%s.%s: %w", req.Catalog, req.Database, req.Table, err)
 	}
 
 	// Poll for execution completion
 	logInfo, err := s.pollForCompletion(ctx, req.Catalog, sessionResult.SessionID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to poll for completion: %s", err)
+		return nil, fmt.Errorf("failed to poll for completion: %w", err)
 	}
 
 	// TODO: Fusion may return "Finished" even if the query fails (e.g., syntax error).
@@ -107,16 +107,10 @@ func (s *Service) pollForCompletion(ctx context.Context, _, sessionID string) (*
 		case <-ticker.C:
 			var logInfo dto.LogInfo
 			if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &logInfo); err != nil {
-				return nil, fmt.Errorf("failed to get logs for session %s: %s", sessionID, err)
+				return nil, fmt.Errorf("failed to get logs for session %s: %w", sessionID, err)
 			}
 
 			return &logInfo, nil
 		}
 	}
-}
-
-func ConvertMBToBytes(sizeMB int64) string {
-	const bytesPerMB = 1024 * 1024
-	sizeBytes := sizeMB * bytesPerMB
-	return strconv.FormatInt(sizeBytes, 10)
 }

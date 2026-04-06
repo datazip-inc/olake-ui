@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/beego/beego/v2/server/web"
@@ -20,12 +21,15 @@ import (
 )
 
 type Service struct {
-	baseURL   string
-	apiKey    string
-	apiSecret string
-	username  string
-	password  string
-	client    *http.Client
+	baseURL  string
+	username string
+	password string
+	client   *http.Client
+
+	mu           sync.RWMutex // allow multiple read access, but only one write access
+	apiKey       string
+	apiSecret    string
+	tokenVersion int64
 }
 
 // Token Expiration: There is "no" expiration logic for optimization
@@ -53,23 +57,34 @@ func NewClient() (*Service, error) {
 	}, nil
 }
 
-func refreshToken(baseURL, username, password string) (string, string, error) {
-	apiKey, apiSecret, err := generateToken(baseURL, username, password)
-	if err != nil {
-		return "", "", err
-	}
+func (s *Service) credentials() (apiKey, apiSecret string, version int64) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.apiKey, s.apiSecret, s.tokenVersion
+}
 
-	return apiKey, apiSecret, nil
+func (s *Service) tryRefreshToken(observedVersion int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.tokenVersion != observedVersion {
+		return nil // another thread refreshsed
+	}
+	apiKey, apiSecret, err := generateToken(s.baseURL, s.username, s.password)
+	if err != nil {
+		return fmt.Errorf("token refresh failed: %s", err)
+	}
+	s.apiKey = apiKey
+	s.apiSecret = apiSecret
+	s.tokenVersion++
+	return nil
 }
 
 // for optimization authentication: calculating md5: apiKey + encryptString + secret
-func (s *Service) calculateSignature(params url.Values) string {
+func (s *Service) calculateSignature(apiKey, apiSecret string, params url.Values) string {
 	encryptString := s.generateEncryptString(params)
-	plainText := fmt.Sprintf("%s%s%s", s.apiKey, encryptString, s.apiSecret)
+	plainText := fmt.Sprintf("%s%s%s", apiKey, encryptString, apiSecret)
 	hash := md5.Sum([]byte(plainText))
-	signature := hex.EncodeToString(hash[:])
-
-	return signature
+	return hex.EncodeToString(hash[:])
 }
 
 func (s *Service) generateEncryptString(params url.Values) string {
@@ -110,8 +125,9 @@ func (s *Service) generateEncryptString(params url.Values) string {
 }
 
 func (s *Service) sendRequest(ctx context.Context, method, path string, queryParams url.Values, bodyBytes []byte) ([]byte, int, http.Header, error) {
-	signature := s.calculateSignature(queryParams)
-	queryParams.Set("apiKey", s.apiKey)
+	apiKey, apiSecret, _ := s.credentials()
+	signature := s.calculateSignature(apiKey, apiSecret, queryParams)
+	queryParams.Set("apiKey", apiKey)
 	queryParams.Set("signature", signature)
 
 	fullURL := s.baseURL + path
@@ -156,22 +172,16 @@ func (s *Service) DoRequest(ctx context.Context, method, path string, queryParam
 		}
 	}
 
+	_, _, version := s.credentials()
 	respBody, statusCode, _, err := s.sendRequest(ctx, method, path, queryParams, bodyBytes)
 	if err != nil {
 		return nil, err
 	}
 
 	if statusCode == http.StatusUnauthorized {
-		var apiKey string
-		var secretKey string
-		var err error
-		apiKey, secretKey, err = refreshToken(s.baseURL, s.username, s.password)
-		if err != nil {
-			return nil, fmt.Errorf("token refresh failed: %s", err)
+		if err := s.tryRefreshToken(version); err != nil {
+			return nil, err
 		}
-
-		s.apiKey = apiKey
-		s.apiSecret = secretKey
 		respBody, statusCode, _, err = s.sendRequest(ctx, method, path, queryParams, bodyBytes)
 		if err != nil {
 			return nil, err
