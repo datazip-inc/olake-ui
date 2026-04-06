@@ -131,7 +131,8 @@ func (s *Service) getTables(ctx context.Context, catalog, database, keywords str
 	}
 
 	var result interface{}
-	return result, s.DoInto(ctx, http.MethodGet, path, params, nil, &result)
+	err := s.DoInto(ctx, http.MethodGet, path, params, nil, &result)
+	return result, err
 }
 
 // returns the details of a specific table including size information
@@ -139,7 +140,8 @@ func (s *Service) getTableDetails(ctx context.Context, catalog, database, table 
 	path := fmt.Sprintf(constants.OptPathTableDetails, catalog, database, table)
 
 	var result interface{}
-	return result, s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result)
+	err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result)
+	return result, err
 }
 
 // fetchLatestProcessInfo fetches the latest optimizing process info for a specific type
