@@ -29,7 +29,7 @@ func (h *Handler) SetProperties() {
 
 	var req dto.SQLInput
 	if err := h.bindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body for setting config in table properties", err)
 		return
 	}
 

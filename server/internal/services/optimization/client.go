@@ -142,7 +142,7 @@ func (s *Service) sendRequest(ctx context.Context, method, path string, queryPar
 
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, bodyReader)
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to create request: %s", err)
+		return nil, 0, nil, fmt.Errorf("failed to create request to optimization: %s", err)
 	}
 	if bodyBytes != nil {
 		req.Header.Set("Content-Type", "application/json")
