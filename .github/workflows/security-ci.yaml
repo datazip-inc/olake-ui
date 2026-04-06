@@ -46,7 +46,7 @@ jobs:
             exit 1
           fi
 
-          echo "govulncheck: all findings suppressed via .govulnignore"
+          echo -e "\033[0;32m✅ govulncheck: all findings suppressed via .govulnignore\033[0m"
 
   gosec:
     name: GoSec Security Scanner
