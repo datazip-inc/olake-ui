@@ -29,6 +29,10 @@ services:
       # Request body size limits (64 MB in bytes)
       MAX_MEMORY: 67108864
       MAX_UPLOAD_SIZE: 67108864
+      # Fusion integration — set FUSION_ENABLED=true in your env/.env when
+      # starting with --profile fusion; leave unset (defaults to false) otherwise.
+      FUSION_ENABLED: ${FUSION_ENABLED:-false}
+      FUSION_BASE_URL: ${FUSION_BASE_URL:-http://olake-fusion:1630}
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
@@ -176,11 +180,6 @@ services:
       PGPASSWORD: temporal
     volumes:
       - fusion-config:/fusion-config
-      # TODO: once fusion/ config files are pushed to the remote repo, remove these three
-      #       bind-mounts and uncomment the curl fetch block below instead.
-      - ./fusion/config.yaml:/local-config/config.yaml:ro
-      - ./fusion/kind-config.yaml:/local-config/kind-config.yaml:ro
-      - ./fusion/spark-rbac.yaml:/local-config/spark-rbac.yaml:ro
     entrypoint:
       - /bin/sh
       - -c
@@ -194,20 +193,15 @@ services:
           || psql -h postgresql -U temporal -c \
              "CREATE DATABASE fusion;"
 
-        # TODO: when fusion/ config files are pushed to the remote repo, replace the cp
-        #       block below with this curl fetch block (and remove the bind-mount volumes above):
-        # echo "==> Installing curl..."
-        # apt-get update -qq && apt-get install -y -qq curl --no-install-recommends >/dev/null 2>&1
-        # echo "==> Fetching Fusion config files from GitHub..."
-        # BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/master/fusion"
-        # curl -fsSL "$${BASE}/config.yaml"      -o /fusion-config/config.yaml
-        # curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
-        # curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
+        echo "==> Installing curl..."
+        apt-get update -qq && apt-get install -y -qq curl ca-certificates --no-install-recommends >/dev/null 2>&1
 
-        echo "==> Copying config files to fusion-config volume..."
-        cp /local-config/config.yaml      /fusion-config/config.yaml
-        cp /local-config/kind-config.yaml /fusion-config/kind-config.yaml
-        cp /local-config/spark-rbac.yaml  /fusion-config/spark-rbac.yaml
+        # TODO: change branch from feat/fusion-compose to main once the PR is merged
+        echo "==> Fetching Fusion config files from GitHub..."
+        BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/feat/fusion-compose/fusion"
+        curl -fsSL "$${BASE}/config.yaml"      -o /fusion-config/config.yaml
+        curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
+        curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
 
         echo "==> fusion-db-init complete."
     restart: "no"
@@ -236,10 +230,12 @@ services:
       JVM_XMS: "1024"
       JVM_XMX: "2048"
       KUBECONFIG: /root/.kube/config
+      FUSION_LOGS_DIRECTORY: /data/fusion-logs
     volumes:
       - fusion-config:/fusion-config:ro
       - kind-kubeconfig:/root/.kube:ro
       - spark-home:/opt/spark:ro
+      - fusion-logs:/data/fusion-logs
     entrypoint:
       - /bin/sh
       - -c
@@ -463,6 +459,9 @@ networks:
     ipam:
       config:
         - subnet: 10.210.30.0/24
+          # ip_range restricts Docker's auto-assignment pool to .128–.254,
+          # leaving .2–.127 exclusively for static IPs (e.g. fusion at .10).
+          ip_range: 10.210.30.128/25
 
 volumes:
   temporal-postgresql-data:
@@ -472,3 +471,4 @@ volumes:
   kind-kubeconfig:
   spark-home:
   fusion-config:
+  fusion-logs:
