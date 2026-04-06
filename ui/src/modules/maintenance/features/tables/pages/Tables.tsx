@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { DataTable, PageErrorState } from "@/common/components"
+import { ErrorLogsModal } from "@/common/components/modals"
 import { usePaginatedSearch } from "@/common/hooks"
 import { catalogKeys } from "@/modules/maintenance/features/catalogs/constants"
 import { useCatalogs } from "@/modules/maintenance/features/catalogs/hooks"
@@ -23,7 +24,7 @@ import {
 	useTables,
 	useToggleTableOptimizing,
 } from "../hooks"
-import type { Table } from "../types"
+import type { Table, ToggleTableOptimizingRequest } from "../types"
 import type { TableActions } from "../utils"
 import { getCancelRunID, getTableColumns } from "../utils"
 
@@ -48,6 +49,12 @@ const Tables: React.FC = () => {
 	const [configureTable, setConfigureTable] = useState<Table | null>(null)
 	const [metricsModalOpen, setMetricsModalOpen] = useState(false)
 	const [metricsTableName, setMetricsTableName] = useState("")
+	const [optimizationErrorOpen, setOptimizationErrorOpen] = useState(false)
+	const [optimizationErrorLogs, setOptimizationErrorLogs] = useState<string[]>(
+		[],
+	)
+	const [lastToggleRequest, setLastToggleRequest] =
+		useState<ToggleTableOptimizingRequest | null>(null)
 
 	const {
 		data: catalogs = [],
@@ -153,13 +160,23 @@ const Tables: React.FC = () => {
 					runId,
 				})
 			},
-			onToggleOptimizing: (row, enabled) =>
-				toggleTableOptimizing({
+			onToggleOptimizingStatus: (row, enabled) => {
+				const request: ToggleTableOptimizingRequest = {
 					catalog: selectedCatalog ?? "",
 					database: selectedDatabase ?? "",
 					tableName: row.name,
 					enabled,
-				}),
+				}
+				toggleTableOptimizing(request, {
+					onSuccess: result => {
+						if (!result.success) {
+							setLastToggleRequest(request)
+							setOptimizationErrorLogs(result.logs ?? [])
+							setOptimizationErrorOpen(true)
+						}
+					},
+				})
+			},
 			onViewMetrics: row => {
 				setMetricsTableName(row.name)
 				setMetricsModalOpen(true)
@@ -285,7 +302,10 @@ const Tables: React.FC = () => {
 
 			<ConfigureOptimizationModal
 				open={configureModalOpen}
-				onClose={() => setConfigureModalOpen(false)}
+				onClose={() => {
+					setConfigureModalOpen(false)
+					setConfigureTable(null)
+				}}
 				catalog={selectedCatalog ?? ""}
 				database={selectedDatabase ?? ""}
 				tableName={configureTable?.name ?? ""}
@@ -307,6 +327,18 @@ const Tables: React.FC = () => {
 				open={databaseNotAvailableOpen}
 				onClose={handleDatabaseUnavailableClose}
 				databaseName={databaseParam ?? ""}
+			/>
+
+			<ErrorLogsModal
+				open={optimizationErrorOpen}
+				onClose={() => setOptimizationErrorOpen(false)}
+				title="Failed to update optimization configuration"
+				error={optimizationErrorLogs.join("\n")}
+				onAction={() => {
+					setOptimizationErrorOpen(false)
+					if (lastToggleRequest) toggleTableOptimizing(lastToggleRequest)
+				}}
+				actionButtonText="Retry"
 			/>
 		</>
 	)

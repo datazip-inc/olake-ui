@@ -2,9 +2,12 @@ import { useMutation } from "@tanstack/react-query"
 
 import {
 	DEFAULT_TARGET_FILE_SIZE,
+	FULL_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
+	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+	MINOR_CRON_PROPERTY_KEY,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
@@ -23,49 +26,41 @@ export const useToggleTableOptimizing = () => {
 			tableName,
 			enabled,
 		}: ToggleTableOptimizingRequest) => {
-			// When disabling optimization, no configuration checks are needed.
-			if (!enabled) {
-				return tableService.setTableOptimizing(
+			let config: UpdateTableCronApiRequest = {
+				enabled_for_optimization: enabled.toString(),
+			}
+
+			if (enabled) {
+				const details = await tableService.getTableDetails(
 					catalog,
 					database,
 					tableName,
-					enabled,
 				)
+				const properties = details.result?.properties ?? {}
+
+				const isConfigured = [
+					MINOR_CRON_PROPERTY_KEY,
+					MAJOR_CRON_PROPERTY_KEY,
+					FULL_CRON_PROPERTY_KEY,
+				].some(key => key in properties)
+
+				if (!isConfigured) {
+					config = {
+						...config,
+						minor_cron: LITE_DEFAULT_TRIGGER_INTERVAL,
+						major_cron: MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+						full_cron: FULL_DEFAULT_TRIGGER_INTERVAL,
+						target_file_size: DEFAULT_TARGET_FILE_SIZE,
+					}
+				}
 			}
 
-			// When enabling, fetch the raw API response to see if cron properties already exist.
-			const details = await tableService.getTableDetails(
+			return tableService.updateTableConfig(
 				catalog,
 				database,
 				tableName,
+				config,
 			)
-			const properties = details.result?.properties ?? {}
-
-			const cronPropertyKeys = [
-				"self-optimizing.minor.trigger.cron",
-				"self-optimizing.major.trigger.cron",
-				"self-optimizing.full.trigger.cron",
-			]
-			const isConfigured = cronPropertyKeys.some(key => key in properties)
-
-			if (isConfigured) {
-				// Toggle optimization ON without overriding the user's existing config.
-				return tableService.setTableOptimizing(
-					catalog,
-					database,
-					tableName,
-					enabled,
-				)
-			}
-
-			// If unconfigured, initialize the table with defaults while enabling it.
-			return tableService.updateTableCronConfig(catalog, database, tableName, {
-				minor_cron: LITE_DEFAULT_TRIGGER_INTERVAL,
-				major_cron: MEDIUM_DEFAULT_TRIGGER_INTERVAL,
-				full_cron: FULL_DEFAULT_TRIGGER_INTERVAL,
-				target_file_size: DEFAULT_TARGET_FILE_SIZE,
-				enabled_for_optimization: "true",
-			})
 		},
 	})
 }
@@ -79,7 +74,7 @@ export const useUpdateTableCronConfig = (
 	return useMutation({
 		mutationKey: tableKeys.table(catalog, database, tableName),
 		mutationFn: (payload: UpdateTableCronApiRequest) =>
-			tableService.updateTableCronConfig(catalog, database, tableName, payload),
+			tableService.updateTableConfig(catalog, database, tableName, payload),
 	})
 }
 

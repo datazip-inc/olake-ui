@@ -1,5 +1,5 @@
-import { XIcon } from "@phosphor-icons/react"
-import { Button, Drawer, Spin } from "antd"
+import { ArrowSquareOutIcon, XIcon } from "@phosphor-icons/react"
+import { Button, Drawer, Spin, Tooltip } from "antd"
 
 import type { RunMetricRow } from "../types"
 
@@ -40,10 +40,23 @@ const RunMetricsSidebar: React.FC<RunMetricsSidebarProps> = ({
 						onClick={onClose}
 						className="absolute right-4 top-4 text-olake-text-tertiary"
 					/>
-					<h2 className="font-sans text-xl font-medium leading-7 text-olake-text">
-						Run Metrics for{" "}
-						<span className="text-olake-primary">Run ID {runId ?? "--"}</span>
-					</h2>
+					<div className="flex items-center gap-x-2 pr-12">
+						<h2 className="font-sans text-xl font-medium leading-7 text-olake-text">
+							Run Metrics for{" "}
+							<span className="text-olake-primary">Run ID {runId ?? "--"}</span>
+						</h2>
+						<Tooltip title="Learn more">
+							<a
+								href="https://olake.io/docs/iceberg-maintenance/metrics/#run-metrics"
+								className="text-olake-icon-muted"
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label="Learn more"
+							>
+								<ArrowSquareOutIcon className="size-5" />
+							</a>
+						</Tooltip>
+					</div>
 				</div>
 
 				{loading ? (

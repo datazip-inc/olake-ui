@@ -20,6 +20,15 @@ export const useCatalogs = (enabled = true) => {
 	})
 }
 
+export const useIcebergDestinations = (enabled = true) => {
+	return useQuery({
+		queryKey: catalogKeys.icebergDestinations(),
+		queryFn: () => catalogService.getIcebergDestinations(),
+		enabled,
+		refetchOnWindowFocus: false,
+	})
+}
+
 export const useCatalogDatabases = (catalogName: string) => {
 	return useQuery({
 		queryKey: catalogKeys.databases(catalogName),

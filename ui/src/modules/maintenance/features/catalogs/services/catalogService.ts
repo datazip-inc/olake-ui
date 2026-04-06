@@ -7,6 +7,7 @@ import type {
 	CatalogFormData,
 	CatalogPayload,
 	CatalogTestRequest,
+	DestinationEntity,
 	GetCatalogDatabasesResponse,
 	GetCatalogsResponse,
 } from "../types"
@@ -14,6 +15,16 @@ import type {
 const DESTINATION_TYPE = "iceberg"
 
 export const catalogService = {
+	getIcebergDestinations: async () => {
+		const response = await api.get<DestinationEntity[]>(
+			API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID),
+		)
+
+		return response.data.filter(
+			item => item.type.toLowerCase() === DESTINATION_TYPE,
+		)
+	},
+
 	getCatalogs: async () => {
 		const response = await api.get<GetCatalogsResponse>(
 			API_CONFIG.ENDPOINTS.OPT.CATALOGS(),

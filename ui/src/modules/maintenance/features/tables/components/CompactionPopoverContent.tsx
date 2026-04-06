@@ -1,6 +1,7 @@
 import clsx from "clsx"
 
 import { compactionSlots } from "../constants"
+import { RUN_STATUS } from "../constants"
 import type { CompactionRun } from "../types"
 import { getRunStatusConfig } from "../utils"
 
@@ -27,7 +28,7 @@ const CompactionPopoverContent: React.FC<Props> = ({ minor, major, full }) => {
 								<p className="text-xs font-medium leading-4 text-olake-text">
 									{slot.name}
 								</p>
-								{run?.status === "RUNNING" ? (
+								{run?.status === RUN_STATUS.RUNNING ? (
 									<p className="text-[10px] leading-normal text-olake-text-tertiary">
 										running
 									</p>

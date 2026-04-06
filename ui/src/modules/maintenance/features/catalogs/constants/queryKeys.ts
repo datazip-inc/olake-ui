@@ -4,6 +4,8 @@ export const catalogKeys = {
 	all: () => ["projects", API_CONFIG.PROJECT_ID, "catalogs"] as const,
 
 	list: () => [...catalogKeys.all(), "catalogs"] as const,
+	icebergDestinations: () =>
+		[...catalogKeys.all(), "icebergDestinations"] as const,
 
 	details: () => [...catalogKeys.all(), "details"] as const,
 	detail: (id: string) => [...catalogKeys.details(), id] as const,

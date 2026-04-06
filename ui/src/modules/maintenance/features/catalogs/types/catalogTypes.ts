@@ -26,6 +26,13 @@ export interface GetCatalogDatabasesResponse {
 	result: string[]
 }
 
+export interface DestinationEntity {
+	id: number
+	name: string
+	type: string
+	config: string
+}
+
 // Frontend Domain Types
 export type CatalogFormData = Record<string, unknown>
 

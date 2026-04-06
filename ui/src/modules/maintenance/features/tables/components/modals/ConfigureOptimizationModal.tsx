@@ -3,11 +3,14 @@ import { Button, Input, Modal, Select, Spin, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useState } from "react"
 
+import { ErrorLogsModal } from "@/common/components/modals"
+
 import ConfigurationSuccessModal from "./ConfigurationSuccessModal"
 import {
 	CRON_FREQUENCY_OPTIONS,
 	DEFAULT_CRON_CONFIG,
 	DEFAULT_TARGET_FILE_SIZE,
+	RUN_TYPE_LABEL,
 } from "../../constants"
 import { DEFAULT_TABLE_MODAL_STYLES } from "../../constants"
 import { useTableDetails, useUpdateTableCronConfig } from "../../hooks"
@@ -112,7 +115,10 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	)
 }
 
-type ActiveModal = null | "success"
+enum ActiveOptimizationModalState {
+	SUCCESS = "success",
+	ERROR_LOGS = "error-logs",
+}
 
 const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 	open,
@@ -131,13 +137,15 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
 	const [targetFileSize, setTargetFileSize] = useState(DEFAULT_TARGET_FILE_SIZE)
 	const [advancedOpen, setAdvancedOpen] = useState(true)
-	const [activeModal, setActiveModal] = useState<ActiveModal>(null)
+	const [activeModal, setActiveModal] =
+		useState<ActiveOptimizationModalState | null>(null)
+	const [errorLogs, setErrorLogs] = useState<string[]>([])
 	const {
 		data: tableCronConfig,
 		isLoading: isConfigLoading,
 		isError: isConfigError,
 		refetch: refetchConfig,
-	} = useTableDetails(catalog, database, tableName)
+	} = useTableDetails(catalog, database, tableName, open)
 	const { mutate: updateTableCronConfig, isPending: isSaveLoading } =
 		useUpdateTableCronConfig(catalog, database, tableName)
 
@@ -170,8 +178,13 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		}
 
 		updateTableCronConfig(payload, {
-			onSuccess: () => {
-				setActiveModal("success")
+			onSuccess: result => {
+				if (!result.success) {
+					setErrorLogs(result.logs ?? [])
+					setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
+				} else {
+					setActiveModal(ActiveOptimizationModalState.SUCCESS)
+				}
 			},
 		})
 	}
@@ -245,20 +258,20 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 						) : (
 							<>
 								<ScheduleSection
-									title="Lite"
-									tooltip="Converts equality deletes to position deletes."
+									title={RUN_TYPE_LABEL.LITE}
+									tooltip="Converts equality deletes to position deletes and merge small files"
 									value={minorCron}
 									onChange={setMinorCron}
 									isFirst
 								/>
 								<ScheduleSection
-									title="Medium"
-									tooltip="Merges small files into larger ones."
+									title={RUN_TYPE_LABEL.MEDIUM}
+									tooltip="Applies deletes and merges data files"
 									value={majorCron}
 									onChange={setMajorCron}
 								/>
 								<ScheduleSection
-									title="Full"
+									title={RUN_TYPE_LABEL.FULL}
 									tooltip="Rewrites all data and applies deletes, creating files of the target size."
 									value={fullCron}
 									onChange={setFullCron}
@@ -347,9 +360,21 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 			</Modal>
 
 			<ConfigurationSuccessModal
-				open={open && activeModal === "success"}
+				open={open && activeModal === ActiveOptimizationModalState.SUCCESS}
 				onClose={handleClose}
 				firstRunAt={firstRunAt}
+			/>
+
+			<ErrorLogsModal
+				open={open && activeModal === ActiveOptimizationModalState.ERROR_LOGS}
+				onClose={() => setActiveModal(null)}
+				title="Failed to update optimization configuration"
+				error={errorLogs.join("\n")}
+				onAction={() => {
+					setActiveModal(null)
+					handleSave()
+				}}
+				actionButtonText="Retry"
 			/>
 		</>
 	)

@@ -1,3 +1,5 @@
+import { AxiosError } from "axios"
+
 import { API_CONFIG } from "@/config"
 import { api } from "@/core/api"
 
@@ -8,6 +10,7 @@ import type {
 	GetTablesApiResponse,
 	TableMetricsApiResponse,
 	UpdateTableCronApiRequest,
+	UpdateTableConfigApiResponse,
 } from "../types"
 
 export const tableService = {
@@ -44,9 +47,20 @@ export const tableService = {
 		catalog: string,
 		database: string,
 		tableName: string,
+		page: number,
+		pageSize: number,
+		status?: string,
 	) => {
+		const searchParams = new URLSearchParams({
+			page: String(page),
+			pageSize: String(pageSize),
+		})
+		if (status) {
+			searchParams.set("status", status)
+		}
+
 		const response = await api.get<GetTableRunsApiResponse>(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes`,
+			`${API_CONFIG.ENDPOINTS.OPT.TABLE(catalog, database, tableName)}/optimizing-processes?${searchParams.toString()}`,
 		)
 		return response.data
 	},
@@ -65,30 +79,32 @@ export const tableService = {
 		return response.data
 	},
 
-	setTableOptimizing: async (
-		catalog: string,
-		database: string,
-		tableName: string,
-		enabled: boolean,
-	) => {
-		const response = await api.put(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
-			{ enabled_for_optimization: enabled.toString() },
-		)
-		return response.data
-	},
-
-	updateTableCronConfig: async (
+	updateTableConfig: async (
 		catalog: string,
 		database: string,
 		tableName: string,
 		payload: UpdateTableCronApiRequest,
-	) => {
-		const response = await api.put(
-			`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
-			payload,
-		)
-		return response.data
+	): Promise<UpdateTableConfigApiResponse> => {
+		try {
+			const response = await api.put<UpdateTableConfigApiResponse>(
+				`${API_CONFIG.ENDPOINTS.OPT.TABLE_CONFIG(catalog, database, tableName)}/config`,
+				payload,
+				{ disableErrorNotification: true },
+			)
+			return response.data
+		} catch (error) {
+			console.error("Error updating table config:", error)
+			const errorMessage =
+				error instanceof AxiosError
+					? (error.response?.data?.message ??
+						"Network error - please check your connection")
+					: "Unknown error occurred"
+			return {
+				success: false,
+				message: errorMessage,
+				logs: [errorMessage],
+			}
+		}
 	},
 	getProcessLogs: async (runId: string) => {
 		const response = await api.get<GetProcessLogsApiResponse>(

@@ -21,7 +21,7 @@ const getHealthScoreColor = (score: number) =>
 export interface TableActions {
 	onViewLogs: (row: Table) => void
 	onCancelRun: (row: Table) => void
-	onToggleOptimizing: (row: Table, enabled: boolean) => void
+	onToggleOptimizingStatus: (row: Table, enabled: boolean) => void
 	onViewMetrics: (row: Table) => void
 	onConfigure: (row: Table) => void
 }
@@ -200,7 +200,7 @@ export function getTableColumns(opts: TableColumnOptions): ColumnDef<Table>[] {
 						size="small"
 						checked={row.enabled}
 						className={row.enabled ? "!bg-olake-success" : undefined}
-						onChange={checked => actions.onToggleOptimizing(row, checked)}
+						onChange={checked => actions.onToggleOptimizingStatus(row, checked)}
 					/>
 				)
 			},

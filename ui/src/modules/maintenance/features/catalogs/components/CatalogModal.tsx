@@ -1,6 +1,7 @@
+import { QuestionIcon } from "@phosphor-icons/react"
 import Form from "@rjsf/antd"
 import validator from "@rjsf/validator-ajv8"
-import { Button, message, Modal, Spin } from "antd"
+import { Button, message, Modal, Select, Spin, Tooltip } from "antd"
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -20,6 +21,7 @@ import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 
 import {
 	useCatalogDetails,
+	useIcebergDestinations,
 	useCatalogSpec,
 	useCatalogVersions,
 	useCreateCatalog,
@@ -48,13 +50,26 @@ const getCatalogNameFromFormData = (data: CatalogFormData): string => {
 /** API expects the writer object only, not `{ type, writer }`. */
 const getCatalogWriterPayload = (
 	data: CatalogFormData,
+	olake_imported?: boolean,
 ): Record<string, unknown> => {
 	const writer = (data as { writer?: Record<string, unknown> }).writer
 	if (!writer || typeof writer !== "object") {
 		throw new Error("Missing catalog writer configuration")
 	}
-	return writer
+	if (!olake_imported) {
+		return writer
+	}
+	return {
+		...writer,
+		olake_imported: true,
+	}
 }
+
+const getLabelWithTooltip = (name: string) => (
+	<Tooltip title={name}>
+		<span className="block truncate">{name}</span>
+	</Tooltip>
+)
 
 const CatalogModal: React.FC<CatalogModalProps> = ({
 	open,
@@ -75,6 +90,8 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	const [testConnectionError, setTestConnectionError] =
 		useState<TestConnectionError | null>(null)
 	const [createdCatalogName, setCreatedCatalogName] = useState("")
+	const [selectedIcebergDestinationId, setSelectedIcebergDestinationId] =
+		useState<string | null>(null)
 	const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
 	useEffect(() => {
@@ -88,6 +105,14 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	const navigate = useNavigate()
 	const { data: versionsData, isLoading: loadingVersions } =
 		useCatalogVersions(open)
+	const {
+		data: icebergDestinations = [],
+		isLoading: loadingIcebergDestinations,
+	} = useIcebergDestinations(open && !isEditMode)
+	const icebergDestinationOptions = icebergDestinations.map(destination => ({
+		value: destination.id.toString(),
+		label: getLabelWithTooltip(destination.name),
+	}))
 	const versions = versionsData?.version ?? []
 	const latestVersion = versions[0] ?? ""
 
@@ -138,9 +163,25 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 	useEffect(() => {
 		if (!open) {
 			setFormData({})
+			setSelectedIcebergDestinationId(null)
 			setActiveModal(null)
 		}
 	}, [open])
+
+	const handleIcebergDestinationSelect = (value: string) => {
+		setSelectedIcebergDestinationId(value)
+		const selectedDestination = icebergDestinations.find(
+			destination => destination.id.toString() === value,
+		)
+		if (!selectedDestination) return
+
+		// fill form data with destination config
+		try {
+			setFormData(JSON.parse(selectedDestination.config))
+		} catch {
+			message.error("Failed to load destination config")
+		}
+	}
 
 	const validateForm = async (): Promise<boolean> => {
 		if (schema && formRef.current) {
@@ -199,7 +240,10 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 							setCreatedCatalogName(catalogName!)
 						} else {
 							await createCatalogMutation.mutateAsync(
-								getCatalogWriterPayload(formData) as CatalogFormData,
+								getCatalogWriterPayload(
+									formData,
+									!!selectedIcebergDestinationId,
+								) as CatalogFormData,
 							)
 							setCreatedCatalogName(getCatalogNameFromFormData(formData))
 						}
@@ -259,6 +303,38 @@ const CatalogModal: React.FC<CatalogModalProps> = ({
 				centered
 				destroyOnHidden
 			>
+				{!isEditMode &&
+					(loadingIcebergDestinations || icebergDestinations.length > 0) && (
+						<div className="mt-4 rounded-md">
+							<div className="flex items-center gap-1">
+								<p className="text-sm font-medium leading-[22px] text-olake-text">
+									Import Catalog from destination
+								</p>
+								<Tooltip title="Select a destination to auto-fill the catalog with its credentials">
+									<QuestionIcon
+										size={14}
+										className="cursor-help text-olake-text-tertiary"
+									/>
+								</Tooltip>
+							</div>
+							{loadingIcebergDestinations ? (
+								<div className="mt-2">
+									<Spin size="small" />
+								</div>
+							) : (
+								<div className="mt-2">
+									<Select
+										className="w-1/2 [&_.ant-select-selection-item]:truncate"
+										value={selectedIcebergDestinationId}
+										onChange={handleIcebergDestinationSelect}
+										options={icebergDestinationOptions}
+										placeholder="Select a destination"
+										disabled={isEditMode}
+									/>
+								</div>
+							)}
+						</div>
+					)}
 				<div className="min-h-[280px]">
 					{isEditMode && isDetailsError ? (
 						<div className="flex min-h-[280px] flex-col items-center justify-center gap-1 text-center">

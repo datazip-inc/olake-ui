@@ -3,28 +3,16 @@ import { Button, Tabs, Empty, Spin } from "antd"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { SOURCE_ONBOARDING_DISMISSED_SESSION_KEY } from "@/common/constants"
 import { trackEvent, AnalyticsEvent } from "@/core/analytics"
 import { Entity } from "@/modules/ingestion/common/types"
 
 import SourceEmptyState from "../components/SourceEmptyState"
-import SourceOnboardingModal from "../components/SourceOnboardingModal"
 import SourceTable from "../components/SourceTable"
 import { sourceTabs } from "../constants"
 import { useSources, useDeleteSource } from "../hooks"
 
 const Sources: React.FC = () => {
 	const [activeTab, setActiveTab] = useState("active")
-	// Initialize from sessionStorage so the onboarding modal stays dismissed
-	// for the current browser session after the CTA is clicked once.
-	const [isOnboardingDismissed, setIsOnboardingDismissed] = useState(() => {
-		if (typeof window === "undefined") {
-			return false
-		}
-		return (
-			sessionStorage.getItem(SOURCE_ONBOARDING_DISMISSED_SESSION_KEY) === "true"
-		)
-	})
 	const navigate = useNavigate()
 
 	const {
@@ -38,21 +26,6 @@ const Sources: React.FC = () => {
 	const handleCreateSource = () => {
 		trackEvent(AnalyticsEvent.CreateSourceClicked)
 		navigate("/sources/new")
-	}
-
-	const handleOnboardingCreateSource = () => {
-		if (typeof window !== "undefined") {
-			sessionStorage.setItem(SOURCE_ONBOARDING_DISMISSED_SESSION_KEY, "true")
-		}
-		setIsOnboardingDismissed(true)
-		handleCreateSource()
-	}
-
-	const handleOnboardingClose = () => {
-		if (typeof window !== "undefined") {
-			sessionStorage.setItem(SOURCE_ONBOARDING_DISMISSED_SESSION_KEY, "true")
-		}
-		setIsOnboardingDismissed(true)
 	}
 
 	const handleEditSource = (id: string) => {
@@ -154,11 +127,6 @@ const Sources: React.FC = () => {
 						/>
 					),
 				}))}
-			/>
-			<SourceOnboardingModal
-				open={activeTab === "active" && showEmpty && !isOnboardingDismissed}
-				handleCreateSource={handleOnboardingCreateSource}
-				onClose={handleOnboardingClose}
 			/>
 		</div>
 	)
