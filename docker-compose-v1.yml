@@ -162,13 +162,313 @@ services:
       - "8081:8080"
     restart: unless-stopped
 
+  fusion-db-init:
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/library/postgres:13
+    container_name: fusion-db-init
+    profiles:
+      - fusion
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    networks:
+      - olake-network
+    environment:
+      PGPASSWORD: temporal
+    volumes:
+      - fusion-config:/fusion-config
+      # TODO: once fusion/ config files are pushed to the remote repo, remove these three
+      #       bind-mounts and uncomment the curl fetch block below instead.
+      - ./fusion/config.yaml:/local-config/config.yaml:ro
+      - ./fusion/kind-config.yaml:/local-config/kind-config.yaml:ro
+      - ./fusion/spark-rbac.yaml:/local-config/spark-rbac.yaml:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        echo "==> Creating Fusion database (idempotent)..."
+        psql -h postgresql -U temporal -tc \
+          "SELECT 1 FROM pg_database WHERE datname = 'fusion'" \
+          | grep -q 1 \
+          || psql -h postgresql -U temporal -c \
+             "CREATE DATABASE fusion;"
+
+        # TODO: when fusion/ config files are pushed to the remote repo, replace the cp
+        #       block below with this curl fetch block (and remove the bind-mount volumes above):
+        # echo "==> Installing curl..."
+        # apt-get update -qq && apt-get install -y -qq curl --no-install-recommends >/dev/null 2>&1
+        # echo "==> Fetching Fusion config files from GitHub..."
+        # BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/master/fusion"
+        # curl -fsSL "$${BASE}/config.yaml"      -o /fusion-config/config.yaml
+        # curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
+        # curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
+
+        echo "==> Copying config files to fusion-config volume..."
+        cp /local-config/config.yaml      /fusion-config/config.yaml
+        cp /local-config/kind-config.yaml /fusion-config/kind-config.yaml
+        cp /local-config/spark-rbac.yaml  /fusion-config/spark-rbac.yaml
+
+        echo "==> fusion-db-init complete."
+    restart: "no"
+
+  fusion:
+    # TODO: change dev-v4 to latest when promoting to prod
+    image: olakego/fusion:dev-v4
+    container_name: olake-fusion
+    profiles:
+      - fusion
+    depends_on:
+      fusion-db-init:
+        condition: service_completed_successfully
+      kind-setup:
+        condition: service_completed_successfully
+      spark-copy:
+        condition: service_completed_successfully
+    networks:
+      olake-network:
+        ipv4_address: 10.210.30.10
+    ports:
+      - "1630:1630"    # Web UI + REST API
+      - "1260:1260"    # Thrift table service
+      - "1261:1261"    # Thrift optimizing service
+    environment:
+      JVM_XMS: "1024"
+      JVM_XMX: "2048"
+      KUBECONFIG: /root/.kube/config
+    volumes:
+      - fusion-config:/fusion-config:ro
+      - kind-kubeconfig:/root/.kube:ro
+      - spark-home:/opt/spark:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cp /fusion-config/config.yaml /usr/local/amoro/conf/config.yaml
+        exec /entrypoint.sh ams
+    tty: true
+    stdin_open: true
+
+  fusion-init:
+    image: curlimages/curl
+    container_name: fusion-init
+    profiles:
+      - fusion
+    depends_on:
+      fusion:
+        condition: service_started
+      kind-load-image:
+        condition: service_completed_successfully
+    networks:
+      - olake-network
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "Waiting for Fusion to be ready..."
+        until curl -sf http://fusion:1630/ >/dev/null 2>&1; do sleep 2; done
+        sleep 10
+
+        echo "Logging in..."
+        curl -sf -c /tmp/cookies.txt \
+          -X POST http://fusion:1630/api/ams/v1/login \
+          -H "Content-Type: application/json" \
+          -H "X-Request-Source: Web" \
+          -d '{"user":"admin","password":"password"}'
+        echo ""
+
+        # ---- Optimizer Group (Spark on Kubernetes) ----
+        echo "Checking optimizer group..."
+        GROUPS=$$(curl -s -b /tmp/cookies.txt \
+          -H "X-Request-Source: Web" \
+          http://fusion:1630/api/ams/v1/optimize/resourceGroups)
+
+        if echo "$$GROUPS" | grep -q '"name":"spark-container"'; then
+          echo "  Optimizer group 'spark-container' already exists — skipping."
+        else
+          echo "  Creating optimizer group 'spark-container' (Spark on K8s)..."
+          curl -s -b /tmp/cookies.txt \
+            -X POST http://fusion:1630/api/ams/v1/optimize/resourceGroups \
+            -H "Content-Type: application/json" \
+            -H "X-Request-Source: Web" \
+            -d '{"name":"spark-container","container":"sparkContainer","properties":{}}'
+          echo ""
+          sleep 5
+        fi
+
+        # ---- Optimizer (always ensure at least 1 is running) ----
+        echo "Checking optimizers..."
+        OPTIMIZERS=$$(curl -s -b /tmp/cookies.txt \
+          -H "X-Request-Source: Web" \
+          "http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers?page=1&pageSize=10")
+
+        if echo "$$OPTIMIZERS" | grep -q '"jobStatus":"RUNNING"'; then
+          echo "  Spark optimizer already running — skipping."
+        else
+          echo "  Scaling out Spark optimizer (parallelism=1)..."
+          curl -s -b /tmp/cookies.txt \
+            -X POST http://fusion:1630/api/ams/v1/optimize/optimizerGroups/spark-container/optimizers \
+            -H "Content-Type: application/json" \
+            -H "X-Request-Source: Web" \
+            -d '{"parallelism":1}'
+          echo ""
+          sleep 5
+        fi
+
+        echo ""
+        echo "============================================"
+        echo "  Fusion is ready!"
+        echo "  Web UI : http://localhost:1630"
+        echo "  Login  : admin / password"
+        echo "============================================"
+
+
+  kind-setup:
+    image: docker:27-cli
+    container_name: fusion-kind-setup
+    profiles:
+      - fusion
+    depends_on:
+      fusion-db-init:
+        condition: service_completed_successfully
+    networks:
+      - olake-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kind-kubeconfig:/output
+      - fusion-config:/fusion-config:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+
+        echo "==> Installing kind..."
+        apk add --no-cache curl >/dev/null 2>&1
+        curl -sLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+        chmod +x /usr/local/bin/kind
+
+        echo "==> Creating Kind cluster (fusion-cluster)..."
+        if kind get clusters 2>/dev/null | grep -q '^fusion-cluster$$'; then
+          echo "   Cluster already exists, skipping creation."
+        else
+          kind create cluster --config /fusion-config/kind-config.yaml --wait 120s
+        fi
+
+        echo "==> Connecting Kind nodes to olake-network..."
+        docker network connect olake-network fusion-cluster-control-plane 2>/dev/null || true
+        for w in $$(docker ps --filter "name=fusion-cluster-worker" --format "{{.Names}}"); do
+          docker network connect olake-network "$$w" 2>/dev/null || true
+        done
+
+        echo "==> Applying Spark RBAC (namespace + service account)..."
+        cat /fusion-config/spark-rbac.yaml | docker exec -i fusion-cluster-control-plane \
+          kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f -
+
+        echo "==> Generating kubeconfig for Fusion..."
+        kind get kubeconfig --name fusion-cluster \
+          | sed 's|server: .*|server: https://fusion-cluster-control-plane:6443|' \
+          > /output/config
+        chmod 644 /output/config
+
+        echo "==> Kind setup complete!"
+
+  kind-load-image:
+    image: docker:27-cli
+    container_name: fusion-kind-load-image
+    profiles:
+      - fusion
+    depends_on:
+      kind-setup:
+        condition: service_completed_successfully
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    tmpfs:
+      - /tmp:size=3G
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        IMAGE="olakego/fusion-spark:dev-v4"
+        IMAGE_REF="docker.io/olakego/fusion-spark:dev-v4"
+
+        if ! docker image inspect $$IMAGE >/dev/null 2>&1; then
+          echo "==> Image $$IMAGE not found locally — skipping."
+          exit 0
+        fi
+
+        # ---- Collect worker nodes ----
+        NODES=$$(docker ps --filter "name=fusion-cluster-worker" --format "{{.Names}}")
+        if [ -z "$$NODES" ]; then
+          echo "==> No worker nodes found — skipping."
+          exit 0
+        fi
+
+        # ---- Always import to refresh mutable tags like ":latest" ----
+        # This prevents stale runtime images (e.g. old Java version) from being reused.
+        echo "==> Saving $$IMAGE to tarball (tmpfs)..."
+        docker save $$IMAGE -o /tmp/spark-optimizer.tar
+        echo "   Saved ($$(du -h /tmp/spark-optimizer.tar | cut -f1))."
+
+        # ---- Parallel import into all workers ----
+        echo "==> Importing into Kind worker nodes (parallel, force refresh)..."
+        PIDS=""
+        for NODE in $$NODES; do
+          echo "   Starting import into $$NODE..."
+          (cat /tmp/spark-optimizer.tar | docker exec -i $$NODE ctr --namespace=k8s.io images import - && \
+            echo "   $$NODE: done.") &
+          PIDS="$$PIDS $$!"
+        done
+
+        FAIL=0
+        for PID in $$PIDS; do
+          if ! wait $$PID; then
+            FAIL=1
+          fi
+        done
+
+        rm -f /tmp/spark-optimizer.tar
+
+        if [ $$FAIL -ne 0 ]; then
+          echo "==> WARNING: Some imports failed!"
+          exit 1
+        fi
+        echo "==> Done — image available on all workers."
+
+  spark-copy:
+    image: olakego/fusion-spark:dev-v4
+    container_name: fusion-spark-copy
+    profiles:
+      - fusion
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ -f /spark-vol/.done ]; then
+          echo "Spark already copied — skipping."
+        else
+          echo "Copying Spark to shared volume..."
+          cp -a /opt/spark/. /spark-vol/
+          touch /spark-vol/.done
+          echo "Spark copy complete."
+        fi
+    volumes:
+      - spark-home:/spark-vol
+
 networks:
   olake-network:
     driver: bridge
     name: olake-network
+    ipam:
+      config:
+        - subnet: 10.210.30.0/24
 
 volumes:
   temporal-postgresql-data:
     driver: local
   olake-config-data:
     driver: local
+  kind-kubeconfig:
+  spark-home:
+  fusion-config:
