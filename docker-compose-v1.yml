@@ -227,6 +227,7 @@ services:
       - "1260:1260"    # Thrift table service
       - "1261:1261"    # Thrift optimizing service
     environment:
+      <<: *sharedEnvs
       JVM_XMS: "1024"
       JVM_XMX: "2048"
       KUBECONFIG: /root/.kube/config
