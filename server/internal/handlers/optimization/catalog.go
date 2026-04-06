@@ -27,19 +27,19 @@ func (h *Handler) GetCatalog() {
 func (h *Handler) CreateCatalog() {
 	var req map[string]interface{}
 	if err := h.bindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body for catalog creation", err)
 		return
 	}
 
 	if req == nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required", nil)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required during creation", nil)
 		return
 	}
 
 	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format", err)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format for create catalog", err)
 		return
 	}
 
@@ -61,19 +61,19 @@ func (h *Handler) UpdateCatalog() {
 
 	var req map[string]interface{}
 	if err := h.bindJSON(&req); err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body", err)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid request body for updating catalog", err)
 		return
 	}
 
 	if req == nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required", nil)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "catalog config is required during updation", nil)
 		return
 	}
 
 	// Convert config to JSON string
 	configJSON, err := utils.MarshalToString(req)
 	if err != nil {
-		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format", err)
+		utils.ErrorResponse(&h.Controller, badRequestStatusCode, "invalid config format for updating catalog", err)
 		return
 	}
 

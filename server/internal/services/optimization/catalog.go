@@ -30,7 +30,7 @@ func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto
 
 	var result dto.CatalogRequest
 	if err := s.DoInto(ctx, http.MethodGet, path, url.Values{}, nil, &result); err != nil {
-		return nil, fmt.Errorf("failed to get catalog %s: %w", catalogName, err)
+		return nil, fmt.Errorf("failed to get catalog in optimization %s: %w", catalogName, err)
 	}
 
 	return &result, nil
@@ -39,11 +39,11 @@ func (s *Service) getCatalogInOpt(ctx context.Context, catalogName string) (*dto
 func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string, error) {
 	req, err := s.createOptConfig(configJSON, false)
 	if err != nil {
-		return "", fmt.Errorf("failed to create optimization config: %s", err)
+		return "", fmt.Errorf("failed to create optimization config during catalog creation: %s", err)
 	}
 
 	if err := validateCatalog(req); err != nil {
-		return "", fmt.Errorf("failed to validate catalog config in optimization: %s", err)
+		return "", fmt.Errorf("failed to validate catalog config during catalog creation: %s", err)
 	}
 
 	// set default catalog properties
@@ -60,11 +60,11 @@ func (s *Service) CreateCatalog(ctx context.Context, configJSON string) (string,
 func (s *Service) UpdateCatalog(ctx context.Context, configJSON string) (string, error) {
 	req, err := s.createOptConfig(configJSON, true)
 	if err != nil {
-		return "", fmt.Errorf("failed to create optimization config: %s", err)
+		return "", fmt.Errorf("failed to create optimization config during catalog updation: %s", err)
 	}
 
 	if err := validateCatalog(req); err != nil {
-		return "", fmt.Errorf("failed to validate catalog config in optimization: %s", err)
+		return "", fmt.Errorf("failed to validate catalog config during catalog updation: %s", err)
 	}
 
 	existing, err := s.getCatalogInOpt(ctx, req.Name)
