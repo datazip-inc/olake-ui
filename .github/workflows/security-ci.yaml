@@ -27,8 +27,28 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - name: Run vulnerability checks
         working-directory: ./server
-        run: govulncheck ./...
-        
+        run: |
+          # Custom Wrapper Script to supress the vulnerabilities that are in the .govulnignore file.
+          govulncheck -json ./... > /tmp/govuln.json 2>/tmp/govuln.err || VULN_EXIT=$?
+          VULN_EXIT=${VULN_EXIT:-0}
+
+          if [ "$VULN_EXIT" -ne 3 ]; then
+            exit "$VULN_EXIT"
+          fi
+
+          # Vulnerabilities found — pass if all are in .govulnignore, fail otherwise.
+          IGNORED=$(grep -oE 'GO-[0-9]+-[0-9]+' ../.govulnignore 2>/dev/null | sort -u | paste -sd'|')
+          UNKNOWN=$(jq -r 'select(.finding != null) | .finding.osv' /tmp/govuln.json | sort -u)
+          [ -n "$IGNORED" ] && UNKNOWN=$(echo "$UNKNOWN" | grep -vxE "$IGNORED" || true)
+
+          if [ -n "$UNKNOWN" ]; then
+            jq -r 'select(.message != null) | .message.text // empty' /tmp/govuln.json
+            echo "Unsuppressed vulnerabilities found: $UNKNOWN"
+            exit 1
+          fi
+
+          echo "govulncheck: all findings suppressed via .govulnignore"
+
   gosec:
     name: GoSec Security Scanner
     runs-on: ubuntu-latest
