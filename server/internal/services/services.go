@@ -1,13 +1,17 @@
 package services
 
 import (
+	"github.com/beego/beego/v2/server/web"
+	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/services/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/services/optimization"
 )
 
 type AppService struct {
 	db  *database.Database
 	etl *etl.Service
+	opt *optimization.Service
 }
 
 func InitAppService(db *database.Database) (*AppService, error) {
@@ -17,12 +21,29 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		return nil, err
 	}
 
-	return &AppService{
+	appSvc := &AppService{
 		db:  db,
 		etl: etlSvc,
-	}, nil
+		opt: nil,
+	}
+
+	enableOptimization := web.AppConfig.DefaultBool(constants.ConfEnableOptimization, false)
+	if enableOptimization {
+		optSvc, err := optimization.InitService()
+		if err != nil {
+			return nil, err
+		}
+
+		appSvc.opt = optSvc
+	}
+
+	return appSvc, nil
 }
 
 func (s *AppService) ETL() *etl.Service {
 	return s.etl
+}
+
+func (s *AppService) Optimization() *optimization.Service {
+	return s.opt
 }

@@ -50,7 +50,7 @@ func Init(h *handlers.Handler) {
 	web.Router("/swagger/*", etlHandler, "get:ServeSwagger")
 
 	// Apply auth middleware to protected routes
-	web.InsertFilter("/api/v1/*", web.BeforeRouter, middleware.AuthMiddleware)
+	web.InsertFilter("/api/*", web.BeforeRouter, middleware.AuthMiddleware)
 	// Auth routes
 	web.Router("/login", etlHandler, "post:Login")
 	web.Router("/signup", etlHandler, "post:Signup")
@@ -109,9 +109,29 @@ func Init(h *handlers.Handler) {
 
 	// platform routes
 	web.Router("/api/v1/platform/releases", etlHandler, "get:GetReleaseUpdates")
+	web.Router("/api/v1/platform/opt/status", h, "get:GetoptimizationStatus")
 
 	// internal routes
 	web.Router("/internal/worker/callback/sync-telemetry", etlHandler, "post:UpdateSyncTelemetry")
 	web.Router("/internal/project/:projectid/jobs/:id/clear-destination/recover", etlHandler, "post:RecoverClearDestination")
 	web.Router("/internal/project/:projectid/jobs/:id/statefile", etlHandler, "put:UpdateStateFile")
+
+	if h.Optimization != nil {
+		optHandler := h.Optimization
+
+		// catalogs: crud
+		web.Router("/api/opt/v1/catalog", optHandler, "post:CreateCatalog")
+		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "get:GetCatalog")
+		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "put:UpdateCatalog")
+		web.Router("/api/opt/v1/catalog/:catalog", optHandler, "delete:DeleteCatalog")
+
+		// terminal: cron, enable/disable optimization
+		web.Router("/api/opt/v1/:catalog/:database/:table/config", optHandler, "put:SetProperties")
+
+		// tables: view
+		web.Router("/api/opt/v1/:catalog/:database/tables", optHandler, "get:GetTablesWithDetails")
+
+		// piggy backing
+		web.Router("/api/opt/v1/*", optHandler, "get:PiggyBacking;post:PiggyBacking;put:PiggyBacking;delete:PiggyBacking")
+	}
 }

@@ -84,6 +84,41 @@ var (
 	// ExecutorEnvironment indicates the runtime environment. Defaults to "docker"
 	// and is updated to "kubernetes" at startup if KUBERNETES_SERVICE_HOST is set.
 	ExecutorEnvironment = "docker"
+
+	// Optimization Constants
+
+	// conf keys
+	ConfEnableOptimization   = "ENABLE_OPTIMIZATION"
+	ConfOptimizationBaseURL  = "OPTIMIZATION_BASE_URL"
+	ConfOptimizationUsername = "USERNAME"
+	ConfOptimizationPassword = "PASSWORD"
+	ConfOptimizationGroup    = "OPTIMIZATION_GROUP"
+	// api paths
+	OptPathCatalogs                 = "/api/ams/v1/catalogs"
+	OptPathCatalogDetail            = "/api/ams/v1/catalogs/%s"
+	OptPathCatalogTables            = "/api/ams/v1/catalogs/%s/databases/%s/tables"
+	OptPathTableDetails             = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/details"
+	OptPathTableOptimizingProcesses = "/api/ams/v1/tables/catalogs/%s/dbs/%s/tables/%s/optimizing-processes"
+	OptPathTerminalExecute          = "/api/ams/v1/terminal/catalogs/%s/execute"
+	OptPathTerminalLogs             = "/api/ams/v1/terminal/%s/logs"
+	// others
+	OptMaxTimeout          = 30 * time.Second
+	OptQueryResultPollTime = 1500 * time.Millisecond
+	OptMinorCron           = "self-optimizing.minor.trigger.cron"
+	OptMajorCron           = "self-optimizing.major.trigger.cron"
+	OptFullCron            = "self-optimizing.full.trigger.cron"
+	OptTargetFileSize      = "self-optimizing.target-size"
+	OptEnableOptimization  = "self-optimizing.enabled"
+	OptSQLCommand          = "ALTER TABLE %s.%s SET TBLPROPERTIES (%s)"
+	// properties
+	OptCreatedAt    = "created-at"
+	OptCacheEnabled = "cache-enabled"
+	OptOLakeCreated = "olake_created"
+	// OptimizeTableFormatList defines supported table formats for catalogs
+	OptimizeTableFormatList = []string{"ICEBERG"}
+	// hard-coding to S3 now, as the other options are "hadoop" & "OSS" for optimization
+	// GCS & ADLS are supported, given the catalog manages the sdk (eg, Lakekeeper with GCS flavour)
+	DefaultOptimizationStorageType = "S3"
 )
 
 // Supported database/source types
@@ -128,6 +163,7 @@ func Init() {
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
+	viper.SetDefault(ConfEnableOptimization, false)
 
 	checkForRequiredVariables(RequiredConfigVariable)
 

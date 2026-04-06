@@ -29,6 +29,9 @@ services:
       # Request body size limits (64 MB in bytes)
       MAX_MEMORY: 67108864
       MAX_UPLOAD_SIZE: 67108864
+      ENABLE_OPTIMIZATION: "false"
+      USERNAME: *defaultUsername
+      PASSWORD: *defaultPassword
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
