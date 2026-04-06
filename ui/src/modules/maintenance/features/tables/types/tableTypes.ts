@@ -101,6 +101,9 @@ export interface UpdateTableCronApiRequest {
 
 // Frontend Domain Types
 export type FilterKey = "all" | "olake" | "external"
+
+export type RunHistoryFilter = "all" | "failed"
+
 export type CompactionRun = {
 	lastRun: string
 	status: RunStatus

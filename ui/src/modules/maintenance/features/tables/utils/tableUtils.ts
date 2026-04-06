@@ -13,9 +13,12 @@ import {
 } from "@/common/utils"
 
 import {
+	FULL_CRON_PROPERTY_KEY,
 	KNOWN_CRON_TRIGGER_INTERVALS,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
+	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+	MINOR_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
 	RUN_STATUS,
 	RUN_TYPE,
@@ -204,7 +207,7 @@ export const mapGetTableRunsResponseToTableRuns = (
 			status: run.status,
 			type: runTypeToLabel[run.optimizingType],
 			startTime: formatTimestampToUtcTime(run.startTime),
-			duration: formatDuration(run.duration),
+			duration: formatDuration(run.duration) || "-",
 			metrics: mapRunMetricsPayloadToRows(run.summary ?? {}),
 		})),
 		total: response.result?.total ?? 0,
@@ -337,9 +340,9 @@ export const mapTableDetailsResponseToTableDetailsApiModel = (
 	return {
 		enabledForOptimization:
 			(properties["self-optimizing.enabled"] ?? "").toLowerCase() === "true",
-		minorTriggerInterval: properties["self-optimizing.minor.trigger.cron"],
-		majorTriggerInterval: properties["self-optimizing.major.trigger.cron"],
-		fullTriggerInterval: properties["self-optimizing.full.trigger.cron"],
+		minorTriggerInterval: properties[MINOR_CRON_PROPERTY_KEY],
+		majorTriggerInterval: properties[MAJOR_CRON_PROPERTY_KEY],
+		fullTriggerInterval: properties[FULL_CRON_PROPERTY_KEY],
 		targetFileSize: targFileSizeInMB,
 		averageFileSize: baseMetrics.averageFileSize ?? "--",
 		fileCount: baseMetrics.fileCount ?? 0,

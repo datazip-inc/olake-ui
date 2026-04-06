@@ -2,9 +2,12 @@ import { useMutation } from "@tanstack/react-query"
 
 import {
 	DEFAULT_TARGET_FILE_SIZE,
+	FULL_CRON_PROPERTY_KEY,
 	FULL_DEFAULT_TRIGGER_INTERVAL,
 	LITE_DEFAULT_TRIGGER_INTERVAL,
+	MAJOR_CRON_PROPERTY_KEY,
 	MEDIUM_DEFAULT_TRIGGER_INTERVAL,
+	MINOR_CRON_PROPERTY_KEY,
 	tableKeys,
 } from "../../constants"
 import { tableService } from "../../services"
@@ -36,9 +39,9 @@ export const useToggleTableOptimizing = () => {
 				const properties = details.result?.properties ?? {}
 
 				const isConfigured = [
-					"self-optimizing.minor.trigger.cron",
-					"self-optimizing.major.trigger.cron",
-					"self-optimizing.full.trigger.cron",
+					MINOR_CRON_PROPERTY_KEY,
+					MAJOR_CRON_PROPERTY_KEY,
+					FULL_CRON_PROPERTY_KEY,
 				].some(key => key in properties)
 
 				if (!isConfigured) {

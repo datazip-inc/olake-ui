@@ -134,7 +134,7 @@ const Catalogs: React.FC = () => {
 						Catalogs
 					</h1>
 					<p className="mt-1 text-sm leading-[22px] text-olake-text">
-						Select Catalog &amp; Database to view tables &amp; run maintenance
+						Add, Import, or Edit catalogs
 					</p>
 				</div>
 

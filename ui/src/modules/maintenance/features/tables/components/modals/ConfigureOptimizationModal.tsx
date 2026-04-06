@@ -115,7 +115,10 @@ const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 	)
 }
 
-type ActiveModal = null | "success" | "error-logs"
+enum ActiveOptimizationModalState {
+	SUCCESS = "success",
+	ERROR_LOGS = "error-logs",
+}
 
 const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 	open,
@@ -134,14 +137,15 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 		useState<CronConfigOption>(DEFAULT_CRON_CONFIG)
 	const [targetFileSize, setTargetFileSize] = useState(DEFAULT_TARGET_FILE_SIZE)
 	const [advancedOpen, setAdvancedOpen] = useState(true)
-	const [activeModal, setActiveModal] = useState<ActiveModal>(null)
+	const [activeModal, setActiveModal] =
+		useState<ActiveOptimizationModalState | null>(null)
 	const [errorLogs, setErrorLogs] = useState<string[]>([])
 	const {
 		data: tableCronConfig,
 		isLoading: isConfigLoading,
 		isError: isConfigError,
 		refetch: refetchConfig,
-	} = useTableDetails(catalog, database, tableName)
+	} = useTableDetails(catalog, database, tableName, open)
 	const { mutate: updateTableCronConfig, isPending: isSaveLoading } =
 		useUpdateTableCronConfig(catalog, database, tableName)
 
@@ -177,9 +181,9 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 			onSuccess: result => {
 				if (result.success === false) {
 					setErrorLogs(result.logs ?? [])
-					setActiveModal("error-logs")
+					setActiveModal(ActiveOptimizationModalState.ERROR_LOGS)
 				} else {
-					setActiveModal("success")
+					setActiveModal(ActiveOptimizationModalState.SUCCESS)
 				}
 			},
 		})
@@ -255,14 +259,14 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 							<>
 								<ScheduleSection
 									title={RUN_TYPE_LABEL.LITE}
-									tooltip="Converts equality deletes to position deletes."
+									tooltip="Converts equality deletes to position deletes and merge small files"
 									value={minorCron}
 									onChange={setMinorCron}
 									isFirst
 								/>
 								<ScheduleSection
 									title={RUN_TYPE_LABEL.MEDIUM}
-									tooltip="Merges small files into larger ones."
+									tooltip="Applies deletes and merges data files"
 									value={majorCron}
 									onChange={setMajorCron}
 								/>
@@ -356,13 +360,13 @@ const ConfigureOptimizationModal: React.FC<ConfigureOptimizationModalProps> = ({
 			</Modal>
 
 			<ConfigurationSuccessModal
-				open={open && activeModal === "success"}
+				open={open && activeModal === ActiveOptimizationModalState.SUCCESS}
 				onClose={handleClose}
 				firstRunAt={firstRunAt}
 			/>
 
 			<ErrorLogsModal
-				open={open && activeModal === "error-logs"}
+				open={open && activeModal === ActiveOptimizationModalState.ERROR_LOGS}
 				onClose={() => setActiveModal(null)}
 				title="Failed to update optimization configuration"
 				error={errorLogs.join("\n")}

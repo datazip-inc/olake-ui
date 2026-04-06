@@ -8,17 +8,9 @@ import { DataTable } from "@/common/components"
 import type { ColumnDef } from "@/common/components"
 
 import { RunMetricsSidebar } from "../components"
-import { RUN_STATUS } from "../constants"
 import { useRunHistoryFilters, useTableRuns } from "../hooks"
-import type { RunMetricRow, TableRun, RunStatus } from "../types"
+import type { RunHistoryFilter, RunMetricRow, TableRun } from "../types"
 import { getRunLogsStatusConfig } from "../utils"
-
-type RunsFilter = "all" | "failed"
-const LOG_VIEWABLE_STATUSES = new Set<RunStatus>([
-	RUN_STATUS.RUNNING,
-	RUN_STATUS.SUCCESS,
-	RUN_STATUS.FAILED,
-])
 
 const getColumns = (
 	handleMetricsClick: (row: TableRun) => void,
@@ -94,15 +86,14 @@ const getColumns = (
 		header: "Logs",
 		width: 10,
 		align: "center",
-		render: row =>
-			LOG_VIEWABLE_STATUSES.has(row.status) ? (
-				<Button
-					size="small"
-					onClick={() => handleLogsClick(row.runId)}
-				>
-					View
-				</Button>
-			) : null,
+		render: row => (
+			<Button
+				size="small"
+				onClick={() => handleLogsClick(row.runId)}
+			>
+				View
+			</Button>
+		),
 	},
 ]
 
@@ -196,12 +187,14 @@ const RunHistory: React.FC = () => {
 						{ key: "all", label: "All Runs" },
 						{ key: "failed", label: "Failed Runs" },
 					].map(filter => {
-						const active = activeFilter === (filter.key as RunsFilter)
+						const active = activeFilter === (filter.key as RunHistoryFilter)
 						return (
 							<button
 								key={filter.key}
 								type="button"
-								onClick={() => handleFilterChange(filter.key as RunsFilter)}
+								onClick={() =>
+									handleFilterChange(filter.key as RunHistoryFilter)
+								}
 								className={clsx(
 									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
 									active

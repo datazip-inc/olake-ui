@@ -204,12 +204,15 @@ export const sourceService = {
 					config,
 					max_discover_threads,
 				},
-				{ timeout: 0, signal },
+				{ timeout: 0, signal, disableErrorNotification: true },
 			)
 			return response.data
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error getting source streams:", error)
-			throw error
+			const serverMessage = error?.response?.data?.message
+			throw new Error(
+				serverMessage ?? error?.message ?? "Failed to get source streams",
+			)
 		}
 	},
 }

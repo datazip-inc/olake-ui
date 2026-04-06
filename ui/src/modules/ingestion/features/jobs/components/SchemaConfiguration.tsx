@@ -9,6 +9,7 @@ import clsx from "clsx"
 import React, { useEffect, useState, useMemo } from "react"
 import { useShallow } from "zustand/react/shallow"
 
+import { ErrorLogsModal } from "@/common/components/modals"
 import StepTitle from "@/modules/ingestion/common/components/StepTitle"
 import { DESTINATION_INTERNAL_TYPES } from "@/modules/ingestion/common/constants"
 import {
@@ -77,6 +78,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 	const [selectedFilters, setSelectedFilters] = useState<string[]>([
 		"All tables",
 	])
+	const [showDiscoverErrorModal, setShowDiscoverErrorModal] = useState(false)
 
 	const triggerStreamsDiscovery = () => {
 		if (
@@ -92,6 +94,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 			useStreamSelectionStore.getState()
 		setDiscovering(true)
 		setDiscoverError(null)
+		setShowDiscoverErrorModal(false)
 
 		discoverMutation.mutate(
 			{
@@ -117,7 +120,12 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				},
 				onError: error => {
 					setDiscovering(false)
-					setDiscoverError(error)
+					const errMsg =
+						error instanceof Error
+							? error.message
+							: "Failed to discover streams. Please try again."
+					setDiscoverError(errMsg)
+					setShowDiscoverErrorModal(true)
 				},
 			},
 		)
@@ -356,6 +364,18 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				}}
 				originalDatabase={destinationDatabase || ""}
 				initialStreams={initialStreamsSnapshot}
+			/>
+
+			<ErrorLogsModal
+				open={showDiscoverErrorModal}
+				onClose={() => setShowDiscoverErrorModal(false)}
+				title="Failed to discover streams"
+				error={discoverError ?? ""}
+				onAction={() => {
+					setShowDiscoverErrorModal(false)
+					triggerStreamsDiscovery()
+				}}
+				actionButtonText="Retry"
 			/>
 		</div>
 	)

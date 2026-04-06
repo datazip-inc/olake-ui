@@ -160,7 +160,7 @@ const Tables: React.FC = () => {
 					runId,
 				})
 			},
-			onToggleOptimizing: (row, enabled) => {
+			onToggleOptimizingStatus: (row, enabled) => {
 				const request: ToggleTableOptimizingRequest = {
 					catalog: selectedCatalog ?? "",
 					database: selectedDatabase ?? "",
@@ -302,7 +302,10 @@ const Tables: React.FC = () => {
 
 			<ConfigureOptimizationModal
 				open={configureModalOpen}
-				onClose={() => setConfigureModalOpen(false)}
+				onClose={() => {
+					setConfigureModalOpen(false)
+					setConfigureTable(null)
+				}}
 				catalog={selectedCatalog ?? ""}
 				database={selectedDatabase ?? ""}
 				tableName={configureTable?.name ?? ""}
