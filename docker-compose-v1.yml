@@ -18,7 +18,7 @@ x-envs:
     CONTAINER_REGISTRY_BASE: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}
     OLAKE_SECRET_KEY: *encryptionKey
     PERSISTENT_DIR: *hostPersistencePath
-    ENABLE_OPTIMIZATION: "false"
+    ENABLE_OPTIMIZATION: ${ENABLE_OPTIMIZATION:-false}
 
 services:
   olake-ui:
