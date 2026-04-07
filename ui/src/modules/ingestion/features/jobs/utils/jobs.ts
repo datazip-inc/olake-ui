@@ -1,5 +1,5 @@
 import { message } from "antd"
-import parser from "cron-parser"
+import { Cron } from "croner"
 
 import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
 import { CronParseResult } from "@/modules/ingestion/features/jobs/types"
@@ -94,12 +94,15 @@ export const generateCronExpression = (
 }
 
 export const isValidCronExpression = (cron: string): boolean => {
-	// Check if the cron has exactly 5 parts
+	// Check if the cron expression has 5, 6, or 7 parts
 	const parts = cron.trim().split(" ")
-	if (parts.length !== 5) return false
+	if (parts.length < 5 || parts.length > 7) return false
+
+	// Reject Quartz-style tokens (?, L, W, #) - not supported by Temporal
+	if (/[?LW#]/.test(cron)) return false
 
 	try {
-		parser.parse(cron)
+		new Cron(cron)
 		return true
 	} catch {
 		return false
