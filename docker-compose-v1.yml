@@ -211,8 +211,8 @@ services:
     restart: "no"
 
   fusion:
-    # TODO: change dev-v7 to latest when promoting to prod
-    image: olakego/fusion:dev-v7
+    # TODO: change dev-v9 to latest when promoting to prod
+    image: olakego/fusion:dev-v9
     container_name: olake-fusion
     profiles:
       - fusion
@@ -399,9 +399,9 @@ services:
       - -c
       - |
         set -e
-        # TODO: change dev-v7 to latest when promoting to prod
-        IMAGE="olakego/fusion-spark:dev-v7"
-        IMAGE_REF="docker.io/olakego/fusion-spark:dev-v7"
+        # TODO: change dev-v9 to latest when promoting to prod
+        IMAGE="olakego/fusion-spark:dev-v9"
+        IMAGE_REF="docker.io/olakego/fusion-spark:dev-v9"
 
         if ! docker image inspect $$IMAGE >/dev/null 2>&1; then
           echo "==> Image $$IMAGE not found locally — skipping."
@@ -447,8 +447,8 @@ services:
         echo "==> Done — image available on all workers."
 
   spark-copy:
-    # TODO: change dev-v7 to latest when promoting to prod
-    image: olakego/fusion-spark:dev-v7
+    # TODO: change dev-v9 to latest when promoting to prod
+    image: olakego/fusion-spark:dev-v9
     container_name: fusion-spark-copy
     profiles:
       - fusion
