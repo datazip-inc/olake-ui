@@ -1,6 +1,6 @@
 import { AxiosError } from "axios"
 
-import { SpecResponse } from "@/common/types"
+import { SpecResponse, TestConnectionResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -8,7 +8,6 @@ import {
 	Entity,
 	EntityBase,
 	EntityTestRequest,
-	EntityTestResponse,
 } from "@/modules/ingestion/common/types"
 import {
 	getConnectorInLowerCase,
@@ -19,7 +18,7 @@ export const destinationService = {
 	getDestinations: async () => {
 		try {
 			const response = await api.get<Entity[]>(
-				API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID),
+				API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID),
 				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 			const destinations: Entity[] = response.data.map(item => {
@@ -42,7 +41,7 @@ export const destinationService = {
 	getDestination: async (id: string) => {
 		try {
 			const response = await api.get<Entity>(
-				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
 			)
 			const config = response.data.config
 				? JSON.parse(response.data.config)
@@ -62,7 +61,7 @@ export const destinationService = {
 		destination: Omit<EntityBase, "id" | "createdAt">,
 	) => {
 		const response = await api.post<EntityBase>(
-			API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID),
+			API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID),
 			destination,
 		)
 		return response.data
@@ -71,7 +70,7 @@ export const destinationService = {
 	updateDestination: async (id: string, destination: EntityBase) => {
 		try {
 			const response = await api.put<EntityBase>(
-				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
 				{
 					name: destination.name,
 					type: destination.type,
@@ -92,7 +91,7 @@ export const destinationService = {
 
 	deleteDestination: async (id: number) => {
 		await api.delete(
-			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
+			`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/${id}`,
 			{ showNotification: true },
 		)
 		return
@@ -105,8 +104,8 @@ export const destinationService = {
 		source_version: string = "",
 	) => {
 		try {
-			const response = await api.post<EntityTestResponse>(
-				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
+			const response = await api.post<TestConnectionResponse>(
+				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: getConnectorInLowerCase(destination.type),
 					version: destination.version,
@@ -147,7 +146,7 @@ export const destinationService = {
 
 	getDestinationVersions: async (type: string) => {
 		const response = await api.get<{ version: string[] }>(
-			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
+			`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions/?type=${type}`,
 			{
 				timeout: 0,
 			},
@@ -165,7 +164,7 @@ export const destinationService = {
 		try {
 			const normalizedType = normalizeConnectorType(type)
 			const response = await api.post<SpecResponse>(
-				`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
+				`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: normalizedType,
 					version: version,
