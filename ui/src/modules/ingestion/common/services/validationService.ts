@@ -1,0 +1,21 @@
+import { API_CONFIG } from "@/config/apiConfig"
+import { api } from "@/core/api"
+import { ENTITY_TYPES } from "@/modules/ingestion/common/constants/constants"
+
+export const validationService = {
+	checkUniqueName: async (
+		name: string,
+		entityType: (typeof ENTITY_TYPES)[keyof typeof ENTITY_TYPES],
+	): Promise<boolean | null> => {
+		try {
+			const response = await api.post<{ unique: boolean }>(
+				`${API_CONFIG.ENDPOINTS.ETL.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				{ name, entity_type: entityType },
+			)
+			return response.data.unique
+		} catch (error) {
+			console.error(`Error checking ${entityType} name uniqueness:`, error)
+			return null
+		}
+	},
+}
