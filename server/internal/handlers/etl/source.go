@@ -1,4 +1,4 @@
-package handlers
+package etl
 
 import (
 	"errors"
