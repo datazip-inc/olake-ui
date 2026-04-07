@@ -32,7 +32,8 @@ services:
       MAX_UPLOAD_SIZE: 67108864
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
-      FUSION_BASE_URL: http://olake-fusion:1630
+      OPTIMIZATION_BASE_URL: http://olake-fusion:1630
+      OPTIMIZATION_GROUP: spark-container
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
     volumes:
