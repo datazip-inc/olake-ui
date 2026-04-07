@@ -181,3 +181,40 @@ type SQLInput struct {
 	TargetFileSize         *int64  `json:"target_file_size"`
 	EnabledForOptimization *string `json:"enabled_for_optimization"`
 }
+
+type CatalogRequest struct {
+	Name                    string            `json:"name"`
+	Type                    string            `json:"type"`
+	OptimizerGroup          string            `json:"optimizerGroup"`
+	OptimizeTableFormatList []string          `json:"tableFormatList"`
+	StorageConfig           map[string]string `json:"storageConfig"`
+	AuthConfig              map[string]string `json:"authConfig"`
+	Properties              map[string]string `json:"properties"`
+	TableProperties         map[string]string `json:"tableProperties"`
+}
+
+// LogInfo represents the log information from terminal execution
+type LogInfo struct {
+	LogStatus string   `json:"logStatus"` // "Finished", "Failed", etc.
+	Logs      []string `json:"logs"`
+}
+
+type SetTablePropertiesRequest struct {
+	Catalog    string            `json:"catalog"`
+	Database   string            `json:"database"`
+	Table      string            `json:"table"`
+	Properties map[string]string `json:"properties"`
+}
+
+// TerminalExecuteRequest represents the request body for terminal SQL execution
+type TerminalExecuteRequest struct {
+	SQL string `json:"sql"`
+}
+
+type SQLInput struct {
+	MinorCron              *string `json:"minor_cron"`
+	MajorCron              *string `json:"major_cron"`
+	FullCron               *string `json:"full_cron"`
+	TargetFileSize         *int64  `json:"target_file_size"`
+	EnabledForOptimization *string `json:"enabled_for_optimization"`
+}

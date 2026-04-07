@@ -8,6 +8,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/services"
 )
 
+// acts as the orchestration layer for: ETL & Optimization handlers
 type Handler struct {
 	// for cross-service api calls, the orchestration handler has app service access
 	appSvc       *services.AppService

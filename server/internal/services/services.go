@@ -25,6 +25,7 @@ func InitAppService(db *database.Database) (*AppService, error) {
 		etl: etlSvc,
 		opt: nil,
 	}
+
 	enableOptimization := appconfig.Load().EnableOptimization
 	if enableOptimization {
 		optSvc, err := optimization.InitService()

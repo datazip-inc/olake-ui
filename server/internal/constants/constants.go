@@ -155,6 +155,7 @@ func Init() {
 	viper.SetDefault("BASE_HOST", defaultBaseHost)
 	viper.SetDefault("BASE_URL", fmt.Sprintf("%s:%v", viper.GetString("BASE_HOST"), viper.GetString("PORT")))
 	viper.SetDefault(FrontendIndexPath, "/opt/frontend/dist/index.html")
+	viper.SetDefault(ConfEnableOptimization, false)
 
 	checkForRequiredVariables()
 
