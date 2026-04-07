@@ -31,7 +31,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/internal/constants"
 	"github.com/datazip-inc/olake-ui/server/internal/database"
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
-	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/services"
 	"github.com/datazip-inc/olake-ui/server/routes"
 	"github.com/datazip-inc/olake-ui/server/utils/logger"
 	"github.com/datazip-inc/olake-ui/server/utils/telemetry"

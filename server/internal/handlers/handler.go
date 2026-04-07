@@ -2,24 +2,48 @@ package handlers
 
 import (
 	"github.com/beego/beego/v2/server/web"
-	services "github.com/datazip-inc/olake-ui/server/internal/services/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/etl"
+	"github.com/datazip-inc/olake-ui/server/internal/handlers/optimization"
+	"github.com/datazip-inc/olake-ui/server/internal/services"
+	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
+// acts as the orchestration layer for: ETL & Optimization handlers
 type Handler struct {
 	web.Controller
-	etl *services.ETLService
+	// for cross-service api calls, the orchestration handler
+	// has app service access
+	appSvc       *services.AppService
+	ETL          *etl.Handler
+	Optimization *optimization.Handler
 }
 
-// appService holds the singleton service instance injected at startup.
-var etl *services.ETLService
+var app *services.AppService
 
-func NewHandler(s *services.ETLService) *Handler {
-	etl = s
-	return &Handler{etl: s}
+// domain-specific handler
+func NewHandler(appSvc *services.AppService) *Handler {
+	app = appSvc
+	h := &Handler{
+		appSvc: appSvc,
+		ETL:    etl.NewHandler(appSvc.ETL()),
+	}
+	if appSvc.Optimization() != nil {
+		h.Optimization = optimization.NewHandler(appSvc.Optimization())
+	}
+
+	return h
 }
 
 // Prepare runs before each action; Beego constructs a fresh controller per request,
 // so we assign the shared AppService here to avoid nil dereferences.
 func (h *Handler) Prepare() {
-	h.etl = etl
+	h.appSvc = app
+}
+
+func (h *Handler) GetoptimizationStatus() {
+	response := map[string]interface{}{
+		"enabled": h.appSvc.Optimization() != nil,
+	}
+
+	utils.SuccessResponse(&h.Controller, "optimization status retrieved successfully", response)
 }

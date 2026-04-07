@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"github.com/datazip-inc/olake-ui/server/internal/database"
@@ -6,20 +6,20 @@ import (
 )
 
 // AppService is a unified service exposing all domain operations backed by shared deps.
-type ETLService struct {
+type Service struct {
 	// single ORM facade using one Ormer
 	db       *database.Database
 	temporal *temporal.Temporal
 }
 
 // InitAppService constructs a unified AppService with singletons.
-func InitAppService(db *database.Database) (*ETLService, error) {
+func InitService(db *database.Database) (*Service, error) {
 	client, err := temporal.NewClient()
 	if err != nil {
 		return nil, err
 	}
 
-	return &ETLService{
+	return &Service{
 		db:       db,
 		temporal: client,
 	}, nil
