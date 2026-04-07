@@ -93,13 +93,21 @@ export const generateCronExpression = (
 	return cronExp
 }
 
-export const isValidCronExpression = (cron: string): boolean => {
-	// Check if the cron expression has 5, 6, or 7 parts
-	const parts = cron.trim().split(" ")
-	if (parts.length < 5 || parts.length > 7) return false
+// Matches Quartz-specific cron tokens not supported by Temporal:
+//   ?         → "no specific value" placeholder (Quartz only)
+//   L         → "last" modifier — matched only when not surrounded by letters,
+//               so standalone L or 5L are caught, but JUL/APR are not
+//   \dW       → "nearest weekday" modifier — matched only when preceded by a digit,
+//               so 15W is caught, but WED is not
+//   #         → "nth weekday of month" modifier (e.g. 5#3 = 3rd Friday)
+const QUARTZ_TOKEN_REGEX = /\?|(?<![A-Za-z])L(?![A-Za-z])|\dW|#/
 
-	// Reject Quartz-style tokens (?, L, W, #) - not supported by Temporal
-	if (/[?LW#]/.test(cron)) return false
+export const isValidCronExpression = (cron: string): boolean => {
+	// Check if the cron expression has 5 or 7 parts
+	const parts = cron.trim().split(" ")
+	if (parts.length !== 5 && parts.length !== 7) return false
+
+	if (QUARTZ_TOKEN_REGEX.test(cron)) return false
 
 	try {
 		new Cron(cron)
