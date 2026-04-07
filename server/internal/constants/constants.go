@@ -185,12 +185,7 @@ func Init() {
 func checkForRequiredVariables() {
 	cfg := appconfig.Load()
 
-	// If a full DSN is provided, we don't require individual DB parts.
-	if strings.TrimSpace(cfg.PostgresDSN) != "" {
-		return
-	}
-
-	requiredValues := map[string]string{
+	databaseEnvs := map[string]string{
 		"OLAKE_POSTGRES_USER":     cfg.OlakePostgresUser,
 		"OLAKE_POSTGRES_PASSWORD": cfg.OlakePostgresPassword,
 		"OLAKE_POSTGRES_HOST":     cfg.OlakePostgresHost,
@@ -199,9 +194,14 @@ func checkForRequiredVariables() {
 		"OLAKE_POSTGRES_SSLMODE":  cfg.OlakePostgresSSLMode,
 	}
 
-	for name, value := range requiredValues {
-		if strings.TrimSpace(value) == "" {
-			panic("Required config variable not found: " + name)
+	// required env values for database: if a full DSN is provided, we don't require individual DB parts.
+	if strings.TrimSpace(cfg.PostgresDSN) != "" {
+		return
+	} else {
+		for name, value := range databaseEnvs {
+			if strings.TrimSpace(value) == "" {
+				panic("Required config variable not found: " + name)
+			}
 		}
 	}
 }

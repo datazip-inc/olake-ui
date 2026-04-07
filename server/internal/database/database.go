@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 
-	_ "github.com/lib/pq" // required for registering driver
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
