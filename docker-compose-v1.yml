@@ -27,7 +27,8 @@ x-envs:
 
 services:
   olake-ui:
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
+    # TODO: change image tag
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:stag-v0.4.0-dev1
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -207,7 +208,7 @@ services:
 
         # TODO: change branch from feat/fusion-compose to main once the PR is merged
         echo "==> Fetching Fusion config files from GitHub..."
-        BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/feat/fusion-compose/fusion"
+        BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/feat/fusion-compose/optimization"
         curl -fsSL "$${BASE}/config.yaml"      -o /fusion-config/config.yaml
         curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
         curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
