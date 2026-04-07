@@ -7,7 +7,7 @@ export const settingsService = {
 	getSystemSettings: async (): Promise<SystemSettings> => {
 		try {
 			const response = await api.get<SystemSettings>(
-				API_CONFIG.ENDPOINTS.SETTINGS(API_CONFIG.PROJECT_ID),
+				API_CONFIG.ENDPOINTS.ETL.SETTINGS(API_CONFIG.PROJECT_ID),
 			)
 
 			return response.data
@@ -20,7 +20,7 @@ export const settingsService = {
 	updateSystemSettings: async (systemSettings: UpdateSystemSettingsRequest) => {
 		try {
 			await api.put<SystemSettings>(
-				API_CONFIG.ENDPOINTS.SETTINGS(API_CONFIG.PROJECT_ID),
+				API_CONFIG.ENDPOINTS.ETL.SETTINGS(API_CONFIG.PROJECT_ID),
 				{ ...systemSettings, project_id: API_CONFIG.PROJECT_ID },
 				{ showNotification: true },
 			)
