@@ -236,12 +236,12 @@ services:
       JVM_XMS: "1024"
       JVM_XMX: "2048"
       KUBECONFIG: /root/.kube/config
-      FUSION_LOGS_DIRECTORY: /data/fusion-logs
+      LOG_DIR: /mnt/amoro-logs/compaction
     volumes:
       - fusion-config:/fusion-config:ro
       - kind-kubeconfig:/root/.kube:ro
       - spark-home:/opt/spark:ro
-      - fusion-logs:/data/fusion-logs
+      - ${AMORO_LOG_DIR:-/opt/amoro-logs}:/mnt/amoro-logs
     entrypoint:
       - /bin/sh
       - -c
@@ -335,6 +335,8 @@ services:
         condition: service_completed_successfully
     networks:
       - olake-network
+    environment:
+      AMORO_LOG_DIR: ${AMORO_LOG_DIR:-/opt/amoro-logs}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - kind-kubeconfig:/output
@@ -345,6 +347,11 @@ services:
       - |
         set -e
 
+        LOG_DIR="$${AMORO_LOG_DIR:-/opt/amoro-logs}"
+        echo "==> Log directory: $$LOG_DIR"
+
+        echo "==> Generating kind cluster config..."
+        sed "s|AMORO_LOG_PLACEHOLDER|$$LOG_DIR|g" /fusion-config/kind-config.yaml > /tmp/kind-config-gen.yaml
         echo "==> Installing kind..."
         apk add --no-cache curl >/dev/null 2>&1
         curl -sLo /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
@@ -354,7 +361,7 @@ services:
         if kind get clusters 2>/dev/null | grep -q '^fusion-cluster$$'; then
           echo "   Cluster already exists, skipping creation."
         else
-          kind create cluster --config /fusion-config/kind-config.yaml --wait 120s
+          kind create cluster --config /tmp/kind-config-gen.yaml --wait 120s
         fi
 
         echo "==> Connecting Kind nodes to olake-network..."
@@ -473,4 +480,4 @@ volumes:
   kind-kubeconfig:
   spark-home:
   fusion-config:
-  fusion-logs:
+  amoro-logs:
