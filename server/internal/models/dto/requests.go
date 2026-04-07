@@ -146,43 +146,6 @@ type UpdateStateFileRequest struct {
 }
 
 type CatalogRequest struct {
-	Name                    string            `json:"name" binding:"required"`
-	Type                    string            `json:"type" binding:"required"`
-	OptimizerGroup          string            `json:"optimizerGroup" binding:"required"`
-	OptimizeTableFormatList []string          `json:"tableFormatList"`
-	StorageConfig           map[string]string `json:"storageConfig" binding:"required"`
-	AuthConfig              map[string]string `json:"authConfig" binding:"required"`
-	Properties              map[string]string `json:"properties" binding:"required"`
-	TableProperties         map[string]string `json:"tableProperties" binding:"required"`
-}
-
-// LogInfo represents the log information from terminal execution
-type LogInfo struct {
-	LogStatus string   `json:"logStatus"` // "Finished", "Failed", etc.
-	Logs      []string `json:"logs"`
-}
-
-type SetTablePropertiesRequest struct {
-	Catalog    string            `json:"catalog" binding:"required"`
-	Database   string            `json:"database" binding:"required"`
-	Table      string            `json:"table" binding:"required"`
-	Properties map[string]string `json:"properties" binding:"required"`
-}
-
-// TerminalExecuteRequest represents the request body for terminal SQL execution
-type TerminalExecuteRequest struct {
-	SQL string `json:"sql" binding:"required"`
-}
-
-type SQLInput struct {
-	MinorCron              *string `json:"minor_cron"`
-	MajorCron              *string `json:"major_cron"`
-	FullCron               *string `json:"full_cron"`
-	TargetFileSize         *int64  `json:"target_file_size"`
-	EnabledForOptimization *string `json:"enabled_for_optimization"`
-}
-
-type CatalogRequest struct {
 	Name                    string            `json:"name"`
 	Type                    string            `json:"type"`
 	OptimizerGroup          string            `json:"optimizerGroup"`
