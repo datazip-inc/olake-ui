@@ -206,7 +206,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								<div>
 									<div className="mb-2 flex items-center gap-1">
 										<label className="block text-sm">Cron Expression</label>
-										<Tooltip title="Supports 5/6/7-part cron format. Example: 0 0 * * * runs every day at midnight.">
+										<Tooltip title="Supports 5-7 field cron format:(Seconds and year are optional fields)">
 											<InfoIcon
 												size={16}
 												className="cursor-help text-slate-900"

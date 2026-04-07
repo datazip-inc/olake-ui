@@ -1,4 +1,4 @@
-import parser from "cron-parser"
+import { Cron } from "croner"
 
 import type { CronConfigOption } from "../types"
 
@@ -14,7 +14,7 @@ export const isValidCronExpression = (cron: string): boolean => {
 	if (parts.length !== 5) return false
 
 	try {
-		parser.parse(cron)
+		new Cron(cron, { timezone: "UTC" })
 		return true
 	} catch {
 		return false
@@ -33,11 +33,8 @@ export const getEarliestNextRun = (
 		if (!cron || !isValidCronExpression(cron)) continue
 
 		try {
-			const interval = parser.parse(cron, {
-				currentDate: new Date(),
-				tz: "UTC",
-			})
-			const next = interval.next().toDate()
+			const next = new Cron(cron, { timezone: "UTC" }).nextRun()
+			if (!next) continue
 			if (!earliest || next < earliest) {
 				earliest = next
 			}
@@ -55,20 +52,9 @@ export const getNextRuns = (cron: string): string[] => {
 	if (!normalizedCron || !isValidCronExpression(normalizedCron)) return []
 
 	try {
-		const interval = parser.parse(normalizedCron, {
-			currentDate: new Date(),
-			tz: "UTC",
-		})
-
-		const runs: string[] = []
-		for (let index = 0; index < 3; index += 1) {
-			const run = getParsedDate(interval.next().toDate()).replace(
-				/:\d{2} GMT$/,
-				" GMT",
-			)
-			runs.push(run)
-		}
-		return runs
+		return new Cron(normalizedCron, { timezone: "UTC" })
+			.nextRuns(3)
+			.map(run => getParsedDate(run).replace(/:\d{2} GMT$/, " GMT"))
 	} catch {
 		return []
 	}
