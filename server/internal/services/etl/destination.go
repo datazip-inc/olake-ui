@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 // Destination-related methods on AppService
 
 // GetDestination returns a single destination by ID with its associated jobs.
-func (s *ETLService) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
+func (s Service) GetDestination(ctx context.Context, projectID string, destinationID int) (*dto.DestinationDataItem, error) {
 	destination, err := s.db.GetDestinationByID(destinationID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get destination: %s", err)
@@ -56,7 +56,7 @@ func (s *ETLService) GetDestination(ctx context.Context, projectID string, desti
 }
 
 // ListDestinations returns all destinations for a project with lightweight job summaries.
-func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
+func (s Service) ListDestinations(ctx context.Context, projectID string) ([]dto.DestinationDataItem, error) {
 	destinations, err := s.db.ListDestinationsByProjectID(projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list destinations: %s", err)
@@ -109,7 +109,7 @@ func (s *ETLService) ListDestinations(ctx context.Context, projectID string) ([]
 	return destItems, nil
 }
 
-func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
+func (s Service) CreateDestination(ctx context.Context, req *dto.CreateDestinationRequest, projectID string, userID *int) error {
 	unique, err := s.db.IsDestinationNameUniqueInProject(ctx, projectID, req.Name)
 	if err != nil {
 		return fmt.Errorf("failed to check destination name uniqueness: %s", err)
@@ -137,7 +137,7 @@ func (s *ETLService) CreateDestination(ctx context.Context, req *dto.CreateDesti
 	return nil
 }
 
-func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
+func (s Service) UpdateDestination(ctx context.Context, id int, projectID string, req *dto.UpdateDestinationRequest, userID *int) error {
 	existingDest, err := s.db.GetDestinationByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to get destination: %s", err)
@@ -168,7 +168,7 @@ func (s *ETLService) UpdateDestination(ctx context.Context, id int, projectID st
 	return nil
 }
 
-func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
+func (s Service) DeleteDestination(ctx context.Context, id int) (*dto.DeleteDestinationResponse, error) {
 	dest, err := s.db.GetDestinationByID(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find destination: %s", err)
@@ -199,7 +199,7 @@ func (s *ETLService) DeleteDestination(ctx context.Context, id int) (*dto.Delete
 	return &dto.DeleteDestinationResponse{Name: dest.Name}, nil
 }
 
-func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
+func (s Service) TestDestinationConnection(ctx context.Context, req *dto.DestinationTestConnectionRequest) (map[string]interface{}, []map[string]interface{}, error) {
 	version := req.Version
 	driver := req.SourceType
 	if driver == "" {
@@ -240,7 +240,7 @@ func (s *ETLService) TestDestinationConnection(ctx context.Context, req *dto.Des
 	return result, logs.Logs, nil
 }
 
-func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string) (dto.VersionsResponse, error) {
+func (s Service) GetDestinationVersions(ctx context.Context, destType string) (dto.VersionsResponse, error) {
 	if destType == "" {
 		return dto.VersionsResponse{}, fmt.Errorf("destination type is required")
 	}
@@ -254,7 +254,7 @@ func (s *ETLService) GetDestinationVersions(ctx context.Context, destType string
 }
 
 // TODO: cache spec in db for each version
-func (s *ETLService) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
+func (s Service) GetDestinationSpec(ctx context.Context, req *dto.SpecRequest) (dto.SpecResponse, error) {
 	_, driver, err := utils.GetDriverImageTags(ctx, "", true)
 	if err != nil {
 		return dto.SpecResponse{}, fmt.Errorf("failed to get driver image tags: %s", err)
