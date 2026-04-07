@@ -239,7 +239,7 @@ const JobLogs: React.FC = () => {
 	}
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className="flex h-full flex-col">
 			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="mb-2 flex items-center">
@@ -373,9 +373,13 @@ const JobLogs: React.FC = () => {
 
 const JobLogRow: React.FC<{ log: TaskLogEntry }> = ({ log }) => (
 	<div className="grid grid-cols-[8rem_6rem_6rem_minmax(0,1fr)] border-b border-gray-100">
-		<div className="px-4 py-3 text-sm text-gray-500">{log.date}</div>
-		<div className="px-4 py-3 text-sm text-gray-500">{log.time}</div>
-		<div className="px-4 py-3 text-sm">
+		<div className="px-4 py-3 font-mono text-xs font-medium text-gray-500">
+			{log.date}
+		</div>
+		<div className="px-4 py-3 font-mono text-xs font-medium text-gray-500">
+			{log.time}
+		</div>
+		<div className="px-4 py-3 font-sans text-xs font-medium leading-5">
 			<span
 				className={clsx(
 					"rounded-md px-2 py-[5px] text-xs capitalize",
@@ -385,7 +389,12 @@ const JobLogRow: React.FC<{ log: TaskLogEntry }> = ({ log }) => (
 				{log.level}
 			</span>
 		</div>
-		<div className={clsx("px-4 py-3 text-sm", getLogTextColor(log.level))}>
+		<div
+			className={clsx(
+				"px-4 py-3 font-mono text-xs font-medium",
+				getLogTextColor(log.level),
+			)}
+		>
 			{log.message}
 		</div>
 	</div>

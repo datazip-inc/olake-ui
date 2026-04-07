@@ -1,7 +1,5 @@
 import { ReactNode } from "react"
 
-import { LogEntry } from "@/modules/ingestion/common/types/entityTypes"
-
 export interface Props {
 	children: ReactNode
 	fallback?: ReactNode
@@ -15,4 +13,10 @@ export interface State {
 export interface TestConnectionError {
 	message: string
 	logs: LogEntry[]
+}
+
+export interface LogEntry {
+	level: string
+	time: string
+	message: string
 }

@@ -27,3 +27,7 @@ export interface ReleasesResponse {
 	[ReleaseType.OLAKE]?: ReleaseTypeData
 	[ReleaseType.FEATURES]?: ReleaseTypeData
 }
+
+export interface OptimizationStatusResponse {
+	enabled: boolean
+}

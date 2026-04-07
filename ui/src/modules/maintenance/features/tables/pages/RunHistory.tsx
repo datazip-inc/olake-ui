@@ -1,0 +1,245 @@
+import { ArrowsClockwiseIcon, CaretLeftIcon } from "@phosphor-icons/react"
+import { Button } from "antd"
+import clsx from "clsx"
+import { useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+
+import { DataTable } from "@/common/components"
+import type { ColumnDef } from "@/common/components"
+
+import { RunMetricsSidebar } from "../components"
+import { useRunHistoryFilters, useTableRuns } from "../hooks"
+import type { RunHistoryFilter, RunMetricRow, TableRun } from "../types"
+import { getRunLogsStatusConfig } from "../utils"
+
+const getColumns = (
+	handleMetricsClick: (row: TableRun) => void,
+	handleLogsClick: (runId: string) => void,
+): ColumnDef<TableRun>[] => [
+	{
+		key: "runId",
+		header: "Run ID",
+		width: 12,
+		render: row => row.runId,
+	},
+	{
+		key: "status",
+		header: "Status",
+		align: "center",
+		width: 16,
+		render: row => {
+			const cfg = getRunLogsStatusConfig(row.status)
+			return (
+				<span
+					className={clsx(
+						"inline-flex h-5 items-center gap-1 rounded-[20px] px-2",
+						cfg.bgClass,
+					)}
+				>
+					<cfg.Icon
+						size={12}
+						className={clsx(cfg.textClass)}
+					/>
+					<span
+						className={clsx("text-xs font-medium leading-5", cfg.textClass)}
+					>
+						{cfg.label}
+					</span>
+				</span>
+			)
+		},
+	},
+	{
+		key: "type",
+		header: "Type",
+		width: 10,
+		render: row => row.type,
+	},
+	{
+		key: "startTime",
+		header: "Start Time",
+		width: 14,
+		render: row => row.startTime,
+	},
+	{
+		key: "duration",
+		header: "Duration",
+		width: 12,
+		render: row => row.duration,
+	},
+	{
+		key: "metrics",
+		header: "Metrics",
+		width: 10,
+		align: "center",
+		render: row => (
+			<Button
+				size="small"
+				onClick={() => handleMetricsClick(row)}
+			>
+				View
+			</Button>
+		),
+	},
+	{
+		key: "logs",
+		header: "Logs",
+		width: 10,
+		align: "center",
+		render: row => (
+			<Button
+				size="small"
+				onClick={() => handleLogsClick(row.runId)}
+			>
+				View
+			</Button>
+		),
+	},
+]
+
+const RunHistory: React.FC = () => {
+	const navigate = useNavigate()
+	const { catalog, database, tableName } = useParams<{
+		catalog: string
+		database: string
+		tableName: string
+	}>()
+	const decodedTableName = decodeURIComponent(tableName ?? "")
+	const decodedCatalog = decodeURIComponent(catalog ?? "")
+	const decodedDatabase = decodeURIComponent(database ?? "")
+
+	const [metricsSidebarOpen, setMetricsSidebarOpen] = useState(false)
+	const [metricsRows, setMetricsRows] = useState<RunMetricRow[]>([])
+	const [selectedRunId, setSelectedRunId] = useState<string>("")
+	const {
+		activeFilter,
+		currentPage,
+		setCurrentPage,
+		pageSize,
+		status,
+		handleFilterChange,
+	} = useRunHistoryFilters()
+	const { data, isLoading, isFetching, refetch } = useTableRuns(
+		decodedCatalog,
+		decodedDatabase,
+		decodedTableName,
+		currentPage,
+		pageSize,
+		status,
+	)
+
+	const runs = data?.runs ?? []
+	const totalRuns = data?.total ?? 0
+
+	const totalPages = Math.max(1, Math.ceil(totalRuns / pageSize))
+
+	const handleMetricsClick = (row: TableRun) => {
+		setSelectedRunId(row.runId)
+		setMetricsSidebarOpen(true)
+		setMetricsRows(row.metrics)
+	}
+	const getRunLogsPath = (runId: string) =>
+		`/maintenance/tables/${encodeURIComponent(decodedCatalog)}/${encodeURIComponent(decodedDatabase)}/${encodeURIComponent(decodedTableName)}/runs/${encodeURIComponent(runId)}/logs`
+
+	const columns = getColumns(handleMetricsClick, runId =>
+		navigate(getRunLogsPath(runId)),
+	)
+
+	return (
+		<div className="min-h-full bg-white px-6 pt-6">
+			<button
+				type="button"
+				onClick={() => {
+					if (!decodedCatalog || !decodedDatabase) {
+						navigate("/maintenance/tables")
+						return
+					}
+
+					navigate(
+						`/maintenance/tables?catalog=${encodeURIComponent(decodedCatalog)}&database=${encodeURIComponent(decodedDatabase)}`,
+					)
+				}}
+				className="mb-2 inline-flex items-center gap-1.5 text-sm leading-[22px] text-olake-text-secondary"
+			>
+				<CaretLeftIcon size={12} />
+				<span>Back</span>
+			</button>
+
+			<h1 className="text-[28px] font-medium leading-[36px] text-olake-text">
+				Run History for{" "}
+				<span className="text-olake-primary">{decodedTableName}</span>
+			</h1>
+			<p className="mt-1 text-sm leading-[22px] text-olake-text-secondary">
+				View logs, runs &amp; performance metrics
+			</p>
+
+			<div className="mt-6 flex items-center gap-4">
+				<Button
+					icon={<ArrowsClockwiseIcon size={14} />}
+					loading={isFetching}
+					onClick={() => {
+						refetch()
+					}}
+				/>
+
+				<div className="flex items-center gap-1.5">
+					{[
+						{ key: "all", label: "All Runs" },
+						{ key: "failed", label: "Failed Runs" },
+					].map(filter => {
+						const active = activeFilter === (filter.key as RunHistoryFilter)
+						return (
+							<button
+								key={filter.key}
+								type="button"
+								onClick={() =>
+									handleFilterChange(filter.key as RunHistoryFilter)
+								}
+								className={clsx(
+									"h-8 rounded-md border border-olake-border px-3 text-sm leading-[22px]",
+									active
+										? "bg-olake-surface-muted text-olake-text-secondary"
+										: "bg-white text-olake-text-secondary",
+								)}
+							>
+								{filter.label}
+							</button>
+						)
+					})}
+				</div>
+			</div>
+
+			<div className="mt-4">
+				<DataTable
+					columns={columns}
+					rows={runs}
+					rowKey={row => row.id}
+					loading={isLoading || isFetching}
+					pagination={{
+						currentPage,
+						totalPages,
+						onPageChange: setCurrentPage,
+					}}
+					pageSize={pageSize}
+					emptyStateConfig={{
+						title: "No runs found",
+						subtitle:
+							"No runs are available for the selected filter. Try switching filters or refresh.",
+						onRefetch: () => void refetch(),
+						refetchLabel: "Refresh",
+					}}
+				/>
+			</div>
+
+			<RunMetricsSidebar
+				open={metricsSidebarOpen}
+				onClose={() => setMetricsSidebarOpen(false)}
+				rows={metricsRows}
+				loading={false}
+				runId={selectedRunId}
+			/>
+		</div>
+	)
+}
+
+export default RunHistory

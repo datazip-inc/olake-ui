@@ -8,12 +8,32 @@ export const API_CONFIG = {
 			: `${window.location.protocol}//${window.location.host}`,
 	PROJECT_ID: "123",
 	ENDPOINTS: {
-		PROJECT: (projectId: string) => `/api/v1/project/${projectId}`,
-		DESTINATIONS: (projectId: string) =>
-			`/api/v1/project/${projectId}/destinations`,
-		SOURCES: (projectId: string) => `/api/v1/project/${projectId}/sources`,
-		JOBS: (projectId: string) => `/api/v1/project/${projectId}/jobs`,
-		SETTINGS: (projectId: string) => `/api/v1/project/${projectId}/settings`,
+		ETL: {
+			PROJECT: (projectId: string) => `/api/v1/project/${projectId}`,
+			DESTINATIONS: (projectId: string) =>
+				`/api/v1/project/${projectId}/destinations`,
+			SOURCES: (projectId: string) => `/api/v1/project/${projectId}/sources`,
+			JOBS: (projectId: string) => `/api/v1/project/${projectId}/jobs`,
+			SETTINGS: (projectId: string) => `/api/v1/project/${projectId}/settings`,
+		},
+		OPT: {
+			CATALOGS: (catalogName?: string) =>
+				catalogName
+					? `/api/opt/v1/catalogs/${encodeURIComponent(catalogName)}`
+					: `/api/opt/v1/catalogs`,
+			CATALOG: (catalogName?: string) =>
+				catalogName
+					? `/api/opt/v1/catalog/${encodeURIComponent(catalogName)}`
+					: `/api/opt/v1/catalog`,
+			TABLE_CONFIG: (catalog: string, database: string, tableName: string) =>
+				`/api/opt/v1/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/${encodeURIComponent(tableName)}`,
+			TABLE: (catalog: string, database: string, tableName: string) =>
+				`/api/opt/v1/tables/catalogs/${encodeURIComponent(catalog)}/dbs/${encodeURIComponent(database)}/tables/${encodeURIComponent(tableName)}`,
+			TABLES: (catalog: string, database: string) =>
+				`/api/opt/v1/${encodeURIComponent(catalog)}/${encodeURIComponent(database)}/tables`,
+			PROCESS: (processId: string) =>
+				`/api/opt/v1/logs/process/${encodeURIComponent(processId)}`,
+		},
 		PLATFORM: `/api/v1/platform`,
 	},
 }

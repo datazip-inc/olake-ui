@@ -5,9 +5,34 @@ export default {
 	theme: {
 		extend: {
 			fontFamily: {
-				sans: ['"Helvetica Neue"'],
+				sans: ['"Helvetica Neue"', "sans-serif"],
 			},
 			colors: {
+				olake: {
+					primary: "#193AE6",
+					"primary-bg": "#F3F5FD",
+					text: "#000000E0",
+					"text-secondary": "#000000A6",
+					"text-tertiary": "#00000073",
+					"text-disabled": "#00000040",
+					"icon-muted": "#8C8C8C",
+					"heading-strong": "#141414",
+					body: "#595959",
+					"body-secondary": "#575757",
+					border: "#D9D9D9",
+					"border-secondary": "#F0F0F0",
+					surface: "#FFFFFF",
+					"surface-muted": "#F5F5F5",
+					"surface-subtle": "#FAFAFA",
+					success: "#52C41A",
+					"success-strong": "#092B00",
+					"success-bg": "#F6FFED",
+					warning: "#FA8C16",
+					"warning-bg": "#FFF7E6",
+					error: "#F5222D",
+					"error-alt": "#FF4D4F",
+					"error-bg": "#FFF1F0",
+				},
 				primary: {
 					DEFAULT: "#203FDD",
 					50: "#F5F7FF",

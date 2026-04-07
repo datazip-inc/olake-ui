@@ -1,4 +1,4 @@
-import { LogEntry } from "@/modules/ingestion/common/types"
+import { LogEntry } from "@/common/types"
 
 export interface Job {
 	id: number
@@ -111,6 +111,7 @@ export interface SavedJobDraft {
 export interface JobTableProps {
 	jobs: (Job | SavedJobDraft)[]
 	loading: boolean
+	refreshLoading?: boolean
 	jobType: JobStatus
 	onRefresh: () => void
 	onSync: (id: string) => void

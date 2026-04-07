@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+	body {
+		@apply font-sans;
+	}
+}
+
 .custom-row td {
 	padding: 26px !important;
 }

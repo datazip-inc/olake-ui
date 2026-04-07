@@ -37,6 +37,7 @@ const formatLastSyncTime = (text?: string) => {
 const JobTable: React.FC<JobTableProps> = ({
 	jobs,
 	loading,
+	refreshLoading = false,
 	jobType,
 	onRefresh,
 	onSync,
@@ -281,7 +282,7 @@ const JobTable: React.FC<JobTableProps> = ({
 					<Tooltip title="Click to refetch">
 						<Button
 							icon={<ArrowsClockwiseIcon size={16} />}
-							loading={loading}
+							loading={refreshLoading}
 							onClick={onRefresh}
 							className="flex items-center"
 						/>

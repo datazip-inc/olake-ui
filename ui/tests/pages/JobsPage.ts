@@ -15,7 +15,7 @@ export class JobsPage extends BasePage {
 
 	constructor(page: Page) {
 		super(page)
-		this.createJobButton = page.getByRole("button", { name: "Create Job" })
+		this.createJobButton = page.getByTestId("create-job-button")
 		this.jobsTitle = page.locator("h1", { hasText: "Jobs" })
 		this.jobsLink = page.getByRole("link", { name: "Jobs" })
 		this.activeTab = page.getByRole("tab", { name: "Active" })
