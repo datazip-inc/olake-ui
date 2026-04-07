@@ -32,7 +32,7 @@ services:
       MAX_UPLOAD_SIZE: 67108864
       USERNAME: *defaultUsername
       PASSWORD: *defaultPassword
-      OPTIMIZATION_BASE_URL: http://olake-fusion:1630
+      OPTIMIZATION_BASE_URL: http://fusion.olake.internal:1630
       OPTIMIZATION_GROUP: spark-container
     ports:
       - "8000:8000" # Single port: Go backend serves both API and frontend
@@ -47,6 +47,9 @@ services:
         condition: service_healthy # Wait for postgres to be healthy
       temporal:
         condition: service_started # Or service_healthy if temporal has a healthcheck
+      fusion-init:
+        condition: service_completed_successfully # Wait for initial Fusion setup to complete
+        required: false
     restart: unless-stopped
     healthcheck: # Updated healthcheck for olake-ui
       test: ["CMD-SHELL", "nc -z localhost 8000"] # Check if port 8000 is listening
@@ -222,7 +225,8 @@ services:
         condition: service_completed_successfully
     networks:
       olake-network:
-        ipv4_address: 10.210.30.10
+        aliases:
+          - fusion.olake.internal
     ports:
       - "1630:1630"    # Web UI + REST API
       - "1260:1260"    # Thrift table service
@@ -460,12 +464,6 @@ networks:
   olake-network:
     driver: bridge
     name: olake-network
-    ipam:
-      config:
-        - subnet: 10.210.30.0/24
-          # ip_range restricts Docker's auto-assignment pool to .128–.254,
-          # leaving .2–.127 exclusively for static IPs (e.g. fusion at .10).
-          ip_range: 10.210.30.128/25
 
 volumes:
   temporal-postgresql-data:

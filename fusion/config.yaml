@@ -2,10 +2,7 @@ ams:
   admin-username: admin
   admin-password: password
   server-bind-host: "0.0.0.0"
-  # Static IP on iceberg-net so both the local optimizer and K8s Spark pods can
-  # reach the thrift optimizing service without any manual IP edits.
-  # In debug mode this is overridden to 127.0.0.1 via AMS_SERVER__EXPOSE__HOST in launch.json.
-  server-expose-host: "10.210.30.10"
+  server-expose-host: "127.0.0.1"
 
   thrift-server:
     max-message-size: 100MB # 104857600
@@ -119,6 +116,7 @@ containers:
   - name: sparkContainer
     container-impl: org.apache.amoro.server.manager.SparkOptimizerContainer
     properties:
+      ams-optimizing-uri: "thrift://fusion.olake.internal:1261"
       spark-home: /opt/spark/
       # Kind control-plane hostname — resolved via Docker DNS (iceberg-net)
       master: k8s://https://fusion-cluster-control-plane:6443
