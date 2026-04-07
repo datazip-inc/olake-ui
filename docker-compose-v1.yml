@@ -1,9 +1,14 @@
 x-app-defaults:
   host_persistence_path: &hostPersistencePath ${PWD}/olake-data
+  amoro_log_persistence_path: &amoroLogPersistencePath ${PWD}/amoro-logs
   worker_config_volume_details: &workerConfigVolumeDetails
     type: bind
     source: *hostPersistencePath
     target: /tmp/olake-config
+  amoro_log_volume_details: &amoroLogVolumeDetails
+    type: bind
+    source: *amoroLogPersistencePath
+    target: /mnt/amoro-logs
 
 x-signup-defaults:
   username: &defaultUsername "admin"
@@ -233,6 +238,7 @@ services:
       - "1261:1261"    # Thrift optimizing service
     environment:
       <<: *sharedEnvs
+      AMORO_LOG_DIR: /mnt/amoro-logs
       JVM_XMS: "1024"
       JVM_XMX: "2048"
       KUBECONFIG: /root/.kube/config
@@ -241,7 +247,7 @@ services:
       - fusion-config:/fusion-config:ro
       - kind-kubeconfig:/root/.kube:ro
       - spark-home:/opt/spark:ro
-      - ${AMORO_LOG_DIR:-/opt/amoro-logs}:/mnt/amoro-logs
+      - <<: *amoroLogVolumeDetails
     entrypoint:
       - /bin/sh
       - -c
@@ -336,7 +342,7 @@ services:
     networks:
       - olake-network
     environment:
-      AMORO_LOG_DIR: ${AMORO_LOG_DIR:-/opt/amoro-logs}
+      AMORO_LOG_DIR: *amoroLogPersistencePath
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - kind-kubeconfig:/output
@@ -347,7 +353,7 @@ services:
       - |
         set -e
 
-        LOG_DIR="$${AMORO_LOG_DIR:-/opt/amoro-logs}"
+        LOG_DIR="$${AMORO_LOG_DIR}"
         echo "==> Log directory: $$LOG_DIR"
 
         echo "==> Generating kind cluster config..."
@@ -480,4 +486,3 @@ volumes:
   kind-kubeconfig:
   spark-home:
   fusion-config:
-  amoro-logs:
