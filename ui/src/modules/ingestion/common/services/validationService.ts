@@ -9,7 +9,7 @@ export const validationService = {
 	): Promise<boolean | null> => {
 		try {
 			const response = await api.post<{ unique: boolean }>(
-				`${API_CONFIG.ENDPOINTS.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
+				`${API_CONFIG.ENDPOINTS.ETL.PROJECT(API_CONFIG.PROJECT_ID)}/check-unique`,
 				{ name, entity_type: entityType },
 			)
 			return response.data.unique

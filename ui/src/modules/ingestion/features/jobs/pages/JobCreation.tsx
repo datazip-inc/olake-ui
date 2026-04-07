@@ -8,12 +8,14 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link, useLocation } from "react-router-dom"
 import { v4 as uuidv4 } from "uuid"
 
+import {
+	TestConnectionFailureModal,
+	TestConnectionModal,
+	TestConnectionSuccessModal,
+} from "@/common/components/modals"
 import { TEST_CONNECTION_STATUS } from "@/common/constants"
 import type { TestConnectionError } from "@/common/types"
 import {
-	TestConnectionModal,
-	TestConnectionSuccessModal,
-	TestConnectionFailureModal,
 	EntitySavedModal,
 	EntityCancelModal,
 } from "@/modules/ingestion/common/components"
@@ -326,7 +328,7 @@ const JobCreation: React.FC = () => {
 	}
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className="flex h-full flex-col">
 			{/* Header */}
 			<div className="bg-white px-6 pb-3 pt-6">
 				<div className="flex items-center justify-between">
@@ -338,7 +340,12 @@ const JobCreation: React.FC = () => {
 							<ArrowLeftIcon className="mr-1 size-5" />
 						</Link>
 
-						<div className="text-2xl font-bold"> Create Job</div>
+						<div
+							className="text-2xl font-bold"
+							data-testid="create-job-page-title"
+						>
+							Create Job
+						</div>
 					</div>
 					{/* Stepper */}
 					<StepProgress currentStep={currentStep} />
@@ -404,6 +411,8 @@ const JobCreation: React.FC = () => {
 						</button>
 					)}
 					<button
+						type="button"
+						data-testid="create-job-wizard-submit"
 						className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-1 font-light text-white hover:bg-primary-600"
 						onClick={handleNext}
 					>
@@ -428,6 +437,7 @@ const JobCreation: React.FC = () => {
 					<TestConnectionFailureModal
 						open={showFailureModal}
 						onClose={() => setShowFailureModal(false)}
+						onEdit={() => setShowFailureModal(false)}
 						connectionType={connectionTestType}
 						testConnectionError={testConnectionError}
 					/>
