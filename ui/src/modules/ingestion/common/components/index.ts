@@ -1,6 +1,5 @@
 export { default as DocumentationPanel } from "./DocumentationPanel"
 export { default as EndpointTitle } from "./EndpointTitle"
-export * from "./ErrorBoundary"
 export { default as FormField } from "./FormField"
 export { default as JobConnection } from "./JobConnection"
 export { default as LazyLoadingIndicator } from "./LazyLoadingIndicator"

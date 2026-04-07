@@ -39,14 +39,14 @@ export class CreateJobPage extends BasePage {
 		this.existingSourceSelect = page.getByTestId("existing-source")
 		this.existingDestinationSelect = page.getByTestId("existing-destination")
 		this.nextButton = page.getByRole("button", { name: "Next" })
-		this.createJobButton = page.getByRole("button", { name: "Create Job" })
+		this.createJobButton = page.getByTestId("create-job-wizard-submit")
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
 		this.syncAllCheckbox = page.getByRole("checkbox", { name: "Sync all" })
 		this.fullRefreshIncrementalRadio = page.getByRole("radio", {
 			name: "Full Refresh + Incremental",
 		})
 		this.frequencyDropdown = page.getByText("Every Minute")
-		this.pageTitle = page.locator("text=Create Job")
+		this.pageTitle = page.getByTestId("create-job-page-title")
 		this.jobsArrowButton = page.getByRole("button", { name: "Jobs →" })
 		this.sourceConnectorSelect = page.getByTestId("source-connector-select")
 		this.destinationConnectorSelect = page.getByTestId(
