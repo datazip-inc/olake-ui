@@ -1,6 +1,6 @@
 module github.com/datazip-inc/olake-ui/server
 
-go 1.25.8
+go 1.25.9
 
 require (
 	cloud.google.com/go/artifactregistry v1.20.0
