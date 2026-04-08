@@ -102,18 +102,20 @@ export const generateCronExpression = (
 //   #         → "nth weekday of month" modifier (e.g. 5#3 = 3rd Friday)
 const QUARTZ_TOKEN_REGEX = /\?|(?<![A-Za-z])L(?![A-Za-z])|\dW|#/
 
-export const isValidCronExpression = (cron: string): boolean => {
-	// Check if the cron expression has 5 or 7 parts
+// Returns null if the cron expression is valid, or an error string if error.
+export const isValidCronExpression = (cron: string): string | null => {
 	const parts = cron.trim().split(" ")
-	if (parts.length !== 5 && parts.length !== 7) return false
+	if (parts.length !== 5 && parts.length !== 7)
+		return `Cron expression must have 5 or 7 fields, but got ${parts.length}`
 
-	if (QUARTZ_TOKEN_REGEX.test(cron)) return false
+	if (QUARTZ_TOKEN_REGEX.test(cron))
+		return "Quartz-specific tokens (?, L, W, #) are not supported."
 
 	try {
 		new Cron(cron)
-		return true
-	} catch {
-		return false
+		return null
+	} catch (error) {
+		return error instanceof Error ? error.message : "Invalid cron expression"
 	}
 }
 
@@ -223,8 +225,9 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 		message.error("Cron expression is required")
 		return false
 	}
-	if (!isValidCronExpression(cronExpression)) {
-		message.error("Invalid cron expression")
+	const error = isValidCronExpression(cronExpression)
+	if (error) {
+		message.error(error)
 		return false
 	}
 	return true

@@ -9,16 +9,18 @@ export const getCronFromConfig = (config: CronConfigOption) => {
 		: config.frequency
 }
 
-export const isValidCronExpression = (cron: string): boolean => {
+// Returns null if the cron expression is valid, or an error string if error.
+export const isValidCronExpression = (cron: string): string | null => {
 	const parts = cron.trim().split(" ")
 	// Optimization supports 5 field cron expressions only
-	if (parts.length !== 5) return false
+	if (parts.length !== 5)
+		return `Cron expression must have 5 fields, but got ${parts.length}`
 
 	try {
 		new Cron(cron)
-		return true
-	} catch {
-		return false
+		return null
+	} catch (error) {
+		return error instanceof Error ? error.message : "Invalid cron expression"
 	}
 }
 
@@ -31,7 +33,8 @@ export const getEarliestNextRun = (
 
 	for (const config of configs) {
 		const cron = getCronFromConfig(config).trim()
-		if (!cron || !isValidCronExpression(cron)) continue
+		const cronError = isValidCronExpression(cron)
+		if (!cron || cronError) continue
 
 		try {
 			const next = new Cron(cron, { timezone: "UTC" }).nextRun()
@@ -50,7 +53,8 @@ export const getEarliestNextRun = (
 
 export const getNextRuns = (cron: string): string[] => {
 	const normalizedCron = cron.trim()
-	if (!normalizedCron || !isValidCronExpression(normalizedCron)) return []
+	const cronError = isValidCronExpression(normalizedCron)
+	if (!normalizedCron || cronError) return []
 
 	try {
 		return new Cron(normalizedCron, { timezone: "UTC" })

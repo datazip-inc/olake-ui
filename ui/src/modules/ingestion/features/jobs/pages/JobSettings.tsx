@@ -103,7 +103,8 @@ const JobSettings: React.FC = () => {
 	const getParsedDate = (value: Date) => value.toUTCString()
 
 	const updateNextRuns = (cronValue: string) => {
-		if (!cronValue || !isValidCronExpression(cronValue)) {
+		const cronError = isValidCronExpression(cronValue)
+		if (!cronValue || cronError) {
 			setNextRuns([])
 			return
 		}
