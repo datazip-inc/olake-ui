@@ -87,6 +87,7 @@ func (h *Handler) GetAllUsers(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse{data=dto.UserResponse}
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "user not found"
 // @Failure 413 {object} dto.Error413Response "payload too large"
 // @Failure 500 {object} dto.Error500Response "failed to update user"
 // @Router /api/v1/users/{id} [put]
@@ -109,7 +110,11 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		Email:    req.Email,
 	})
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to update user: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrUserNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to update user: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(c, "user updated successfully", dto.UserResponse{
@@ -126,6 +131,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 // @Success 200 {object} dto.JSONResponse "user deleted successfully"
 // @Failure 400 {object} dto.Error400Response "failed to validate request"
 // @Failure 401 {object} dto.Error401Response "unauthorized"
+// @Failure 404 {object} dto.Error404Response "user not found"
 // @Failure 500 {object} dto.Error500Response "failed to delete user"
 // @Router /api/v1/users/{id} [delete]
 func (h *Handler) DeleteUser(c *gin.Context) {
@@ -137,7 +143,11 @@ func (h *Handler) DeleteUser(c *gin.Context) {
 	logger.Infof("Delete user initiated user_id[%d]", id)
 
 	if err := h.etl.DeleteUser(c.Request.Context(), id); err != nil {
-		utils.ErrorResponse(c, http.StatusInternalServerError, fmt.Sprintf("failed to delete user: %s", err), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, constants.ErrUserNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.ErrorResponse(c, status, fmt.Sprintf("failed to delete user: %s", err), err)
 		return
 	}
 	utils.SuccessResponse(c, "user deleted successfully", nil)

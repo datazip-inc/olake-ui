@@ -32,6 +32,7 @@ var jobListColumns = []string{
 // decryptJobConfig decrypts Config fields in related Source and Destination
 func (db *Database) decryptJobConfig(job *models.Job) error {
 	// Decrypt Source Config if loaded
+	// TODO: verify why source_id and dest_id coming nil, it must not nil
 	if job.Source != nil {
 		decryptedConfig, err := utils.Decrypt(job.Source.Config)
 		if err != nil {
@@ -91,6 +92,8 @@ func (db *Database) ListJobs() ([]*models.Job, error) {
 
 // GetAllJobsByProjectID retrieves all jobs belonging to a specific project,
 // including related Source and Destination, sorted by latest update time.
+// Only fetches columns needed for JobResponse
+// Excludes: streams_config, state (not needed for JobResponse).
 func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error) {
 	var jobs []*models.Job
 
@@ -98,9 +101,8 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 		Model(&models.Job{}).
 		Select(jobListColumns).
 		Where("project_id = ?", projectID).
-		// TODO_BEFORE_MERGE: check if we need these Source and Destination preload
-		// Preload("Source").
-		// Preload("Destination").
+		Preload("Source").
+		Preload("Destination").
 		Preload("CreatedBy").
 		Preload("UpdatedBy").
 		Order("updated_at DESC").

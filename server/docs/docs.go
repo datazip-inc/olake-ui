@@ -2552,6 +2552,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
                     "413": {
                         "description": "payload too large",
                         "schema": {
@@ -2598,6 +2604,12 @@ const docTemplate = `{
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {

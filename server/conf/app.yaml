@@ -24,6 +24,7 @@ CONTAINER_REGISTRY_BASE: registry-1.docker.io
 # Prefer setting this via environment.
 OLAKE_SECRET_KEY: ""
 
+# Optimization module configuration
 ENABLE_OPTIMIZATION: false
 OPTIMIZATION_BASE_URL: http://127.0.0.1:1630
 OPTIMIZATION_GROUP: spark-container

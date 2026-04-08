@@ -51,7 +51,13 @@ func (db *Database) ListUsers() ([]*models.User, error) {
 func (db *Database) GetUserByID(id int) (*models.User, error) {
 	user := &models.User{}
 	err := db.conn.First(user, "id = ?", id).Error
-	return user, err
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("%w: user not found id[%d]", constants.ErrUserNotFound, id)
+		}
+		return nil, err
+	}
+	return user, nil
 }
 
 func (db *Database) UpdateUser(user *models.User) error {
@@ -64,7 +70,7 @@ func (db *Database) DeleteUser(id int) error {
 		return result.Error
 	}
 	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+		return constants.ErrUserNotFound
 	}
 	return nil
 }

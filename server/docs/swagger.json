@@ -2543,6 +2543,12 @@
                             "$ref": "#/definitions/dto.Error401Response"
                         }
                     },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
+                        }
+                    },
                     "413": {
                         "description": "payload too large",
                         "schema": {
@@ -2589,6 +2595,12 @@
                         "description": "unauthorized",
                         "schema": {
                             "$ref": "#/definitions/dto.Error401Response"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.Error404Response"
                         }
                     },
                     "500": {

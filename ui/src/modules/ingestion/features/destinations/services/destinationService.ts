@@ -146,7 +146,7 @@ export const destinationService = {
 
 	getDestinationVersions: async (type: string) => {
 		const response = await api.get<{ version: string[] }>(
-			`${API_CONFIG.ENDPOINTS.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions`,
+			`${API_CONFIG.ENDPOINTS.ETL.DESTINATIONS(API_CONFIG.PROJECT_ID)}/versions`,
 			{
 				params: { type },
 				timeout: 0,

@@ -142,8 +142,7 @@ func (db *Database) GetMinimumSourceVersion() (string, error) {
 
 	// Find minimum version using semver comparison
 	minVersion := ""
-	for _, v := range versions {
-		version := v
+	for _, version := range versions {
 		if version == "" {
 			continue
 		}

@@ -57,6 +57,9 @@ func (s *Service) Signup(_ context.Context, req *dto.CreateUserRequest) error {
 func (s Service) GetUserByID(userID int) (*models.User, error) {
 	user, err := s.db.GetUserByID(userID)
 	if err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to find user: %s", err)
 	}
 	return user, nil
@@ -65,6 +68,9 @@ func (s Service) GetUserByID(userID int) (*models.User, error) {
 func (s Service) ValidateUser(userID int) error {
 	_, err := s.db.GetUserByID(userID)
 	if err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return err
+		}
 		return fmt.Errorf("failed to validate user: %s", err)
 	}
 	return nil

@@ -40,6 +40,9 @@ func (s Service) GetAllUsers(_ context.Context) ([]*models.User, error) {
 func (s Service) UpdateUser(_ context.Context, id int, req *models.User) (*models.User, error) {
 	existingUser, err := s.db.GetUserByID(id)
 	if err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return nil, fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		}
 		return nil, fmt.Errorf("failed to find user: %s", err)
 	}
 
@@ -55,6 +58,9 @@ func (s Service) UpdateUser(_ context.Context, id int, req *models.User) (*model
 
 func (s Service) DeleteUser(_ context.Context, id int) error {
 	if err := s.db.DeleteUser(id); err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			return fmt.Errorf("%w: %v", constants.ErrUserNotFound, err)
+		}
 		return fmt.Errorf("failed to delete user: %s", err)
 	}
 	return nil
