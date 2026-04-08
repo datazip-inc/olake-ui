@@ -42,6 +42,7 @@ func New(cfg *appconfig.Config, h *handlers.Handler) *Server {
 
 	if h != nil {
 		routes.RegisterRoutes(engine, h)
+		configureNoRoute(engine, cfg, h)
 	}
 
 	server := &http.Server{
@@ -120,13 +121,39 @@ func configureBaseRoutes(engine *gin.Engine) {
 func configureStaticFrontend(engine *gin.Engine) {
 	engine.Static("/assets", filepath.Join(frontendDistPath, "assets"))
 	engine.StaticFile("/favicon.ico", filepath.Join(frontendDistPath, "favicon.ico"))
+}
+
+func configureNoRoute(engine *gin.Engine, cfg *appconfig.Config, h *handlers.Handler) {
+	moduleHandlers := make([]routes.ModuleNoRouteHandler, 0, 1)
+	if h != nil && h.Optimization != nil {
+		// Register optimization as a module fallback for unmatched /api/opt/v1/*.
+		// This avoids route tree conflicts from wildcard catch-all registration.
+		moduleHandlers = append(moduleHandlers, routes.ModuleNoRouteHandler{
+			PathPrefix:     "/api/opt/v1/",
+			AuthMiddleware: h.AuthMiddleware(),
+			Forward:        h.Optimization.PiggyBacking,
+		})
+	}
+
 	engine.NoRoute(func(c *gin.Context) {
+		// Give module-level fallbacks first chance to handle unmatched paths.
+		if routes.HandleModulesNoRoute(c, moduleHandlers...) {
+			return
+		}
+
 		path := c.Request.URL.Path
+		// Never serve SPA HTML for API/internal paths; return proper JSON 404.
 		if strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/internal/") {
 			c.JSON(http.StatusNotFound, gin.H{"message": "not found", "success": false})
 			return
 		}
-		c.File(filepath.Join(frontendDistPath, "index.html"))
+
+		if cfg.RunMode != "localdev" {
+			c.File(filepath.Join(frontendDistPath, "index.html"))
+			return
+		}
+
+		c.JSON(http.StatusNotFound, gin.H{"message": "not found", "success": false})
 	})
 }
 

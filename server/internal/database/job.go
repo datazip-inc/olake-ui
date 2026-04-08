@@ -98,8 +98,9 @@ func (db *Database) ListJobsByProjectID(projectID string) ([]*models.Job, error)
 		Model(&models.Job{}).
 		Select(jobListColumns).
 		Where("project_id = ?", projectID).
-		Preload("Source").
-		Preload("Destination").
+		// TODO_BEFORE_MERGE: check if we need these Source and Destination preload
+		// Preload("Source").
+		// Preload("Destination").
 		Preload("CreatedBy").
 		Preload("UpdatedBy").
 		Order("updated_at DESC").

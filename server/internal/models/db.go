@@ -78,6 +78,7 @@ func (d *Destination) TableName() string {
 	return constants.TableNameMap[constants.DestinationTable]
 }
 
+// TODO_BEFORE_MERGE: confirm with team if we need to perform hard/soft delete
 // Job represents a synchronization job
 type Job struct {
 	BaseModel

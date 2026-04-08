@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/datazip-inc/olake-ui/server/internal/handlers"
@@ -92,19 +91,38 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 		// tables: view
 		opt.GET("/:catalog/:database/tables", optHandler.GetTablesWithDetails)
-
-		// Piggy-backing: forward unmatched /api/opt/v1/* requests to upstream.
-		// opt.Any("/*any") cannot be used — httprouter panics when a wildcard (*any)
-		// and a named-param (:catalog) coexist as siblings at the same tree depth.
-		// engine.NoRoute is the conflict-free alternative; auth is applied explicitly
-		// since NoRoute handlers bypass group middleware.
-		// TODO: check if we need to modify the engine.NoRoute to opt group.
-		engine.NoRoute(h.AuthMiddleware(), func(c *gin.Context) {
-			if strings.HasPrefix(c.Request.URL.Path, "/api/opt/v1/") {
-				optHandler.PiggyBacking(c)
-				return
-			}
-			c.JSON(http.StatusNotFound, gin.H{"message": "route not found"})
-		})
 	}
+}
+
+type ModuleNoRouteHandler struct {
+	// PathPrefix decides which unmatched paths belong to this module fallback.
+	PathPrefix     string
+	// AuthMiddleware is optional and runs before forwarding.
+	AuthMiddleware gin.HandlerFunc
+	// Forward handles the unmatched request (proxy/handler/catch-all).
+	Forward        gin.HandlerFunc
+}
+
+// Module-specific unmatched paths (e.g. /api/opt/v1/*) are delegated here so
+// httpserver can keep a single engine-level NoRoute policy.
+func HandleModulesNoRoute(c *gin.Context, handlers ...ModuleNoRouteHandler) bool {
+	for _, module := range handlers {
+		if !strings.HasPrefix(c.Request.URL.Path, module.PathPrefix) {
+			continue
+		}
+
+		if module.AuthMiddleware != nil {
+			module.AuthMiddleware(c)
+			// Aborted means middleware already wrote a response (e.g. 401).
+			// Treat it as handled and stop fallback processing.
+			if c.IsAborted() {
+				return true
+			}
+		}
+
+		module.Forward(c)
+		return true
+	}
+
+	return false
 }
