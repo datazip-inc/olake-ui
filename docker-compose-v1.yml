@@ -27,8 +27,7 @@ x-envs:
 
 services:
   olake-ui:
-    # TODO: change image tag
-    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:stag-v0.4.0-dev1
+    image: ${CONTAINER_REGISTRY_BASE:-registry-1.docker.io}/olakego/ui:latest
     pull_policy: always
     container_name: olake-ui
     environment:
@@ -206,9 +205,8 @@ services:
         echo "==> Installing curl..."
         apt-get update -qq && apt-get install -y -qq curl ca-certificates --no-install-recommends >/dev/null 2>&1
 
-        # TODO: change branch from feat/fusion-compose to main once the PR is merged
         echo "==> Fetching Fusion config files from GitHub..."
-        BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/feat/fusion-compose/optimization"
+        BASE="https://raw.githubusercontent.com/datazip-inc/olake-ui/master/optimization"
         curl -fsSL "$${BASE}/config.yaml"      -o /fusion-config/config.yaml
         curl -fsSL "$${BASE}/kind-config.yaml" -o /fusion-config/kind-config.yaml
         curl -fsSL "$${BASE}/spark-rbac.yaml"  -o /fusion-config/spark-rbac.yaml
@@ -217,8 +215,7 @@ services:
     restart: "no"
 
   fusion:
-    # TODO: change dev-v9 to latest when promoting to prod
-    image: olakego/fusion:dev-v9
+    image: olakego/fusion:v0.1.0
     container_name: olake-fusion
     profiles:
       - fusion
@@ -406,9 +403,8 @@ services:
       - -c
       - |
         set -e
-        # TODO: change dev-v9 to latest when promoting to prod
-        IMAGE="olakego/fusion-spark:dev-v9"
-        IMAGE_REF="docker.io/olakego/fusion-spark:dev-v9"
+        IMAGE="olakego/fusion-spark:v0.1.0"
+        IMAGE_REF="docker.io/olakego/fusion-spark:v0.1.0"
 
         if ! docker image inspect $$IMAGE >/dev/null 2>&1; then
           echo "==> Image $$IMAGE not found locally — skipping."
@@ -454,8 +450,7 @@ services:
         echo "==> Done — image available on all workers."
 
   spark-copy:
-    # TODO: change dev-v9 to latest when promoting to prod
-    image: olakego/fusion-spark:dev-v9
+    image: olakego/fusion-spark:v0.1.0
     container_name: fusion-spark-copy
     profiles:
       - fusion

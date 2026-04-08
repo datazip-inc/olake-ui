@@ -124,8 +124,7 @@ containers:
       job-uri: "local:///opt/spark/usrlib/optimizer-job.jar"
       export.HADOOP_USER_NAME: spark
       export.SPARK_CONF_DIR: /opt/spark/conf/
-      # TODO: change dev-v9
-      spark-conf.spark.kubernetes.container.image: "olakego/fusion-spark:dev-v9"
+      spark-conf.spark.kubernetes.container.image: "olakego/fusion-spark:v0.1.0"
       spark-conf.spark.kubernetes.container.image.pullPolicy: "IfNotPresent"
       spark-conf.spark.kubernetes.namespace: spark
       spark-conf.spark.kubernetes.authenticate.driver.serviceAccountName: spark
