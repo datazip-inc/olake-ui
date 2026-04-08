@@ -1,7 +1,13 @@
 package handlers
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+)
 
+// ServeSwagger serves the Swagger UI and static swagger files
 func (h *Handler) ServeSwagger(c *gin.Context) {
-	h.ETL.ServeSwagger(c)
+	httpSwagger.Handler(
+		httpSwagger.URL("doc.json"),
+	).ServeHTTP(c.Writer, c.Request)
 }

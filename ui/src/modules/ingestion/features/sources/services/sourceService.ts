@@ -1,6 +1,6 @@
 import { AxiosError } from "axios"
 
-import { SpecResponse } from "@/common/types"
+import { SpecResponse, TestConnectionResponse } from "@/common/types"
 import { API_CONFIG } from "@/config"
 import { trackTestConnection } from "@/core/analytics/analyticsUtils"
 import { api } from "@/core/api"
@@ -8,7 +8,6 @@ import {
 	Entity,
 	EntityBase,
 	EntityTestRequest,
-	EntityTestResponse,
 	StreamsDataStructure,
 } from "@/modules/ingestion/common/types"
 
@@ -16,7 +15,7 @@ export const sourceService = {
 	getSources: async (): Promise<Entity[]> => {
 		try {
 			const response = await api.get<Entity[]>(
-				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
+				API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID),
 				{ timeout: 0 }, // Disable timeout for this request since it can take longer
 			)
 
@@ -33,7 +32,7 @@ export const sourceService = {
 	getSource: async (id: string): Promise<Entity> => {
 		try {
 			const response = await api.get<Entity>(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
 			)
 
 			const source = {
@@ -51,7 +50,7 @@ export const sourceService = {
 	createSource: async (source: EntityBase) => {
 		try {
 			const response = await api.post<EntityBase>(
-				API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID),
+				API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID),
 				source,
 			)
 			return response.data
@@ -64,7 +63,7 @@ export const sourceService = {
 	updateSource: async (id: string, source: EntityBase) => {
 		try {
 			const response = await api.put<Entity>(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
 				{
 					name: source.name,
 					type: source.type.toLowerCase(),
@@ -86,7 +85,7 @@ export const sourceService = {
 	deleteSource: async (id: string) => {
 		try {
 			await api.delete(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/${id}`,
 				{ showNotification: true },
 			)
 		} catch (error) {
@@ -100,8 +99,8 @@ export const sourceService = {
 		existing: boolean = false,
 	) => {
 		try {
-			const response = await api.post<EntityTestResponse>(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
+			const response = await api.post<TestConnectionResponse>(
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/test`,
 				{
 					type: source.type.toLowerCase(),
 					version: source.version,
@@ -166,7 +165,7 @@ export const sourceService = {
 	) => {
 		try {
 			const response = await api.post<SpecResponse>(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/spec`,
 				{
 					type: type.toLowerCase(),
 					version,
@@ -196,7 +195,7 @@ export const sourceService = {
 	) => {
 		try {
 			const response = await api.post<StreamsDataStructure>(
-				`${API_CONFIG.ENDPOINTS.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
+				`${API_CONFIG.ENDPOINTS.ETL.SOURCES(API_CONFIG.PROJECT_ID)}/streams`,
 				{
 					name,
 					type,
@@ -206,12 +205,15 @@ export const sourceService = {
 					config,
 					max_discover_threads,
 				},
-				{ timeout: 0, signal },
+				{ timeout: 0, signal, disableErrorNotification: true },
 			)
 			return response.data
-		} catch (error) {
+		} catch (error: any) {
 			console.error("Error getting source streams:", error)
-			throw error
+			const serverMessage = error?.response?.data?.message
+			throw new Error(
+				serverMessage ?? error?.message ?? "Failed to get source streams",
+			)
 		}
 	},
 }

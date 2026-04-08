@@ -16,6 +16,12 @@ import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import {
+	ErrorLogsModal,
+	TestConnectionFailureModal,
+	TestConnectionModal,
+	TestConnectionSuccessModal,
+} from "@/common/components/modals"
+import {
 	TEST_CONNECTION_STATUS,
 	transformErrors,
 	OLAKE_LATEST_VERSION_URL,
@@ -23,12 +29,8 @@ import {
 import { TestConnectionError } from "@/common/types"
 import { trimFormDataStrings, handleSpecResponse } from "@/common/utils"
 import {
-	TestConnectionModal,
-	TestConnectionSuccessModal,
-	TestConnectionFailureModal,
 	EntitySavedModal,
 	EntityCancelModal,
-	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -499,7 +501,7 @@ const CreateDestination: React.FC = () => {
 	}
 
 	return (
-		<div className="flex h-screen">
+		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
 				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link
@@ -508,7 +510,12 @@ const CreateDestination: React.FC = () => {
 					>
 						<ArrowLeftIcon className="mr-1 size-5" />
 					</Link>
-					<div className="text-lg font-bold">Create destination</div>
+					<div
+						className="text-lg font-bold"
+						data-testid="create-destination-page-title"
+					>
+						Create destination
+					</div>
 				</div>
 
 				<div className="flex flex-1 overflow-hidden">
@@ -571,6 +578,7 @@ const CreateDestination: React.FC = () => {
 			<TestConnectionFailureModal
 				open={showFailureModal}
 				onClose={() => setShowFailureModal(false)}
+				onEdit={() => setShowFailureModal(false)}
 				connectionType="destination"
 				testConnectionError={testConnectionError}
 			/>
@@ -587,12 +595,16 @@ const CreateDestination: React.FC = () => {
 				type="destination"
 				navigateTo="destinations"
 			/>
-			<SpecFailedModal
+			<ErrorLogsModal
 				open={showSpecFailedModal}
 				onClose={() => setShowSpecFailedModal(false)}
-				fromSource={false}
+				title="Destination Spec Load Failed"
 				error={specError ?? ""}
-				onTryAgain={refetchSpec}
+				onAction={() => {
+					refetchSpec()
+					setShowSpecFailedModal(false)
+				}}
+				actionButtonText="Try Again"
 			/>
 		</div>
 	)
