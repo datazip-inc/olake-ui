@@ -11,10 +11,11 @@ export const getCronFromConfig = (config: CronConfigOption) => {
 
 export const isValidCronExpression = (cron: string): boolean => {
 	const parts = cron.trim().split(" ")
+	// Optimization supports 5 field cron expressions only
 	if (parts.length !== 5) return false
 
 	try {
-		new Cron(cron, { timezone: "UTC" })
+		new Cron(cron)
 		return true
 	} catch {
 		return false
