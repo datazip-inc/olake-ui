@@ -96,11 +96,11 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 
 type ModuleNoRouteHandler struct {
 	// PathPrefix decides which unmatched paths belong to this module fallback.
-	PathPrefix     string
-	// AuthMiddleware is optional and runs before forwarding.
-	AuthMiddleware gin.HandlerFunc
+	PathPrefix string
+	// Middleware is optional and runs before forwarding.
+	Middleware gin.HandlerFunc
 	// Forward handles the unmatched request (proxy/handler/catch-all).
-	Forward        gin.HandlerFunc
+	Forward gin.HandlerFunc
 }
 
 // Module-specific unmatched paths (e.g. /api/opt/v1/*) are delegated here so
@@ -111,8 +111,8 @@ func HandleModulesNoRoute(c *gin.Context, handlers ...ModuleNoRouteHandler) bool
 			continue
 		}
 
-		if module.AuthMiddleware != nil {
-			module.AuthMiddleware(c)
+		if module.Middleware != nil {
+			module.Middleware(c)
 			// Aborted means middleware already wrote a response (e.g. 401).
 			// Treat it as handled and stop fallback processing.
 			if c.IsAborted() {

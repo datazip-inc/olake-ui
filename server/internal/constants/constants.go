@@ -197,11 +197,10 @@ func checkForRequiredVariables() {
 	// required env values for database: if a full DSN is provided, we don't require individual DB parts.
 	if strings.TrimSpace(cfg.PostgresDSN) != "" {
 		return
-	} else {
-		for name, value := range databaseEnvs {
-			if strings.TrimSpace(value) == "" {
-				panic("Required config variable not found: " + name)
-			}
+	}
+	for name, value := range databaseEnvs {
+		if strings.TrimSpace(value) == "" {
+			panic("Required config variable not found: " + name)
 		}
 	}
 }
