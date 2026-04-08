@@ -123,7 +123,8 @@ const Jobs: React.FC = () => {
 		}
 	})()
 
-	const showEmpty = !isLoadingJobs && jobs.length === 0
+	const showEmpty =
+		!isLoadingJobs && jobs.length === 0 && savedJobs.length === 0
 
 	const tabItems = [
 		{ key: JOB_STATUS.ACTIVE, label: "Active jobs" },
@@ -156,6 +157,8 @@ const Jobs: React.FC = () => {
 					<h1 className="text-2xl font-bold">Jobs</h1>
 				</div>
 				<button
+					type="button"
+					data-testid="create-job-button"
 					className="flex items-center justify-center gap-1 rounded-md bg-primary px-4 py-2 font-light text-white hover:bg-primary-600"
 					onClick={handleCreateJob}
 				>
@@ -168,42 +171,46 @@ const Jobs: React.FC = () => {
 				A list of all your jobs stacked at one place for you to see
 			</p>
 
-			<Tabs
-				activeKey={activeTab}
-				onChange={key => setActiveTab(key as JobStatus)}
-				items={tabItems.map(tab => ({
-					key: tab.key,
-					label: tab.label,
-					children: isLoadingJobs ? (
-						<div className="flex items-center justify-center py-16">
-							<Spin
-								size="large"
-								tip="Loading jobs..."
-							/>
-						</div>
-					) : tab.key === JOB_STATUS.ACTIVE && showEmpty ? (
-						<JobEmptyState />
-					) : filteredJobs.length === 0 ? (
-						<Empty
-							image={Empty.PRESENTED_IMAGE_SIMPLE}
-							description="No jobs configured"
-							className="flex flex-col items-center"
-						/>
-					) : (
-						<JobTable
-							jobs={filteredJobs}
-							loading={isLoadingJobs || isRefreshingJobs}
-							jobType={activeTab}
-							onRefresh={handleRefreshJobs}
-							onSync={handleSyncJob}
-							onEdit={handleEditJob}
-							onPause={handlePauseJob}
-							onDelete={handleDeleteJob}
-							onCancelJob={handleCancelJob}
-						/>
-					),
-				}))}
-			/>
+			{showEmpty ? (
+				<JobEmptyState />
+			) : isLoadingJobs ? (
+				<div className="flex items-center justify-center py-16">
+					<Spin
+						size="large"
+						tip="Loading jobs..."
+					/>
+				</div>
+			) : (
+				<Tabs
+					activeKey={activeTab}
+					onChange={key => setActiveTab(key as JobStatus)}
+					items={tabItems.map(tab => ({
+						key: tab.key,
+						label: tab.label,
+						children:
+							filteredJobs.length === 0 ? (
+								<Empty
+									image={Empty.PRESENTED_IMAGE_SIMPLE}
+									description="No jobs configured"
+									className="flex flex-col items-center"
+								/>
+							) : (
+								<JobTable
+									jobs={filteredJobs}
+									loading={isLoadingJobs}
+									refreshLoading={isRefreshingJobs}
+									jobType={activeTab}
+									onRefresh={handleRefreshJobs}
+									onSync={handleSyncJob}
+									onEdit={handleEditJob}
+									onPause={handlePauseJob}
+									onDelete={handleDeleteJob}
+									onCancelJob={handleCancelJob}
+								/>
+							),
+					}))}
+				/>
+			)}
 			<DeleteJobModal />
 		</div>
 	)

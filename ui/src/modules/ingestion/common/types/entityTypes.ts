@@ -1,5 +1,3 @@
-import { TestConnectionStatus } from "@/common/types"
-
 // Entity models a source/destination record returned by ingestion APIs
 export interface Entity {
 	id: number
@@ -35,13 +33,6 @@ export interface EntityTestRequest {
 	version: string
 	config: string
 }
-export interface EntityTestResponse {
-	connection_result: {
-		message: string
-		status: TestConnectionStatus
-	}
-	logs: LogEntry[]
-}
 
 export type EntityType = "source" | "destination"
 
@@ -66,10 +57,4 @@ export interface EntitySavedModalProps {
 	onComplete?: () => void
 	fromJobFlow: boolean
 	entityName?: string
-}
-
-export interface LogEntry {
-	level: string
-	time: string
-	message: string
 }

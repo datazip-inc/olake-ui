@@ -16,8 +16,8 @@ export const jobService = {
 	getJobs: async (showNotification?: boolean): Promise<Job[]> => {
 		try {
 			const response = await api.get<Job[]>(
-				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
-				{ showNotification: showNotification, timeout: 0 },
+				API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID),
+				{ timeout: 0, showNotification: showNotification },
 			)
 
 			const jobs = response.data.map(job => ({
@@ -38,7 +38,7 @@ export const jobService = {
 	getJob: async (id: string): Promise<Job> => {
 		try {
 			const response = await api.get<Job>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 			)
 
 			const job = {
@@ -59,7 +59,7 @@ export const jobService = {
 	createJob: async (job: JobBase): Promise<Job> => {
 		try {
 			const response = await api.post<Job>(
-				API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID),
+				API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID),
 				job,
 			)
 			return response.data
@@ -72,7 +72,7 @@ export const jobService = {
 	updateJob: async (id: string, job: Partial<Job>): Promise<Job> => {
 		try {
 			const response = await api.put<Job>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				job,
 				{ timeout: 30000, showNotification: true },
 			)
@@ -86,7 +86,7 @@ export const jobService = {
 	deleteJob: async (id: number): Promise<void> => {
 		try {
 			await api.delete(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}`,
 				{ showNotification: true },
 			)
 		} catch (error) {
@@ -98,7 +98,7 @@ export const jobService = {
 	cancelJob: async (id: string): Promise<string> => {
 		try {
 			const response = await api.get<any>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/cancel`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}/cancel`,
 				{ showNotification: true },
 			)
 			return response.data.message
@@ -111,7 +111,7 @@ export const jobService = {
 	syncJob: async (id: string): Promise<any> => {
 		try {
 			const response = await api.post<any>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/sync`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}/sync`,
 				{},
 				{ timeout: 0, showNotification: true }, // Disable timeout for this request since it can take longer
 			)
@@ -125,7 +125,7 @@ export const jobService = {
 	getJobTasks: async (id: string): Promise<JobTask[]> => {
 		try {
 			const response = await api.get<JobTask[]>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${id}/tasks`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${id}/tasks`,
 				{ timeout: 0, showNotification: true }, // Disable timeout for this request, no toast for fetching tasks
 			)
 			return response.data
@@ -154,7 +154,7 @@ export const jobService = {
 			})
 
 			const response = await api.post<TaskLogsResponse>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs?${query.toString()}`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/tasks/${taskId}/logs?${query.toString()}`,
 				{ file_path: filePath },
 				{ showNotification: false }, // no toast for logs
 			)
@@ -170,7 +170,7 @@ export const jobService = {
 	activateJob: async (jobId: string, activate: boolean): Promise<any> => {
 		try {
 			const response = await api.post<any>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/activate`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/activate`,
 				{ activate },
 				{ showNotification: true },
 			)
@@ -184,7 +184,7 @@ export const jobService = {
 	clearDestination: async (jobId: string): Promise<{ message: string }> => {
 		try {
 			const response = await api.post<{ message: string }>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
 			)
 
 			return response.data
@@ -198,7 +198,7 @@ export const jobService = {
 	): Promise<{ running: boolean }> => {
 		try {
 			const response = await api.get<{ running: boolean }>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/clear-destination`,
 			)
 
 			return response.data
@@ -215,7 +215,7 @@ export const jobService = {
 			const response = await api.post<{
 				difference_streams: StreamsDataStructure
 			}>(
-				`${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
+				`${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/stream-difference`,
 				{ updated_streams_config: streamsConfig },
 				{ timeout: 30000 },
 			)
@@ -231,7 +231,7 @@ export const jobService = {
 			file_path: filePath,
 		})
 
-		const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`
+		const url = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.ETL.JOBS(API_CONFIG.PROJECT_ID)}/${jobId}/logs/download?${params.toString()}`
 
 		try {
 			// Pre-flight check to verify endpoint is accessible

@@ -1,0 +1,279 @@
+import { Button } from "antd"
+import clsx from "clsx"
+import type React from "react"
+
+export type ColumnAlignment = "left" | "center" | "right"
+
+export type ColumnDef<TRow> = {
+	key: string
+	header: string | React.ReactNode
+	/** Percentage of total table width (0–100). Columns without width get 1fr. */
+	width?: number
+	/** Horizontal alignment for both header and cell content. Defaults to left. */
+	align?: ColumnAlignment
+	render: (row: TRow) => React.ReactNode
+}
+
+export type PaginationConfig = {
+	currentPage: number
+	totalPages: number
+	onPageChange: (page: number) => void
+}
+
+export type EmptyStateConfig = {
+	title: string
+	subtitle?: string
+	onRefetch?: () => void
+	refetchLabel?: string
+}
+
+const DEFAULT_EMPTY_STATE_CONFIG: EmptyStateConfig = {
+	title: "No Data",
+	subtitle: "Try adjusting your search or filters.",
+}
+
+export type DataTableProps<TRow> = {
+	columns: ColumnDef<TRow>[]
+	rows: TRow[]
+	rowKey: (row: TRow) => string
+
+	loading?: boolean
+	/** Number of skeleton rows to show while loading. Defaults to 6. */
+	loadingRowCount?: number
+
+	/**  empty State COnfiguration for table. Optional. */
+	emptyStateConfig?: EmptyStateConfig
+
+	/** Omit to disable pagination. */
+	pagination?: PaginationConfig
+
+	/** The expected number of rows per page, used to fix the table's minimum height. Defaults to 6. */
+	pageSize?: number
+
+	className?: string
+}
+
+const EmptyState: React.FC<EmptyStateConfig> = ({
+	title,
+	subtitle,
+	onRefetch,
+	refetchLabel = "Refetch",
+}) => (
+	<div className="flex h-56 items-center justify-center px-6">
+		<div className="text-center">
+			<p className="text-xl font-medium leading-7 text-olake-heading-strong">
+				{title}
+			</p>
+			{subtitle && (
+				<p className="mt-1 text-sm leading-[22px] text-olake-body">
+					{subtitle}
+				</p>
+			)}
+			{onRefetch && (
+				<Button
+					type="primary"
+					className="mt-4"
+					onClick={onRefetch}
+				>
+					{refetchLabel}
+				</Button>
+			)}
+		</div>
+	</div>
+)
+
+const TablePagination: React.FC<PaginationConfig> = ({
+	currentPage,
+	totalPages,
+	onPageChange,
+}) => {
+	const getVisiblePages = () => {
+		if (totalPages <= 7)
+			return Array.from({ length: totalPages }, (_, i) => i + 1)
+
+		if (currentPage <= 4) {
+			return [1, 2, 3, 4, 5, "...", totalPages]
+		}
+
+		if (currentPage >= totalPages - 3) {
+			return [
+				1,
+				"...",
+				totalPages - 4,
+				totalPages - 3,
+				totalPages - 2,
+				totalPages - 1,
+				totalPages,
+			]
+		}
+
+		return [
+			1,
+			"...",
+			currentPage - 1,
+			currentPage,
+			currentPage + 1,
+			"...",
+			totalPages,
+		]
+	}
+
+	const visiblePages = getVisiblePages()
+
+	return (
+		<div className="flex items-center gap-2 py-3 text-sm leading-5 text-olake-body-secondary">
+			<button
+				type="button"
+				className="flex h-6 items-center gap-1 rounded-md border border-olake-border px-2 disabled:opacity-40"
+				onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+				disabled={currentPage === 1}
+			>
+				<span>&lt;</span>
+				<span>Previous</span>
+			</button>
+
+			{visiblePages.map((page, index) => {
+				const isEllipsis = page === "..."
+				return (
+					<button
+						key={index}
+						type="button"
+						className={clsx(
+							"h-6 min-w-[24px] rounded-md border text-sm leading-5",
+							isEllipsis
+								? "border-transparent bg-transparent text-olake-body-secondary"
+								: currentPage === page
+									? "border-olake-border bg-olake-surface-muted text-olake-body-secondary"
+									: "border-olake-border bg-white text-olake-body-secondary hover:bg-gray-50",
+						)}
+						onClick={() =>
+							!isEllipsis ? onPageChange(page as number) : undefined
+						}
+						disabled={isEllipsis}
+					>
+						{page}
+					</button>
+				)
+			})}
+
+			<button
+				type="button"
+				className="flex h-6 items-center gap-1 rounded-md border border-olake-border px-2 disabled:opacity-40"
+				onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+				disabled={currentPage === totalPages}
+			>
+				<span>Next</span>
+				<span>&gt;</span>
+			</button>
+		</div>
+	)
+}
+
+function DataTable<TRow>({
+	columns,
+	rows,
+	rowKey,
+	loading = false,
+	loadingRowCount = 6,
+	emptyStateConfig,
+	pagination,
+	pageSize = 6,
+	className,
+}: DataTableProps<TRow>) {
+	const getAlignmentClass = (align: ColumnAlignment = "left") => {
+		switch (align) {
+			case "center":
+				return "text-center"
+			case "right":
+				return "text-right"
+			case "left":
+			default:
+				return "text-left"
+		}
+	}
+
+	const gridTemplateColumns = columns
+		.map(col => {
+			// default to 1fr if width is invalid or not set
+			if (col.width === undefined) return "1fr"
+			if (col.width <= 0 || col.width > 100) return "1fr"
+
+			return `${col.width}%`
+		})
+		.join(" ")
+
+	const gridStyle: React.CSSProperties = { gridTemplateColumns }
+
+	// Calculate fixed height: 48px header + (pageSize * 56px per row) + 2px borders
+	const tableMinHeight = 48 + pageSize * 56 + 2
+
+	return (
+		<div className="flex flex-col">
+			<div style={{ minHeight: `${tableMinHeight}px` }}>
+				<div
+					className={clsx(
+						"overflow-hidden rounded-lg border border-olake-border",
+						className,
+					)}
+				>
+					{/* Header */}
+					<div
+						className="grid h-12 items-center gap-4 bg-olake-surface-subtle px-6 text-xs font-medium leading-5 text-olake-text-secondary"
+						style={gridStyle}
+					>
+						{columns.map(col => (
+							<div
+								key={`header-${col.key}`}
+								className={getAlignmentClass(col.align)}
+							>
+								{col.header}
+							</div>
+						))}
+					</div>
+
+					{/* Loading skeleton */}
+					{loading &&
+						Array.from({ length: loadingRowCount }).map((_, idx) => (
+							<div
+								key={`loading-${idx}`} // skeleton rows have no data identity; index is acceptable
+								className="h-14 border-t border-olake-border bg-white"
+							/>
+						))}
+
+					{/* Data rows */}
+					{!loading &&
+						rows.map(row => (
+							<div
+								key={rowKey(row)}
+								className="grid h-14 items-center gap-4 border-t border-olake-border px-6 text-sm leading-[22px] text-olake-text hover:bg-olake-surface-subtle/50"
+								style={gridStyle}
+							>
+								{columns.map(col => (
+									<div
+										key={`cell-${col.key}`}
+										className={getAlignmentClass(col.align)}
+									>
+										{col.render(row)}
+									</div>
+								))}
+							</div>
+						))}
+
+					{/* Empty state */}
+					{!loading && rows.length === 0 && (
+						<EmptyState {...(emptyStateConfig ?? DEFAULT_EMPTY_STATE_CONFIG)} />
+					)}
+				</div>
+			</div>
+
+			{/* Pagination */}
+			{pagination && (
+				<div className="mt-4 flex justify-end">
+					<TablePagination {...pagination} />
+				</div>
+			)}
+		</div>
+	)
+}
+
+export default DataTable

@@ -18,6 +18,12 @@ import CustomFieldTemplate from "@/common/components/form/CustomFieldTemplate"
 import ObjectFieldTemplate from "@/common/components/form/ObjectFieldTemplate"
 import { widgets } from "@/common/components/form/widgets"
 import {
+	ErrorLogsModal,
+	TestConnectionFailureModal,
+	TestConnectionModal,
+	TestConnectionSuccessModal,
+} from "@/common/components/modals"
+import {
 	transformErrors,
 	TEST_CONNECTION_STATUS,
 	OLAKE_LATEST_VERSION_URL,
@@ -31,11 +37,7 @@ import {
 import { trimFormDataStrings } from "@/common/utils"
 import {
 	DeleteModal,
-	TestConnectionSuccessModal,
-	TestConnectionFailureModal,
-	TestConnectionModal,
 	EntityEditModal,
-	SpecFailedModal,
 } from "@/modules/ingestion/common/components"
 import { destinationConnectorOptions as connectorOptions } from "@/modules/ingestion/common/components/connectorOptions"
 import DocumentationPanel from "@/modules/ingestion/common/components/DocumentationPanel"
@@ -571,7 +573,7 @@ const DestinationEdit: React.FC = () => {
 	}
 
 	return (
-		<div className="flex h-screen">
+		<div className="flex h-full">
 			<div className="flex flex-1 flex-col">
 				<div className="flex items-center gap-2 border-b border-[#D9D9D9] px-6 py-4">
 					<Link
@@ -674,6 +676,7 @@ const DestinationEdit: React.FC = () => {
 			<TestConnectionFailureModal
 				open={showFailureModal}
 				onClose={() => setShowFailureModal(false)}
+				onEdit={() => setShowFailureModal(false)}
 				connectionType="destination"
 				testConnectionError={testConnectionError}
 			/>
@@ -684,12 +687,16 @@ const DestinationEdit: React.FC = () => {
 				onConfirm={handleConfirmEdit}
 				onCancel={() => setShowEditModal(false)}
 			/>
-			<SpecFailedModal
+			<ErrorLogsModal
 				open={showSpecFailedModal}
 				onClose={() => setShowSpecFailedModal(false)}
-				fromSource={false}
+				title="Destination Spec Load Failed"
 				error={specError ?? ""}
-				onTryAgain={refetchSpec}
+				onAction={() => {
+					refetchSpec()
+					setShowSpecFailedModal(false)
+				}}
+				actionButtonText="Try Again"
 			/>
 		</div>
 	)
