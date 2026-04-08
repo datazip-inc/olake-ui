@@ -26,6 +26,7 @@ server/olake-server
 /tmp/
 /dist/
 olake-data/
+amoro-logs/
 /server/temporal-worker/
 
 # ----------------------------

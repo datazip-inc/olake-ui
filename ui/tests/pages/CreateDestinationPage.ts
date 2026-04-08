@@ -45,7 +45,7 @@ export class CreateDestinationPage extends BasePage {
 		this.createButton = page.getByRole("button", { name: "Create" })
 		this.cancelButton = page.getByRole("button", { name: "Cancel" })
 		this.backToDestinationsLink = page.getByRole("link").first()
-		this.pageTitle = page.locator("text=Create destination")
+		this.pageTitle = page.getByTestId("create-destination-page-title")
 		this.testConnectionButton = page.getByRole("button", {
 			name: "Test Connection",
 		})

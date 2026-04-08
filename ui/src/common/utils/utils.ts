@@ -181,6 +181,88 @@ export const formatDate = (dateString: string): string => {
 	}
 }
 
+// Formats an epoch millisecond timestamp into a human-readable relative string, e.g. "5m ago", "2h ago", "just now"
+export const getRelativeTimeString = (timestamp: number): string => {
+	if (!timestamp || timestamp <= 0) return ""
+
+	const now = Date.now()
+	const diffInSeconds = Math.floor((now - timestamp) / 1000)
+
+	if (diffInSeconds < 60) return "just now"
+
+	const diffInMinutes = Math.floor(diffInSeconds / 60)
+	if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+
+	const diffInHours = Math.floor(diffInMinutes / 60)
+	if (diffInHours < 24) return `${diffInHours}h ago`
+
+	const diffInDays = Math.floor(diffInHours / 24)
+	if (diffInDays < 30) return `${diffInDays}d ago`
+
+	const diffInMonths = Math.floor(diffInDays / 30)
+	if (diffInMonths < 12) return `${diffInMonths}mo ago`
+
+	const diffInYears = Math.floor(diffInDays / 365)
+	return `${diffInYears}y ago`
+}
+
+// Formats a duration in milliseconds into a human-readable string, e.g. "5m 30s", "2h 15m 0s", "<1s"
+export const formatDuration = (durationMs: number): string => {
+	if (durationMs <= 0) return ""
+	const totalSeconds = Math.floor(durationMs / 1000)
+	if (totalSeconds < 1) return "<1s"
+	const days = Math.floor(totalSeconds / 86_400)
+	const hours = Math.floor((totalSeconds % 86_400) / 3_600)
+	const minutes = Math.floor((totalSeconds % 3_600) / 60)
+	const seconds = totalSeconds % 60
+
+	if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`
+	if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`
+	if (minutes > 0) return `${minutes}m ${seconds}s`
+	return `${seconds}s`
+}
+
+// Format epoch milliseconds to UTC ISO string (or null if invalid)
+const getUtcIsoString = (timestamp: number): string | null => {
+	const date = new Date(timestamp)
+	return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+// Format epoch milliseconds to UTC date-time string: YYYY-MM-DD HH:mm:ss
+export const formatTimestampToUtcDateTime = (timestamp: number): string => {
+	const isoString = getUtcIsoString(timestamp)
+	if (!isoString) return "--"
+	return isoString.slice(0, 19).replace("T", " ")
+}
+
+// Format epoch milliseconds to UTC time string: HH:mm:ss
+export const formatTimestampToUtcTime = (timestamp: number): string => {
+	const isoString = getUtcIsoString(timestamp)
+	if (!isoString) return "--"
+	return isoString.slice(11, 19)
+}
+
+const BYTES_IN_MB = 1024 * 1024
+
+// Converts bytes to MB rounded to nearest whole number.
+export const bytesToMb = (bytes: number): number => {
+	if (!Number.isFinite(bytes) || bytes <= 0) return 0
+	return Math.round(bytes / BYTES_IN_MB)
+}
+
+// Converts MB to bytes rounded to nearest whole number.
+export const mbToBytes = (mb: number): number => {
+	if (!Number.isFinite(mb) || mb <= 0) return 0
+	return Math.round(mb * BYTES_IN_MB)
+}
+
+// Converts a string to start case (first letter uppercase, rest lowercase).
+export const toSentenceCase = (value: string): string => {
+	const normalized = value.trim()
+	if (!normalized) return ""
+	return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase()
+}
+
 // recursively trims all string values in form data used to remove leading/trailing whitespaces from configuration fields
 export const trimFormDataStrings = (data: any): any => {
 	if (data === null || data === undefined) {

@@ -1,4 +1,4 @@
-package services
+package etl
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/datazip-inc/olake-ui/server/utils"
 )
 
-func (s *ETLService) GetAllReleasesResponse(
+func (s Service) GetAllReleasesResponse(
 	ctx context.Context,
 	limit int,
 ) (*dto.ReleasesResponse, error) {

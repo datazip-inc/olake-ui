@@ -19,7 +19,7 @@ interface StreamSelectionState {
 	// Frozen snapshot from initial discovery; used by DestinationDatabaseModal.
 	initialStreamsSnapshot: StreamsDataStructure | null
 	isDiscovering: boolean
-	discoverError: unknown | null
+	discoverError: string | null
 	activeStreamKey: { name: string; namespace: string } | null
 
 	// Per-stream filter toggle keyed by `${namespace}_${name}`.
@@ -27,7 +27,7 @@ interface StreamSelectionState {
 
 	initializeFromDiscovery: (data: StreamsDataStructure) => void
 	setDiscovering: (loading: boolean) => void
-	setDiscoverError: (error: unknown | null) => void
+	setDiscoverError: (message: string | null) => void
 
 	// Toggles a stream on (disabled:false) or off (disabled:true).
 	// Inserts a default entry if the stream has never been in selected_streams.

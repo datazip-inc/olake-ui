@@ -49,13 +49,14 @@ const JobHistory: React.FC = () => {
 	const retryCountRef = useRef(0)
 
 	const {
-		data: jobTasks = [],
+		data: jobTasksData,
 		isLoading: isLoadingJobTasks,
 		error: jobTasksErrorObj,
 		refetch: refetchJobTasks,
 	} = useJobTasks(jobId || "", {
 		refetchInterval: isPolling ? POLL_INTERVAL : false,
 	})
+	const jobTasks = Array.isArray(jobTasksData) ? jobTasksData : []
 
 	// Stop polling when sync is found or retries exhausted
 	useEffect(() => {
@@ -180,7 +181,7 @@ const JobHistory: React.FC = () => {
 	}
 
 	return (
-		<div className="flex h-screen flex-col">
+		<div className="flex h-full flex-col">
 			<div className="mb-3 flex items-center justify-between px-6 pt-3">
 				<div>
 					<div className="flex items-start gap-2">
