@@ -1,4 +1,4 @@
-import parser from "cron-parser"
+import { Cron } from "croner"
 
 import type { CronConfigOption } from "../types"
 
@@ -9,15 +9,18 @@ export const getCronFromConfig = (config: CronConfigOption) => {
 		: config.frequency
 }
 
-export const isValidCronExpression = (cron: string): boolean => {
+// Returns null if the cron expression is valid, or an error string if error.
+export const isValidCronExpression = (cron: string): string | null => {
 	const parts = cron.trim().split(" ")
-	if (parts.length !== 5) return false
+	// Optimization supports 5 field cron expressions only
+	if (parts.length !== 5)
+		return `Cron expression must have 5 fields, but got ${parts.length}`
 
 	try {
-		parser.parse(cron)
-		return true
-	} catch {
-		return false
+		new Cron(cron)
+		return null
+	} catch (error) {
+		return error instanceof Error ? error.message : "Invalid cron expression"
 	}
 }
 
@@ -30,14 +33,12 @@ export const getEarliestNextRun = (
 
 	for (const config of configs) {
 		const cron = getCronFromConfig(config).trim()
-		if (!cron || !isValidCronExpression(cron)) continue
+		const cronError = isValidCronExpression(cron)
+		if (!cron || cronError) continue
 
 		try {
-			const interval = parser.parse(cron, {
-				currentDate: new Date(),
-				tz: "UTC",
-			})
-			const next = interval.next().toDate()
+			const next = new Cron(cron, { timezone: "UTC" }).nextRun()
+			if (!next) continue
 			if (!earliest || next < earliest) {
 				earliest = next
 			}
@@ -52,23 +53,13 @@ export const getEarliestNextRun = (
 
 export const getNextRuns = (cron: string): string[] => {
 	const normalizedCron = cron.trim()
-	if (!normalizedCron || !isValidCronExpression(normalizedCron)) return []
+	const cronError = isValidCronExpression(normalizedCron)
+	if (!normalizedCron || cronError) return []
 
 	try {
-		const interval = parser.parse(normalizedCron, {
-			currentDate: new Date(),
-			tz: "UTC",
-		})
-
-		const runs: string[] = []
-		for (let index = 0; index < 3; index += 1) {
-			const run = getParsedDate(interval.next().toDate()).replace(
-				/:\d{2} GMT$/,
-				" GMT",
-			)
-			runs.push(run)
-		}
-		return runs
+		return new Cron(normalizedCron, { timezone: "UTC" })
+			.nextRuns(3)
+			.map(run => getParsedDate(run).replace(/:\d{2} GMT$/, " GMT"))
 	} catch {
 		return []
 	}
