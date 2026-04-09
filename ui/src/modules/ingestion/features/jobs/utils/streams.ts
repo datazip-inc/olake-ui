@@ -291,7 +291,7 @@ export const getCursorFieldValues = (
 }
 
 // Returns true if filter_config (JSON) should be used instead of the legacy filter string.
-// Requires source >= v0.4.1 AND no selected stream already carries a non-empty legacy filter.
+// Requires source >= v0.6.0 AND no selected stream already carries a non-empty legacy filter.
 export function shouldUseFilterConfig(
 	selectedStreams: SelectedStreamsByNamespace,
 	sourceVersion: string,
