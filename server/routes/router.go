@@ -68,7 +68,7 @@ func RegisterRoutes(engine *gin.Engine, h *handlers.Handler) {
 	etl.GET("/platform/releases", etlHandler.GetReleaseUpdates)
 
 	// module gate routes
-	etl.GET("/platform/modules/opt/status", h.GetOptimizationStatus)
+	etl.GET("/platform/opt/status", h.GetOptimizationStatus)
 
 	// internal routes
 	engine.POST("/internal/worker/callback/sync-telemetry", etlHandler.UpdateSyncTelemetry)
