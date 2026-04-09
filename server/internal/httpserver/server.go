@@ -129,9 +129,9 @@ func configureNoRoute(engine *gin.Engine, cfg *appconfig.Config, h *handlers.Han
 		// Register optimization as a module fallback for unmatched /api/opt/v1/*.
 		// This avoids route tree conflicts from wildcard catch-all registration.
 		moduleHandlers = append(moduleHandlers, routes.ModuleNoRouteHandler{
-			PathPrefix:     "/api/opt/v1/",
-			AuthMiddleware: h.AuthMiddleware(),
-			Forward:        h.Optimization.PiggyBacking,
+			PathPrefix: "/api/opt/v1/",
+			Middleware: h.AuthMiddleware(),
+			Forward:    h.Optimization.PiggyBacking,
 		})
 	}
 
