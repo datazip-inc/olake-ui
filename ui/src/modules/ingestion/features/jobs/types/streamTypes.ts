@@ -4,20 +4,6 @@ import { StreamData } from "@/modules/ingestion/common/types"
 
 import { AdvancedSettings } from "./jobTypes"
 
-export type FilterOperator = "=" | "!=" | ">" | "<" | ">=" | "<="
-export type LogicalOperator = "and" | "or"
-
-export type FilterCondition = {
-	columnName: string
-	operator: FilterOperator
-	value: string
-}
-
-export type MultiFilterCondition = {
-	conditions: FilterCondition[]
-	logicalOperator: LogicalOperator
-}
-
 export type StreamPanelProps = {
 	stream: any
 	onStreamSelect?: (streamName: string, checked: boolean) => void

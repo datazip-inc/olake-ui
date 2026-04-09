@@ -34,7 +34,7 @@ import {
 import { Job, JobBase, JobCreationSteps } from "../types"
 import {
 	validateCronExpression,
-	getSelectedStreams,
+	formatSelectedStreamsPayload,
 	validateStreams,
 } from "../utils"
 
@@ -261,7 +261,7 @@ const JobEdit: React.FC = () => {
 		},
 		streams_config: JSON.stringify({
 			...streamsConfig,
-			selected_streams: getSelectedStreams(streamsConfig.selected_streams),
+			selected_streams: formatSelectedStreamsPayload(streamsConfig),
 		}),
 		frequency: cronExpression,
 		activate: job?.activate,
@@ -280,8 +280,9 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		if (!validateStreams(getSelectedStreams(streamsData.selected_streams))) {
-			message.error("Filter Value cannot be empty")
+		const streamValidationError = validateStreams(streamsData)
+		if (streamValidationError) {
+			message.error(streamValidationError)
 			return
 		}
 
@@ -290,7 +291,7 @@ const JobEdit: React.FC = () => {
 				jobId,
 				JSON.stringify({
 					...streamsData,
-					selected_streams: getSelectedStreams(streamsData.selected_streams),
+					selected_streams: formatSelectedStreamsPayload(streamsData),
 				}),
 			)
 		)?.difference_streams
@@ -327,8 +328,9 @@ const JobEdit: React.FC = () => {
 			return
 		}
 
-		if (!validateStreams(getSelectedStreams(streamsConfig.selected_streams))) {
-			message.error("Filter Value cannot be empty")
+		const submitValidationError = validateStreams(streamsConfig)
+		if (submitValidationError) {
+			message.error(submitValidationError)
 			return
 		}
 		setIsSubmitting(true)
