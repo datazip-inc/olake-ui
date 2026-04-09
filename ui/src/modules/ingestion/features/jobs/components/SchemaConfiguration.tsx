@@ -33,7 +33,10 @@ import FilterButton from "./FilterButton"
 import DestinationDatabaseModal from "./modals/DestinationDatabaseModal"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
-import { getStreamsDataFromSourceStreamsResponse } from "../utils/streams"
+import {
+	getStreamsDataFromSourceStreamsResponse,
+	shouldUseFilterConfig,
+} from "../utils/streams"
 
 const STREAM_FILTERS = ["All tables", "Selected", "Not Selected"]
 
@@ -60,7 +63,17 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		selectInitialStreamsSnapshot,
 	)
 
+	const setUseFilterConfig = useStreamSelectionStore(
+		state => state.setUseFilterConfig,
+	)
+
 	const discoverMutation = useDiscoverSourceStreams()
+
+	useEffect(() => {
+		setUseFilterConfig(
+			shouldUseFilterConfig(streamsData?.selected_streams ?? {}, sourceVersion),
+		)
+	}, [streamsData?.selected_streams, sourceVersion])
 
 	const { data: clearDestStatus, isLoading: isClearDestinationStatusLoading } =
 		useClearDestinationStatus(jobId)
