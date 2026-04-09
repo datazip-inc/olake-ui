@@ -1,6 +1,6 @@
 import { InfoIcon } from "@phosphor-icons/react"
 import { Input, Select, Radio, Tooltip } from "antd"
-import parser from "cron-parser"
+import { Cron } from "croner"
 import { useEffect, useState } from "react"
 
 import { validateAlphanumericUnderscore } from "@/common/utils"
@@ -46,21 +46,15 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 	const getParsedDate = (value: Date) => value.toUTCString()
 
 	const updateNextRuns = (cronValue: string) => {
-		if (!cronValue || !isValidCronExpression(cronValue)) {
+		const cronError = isValidCronExpression(cronValue)
+		if (!cronValue || cronError) {
 			setNextRuns([])
 			return
 		}
 
 		try {
-			const interval = parser.parse(cronValue, {
-				currentDate: new Date(),
-				tz: "UTC",
-			})
-			const data = []
-			for (let i = 0; i < 3; i++) {
-				data.push(getParsedDate(interval.next().toDate()))
-			}
-			setNextRuns(data)
+			const runs = new Cron(cronValue, { timezone: "UTC" }).nextRuns(3)
+			setNextRuns(runs.map(getParsedDate))
 		} catch (error) {
 			// Clear next runs if cron expression is invalid
 			console.error(
@@ -213,7 +207,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 								<div>
 									<div className="mb-2 flex items-center gap-1">
 										<label className="block text-sm">Cron Expression</label>
-										<Tooltip title="Cron format: minute hour day month weekday. Example: 0 0 * * * runs every day at midnight.">
+										<Tooltip title="Supports 5 & 7 field cron format:(Seconds and year are optional fields) Example : */30 * * * * * * runs every 30 seconds">
 											<InfoIcon
 												size={16}
 												className="cursor-help text-slate-900"
@@ -222,7 +216,7 @@ const JobConfiguration: React.FC<JobConfigurationProps> = ({
 									</div>
 									<Input
 										className="w-64"
-										placeholder="Enter cron expression (Eg : * * * * *)"
+										placeholder="Enter cron expression (Eg: * * * * * * *)"
 										value={customCronExpression}
 										onChange={e => handleCustomCronChange(e.target.value)}
 									/>

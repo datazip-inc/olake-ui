@@ -1,5 +1,5 @@
 import { message } from "antd"
-import parser from "cron-parser"
+import { Cron } from "croner"
 
 import { getConnectorInLowerCase } from "@/modules/ingestion/common/utils"
 import { CronParseResult } from "@/modules/ingestion/features/jobs/types"
@@ -93,16 +93,29 @@ export const generateCronExpression = (
 	return cronExp
 }
 
-export const isValidCronExpression = (cron: string): boolean => {
-	// Check if the cron has exactly 5 parts
+// Matches Quartz-specific cron tokens not supported by Temporal:
+//   ?         → "no specific value" placeholder (Quartz only)
+//   L         → "last" modifier — matched only when not surrounded by letters,
+//               so standalone L or 5L are caught, but JUL/APR are not
+//   \dW       → "nearest weekday" modifier — matched only when preceded by a digit,
+//               so 15W is caught, but WED is not
+//   #         → "nth weekday of month" modifier (e.g. 5#3 = 3rd Friday)
+const QUARTZ_TOKEN_REGEX = /\?|(?<![A-Za-z])L(?![A-Za-z])|\dW|#/
+
+// Returns null if the cron expression is valid, or an error string if error.
+export const isValidCronExpression = (cron: string): string | null => {
 	const parts = cron.trim().split(" ")
-	if (parts.length !== 5) return false
+	if (parts.length !== 5 && parts.length !== 7)
+		return `Cron expression must have 5 or 7 fields, but got ${parts.length}`
+
+	if (QUARTZ_TOKEN_REGEX.test(cron))
+		return "Quartz-specific tokens (?, L, W, #) are not supported."
 
 	try {
-		parser.parse(cron)
-		return true
-	} catch {
-		return false
+		new Cron(cron)
+		return null
+	} catch (error) {
+		return error instanceof Error ? error.message : "Invalid cron expression"
 	}
 }
 
@@ -212,8 +225,9 @@ export const validateCronExpression = (cronExpression: string): boolean => {
 		message.error("Cron expression is required")
 		return false
 	}
-	if (!isValidCronExpression(cronExpression)) {
-		message.error("Invalid cron expression")
+	const error = isValidCronExpression(cronExpression)
+	if (error) {
+		message.error(error)
 		return false
 	}
 	return true
