@@ -8,26 +8,55 @@ import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
 	selectIsStreamEnabled,
+	noopNullSelector,
+	noopFalseSelector,
 } from "../../stores"
 
-const NormalizationSection = () => {
+interface NormalizationSectionProps {
+	isBulkMode?: boolean
+	bulkNormalization?: boolean
+	onBulkNormalizationChange?: (normalization: boolean) => void
+}
+
+const NormalizationSection = ({
+	isBulkMode,
+	bulkNormalization,
+	onBulkNormalizationChange,
+}: NormalizationSectionProps = {}) => {
 	const updateNormalization = useStreamSelectionStore(
 		state => state.updateNormalization,
 	)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
+	// don't subsribe to store if in bulkMode
+	const storeStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveStreamData,
+	)
+	const storeSelectedStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
+	)
+	const storeIsSelected = useStreamSelectionStore(
+		isBulkMode
+			? noopFalseSelector
+			: state => selectIsStreamEnabled(state, storeStream),
 	)
 
-	if (!stream || !selectedStream) return null
+	const selectedStream = isBulkMode
+		? { normalization: bulkNormalization }
+		: storeSelectedStream
+	const isSelected = isBulkMode ? true : storeIsSelected
+
+	if (!isBulkMode && (!storeStream || !selectedStream)) return null
 
 	const handleNormalizationChange = (checked: boolean) => {
-		updateNormalization(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			checked,
-		)
+		if (isBulkMode) {
+			onBulkNormalizationChange?.(checked)
+		} else {
+			if (!storeStream) return
+			updateNormalization(
+				storeStream.stream.name,
+				storeStream.stream.namespace || "",
+				checked,
+			)
+		}
 	}
 
 	return (
@@ -41,7 +70,7 @@ const NormalizationSection = () => {
 				<div className="flex items-center justify-between">
 					<label>Normalization</label>
 					<Switch
-						checked={selectedStream.normalization || false}
+						checked={selectedStream?.normalization || false}
 						onChange={handleNormalizationChange}
 						disabled={!isSelected}
 					/>

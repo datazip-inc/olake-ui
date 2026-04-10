@@ -10,43 +10,79 @@ import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
 	selectIsStreamEnabled,
+	noopNullSelector,
+	noopFalseSelector,
 } from "../../stores"
 
 interface PartitionRegexSectionProps {
 	destinationType?: string
+	isBulkMode?: boolean
+	bulkPartitionRegex?: string
+	onBulkPartitionRegexChange?: (regex: string) => void
 }
 
 const PartitionRegexSection = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
+	isBulkMode,
+	bulkPartitionRegex,
+	onBulkPartitionRegexChange,
 }: PartitionRegexSectionProps) => {
 	const updatePartitionRegex = useStreamSelectionStore(
 		state => state.updatePartitionRegex,
 	)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
+	// don't subsribe to store if in bulkMode
+	const storeStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveStreamData,
 	)
+	const storeSelectedStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
+	)
+	const storeIsSelected = useStreamSelectionStore(
+		isBulkMode
+			? noopFalseSelector
+			: state => selectIsStreamEnabled(state, storeStream),
+	)
+
+	const selectedStream = isBulkMode
+		? { partition_regex: bulkPartitionRegex }
+		: storeSelectedStream
+	const isSelected = isBulkMode ? true : storeIsSelected
 
 	const [partitionRegex, setPartitionRegex] = useState("")
 
-	if (!stream || !selectedStream) return null
+	if (!isBulkMode && (!storeStream || !selectedStream)) return null
 
-	const activePartitionRegex = selectedStream.partition_regex || ""
+	const activePartitionRegex = isBulkMode
+		? bulkPartitionRegex
+		: selectedStream?.partition_regex || ""
 
 	const handleSetPartitionRegex = () => {
 		if (partitionRegex) {
-			updatePartitionRegex(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				partitionRegex,
-			)
+			if (isBulkMode) {
+				onBulkPartitionRegexChange?.(partitionRegex)
+			} else {
+				if (!storeStream) return
+				updatePartitionRegex(
+					storeStream.stream.name,
+					storeStream.stream.namespace || "",
+					partitionRegex,
+				)
+			}
 			setPartitionRegex("")
 		}
 	}
 
 	const handleClearPartitionRegex = () => {
-		updatePartitionRegex(stream.stream.name, stream.stream.namespace || "", "")
+		if (isBulkMode) {
+			onBulkPartitionRegexChange?.("")
+		} else {
+			if (!storeStream) return
+			updatePartitionRegex(
+				storeStream.stream.name,
+				storeStream.stream.namespace || "",
+				"",
+			)
+		}
 	}
 
 	return (

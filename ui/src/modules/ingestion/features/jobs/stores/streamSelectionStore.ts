@@ -6,12 +6,22 @@ import {
 	SelectedStream,
 	SelectedStreamsByNamespace,
 	SelectedColumns,
+	StreamIdentifier,
 	SyncMode,
 } from "@/modules/ingestion/common/types"
 import { IngestionMode } from "@/modules/ingestion/features/jobs/enums"
 
 import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
+
+export interface BulkStreamConfig {
+	syncMode: SyncMode
+	cursorField?: string
+	appendMode: boolean
+	normalization: boolean
+	partitionRegex: string
+	filterValue: string
+}
 
 interface StreamSelectionState {
 	streamsData: StreamsDataStructure | null
@@ -69,6 +79,11 @@ interface StreamSelectionState {
 		streamName: string,
 		namespace: string,
 		appendMode: boolean,
+	) => void
+
+	bulkUpdateStreams: (
+		streamsToUpdate: StreamIdentifier[],
+		config: BulkStreamConfig,
 	) => void
 
 	// Applies append_mode to every stream in selected_streams.
@@ -308,6 +323,105 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 			}
 		}),
 
+	bulkUpdateStreams: (streamsToUpdate, config) =>
+		set(state => {
+			if (!state.streamsData) return state
+
+			const prev = state.streamsData
+			const updatedStreams = [...prev.streams]
+			const updatedSelected = { ...prev.selected_streams }
+			let changed = false
+
+			streamsToUpdate.forEach(({ streamName, namespace }) => {
+				// Update generic stream data (sync_mode, cursor_field)
+				const globalStreamIndex = updatedStreams.findIndex(
+					s => s.stream.name === streamName && s.stream.namespace === namespace,
+				)
+
+				if (globalStreamIndex !== -1) {
+					const nextStream: StreamData = {
+						...updatedStreams[globalStreamIndex],
+						stream: {
+							...updatedStreams[globalStreamIndex].stream,
+							sync_mode: config.syncMode,
+						},
+					}
+
+					if (
+						config.cursorField !== undefined &&
+						config.syncMode === SyncMode.INCREMENTAL
+					) {
+						nextStream.stream.cursor_field = config.cursorField
+					} else if (config.syncMode !== SyncMode.INCREMENTAL) {
+						delete nextStream.stream.cursor_field
+					}
+
+					updatedStreams[globalStreamIndex] = nextStream
+					changed = true
+				}
+
+				// Update selected properties (append_mode, normalizations, filtering)
+				const streamList = updatedSelected[namespace] || []
+				const streamIndex = streamList.findIndex(
+					s => s.stream_name === streamName,
+				)
+
+				if (streamIndex !== -1) {
+					const existingStream = streamList[streamIndex]
+					const newStream = { ...existingStream }
+
+					newStream.append_mode = config.appendMode
+					newStream.normalization = config.normalization
+					newStream.partition_regex = config.partitionRegex
+					newStream.disabled = false
+
+					if (config.filterValue) {
+						newStream.filter = config.filterValue
+					} else {
+						delete newStream.filter
+					}
+
+					updatedSelected[namespace] = [
+						...streamList.slice(0, streamIndex),
+						newStream,
+						...streamList.slice(streamIndex + 1),
+					]
+					changed = true
+				} else {
+					// insert stream with defaults overridden by the user config if it doesn't exist in selected_streams
+					if (!updatedSelected[namespace]) {
+						updatedSelected[namespace] = []
+					}
+
+					const newStream: SelectedStream = {
+						...STREAM_DEFAULTS,
+						stream_name: streamName,
+						disabled: false,
+						append_mode: config.appendMode,
+						normalization: config.normalization,
+						partition_regex: config.partitionRegex,
+						...(config.filterValue ? { filter: config.filterValue } : {}),
+					}
+
+					updatedSelected[namespace] = [
+						...updatedSelected[namespace],
+						newStream,
+					]
+					changed = true
+				}
+			})
+
+			return changed
+				? {
+						streamsData: {
+							...prev,
+							streams: updatedStreams,
+							selected_streams: updatedSelected,
+						},
+					}
+				: state
+		}),
+
 	updateAllIngestionMode: appendMode =>
 		set(state => {
 			if (!state.streamsData) return state
@@ -500,3 +614,8 @@ export const selectIsStreamEnabled = (
 	if (!stream) return false
 	return !stream.disabled
 }
+// A stable no-op selector that returns null; used to avoid store subscriptions and re-renders during bulk configuration.
+export const noopNullSelector = () => null
+
+// A stable no-op selector that returns false; used to avoid store subscriptions and re-renders during bulk configuration.
+export const noopFalseSelector = () => false

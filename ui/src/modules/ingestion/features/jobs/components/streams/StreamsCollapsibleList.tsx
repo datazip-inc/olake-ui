@@ -15,8 +15,10 @@ import {
 import { GroupedStreamsCollapsibleListProps } from "../../types"
 import {
 	getIngestionMode,
+	hasGroupedStreamsStructureChanged,
 	isDestinationIngestionModeSupported,
 	isSourceIngestionModeSupported,
+	sortGroupedStreamsByCheckedState,
 } from "../../utils/streams"
 import IngestionModeChangeModal from "../modals/IngestionModeChangeModal"
 
@@ -81,24 +83,6 @@ const StreamsCollapsibleList = ({
 		}
 	}, [groupedStreams])
 
-	// Detects if groupedStreams changed by comparing namespace keys and stream counts.
-	const dataHasChanged = () => {
-		const prev = prevGroupedStreams.current
-		const current = groupedStreams
-
-		const prevKeys = Object.keys(prev)
-		const currentKeys = Object.keys(current)
-
-		if (prevKeys.length !== currentKeys.length) return true
-
-		for (const key of currentKeys) {
-			if (!prev[key]) return true
-			if (prev[key].length !== current[key].length) return true
-		}
-
-		return false
-	}
-
 	// Update local checked status based on selectedStreams
 	useEffect(() => {
 		const newCheckedStatus = {
@@ -133,41 +117,19 @@ const StreamsCollapsibleList = ({
 		setCheckedStatus(newCheckedStatus)
 
 		// sort the namespaces and streams inside it alphabetically on the basis of checked and unchecked status.
-		if (sortedGroupedNamespaces.length === 0 || dataHasChanged()) {
-			const sortByStreamName = (a: StreamData, b: StreamData) =>
-				a.stream.name.localeCompare(b.stream.name)
-			const sortByNamespaceName = (
-				a: [string, StreamData[]],
-				b: [string, StreamData[]],
-			) => a[0].localeCompare(b[0])
-
-			const withChecked: [string, StreamData[]][] = []
-			const withoutChecked: [string, StreamData[]][] = []
-
-			Object.entries(groupedStreams).forEach(([ns, streams]) => {
-				const checked: StreamData[] = []
-				const unchecked: StreamData[] = []
-				streams.forEach(s => {
-					if (newCheckedStatus.streams[ns]?.[s.stream.name]) {
-						checked.push(s)
-					} else {
-						unchecked.push(s)
-					}
-				})
-				checked.sort(sortByStreamName)
-				unchecked.sort(sortByStreamName)
-				const sorted: [string, StreamData[]] = [ns, [...checked, ...unchecked]]
-
-				if (streams.some(s => newCheckedStatus.streams[ns]?.[s.stream.name])) {
-					withChecked.push(sorted)
-				} else {
-					withoutChecked.push(sorted)
-				}
-			})
-
-			withChecked.sort(sortByNamespaceName)
-			withoutChecked.sort(sortByNamespaceName)
-			setSortedGroupedNamespaces([...withChecked, ...withoutChecked])
+		if (
+			sortedGroupedNamespaces.length === 0 ||
+			hasGroupedStreamsStructureChanged(
+				prevGroupedStreams.current,
+				groupedStreams,
+			)
+		) {
+			setSortedGroupedNamespaces(
+				sortGroupedStreamsByCheckedState(
+					groupedStreams,
+					newCheckedStatus.streams,
+				),
+			)
 			prevGroupedStreams.current = groupedStreams
 		}
 	}, [selectedStreams, groupedStreams])

@@ -9,6 +9,7 @@ export { default as StepIndicator } from "./StepIndicator"
 
 // Modals
 export { default as ClearDataModal } from "./modals/ClearDataModal"
+export { default as BulkConfigureStreamsModal } from "./modals/BulkConfigureStreamsModal"
 export { default as ClearDestinationModal } from "./modals/ClearDestinationModal"
 export { default as DeleteJobModal } from "./modals/DeleteJobModal"
 export { default as DestinationDatabaseModal } from "./modals/DestinationDatabaseModal"

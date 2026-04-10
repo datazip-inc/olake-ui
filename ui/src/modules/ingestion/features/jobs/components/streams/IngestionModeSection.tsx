@@ -8,6 +8,8 @@ import {
 	selectActiveStreamData,
 	selectActiveSelectedStream,
 	selectIsStreamEnabled,
+	noopNullSelector,
+	noopFalseSelector,
 } from "../../stores"
 import {
 	isSourceIngestionModeSupported,
@@ -17,20 +19,36 @@ import {
 interface IngestionModeSectionProps {
 	sourceType?: string
 	destinationType?: string
+	isBulkMode?: boolean
+	bulkAppendMode?: boolean
+	onBulkIngestionModeChange?: (appendMode: boolean) => void
 }
 
 const IngestionModeSection = ({
 	sourceType,
 	destinationType,
+	isBulkMode,
+	bulkAppendMode,
+	onBulkIngestionModeChange,
 }: IngestionModeSectionProps) => {
 	const updateIngestionMode = useStreamSelectionStore(
 		state => state.updateIngestionMode,
 	)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
+	// don't subsribe to store if in bulkMode
+	const storeStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveStreamData,
 	)
+	const storeSelectedStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
+	)
+	const storeIsSelected = useStreamSelectionStore(
+		isBulkMode
+			? noopFalseSelector
+			: state => selectIsStreamEnabled(state, storeStream),
+	)
+
+	const selectedStream = isBulkMode ? null : storeSelectedStream
+	const isSelected = isBulkMode ? true : storeIsSelected
 
 	const isSourceUpsertSupported = isSourceIngestionModeSupported(
 		IngestionMode.UPSERT,
@@ -47,7 +65,7 @@ const IngestionModeSection = ({
 		destinationType,
 	)
 
-	if (!stream || !selectedStream) return null
+	if (!isBulkMode && (!storeStream || !selectedStream)) return null
 
 	// Don't render if destination doesn't support upsert mode
 	if (!isDestUpsertModeSupported) return null
@@ -55,14 +73,21 @@ const IngestionModeSection = ({
 	// Ingestion mode is Append if:
 	// 1. Source doesn't support Upsert (forced Append)
 	// 2. OR user selected Append mode
-	const isAppendMode = !isSourceUpsertSupported || !!selectedStream.append_mode
+	const isAppendMode = isBulkMode
+		? !isSourceUpsertSupported || !!bulkAppendMode
+		: !isSourceUpsertSupported || !!selectedStream?.append_mode
 
 	const handleIngestionModeChange = (ingestionMode: IngestionMode) => {
-		updateIngestionMode(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			ingestionMode === IngestionMode.APPEND,
-		)
+		if (isBulkMode) {
+			onBulkIngestionModeChange?.(ingestionMode === IngestionMode.APPEND)
+		} else {
+			if (!storeStream) return
+			updateIngestionMode(
+				storeStream.stream.name,
+				storeStream.stream.namespace || "",
+				ingestionMode === IngestionMode.APPEND,
+			)
+		}
 	}
 
 	return (

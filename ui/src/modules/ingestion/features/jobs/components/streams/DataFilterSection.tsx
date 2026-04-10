@@ -9,6 +9,8 @@ import { Button, Divider, Input, message, Select, Switch, Tooltip } from "antd"
 import clsx from "clsx"
 import { useEffect, useRef, useState } from "react"
 
+import { StreamData } from "@/modules/ingestion/common/types"
+
 import { CARD_STYLE, operatorOptions } from "../../constants"
 import { useStreamSelectionStore } from "../../stores"
 import {
@@ -16,6 +18,8 @@ import {
 	selectActiveSelectedStream,
 	selectIsStreamEnabled,
 	selectStreamFilterState,
+	noopNullSelector,
+	noopFalseSelector,
 } from "../../stores"
 import {
 	FilterCondition,
@@ -24,24 +28,54 @@ import {
 	MultiFilterCondition,
 } from "../../types"
 
-const DataFilterSection = () => {
+export interface DataFilterSectionProps {
+	isBulkMode?: boolean
+	bulkStream?: StreamData
+	bulkFilter?: string
+	onBulkFilterChange?: (filterString: string) => void
+}
+
+const DataFilterSection = ({
+	isBulkMode,
+	bulkStream,
+	bulkFilter,
+	onBulkFilterChange,
+}: DataFilterSectionProps = {}) => {
 	const updateFilter = useStreamSelectionStore(state => state.updateFilter)
 	const setStreamFilterState = useStreamSelectionStore(
 		state => state.setStreamFilterState,
 	)
-	const stream = useStreamSelectionStore(selectActiveStreamData)
-	const selectedStream = useStreamSelectionStore(selectActiveSelectedStream)
-	const isSelected = useStreamSelectionStore(state =>
-		selectIsStreamEnabled(state, stream),
+	// don't subsribe to store if in bulkMode
+	const storeStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveStreamData,
+	) as StreamData | null
+	const storeSelectedStream = useStreamSelectionStore(
+		isBulkMode ? noopNullSelector : selectActiveSelectedStream,
+	)
+	const storeIsSelected = useStreamSelectionStore(
+		isBulkMode
+			? noopFalseSelector
+			: state => selectIsStreamEnabled(state, storeStream),
 	)
 
+	const stream = isBulkMode ? bulkStream : storeStream
+	const selectedStream = isBulkMode
+		? { filter: bulkFilter }
+		: storeSelectedStream
+	const isSelected = isBulkMode ? true : storeIsSelected
+
 	// Unique stream key to differentiate a stream with same name and different namespace
-	const streamKey = stream
-		? `${stream.stream.namespace || ""}_${stream.stream.name}`
+	const streamKey = storeStream
+		? `${storeStream.stream.namespace || ""}_${storeStream.stream.name}`
 		: ""
-	const streamFilterState = useStreamSelectionStore(
-		selectStreamFilterState(streamKey),
+	const storeStreamFilterState = useStreamSelectionStore(
+		isBulkMode ? noopFalseSelector : selectStreamFilterState(streamKey),
 	)
+
+	const streamFilterState = isBulkMode ? false : storeStreamFilterState
+
+	const isBulkDisabled =
+		isBulkMode && (stream?.stream.available_cursor_fields || []).length === 0
 
 	const [fullLoadFilter, setFullLoadFilter] = useState<boolean>(false)
 	const [multiFilterCondition, setMultiFilterCondition] =
@@ -59,10 +93,10 @@ const DataFilterSection = () => {
 	// Guard to prevent prop-driven effect from clobbering local edits
 	const isLocalFilterUpdateRef = useRef(false)
 
-	if (!stream || !selectedStream) return null
+	if (!isBulkMode && (!stream || !selectedStream)) return null
 
 	// Filter parsing effect to parse the filter string and set the filter state
-	const currentFilter = selectedStream.filter || ""
+	const currentFilter = selectedStream?.filter || ""
 	useEffect(() => {
 		// Skip when change originated from local user action
 		if (isLocalFilterUpdateRef.current) {
@@ -103,7 +137,7 @@ const DataFilterSection = () => {
 				setMultiFilterCondition({ conditions, logicalOperator })
 				setFullLoadFilter(true)
 				// Persist the filter enabled state for this stream
-				setStreamFilterState(streamKey, true)
+				if (!isBulkMode) setStreamFilterState(streamKey, true)
 			}
 		} else {
 			setMultiFilterCondition({
@@ -117,6 +151,7 @@ const DataFilterSection = () => {
 
 	// get columns based on primary keys and cursor fields and their properties
 	const getColumnOptions = () => {
+		if (!stream) return []
 		const properties = stream.stream.type_schema?.properties || {}
 		const primaryKeys = (stream.stream.source_defined_primary_key ||
 			[]) as string[]
@@ -164,6 +199,7 @@ const DataFilterSection = () => {
 
 	// when the type is either string or timestamp we wrap the value in quotes
 	const formatFilterValue = (columnName: string, value: string) => {
+		if (!stream) return value
 		const properties = stream.stream.type_schema?.properties || {}
 		const columnType = properties[columnName]?.type
 		const primaryType = Array.isArray(columnType)
@@ -185,11 +221,24 @@ const DataFilterSection = () => {
 		return value
 	}
 
+	const dispatchFilterUpdate = (filterString: string) => {
+		if (isBulkMode) {
+			onBulkFilterChange?.(filterString)
+		} else {
+			if (!storeStream) return
+			updateFilter(
+				storeStream.stream.name,
+				storeStream.stream.namespace || "",
+				filterString,
+			)
+		}
+	}
+
 	// Handlers
 	const handleFullLoadFilterChange = (checked: boolean) => {
 		setFullLoadFilter(checked)
 		// Persist the filter state for this stream
-		setStreamFilterState(streamKey, checked)
+		if (!isBulkMode) setStreamFilterState(streamKey, checked)
 
 		setMultiFilterCondition({
 			conditions: [{ columnName: "", operator: "=", value: "" }],
@@ -197,11 +246,7 @@ const DataFilterSection = () => {
 		})
 		isLocalFilterUpdateRef.current = true
 		// If toggled on insert empty condition
-		updateFilter(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			checked ? "=" : "",
-		)
+		dispatchFilterUpdate(checked ? "=" : "")
 	}
 
 	const handleFilterConditionChange = (
@@ -226,11 +271,7 @@ const DataFilterSection = () => {
 			.join(` ${newMultiCondition.logicalOperator} `)
 
 		isLocalFilterUpdateRef.current = true
-		updateFilter(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			filterString,
-		)
+		dispatchFilterUpdate(filterString)
 	}
 
 	const handleLogicalOperatorChange = (value: LogicalOperator) => {
@@ -254,11 +295,7 @@ const DataFilterSection = () => {
 				.join(` ${value} `)
 
 			isLocalFilterUpdateRef.current = true
-			updateFilter(
-				stream.stream.name,
-				stream.stream.namespace || "",
-				filterString,
-			)
+			dispatchFilterUpdate(filterString)
 		}
 	}
 
@@ -292,11 +329,7 @@ const DataFilterSection = () => {
 				.join(` ${multiFilterCondition.logicalOperator} `) + " = "
 
 		isLocalFilterUpdateRef.current = true
-		updateFilter(
-			stream.stream.name,
-			stream.stream.namespace || "",
-			filterString,
-		)
+		dispatchFilterUpdate(filterString)
 	}
 
 	const handleRemoveFilter = (index: number) => {
@@ -315,14 +348,10 @@ const DataFilterSection = () => {
 			if (condition.columnName && condition.operator && condition.value) {
 				const filterString = `${condition.columnName} ${condition.operator} ${formatFilterValue(condition.columnName, condition.value)}`
 				isLocalFilterUpdateRef.current = true
-				updateFilter(
-					stream.stream.name,
-					stream.stream.namespace || "",
-					filterString,
-				)
+				dispatchFilterUpdate(filterString)
 			} else {
 				isLocalFilterUpdateRef.current = true
-				updateFilter(stream.stream.name, stream.stream.namespace || "", "")
+				dispatchFilterUpdate("")
 			}
 		}
 	}
@@ -331,7 +360,9 @@ const DataFilterSection = () => {
 		<>
 			<div
 				className={clsx(
-					!isSelected ? "font-normal text-text-disabled" : "font-medium",
+					!isSelected || isBulkDisabled
+						? "font-normal text-text-disabled"
+						: "font-medium",
 					CARD_STYLE,
 					"!p-0",
 				)}
@@ -358,7 +389,7 @@ const DataFilterSection = () => {
 					<Switch
 						checked={fullLoadFilter}
 						onChange={handleFullLoadFilterChange}
-						disabled={!isSelected}
+						disabled={!isSelected || isBulkDisabled}
 					/>
 				</div>
 				{fullLoadFilter && (
@@ -493,10 +524,16 @@ const DataFilterSection = () => {
 					</>
 				)}
 			</div>
-			{!isSelected && (
+			{!isSelected && !isBulkDisabled && (
 				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
 					<InfoIcon className="size-4" />
 					Select the stream to configure Data Filter
+				</div>
+			)}
+			{isBulkDisabled && (
+				<div className="ml-1 flex items-center gap-1 text-sm text-[#686868]">
+					<InfoIcon className="size-4" />
+					No common columns across selected streams
 				</div>
 			)}
 		</>

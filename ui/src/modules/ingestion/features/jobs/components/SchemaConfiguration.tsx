@@ -30,6 +30,7 @@ import {
 } from "../stores/streamSelectionStore"
 import { SchemaConfigurationProps } from "../types"
 import FilterButton from "./FilterButton"
+import BulkConfigureStreamsModal from "./modals/BulkConfigureStreamsModal"
 import DestinationDatabaseModal from "./modals/DestinationDatabaseModal"
 import StreamConfiguration from "./streams/StreamConfiguration"
 import StreamsCollapsibleList from "./streams/StreamsCollapsibleList"
@@ -79,6 +80,8 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 		"All tables",
 	])
 	const [showDiscoverErrorModal, setShowDiscoverErrorModal] = useState(false)
+	const [showBulkConfigureStreamsModal, setShowBulkConfigureStreamsModal] =
+		useState(false)
 
 	const triggerStreamsDiscovery = () => {
 		if (
@@ -224,7 +227,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 				/>
 			)}
 
-			<div className="mb-4 mr-4 flex justify-between gap-4">
+			<div className="mb-4 mr-4 flex items-center justify-between gap-4">
 				<div className="flex w-2/6 items-center">
 					<Search
 						placeholder="Search Streams"
@@ -234,10 +237,10 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 						onChange={e => setSearchText(e.target.value)}
 					/>
 				</div>
-				<div className="flex w-4/5 justify-between gap-2">
+				<div className="flex flex-1 items-center justify-between gap-2">
 					{destinationDatabase && (
-						<div className="flex w-1/2 min-w-0 items-center justify-start gap-1">
-							<div className="group relative w-full min-w-0 rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200">
+						<div className="flex min-w-0 flex-none items-center justify-start gap-1">
+							<div className="group relative w-fit min-w-0 max-w-[480px] rounded-md border border-neutral-disabled bg-white p-2.5 shadow-sm transition-all duration-200">
 								<div className="absolute -right-2 -top-2">
 									<Tooltip title={DESTINATATION_DATABASE_TOOLTIP_TEXT}>
 										<div className="rounded-full bg-white p-1 shadow-sm ring-1 ring-gray-100">
@@ -288,7 +291,7 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					)}
 					<div
 						className={clsx(
-							"flex w-1/2 flex-wrap gap-2",
+							"ml-auto flex flex-wrap items-center gap-2",
 							destinationDatabase ? "justify-end" : "justify-start",
 						)}
 					>
@@ -300,6 +303,16 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 								setSelectedFilters={setSelectedFilters}
 							/>
 						))}
+						{streamsData?.selected_streams && (
+							<Button
+								type="primary"
+								size="middle"
+								className="!h-9 !rounded-lg !px-4"
+								onClick={() => setShowBulkConfigureStreamsModal(true)}
+							>
+								Bulk Configure
+							</Button>
+						)}
 					</div>
 				</div>
 			</div>
@@ -376,6 +389,14 @@ const SchemaConfiguration: React.FC<SchemaConfigurationProps> = ({
 					triggerStreamsDiscovery()
 				}}
 				actionButtonText="Retry"
+			/>
+
+			<BulkConfigureStreamsModal
+				open={showBulkConfigureStreamsModal}
+				onClose={() => setShowBulkConfigureStreamsModal(false)}
+				streamsData={streamsData}
+				sourceType={sourceConnector}
+				destinationType={destinationType}
 			/>
 		</div>
 	)

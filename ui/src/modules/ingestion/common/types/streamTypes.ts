@@ -1,5 +1,10 @@
 import type { UnknownObject } from "@/modules/ingestion/common/types"
 
+export interface StreamIdentifier {
+	streamName: string
+	namespace: string
+}
+
 export enum SyncMode {
 	FULL_REFRESH = "full_refresh",
 	CDC = "cdc",

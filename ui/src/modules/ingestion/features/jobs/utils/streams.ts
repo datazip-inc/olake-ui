@@ -6,6 +6,8 @@ import {
 	StreamsDataStructure,
 	StreamData,
 	SelectedStream,
+	SyncMode,
+	StreamIdentifier,
 } from "@/modules/ingestion/common/types"
 import { normalizeConnectorType } from "@/modules/ingestion/common/utils"
 
@@ -219,5 +221,190 @@ export const getCursorFieldValues = (
 	return {
 		primary,
 		fallback: fallback || "",
+	}
+}
+
+// Returns true when grouped stream namespaces or namespace stream counts change.
+export const hasGroupedStreamsStructureChanged = (
+	prev: Record<string, StreamData[]>,
+	current: Record<string, StreamData[]>,
+): boolean => {
+	const prevKeys = Object.keys(prev)
+	const currentKeys = Object.keys(current)
+
+	if (prevKeys.length !== currentKeys.length) return true
+
+	for (const key of currentKeys) {
+		if (!prev[key]) return true
+		if (prev[key].length !== current[key].length) return true
+	}
+
+	return false
+}
+
+// Sorts grouped streams by checked-first order while preserving alphabetical order within buckets.
+export const sortGroupedStreamsByCheckedState = (
+	groupedStreams: Record<string, StreamData[]>,
+	checkedStreamsByNamespace: {
+		[ns: string]: { [streamName: string]: boolean }
+	},
+): [string, StreamData[]][] => {
+	const sortByStreamName = (a: StreamData, b: StreamData) =>
+		a.stream.name.localeCompare(b.stream.name)
+	const sortByNamespaceName = (
+		a: [string, StreamData[]],
+		b: [string, StreamData[]],
+	) => a[0].localeCompare(b[0])
+
+	const withChecked: [string, StreamData[]][] = []
+	const withoutChecked: [string, StreamData[]][] = []
+
+	Object.entries(groupedStreams).forEach(([ns, streams]) => {
+		const checked: StreamData[] = []
+		const unchecked: StreamData[] = []
+
+		streams.forEach(stream => {
+			if (checkedStreamsByNamespace[ns]?.[stream.stream.name]) {
+				checked.push(stream)
+			} else {
+				unchecked.push(stream)
+			}
+		})
+
+		checked.sort(sortByStreamName)
+		unchecked.sort(sortByStreamName)
+		const sortedNamespace: [string, StreamData[]] = [
+			ns,
+			[...checked, ...unchecked],
+		]
+
+		if (checked.length > 0) {
+			withChecked.push(sortedNamespace)
+		} else {
+			withoutChecked.push(sortedNamespace)
+		}
+	})
+
+	withChecked.sort(sortByNamespaceName)
+	withoutChecked.sort(sortByNamespaceName)
+	return [...withChecked, ...withoutChecked]
+}
+
+const EMPTY_BULK_STREAM: StreamData = {
+	sync_mode: SyncMode.FULL_REFRESH,
+	destination_sync_mode: "",
+	sort_key: null,
+	stream: {
+		name: "",
+		namespace: "",
+		json_schema: {},
+		type_schema: { properties: {} },
+		available_cursor_fields: [],
+		source_defined_primary_key: [],
+		supported_sync_modes: [],
+		default_stream_properties: {
+			normalization: false,
+			append_mode: false,
+		},
+	},
+}
+
+const formatTypeArray = (type: any): string[] => {
+	if (Array.isArray(type)) return [...type].sort()
+	if (typeof type === "string") return [type]
+	return []
+}
+
+const intersectArrays = (
+	streams: StreamData[],
+	getArr: (s: StreamData) => string[] | undefined,
+): string[] =>
+	streams.reduce<string[]>((acc, s, index) => {
+		const arr = getArr(s) || []
+		return index === 0 ? [...arr] : acc.filter(item => arr.includes(item))
+	}, [])
+
+// Builds a stream representing the common configuration across all selected streams,
+// used as the basis for bulk editing.
+//
+// Intersection rules:
+// - type_schema columns: only columns present in every stream with identical types
+// - available_cursor_fields: intersection across all streams, filtered to intersected columns only
+// - source_defined_primary_key: intersection across all streams
+// - supported_sync_modes: taken from the first selected stream
+//
+// Returns EMPTY_BULK_STREAM (full-refresh, no columns) if the selection is empty
+// or none of the identifiers resolve to a known stream.
+export const buildBulkCommonStream = (
+	selectedStreamsInput: StreamIdentifier[],
+	streamsData: StreamsDataStructure | null,
+): StreamData => {
+	if (!streamsData || selectedStreamsInput.length === 0) {
+		return EMPTY_BULK_STREAM
+	}
+
+	const streams = selectedStreamsInput
+		.map(({ streamName, namespace }) =>
+			streamsData.streams.find(
+				s =>
+					s.stream.name === streamName &&
+					(s.stream.namespace || "") === namespace,
+			),
+		)
+		.filter((s): s is StreamData => s !== undefined)
+
+	if (streams.length === 0) {
+		return EMPTY_BULK_STREAM
+	}
+
+	const intersectedProperties = streams.reduce<Record<string, any>>(
+		(acc, s, index) => {
+			const props = s.stream.type_schema?.properties || {}
+			if (index === 0) {
+				return Object.fromEntries(
+					Object.entries(props).map(([key, value]) => [key, { ...value }]),
+				)
+			}
+			return Object.fromEntries(
+				Object.entries(acc).filter(([key]) => {
+					if (!props[key]) return false
+					const typeA = JSON.stringify(formatTypeArray(acc[key].type))
+					const typeB = JSON.stringify(formatTypeArray(props[key].type))
+					return typeA === typeB
+				}),
+			)
+		},
+		{},
+	)
+
+	const intersectedCursors = intersectArrays(
+		streams,
+		s => s.stream.available_cursor_fields,
+	).filter(c => intersectedProperties[c])
+
+	const intersectedPks = intersectArrays(
+		streams,
+		s => s.stream.source_defined_primary_key,
+	)
+
+	const supportedModes = streams[0].stream.supported_sync_modes || []
+
+	return {
+		sync_mode: SyncMode.FULL_REFRESH,
+		destination_sync_mode: "",
+		sort_key: null,
+		stream: {
+			name: "",
+			namespace: "",
+			json_schema: {},
+			type_schema: { properties: intersectedProperties },
+			available_cursor_fields: intersectedCursors,
+			source_defined_primary_key: intersectedPks,
+			supported_sync_modes: supportedModes,
+			default_stream_properties: {
+				normalization: false,
+				append_mode: false,
+			},
+		},
 	}
 }
