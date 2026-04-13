@@ -168,7 +168,7 @@ const BulkStreamSelectorList = ({
 	}
 
 	return (
-		<div className="flex h-full max-h-[586px] flex-col overflow-y-auto rounded-[4px]">
+		<div className="flex h-full flex-col overflow-y-auto rounded-[4px]">
 			{sortedGroups.length === 0 ? (
 				<Empty className="pt-10" />
 			) : (

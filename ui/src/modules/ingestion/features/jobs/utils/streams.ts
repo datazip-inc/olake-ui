@@ -392,12 +392,6 @@ const EMPTY_BULK_STREAM: StreamData = {
 	},
 }
 
-const formatTypeArray = (type: any): string[] => {
-	if (Array.isArray(type)) return [...type].sort()
-	if (typeof type === "string") return [type]
-	return []
-}
-
 const intersectArrays = (
 	streams: StreamData[],
 	getArr: (s: StreamData) => string[] | undefined,
@@ -407,17 +401,18 @@ const intersectArrays = (
 		return index === 0 ? [...arr] : acc.filter(item => arr.includes(item))
 	}, [])
 
-// Builds a stream representing the common configuration across all selected streams,
+// Builds a StreamData representing the intersection of all selected streams,
 // used as the basis for bulk editing.
 //
 // Intersection rules:
 // - type_schema columns: only columns present in every stream with identical types
 // - available_cursor_fields: intersection across all streams, filtered to intersected columns only
 // - source_defined_primary_key: intersection across all streams
-// - supported_sync_modes: taken from the first selected stream
+// - supported_sync_mode: taken from the first selected strea
+// - sync_mode: taken from the first selected stream
+// - default_stream_properties: taken from the first selected stream
 //
-// Returns EMPTY_BULK_STREAM (full-refresh, no columns) if the selection is empty
-// or none of the identifiers resolve to a known stream.
+// Returns EMPTY_BULK_STREAM when no valid streams are selected.
 export const buildBulkCommonStream = (
 	selectedStreamsInput: StreamIdentifier[],
 	streamsData: StreamsDataStructure | null,
@@ -451,8 +446,8 @@ export const buildBulkCommonStream = (
 			return Object.fromEntries(
 				Object.entries(acc).filter(([key]) => {
 					if (!props[key]) return false
-					const typeA = JSON.stringify(formatTypeArray(acc[key].type))
-					const typeB = JSON.stringify(formatTypeArray(props[key].type))
+					const typeA = JSON.stringify([...acc[key].type].sort())
+					const typeB = JSON.stringify([...props[key].type].sort())
 					return typeA === typeB
 				}),
 			)
@@ -471,9 +466,16 @@ export const buildBulkCommonStream = (
 	)
 
 	const supportedModes = streams[0].stream.supported_sync_modes || []
+	const rawSyncMode =
+		(streams[0].stream.sync_mode as SyncMode) ?? SyncMode.FULL_REFRESH
+	// Fall back to full_refresh if incremental has no intersected cursor fields.
+	const commonSyncMode =
+		rawSyncMode === SyncMode.INCREMENTAL && intersectedCursors.length === 0
+			? SyncMode.FULL_REFRESH
+			: rawSyncMode
 
 	return {
-		sync_mode: SyncMode.FULL_REFRESH,
+		sync_mode: commonSyncMode,
 		destination_sync_mode: "",
 		sort_key: null,
 		stream: {
@@ -484,10 +486,42 @@ export const buildBulkCommonStream = (
 			available_cursor_fields: intersectedCursors,
 			source_defined_primary_key: intersectedPks,
 			supported_sync_modes: supportedModes,
-			default_stream_properties: {
-				normalization: false,
-				append_mode: false,
-			},
+			default_stream_properties: streams[0].stream.default_stream_properties,
 		},
 	}
+}
+
+// Builds the default SelectedStream for a bulk edit session
+// Returns EMPTY_BULK_STREAM_DEFAULTS when no valid stream is provided.
+export const buildBulkSelectedStreams = (
+	commonStream: StreamData,
+	sourceType?: string,
+	destinationType?: string,
+): SelectedStream => {
+	const isDestUpsertModeSupported = isDestinationIngestionModeSupported(
+		IngestionMode.UPSERT,
+		destinationType,
+	)
+	const isSourceUpsertModeSupported = isSourceIngestionModeSupported(
+		IngestionMode.UPSERT,
+		sourceType,
+	)
+
+	return {
+		...STREAM_DEFAULTS,
+		...commonStream.stream.default_stream_properties,
+		stream_name: commonStream.stream.name,
+		append_mode: !isDestUpsertModeSupported || !isSourceUpsertModeSupported,
+	}
+}
+// Returns the stream data and default selected stream data
+export const buildBulkStreamsData = (
+	selectedStreamsInput: StreamIdentifier[],
+	streamsData: StreamsDataStructure | null,
+	sourceType?: string,
+	destinationType?: string,
+): { stream: StreamData; defaults: SelectedStream } => {
+	const stream = buildBulkCommonStream(selectedStreamsInput, streamsData)
+	const defaults = buildBulkSelectedStreams(stream, sourceType, destinationType)
+	return { stream, defaults }
 }
