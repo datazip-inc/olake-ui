@@ -15,6 +15,7 @@ import { getCursorFieldValues } from "../../utils/streams"
 
 export interface SyncModeSectionProps {
 	isBulkMode?: boolean
+	isDirty?: boolean
 	bulkStream?: StreamData
 	bulkSyncMode?: string
 	bulkCursorField?: string
@@ -23,6 +24,7 @@ export interface SyncModeSectionProps {
 
 const SyncModeSection = ({
 	isBulkMode,
+	isDirty,
 	bulkStream,
 	bulkSyncMode,
 	bulkCursorField,
@@ -190,6 +192,9 @@ const SyncModeSection = ({
 		<>
 			<div className="mb-4">
 				<div className="mb-3 flex w-full items-center gap-1 font-medium text-neutral-text">
+					{isDirty && (
+						<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
+					)}
 					<label>Sync mode:</label>
 					<a
 						href="https://olake.io/docs/understanding/terminologies/olake/#2-sync-modes"

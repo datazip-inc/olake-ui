@@ -14,12 +14,14 @@ import {
 
 interface NormalizationSectionProps {
 	isBulkMode?: boolean
+	isDirty?: boolean
 	bulkNormalization?: boolean
 	onBulkNormalizationChange?: (normalization: boolean) => void
 }
 
 const NormalizationSection = ({
 	isBulkMode,
+	isDirty,
 	bulkNormalization,
 	onBulkNormalizationChange,
 }: NormalizationSectionProps = {}) => {
@@ -68,7 +70,12 @@ const NormalizationSection = ({
 				)}
 			>
 				<div className="flex items-center justify-between">
-					<label>Normalization</label>
+					<div className="flex items-center gap-1">
+						{isDirty && (
+							<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
+						)}
+						<label>Normalization</label>
+					</div>
 					<Switch
 						checked={selectedStream?.normalization || false}
 						onChange={handleNormalizationChange}

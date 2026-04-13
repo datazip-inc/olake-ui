@@ -20,6 +20,7 @@ interface IngestionModeSectionProps {
 	sourceType?: string
 	destinationType?: string
 	isBulkMode?: boolean
+	isDirty?: boolean
 	bulkAppendMode?: boolean
 	onBulkIngestionModeChange?: (appendMode: boolean) => void
 }
@@ -28,6 +29,7 @@ const IngestionModeSection = ({
 	sourceType,
 	destinationType,
 	isBulkMode,
+	isDirty,
 	bulkAppendMode,
 	onBulkIngestionModeChange,
 }: IngestionModeSectionProps) => {
@@ -100,7 +102,12 @@ const IngestionModeSection = ({
 			)}
 		>
 			<div className="mb-3">
-				<label className="block w-full">Ingestion Mode:</label>
+				<div className="flex items-center gap-1">
+					{isDirty && (
+						<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
+					)}
+					<label className="block w-full">Ingestion Mode:</label>
+				</div>
 				<div
 					className={clsx(
 						"text-xs",

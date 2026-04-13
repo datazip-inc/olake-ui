@@ -32,6 +32,7 @@ import {
 
 export interface DataFilterSectionProps {
 	isBulkMode?: boolean
+	isDirty?: boolean
 	bulkStream?: StreamData
 	bulkFilter?: string
 	onBulkFilterChange?: (filterString: string) => void
@@ -41,6 +42,7 @@ export interface DataFilterSectionProps {
 
 const DataFilterSection = ({
 	isBulkMode,
+	isDirty,
 	bulkStream,
 	bulkFilter,
 	onBulkFilterChange,
@@ -455,6 +457,9 @@ const DataFilterSection = ({
 			>
 				<div className="flex items-center justify-between !p-3">
 					<div className="flex items-center gap-1">
+						{isDirty && (
+							<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
+						)}
 						<label>Data Filter</label>
 						<Tooltip title="Filters the stream to include only records that match conditions on specific columns.">
 							<InfoIcon

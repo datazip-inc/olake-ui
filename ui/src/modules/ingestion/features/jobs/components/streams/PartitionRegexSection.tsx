@@ -17,6 +17,7 @@ import {
 interface PartitionRegexSectionProps {
 	destinationType?: string
 	isBulkMode?: boolean
+	isDirty?: boolean
 	bulkPartitionRegex?: string
 	onBulkPartitionRegexChange?: (regex: string) => void
 }
@@ -24,6 +25,7 @@ interface PartitionRegexSectionProps {
 const PartitionRegexSection = ({
 	destinationType = DESTINATION_INTERNAL_TYPES.S3,
 	isBulkMode,
+	isDirty,
 	bulkPartitionRegex,
 	onBulkPartitionRegexChange,
 }: PartitionRegexSectionProps) => {
@@ -88,6 +90,9 @@ const PartitionRegexSection = ({
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex items-center gap-0.5">
+				{isDirty && (
+					<span className="mr-1 inline-block h-2 w-2 shrink-0 rounded-full bg-warning" />
+				)}
 				<div className="text-neutral-text">Partitioning regex:</div>
 
 				<Tooltip title={PartitioningRegexTooltip}>

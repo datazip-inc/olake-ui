@@ -16,12 +16,12 @@ import { STREAM_DEFAULTS } from "../constants"
 import { extractNamespaceFromDestination } from "../utils"
 
 export interface BulkStreamConfig {
-	syncMode: SyncMode
+	syncMode?: SyncMode
 	cursorField?: string
-	appendMode: boolean
-	normalization: boolean
-	partitionRegex: string
-	filterValue: string
+	appendMode?: boolean
+	normalization?: boolean
+	partitionRegex?: string
+	filterValue?: string
 	filterConfig?: FilterConfig
 }
 
@@ -384,7 +384,7 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					s => s.stream.name === streamName && s.stream.namespace === namespace,
 				)
 
-				if (globalStreamIndex !== -1) {
+				if (globalStreamIndex !== -1 && config.syncMode !== undefined) {
 					const nextStream: StreamData = {
 						...updatedStreams[globalStreamIndex],
 						stream: {
@@ -406,60 +406,43 @@ export const useStreamSelectionStore = create<StreamSelectionState>()(set => ({
 					changed = true
 				}
 
-				// Update selected properties (append_mode, normalizations, filtering)
+				// Update selected properties (append_mode, normalization, filtering)
 				const streamList = updatedSelected[namespace] || []
 				const streamIndex = streamList.findIndex(
 					s => s.stream_name === streamName,
 				)
 
 				if (streamIndex !== -1) {
-					const existingStream = streamList[streamIndex]
-					const newStream = { ...existingStream }
+					const newStream = { ...streamList[streamIndex] }
 
-					newStream.append_mode = config.appendMode
-					newStream.normalization = config.normalization
-					newStream.partition_regex = config.partitionRegex
+					if (config.appendMode !== undefined)
+						newStream.append_mode = config.appendMode
+					if (config.normalization !== undefined)
+						newStream.normalization = config.normalization
+					if (config.partitionRegex !== undefined)
+						newStream.partition_regex = config.partitionRegex
 					newStream.disabled = false
 
-					// Clear both fields first to ensure only one is ever set at a time
-					delete newStream.filter
-					delete newStream.filter_config
+					// Only touch filter fields if filter was explicitly included in the config
+					if (
+						config.filterValue !== undefined ||
+						config.filterConfig !== undefined
+					) {
+						// Clear both first to ensure only one is ever set at a time
+						delete newStream.filter
+						delete newStream.filter_config
 
-					if (config.filterConfig) {
-						newStream.filter_config = config.filterConfig
-					} else if (config.filterValue) {
-						newStream.filter = config.filterValue
+						if (config.filterConfig) {
+							newStream.filter_config = config.filterConfig
+						} else if (config.filterValue) {
+							newStream.filter = config.filterValue
+						}
 					}
 
 					updatedSelected[namespace] = [
 						...streamList.slice(0, streamIndex),
 						newStream,
 						...streamList.slice(streamIndex + 1),
-					]
-					changed = true
-				} else {
-					// insert stream with defaults overridden by the user config if it doesn't exist in selected_streams
-					if (!updatedSelected[namespace]) {
-						updatedSelected[namespace] = []
-					}
-
-					const newStream: SelectedStream = {
-						...STREAM_DEFAULTS,
-						stream_name: streamName,
-						disabled: false,
-						append_mode: config.appendMode,
-						normalization: config.normalization,
-						partition_regex: config.partitionRegex,
-						...(config.filterConfig
-							? { filter_config: config.filterConfig }
-							: config.filterValue
-								? { filter: config.filterValue }
-								: {}),
-					}
-
-					updatedSelected[namespace] = [
-						...updatedSelected[namespace],
-						newStream,
 					]
 					changed = true
 				}
